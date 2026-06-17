@@ -6,6 +6,7 @@ import math
 import json
 import random
 import httpx  # For fetching images from URLs
+from urllib.parse import urlparse
 from io import BytesIO
 from datetime import datetime, timezone
 from bson.objectid import ObjectId
@@ -107,11 +108,20 @@ async def create_post_from_url(request: UrlUploadRequest):
     try:
         # Fetch the image from the URL
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            # Add headers to mimic a browser request
+            # Add headers to mimic a browser request. Some CDNs (notably Instagram/
+            # Facebook) reject hotlinking unless the Referer matches the host site,
+            # so pick a site-appropriate Referer based on the image host.
+            host = (urlparse(request.image_url).hostname or "").lower()
+            if any(h in host for h in ("cdninstagram.com", "fbcdn.net", "instagram.com")):
+                referer = "https://www.instagram.com/"
+            elif "pinimg.com" in host or "pinterest.com" in host:
+                referer = "https://www.pinterest.com/"
+            else:
+                referer = request.image_url
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
-                "Referer": request.image_url
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+                "Referer": referer
             }
             response = await client.get(request.image_url, headers=headers)
             response.raise_for_status()
@@ -152,7 +162,7 @@ async def create_post_from_url(request: UrlUploadRequest):
             "text_blocks": [],
             "bounding_box_tags": {},
             "general_tags": request.general_tags or [],
-            "source_url": request.image_url  # Store original URL for reference
+            "source_url": request.source_url or request.image_url  # page (or image) URL for reference
         }
         
         new_post = await post_collection.insert_one(post_document)

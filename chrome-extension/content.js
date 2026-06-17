@@ -1,5 +1,8 @@
 // Sharirasutra Chrome Extension - Content Script
-// Adds a "Save to Sharirasutra" button when hovering over images
+// Adds a "Save to Sharirasutra" button when hovering over images.
+// Uses document-level pointer tracking + elementsFromPoint so it works on sites
+// (Instagram, Pinterest, etc.) that cover images with transparent overlays, and
+// on infinite-scroll feeds that swap images in/out of the DOM.
 
 (function () {
     'use strict';
@@ -23,48 +26,57 @@
 
     let currentImage = null;
     let hideTimeout = null;
+    let rafScheduled = false;
 
     // Check if an element is a valid image worth saving
     function isValidImage(img) {
         if (!img || img.tagName !== 'IMG') return false;
 
-        // Check natural dimensions
         const width = img.naturalWidth || img.width;
         const height = img.naturalHeight || img.height;
-
         if (width < MIN_IMAGE_SIZE || height < MIN_IMAGE_SIZE) return false;
 
-        // Check if it has a valid src
-        const src = img.src || img.currentSrc;
+        const src = img.currentSrc || img.src;
         if (!src || src.startsWith('data:image/svg') || src.includes('blank.gif')) return false;
 
         return true;
     }
 
-    // Get the best image URL
+    // Find the topmost valid <img> at a point, looking THROUGH overlay elements.
+    // This is the key to supporting Instagram et al.
+    function imageAtPoint(x, y) {
+        const stack = document.elementsFromPoint(x, y);
+        for (const el of stack) {
+            if (el === saveBtn || saveBtn.contains(el)) continue; // ignore our own button
+            if (el.tagName === 'IMG' && isValidImage(el)) return el;
+        }
+        // Fallback: an overlay container that wraps a single image
+        for (const el of stack) {
+            if (el === saveBtn || saveBtn.contains(el)) continue;
+            const img = el.querySelector && el.querySelector('img');
+            if (img && isValidImage(img)) return img;
+        }
+        return null;
+    }
+
     function getImageUrl(img) {
-        // Try to get highest quality version
         return img.currentSrc || img.src || img.dataset.src || '';
     }
 
-    // Position the button near the image
+    // Position the button at the top-right of the image
     function positionButton(img) {
         const rect = img.getBoundingClientRect();
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-
-        // Position at top-right of the image
         saveBtn.style.top = `${rect.top + scrollTop + 10}px`;
         saveBtn.style.left = `${rect.right + scrollLeft - saveBtn.offsetWidth - 10}px`;
     }
 
-    // Show the save button
     function showButton(img) {
-        if (hideTimeout) {
-            clearTimeout(hideTimeout);
-            hideTimeout = null;
+        if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+        if (currentImage && currentImage !== img) {
+            currentImage.classList.remove('sharirasutra-hover-highlight');
         }
-
         currentImage = img;
         img.classList.add('sharirasutra-hover-highlight');
         positionButton(img);
@@ -73,53 +85,53 @@
         saveBtn.querySelector('span').textContent = 'Save to Sharirasutra';
     }
 
-    // Hide the save button
     function hideButton() {
+        if (hideTimeout) clearTimeout(hideTimeout);
         hideTimeout = setTimeout(() => {
-            if (currentImage) {
-                currentImage.classList.remove('sharirasutra-hover-highlight');
-            }
+            if (currentImage) currentImage.classList.remove('sharirasutra-hover-highlight');
             saveBtn.classList.remove('visible');
             currentImage = null;
         }, 300);
     }
 
-    // Handle mouse entering an image
-    function handleImageEnter(e) {
-        const img = e.target;
-        if (isValidImage(img)) {
-            showButton(img);
-        }
+    // Document-level pointer tracking (throttled to one check per animation frame)
+    function onPointerMove(e) {
+        if (rafScheduled) return;
+        rafScheduled = true;
+        const x = e.clientX, y = e.clientY;
+        requestAnimationFrame(() => {
+            rafScheduled = false;
+
+            // Keep the button alive while the cursor is over it
+            const top = document.elementFromPoint(x, y);
+            if (top && (top === saveBtn || saveBtn.contains(top))) {
+                if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+                return;
+            }
+
+            const img = imageAtPoint(x, y);
+            if (img) {
+                if (img !== currentImage) showButton(img);
+                else if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+            } else if (currentImage) {
+                hideButton();
+            }
+        });
     }
 
-    // Handle mouse leaving an image
-    function handleImageLeave(e) {
-        hideButton();
-    }
-
-    // Keep button visible when hovering over it
-    saveBtn.addEventListener('mouseenter', () => {
-        if (hideTimeout) {
-            clearTimeout(hideTimeout);
-            hideTimeout = null;
-        }
-    });
-
-    saveBtn.addEventListener('mouseleave', () => {
-        hideButton();
-    });
+    document.addEventListener('mousemove', onPointerMove, { passive: true });
+    // Reposition / dismiss on scroll (feeds move under the cursor)
+    window.addEventListener('scroll', () => {
+        if (currentImage) positionButton(currentImage);
+    }, { passive: true });
 
     // Save image to Sharirasutra
     async function saveImage() {
         if (!currentImage) return;
 
         const imageUrl = getImageUrl(currentImage);
-        if (!imageUrl) {
-            showError('Could not get image URL');
-            return;
-        }
+        if (!imageUrl) { return; }
 
-        // Show saving state
         saveBtn.classList.add('saving');
         saveBtn.querySelector('span').textContent = 'Saving...';
 
@@ -127,29 +139,20 @@
             const response = await fetch(API_URL, {
                 method: 'POST',
                 mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     image_url: imageUrl,
+                    source_url: location.href,
                     general_tags: []
                 })
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await response.json();
 
-            const data = await response.json();
-
-            // Show success
             saveBtn.classList.remove('saving');
             saveBtn.classList.add('success');
             saveBtn.querySelector('span').textContent = '✓ Saved!';
-
-            // Open the post in a new tab (optional)
-            // window.open(`http://localhost:5173/post/${data.id}`, '_blank');
-
         } catch (error) {
             console.error('Sharirasutra save error:', error);
             saveBtn.classList.remove('saving');
@@ -158,46 +161,15 @@
         }
     }
 
-    // Click handler
     saveBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         saveImage();
     });
-
-    // Add event listeners to all images
-    function attachListeners() {
-        document.querySelectorAll('img').forEach(img => {
-            if (!img.dataset.sharirasutraListening) {
-                img.addEventListener('mouseenter', handleImageEnter);
-                img.addEventListener('mouseleave', handleImageLeave);
-                img.dataset.sharirasutraListening = 'true';
-            }
-        });
-    }
-
-    // Initial attachment
-    attachListeners();
-
-    // Watch for new images (for dynamically loaded content)
-    const observer = new MutationObserver((mutations) => {
-        let hasNewImages = false;
-        mutations.forEach(mutation => {
-            mutation.addedNodes.forEach(node => {
-                if (node.tagName === 'IMG' || (node.querySelectorAll && node.querySelectorAll('img').length > 0)) {
-                    hasNewImages = true;
-                }
-            });
-        });
-        if (hasNewImages) {
-            attachListeners();
-        }
+    saveBtn.addEventListener('mouseenter', () => {
+        if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
     });
+    saveBtn.addEventListener('mouseleave', hideButton);
 
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-
-    console.log('🎨 Sharirasutra Image Saver loaded!');
+    console.log('🎨 Sharirasutra Image Saver loaded (overlay-aware)!');
 })();
