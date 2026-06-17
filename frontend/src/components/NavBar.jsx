@@ -1,22 +1,32 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import ThemeToggle from './ThemeToggle';
 import './Navbar.css';
 
 function Navbar() {
-  const location = useLocation();
-  const isLandingPage = location.pathname === '/';
-
   return (
-    <nav className={`navbar ${isLandingPage ? '' : 'navbar--dark'}`}>
-      <NavLink to="/" className="nav-logo">
-        Framewise
-      </NavLink>
-      <div className="nav-links">
-        <NavLink to="/gallery">Gallery</NavLink>
-        <NavLink to="/epics">Epics</NavLink>
-        <NavLink to="/feed">Highlights</NavLink>
-      </div>
-    </nav>
+    <header className="navbar-wrap">
+      <nav className="navbar">
+        <NavLink to="/" className="nav-logo">
+          <span className="nav-logo-mark" aria-hidden="true"></span>
+          Drishtikone
+        </NavLink>
+
+        <div className="nav-links">
+          <NavLink to="/gallery">Gallery</NavLink>
+          <NavLink to="/highlights">Highlights</NavLink>
+          <NavLink to="/feed">Feed</NavLink>
+          <NavLink to="/epics">Epics</NavLink>
+        </div>
+
+        <div className="nav-actions">
+          <ThemeToggle />
+          <NavLink to="/gallery" className="btn btn-primary btn-sm nav-cta">
+            Upload
+          </NavLink>
+        </div>
+      </nav>
+    </header>
   );
 }
 

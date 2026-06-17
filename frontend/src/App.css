@@ -17,46 +17,18 @@
   flex: 1;
 }
 
-/* --- Sculpted Card Design (Liquid Metallic) --- */
+/* --- Content Card (Editorial) --- */
 .main-content-card {
-  background-color: var(--surface-primary);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  padding: 3rem;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.5rem, 4vw, 3rem);
   margin-bottom: 2rem;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   position: relative;
-  overflow: hidden;
-  /* Metallic sheen overlay */
-  background-image: linear-gradient(120deg, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, var(--shiny-opacity, 0.4)) 50%, rgba(255, 255, 255, 0) 60%);
-  background-size: 200% 100%;
-  animation: shine 8s infinite linear;
-}
-
-@keyframes shine {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
 }
 
 /* --- Typography --- */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: 'Inter', system-ui, sans-serif;
-  color: var(--text-primary);
-  margin-top: 0;
-  letter-spacing: -0.03em;
-  font-weight: 700;
-}
-
 p {
   color: var(--text-secondary);
   line-height: 1.65;
@@ -72,31 +44,33 @@ hr {
 /* --- Page Header --- */
 .page-header {
   text-align: center;
-  margin-bottom: 4rem;
+  margin-bottom: 3.5rem;
   position: relative;
 }
 
 .page-header h1 {
-  font-size: 3.5rem;
-  background: linear-gradient(135deg, var(--text-primary) 30%, var(--text-tertiary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  font-weight: 500;
+  color: var(--ink);
   margin-bottom: 1rem;
-  letter-spacing: -0.04em;
+  letter-spacing: var(--tracking-tight);
 }
 
 .page-header p {
+  font-family: var(--font-display);
+  font-style: italic;
   font-size: 1.25rem;
   max-width: 600px;
   margin: 0 auto;
-  color: var(--text-tertiary);
+  color: var(--ink-muted);
 }
 
-/* --- Gallery Grid (Liquid Cards) --- */
+/* --- Gallery Grid (Editorial Cards) --- */
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 2.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.75rem;
 }
 
 .gallery-item {
@@ -104,16 +78,16 @@ hr {
   border-radius: var(--radius-lg);
   overflow: hidden;
   aspect-ratio: 3 / 4;
-  background: var(--surface-primary);
-  border: 1px solid var(--border-subtle);
-  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease), border-color 0.35s var(--ease);
   box-shadow: var(--shadow-sm);
 }
 
 .gallery-item:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: var(--shadow-xl);
-  border-color: var(--accent-primary);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--line-strong);
   z-index: 5;
 }
 

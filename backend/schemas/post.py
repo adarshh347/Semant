@@ -93,4 +93,5 @@ class NodeExpansionRequest(BaseModel):
 
 class UrlUploadRequest(BaseModel):
     image_url: str
+    source_url: Optional[str] = None  # page the image was saved from
     general_tags: Optional[List[str]] = []

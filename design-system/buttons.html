@@ -1,0 +1,50 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buttons &amp; Chips — Drishtikone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .wrap { padding: var(--space-12); max-width: 760px; margin: 0 auto; }
+  .head { margin-bottom: var(--space-8); }
+  .head h2 { font-size: var(--fs-h1); }
+  .group-title { font-size: var(--fs-small); font-weight: 600; letter-spacing: var(--tracking-wide);
+                 text-transform: uppercase; color: var(--ink-subtle); margin: var(--space-8) 0 var(--space-4); }
+  .cluster { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">Components</div>
+      <h2>Buttons &amp; Chips</h2>
+    </div>
+
+    <div class="group-title">Variants</div>
+    <div class="cluster">
+      <button class="btn btn-primary">Generate story</button>
+      <button class="btn btn-secondary">Add tag</button>
+      <button class="btn btn-ghost">Cancel</button>
+    </div>
+
+    <div class="group-title">Sizes</div>
+    <div class="cluster">
+      <button class="btn btn-primary btn-lg">Start an Epic</button>
+      <button class="btn btn-primary">Upload image</button>
+      <button class="btn btn-primary btn-sm">Save</button>
+    </div>
+
+    <div class="group-title">Tag chips</div>
+    <div class="cluster">
+      <span class="chip">portrait</span>
+      <span class="chip">monsoon</span>
+      <span class="chip chip-accent">featured</span>
+      <span class="chip">untagged · 12</span>
+    </div>
+  </div>
+</body>
+</html>

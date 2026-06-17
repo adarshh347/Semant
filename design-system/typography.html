@@ -1,0 +1,41 @@
+<!-- @dsCard group="Foundations" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typography — Drishtikone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .wrap { padding: var(--space-12); max-width: 860px; margin: 0 auto; }
+  .head { margin-bottom: var(--space-12); }
+  .head h2 { font-size: var(--fs-h1); }
+  .head p { color: var(--ink-muted); max-width: 52ch; }
+  .row { display: flex; align-items: baseline; gap: var(--space-6); padding: var(--space-4) 0; border-bottom: 1px solid var(--line); }
+  .label { flex: 0 0 130px; font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--ink-subtle); }
+  .display-1 { font-family: var(--font-display); font-size: var(--fs-display); line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); }
+  .specimen-body { color: var(--ink-muted); font-size: var(--fs-body-lg); line-height: var(--lh-normal); max-width: 60ch; margin-top: var(--space-8); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">Foundations</div>
+      <h2>Typography</h2>
+      <p><strong>Fraunces</strong> — a literary display serif — carries headings and epic titles. <strong>Inter</strong> handles every UI surface and body text.</p>
+    </div>
+
+    <div class="row"><div class="label">Display / Fraunces</div><div class="display-1">दृष्टिकोण</div></div>
+    <div class="row"><div class="label">H1 / Fraunces</div><h1 style="font-size:var(--fs-h1)">A perspective worth telling</h1></div>
+    <div class="row"><div class="label">H2 / Fraunces</div><h2 style="font-size:var(--fs-h2)">Stories woven from images</h2></div>
+    <div class="row"><div class="label">H3 / Fraunces</div><h3 style="font-size:var(--fs-h3)">The shape of a moment</h3></div>
+    <div class="row"><div class="label">Body LG / Inter</div><div style="font-size:var(--fs-body-lg)">Each frame holds a fragment of narrative.</div></div>
+    <div class="row"><div class="label">Body / Inter</div><div style="font-size:var(--fs-body)">Tag an image, gather a thread, let the AI find the prose between them.</div></div>
+    <div class="row"><div class="label">Eyebrow / Inter</div><div class="eyebrow">Featured Epic</div></div>
+
+    <p class="specimen-body">She kept the photographs in no particular order, trusting that meaning would assemble itself the way light assembles a room — slowly, and then all at once.</p>
+  </div>
+</body>
+</html>
