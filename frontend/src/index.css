@@ -1,189 +1,228 @@
-:root {
-  /* Default Typography */
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/* =============================================================================
+   Drishtikone — Global stylesheet
+   "Editorial Gallery": warm paper/ink neutrals, heritage terracotta accent,
+   Fraunces display serif + Inter UI. Mirrors /design-system/tokens.css.
 
+   NOTE: legacy variable names (--bg-primary, --text-primary, --accent-primary,
+   --border-subtle, ...) are aliased to the new palette so pages not yet
+   redesigned keep working and pick up the new colors automatically.
+   ============================================================================= */
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* --- LIQUID METALLIC THEME (Light / Default) --- */
-  /* Base - "Steel & Silver" */
-  --bg-primary: #F5F7FA;
-  /* Clean, light metallic base */
-  --bg-secondary: #E8EEF2;
-  /* Slightly darker steel */
-  --bg-tertiary: #DDE5EB;
-  /* Structural elements */
+  /* ---- Type families ---- */
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-deva: 'Noto Sans Devanagari', 'Inter', sans-serif;
+  --font-mono: 'Spline Sans Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  --surface-primary: #FFFFFF;
-  --surface-secondary: #F0F4F8;
-  --surface-hover: #E6ECF1;
+  /* ---- Type scale (fluid) ---- */
+  --fs-display: clamp(2.75rem, 5vw, 4.5rem);
+  --fs-h1: clamp(2rem, 3.4vw, 3rem);
+  --fs-h2: clamp(1.5rem, 2.4vw, 2rem);
+  --fs-h3: 1.375rem;
+  --fs-body-lg: 1.125rem;
+  --fs-small: 0.875rem;
+  --fs-caption: 0.75rem;
+  --tracking-tight: -0.02em;
+  --tracking-wide: 0.08em;
 
-  /* Text - High Contrast */
-  --text-primary: #1A2B3C;
-  /* Deep metal dark blue */
-  --text-secondary: #4A5B6D;
-  /* Oxidation grey */
-  --text-tertiary: #7D8E9F;
-  /* Subtle metallic */
-  --text-inverse: #FFFFFF;
+  /* ---- Spacing ---- */
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem; --space-16: 4rem; --space-24: 6rem;
 
-  /* Borders & Dividers */
-  --border-subtle: #DEE4EA;
-  --border-medium: #C8D3DE;
-  --border-strong: #94A6B8;
-
-  /* Accent - "Liquid Chrome & Cool Teal" */
-  --accent-primary: #5B9AB9;
-  /* The prompt's Teal/Blue */
-  --accent-hover: #48829E;
-  --accent-surface: #E3F1F6;
-  /* Very light teal tint */
-  --accent-gradient: linear-gradient(135deg, #74b0ce 0%, #5B9AB9 100%);
-
-  /* Metallic Specifics */
-  --glass-border: rgba(255, 255, 255, 0.4);
-  --glass-bg: rgba(245, 247, 250, 0.7);
-  --metal-shine: linear-gradient(120deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0) 70%);
-
-  /* Shadows - Ambient Occlusion style (Softer, spread out) */
-  --shadow-sm: 0 2px 8px -2px rgba(26, 43, 60, 0.08);
-  /* Soft ambient */
-  --shadow-md: 0 8px 24px -6px rgba(26, 43, 60, 0.12);
-  --shadow-lg: 0 16px 48px -12px rgba(26, 43, 60, 0.18);
-  --shadow-metallic: 0 4px 12px rgba(166, 180, 200, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  /* Inner light for volume */
-
-  /* Radii - "Pill" Shapes */
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
+  /* ---- Radii ---- */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
   --radius-lg: 1rem;
-  --radius-pill: 9999px;
+  --radius-xl: 1.5rem;
+  --radius-pill: 999px;
+
+  /* ============================ LIGHT — "Paper" ============================ */
+  --bg: #FBF9F5;
+  --surface: #FFFFFF;
+  --surface-2: #F4F1EA;
+  --surface-hover: #EFEBE1;
+
+  --ink: #1A1814;
+  --ink-muted: #6F6A61;
+  --ink-subtle: #9C968B;
+  --ink-inverse: #FBF9F5;
+
+  --line: #E7E2D8;
+  --line-strong: #D6CFC0;
+
+  --accent: #C4533A;
+  --accent-deep: #A53F2A;
+  --accent-soft: #F7E8E2;
+  --accent-ink: #FFFFFF;
+  --info: #4A4A6A;
+
+  --shadow-sm: 0 1px 2px rgba(26, 24, 20, 0.04), 0 2px 6px rgba(26, 24, 20, 0.05);
+  --shadow-md: 0 4px 12px rgba(26, 24, 20, 0.07), 0 12px 28px rgba(26, 24, 20, 0.06);
+  --shadow-lg: 0 12px 32px rgba(26, 24, 20, 0.10), 0 24px 64px rgba(26, 24, 20, 0.09);
+  --shadow-xl: 0 20px 50px rgba(26, 24, 20, 0.14), 0 36px 80px rgba(26, 24, 20, 0.12);
+
+  --glass-bg: rgba(251, 249, 245, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --accent-gradient: linear-gradient(135deg, #D2654A 0%, #C4533A 100%);
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ---- Legacy aliases (old token names → new palette) ---- */
+  --bg-primary: var(--bg);
+  --bg-secondary: var(--surface-2);
+  --bg-tertiary: var(--surface-2);
+  --surface-primary: var(--surface);
+  --surface-secondary: var(--surface-2);
+  /* --surface-hover already defined */
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-muted);
+  --text-tertiary: var(--ink-subtle);
+  --text-inverse: var(--ink-inverse);
+  --border-subtle: var(--line);
+  --border-medium: var(--line);
+  --border-strong: var(--line-strong);
+  --accent-primary: var(--accent);
+  --accent-hover: var(--accent-deep);
+  --accent-surface: var(--accent-soft);
+  --shadow-metallic: var(--shadow-sm);
 }
 
-/* --- DARK THEME OVERRIDES (Polished Steel) --- */
+/* ============================ DARK — "Ink" ================================= */
 [data-theme='dark'] {
-  --bg-primary: #0f1216;
-  /* Deep space metal */
-  --bg-secondary: #1a1f26;
-  /* Brushed steel */
-  --bg-tertiary: #252b36;
+  --bg: #14120E;
+  --surface: #1C1A15;
+  --surface-2: #24211B;
+  --surface-hover: #2C291F;
 
-  --surface-primary: #151a21;
-  --surface-secondary: #1e2530;
-  --surface-hover: #2a3240;
+  --ink: #F3EFE6;
+  --ink-muted: #A8A294;
+  --ink-subtle: #7C766A;
+  --ink-inverse: #14120E;
 
-  --text-primary: #E8F1F5;
-  /* Bright steel text */
-  --text-secondary: #94A3B8;
-  --text-tertiary: #64748B;
-  --text-inverse: #0f1216;
+  --line: #322E26;
+  --line-strong: #433E33;
 
-  --border-subtle: #2A3645;
-  --border-medium: #3E4C5E;
-  --border-strong: #52637A;
+  --accent: #D2654A;
+  --accent-deep: #B84E33;
+  --accent-soft: #2E211B;
+  --accent-ink: #14120E;
+  --info: #9C9CC4;
 
-  --accent-primary: #5B9AB9;
-  /* Keep accent consistent but glowing */
-  --accent-hover: #74b0ce;
-  --accent-surface: rgba(91, 154, 185, 0.15);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 12px 28px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5), 0 24px 64px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.6), 0 36px 80px rgba(0, 0, 0, 0.55);
 
+  --glass-bg: rgba(20, 18, 14, 0.72);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-bg: rgba(20, 25, 35, 0.7);
-
-  --shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.5);
-  --shadow-metallic: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --accent-gradient: linear-gradient(135deg, #D2654A 0%, #B84E33 100%);
 }
+
+/* ============================ Base ======================================== */
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  transition: background-color 0.3s var(--ease), color 0.3s var(--ease);
   overflow-x: hidden;
-  /* Prevent horizontal scroll from effects */
 }
 
-/* Global Button Reset - Pill Shapes */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+  margin-top: 0;
+}
+
+p { color: var(--ink-muted); line-height: 1.65; }
+
+a { color: inherit; }
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* ============================ Buttons ===================================== */
 button {
-  border-radius: var(--radius-pill);
-  /* Full Pill as requested */
-  border: 1px solid var(--border-medium);
-  padding: 0.7em 1.5em;
-  /* Larger touch target */
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-strong);
+  padding: 0.7em 1.4em;
   font-size: 0.95em;
   font-weight: 600;
   font-family: inherit;
-  background-color: var(--surface-primary);
-  color: var(--text-primary);
+  background-color: var(--surface);
+  color: var(--ink);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  /* Fluid easing */
+  transition: all 0.2s var(--ease);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   box-shadow: var(--shadow-sm);
-  /* Subtle depth */
-  position: relative;
-  overflow: hidden;
 }
-
 button:hover {
-  background-color: var(--surface-hover);
-  border-color: var(--accent-primary);
+  border-color: var(--ink);
+  background-color: var(--surface-2);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
+button:active { transform: translateY(0); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
-button:active {
-  transform: scale(0.98);
+/* Primary button (also covers .primary used across the app) */
+button.primary, .btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 1px solid transparent;
+}
+button.primary:hover, .btn-primary:hover {
+  background: var(--accent-deep);
+  border-color: transparent;
 }
 
-/* Primary "Liquid" Button */
-button.primary {
-  background: var(--accent-primary);
-  background: var(--accent-gradient);
-  /* Subtle gradient */
-  color: var(--text-inverse);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 15px rgba(91, 154, 185, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  /* Metallic glow */
-}
+/* Reusable component classes (mirror the design system) */
+.btn { font-family: var(--font-sans); font-size: var(--fs-small); font-weight: 600; line-height: 1;
+       padding: 0.75rem 1.25rem; border-radius: var(--radius-md); border: 1px solid transparent;
+       cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+       transition: all 0.2s var(--ease); text-decoration: none; }
+.btn-secondary { background: transparent; color: var(--ink); border-color: var(--line-strong); box-shadow: none; }
+.btn-secondary:hover { border-color: var(--ink); background: var(--surface-2); }
+.btn-ghost { background: transparent; color: var(--ink-muted); border: 1px solid transparent; box-shadow: none; }
+.btn-ghost:hover { color: var(--ink); background: var(--surface-2); }
+.btn-lg { padding: 0.95rem 1.75rem; font-size: 1rem; }
+.btn-sm { padding: 0.5rem 0.875rem; font-size: var(--fs-caption); }
 
-button.primary:hover {
-  background-color: var(--accent-hover);
-  box-shadow: 0 6px 20px rgba(91, 154, 185, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+.chip {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  font-size: var(--fs-caption); font-weight: 500;
+  padding: 0.3rem 0.7rem; border-radius: var(--radius-pill);
+  background: var(--surface-2); color: var(--ink-muted); border: 1px solid var(--line);
 }
+.chip-accent { background: var(--accent-soft); color: var(--accent-deep); border-color: transparent; }
 
-button:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 3px;
-}
-
-/* Scrollbar Styling - Sleek */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-medium);
-  border-radius: var(--radius-pill);
-  border: 2px solid var(--bg-primary);
-  /* Padding effect */
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--border-strong);
-}
+/* ============================ Scrollbar =================================== */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--radius-pill); border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-subtle); }

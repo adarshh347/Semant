@@ -1,0 +1,65 @@
+<!-- @dsCard group="Patterns" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gallery — Drishtikone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .wrap { padding: var(--space-12); }
+  .bar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: var(--space-8); gap: var(--space-6); flex-wrap: wrap; }
+  .bar h2 { font-size: var(--fs-h1); }
+  .bar .sub { color: var(--ink-muted); font-size: var(--fs-small); }
+  .filters { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+  .filters .chip { cursor: pointer; }
+  .filters .chip.on { background: var(--ink); color: var(--ink-inverse); border-color: var(--ink); }
+
+  /* Masonry via CSS columns */
+  .masonry { column-count: 4; column-gap: var(--space-4); }
+  @media (max-width: 1100px){ .masonry { column-count: 3; } }
+  @media (max-width: 800px){ .masonry { column-count: 2; } }
+  .tile { break-inside: avoid; margin-bottom: var(--space-4); border-radius: var(--radius-lg); overflow: hidden;
+          position: relative; background: var(--surface); border: 1px solid var(--line); transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease); }
+  .tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .tile img { width: 100%; display: block; }
+  .tile .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: var(--space-6) var(--space-4) var(--space-3);
+               background: linear-gradient(to top, rgba(10,8,6,0.78), transparent);
+               color: #fff; font-family: var(--font-display); font-size: var(--fs-body-lg); opacity: 0; transform: translateY(6px);
+               transition: opacity 0.3s var(--ease), transform 0.3s var(--ease); }
+  .tile:hover .cap { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="bar">
+      <div>
+        <div class="eyebrow">Gallery</div>
+        <h2>Everything you've seen</h2>
+        <div class="sub">1,204 frames · sorted by most recent</div>
+      </div>
+      <div class="filters">
+        <span class="chip on">All</span>
+        <span class="chip">coast</span>
+        <span class="chip">street</span>
+        <span class="chip">portrait</span>
+        <span class="chip">monsoon</span>
+        <span class="chip chip-accent">+ tag</span>
+      </div>
+    </div>
+
+    <div class="masonry">
+      <div class="tile"><img src="https://picsum.photos/seed/g1/500/640" alt=""><div class="cap">Low tide</div></div>
+      <div class="tile"><img src="https://picsum.photos/seed/g2/500/420" alt=""><div class="cap">The blue door</div></div>
+      <div class="tile"><img src="https://picsum.photos/seed/g3/500/560" alt=""><div class="cap">Afternoon, slow</div></div>
+      <div class="tile"><img src="https://picsum.photos/seed/g4/500/380" alt=""><div class="cap">Market light</div></div>
+      <div class="tile"><img src="https://picsum.photos/seed/g5/500/600" alt=""><div class="cap">Rooftops</div></div>
+      <div class="tile"><img src="https://picsum.photos/seed/g6/500/450" alt=""><div class="cap">Threshold</div></div>
+      <div class="tile"><img src="https://picsum.photos/seed/g7/500/520" alt=""><div class="cap">Monsoon notes</div></div>
+      <div class="tile"><img src="https://picsum.photos/seed/g8/500/400" alt=""><div class="cap">Last train</div></div>
+    </div>
+  </div>
+</body>
+</html>

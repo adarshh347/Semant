@@ -1,170 +1,107 @@
 /* frontend/src/components/Navbar.css */
-/* Clean, minimal navbar - matches white landing page */
+/* Floating pill nav — Editorial Gallery. Token-driven, works in light + dark. */
+
+.navbar-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: var(--space-3) clamp(1rem, 3vw, 2rem);
+  background: transparent;
+}
 
 .navbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 clamp(1rem, 3vw, 2rem);
-  height: 48px;
-  background: transparent;
-  position: relative;
-  z-index: 100;
+  justify-content: space-between;
+  gap: var(--space-6);
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0.6rem 0.75rem 0.6rem 1.25rem;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
 }
 
-/* For dark pages */
-.navbar--dark {
-  background: #1a1a1a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* Logo */
+/* Brand */
 .nav-logo {
-  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
   font-weight: 600;
-  color: #0a0a0a;
+  letter-spacing: -0.01em;
+  color: var(--ink);
   text-decoration: none;
-  letter-spacing: 0.02em;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s var(--ease);
+}
+.nav-logo:hover { opacity: 0.75; }
+
+.nav-logo-mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  box-shadow: inset -4px -4px 0 rgba(0, 0, 0, 0.14);
+  flex-shrink: 0;
 }
 
-.nav-logo:hover {
-  opacity: 0.7;
-}
-
-/* Dark mode logo */
-.navbar--dark .nav-logo {
-  color: #fff;
-}
-
-/* Navigation links container */
+/* Links */
 .nav-links {
   display: flex;
   align-items: center;
-  gap: clamp(1.5rem, 3vw, 2.5rem);
+  gap: clamp(1.25rem, 2.5vw, 2.25rem);
 }
 
-/* Individual nav links */
 .nav-links a {
-  font-size: 0.8rem;
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
   font-weight: 500;
-  color: #666;
+  color: var(--ink-muted);
   text-decoration: none;
-  letter-spacing: 0.03em;
-  padding: 0.5rem 0;
+  padding: 0.35rem 0;
   position: relative;
-  transition: color 0.2s ease;
+  transition: color 0.2s var(--ease);
 }
+.nav-links a:hover { color: var(--ink); }
 
 .nav-links a::after {
   content: '';
   position: absolute;
-  bottom: 0;
   left: 0;
+  bottom: -2px;
   width: 0;
-  height: 1px;
-  background: #0a0a0a;
-  transition: width 0.3s ease;
-}
-
-.nav-links a:hover {
-  color: #0a0a0a;
-}
-
-.nav-links a:hover::after {
-  width: 100%;
-}
-
-.nav-links a.active {
-  color: #0a0a0a;
-}
-
-.nav-links a.active::after {
-  width: 100%;
-}
-
-/* Dark mode nav links */
-.navbar--dark .nav-links a {
-  color: #999;
-}
-
-.navbar--dark .nav-links a::after {
-  background: #fff;
-}
-
-.navbar--dark .nav-links a:hover,
-.navbar--dark .nav-links a.active {
-  color: #fff;
-}
-
-/* Optional: Superscript count */
-.nav-count {
-  font-size: 0.6rem;
-  color: #999;
-  vertical-align: super;
-  margin-left: 0.2rem;
-}
-
-/* Mobile menu toggle (hidden by default) */
-.nav-toggle {
-  display: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-}
-
-.nav-toggle span {
-  display: block;
-  width: 20px;
   height: 2px;
-  background: #0a0a0a;
-  margin: 4px 0;
-  transition: all 0.3s ease;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.25s var(--ease);
+}
+.nav-links a:hover::after,
+.nav-links a.active::after { width: 100%; }
+.nav-links a.active { color: var(--ink); }
+
+/* Actions */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
-.navbar--dark .nav-toggle span {
-  background: #fff;
+.nav-cta {
+  box-shadow: var(--shadow-sm);
+}
+.nav-cta:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+.theme-toggle-btn {
+  box-shadow: none !important;
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .navbar {
-    padding: 0 1.5rem;
-  }
-
-  .nav-toggle {
-    display: block;
-  }
-
-  .nav-links {
-    position: fixed;
-    top: 48px;
-    left: 0;
-    right: 0;
-    background: #fafafa;
-    flex-direction: column;
-    padding: 2rem;
-    gap: 1.5rem;
-    transform: translateY(-100%);
-    opacity: 0;
-    pointer-events: none;
-    transition: all 0.3s ease;
-    border-bottom: 1px solid #e0e0e0;
-  }
-
-  .nav-links.open {
-    transform: translateY(0);
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .navbar--dark .nav-links {
-    background: #1a1a1a;
-    border-bottom: 1px solid #333;
-  }
-
-  .nav-links a {
-    font-size: 1rem;
-  }
+@media (max-width: 760px) {
+  .navbar { flex-wrap: wrap; gap: var(--space-3); border-radius: var(--radius-xl); }
+  .nav-links { order: 3; width: 100%; justify-content: space-around; gap: 0.75rem;
+               padding-top: 0.6rem; border-top: 1px solid var(--line); }
 }

@@ -1,0 +1,55 @@
+<!-- @dsCard group="Patterns" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Landing Hero — Drishtikone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,400i&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .hero { min-height: 600px; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: var(--space-12);
+          align-items: center; padding: var(--space-16) var(--space-12); position: relative; overflow: hidden; }
+  .hero::before { content:""; position:absolute; top:-20%; right:-10%; width:480px; height:480px;
+                  background: radial-gradient(circle, var(--accent-soft), transparent 70%); z-index:0; }
+  .copy { position: relative; z-index: 1; max-width: 560px; }
+  .copy .eyebrow { margin-bottom: var(--space-4); }
+  .copy h1 { font-size: var(--fs-display); margin-bottom: var(--space-6); }
+  .copy h1 em { font-style: italic; color: var(--accent); }
+  .copy .deva { font-family: var(--font-display); font-weight: 500; }
+  .copy p { font-size: var(--fs-body-lg); color: var(--ink-muted); margin-bottom: var(--space-8); max-width: 46ch; }
+  .cta { display: flex; gap: var(--space-4); align-items: center; }
+  .stat { display: flex; gap: var(--space-8); margin-top: var(--space-12); }
+  .stat .n { font-family: var(--font-display); font-size: var(--fs-h2); }
+  .stat .l { font-size: var(--fs-caption); color: var(--ink-subtle); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+
+  .collage { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+  .collage img { width: 100%; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); display:block; object-fit: cover; }
+  .collage .tall { aspect-ratio: 3/4; }
+  .collage .a { margin-top: var(--space-12); }
+</style>
+</head>
+<body>
+  <section class="hero">
+    <div class="copy">
+      <div class="eyebrow">A visual storytelling studio</div>
+      <h1>See more in <em>every</em> frame.<br><span class="deva">दृष्टिकोण</span></h1>
+      <p>Gather your images, tag the details that matter, and let Drishtikone weave them into prose, phrases, and long-form epics.</p>
+      <div class="cta">
+        <button class="btn btn-primary btn-lg">Open the gallery</button>
+        <button class="btn btn-ghost btn-lg">See an epic →</button>
+      </div>
+      <div class="stat">
+        <div><div class="n">1.2k</div><div class="l">Frames</div></div>
+        <div><div class="n">38</div><div class="l">Epics</div></div>
+        <div><div class="n">∞</div><div class="l">Perspectives</div></div>
+      </div>
+    </div>
+    <div class="collage">
+      <img class="tall a" src="https://picsum.photos/seed/hero-a/500/680" alt="">
+      <img class="tall" src="https://picsum.photos/seed/hero-b/500/680" alt="">
+    </div>
+  </section>
+</body>
+</html>

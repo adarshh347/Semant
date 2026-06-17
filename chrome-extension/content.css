@@ -4,7 +4,7 @@
     position: absolute;
     z-index: 999999;
     padding: 8px 16px;
-    background: linear-gradient(135deg, #5b9ab9 0%, #7ab8d4 100%);
+    background: linear-gradient(135deg, #D2654A 0%, #C4533A 100%);
     color: white;
     border: none;
     border-radius: 20px;
@@ -12,7 +12,7 @@
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(91, 154, 185, 0.4);
+    box-shadow: 0 4px 12px rgba(196, 83, 58, 0.4);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -30,7 +30,7 @@
 
 .sharirasutra-save-btn:hover {
     transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(91, 154, 185, 0.5);
+    box-shadow: 0 6px 16px rgba(196, 83, 58, 0.5);
 }
 
 .sharirasutra-save-btn.saving {
@@ -53,6 +53,6 @@
 
 /* Highlight border on hovering images */
 .sharirasutra-hover-highlight {
-    outline: 3px solid rgba(91, 154, 185, 0.7) !important;
+    outline: 3px solid rgba(196, 83, 58, 0.7) !important;
     outline-offset: 2px;
 }

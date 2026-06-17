@@ -1,0 +1,60 @@
+<!-- @dsCard group="Foundations" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spacing, Radii &amp; Elevation — Drishtikone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .wrap { padding: var(--space-12); max-width: 880px; margin: 0 auto; }
+  .head { margin-bottom: var(--space-8); }
+  .head h2 { font-size: var(--fs-h1); }
+  .group-title { font-size: var(--fs-small); font-weight: 600; letter-spacing: var(--tracking-wide);
+                 text-transform: uppercase; color: var(--ink-subtle); margin: var(--space-8) 0 var(--space-4); }
+  .bars .bar-row { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-2); }
+  .bars .lbl { flex: 0 0 90px; font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--ink-muted); }
+  .bars .bar { height: 16px; background: var(--accent); border-radius: var(--radius-sm); }
+  .radii, .elev { display: flex; gap: var(--space-6); flex-wrap: wrap; }
+  .radii .box { width: 96px; height: 96px; background: var(--surface-2); border: 1px solid var(--line); display: flex; align-items: flex-end; padding: var(--space-2); font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--ink-muted); }
+  .elev .box { width: 140px; height: 96px; background: var(--surface); border-radius: var(--radius-md); display:flex; align-items:flex-end; padding: var(--space-3); font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--ink-muted); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">Foundations</div>
+      <h2>Spacing, Radii &amp; Elevation</h2>
+    </div>
+
+    <div class="group-title">Spacing — 4px base</div>
+    <div class="bars">
+      <div class="bar-row"><span class="lbl">space-1</span><div class="bar" style="width:4px"></div></div>
+      <div class="bar-row"><span class="lbl">space-2</span><div class="bar" style="width:8px"></div></div>
+      <div class="bar-row"><span class="lbl">space-3</span><div class="bar" style="width:12px"></div></div>
+      <div class="bar-row"><span class="lbl">space-4</span><div class="bar" style="width:16px"></div></div>
+      <div class="bar-row"><span class="lbl">space-6</span><div class="bar" style="width:24px"></div></div>
+      <div class="bar-row"><span class="lbl">space-8</span><div class="bar" style="width:32px"></div></div>
+      <div class="bar-row"><span class="lbl">space-12</span><div class="bar" style="width:48px"></div></div>
+      <div class="bar-row"><span class="lbl">space-16</span><div class="bar" style="width:64px"></div></div>
+    </div>
+
+    <div class="group-title">Radii</div>
+    <div class="radii">
+      <div class="box" style="border-radius:var(--radius-sm)">sm</div>
+      <div class="box" style="border-radius:var(--radius-md)">md</div>
+      <div class="box" style="border-radius:var(--radius-lg)">lg</div>
+      <div class="box" style="border-radius:var(--radius-xl)">xl</div>
+    </div>
+
+    <div class="group-title">Elevation</div>
+    <div class="elev">
+      <div class="box" style="box-shadow:var(--shadow-sm)">shadow-sm</div>
+      <div class="box" style="box-shadow:var(--shadow-md)">shadow-md</div>
+      <div class="box" style="box-shadow:var(--shadow-lg)">shadow-lg</div>
+    </div>
+  </div>
+</body>
+</html>
