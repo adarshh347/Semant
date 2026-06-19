@@ -1,6 +1,17 @@
 # Semant / Sharirasutra — Project Context
 
-> **Living document.** Maintained by Claude to carry context across sessions. Update it as the repo is explored or changed. Last updated: 2026-06-17.
+> **Living document.** Maintained by Claude to carry context across sessions. Update it as the repo is explored or changed. Last updated: 2026-06-18.
+
+## 0. RESUME HERE (read first)
+State as of 2026-06-18, end of session:
+- **App runs locally**, fully wired to real services (Mongo Atlas, Cloudinary, Groq) via root `.env` + `frontend/.env`. Atlas needs your IP in the **Network Access allowlist** (current dev IP was `152.57.142.194`; re-add if connection 500s with `TLSV1_ALERT_INTERNAL_ERROR`).
+- **Local run** (servers are NOT persistent across machine restarts — relaunch as needed):
+  - Backend: `PYTHONPATH="$PWD" ./venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 5007 --reload`
+  - Frontend: `cd frontend && npm run dev` (Vite :5173)
+- **Frozen branch** `v1` exists (local only) as a pre-redesign snapshot. Active work is on `main`. Nothing has been committed/pushed this session — all changes are in the working tree.
+- **Done this session**: (1) Editorial-Gallery redesign applied to global tokens + NavBar + Landing + Gallery (§11); (2) Chrome extension fixed for Instagram + recolored (§12); (3) **Brainstorm/Aletheia** image-interpretation feature — backend `/brainstorm` endpoint + extension Brainstorm button & panel (§12.5); (4) **Motive** manifesto page at `/motive` (§12.6).
+- **Open / not done**: 2nd-pass redesign of Highlights/Feed/PostDetail/TipTap editor (still old dark hardcoded styles); `OPENROUTER_API_KEY` is required by config but unused; no tests; nothing committed.
+
 
 ## 1. What this project is
 
@@ -171,5 +182,16 @@ The "Sharirasutra Image Saver" extension didn't work on Instagram. Two root caus
 - **Server-side fetch 403**: `backend/routers/posts.py` `upload-from-url` now picks a host-appropriate `Referer` (`https://www.instagram.com/` for cdninstagram/fbcdn/instagram hosts, pinterest for pinimg) instead of the image URL itself. Added `from urllib.parse import urlparse`. Added `source_url` to `UrlUploadRequest` (schemas/post.py) so the extension can record the page an image came from (content.js sends `source_url: location.href`).
 - **To pick up changes**: reload the extension at `chrome://extensions` (circular refresh icon on its card) and hard-refresh the Instagram tab. Backend was restarted with `--reload`.
 
+## 12.5 Brainstorm / "Aletheia" interpretive DIALOGUE (2026-06-18)
+A second extension action beside "Save": **Brainstorm** runs an interpretive read of any image (not a caption), then turns into a **back-and-forth dialogue** — it poses clickable multiple-choice questions; clicking an option sends that choice back and Aletheia regenerates a sharpened reading. (The earlier static "punctum" idea was replaced by this interactive loop at the user's request.) Verified end-to-end: round 2 readings visibly incorporate the chosen answer and questions narrow/deepen.
+- **Backend** `backend/services/vision_service.py`: `brainstorm_image(image_url, answers=None)` + `_parse_aletheia()` + `ALETHEIA_PROMPT`. Groq vision model; when `answers` (prior `{question,choice}` list) are supplied, they're folded into the prompt to reshape lenses + ask fewer/deeper questions (empty `questions` ⇒ "settled"). Output JSON: `{lenses:[{name,reading,intensity}], questions:[{prompt,options[]}], concealed, uncertainty}`.
+- **Backend** `backend/routers/posts.py`: `POST /api/v1/posts/brainstorm` uses `BrainstormRequest` (`image_url`, `source_url?`, `answers?: [{question,choice}]` — in schemas/post.py). Fetches the image **server-side** (so Instagram works), base64 → Groq. Shared `_image_fetch_headers()` (host-aware Referer) used by `/brainstorm` + `/upload-from-url`.
+- **Extension** `chrome-extension/content.js`: hover toolbar = **Brainstorm** + **Save**. Brainstorm opens the **Aletheia panel** — lenses w/ animated intensity bars, a choice "thread" breadcrumb, **MCQ questions as clickable option chips** (click → `chooseAnswer` → re-fetch with accumulated `bsAnswers` → re-render), concealed + uncertainty. `content.css` is fully self-contained (hardcoded Editorial palette + `!important`).
+- **Lenses & questions** are whatever the model returns; prompt specifies lenses Phenomenological / Semiotic / Atmospheric. UI is generic over both lists.
+
+## 12.6 "Motive" manifesto page (2026-06-18)
+New page at route **`/motive`** (nav link added after "Epics"). Long-form editorial manifesto on the motto **"unconcealment as context engineering"** (aletheia → the scroll disenchants → context engineering as the answer → human stakes). Files: `frontend/src/pages/MotivePage.{jsx,css}` (Fraunces title, italic motto pull-quote, drop cap, token-driven, light/dark, ~68ch measure). Wired in `main.jsx` + `components/NavBar.jsx`. (Copy drafted by a subagent; page built in main session.)
+
 ## 13. Session log
-- **2026-06-17**: Initial repo exploration; created this doc, root `.env`, and `frontend/.env` (user later filled in real Mongo/Cloudinary/Groq creds). Ran the app locally (backend uvicorn :5007, frontend Vite :5173, Mongo connected). Created frozen branch `v1` (local only). Built + synced the "Drishtikone Design System" to claude.ai/design (8 cards + tokens).
+- **2026-06-17**: Initial repo exploration; created this doc, root `.env`, and `frontend/.env` (user later filled in real Mongo/Cloudinary/Groq creds). Ran the app locally (backend uvicorn :5007, frontend Vite :5173, Mongo connected). Created frozen branch `v1` (local only). Built + synced the "Drishtikone Design System" to claude.ai/design (8 cards + tokens). Applied the redesign to global tokens + NavBar + Landing + Gallery. Fixed the Chrome extension for Instagram (overlay-aware hover + host-aware Referer).
+- **2026-06-18**: Built the **Brainstorm/Aletheia** feature (backend `/brainstorm` + vision_service method + extension Brainstorm button/panel; verified end-to-end). Added the **Motive** manifesto page at `/motive`. Updated this doc as the resume point. Backend restarted with `--reload`. Nothing committed yet.
