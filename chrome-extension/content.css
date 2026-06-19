@@ -1,58 +1,165 @@
-/* Sharirasutra Save Button - appears on image hover */
+/* Sharirasutra extension — injected UI (Editorial Gallery palette, self-contained).
+   Hardcoded colors + !important so arbitrary host sites can't override us. */
 
-.sharirasutra-save-btn {
-    position: absolute;
-    z-index: 999999;
-    padding: 8px 16px;
-    background: linear-gradient(135deg, #D2654A 0%, #C4533A 100%);
-    color: white;
-    border: none;
-    border-radius: 20px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(196, 83, 58, 0.4);
-    display: flex;
-    align-items: center;
-    gap: 6px;
+/* ---- Floating toolbar ---- */
+.sharirasutra-toolbar {
+    position: absolute !important;
+    z-index: 2147483646 !important;
+    display: flex !important;
+    gap: 8px !important;
     opacity: 0;
     transform: translateY(-5px);
-    transition: all 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease;
     pointer-events: none;
 }
+.sharirasutra-toolbar.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
-.sharirasutra-save-btn.visible {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
+.sharirasutra-btn {
+    all: unset;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 8px 14px !important;
+    border-radius: 999px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 12px rgba(26, 24, 20, 0.18) !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease !important;
 }
+.sharirasutra-btn svg { width: 15px !important; height: 15px !important; }
+.sharirasutra-btn:hover { transform: scale(1.04) !important; }
 
-.sharirasutra-save-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(196, 83, 58, 0.5);
+.sharirasutra-save-btn {
+    background: linear-gradient(135deg, #D2654A 0%, #C4533A 100%) !important;
+    color: #ffffff !important;
 }
-
-.sharirasutra-save-btn.saving {
-    background: #888;
-    pointer-events: none;
+.sharirasutra-brainstorm-btn {
+    background: #1A1814 !important;
+    color: #FBF9F5 !important;
 }
+.sharirasutra-save-btn.saving { background: #8a8278 !important; pointer-events: none; }
+.sharirasutra-save-btn.success { background: linear-gradient(135deg, #2f9e6f 0%, #1f8a5b 100%) !important; }
+.sharirasutra-save-btn.error { background: linear-gradient(135deg, #d9534f 0%, #b8403c 100%) !important; }
 
-.sharirasutra-save-btn.success {
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-}
-
-.sharirasutra-save-btn.error {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-}
-
-.sharirasutra-save-btn svg {
-    width: 16px;
-    height: 16px;
-}
-
-/* Highlight border on hovering images */
+/* Hover highlight on the image */
 .sharirasutra-hover-highlight {
     outline: 3px solid rgba(196, 83, 58, 0.7) !important;
     outline-offset: 2px;
+}
+
+/* ---- Aletheia panel ---- */
+.sharirasutra-panel {
+    position: fixed !important;
+    top: 50% !important;
+    right: 24px !important;
+    transform: translate(120%, -50%);
+    width: 370px !important;
+    max-width: calc(100vw - 32px) !important;
+    max-height: 84vh !important;
+    overflow: hidden !important;
+    z-index: 2147483647 !important;
+    background: #FBF9F5 !important;
+    color: #1A1814 !important;
+    border: 1px solid #E7E2D8 !important;
+    border-radius: 18px !important;
+    box-shadow: 0 24px 64px rgba(26, 24, 20, 0.28) !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    opacity: 0;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+    display: flex !important;
+    flex-direction: column !important;
+}
+.sharirasutra-panel.open { transform: translate(0, -50%); opacity: 1; }
+
+.sharirasutra-panel .al-head {
+    display: flex !important; align-items: center !important; justify-content: space-between !important;
+    padding: 16px 18px !important; border-bottom: 1px solid #E7E2D8 !important; flex-shrink: 0;
+}
+.sharirasutra-panel .al-kicker {
+    font-size: 11px !important; font-weight: 700 !important; letter-spacing: 0.14em !important;
+    text-transform: uppercase !important; color: #C4533A !important; margin-bottom: 2px !important;
+}
+.sharirasutra-panel .al-title {
+    font-family: Georgia, 'Times New Roman', serif !important; font-size: 22px !important;
+    font-weight: 500 !important; color: #1A1814 !important; line-height: 1.1 !important;
+}
+.sharirasutra-panel .al-close {
+    all: unset; cursor: pointer !important; font-size: 24px !important; line-height: 1 !important;
+    color: #9C968B !important; padding: 2px 8px !important; border-radius: 8px !important;
+}
+.sharirasutra-panel .al-close:hover { color: #1A1814 !important; background: #F4F1EA !important; }
+
+.sharirasutra-panel .al-body { padding: 18px !important; overflow-y: auto !important; }
+
+.sharirasutra-panel .al-thumb {
+    width: 100% !important; border-radius: 12px !important; overflow: hidden !important;
+    margin-bottom: 16px !important; border: 1px solid #E7E2D8 !important; max-height: 160px !important;
+}
+.sharirasutra-panel .al-thumb img { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important; max-height: 160px !important; }
+
+/* Lenses */
+.sharirasutra-panel .al-lens { margin-bottom: 16px !important; }
+.sharirasutra-panel .al-lens-head { display: flex !important; align-items: baseline !important; justify-content: space-between !important; margin-bottom: 5px !important; }
+.sharirasutra-panel .al-lens-name { font-size: 13px !important; font-weight: 600 !important; color: #1A1814 !important; }
+.sharirasutra-panel .al-lens-pct { font-size: 12px !important; font-weight: 600 !important; color: #C4533A !important; font-variant-numeric: tabular-nums; }
+.sharirasutra-panel .al-bar { height: 6px !important; background: #EDE8DE !important; border-radius: 999px !important; overflow: hidden !important; }
+.sharirasutra-panel .al-bar-fill { height: 100% !important; background: linear-gradient(90deg, #D2654A, #C4533A) !important; border-radius: 999px !important; transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1) !important; }
+.sharirasutra-panel .al-lens-reading { margin: 7px 0 0 !important; font-size: 13px !important; line-height: 1.5 !important; color: #4f4a42 !important; }
+
+.sharirasutra-panel .al-label { font-size: 10px !important; font-weight: 700 !important; letter-spacing: 0.14em !important; text-transform: uppercase !important; color: #A53F2A !important; margin-bottom: 8px !important; }
+
+/* Choice thread (back-and-forth breadcrumb) */
+.sharirasutra-panel .al-thread { margin-bottom: 16px !important; padding-bottom: 14px !important; border-bottom: 1px dashed #E0DACE !important; }
+.sharirasutra-panel .al-thread-chips { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; }
+.sharirasutra-panel .al-thread-chip {
+    font-size: 11.5px !important; font-weight: 600 !important; color: #A53F2A !important;
+    background: #F7E8E2 !important; border-radius: 999px !important; padding: 4px 10px !important;
+}
+
+/* Interactive questions */
+.sharirasutra-panel .al-questions {
+    margin: 18px 0 !important; padding: 16px !important;
+    background: #F4F1EA !important; border-radius: 14px !important; border: 1px solid #E7E2D8 !important;
+}
+.sharirasutra-panel .al-q { margin-bottom: 14px !important; }
+.sharirasutra-panel .al-q:last-child { margin-bottom: 0 !important; }
+.sharirasutra-panel .al-q-prompt {
+    margin: 0 0 9px !important; font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: 15px !important; line-height: 1.4 !important; color: #1A1814 !important;
+}
+.sharirasutra-panel .al-q-opts { display: flex !important; flex-wrap: wrap !important; gap: 7px !important; }
+.sharirasutra-panel .al-opt {
+    all: unset; box-sizing: border-box !important; cursor: pointer !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 12.5px !important; font-weight: 600 !important; color: #1A1814 !important;
+    background: #FFFFFF !important; border: 1px solid #D6CFC0 !important; border-radius: 999px !important;
+    padding: 7px 13px !important; transition: all 0.15s ease !important;
+}
+.sharirasutra-panel .al-opt:hover { background: #C4533A !important; border-color: #C4533A !important; color: #ffffff !important; transform: translateY(-1px) !important; }
+
+.sharirasutra-panel .al-settled {
+    margin: 16px 0 !important; padding: 12px !important; text-align: center !important;
+    font-family: Georgia, 'Times New Roman', serif !important; font-style: italic !important;
+    color: #6F6A61 !important; font-size: 14px !important;
+}
+
+/* Foot notes */
+.sharirasutra-panel .al-foot { display: block !important; padding: 10px 0 !important; border-top: 1px solid #E7E2D8 !important; font-size: 12.5px !important; line-height: 1.5 !important; color: #6F6A61 !important; }
+.sharirasutra-panel .al-foot-label { display: inline-block !important; font-weight: 700 !important; color: #9C968B !important; margin-right: 6px !important; font-size: 10px !important; letter-spacing: 0.12em !important; text-transform: uppercase !important; }
+
+/* Loading + error */
+.sharirasutra-panel .al-loading { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 12px !important; padding: 28px 0 !important; }
+.sharirasutra-panel .al-spinner { width: 26px !important; height: 26px !important; border: 3px solid #EDE8DE !important; border-top-color: #C4533A !important; border-radius: 50% !important; animation: sharirasutra-spin 0.8s linear infinite !important; }
+.sharirasutra-panel .al-loading-text { font-family: Georgia, 'Times New Roman', serif !important; font-style: italic !important; color: #6F6A61 !important; font-size: 14px !important; }
+.sharirasutra-panel .al-error { padding: 20px 0 !important; color: #b8403c !important; font-size: 13px !important; line-height: 1.5 !important; text-align: center !important; }
+
+@keyframes sharirasutra-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 520px) {
+    .sharirasutra-panel { right: 0 !important; left: 0 !important; top: auto !important; bottom: 0 !important; margin: 0 auto !important; width: 100% !important; max-height: 70vh !important; border-radius: 18px 18px 0 0 !important; transform: translateY(110%); }
+    .sharirasutra-panel.open { transform: translateY(0); }
 }

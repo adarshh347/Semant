@@ -6,14 +6,16 @@ import math
 import json
 import random
 import httpx  # For fetching images from URLs
+import base64
 from urllib.parse import urlparse
 from io import BytesIO
+from backend.services.vision_service import vision_service
 from datetime import datetime, timezone
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
 # shutil(high level file operations) vs os (low level file operations)
 import shutil
-from backend.schemas.post import Post, PostUpdate, PaginatedPosts, StoryGenerationRequest, AddTagRequest, AddTagAndStoryRequest, StoryFlowRequest, PostSuggestionRequest, VisionChatRequest, VisionRewriteRequest, NodeExpansionRequest, UrlUploadRequest
+from backend.schemas.post import Post, PostUpdate, PaginatedPosts, StoryGenerationRequest, AddTagRequest, AddTagAndStoryRequest, StoryFlowRequest, PostSuggestionRequest, VisionChatRequest, VisionRewriteRequest, NodeExpansionRequest, UrlUploadRequest, BrainstormRequest
 
 from backend.database import post_collection,client
 import cloudinary
@@ -97,6 +99,57 @@ async def create_post(
     created_post = await post_collection.find_one({"_id": new_post.inserted_id})
     return post_helper(created_post)
 
+def _image_fetch_headers(image_url: str) -> dict:
+    """Browser-like headers for fetching an image. Some CDNs (notably Instagram/
+    Facebook) reject hotlinking unless the Referer matches the host site, so pick
+    a site-appropriate Referer based on the image host."""
+    host = (urlparse(image_url).hostname or "").lower()
+    if any(h in host for h in ("cdninstagram.com", "fbcdn.net", "instagram.com")):
+        referer = "https://www.instagram.com/"
+    elif "pinimg.com" in host or "pinterest.com" in host:
+        referer = "https://www.pinterest.com/"
+    else:
+        referer = image_url
+    return {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "Referer": referer,
+    }
+
+
+# --- Brainstorm: "Aletheia" interpretive analysis (for Chrome Extension) ---
+@router.post("/brainstorm")
+async def brainstorm_image(request: BrainstormRequest):
+    """
+    Interpret an image through the Aletheia lenses (phenomenological / semiotic /
+    atmospheric) and pose clickable questions. If `answers` (prior viewer choices)
+    are supplied, the reading is refined around them — a back-and-forth dialogue.
+    Fetches the image server-side (so hotlink-protected sources like Instagram work)
+    and feeds base64 to the vision model. Returns the structured interpretation JSON.
+    """
+    print(f"--- Brainstorm: {request.image_url} ---")
+    # Fetch the image bytes ourselves so referer-protected CDNs work, then send as base64.
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(request.image_url, headers=_image_fetch_headers(request.image_url))
+            resp.raise_for_status()
+            content_type = resp.headers.get("content-type", "image/jpeg")
+            if not content_type.startswith("image/"):
+                content_type = "image/jpeg"
+            b64 = base64.b64encode(resp.content).decode("ascii")
+            data_url = f"data:{content_type};base64,{b64}"
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch image: HTTP {e.response.status_code}")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch image: {str(e)}")
+
+    answers = [a.model_dump() for a in request.answers] if request.answers else None
+    result = await vision_service.brainstorm_image(data_url, answers=answers)
+    if result is None:
+        raise HTTPException(status_code=502, detail="Interpretation unavailable (vision service error or unparseable response).")
+    return result
+
+
 # --- Upload from URL (for Chrome Extension) ---
 @router.post("/upload-from-url", response_model=Post, status_code=201)
 async def create_post_from_url(request: UrlUploadRequest):
@@ -108,22 +161,7 @@ async def create_post_from_url(request: UrlUploadRequest):
     try:
         # Fetch the image from the URL
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            # Add headers to mimic a browser request. Some CDNs (notably Instagram/
-            # Facebook) reject hotlinking unless the Referer matches the host site,
-            # so pick a site-appropriate Referer based on the image host.
-            host = (urlparse(request.image_url).hostname or "").lower()
-            if any(h in host for h in ("cdninstagram.com", "fbcdn.net", "instagram.com")):
-                referer = "https://www.instagram.com/"
-            elif "pinimg.com" in host or "pinterest.com" in host:
-                referer = "https://www.pinterest.com/"
-            else:
-                referer = request.image_url
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-                "Referer": referer
-            }
-            response = await client.get(request.image_url, headers=headers)
+            response = await client.get(request.image_url, headers=_image_fetch_headers(request.image_url))
             response.raise_for_status()
             
             # Check if it's an image

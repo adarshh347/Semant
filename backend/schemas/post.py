@@ -95,3 +95,12 @@ class UrlUploadRequest(BaseModel):
     image_url: str
     source_url: Optional[str] = None  # page the image was saved from
     general_tags: Optional[List[str]] = []
+
+class BrainstormAnswer(BaseModel):
+    question: str
+    choice: str
+
+class BrainstormRequest(BaseModel):
+    image_url: str
+    source_url: Optional[str] = None
+    answers: Optional[List[BrainstormAnswer]] = None  # prior viewer choices, to refine the reading

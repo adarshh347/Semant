@@ -266,5 +266,149 @@ Generate ONLY the subtitle, no additional text or explanation:"""
             return ""
 
 
+    async def brainstorm_image(self, image_url: str, answers: Optional[list] = None) -> Optional[Dict[str, Any]]:
+        """
+        "Aletheia" interpretive DIALOGUE: unconceal an image through three lenses
+        (Phenomenological, Semiotic, Atmospheric), and pose clickable multiple-choice
+        questions that hand the looking back to the viewer. The viewer's answers
+        (passed in `answers`) reshape the next reading — a back-and-forth that
+        deepens the interpretation each round.
+
+        Args:
+            image_url: image URL or base64 data URL of the image to interpret
+            answers: optional list of prior {"question": str, "choice": str} the
+                     viewer has already chosen, to sharpen this round.
+
+        Returns:
+            Normalized dict {lenses:[{name,reading,intensity}],
+            questions:[{prompt,options}], concealed, uncertainty}, or None.
+        """
+        if not self._is_available():
+            print("⚠️ Vision service not available - GROQ_API_KEY not set")
+            return None
+
+        # Fold any prior answers into the prompt so the reading responds to them.
+        feedback = ""
+        if answers:
+            lines = "\n".join(
+                f'- Asked: "{a.get("question", "")}" → They chose: "{a.get("choice", "")}"'
+                for a in answers if a
+            )
+            if lines:
+                feedback = (
+                    "\n\nThe viewer has been in dialogue with you and chose:\n"
+                    f"{lines}\n\nLet these choices genuinely reshape the lenses (shift "
+                    "intensities, change emphasis), then ask FEWER, deeper questions. "
+                    "If the image now feels settled, return an empty \"questions\" list."
+                )
+
+        try:
+            completion = self.client.chat.completions.create(
+                model=self.vision_model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": ALETHEIA_PROMPT + feedback + "\n\nUnconceal this image. Return only the JSON."},
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                        ],
+                    }
+                ],
+                temperature=0.65,
+                max_tokens=1100,
+                top_p=1,
+                stream=False,
+            )
+            raw = completion.choices[0].message.content
+            return self._parse_aletheia(raw)
+        except Exception as e:
+            print(f"❌ Error in brainstorm analysis: {e}")
+            return None
+
+    def _parse_aletheia(self, raw: Optional[str]) -> Optional[Dict[str, Any]]:
+        """Extract and normalize the Aletheia JSON from a model response."""
+        if not raw:
+            return None
+        try:
+            # Strip code fences and pull out the first JSON object
+            cleaned = re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.MULTILINE).strip()
+            match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+            if not match:
+                return None
+            data = json.loads(match.group())
+
+            # Normalize lenses: list of {name, reading, intensity:int 0-100}
+            lenses = []
+            for lens in (data.get("lenses") or [])[:5]:
+                try:
+                    intensity = int(round(float(lens.get("intensity", 0))))
+                except (TypeError, ValueError):
+                    intensity = 0
+                lenses.append({
+                    "name": str(lens.get("name", "")).strip(),
+                    "reading": str(lens.get("reading", "")).strip(),
+                    "intensity": max(0, min(100, intensity)),
+                })
+
+            # Normalize questions: list of {prompt, options:[str]} (1-4 options each)
+            questions = []
+            for q in (data.get("questions") or [])[:3]:
+                opts = [str(o).strip() for o in (q.get("options") or []) if str(o).strip()][:4]
+                prompt = str(q.get("prompt", "")).strip()
+                if prompt and opts:
+                    questions.append({"prompt": prompt, "options": opts})
+
+            return {
+                "lenses": lenses,
+                "questions": questions,
+                "concealed": str(data.get("concealed", "")).strip(),
+                "uncertainty": str(data.get("uncertainty", "")).strip(),
+            }
+        except Exception as e:
+            print(f"❌ Error parsing Aletheia JSON: {e}")
+            return None
+
+
+# --- Aletheia interpretive prompt (image brainstorm dialogue) ---
+ALETHEIA_PROMPT = """You are Aletheia, an interpretive companion inside Semant. A person scrolling a
+feed has paused on an image. Your task is NOT to caption it (what is depicted)
+but to help them UNCONCEAL it — to make perceptible how the image appears and
+works on them, and what it withholds. (Heidegger: truth as unconcealment.)
+
+This is a DIALOGUE. You offer a reading, then pose a few multiple-choice questions
+that hand the looking back to the viewer. Their clicks sharpen your next reading,
+so the image is unconcealed together, round by round.
+
+Rules:
+- Look closely at the ACTUAL image. Never invent details you cannot see.
+- Plain, sensuous, specific language. No art-jargon padding. Keep it short.
+- Each lens is a distinct voice and may disagree with the others.
+- Disclose your uncertainty rather than bluffing (the "earth that resists").
+- Questions are perceptual/interpretive, never a factual quiz. Each offers a real
+  FORK in how to see — 2 to 4 short options (a few words each). There is no
+  "correct" option; each opens a different reading.
+
+Produce:
+1. LENSES (3):
+   - Phenomenological — how it meets a lived body: weight, texture, temperature,
+     movement, where the eye is pulled.
+   - Semiotic — its denotation vs connotation; what it culturally signifies.
+   - Atmospheric — the mood/Stimmung it radiates, the emotional temperature.
+   Each lens: 1–2 sentences + an "intensity" 0–100 (how strongly this lens
+   speaks for this image) for the UI bars.
+2. QUESTIONS (1–3): each a short prompt + 2–4 short options, inviting the viewer
+   to choose how to see (e.g. "What pulls your eye first?", "What is this image's
+   weather?"). These drive the back-and-forth.
+3. CONCEALED — one line on what lies outside the frame / what the image withholds.
+
+Return strict JSON only:
+{
+  "lenses": [{"name": "...", "reading": "...", "intensity": 0}],
+  "questions": [{"prompt": "...", "options": ["...", "..."]}],
+  "concealed": "...",
+  "uncertainty": "..."
+}"""
+
+
 # Singleton instance
 vision_service = VisionService()
