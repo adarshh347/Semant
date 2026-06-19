@@ -17,6 +17,7 @@ function Navbar() {
           <NavLink to="/highlights">Highlights</NavLink>
           <NavLink to="/feed">Feed</NavLink>
           <NavLink to="/epics">Epics</NavLink>
+          <NavLink to="/motive">Motive</NavLink>
         </div>
 
         <div className="nav-actions">

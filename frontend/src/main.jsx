@@ -12,6 +12,7 @@ import './index.css';
 import TextFeedPage from './pages/TextFeedPage.jsx';
 import EpicsPage from './pages/EpicsPage.jsx';
 import EpicEditorPage from './pages/EpicEditorPage.jsx';
+import MotivePage from './pages/MotivePage.jsx';
 
 const router = createBrowserRouter([
   {
@@ -25,7 +26,8 @@ const router = createBrowserRouter([
       { path: "posts/:postId/crops", element: <CroppedAnnotationsPage /> },
       { path: "feed", element: <TextFeedPage /> },
       { path: "epics", element: <EpicsPage /> },
-      { path: "epics/:id", element: <EpicEditorPage /> }
+      { path: "epics/:id", element: <EpicEditorPage /> },
+      { path: "motive", element: <MotivePage /> }
     ],
   },
 ]);
