@@ -1,18 +1,30 @@
 // frontend/src/components/PostDetailPage.jsx
 // LeetCode-style split-screen layout with Highlights feature
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Sparkles, Plus, X, ChevronRight, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, X, ChevronRight, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, Pilcrow, Heading1, Quote, Wand2, PenLine } from 'lucide-react';
 import BoundingBoxEditor from './BoundingBoxEditor';
 import RichTextBlock from './RichTextBlock';
-import PostSuggestionPanel from './PostSuggestionPanel';
 import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
 import ThemeToggle from './ThemeToggle';
 import { API_URL } from '../config/api';
+import { epicService } from '../services/epicService';
 import './PostDetailPage.css';
+
+// Convert plain AI text (paragraphs split by blank lines) into simple HTML blocks.
+const htmlFromText = (text) =>
+  (text || '')
+    .split(/\n{2,}/)
+    .map(p => p.trim())
+    .filter(Boolean)
+    .map(p => `<p>${p.replace(/\n/g, '<br/>')}</p>`)
+    .join('') || `<p>${(text || '').trim()}</p>`;
+
+// Strip HTML to count words / reading time.
+const plainText = (html) => (html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ');
 
 function PostDetailPage() {
   const [post, setPost] = useState(null);
@@ -35,6 +47,9 @@ function PostDetailPage() {
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [selectedText, setSelectedText] = useState('');
   const [selectedBlockId, setSelectedBlockId] = useState(null);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiBusy, setAiBusy] = useState(null); // 'draft' | 'write' | null
+  const [aiError, setAiError] = useState('');
   const dividerRef = useRef(null);
   const containerRef = useRef(null);
   const contentAreaRef = useRef(null);
@@ -241,7 +256,9 @@ function PostDetailPage() {
   };
 
   const addBlock = (type = 'paragraph') => {
-    const newBlock = { id: `block_${Date.now()}`, type, content: '', color: 'transparent' };
+    // Seed the TipTap node so Heading/Quote start in the right form.
+    const seed = type === 'h1' ? '<h1></h1>' : type === 'quote' ? '<blockquote></blockquote>' : '';
+    const newBlock = { id: `block_${Date.now()}`, type, content: seed, color: 'transparent' };
     setEditedBlocks(currentBlocks => [...currentBlocks, newBlock]);
   };
 
@@ -284,6 +301,102 @@ function PostDetailPage() {
     }
   };
 
+  // --- Reorder blocks ---
+  const moveBlock = (id, dir) => {
+    setEditedBlocks(blocks => {
+      const i = blocks.findIndex(b => b.id === id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= blocks.length) return blocks;
+      const next = [...blocks];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+
+  // --- Dirty state (unsaved changes) ---
+  const isDirty = useMemo(() => {
+    if (!post || !isEditing) return false;
+    const a = JSON.stringify({ b: editedBlocks, t: editedTags });
+    const b = JSON.stringify({ b: post.text_blocks || [], t: post.general_tags || [] });
+    return a !== b;
+  }, [post, isEditing, editedBlocks, editedTags]);
+
+  // --- Word count / reading time ---
+  const wordStats = useMemo(() => {
+    const words = editedBlocks
+      .map(b => plainText(b.content))
+      .join(' ')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+    return { words, minutes: Math.max(1, Math.ceil(words / 200)) };
+  }, [editedBlocks]);
+
+  // --- AI composer (Sutradhar's quill) ---
+  const existingTextForAI = () =>
+    editedBlocks.map(b => plainText(b.content)).join('\n\n').trim();
+
+  const draftFromImage = async () => {
+    setAiError('');
+    setAiBusy('draft');
+    try {
+      const res = await epicService.autoRecommendText(post.photo_url, existingTextForAI());
+      const text = res?.suggestion;
+      if (!text) throw new Error('No suggestion returned');
+      setEditedBlocks(blocks => [
+        ...blocks,
+        { id: `block_${Date.now()}`, type: 'paragraph', content: htmlFromText(text), color: 'transparent' },
+      ]);
+    } catch (e) {
+      setAiError('Could not draft from the image. Is the vision service running?');
+    } finally {
+      setAiBusy(null);
+    }
+  };
+
+  const writeFromPrompt = async () => {
+    const prompt = aiPrompt.trim();
+    if (!prompt) return;
+    setAiError('');
+    setAiBusy('write');
+    try {
+      const res = await epicService.promptEnhancedText(post.photo_url, prompt);
+      const text = res?.suggestion;
+      if (!text) throw new Error('No suggestion returned');
+      setEditedBlocks(blocks => [
+        ...blocks,
+        { id: `block_${Date.now()}`, type: 'paragraph', content: htmlFromText(text), color: 'transparent' },
+      ]);
+      setAiPrompt('');
+    } catch (e) {
+      setAiError('Could not write from that prompt. Is the vision service running?');
+    } finally {
+      setAiBusy(null);
+    }
+  };
+
+  // --- Keyboard save (Cmd/Ctrl+S) + unsaved-changes guard ---
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        if (isEditing) {
+          e.preventDefault();
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isEditing, editedBlocks, editedTags]);
+
+  useEffect(() => {
+    const onBeforeUnload = (e) => {
+      if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty]);
+
   if (!post) {
     return (
       <div className="post-detail-page">
@@ -320,7 +433,19 @@ function PostDetailPage() {
         <Link to="/gallery" className="back-link">
           <ArrowLeft size={18} /> Gallery
         </Link>
+
+        {/* Sutradhar — the thread-holder (editor identity) */}
+        <div className="sutradhar-brand">
+          <span className="sd-name">Sutradhar</span>
+          <span className="sd-deva">सूत्रधार · the thread-holder</span>
+        </div>
+
         <div className="post-detail-actions">
+          {isDirty && (
+            <span className="dirty-pill" title="You have unsaved changes (⌘S to save)">
+              <span className="dot" /> Unsaved
+            </span>
+          )}
           <ThemeToggle />
           <button
             className={`action-btn ${isChatOpen ? 'primary' : 'secondary'}`}
@@ -418,32 +543,81 @@ function PostDetailPage() {
               <>
                 {isEditing ? (
                   <div className="edit-section">
-                    <h4>Edit Story Blocks</h4>
+                    <div className="edit-section-head">
+                      <h4>Story Blocks</h4>
+                    </div>
+                    <div className="editor-meta">
+                      <span><strong>{wordStats.words}</strong> words</span>
+                      <span><strong>{wordStats.minutes}</strong> min read</span>
+                      <span><strong>{editedBlocks.length}</strong> {editedBlocks.length === 1 ? 'block' : 'blocks'}</span>
+                    </div>
                     <div className="advanced-editor">
-                      {editedBlocks.map(block => (
+                      {editedBlocks.map((block, index) => (
                         <RichTextBlock
                           key={block.id}
                           block={block}
                           onContentChange={handleBlockContentChange}
                           onColorChange={handleBlockColorChange}
                           onDelete={deleteBlock}
+                          onMoveUp={(id) => moveBlock(id, -1)}
+                          onMoveDown={(id) => moveBlock(id, 1)}
+                          isFirst={index === 0}
+                          isLast={index === editedBlocks.length - 1}
                         />
                       ))}
                     </div>
-                    <button className="action-btn text-btn" onClick={() => addBlock('paragraph')} style={{ marginTop: '0.5rem' }}>
-                      <Plus size={16} /> Add Block
-                    </button>
-
-                    {/* Inline Fallback Suggestion Panel */}
-                    <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
-                      <h4 style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>Legacy Generator</h4>
-                      <PostSuggestionPanel
-                        textBlocks={editedBlocks}
-                        onSuggestionSelect={handleSuggestionSelect}
-                      />
+                    <div className="add-block-menu">
+                      <button className="add-block-btn" onClick={() => addBlock('paragraph')}>
+                        <Pilcrow size={15} /> Paragraph
+                      </button>
+                      <button className="add-block-btn" onClick={() => addBlock('h1')}>
+                        <Heading1 size={15} /> Heading
+                      </button>
+                      <button className="add-block-btn" onClick={() => addBlock('quote')}>
+                        <Quote size={15} /> Quote
+                      </button>
                     </div>
 
-                    <div className="edit-section" style={{ marginTop: '1rem' }}>
+                    {/* Sutradhar's quill — AI composition from the image */}
+                    <div className="sutradhar-composer">
+                      <div className="composer-head">
+                        <span className="sd-spark"><Wand2 size={16} /></span>
+                        Compose with Sutradhar
+                      </div>
+                      <div className="composer-row">
+                        <button
+                          className="composer-btn"
+                          onClick={draftFromImage}
+                          disabled={aiBusy !== null}
+                          title="Let the image speak — drafts a passage from what's seen"
+                        >
+                          {aiBusy === 'draft' ? <span className="sd-spin" /> : <Sparkles size={15} />}
+                          Draft from image
+                        </button>
+                      </div>
+                      <div className="composer-row" style={{ marginTop: '0.6rem' }}>
+                        <input
+                          className="composer-input"
+                          placeholder="Tell Sutradhar what to write…"
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && aiBusy === null && writeFromPrompt()}
+                          disabled={aiBusy !== null}
+                        />
+                        <button
+                          className="composer-btn primary"
+                          onClick={writeFromPrompt}
+                          disabled={aiBusy !== null || !aiPrompt.trim()}
+                        >
+                          {aiBusy === 'write' ? <span className="sd-spin" /> : <PenLine size={15} />}
+                          Write
+                        </button>
+                      </div>
+                      <p className="composer-hint">New passages are appended as blocks — reorder or edit them above, then Save.</p>
+                      {aiError && <p className="composer-error">{aiError}</p>}
+                    </div>
+
+                    <div className="edit-section" style={{ marginTop: '2rem' }}>
                       <h4>Tags</h4>
                       <div className="tags-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
                         {editedTags.map(tag => (

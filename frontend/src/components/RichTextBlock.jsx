@@ -2,7 +2,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import React from 'react';
-import { Bold, Italic, Underline as UnderlineIcon, Quote, Heading1, Pilcrow, Trash2 } from 'lucide-react';
+import { Bold, Italic, Underline as UnderlineIcon, Quote, Heading1, Pilcrow, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
 const MenuBar = ({ editor }) => {
   if (!editor) return null;
@@ -62,7 +62,7 @@ const MenuBar = ({ editor }) => {
   );
 };
 
-function RichTextBlock({ block, onContentChange, onColorChange, onDelete }) {
+function RichTextBlock({ block, onContentChange, onColorChange, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
   const editor = useEditor({
     extensions: [StarterKit, Underline],
     content: block.content,
@@ -85,16 +85,40 @@ function RichTextBlock({ block, onContentChange, onColorChange, onDelete }) {
       <MenuBar editor={editor} />
       <EditorContent editor={editor} className="editor-content-wrapper" />
       <div className="block-controls">
-        <div className="color-picker">
-          {colorOptions.map(color => (
-            <button
-              key={color}
-              onClick={() => onColorChange(block.id, color)}
-              style={{ backgroundColor: color === 'transparent' ? 'var(--bg-secondary)' : color }}
-              className={`color-swatch ${block.color === color ? 'active' : ''}`}
-              title={color === 'transparent' ? 'Default' : 'Color'}
-            />
-          ))}
+        <div className="block-actions-left">
+          {(onMoveUp || onMoveDown) && (
+            <div className="block-move-group">
+              <button
+                type="button"
+                className="block-move-btn"
+                onClick={() => onMoveUp?.(block.id)}
+                disabled={isFirst}
+                title="Move up"
+              >
+                <ChevronUp size={16} />
+              </button>
+              <button
+                type="button"
+                className="block-move-btn"
+                onClick={() => onMoveDown?.(block.id)}
+                disabled={isLast}
+                title="Move down"
+              >
+                <ChevronDown size={16} />
+              </button>
+            </div>
+          )}
+          <div className="color-picker">
+            {colorOptions.map(color => (
+              <button
+                key={color}
+                onClick={() => onColorChange(block.id, color)}
+                style={{ backgroundColor: color === 'transparent' ? 'var(--bg-secondary)' : color }}
+                className={`color-swatch ${block.color === color ? 'active' : ''}`}
+                title={color === 'transparent' ? 'Default' : 'Color'}
+              />
+            ))}
+          </div>
         </div>
         <button onClick={() => onDelete(block.id)} className="delete-block-btn" title="Delete block">
           <Trash2 size={16} />
