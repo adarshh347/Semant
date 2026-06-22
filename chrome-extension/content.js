@@ -10,6 +10,8 @@
 
     const SAVE_URL = 'http://localhost:5007/api/v1/posts/upload-from-url';
     const BRAINSTORM_URL = 'http://localhost:5007/api/v1/posts/brainstorm';
+    const PERSONA_INGEST_URL = 'http://localhost:5007/api/v1/personas/ingest';
+    const DASHBOARD_URL = 'http://localhost:5173/personas';
     const MIN_IMAGE_SIZE = 100;
 
     // ---- Floating toolbar (Save + Brainstorm) ----------------------------------
@@ -33,8 +35,18 @@
         <line x1="9" y1="22" x2="15" y2="22"></line>
       </svg><span>Brainstorm</span>`;
 
+    // Video → frames button (Alexia), shown only when hovering a <video>
+    const splitBtn = document.createElement('button');
+    splitBtn.className = 'sharirasutra-btn sharirasutra-split-btn';
+    splitBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="2.5"></rect>
+        <line x1="8" y1="2" x2="8" y2="22"></line><line x1="16" y1="2" x2="16" y2="22"></line>
+      </svg><span>Split → Save</span>`;
+
     toolbar.appendChild(brainstormBtn);
     toolbar.appendChild(saveBtn);
+    toolbar.appendChild(splitBtn);
     document.body.appendChild(toolbar);
 
     // ---- Analysis panel --------------------------------------------------------
@@ -43,6 +55,7 @@
     document.body.appendChild(panel);
 
     let currentImage = null;
+    let currentVideo = null;
     let hideTimeout = null;
     let rafScheduled = false;
 
@@ -95,23 +108,71 @@
         toolbar.style.left = `${rect.right + left - toolbar.offsetWidth - 10}px`;
     }
 
-    function showToolbar(img) {
+    function isValidVideo(v) {
+        if (!v || v.tagName !== 'VIDEO') return false;
+        const w = v.videoWidth || v.offsetWidth;
+        const h = v.videoHeight || v.offsetHeight;
+        return w >= 120 && h >= 120;
+    }
+
+    function videoAtPoint(x, y) {
+        // First try the hit-test stack (cheap).
+        const stack = document.elementsFromPoint(x, y);
+        for (const node of stack) {
+            if (node === toolbar || toolbar.contains(node) || node === panel || panel.contains(node)) continue;
+            if (node.tagName === 'VIDEO' && isValidVideo(node)) return node;
+            const v = node.querySelector && node.querySelector('video');
+            if (v && isValidVideo(v)) return v;
+        }
+        // Geometric fallback: many sites (Instagram reels) set pointer-events:none on
+        // the <video>, so elementsFromPoint EXCLUDES it. Scan real <video> rects instead.
+        let best = null, bestArea = Infinity;
+        const vids = document.getElementsByTagName('video');
+        for (const v of vids) {
+            if (!isValidVideo(v)) continue;
+            const r = v.getBoundingClientRect();
+            if (r.width < 1 || r.height < 1) continue;
+            if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+                const area = r.width * r.height;     // prefer the smallest enclosing video
+                if (area < bestArea) { bestArea = area; best = v; }
+            }
+        }
+        return best;
+    }
+
+    function setToolbarMode(type) {
+        const isVideo = type === 'video';
+        brainstormBtn.style.display = isVideo ? 'none' : '';
+        saveBtn.style.display = isVideo ? 'none' : '';
+        splitBtn.style.display = isVideo ? '' : 'none';
+    }
+
+    function showTarget(el, type) {
         if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
-        if (currentImage && currentImage !== img) currentImage.classList.remove('sharirasutra-hover-highlight');
-        currentImage = img;
-        img.classList.add('sharirasutra-hover-highlight');
-        positionToolbar(img);
+        const prev = currentImage || currentVideo;
+        if (prev && prev !== el) prev.classList.remove('sharirasutra-hover-highlight');
+        currentImage = type === 'image' ? el : null;
+        currentVideo = type === 'video' ? el : null;
+        el.classList.add('sharirasutra-hover-highlight');
+        setToolbarMode(type);
+        positionToolbar(el);
         toolbar.classList.add('visible');
-        saveBtn.classList.remove('success', 'error', 'saving');
-        saveBtn.querySelector('span').textContent = 'Save';
+        if (type === 'image') {
+            saveBtn.classList.remove('success', 'error', 'saving');
+            saveBtn.querySelector('span').textContent = 'Save';
+        } else {
+            splitBtn.classList.remove('success', 'error', 'saving');
+            splitBtn.querySelector('span').textContent = 'Split → Save';
+        }
     }
 
     function hideToolbar() {
         if (hideTimeout) clearTimeout(hideTimeout);
         hideTimeout = setTimeout(() => {
-            if (currentImage) currentImage.classList.remove('sharirasutra-hover-highlight');
+            const cur = currentImage || currentVideo;
+            if (cur) cur.classList.remove('sharirasutra-hover-highlight');
             toolbar.classList.remove('visible');
-            currentImage = null;
+            currentImage = null; currentVideo = null;
         }, 300);
     }
 
@@ -126,11 +187,17 @@
                 if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
                 return;
             }
+            const video = videoAtPoint(x, y);
+            if (video) {
+                if (video !== currentVideo) showTarget(video, 'video');
+                else if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+                return;
+            }
             const img = imageAtPoint(x, y);
             if (img) {
-                if (img !== currentImage) showToolbar(img);
+                if (img !== currentImage) showTarget(img, 'image');
                 else if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
-            } else if (currentImage) {
+            } else if (currentImage || currentVideo) {
                 hideToolbar();
             }
         });
@@ -327,8 +394,310 @@
         runBrainstorm();
     }
 
+    // ---- Alexia: split a video into frames and save each ------------------------
+    function seekVideo(video, t) {
+        return new Promise((resolve) => {
+            let done = false;
+            const finish = () => { if (done) return; done = true; video.removeEventListener('seeked', finish); resolve(); };
+            video.addEventListener('seeked', finish);
+            setTimeout(finish, 1500); // fallback if 'seeked' never fires (streams)
+            try { video.currentTime = t; } catch (e) { finish(); }
+        });
+    }
+
+    async function splitVideo() {
+        const video = currentVideo;
+        if (!video) return;
+        const duration = video.duration;
+        if (!duration || !isFinite(duration) || duration <= 0) {
+            splitBtn.classList.add('error');
+            splitBtn.querySelector('span').textContent = '✗ No duration';
+            return;
+        }
+        // Rate: ~3 frames/sec, clamped to 8–60 evenly-spaced frames.
+        const n = Math.max(8, Math.min(60, Math.round(duration * 3)));
+        const wasPaused = video.paused, prevTime = video.currentTime, wasMuted = video.muted;
+        video.muted = true;
+        try { video.pause(); } catch (e) {}
+
+        const restore = () => {
+            try { video.currentTime = prevTime; } catch (e) {}
+            video.muted = wasMuted;
+            if (!wasPaused) { try { video.play(); } catch (e) {} }
+        };
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        splitBtn.classList.remove('success', 'error');
+        splitBtn.classList.add('saving');
+        const frames = [];
+
+        for (let i = 0; i < n; i++) {
+            splitBtn.querySelector('span').textContent = `Reading ${i + 1}/${n}…`;
+            await seekVideo(video, duration * ((i + 0.5) / n));
+            await new Promise(r => requestAnimationFrame(r));
+            const vw = video.videoWidth, vh = video.videoHeight;
+            if (!vw || !vh) continue;
+            canvas.width = vw; canvas.height = vh;
+            try {
+                ctx.drawImage(video, 0, 0, vw, vh);
+                frames.push(canvas.toDataURL('image/jpeg', 0.85));
+            } catch (err) {
+                console.error('Alexia: canvas tainted (cross-origin video, no CORS):', err);
+                restore();
+                splitBtn.classList.remove('saving'); splitBtn.classList.add('error');
+                splitBtn.querySelector('span').textContent = '✗ Protected video';
+                return;
+            }
+        }
+
+        restore();
+        splitBtn.classList.remove('saving');
+        splitBtn.querySelector('span').textContent = 'Split → Save';
+        if (frames.length) {
+            renderFrameReview(frames);
+        } else {
+            splitBtn.classList.add('error');
+            splitBtn.querySelector('span').textContent = '✗ No frames';
+        }
+    }
+
+    // Header for the Alexia frame-review view
+    function frameHeader(title) {
+        const head = el('div', 'al-head');
+        const wrap = el('div', 'al-title-wrap');
+        wrap.appendChild(el('div', 'al-kicker', 'Alexia'));
+        wrap.appendChild(el('div', 'al-title', title));
+        const close = el('button', 'al-close', '×');
+        close.addEventListener('click', () => panel.classList.remove('open'));
+        head.appendChild(wrap);
+        head.appendChild(close);
+        return head;
+    }
+
+    // Review grid: all frames selected by default; tap to deselect; then save kept ones.
+    function renderFrameReview(frames) {
+        const items = frames.map(url => ({ url, selected: true }));
+        clearPanel();
+        panel.appendChild(frameHeader('Choose frames'));
+
+        const body = el('div', 'al-body al-frames-body');
+        body.appendChild(el('div', 'al-frames-hint', `${frames.length} frames · tap to deselect`));
+        const grid = el('div', 'al-frames-grid');
+        items.forEach((it, idx) => {
+            const cell = el('div', 'al-frame selected');
+            const img = document.createElement('img'); img.src = it.url; cell.appendChild(img);
+            cell.appendChild(el('span', 'al-frame-tick', '✓'));
+            cell.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                it.selected = !it.selected;
+                cell.classList.toggle('selected', it.selected);
+                updateBar();
+            });
+            grid.appendChild(cell);
+        });
+        body.appendChild(grid);
+        panel.appendChild(body);
+
+        const bar = el('div', 'al-frames-bar');
+        const toggle = el('button', 'al-frames-toggle', 'Clear all');
+        const save = el('button', 'al-frames-save', '');
+        bar.appendChild(toggle);
+        bar.appendChild(save);
+        panel.appendChild(bar);
+
+        const count = () => items.filter(i => i.selected).length;
+        function updateBar() {
+            const c = count();
+            save.textContent = c ? `Save ${c} frame${c > 1 ? 's' : ''}` : 'Save (none)';
+            save.disabled = c === 0;
+            toggle.textContent = (c === items.length) ? 'Clear all' : 'Select all';
+        }
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            const selectAll = count() !== items.length;
+            items.forEach(it => { it.selected = selectAll; });
+            grid.querySelectorAll('.al-frame').forEach((cell, idx) => cell.classList.toggle('selected', items[idx].selected));
+            updateBar();
+        });
+        save.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            saveFrames(items.filter(i => i.selected).map(i => i.url), save);
+        });
+
+        updateBar();
+        openPanel();
+    }
+
+    async function saveFrames(urls, btn) {
+        if (!urls.length) return;
+        btn.disabled = true;
+        let saved = 0;
+        for (let i = 0; i < urls.length; i++) {
+            btn.textContent = `Saving ${i + 1}/${urls.length}…`;
+            try {
+                const r = await fetch(SAVE_URL, {
+                    method: 'POST', mode: 'cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_url: urls[i], source_url: location.href, general_tags: ['video-frame'] })
+                });
+                if (r.ok) saved++;
+            } catch (e) { /* keep going */ }
+        }
+        btn.classList.add(saved ? 'al-done' : 'al-fail');
+        btn.textContent = saved ? `✓ Saved ${saved}` : '✗ Failed';
+    }
+
     saveBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); saveImage(); });
     brainstormBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); brainstormImage(); });
+    splitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); splitVideo(); });
 
-    console.log('🎨 Sharirasutra Image Saver loaded (Save + Brainstorm, overlay-aware)!');
+    // ===========================================================================
+    // Darpan — Instagram persona capture (profile pages)
+    // A floating button that scrapes the account's details + captions and sends
+    // them to the backend, which correlates them with images we already have.
+    // ===========================================================================
+    const RESERVED_IG = new Set(['p', 'reel', 'reels', 'explore', 'accounts', 'direct',
+        'stories', 'about', 'tv', 's', 'developer', 'legal', 'privacy', '']);
+
+    function isInstagram() { return /(^|\.)instagram\.com$/i.test(location.hostname); }
+
+    function instagramProfileHandle() {
+        // A profile is "/<handle>/" with a single, non-reserved segment.
+        const m = location.pathname.match(/^\/([^\/]+)\/?$/);
+        if (!m) return null;
+        const seg = decodeURIComponent(m[1]).toLowerCase();
+        if (RESERVED_IG.has(seg)) return null;
+        return seg;
+    }
+
+    function metaContent(prop) {
+        const e = document.querySelector(`meta[property="${prop}"]`) ||
+                  document.querySelector(`meta[name="${prop}"]`);
+        return e ? (e.getAttribute('content') || '') : '';
+    }
+
+    function scrapeInstagramProfile(handle) {
+        const ogTitle = metaContent('og:title');         // "Name (@handle) • Instagram…"
+        const ogDesc = metaContent('og:description');     // "48K Followers, 6 Following, 30 Posts - …"
+        const ogImage = metaContent('og:image');
+
+        let display_name = '';
+        const nameMatch = ogTitle.match(/^(.*?)\s*\(@/);
+        if (nameMatch) display_name = nameMatch[1].trim();
+
+        const grab = (re) => { const m = ogDesc.match(re); return m ? m[1] : null; };
+        const followers = grab(/([\d.,KMB]+)\s+Followers/i);
+        const following = grab(/([\d.,KMB]+)\s+Following/i);
+        const posts_count = grab(/([\d.,KMB]+)\s+Posts/i);
+
+        // Bio: best-effort from the header, else the snippet after "on Instagram:".
+        let bio = '';
+        try {
+            const headerText = (document.querySelector('header section')?.innerText || '').trim();
+            const lines = headerText.split('\n').map(s => s.trim()).filter(Boolean)
+                .filter(l => !/followers|following|posts|^@|^\d/i.test(l) && l.toLowerCase() !== display_name.toLowerCase());
+            if (lines.length) bio = lines.slice(0, 4).join(' · ');
+        } catch (e) { /* ignore */ }
+        if (!bio) {
+            const m = ogDesc.match(/on Instagram:\s*[“"]?(.+?)[”"]?\s*$/i);
+            if (m) bio = m[1].trim();
+        }
+
+        const verified = !!document.querySelector('header svg[aria-label="Verified"]');
+        const external_link =
+            document.querySelector('header a[href*="l.instagram.com"]')?.href ||
+            document.querySelector('header a[target="_blank"][rel]')?.href || '';
+
+        // Captions + image urls from visible post thumbnails (alt text carries captions).
+        const captions = [], imageUrls = [];
+        document.querySelectorAll('main img, article img').forEach(im => {
+            const src = im.currentSrc || im.src || '';
+            if (src && !src.startsWith('data:')) imageUrls.push(src);
+            const alt = (im.getAttribute('alt') || '').trim();
+            if (alt && alt.length > 14 && !/profile photo/i.test(alt)) captions.push(alt);
+        });
+        const uniq = (a, n) => [...new Set(a)].slice(0, n);
+
+        return {
+            handle,
+            source_url: location.href,
+            account: {
+                display_name, bio, followers, following, posts_count,
+                avatar_url: ogImage || '', external_link, verified,
+                raw_og_description: ogDesc || '',
+            },
+            captured_captions: uniq(captions, 40),
+            captured_image_urls: uniq(imageUrls, 40),
+        };
+    }
+
+    // --- Floating capture button ---
+    const personaFab = document.createElement('div');
+    personaFab.className = 'ss-persona-fab';
+    personaFab.innerHTML = `
+      <button class="ss-persona-btn" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 4-6 8-6s8 2 8 6"></path>
+        </svg><span class="ss-persona-label">Build persona</span>
+      </button>
+      <a class="ss-persona-open" target="_blank" rel="noopener">Open Darpan ↗</a>`;
+    document.body.appendChild(personaFab);
+    const personaBtn = personaFab.querySelector('.ss-persona-btn');
+    const personaLabel = personaFab.querySelector('.ss-persona-label');
+    const personaOpen = personaFab.querySelector('.ss-persona-open');
+
+    async function buildPersona() {
+        const handle = instagramProfileHandle();
+        if (!handle) return;
+        personaBtn.classList.remove('error', 'success');
+        personaBtn.classList.add('loading');
+        personaLabel.textContent = 'Reading profile…';
+        try {
+            const payload = scrapeInstagramProfile(handle);
+            const r = await fetch(PERSONA_INGEST_URL, {
+                method: 'POST', mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            personaBtn.classList.remove('loading');
+            personaBtn.classList.add('success');
+            const have = data.matched_image_count || 0;
+            personaLabel.textContent = `✓ @${data.handle}${have ? ` · ${have} of ours` : ''}`;
+            personaOpen.href = `${DASHBOARD_URL}#${data.handle}`;
+            personaOpen.style.display = 'inline';
+        } catch (err) {
+            console.error('Darpan persona error:', err);
+            personaBtn.classList.remove('loading');
+            personaBtn.classList.add('error');
+            personaLabel.textContent = '✗ Failed (backend?)';
+        }
+    }
+    personaBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); buildPersona(); });
+
+    function refreshPersonaFab() {
+        const handle = isInstagram() ? instagramProfileHandle() : null;
+        if (handle) {
+            if (!personaFab.classList.contains('visible')) {
+                personaBtn.classList.remove('loading', 'success', 'error');
+                personaLabel.textContent = `Build persona · @${handle}`;
+                personaOpen.style.display = 'none';
+            }
+            personaFab.classList.add('visible');
+        } else {
+            personaFab.classList.remove('visible');
+        }
+    }
+
+    // Instagram is a SPA — watch for client-side route changes.
+    let lastPath = location.pathname;
+    setInterval(() => {
+        if (location.pathname !== lastPath) { lastPath = location.pathname; refreshPersonaFab(); }
+    }, 1000);
+    window.addEventListener('popstate', refreshPersonaFab);
+    refreshPersonaFab();
+
+    console.log('🜂 Alexia + Aletheia + Darpan loaded — unconcealers (Save · Brainstorm · Split · Persona)!');
 })();

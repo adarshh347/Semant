@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
-    "name": "Sharirasutra Image Saver",
-    "description": "Save images from any website to your Sharirasutra gallery with one click",
+    "name": "Alexia — Image & Video Saver",
+    "description": "Alexia & Aletheia, unconcealers: save images, split videos into frames, and interpret any image — from any website.",
     "version": "1.0.0",
     "permissions": [
         "activeTab",

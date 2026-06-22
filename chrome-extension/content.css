@@ -41,9 +41,14 @@
     background: #1A1814 !important;
     color: #FBF9F5 !important;
 }
-.sharirasutra-save-btn.saving { background: #8a8278 !important; pointer-events: none; }
-.sharirasutra-save-btn.success { background: linear-gradient(135deg, #2f9e6f 0%, #1f8a5b 100%) !important; }
-.sharirasutra-save-btn.error { background: linear-gradient(135deg, #d9534f 0%, #b8403c 100%) !important; }
+.sharirasutra-split-btn {
+    background: linear-gradient(135deg, #3a3550 0%, #2b2740 100%) !important;
+    color: #F3EFE6 !important;
+}
+/* shared action states (save + split) */
+.sharirasutra-btn.saving { background: #8a8278 !important; pointer-events: none; }
+.sharirasutra-btn.success { background: linear-gradient(135deg, #2f9e6f 0%, #1f8a5b 100%) !important; color: #fff !important; }
+.sharirasutra-btn.error { background: linear-gradient(135deg, #d9534f 0%, #b8403c 100%) !important; color: #fff !important; }
 
 /* Hover highlight on the image */
 .sharirasutra-hover-highlight {
@@ -159,7 +164,106 @@
 
 @keyframes sharirasutra-spin { to { transform: rotate(360deg); } }
 
+/* ---- Alexia frame-review grid ---- */
+.sharirasutra-panel .al-frames-body { flex: 1 1 auto !important; min-height: 0 !important; }
+.sharirasutra-panel .al-frames-hint { font-size: 12px !important; color: #6F6A61 !important; margin-bottom: 12px !important; }
+.sharirasutra-panel .al-frames-grid {
+    display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important;
+}
+.sharirasutra-panel .al-frame {
+    position: relative !important; aspect-ratio: 3 / 4 !important; border-radius: 8px !important;
+    overflow: hidden !important; cursor: pointer !important; border: 2px solid transparent !important;
+    background: #EDE8DE !important; transition: opacity 0.15s ease, border-color 0.15s ease !important;
+}
+.sharirasutra-panel .al-frame img { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important; }
+.sharirasutra-panel .al-frame:not(.selected) { opacity: 0.38 !important; }
+.sharirasutra-panel .al-frame.selected { border-color: #C4533A !important; }
+.sharirasutra-panel .al-frame-tick {
+    position: absolute !important; top: 5px !important; right: 5px !important;
+    width: 18px !important; height: 18px !important; border-radius: 50% !important;
+    background: #C4533A !important; color: #fff !important; font-size: 11px !important; font-weight: 700 !important;
+    display: flex !important; align-items: center !important; justify-content: center !important; line-height: 1 !important;
+}
+.sharirasutra-panel .al-frame:not(.selected) .al-frame-tick { display: none !important; }
+
+.sharirasutra-panel .al-frames-bar {
+    flex-shrink: 0 !important; display: flex !important; gap: 10px !important; align-items: center !important;
+    padding: 12px 18px !important; border-top: 1px solid #E7E2D8 !important; background: #FBF9F5 !important;
+}
+.sharirasutra-panel .al-frames-toggle {
+    all: unset; cursor: pointer !important; font-size: 12.5px !important; font-weight: 600 !important;
+    color: #6F6A61 !important; padding: 8px 12px !important; border-radius: 999px !important;
+    border: 1px solid #D6CFC0 !important; box-sizing: border-box !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+.sharirasutra-panel .al-frames-toggle:hover { color: #1A1814 !important; border-color: #1A1814 !important; }
+.sharirasutra-panel .al-frames-save {
+    all: unset; cursor: pointer !important; flex: 1 !important; text-align: center !important;
+    font-size: 13px !important; font-weight: 700 !important; color: #fff !important;
+    background: linear-gradient(135deg, #D2654A 0%, #C4533A 100%) !important;
+    padding: 10px 14px !important; border-radius: 999px !important; box-sizing: border-box !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+.sharirasutra-panel .al-frames-save:hover { background: #A53F2A !important; }
+.sharirasutra-panel .al-frames-save:disabled { background: #C9C2B5 !important; cursor: default !important; }
+.sharirasutra-panel .al-frames-save.al-done { background: linear-gradient(135deg, #2f9e6f 0%, #1f8a5b 100%) !important; }
+.sharirasutra-panel .al-frames-save.al-fail { background: linear-gradient(135deg, #d9534f 0%, #b8403c 100%) !important; }
+
 @media (max-width: 520px) {
     .sharirasutra-panel { right: 0 !important; left: 0 !important; top: auto !important; bottom: 0 !important; margin: 0 auto !important; width: 100% !important; max-height: 70vh !important; border-radius: 18px 18px 0 0 !important; transform: translateY(110%); }
     .sharirasutra-panel.open { transform: translateY(0); }
 }
+
+/* ============================================================
+   Darpan — Instagram persona capture FAB
+   ============================================================ */
+.ss-persona-fab {
+    position: fixed;
+    left: 20px;
+    bottom: 20px;
+    z-index: 2147483646;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.ss-persona-fab.visible { display: flex; }
+
+.ss-persona-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #D2654A 0%, #A53F2A 100%);
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(165, 63, 42, 0.4), 0 0 0 1px rgba(255,255,255,0.12) inset;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.2s ease;
+}
+.ss-persona-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(165, 63, 42, 0.5); }
+.ss-persona-btn svg { width: 17px; height: 17px; flex: none; }
+.ss-persona-btn.loading { background: linear-gradient(135deg, #b08a6a, #8a6a52); cursor: progress; }
+.ss-persona-btn.loading svg { animation: ss-persona-spin 0.9s linear infinite; }
+.ss-persona-btn.success { background: linear-gradient(135deg, #2f9e6b, #1f7d53); }
+.ss-persona-btn.error { background: linear-gradient(135deg, #c0392b, #962d22); }
+@keyframes ss-persona-spin { to { transform: rotate(360deg); } }
+
+.ss-persona-open {
+    display: none;
+    padding: 9px 13px;
+    border-radius: 999px;
+    background: rgba(20, 18, 14, 0.86);
+    color: #F7E8E2;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    transition: background 0.2s ease;
+}
+.ss-persona-open:hover { background: rgba(20, 18, 14, 0.98); }
