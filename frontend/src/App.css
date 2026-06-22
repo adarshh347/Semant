@@ -17,6 +17,22 @@
   flex: 1;
 }
 
+/* Fullscreen pages (e.g. Sutradhar editor): the layout is pinned to exactly the
+   viewport height so the editor fits under the sticky navbar and its inner panes
+   scroll instead of growing the whole document. */
+.app-layout--fullscreen {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-main--fullscreen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* --- Content Card (Editorial) --- */
 .main-content-card {
   background-color: var(--surface);
@@ -314,68 +330,63 @@ hr {
   box-shadow: var(--shadow-sm);
 }
 
-/* --- Components Overrides --- */
-/* TipTap/Rich Text (for global usage if not scoped) */
+/* --- Advanced Multi-Block Editor (Rich Text / TipTap) — token-driven, theme-safe --- */
 .rich-text-block {
-  /* Aligns with PostDetailPage.css rules basically */
-}
-
-/* --- NEW: Advanced Multi-Block Editor (Rich Text / TipTap) --- */
-.rich-text-block {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   margin-bottom: 1rem;
-  transition: all 0.3s ease;
+  transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease), transform 0.25s var(--ease);
   overflow: hidden;
-  background: rgba(30, 30, 35, 0.6);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .rich-text-block:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.rich-text-block:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-md);
 }
 
 .block-toolbar {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-2);
   padding: 0.4rem 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
 }
 
 .block-toolbar button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 26px;
+  min-width: 30px;
+  height: 28px;
   padding: 0 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #888;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
   font-size: 0.7rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: none;
-  transform: none;
+  transition: all 0.15s var(--ease);
 }
 
 .block-toolbar button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  transform: none;
+  background: var(--surface-hover);
+  color: var(--ink);
 }
 
 .block-toolbar button.is-active {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  background: var(--accent);
   border-color: transparent;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  color: var(--accent-ink);
 }
 
 /* TipTap content area */
@@ -383,29 +394,36 @@ hr {
   padding: 1rem;
   min-height: 80px;
   outline: none;
-  color: #e0e0e0;
+  color: var(--ink);
   line-height: 1.7;
+  font-size: 1.05rem;
 }
 
-.ProseMirror:focus {
-  outline: none;
-}
-
-.ProseMirror p {
-  margin: 0 0 0.5rem 0;
-}
+.ProseMirror:focus { outline: none; }
+.ProseMirror p { margin: 0 0 0.5rem 0; }
 
 .ProseMirror h1 {
-  font-size: 1.5rem;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
   margin: 0 0 0.75rem 0;
-  color: #fff;
+  color: var(--ink);
+  letter-spacing: var(--tracking-tight);
 }
 
 .ProseMirror blockquote {
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid var(--accent);
   padding-left: 1rem;
   margin: 0.5rem 0;
-  color: #a0a0a0;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--ink-subtle);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
   font-style: italic;
 }
 
@@ -414,54 +432,56 @@ hr {
   justify-content: space-between;
   align-items: center;
   padding: 0.4rem 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
 }
 
-.color-picker {
-  display: flex;
-  gap: 0.4rem;
-}
+.color-picker { display: flex; gap: 0.4rem; }
 
 .color-swatch {
   width: 20px;
   height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--line-strong);
   border-radius: 50%;
   cursor: pointer;
   padding: 0;
-  transition: all 0.2s;
-  box-shadow: none;
+  transition: all 0.2s var(--ease);
 }
 
-.color-swatch:hover {
-  transform: scale(1.15);
-  border-color: rgba(255, 255, 255, 0.4);
-}
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.active { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
 
+.block-move-btn,
 .delete-block-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #f87171;
-  border-radius: 4px;
-  width: 24px;
-  height: 24px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink-subtle);
+  border-radius: var(--radius-sm);
+  width: 26px;
+  height: 26px;
   cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.15s;
+  transition: all 0.15s var(--ease);
   padding: 0;
-  box-shadow: none;
 }
 
-.delete-block-btn:hover {
-  background: rgba(239, 68, 68, 0.25);
-  border-color: rgba(239, 68, 68, 0.5);
-  color: #fca5a5;
-  transform: none;
+.block-move-btn:hover {
+  background: var(--surface-hover);
+  color: var(--ink);
 }
+.block-move-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.delete-block-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.block-actions-left { display: flex; align-items: center; gap: 0.75rem; }
+.block-move-group { display: flex; gap: 0.2rem; }
 
 /* --- Detail Page Container & Resizable Layout --- */
 .detail-page-container {

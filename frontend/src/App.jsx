@@ -10,9 +10,9 @@ function App() {
   const isFullscreenPage = location.pathname.startsWith('/posts/');
 
   return (
-    <div className={`app-layout ${isLandingPage ? 'app-layout--landing' : ''}`}>
+    <div className={`app-layout ${isLandingPage ? 'app-layout--landing' : ''} ${isFullscreenPage ? 'app-layout--fullscreen' : ''}`}>
       <Navbar />
-      <main className={isLandingPage || isFullscreenPage ? '' : 'app-content'}>
+      <main className={isFullscreenPage ? 'app-main--fullscreen' : (isLandingPage ? '' : 'app-content')}>
         <Outlet />
       </main>
     </div>

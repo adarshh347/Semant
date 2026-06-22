@@ -1,31 +1,15 @@
 /* frontend/src/components/PostDetailPage.css */
 
 .post-detail-page {
-    height: 100vh;
+    flex: 1;
+    min-height: 0;
+    /* fit under the sticky navbar without overflowing the viewport */
     display: flex;
     flex-direction: column;
     background-color: var(--bg-primary);
-    background-image: var(--metal-shine);
-    /* Subtle metallic sheen */
-    background-size: 200% 200%;
-    animation: metallic-shimmer 15s ease-in-out infinite;
     color: var(--text-primary);
     overflow: hidden;
     position: relative;
-}
-
-@keyframes metallic-shimmer {
-    0% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
-
-    100% {
-        background-position: 0% 50%;
-    }
 }
 
 /* --- Top Bar (Floating Glass) --- */
@@ -124,6 +108,8 @@
     flex-direction: column;
     overflow: hidden;
     height: 100%;
+    min-width: 0;
+    /* critical: lets flex children shrink instead of overflowing the row */
     background-color: var(--surface-primary);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm), 0 0 0 1px var(--glass-border);
@@ -444,9 +430,11 @@
 }
 
 /* --- AI Sidebar (Glassmorphic Slide-over) --- */
+/* position:fixed (not absolute) so the off-screen closed state does NOT extend
+   the editor's scrollWidth — that was dragging the whole page off-screen left. */
 .ai-sidebar {
-    position: absolute;
-    top: 1rem;
+    position: fixed;
+    top: 5rem;
     right: 1rem;
     bottom: 1rem;
     width: auto;
@@ -462,7 +450,7 @@
     transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1), width 0.3s ease, visibility 0.4s, opacity 0.4s;
     display: flex;
     flex-direction: column;
-    z-index: 20;
+    z-index: 200;
     visibility: hidden;
     /* Ensure it is hidden by default */
     opacity: 0;
@@ -522,14 +510,14 @@
 }
 
 .ai-sidebar-backdrop {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background-color: rgba(26, 43, 60, 0.2);
     /* Tinted metallic backdrop */
-    z-index: 15;
+    z-index: 150;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s;
@@ -894,6 +882,156 @@
 /* Text block items - add selection styling */
 .text-block-item::selection,
 .text-block-item *::selection {
-    background-color: rgba(91, 154, 185, 0.3);
+    background-color: var(--accent-soft);
     color: inherit;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SUTRADHAR — editor identity + advanced features
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Brand wordmark in the topbar */
+.sutradhar-brand {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.05;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+}
+.sutradhar-brand .sd-name {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: var(--tracking-tight);
+}
+.sutradhar-brand .sd-deva {
+    font-family: var(--font-deva, var(--font-display));
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+}
+@media (max-width: 820px) { .sutradhar-brand { display: none; } }
+
+/* Unsaved-changes pill */
+.dirty-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent-deep);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    padding: 0.25rem 0.7rem;
+    border-radius: var(--radius-pill);
+}
+.dirty-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: research-pulse 1.4s ease-in-out infinite; }
+@keyframes research-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* Editor meta row (word count / reading time) */
+.editor-meta {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    font-size: 0.75rem;
+    color: var(--ink-subtle);
+    margin: 0 0 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dashed var(--line);
+}
+.editor-meta strong { color: var(--ink-muted); font-weight: 600; }
+
+/* Edit section heading row */
+.edit-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+.edit-section-head h4 { margin: 0; }
+
+/* Add-block menu */
+.add-block-menu {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+}
+.add-block-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    background: var(--surface);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.9rem;
+    cursor: pointer;
+    transition: all 0.18s var(--ease);
+}
+.add-block-btn:hover { border-style: solid; border-color: var(--accent); color: var(--ink); }
+
+/* AI Composer (Sutradhar's quill) */
+.sutradhar-composer {
+    margin-top: 2rem;
+    padding: 1.25rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+}
+.composer-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.85rem;
+}
+.composer-head .sd-spark { color: var(--accent); display: inline-flex; }
+.composer-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.composer-input {
+    flex: 1 1 240px;
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    transition: border-color 0.2s var(--ease);
+}
+.composer-input:focus { outline: none; border-color: var(--accent); }
+.composer-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.6rem 1.1rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.18s var(--ease);
+}
+.composer-btn:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+.composer-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.composer-btn:disabled { opacity: 0.55; cursor: progress; }
+.composer-hint { font-size: 0.72rem; color: var(--ink-subtle); margin: 0.7rem 0 0; }
+.composer-error { font-size: 0.78rem; color: var(--accent-deep); margin: 0.6rem 0 0; }
+
+/* spinner reuse */
+.sd-spin {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--line-strong); border-top-color: var(--accent);
+    animation: research-spin 0.8s linear infinite; display: inline-block;
+}
+@keyframes research-spin { to { transform: rotate(360deg); } }
