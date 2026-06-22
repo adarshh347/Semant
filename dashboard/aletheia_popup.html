@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aletheia · popup prototype</title>
+<style>
+  :root{
+    --bg:#0e0d12; --panel:#16151c; --panel2:#1d1c25; --line:#2a2833;
+    --ink:#ece9f2; --muted:#9a95ab; --faint:#6b6678;
+    --accent:#c9a86a; --accent2:#7f6bd6;
+    --green:#5fb98a; --mono:ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#080709;color:var(--ink);font-family:var(--sans);
+       min-height:100vh;display:flex;flex-direction:column;align-items:center;
+       justify-content:center;gap:14px;padding:28px}
+  .caption{color:var(--faint);font-size:12px;max-width:380px;text-align:center}
+  .caption b{color:var(--muted)}
+  /* the popup chrome */
+  .popup{width:380px;background:radial-gradient(420px 240px at 80% -20%,#1a1822,transparent),var(--panel);
+         border:1px solid var(--line);border-radius:16px;overflow:hidden;
+         box-shadow:0 24px 60px rgba(0,0,0,.55)}
+  .bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .logo{font-weight:650;letter-spacing:.5px;font-size:14px}
+  .logo .a{color:var(--accent)}
+  .bar .sub{color:var(--faint);font-size:11px;margin-left:auto;font-style:italic}
+  /* preview image (CSS-painted, no asset needed) */
+  .preview{height:150px;position:relative;
+    background:
+      linear-gradient(180deg,rgba(8,7,9,.1),rgba(8,7,9,.85)),
+      repeating-linear-gradient(115deg,rgba(255,255,255,.05) 0 2px,transparent 2px 26px),
+      radial-gradient(120px 120px at 32% 42%,#3a4a63,#1a2233 70%),
+      linear-gradient(135deg,#243049,#11131f);
+  }
+  .preview .cap{position:absolute;left:14px;bottom:10px;font-size:11px;color:#cdd6e6;
+    font-family:var(--mono);background:rgba(8,7,9,.55);padding:3px 8px;border-radius:6px}
+  .body{padding:16px}
+  .step-h{font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);
+          margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .step-h .crumb{color:var(--faint);font-family:var(--mono);font-weight:400;font-size:11px}
+  .q{font-size:15px;margin:0 0 14px;line-height:1.45}
+  /* option buttons */
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt{appearance:none;text-align:left;background:var(--panel2);color:var(--ink);
+       border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:13.5px;
+       cursor:pointer;transition:.15s;font-family:var(--sans)}
+  .opt:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .opt small{display:block;color:var(--faint);font-size:11.5px;margin-top:2px}
+  /* lens bars */
+  .lens{margin:0 0 13px}
+  .lens .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .lens .name{font-size:12px;letter-spacing:.4px;color:var(--accent);font-weight:600}
+  .lens .pct{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .track{height:5px;background:var(--panel2);border-radius:4px;overflow:hidden}
+  .fill{height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,var(--accent2),var(--accent));
+        transition:width .9s cubic-bezier(.2,.8,.2,1)}
+  .lens .read{font-size:13px;color:var(--ink);margin-top:7px;line-height:1.5}
+  .meta-line{font-size:12px;color:var(--muted);border-top:1px solid var(--line);
+             padding-top:11px;margin-top:14px}
+  .meta-line b{color:var(--faint);font-weight:600;text-transform:uppercase;
+               font-size:10px;letter-spacing:1px;display:block;margin-bottom:3px}
+  .uncert{font-style:italic;color:var(--faint);font-size:11.5px;margin-top:8px}
+  /* loop */
+  .loop-q{font-size:13.5px;margin:14px 0 8px;color:var(--ink)}
+  .loop-q:first-child{margin-top:0}
+  .footer-row{display:flex;gap:8px;margin-top:16px}
+  .btn{flex:1;appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);
+       border-radius:9px;padding:9px;font-size:12px;cursor:pointer;font-family:var(--sans)}
+  .btn:hover{border-color:var(--accent2);color:var(--ink)}
+  .btn.primary{border-color:var(--accent);color:var(--accent)}
+  .turns{font-family:var(--mono);font-size:10px;color:var(--faint);text-align:center;margin-top:10px}
+  .fade{animation:fade .35s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+  <div class="caption">
+    Prototype of the <b>Aletheia</b> extension popup. Mock data, no backend —
+    it demonstrates the flow: <b>Direction → Reading → Hermeneutic loop</b>.
+    Click through it.
+  </div>
+
+  <div class="popup">
+    <div class="bar">
+      <span class="logo">ale<span class="a">th</span>eia</span>
+      <span class="sub" id="subtitle">unconceal, don't caption</span>
+    </div>
+    <div class="preview"><span class="cap">paused image · feed</span></div>
+    <div class="body" id="screen"></div>
+  </div>
+
+<script>
+/* ---------- mock content (stands in for the LLM JSON) ---------- */
+const SCENE = "a figure at a rain-streaked window, dim interior light";
+
+const DIRECTIONS = [
+  {key:"poetic",        label:"Poetically",     sub:"sensation first"},
+  {key:"analytical",    label:"Analytically",   sub:"form & meaning"},
+  {key:"narrative",     label:"As a story",     sub:"before & after"},
+  {key:"philosophical", label:"Philosophically",sub:"what it discloses"},
+];
+
+// reading varies by direction; loop choice nudges emphasis ("turns the circle")
+const READINGS = {
+  poetic:{
+    lenses:[
+      {name:"PHENOMENOLOGICAL",pct:82,read:"The glass is cold under an imagined palm; the body leans toward a warmth that isn't there."},
+      {name:"SEMIOTIC",pct:48,read:"Rain on a window: the worn sign for waiting, for a longing kept indoors."},
+      {name:"ATMOSPHERIC",pct:74,read:"A blue hush, the room holding its breath at the edge of evening."},
+    ],
+    concealed:"Whatever the figure is watching for, out there in the wet street.",
+    uncert:"I can't tell if the light is dawn or dusk — the mood turns on it.",
+  },
+  analytical:{
+    lenses:[
+      {name:"PHENOMENOLOGICAL",pct:60,read:"Weight sits low and left; the verticals of the frame pin the figure in place."},
+      {name:"SEMIOTIC",pct:78,read:"Window-as-threshold: a stock device dividing interior self from exterior world."},
+      {name:"ATMOSPHERIC",pct:55,read:"Low-key tonal range; desaturated blues compress the emotional register."},
+    ],
+    concealed:"The source of the light, and the scale of the room around the frame.",
+    uncert:"The reflection may be doubling the figure — hard to be sure at this resolution.",
+  },
+  narrative:{
+    lenses:[
+      {name:"PHENOMENOLOGICAL",pct:64,read:"A held stillness, as if the figure just stopped mid-turn toward the glass."},
+      {name:"SEMIOTIC",pct:52,read:"The classic 'someone is not coming' frame — arrival deferred."},
+      {name:"ATMOSPHERIC",pct:80,read:"The quiet after something, or the long wait before it. The room remembers."},
+    ],
+    concealed:"The phone call, letter, or footsteps that set this pause in motion.",
+    uncert:"Whether this is grief or ordinary boredom — the story could go either way.",
+  },
+  philosophical:{
+    lenses:[
+      {name:"PHENOMENOLOGICAL",pct:70,read:"To stand at a window is to be neither inside nor out — exposed to a world while sheltered from it."},
+      {name:"SEMIOTIC",pct:58,read:"The pane both joins and severs: transparency that cannot be crossed."},
+      {name:"ATMOSPHERIC",pct:66,read:"A mood of threshold — the Stimmung of the in-between."},
+    ],
+    concealed:"What withdraws the moment you name it: the figure's own unseen looking.",
+    uncert:"The image may resist meaning here more than it offers it.",
+  },
+};
+
+const LOOP = [
+  {q:"Which pulls you first?", options:[
+     {key:"light",label:"The light"},{key:"gesture",label:"The figure's stance"},{key:"rain",label:"The rain on the glass"}]},
+  {q:"Do you want to stay with the feeling, or follow the meaning?", options:[
+     {key:"feeling",label:"Stay with the feeling"},{key:"meaning",label:"Follow the meaning"}]},
+];
+
+// what each loop choice "deepens" into (mock of Call B with PRIOR_CHOICE)
+const DEEPEN = {
+  light:"Turning toward the light: it falls cool and lateral, modelling one cheek and abandoning the other — the face half-given, half-withheld.",
+  gesture:"Turning toward the stance: the shoulders are squared to the glass, not to us — a body addressed entirely elsewhere.",
+  rain:"Turning toward the rain: each bead is a tiny lens, the world outside arriving already broken into pieces on the pane.",
+  feeling:"Staying with the feeling: less what it means, more the ache of warmth-seeking against a cold surface. Let it remain unsolved.",
+  meaning:"Following the meaning: the window becomes the whole argument — a membrane between a self and a world it cannot reach.",
+};
+
+/* ---------- state machine ---------- */
+const state = {direction:null, turns:0, lastChoice:null, deepenText:null};
+const screen = document.getElementById("screen");
+const sub = document.getElementById("subtitle");
+
+function render(html){ screen.innerHTML = html; screen.classList.remove("fade"); void screen.offsetWidth; screen.classList.add("fade"); }
+
+function showDirection(){
+  sub.textContent = "step 1 · direction";
+  render(`
+    <p class="step-h">Direction <span class="crumb">how you'll meet it</span></p>
+    <p class="q">How do you want to meet this image?</p>
+    <div class="opts">
+      ${DIRECTIONS.map(d=>`<button class="opt" data-d="${d.key}">${d.label}<small>${d.sub}</small></button>`).join("")}
+    </div>`);
+  screen.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{ state.direction=b.dataset.d; state.turns=1; state.deepenText=null; showReading(); });
+}
+
+function lensHTML(l){
+  return `<div class="lens">
+    <div class="top"><span class="name">${l.name}</span><span class="pct">${l.pct}</span></div>
+    <div class="track"><div class="fill" data-w="${l.pct}"></div></div>
+    <div class="read">${l.read}</div></div>`;
+}
+
+function showReading(){
+  const r = READINGS[state.direction];
+  const dirLabel = DIRECTIONS.find(d=>d.key===state.direction).label.toLowerCase();
+  sub.textContent = `step 2 · reading (${dirLabel})`;
+  render(`
+    <p class="step-h">Reading <span class="crumb">${dirLabel} · turn ${state.turns}</span></p>
+    ${r.lenses.map(lensHTML).join("")}
+    ${state.deepenText ? `<div class="meta-line"><b>deepened</b>${state.deepenText}</div>`:""}
+    <div class="meta-line"><b>concealed</b>${r.concealed}</div>
+    <div class="uncert">⌁ ${r.uncert}</div>
+
+    <p class="step-h" style="margin-top:18px">Look closer <span class="crumb">hermeneutic loop</span></p>
+    ${LOOP.map((L,i)=>`
+      <div class="loop-q">${L.q}</div>
+      <div class="opts">${L.options.map(o=>`<button class="opt loopbtn" data-k="${o.key}">${o.label}</button>`).join("")}</div>
+    `).join("")}
+
+    <div class="turns">turn ${state.turns} of the circle · each click re-runs Call B with your choice</div>
+    <div class="footer-row">
+      <button class="btn" id="restart">↺ new direction</button>
+      <button class="btn primary" id="save">Save encounter</button>
+    </div>`);
+  // animate bars
+  requestAnimationFrame(()=>screen.querySelectorAll(".fill").forEach(f=>f.style.width=f.dataset.w+"%"));
+  screen.querySelectorAll(".loopbtn").forEach(b=>b.onclick=()=>{
+    state.lastChoice=b.dataset.k; state.turns++; state.deepenText=DEEPEN[b.dataset.k]; showReading();
+  });
+  screen.querySelector("#restart").onclick=showDirection;
+  screen.querySelector("#save").onclick=showSaved;
+}
+
+function showSaved(){
+  sub.textContent = "saved";
+  const dirLabel = DIRECTIONS.find(d=>d.key===state.direction).label.toLowerCase();
+  render(`
+    <p class="step-h">Encounter saved <span class="crumb">→ phenomenological journal</span></p>
+    <p class="q" style="font-size:14px">Stored: the image, your direction (<b>${dirLabel}</b>),
+       ${state.turns-1} turn(s) of the loop, and your last choice
+       (<b>${state.lastChoice??"—"}</b>).</p>
+    <div class="meta-line"><b>why this matters</b>Over time these encounters become a map of
+       what enchants you — the "aesthetic fingerprint" (idea #1).</div>
+    <div class="footer-row"><button class="btn primary" id="again">Start again</button></div>`);
+  screen.querySelector("#again").onclick=showDirection;
+}
+
+showDirection();
+</script>
+</body>
+</html>

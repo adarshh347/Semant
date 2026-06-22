@@ -21,6 +21,86 @@ Read with one question in mind: *does this technique help or hurt the conceptual
 
 ---
 
+## How to read each source — what to take, what to skip, how
+
+The aim is now concrete: **constellatory evocation** (the RhizomeDB engine) — intra-corpus,
+structural, human-in-the-loop connection-finding, *not* question-answering. Read everything
+against *that*, never against generic RAG. For each area below: what to take, what to ignore, how
+to read it, and what to search when you need help.
+
+**Embeddings (§1).** *Take:* the bi-/cross-encoder split (retrieve cheap, judge expensive); what
+cosine similarity *is* and its ceiling (a neighbourhood, never a path); ColBERT token-level
+matching (matters for Sanskrit terms like *dhvani/spanda*). *Skip:* training/loss details,
+leaderboard-chasing, fine-tuning recipes — you use a pretrained local model (bge-base) and won't
+train one. *How:* read for the *limit*, not the method — every place an embedding can't reach is a
+place a graph edge or a human annotation must. *Search:* "late interaction retrieval", "embedding
+retrieval limitations", "structural vs surface similarity".
+
+**Chunking (§2).** *Take:* contextual/late chunking (carry surrounding context into the chunk);
+chunking on argumentative units; translator/edition metadata. *Skip:* proposition/atomic chunking
+(it destroys the qualifications philosophy lives in); exhaustive size sweeps. *How:* your chunker
+works — read only to decide *when to re-chunk* and how to keep an argument's flow uncut. *Search:*
+"contextual retrieval chunking", "late chunking", "long-form semantic chunking".
+
+**Retrieval (§3).** *Take:* the *idea* of HyDE — retrieve on an abstraction, not the surface text;
+this is your route to structural connections (embed the *move*, not the words). MMR (you already
+use it); the null-result discipline. *Skip:* hybrid/BM25 tuning, reranking infra, agentic
+frameworks — not your bottleneck at this scale. *How:* read HyDE asking "what's the *structural*
+version of this?" — that question *is* the next build. *Search:* "HyDE hypothetical document
+embeddings", "query-by-abstraction retrieval", "serendipity / exploratory search".
+
+**Graph structures (§4) — read most closely.** *Take:* GraphRAG entity/relation extraction;
+HippoRAG's Personalized PageRank (associative multi-hop = `wander` done right); attributed edges;
+hypergraphs (n-ary relations). *Skip:* billion-node infra, community-summarisation pipelines, KG
+embedding math (TransE/RotatE) until much later. *How:* read for *traversal* — how a path forms
+through named relations — and map each idea onto your `edges.jsonl`. *Search:* "HippoRAG
+personalized pagerank", "GraphRAG", "contradictory / attributed knowledge graph edges".
+
+**Databases & schema (§5).** *Take:* the split (blobs vs vectors vs graph); that you can model the
+graph in the store you already run. *Skip:* vendor comparisons, billion-scale benchmarks — you're
+on numpy + jsonl and that's correct for now. *How:* skim; revisit only when the in-memory store
+stops fitting. *Search:* "vector search MMR", "graph in sqlite/postgres", "jsonl graph store".
+
+**LLM limits (§6) & RAG limits (§7) — read first, for the *why*.** *Take:* hallucination needs
+grounding; the reversal curse (an LLM's knowledge is *not* a navigable graph — your reason to build
+one); "retrieval is the ceiling"; similarity ≠ relationship ≠ path. *Skip:* mitigation-technique
+catalogues. *How:* read these as the project's *motivation* — the argument you reuse to explain why
+RhizomeDB has to exist. *Search:* "reversal curse", "RAG limitations", "lost in the middle".
+
+**The throughline:** you're not assembling a generic RAG stack. Ask one question of every source —
+*does this help connections embeddings can't reach get surfaced, judged for non-forcedness, and
+accreted into a graph?* If a section doesn't touch that, skim it and move on.
+
+---
+
+## Baseline RAG — what to watch while you play
+
+You now have a plain-RAG page to feel the baseline before judging the constellatory engine:
+run `python3 -m rhizome.server` → open **`/ask`** → start with *what is dwelling*. It gives a long
+grounded answer **plus the source paragraphs and their cosine scores**, so the basis of every
+answer is visible. While you play, watch for:
+
+- **Similarity ≠ illumination.** Passages are ranked by raw cosine to your question. Notice how
+  often the *highest*-scoring one is the most *obvious* — a near-restatement — not the most
+  illuminating. (In a quick test the top hit was the seed itself at cos 1.0; plain RAG keeps
+  near-duplicates, constellatory drops them.)
+- **Lexical vs structural.** Skim each source: is it close because it *shares words* with your
+  question, or because it shares a *thought*? Baseline RAG mostly rewards the former. A passage you
+  feel is relevant but lexically distant is exactly what structural-HyDE exists to reach.
+- **Same-book clumping.** Note how many sources come from one book — plain RAG has no
+  diversification; constellatory's MMR + same-book exclusion is what spreads the picks.
+- **The follow-ups** (LLM + retrieved context → 5 new angles) are the complement you asked for;
+  watch whether they *deepen* or merely *rephrase* — a small live test of generativity.
+
+Read this against §3 (retrieval) and §7 (RAG limits): the baseline is precisely what those
+sections critique, now runnable in front of you.
+
+**New resource:** `structural_retrieval_research.md` (this folder) — the agent's cited survey of
+analogical/structural retrieval (Gentner structure-mapping, analogy mining, HyDE/Step-Back…) with
+the `near-move / far-domain` recommendation. Read it alongside §4 (graph) and §1 (embeddings).
+
+---
+
 ## 1. Embeddings — types & what to study
 
 An embedding maps text (or an image) to a vector so that "near in meaning ≈ near in space."
