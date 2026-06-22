@@ -14,6 +14,7 @@ import EpicsPage from './pages/EpicsPage.jsx';
 import EpicEditorPage from './pages/EpicEditorPage.jsx';
 import MotivePage from './pages/MotivePage.jsx';
 import ResearchPage from './pages/ResearchPage.jsx';
+import PersonasPage from './pages/PersonasPage.jsx';
 
 const router = createBrowserRouter([
   {
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
       { path: "epics", element: <EpicsPage /> },
       { path: "epics/:id", element: <EpicEditorPage /> },
       { path: "research", element: <ResearchPage /> },
+      { path: "personas", element: <PersonasPage /> },
       { path: "motive", element: <MotivePage /> }
     ],
   },

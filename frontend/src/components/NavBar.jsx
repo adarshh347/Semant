@@ -18,6 +18,7 @@ function Navbar() {
           <NavLink to="/feed">Feed</NavLink>
           <NavLink to="/epics">Epics</NavLink>
           <NavLink to="/research">Research</NavLink>
+          <NavLink to="/personas">Personas</NavLink>
           <NavLink to="/motive">Motive</NavLink>
         </div>
 
