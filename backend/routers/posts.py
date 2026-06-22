@@ -157,27 +157,31 @@ async def create_post_from_url(request: UrlUploadRequest):
     Upload an image from a URL (used by the Chrome extension).
     Fetches the image and uploads it to Cloudinary.
     """
-    print(f"--- Processing URL Upload: {request.image_url} ---")
+    is_data_url = request.image_url.startswith("data:")
+    print(f"--- Processing URL Upload: {'data-url (video frame / base64)' if is_data_url else request.image_url} ---")
     try:
-        # Fetch the image from the URL
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            response = await client.get(request.image_url, headers=_image_fetch_headers(request.image_url))
-            response.raise_for_status()
-            
-            # Check if it's an image
-            content_type = response.headers.get("content-type", "")
-            print(f"Image fetched. Content-Type: {content_type}, Size: {len(response.content)} bytes")
-            
-            if not content_type.startswith("image/"):
-                raise HTTPException(status_code=400, detail=f"URL does not point to an image (content-type: {content_type})")
-            
-            # Upload to Cloudinary
-            print("Uploading to Cloudinary...")
-            image_data = BytesIO(response.content)
-            public_id = f"posts/{uuid.uuid4()}"
-            upload_result = cloudinary.uploader.upload(image_data, public_id=public_id)
-            print(f"Cloudinary upload successful: {upload_result.get('secure_url')}")
-            
+        public_id = f"posts/{uuid.uuid4()}"
+        if is_data_url:
+            # Extracted video frame / inline base64 — Cloudinary accepts data URIs directly.
+            upload_result = cloudinary.uploader.upload(request.image_url, public_id=public_id)
+            print(f"Cloudinary upload successful (data url): {upload_result.get('secure_url')}")
+        else:
+            # Fetch the image from the URL
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                response = await client.get(request.image_url, headers=_image_fetch_headers(request.image_url))
+                response.raise_for_status()
+
+                content_type = response.headers.get("content-type", "")
+                print(f"Image fetched. Content-Type: {content_type}, Size: {len(response.content)} bytes")
+
+                if not content_type.startswith("image/"):
+                    raise HTTPException(status_code=400, detail=f"URL does not point to an image (content-type: {content_type})")
+
+                print("Uploading to Cloudinary...")
+                image_data = BytesIO(response.content)
+                upload_result = cloudinary.uploader.upload(image_data, public_id=public_id)
+                print(f"Cloudinary upload successful: {upload_result.get('secure_url')}")
+
     except httpx.HTTPStatusError as e:
         print(f"HTTP fetch error: {e}")
         raise HTTPException(status_code=400, detail=f"Failed to fetch image: HTTP {e.response.status_code}")
