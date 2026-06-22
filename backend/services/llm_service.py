@@ -352,6 +352,224 @@ class LLMService:
             print(f"Error in story completion: {e}")
             return {"continuation": "Error generating story continuation."}
 
+    # ------------------------------------------------------------------
+    # Research Article Agent
+    # ------------------------------------------------------------------
+
+    def pick_research_topic(
+        self,
+        tag_landscape: str,
+        will_portrait: str,
+        recent_topics: list = None,
+    ) -> dict:
+        """
+        Choose a research-article topic from the gallery's tag landscape, steered
+        by what Sankalpa has inferred about the reader's will. Avoids repeating
+        recent topics.
+
+        Returns dict: {topic, angle, source_tags, rationale}
+        """
+        if not self.client:
+            return {
+                "topic": "The image and its silence",
+                "angle": "phenomenological",
+                "source_tags": [],
+                "rationale": "LLM unavailable; default topic.",
+            }
+
+        avoid = ", ".join(recent_topics or []) or "none yet"
+
+        prompt = f"""
+You are the curator of a visual-research studio. You choose what to write about next.
+
+THE GALLERY'S TAG LANDSCAPE (tag — how many images carry it):
+{tag_landscape}
+
+WHAT WE'VE INFERRED ABOUT THE READER'S WILL (their leanings, from prior feedback):
+{will_portrait}
+
+RECENT TOPICS — do NOT repeat these or anything near them:
+{avoid}
+
+TASK:
+Propose ONE fresh, specific research-article topic that (a) can be richly
+illustrated by images already in this gallery, and (b) leans into the reader's
+inferred will. Prefer a real intellectual angle over a generic listicle. Choose
+3–6 of the gallery's actual tags as the source scope for gathering images.
+
+OUTPUT — strict JSON only:
+{{
+  "topic": "a specific, essay-worthy title",
+  "angle": "the interpretive lens to write through (e.g. phenomenological, semiotic, historical, atmospheric, political)",
+  "source_tags": ["tag1", "tag2", "tag3"],
+  "rationale": "one sentence: why this, for this reader, now"
+}}
+"""
+        try:
+            chat_completion = self.client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You are a sharp visual-culture curator. You output JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.model,
+                response_format={"type": "json_object"},
+                temperature=0.9,
+            )
+            return json.loads(chat_completion.choices[0].message.content)
+        except Exception as e:
+            print(f"Error in topic selection: {e}")
+            return {
+                "topic": "The image and its silence",
+                "angle": "phenomenological",
+                "source_tags": [],
+                "rationale": "Error selecting topic.",
+            }
+
+    def compose_research_article(
+        self,
+        topic: str,
+        angle: str,
+        will_portrait: str,
+        images: list,
+        context_text: str = "",
+    ) -> dict:
+        """
+        Compose a research article and weave the gallery images into it.
+
+        Args:
+            topic: chosen topic/title
+            angle: interpretive lens
+            will_portrait: Sankalpa's portrait of the reader, to shape tone/depth
+            images: list of {index, caption} describing available gallery images
+            context_text: aggregated text from related posts (optional grounding)
+
+        Returns dict:
+            {title, abstract, sections:[{heading, content, image_index|null}],
+             steering_questions:[{prompt, options[]}]}
+        """
+        if not self.client:
+            return {"title": topic, "abstract": "", "sections": [], "steering_questions": []}
+
+        image_menu = "\n".join(
+            f'[{img["index"]}] {img.get("caption", "(an image)")}' for img in images
+        ) or "(no images available)"
+
+        grounding = f"\nGROUNDING NOTES (text drawn from related posts):\n{context_text[:3500]}\n" if context_text else ""
+
+        prompt = f"""
+You are a writer-in-residence composing a visual-research article for a discerning reader.
+
+TOPIC: {topic}
+INTERPRETIVE LENS: {angle}
+
+THE READER'S WILL (write toward this — their tone, depth, and image appetite):
+{will_portrait}
+{grounding}
+AVAILABLE GALLERY IMAGES you may place into the article (reference by index):
+{image_menu}
+
+TASK:
+Write a cohesive, intelligent article (NOT a list) of 4–7 sections. For each
+section, decide whether ONE of the available images belongs there and, if so,
+reference it by its index — let the image and the prose genuinely speak to each
+other (don't just decorate). Use an image at most once. Some sections may have
+no image. Match length and depth to the reader's will.
+
+Then pose 2–3 STEERING QUESTIONS — short multiple-choice forks (2–4 options each)
+that, by the reader's click, reveal how they want to see and what to write next.
+These are not a quiz; each option opens a genuinely different direction. They are
+how we learn the reader's will.
+
+OUTPUT — strict JSON only:
+{{
+  "title": "final article title",
+  "abstract": "2–3 sentence standfirst",
+  "sections": [
+    {{"heading": "...", "content": "one or more rich paragraphs", "image_index": 0}},
+    {{"heading": "...", "content": "...", "image_index": null}}
+  ],
+  "steering_questions": [
+    {{"prompt": "short question", "options": ["...", "...", "..."]}}
+  ]
+}}
+"""
+        try:
+            chat_completion = self.client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You are an erudite essayist who weaves images and prose. You output JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.model,
+                response_format={"type": "json_object"},
+                temperature=0.8,
+            )
+            return json.loads(chat_completion.choices[0].message.content)
+        except Exception as e:
+            print(f"Error in article composition: {e}")
+            return {"title": topic, "abstract": "", "sections": [], "steering_questions": []}
+
+    def reflect_will(
+        self,
+        current_portrait: str,
+        signals_summary: str,
+        article_topic: str,
+    ) -> dict:
+        """
+        Sankalpa's reflective step: read the reader's feedback signals against the
+        current will-portrait and propose how the inferred will should shift.
+
+        Returns dict:
+          {reading: str,
+           themes:[{name, direction:"up"|"down"}],
+           tones:[{name, direction}],
+           lenses:[{name, direction}],
+           form:{length, image_density, depth} each "up"|"down"|"same"}
+        """
+        if not self.client:
+            return {"reading": current_portrait, "themes": [], "tones": [], "lenses": [], "form": {}}
+
+        prompt = f"""
+You are Sankalpa — the faculty inside this studio that infers a reader's WILL:
+not what they clicked, but what they are reaching for. (Sankalpa, Sanskrit: the
+intention/resolve formed in the heart.)
+
+CURRENT PORTRAIT OF THE READER'S WILL:
+{current_portrait}
+
+THE ARTICLE THEY JUST ENGAGED WITH: "{article_topic}"
+
+THEIR FEEDBACK SIGNALS (explicit reactions + implicit attention):
+{signals_summary}
+
+TASK:
+Interpret these signals as evidence of will. Update the portrait. Be decisive but
+not whiplash — small, well-grounded shifts. Name the themes, tones, and
+interpretive lenses that should strengthen or weaken, and how the form (length,
+image density, depth) should move.
+
+OUTPUT — strict JSON only:
+{{
+  "reading": "1–2 sentences: who this reader is becoming, in their own gravity",
+  "themes": [{{"name": "subject they lean toward", "direction": "up"}}],
+  "tones":  [{{"name": "lyrical|analytical|contemplative|provocative|intimate|mythic", "direction": "up"}}],
+  "lenses": [{{"name": "phenomenological|semiotic|atmospheric|historical|political|archetypal", "direction": "up"}}],
+  "form": {{"length": "up|down|same", "image_density": "up|down|same", "depth": "up|down|same"}}
+}}
+"""
+        try:
+            chat_completion = self.client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You infer a reader's will from sparse signals. You output JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.model,
+                response_format={"type": "json_object"},
+                temperature=0.5,
+            )
+            return json.loads(chat_completion.choices[0].message.content)
+        except Exception as e:
+            print(f"Error in will reflection: {e}")
+            return {"reading": current_portrait, "themes": [], "tones": [], "lenses": [], "form": {}}
 
 
 llm_service = LLMService()

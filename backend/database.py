@@ -52,6 +52,14 @@ post_collection = database.get_collection("posts")
 epic_collection = database.get_collection("epics")
 phrase_learning_collection = database.get_collection("phrase_learning")
 
+# --- Research Article Agent + Sankalpa (will-detection) ---
+# research_article_collection: articles composed by the background agent
+# agent_run_collection: background job queue/state for agent runs
+# sankalpa_collection: the evolving "will profile" inferred from reader feedback
+research_article_collection = database.get_collection("research_articles")
+agent_run_collection = database.get_collection("agent_runs")
+sankalpa_collection = database.get_collection("sankalpa")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""
