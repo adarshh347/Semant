@@ -60,6 +60,11 @@ research_article_collection = database.get_collection("research_articles")
 agent_run_collection = database.get_collection("agent_runs")
 sankalpa_collection = database.get_collection("sankalpa")
 
+# --- Instagram persona context (Darpan) ---
+# persona_collection: per-account context dossiers built from extension-scraped
+# Instagram details + the images we already have from that account.
+persona_collection = database.get_collection("personas")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""

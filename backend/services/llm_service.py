@@ -571,5 +571,99 @@ OUTPUT — strict JSON only:
             print(f"Error in will reflection: {e}")
             return {"reading": current_portrait, "themes": [], "tones": [], "lenses": [], "form": {}}
 
+    # ------------------------------------------------------------------
+    # Darpan — Instagram persona dossier
+    # ------------------------------------------------------------------
+
+    def synthesize_persona(
+        self,
+        handle: str,
+        account: dict,
+        captions: list = None,
+        image_readings: list = None,
+    ) -> dict:
+        """
+        Build a context persona ("dossier") for an Instagram account — both an
+        analytical profile and a generative "create as them" guide — from the
+        scraped account details, post captions, and vision readings of the images
+        we already have from this account.
+
+        Returns dict with keys: summary, identity, aesthetic[], themes[],
+        voice{tone,vocabulary,devices}, values[], audience, generative_guide,
+        content_ideas[], caption_samples[].
+        """
+        empty = {
+            "summary": "", "identity": "", "aesthetic": [], "themes": [],
+            "voice": {"tone": "", "vocabulary": "", "devices": ""}, "values": [],
+            "audience": "", "generative_guide": "", "content_ideas": [], "caption_samples": [],
+        }
+        if not self.client:
+            return empty
+
+        caps = "\n".join(f"- {c}" for c in (captions or [])[:30]) or "(none captured)"
+        reads = "\n".join(f"- {r}" for r in (image_readings or [])[:12]) or "(no images on file)"
+        acct_lines = "\n".join(
+            f"{k}: {v}" for k, v in (account or {}).items() if v not in (None, "", [])
+        ) or "(sparse)"
+
+        prompt = f"""
+You are Darpan ("mirror"), a profiler that builds a faithful CONTEXT PERSONA of an
+Instagram account so it can later be used as context — both to UNDERSTAND the account
+and to CREATE in its voice.
+
+ACCOUNT: @{handle}
+SCRAPED ACCOUNT DETAILS:
+{acct_lines}
+
+POST CAPTIONS (a sample of how they write):
+{caps}
+
+WHAT THEIR IMAGES LOOK LIKE (vision readings of posts we have on file):
+{reads}
+
+TASK:
+Synthesize a persona dossier. Ground every claim in the evidence above; where the
+evidence is thin, infer cautiously and keep it plausible (do not invent specific
+facts like real names or locations that aren't supported). Produce BOTH an analytical
+profile AND a generative guide for writing/creating as them.
+
+OUTPUT — strict JSON only:
+{{
+  "summary": "2-3 sentence portrait of who this account is and what it does",
+  "identity": "their role/niche and what they're known for, in 1-2 sentences",
+  "aesthetic": ["concrete visual trait", "palette/mood", "composition habit"],
+  "themes": ["recurring subject", "recurring subject"],
+  "voice": {{
+    "tone": "the emotional register of their captions",
+    "vocabulary": "characteristic words/registers they use",
+    "devices": "rhetorical habits — emoji, hashtags, line breaks, questions, etc."
+  }},
+  "values": ["what they appear to care about / signal"],
+  "audience": "who follows them and why, in 1-2 sentences",
+  "generative_guide": "one paragraph: how to write and create AS them — the rules to follow to be convincing",
+  "content_ideas": ["a post idea true to them", "another", "another"],
+  "caption_samples": ["a caption written in their exact voice", "another"]
+}}
+"""
+        try:
+            chat_completion = self.client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You build faithful, evidence-grounded persona profiles. You output JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.model,
+                response_format={"type": "json_object"},
+                temperature=0.7,
+            )
+            data = json.loads(chat_completion.choices[0].message.content)
+            # Merge onto empty skeleton so missing keys are safe for the frontend.
+            out = {**empty, **(data or {})}
+            if not isinstance(out.get("voice"), dict):
+                out["voice"] = empty["voice"]
+            return out
+        except Exception as e:
+            print(f"Error in persona synthesis: {e}")
+            return empty
+
 
 llm_service = LLMService()

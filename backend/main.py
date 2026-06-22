@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import posts, epics, phrases, research
+from backend.routers import posts, epics, phrases, research, personas
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.database import post_collection
@@ -82,6 +82,7 @@ app.include_router(posts.router, prefix="/api/v1/posts", tags=["Posts"])
 app.include_router(posts.text_posts_router, prefix="/api/v1/posts", tags=["Posts Text"])
 app.include_router(epics.router, prefix="/api/v1/epics", tags=["Epics"])
 app.include_router(research.router, prefix="/api/v1/research", tags=["Research Agent"])
+app.include_router(personas.router, prefix="/api/v1/personas", tags=["Darpan Personas"])
 app.include_router(phrases.router)
 
 # Health check endpoint for Render
