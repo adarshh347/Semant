@@ -683,5 +683,49 @@ OUTPUT — strict JSON only:
             print(f"Error in persona synthesis: {e}")
             return empty
 
+    def draft_unconcealment(self, aletheia: dict, account_hint: str = "") -> str:
+        """
+        Draft a short first-person 'unconcealment' commentary for an image, grounded
+        in its Aletheia reading — a candidate the curator reviews and edits in the
+        Unconceal review queue.
+        """
+        if not self.client:
+            return ""
+        lenses = "\n".join(
+            f"- {l.get('name','Lens')} ({l.get('intensity',0)}): {l.get('reading','')}"
+            for l in (aletheia or {}).get("lenses", [])
+        ) or "(no lenses)"
+        concealed = (aletheia or {}).get("concealed", "")
+        uncertainty = (aletheia or {}).get("uncertainty", "")
+
+        prompt = f"""
+You are drafting a CURATOR'S unconcealment of an image — a short first-person note
+that says what the image does and what it withholds, for them to edit.
+
+ALETHEIA READING:
+{lenses}
+Concealed: {concealed}
+Uncertain: {uncertainty}
+{f'Account context: {account_hint}' if account_hint else ''}
+
+Write 2-3 sentences, first person ("What stays with me…", "What undoes me here…").
+Plain, sensuous, specific — name what's actually seen. No art-jargon, no preamble,
+no quotes. Just the note.
+"""
+        try:
+            chat_completion = self.client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You write spare, perceptive first-person notes about images."},
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.model,
+                temperature=0.85,
+                max_tokens=220,
+            )
+            return (chat_completion.choices[0].message.content or "").strip().strip('"')
+        except Exception as e:
+            print(f"Error drafting unconcealment: {e}")
+            return ""
+
 
 llm_service = LLMService()

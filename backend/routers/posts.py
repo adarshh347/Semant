@@ -5,6 +5,7 @@ import os
 import math
 import json
 import random
+import re
 import httpx  # For fetching images from URLs
 import base64
 from urllib.parse import urlparse
@@ -270,6 +271,39 @@ async def get_posts_with_text():
     print("--- DEBUG: Inside /with-text endpoint! ---") # Add a print right at the start
     return {"message": "Test successful"} # Simplest possible return
 
+
+# --- Unconceal review queue (must be registered before "/{post_id}") ---
+@router.get("/unconceal-queue")
+async def unconceal_queue(handle: Optional[str] = None, limit: int = 50):
+    """
+    Images that still lack a local (microscopic) context — the work-list for the
+    Unconceal review queue. Optionally scoped to one Instagram account.
+    """
+    needs_context = {"$or": [{"local_context": {"$exists": False}}, {"local_context": None}]}
+    query = needs_context
+    if handle:
+        h = normalize_handle(handle)
+        rx = rf"instagram\.com/{re.escape(h)}(?:[/?#]|$)"
+        query = {"$and": [needs_context,
+                          {"$or": [{"instagram_handle": h},
+                                   {"source_url": {"$regex": rx, "$options": "i"}}]}]}
+
+    total = await post_collection.count_documents(query)
+    cursor = post_collection.find(
+        query,
+        {"photo_url": 1, "instagram_handle": 1, "source_url": 1, "general_tags": 1},
+    ).sort("updated_at", -1).limit(limit)
+    items = []
+    async for p in cursor:
+        items.append({
+            "id": str(p["_id"]),
+            "photo_url": p.get("photo_url"),
+            "instagram_handle": p.get("instagram_handle"),
+            "general_tags": p.get("general_tags", []),
+        })
+    return {"items": items, "total": total}
+
+
 @router.get("/{post_id}", response_model=Post)
 async def get_post_by_id(post_id: str):
     try:
@@ -352,6 +386,32 @@ async def set_local_context(post_id: str, request: LocalContextRequest):
 
     updated = await post_collection.find_one({"_id": obj_id})
     return {"post": post_helper(updated), "fed_to_persona": fed, "handle": handle}
+
+
+@router.post("/{post_id}/unconceal-suggest")
+async def unconceal_suggest(post_id: str):
+    """
+    LLM pre-draft for the review queue: run Aletheia on the image and draft a
+    first-person unconcealment commentary the curator can edit before saving.
+    """
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    image_url = post.get("photo_url")
+    # Our images are public Cloudinary URLs, so the vision model can fetch directly.
+    aletheia = await vision_service.brainstorm_image(image_url)
+    aletheia = aletheia or {"lenses": [], "concealed": "", "uncertainty": ""}
+    aletheia.pop("questions", None)  # the queue note doesn't use the MCQ dialogue
+
+    handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url")) or ""
+    draft = await asyncio.to_thread(llm_service.draft_unconcealment, aletheia, handle)
+    return {"aletheia": aletheia, "draft_commentary": draft}
 
 
 # More general route comes after
