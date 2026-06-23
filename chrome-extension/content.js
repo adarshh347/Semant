@@ -115,8 +115,8 @@
         return w >= 120 && h >= 120;
     }
 
-    function videoAtPoint(x, y) {
-        // First try the hit-test stack (cheap).
+    // A genuine <video> actually under the cursor (hit-testable).
+    function videoAtPointStack(x, y) {
         const stack = document.elementsFromPoint(x, y);
         for (const node of stack) {
             if (node === toolbar || toolbar.contains(node) || node === panel || panel.contains(node)) continue;
@@ -124,20 +124,44 @@
             const v = node.querySelector && node.querySelector('video');
             if (v && isValidVideo(v)) return v;
         }
-        // Geometric fallback: many sites (Instagram reels) set pointer-events:none on
-        // the <video>, so elementsFromPoint EXCLUDES it. Scan real <video> rects instead.
+        return null;
+    }
+
+    // Geometric fallback: many sites (Instagram reels) set pointer-events:none on the
+    // <video>, so elementsFromPoint EXCLUDES it. Scan real, VISIBLE <video> rects and
+    // return the smallest one enclosing the cursor.
+    function videoAtPointGeometric(x, y) {
         let best = null, bestArea = Infinity;
         const vids = document.getElementsByTagName('video');
         for (const v of vids) {
             if (!isValidVideo(v)) continue;
+            if (v.offsetParent === null) continue;            // skip display:none / detached
+            const cs = getComputedStyle(v);
+            if (cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) continue;
             const r = v.getBoundingClientRect();
-            if (r.width < 1 || r.height < 1) continue;
+            if (r.width < 120 || r.height < 120) continue;
             if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
-                const area = r.width * r.height;     // prefer the smallest enclosing video
+                const area = r.width * r.height;              // prefer the smallest enclosing video
                 if (area < bestArea) { bestArea = area; best = v; }
             }
         }
         return best;
+    }
+
+    function rectArea(r) { return Math.max(0, r.width) * Math.max(0, r.height); }
+
+    // Does the (pointer-events:none) video actually COVER the image — i.e. is this a
+    // reel whose poster <img> sits under it — rather than an unrelated background video
+    // that merely encloses a small photo? Require strong overlap + comparable size.
+    function videoCoversImage(video, img) {
+        const rv = video.getBoundingClientRect(), ri = img.getBoundingClientRect();
+        const ix = Math.max(0, Math.min(rv.right, ri.right) - Math.max(rv.left, ri.left));
+        const iy = Math.max(0, Math.min(rv.bottom, ri.bottom) - Math.max(rv.top, ri.top));
+        const inter = ix * iy;
+        const aImg = rectArea(ri), aVid = rectArea(rv);
+        if (aImg === 0) return false;
+        const overlap = inter / aImg;                 // how much of the image the video covers
+        return overlap > 0.6 && aVid <= aImg * 4;     // reel ≈ same region; reject big backgrounds
     }
 
     function setToolbarMode(type) {
@@ -176,6 +200,13 @@
         }, 300);
     }
 
+    // Show/keep the toolbar for a target without re-rendering if it's unchanged.
+    function selectTarget(el, type) {
+        const cur = type === 'video' ? currentVideo : currentImage;
+        if (el !== cur) showTarget(el, type);
+        else if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+    }
+
     function onPointerMove(e) {
         if (rafScheduled) return;
         rafScheduled = true;
@@ -183,23 +214,25 @@
         requestAnimationFrame(() => {
             rafScheduled = false;
             const top = document.elementFromPoint(x, y);
-            if (top && (top === toolbar || toolbar.contains(top) || top === panel || panel.contains(top))) {
+            if (top && (top === toolbar || toolbar.contains(top) || top === panel || panel.contains(top)
+                        || top === personaFab || personaFab.contains(top))) {
                 if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
                 return;
             }
-            const video = videoAtPoint(x, y);
-            if (video) {
-                if (video !== currentVideo) showTarget(video, 'video');
-                else if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
-                return;
-            }
+
+            // 1) A real <video> directly under the cursor → video mode.
+            const stackVideo = videoAtPointStack(x, y);
+            if (stackVideo) { selectTarget(stackVideo, 'video'); return; }
+
+            // 2) Resolve photo vs reel. A photo under the cursor wins UNLESS a
+            //    pointer-events:none video actually covers it (the reel case).
             const img = imageAtPoint(x, y);
-            if (img) {
-                if (img !== currentImage) showTarget(img, 'image');
-                else if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
-            } else if (currentImage || currentVideo) {
-                hideToolbar();
-            }
+            const geoVideo = videoAtPointGeometric(x, y);
+            if (img && geoVideo && videoCoversImage(geoVideo, img)) { selectTarget(geoVideo, 'video'); return; }
+            if (img) { selectTarget(img, 'image'); return; }       // <-- static photos work again
+            if (geoVideo) { selectTarget(geoVideo, 'video'); return; }  // reel with no poster img
+
+            if (currentImage || currentVideo) hideToolbar();
         });
     }
 
