@@ -38,6 +38,9 @@ class Post(BaseModel):
     general_tags : Optional[List[str]] = None
     associated_epics: Optional[List[EpicRef]] = []
     highlights: Optional[List[Highlight]] = []  # NEW: Underlined text collection
+    source_url: Optional[str] = None  # page the image was saved from
+    instagram_handle: Optional[str] = None  # account the image came from (Darpan link)
+    source_account: Optional[dict] = None  # light snapshot of that account at save time
 
 class PostUpdate(BaseModel):
     text_blocks: Optional[List[TextBlock]] = None
@@ -95,6 +98,8 @@ class UrlUploadRequest(BaseModel):
     image_url: str
     source_url: Optional[str] = None  # page the image was saved from
     general_tags: Optional[List[str]] = []
+    instagram_handle: Optional[str] = None  # account the image came from (if on Instagram)
+    source_account: Optional[dict] = None  # light snapshot {display_name, avatar_url}
 
 class BrainstormAnswer(BaseModel):
     question: str

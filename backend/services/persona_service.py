@@ -70,13 +70,49 @@ class PersonaService:
         }
 
     async def _matched_posts(self, handle: str) -> List[dict]:
-        """Posts in our gallery saved from this account (handle in source_url)."""
+        """Posts in our gallery from this account: by the stored `instagram_handle`
+        field (reliable, set on newer saves) OR the handle parsed from source_url."""
         rx = re.compile(rf"instagram\.com/{re.escape(handle)}(?:[/?#]|$)", re.I)
         cursor = post_collection.find(
-            {"source_url": {"$regex": rx}},
-            {"photo_url": 1, "general_tags": 1, "source_url": 1},
+            {"$or": [{"instagram_handle": handle}, {"source_url": {"$regex": rx}}]},
+            {"photo_url": 1, "general_tags": 1, "source_url": 1, "instagram_handle": 1},
         )
         return await cursor.to_list(length=400)
+
+    async def touch(self, handle: str, account: Optional[dict] = None) -> None:
+        """
+        Lightly register an account when one of its images is saved — create a stub
+        persona if none exists (so it appears in Darpan and correlates), and merge a
+        fresh account snapshot. Does NOT run the LLM or bump ingest_count.
+        """
+        handle = normalize_handle(handle)
+        if not handle:
+            return
+        now = datetime.now(timezone.utc)
+        existing = await persona_collection.find_one({"handle": handle})
+        snapshot = {k: v for k, v in (account or {}).items() if v not in (None, "", [])}
+
+        matched = await self._matched_posts(handle)
+        if existing:
+            set_fields = {"updated_at": now, "matched_image_count": len(matched)}
+            if snapshot:
+                set_fields["account"] = {**existing.get("account", {}), **snapshot}
+            await persona_collection.update_one({"handle": handle}, {"$set": set_fields})
+        else:
+            await persona_collection.insert_one({
+                "_id": ObjectId(),
+                "handle": handle,
+                "source_url": None,
+                "account": snapshot,
+                "captured_captions": [],
+                "captured_image_urls": [],
+                "matched_image_count": len(matched),
+                "dossier": None,
+                "dossier_generated_at": None,
+                "ingest_count": 0,
+                "created_at": now,
+                "updated_at": now,
+            })
 
     async def ingest(self, payload: dict) -> dict:
         """Create/merge a persona from a scrape, and correlate our gallery images."""

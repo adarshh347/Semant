@@ -10,6 +10,7 @@ import base64
 from urllib.parse import urlparse
 from io import BytesIO
 from backend.services.vision_service import vision_service
+from backend.services.persona_service import persona_service, normalize_handle, handle_from_source_url
 from datetime import datetime, timezone
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
@@ -70,6 +71,9 @@ def post_helper(post) -> dict:
         "general_tags": post.get("general_tags", []), # Fallback to an empty list
         "associated_epics": post.get("associated_epics", []), # Fallback to an empty list
         "highlights": post.get("highlights", []),  # NEW: Underlined text collection
+        "source_url": post.get("source_url"),
+        "instagram_handle": post.get("instagram_handle"),
+        "source_account": post.get("source_account"),
     }
 
 
@@ -195,6 +199,10 @@ async def create_post_from_url(request: UrlUploadRequest):
              print("CHECK .ENV: CLOUDINARY_NAME is missing!")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
     
+    # Normalize the Instagram handle (if the extension supplied one) so the image
+    # carries its account context and links to the Darpan persona.
+    handle = normalize_handle(request.instagram_handle) if request.instagram_handle else None
+
     # Create the post document
     try:
         post_document = {
@@ -204,11 +212,22 @@ async def create_post_from_url(request: UrlUploadRequest):
             "text_blocks": [],
             "bounding_box_tags": {},
             "general_tags": request.general_tags or [],
-            "source_url": request.source_url or request.image_url  # page (or image) URL for reference
+            "source_url": request.source_url or request.image_url,  # page (or image) URL for reference
+            "instagram_handle": handle,
+            "source_account": request.source_account or None,
         }
-        
+
         new_post = await post_collection.insert_one(post_document)
         print(f"Post created in MongoDB: {new_post.inserted_id}")
+
+        # Attach this image to its account's persona (create a stub if new) so the
+        # combined image+account context is available later.
+        if handle:
+            try:
+                await persona_service.touch(handle, request.source_account)
+            except Exception as e:
+                print(f"Persona touch failed (non-fatal): {e}")
+
         created_post = await post_collection.find_one({"_id": new_post.inserted_id})
         return post_helper(created_post)
     except Exception as e:
@@ -265,6 +284,31 @@ async def get_post_by_id(post_id: str):
         return post_helper(post)
 
     raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+@router.get("/{post_id}/context")
+async def get_post_context(post_id: str):
+    """
+    Combined image + account context for a post: the post itself plus the Darpan
+    persona dossier for the Instagram account it came from (if known). This is the
+    bundle to feed downstream features that build things from image + context.
+    """
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url"))
+    persona = await persona_service.get_persona(handle) if handle else None
+    return {
+        "post": post_helper(post),
+        "instagram_handle": handle,
+        "persona": persona,  # full dossier + account details, or null if not built yet
+    }
+
 
 # More general route comes after
 @router.get("/", response_model=PaginatedPosts)
