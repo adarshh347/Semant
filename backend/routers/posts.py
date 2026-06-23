@@ -16,7 +16,7 @@ from bson.objectid import ObjectId
 from bson.errors import InvalidId
 # shutil(high level file operations) vs os (low level file operations)
 import shutil
-from backend.schemas.post import Post, PostUpdate, PaginatedPosts, StoryGenerationRequest, AddTagRequest, AddTagAndStoryRequest, StoryFlowRequest, PostSuggestionRequest, VisionChatRequest, VisionRewriteRequest, NodeExpansionRequest, UrlUploadRequest, BrainstormRequest
+from backend.schemas.post import Post, PostUpdate, PaginatedPosts, StoryGenerationRequest, AddTagRequest, AddTagAndStoryRequest, StoryFlowRequest, PostSuggestionRequest, VisionChatRequest, VisionRewriteRequest, NodeExpansionRequest, UrlUploadRequest, BrainstormRequest, LocalContextRequest, RegionAnnotationsRequest
 
 from backend.database import post_collection,client
 import cloudinary
@@ -74,6 +74,7 @@ def post_helper(post) -> dict:
         "source_url": post.get("source_url"),
         "instagram_handle": post.get("instagram_handle"),
         "source_account": post.get("source_account"),
+        "local_context": post.get("local_context"),
     }
 
 
@@ -308,6 +309,49 @@ async def get_post_context(post_id: str):
         "instagram_handle": handle,
         "persona": persona,  # full dossier + account details, or null if not built yet
     }
+
+
+@router.post("/{post_id}/local-context")
+async def set_local_context(post_id: str, request: LocalContextRequest):
+    """
+    Attach microscopic context to ONE image — the curator's unconcealment commentary
+    plus an optional Aletheia reading — and (optionally) roll it up into the account's
+    persona as a curator close-reading. Feeds both the specific image and the persona.
+    """
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    local_context = {
+        "commentary": (request.commentary or "").strip(),
+        "aletheia": request.aletheia,
+        "updated_at": datetime.now(timezone.utc),
+    }
+    await post_collection.update_one({"_id": obj_id}, {"$set": {"local_context": local_context}})
+
+    # Roll up into the persona (microscopic → macroscopic).
+    handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url"))
+    fed = False
+    if handle and request.feed_to_persona and (local_context["commentary"] or request.aletheia):
+        try:
+            await persona_service.add_local_context(
+                handle=handle,
+                post_id=post_id,
+                image_url=post.get("photo_url"),
+                commentary=local_context["commentary"],
+                aletheia=request.aletheia,
+            )
+            fed = True
+        except Exception as e:
+            print(f"Persona local-context roll-up failed (non-fatal): {e}")
+
+    updated = await post_collection.find_one({"_id": obj_id})
+    return {"post": post_helper(updated), "fed_to_persona": fed, "handle": handle}
 
 
 # More general route comes after

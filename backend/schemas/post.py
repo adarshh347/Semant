@@ -41,6 +41,7 @@ class Post(BaseModel):
     source_url: Optional[str] = None  # page the image was saved from
     instagram_handle: Optional[str] = None  # account the image came from (Darpan link)
     source_account: Optional[dict] = None  # light snapshot of that account at save time
+    local_context: Optional[dict] = None  # microscopic per-image context (Aletheia + commentary)
 
 class PostUpdate(BaseModel):
     text_blocks: Optional[List[TextBlock]] = None
@@ -100,6 +101,15 @@ class UrlUploadRequest(BaseModel):
     general_tags: Optional[List[str]] = []
     instagram_handle: Optional[str] = None  # account the image came from (if on Instagram)
     source_account: Optional[dict] = None  # light snapshot {display_name, avatar_url}
+
+class LocalContextRequest(BaseModel):
+    """Microscopic context the curator attaches to one image: their own
+    unconcealment commentary, optionally alongside an Aletheia reading. Feeds the
+    specific image and (optionally) rolls up into that account's persona."""
+    commentary: Optional[str] = ""
+    aletheia: Optional[dict] = None  # the Aletheia reading {lenses, concealed, uncertainty}
+    feed_to_persona: bool = True
+
 
 class BrainstormAnswer(BaseModel):
     question: str

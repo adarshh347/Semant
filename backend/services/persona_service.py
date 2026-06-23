@@ -62,6 +62,7 @@ class PersonaService:
             "captured_captions": doc.get("captured_captions", []),
             "captured_image_urls": doc.get("captured_image_urls", []),
             "matched_image_count": doc.get("matched_image_count", 0),
+            "local_contexts": doc.get("local_contexts", []),
             "dossier": doc.get("dossier"),
             "dossier_generated_at": doc.get("dossier_generated_at"),
             "ingest_count": doc.get("ingest_count", 0),
@@ -172,6 +173,48 @@ class PersonaService:
 
         return self.persona_helper(fresh)
 
+    async def add_local_context(
+        self, handle: str, post_id: str, image_url: Optional[str],
+        commentary: str, aletheia: Optional[dict],
+    ) -> None:
+        """
+        Roll a single image's microscopic context (curator commentary + Aletheia
+        reading) up into the account's persona as a close-reading. Deduped by
+        post_id, capped to the most recent 60.
+        """
+        handle = normalize_handle(handle)
+        if not handle:
+            return
+        await self.touch(handle)  # ensure the persona exists
+
+        # Compact the Aletheia reading into a one-line note.
+        al_note = ""
+        if aletheia:
+            parts = []
+            for lens in (aletheia.get("lenses") or [])[:3]:
+                if lens.get("reading"):
+                    parts.append(f"{lens.get('name', 'Lens')}: {lens['reading']}")
+            if aletheia.get("concealed"):
+                parts.append(f"Concealed: {aletheia['concealed']}")
+            al_note = " · ".join(parts)
+
+        entry = {
+            "post_id": post_id,
+            "image_url": image_url,
+            "commentary": (commentary or "").strip(),
+            "aletheia_note": al_note,
+            "updated_at": datetime.now(timezone.utc),
+        }
+        # Replace any prior entry for this post, then append (cap 60).
+        await persona_collection.update_one(
+            {"handle": handle}, {"$pull": {"local_contexts": {"post_id": post_id}}}
+        )
+        await persona_collection.update_one(
+            {"handle": handle},
+            {"$push": {"local_contexts": {"$each": [entry], "$slice": -60}},
+             "$set": {"updated_at": datetime.now(timezone.utc)}},
+        )
+
     async def synthesize(self, handle: str) -> Optional[dict]:
         """Run vision over a few of our images + LLM to build the dossier."""
         handle = normalize_handle(handle)
@@ -198,6 +241,7 @@ class PersonaService:
             account=doc.get("account", {}),
             captions=doc.get("captured_captions", []),
             image_readings=readings,
+            local_contexts=doc.get("local_contexts", []),
         )
 
         now = datetime.now(timezone.utc)

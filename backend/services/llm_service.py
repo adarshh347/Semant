@@ -581,6 +581,7 @@ OUTPUT — strict JSON only:
         account: dict,
         captions: list = None,
         image_readings: list = None,
+        local_contexts: list = None,
     ) -> dict:
         """
         Build a context persona ("dossier") for an Instagram account — both an
@@ -606,6 +607,19 @@ OUTPUT — strict JSON only:
             f"{k}: {v}" for k, v in (account or {}).items() if v not in (None, "", [])
         ) or "(sparse)"
 
+        # The curator's microscopic close-readings — the strongest, most specific
+        # evidence, because a human has unconcealed individual images by hand.
+        close = []
+        for lc in (local_contexts or [])[:20]:
+            bits = []
+            if lc.get("commentary"):
+                bits.append(f"commentary: \"{lc['commentary']}\"")
+            if lc.get("aletheia_note"):
+                bits.append(f"reading: {lc['aletheia_note']}")
+            if bits:
+                close.append("- " + " | ".join(bits))
+        close_block = "\n".join(close) or "(none yet)"
+
         prompt = f"""
 You are Darpan ("mirror"), a profiler that builds a faithful CONTEXT PERSONA of an
 Instagram account so it can later be used as context — both to UNDERSTAND the account
@@ -620,6 +634,10 @@ POST CAPTIONS (a sample of how they write):
 
 WHAT THEIR IMAGES LOOK LIKE (vision readings of posts we have on file):
 {reads}
+
+THE CURATOR'S CLOSE-READINGS (hand-written commentary + Aletheia on specific images —
+treat this as the HIGHEST-WEIGHT evidence; it is a human unconcealing the work):
+{close_block}
 
 TASK:
 Synthesize a persona dossier. Ground every claim in the evidence above; where the
