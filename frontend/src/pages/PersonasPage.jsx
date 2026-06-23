@@ -160,6 +160,9 @@ function PersonaDetail({ handle }) {
                 <button className="btn btn-primary" onClick={synthesize} disabled={synthBusy}>
                     {synthBusy ? 'Mirroring…' : persona.dossier ? 'Re-synthesize persona' : 'Synthesize persona'}
                 </button>
+                <Link className="dp-review-link" to={`/unconceal?handle=${encodeURIComponent(persona.handle)}`}>
+                    Unconceal their images →
+                </Link>
                 {persona.dossier_generated_at && !synthBusy && (
                     <span className="dp-stamp">last mirrored {new Date(persona.dossier_generated_at).toLocaleString()}</span>
                 )}
