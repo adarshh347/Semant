@@ -11,6 +11,7 @@ import base64
 from urllib.parse import urlparse
 from io import BytesIO
 from backend.services.vision_service import vision_service
+from backend.services import segmentation_service
 from backend.services.persona_service import persona_service, normalize_handle, handle_from_source_url
 from datetime import datetime, timezone
 from bson.objectid import ObjectId
@@ -76,6 +77,7 @@ def post_helper(post) -> dict:
         "instagram_handle": post.get("instagram_handle"),
         "source_account": post.get("source_account"),
         "local_context": post.get("local_context"),
+        "region_annotations": post.get("region_annotations"),
     }
 
 
@@ -320,6 +322,7 @@ async def get_post_by_id(post_id: str):
 
     raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
 
+
 @router.get("/{post_id}/context")
 async def get_post_context(post_id: str):
     """
@@ -413,6 +416,92 @@ async def unconceal_suggest(post_id: str):
     draft = await asyncio.to_thread(llm_service.draft_unconcealment, aletheia, handle)
     return {"aletheia": aletheia, "draft_commentary": draft}
 
+
+@router.post("/{post_id}/detect-regions")
+async def detect_regions(post_id: str):
+    """
+    Dissect the image into clickable parts ("anatomy") via the vision model. Returns
+    the detected regions and caches them on the post (without overwriting any the
+    curator has already prioritised/annotated).
+    """
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    photo_url = post.get("photo_url")
+    # Prefer the local YOLO11-seg model (real masks + polygons); fall back to the
+    # vision-LLM detector if segmentation is unavailable or finds nothing.
+    regions, source = None, "segmentation"
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(photo_url, headers=_image_fetch_headers(photo_url))
+            resp.raise_for_status()
+            regions = await asyncio.to_thread(segmentation_service.segment_image_bytes, resp.content)
+    except Exception as e:
+        print(f"Segmentation fetch/run failed, will fall back: {e}")
+        regions = None
+    if not regions:
+        regions = await vision_service.detect_regions(photo_url)
+        source = "vision"
+
+    # Preserve any prioritisation/notes the curator already set (match by box+label).
+    existing = {r.get("id"): r for r in (post.get("region_annotations") or [])}
+    for r in regions:
+        prev = existing.get(r["id"])
+        if prev:
+            r["prioritised"] = prev.get("prioritised", False)
+            r["weight"] = prev.get("weight", 0)
+            r["user_note"] = prev.get("user_note", "")
+        else:
+            r.setdefault("prioritised", False)
+            r.setdefault("weight", 0)
+            r.setdefault("user_note", "")
+
+    await post_collection.update_one({"_id": obj_id}, {"$set": {"region_annotations": regions}})
+    return {"regions": regions, "source": source}
+
+
+@router.post("/{post_id}/region-annotations")
+async def save_region_annotations(post_id: str, request: RegionAnnotationsRequest):
+    """
+    Save the curator's prioritised regions + per-part 'how it affects me' notes. Also
+    rolls the prioritised correspondences up into the account's persona as evidence.
+    """
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    await post_collection.update_one(
+        {"_id": obj_id}, {"$set": {"region_annotations": request.regions,
+                                   "updated_at": datetime.now(timezone.utc)}}
+    )
+
+    # Roll prioritised part-correspondences up to the persona (microscopic → macroscopic).
+    handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url"))
+    fed = False
+    if handle and request.feed_to_persona:
+        notes = [
+            f"{r.get('label', 'part')} — {r.get('user_note', '').strip()}"
+            for r in request.regions
+            if r.get("prioritised") and (r.get("user_note") or "").strip()
+        ]
+        if notes:
+            try:
+                await persona_service.add_region_correspondence(handle, post_id, post.get("photo_url"), notes)
+                fed = True
+            except Exception as e:
+                print(f"Persona region roll-up failed (non-fatal): {e}")
+
+    updated = await post_collection.find_one({"_id": obj_id})
+    return {"post": post_helper(updated), "fed_to_persona": fed}
 
 # More general route comes after
 @router.get("/", response_model=PaginatedPosts)

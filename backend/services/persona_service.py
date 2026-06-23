@@ -215,6 +215,33 @@ class PersonaService:
              "$set": {"updated_at": datetime.now(timezone.utc)}},
         )
 
+    async def add_region_correspondence(
+        self, handle: str, post_id: str, image_url: Optional[str], notes: list,
+    ) -> None:
+        """
+        Roll an image's part-level correspondences (which anatomical/object part
+        affected the curator, in their words) up into the persona as a close-reading.
+        """
+        handle = normalize_handle(handle)
+        if not handle or not notes:
+            return
+        await self.touch(handle)
+        entry = {
+            "post_id": f"{post_id}#regions",
+            "image_url": image_url,
+            "commentary": "Parts that moved me — " + "; ".join(notes[:8]),
+            "aletheia_note": "",
+            "updated_at": datetime.now(timezone.utc),
+        }
+        await persona_collection.update_one(
+            {"handle": handle}, {"$pull": {"local_contexts": {"post_id": entry["post_id"]}}}
+        )
+        await persona_collection.update_one(
+            {"handle": handle},
+            {"$push": {"local_contexts": {"$each": [entry], "$slice": -60}},
+             "$set": {"updated_at": datetime.now(timezone.utc)}},
+        )
+
     async def synthesize(self, handle: str) -> Optional[dict]:
         """Run vision over a few of our images + LLM to build the dossier."""
         handle = normalize_handle(handle)

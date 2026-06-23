@@ -369,6 +369,101 @@ Generate ONLY the subtitle, no additional text or explanation:"""
             return None
 
 
+    async def detect_regions(self, image_url: str) -> list:
+        """
+        Dissect the image into its salient parts ("anatomy") using the vision model
+        as a detector. Returns a list of regions, each with a label, category, a
+        NORMALIZED bounding box (x, y, w, h in 0..1, top-left origin) and a short
+        description. Coordinates are model-estimated (no dedicated detector), so they
+        are approximate but good enough for clickable overlays.
+        """
+        if not self._is_available():
+            print("⚠️ Vision service not available - GROQ_API_KEY not set")
+            return []
+        try:
+            completion = self.client.chat.completions.create(
+                model=self.vision_model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": DETECT_PROMPT},
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                        ],
+                    }
+                ],
+                temperature=0.2,
+                max_tokens=1200,
+                top_p=1,
+                stream=False,
+            )
+            return self._parse_regions(completion.choices[0].message.content)
+        except Exception as e:
+            print(f"❌ Error in region detection: {e}")
+            return []
+
+    def _parse_regions(self, raw: Optional[str]) -> list:
+        """Extract + normalize the detected-regions JSON from a model response."""
+        if not raw:
+            return []
+        try:
+            cleaned = re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.MULTILINE).strip()
+            match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+            if not match:
+                return []
+            data = json.loads(match.group())
+            out = []
+            for i, r in enumerate((data.get("regions") or [])[:10]):
+                box = r.get("box") or {}
+
+                def clamp01(v):
+                    try:
+                        return max(0.0, min(1.0, float(v)))
+                    except (TypeError, ValueError):
+                        return 0.0
+
+                x, y = clamp01(box.get("x")), clamp01(box.get("y"))
+                w, h = clamp01(box.get("w")), clamp01(box.get("h"))
+                if w <= 0.01 or h <= 0.01:
+                    continue
+                # keep the box inside the frame
+                w = min(w, 1.0 - x)
+                h = min(h, 1.0 - y)
+                label = str(r.get("label", "")).strip() or "region"
+                out.append({
+                    "id": f"region_{i}",
+                    "label": label,
+                    "category": str(r.get("category", "")).strip(),
+                    "box": {"x": round(x, 4), "y": round(y, 4), "w": round(w, 4), "h": round(h, 4)},
+                    "description": str(r.get("description", "")).strip(),
+                })
+            return out
+        except Exception as e:
+            print(f"❌ Error parsing regions JSON: {e}")
+            return []
+
+
+# --- Region/"anatomy" detection prompt ---
+DETECT_PROMPT = """You are a precise visual detector. Dissect this image into its salient PARTS —
+its anatomy. Detect the distinct, meaningful regions: for a person that means body
+parts and worn/held things (face, eyes, hands, hair, garment, jewellery, posture);
+for any image, the principal objects, figures, and notable zones (light source,
+horizon, foreground object, background element, text).
+
+For EACH region give:
+- "label": 1-3 words naming the part/object
+- "category": one of person-part | figure | object | garment | environment | light | text | other
+- "box": a bounding box as {"x","y","w","h"} in NORMALIZED coordinates 0..1, with the
+  ORIGIN at the TOP-LEFT, x/y = the box's top-left corner, w/h = its width/height.
+- "description": one short phrase on what it is / how it reads.
+
+Detect 4 to 8 regions, the ones that actually carry the image. Boxes must lie inside
+the frame (x+w ≤ 1, y+h ≤ 1) and not all overlap. Be as accurate with the boxes as you can.
+
+Return STRICT JSON only:
+{"regions": [{"label":"...","category":"...","box":{"x":0.0,"y":0.0,"w":0.0,"h":0.0},"description":"..."}]}"""
+
+
 # --- Aletheia interpretive prompt (image brainstorm dialogue) ---
 ALETHEIA_PROMPT = """You are Aletheia, an interpretive companion inside Semant. A person scrolling a
 feed has paused on an image. Your task is NOT to caption it (what is depicted)

@@ -8,3 +8,8 @@ venv/
 __pycache__/
 # macOS
 .DS_Store
+
+# Ultralytics model weights + run artifacts (downloaded locally)
+yolo*.pt
+*.pt
+runs/
