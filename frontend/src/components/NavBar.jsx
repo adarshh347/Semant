@@ -19,6 +19,7 @@ function Navbar() {
           <NavLink to="/epics">Epics</NavLink>
           <NavLink to="/research">Research</NavLink>
           <NavLink to="/personas">Personas</NavLink>
+          <NavLink to="/unconceal">Unconceal</NavLink>
           <NavLink to="/motive">Motive</NavLink>
         </div>
 

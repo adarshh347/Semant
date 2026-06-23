@@ -15,6 +15,7 @@ import EpicEditorPage from './pages/EpicEditorPage.jsx';
 import MotivePage from './pages/MotivePage.jsx';
 import ResearchPage from './pages/ResearchPage.jsx';
 import PersonasPage from './pages/PersonasPage.jsx';
+import UnconcealQueuePage from './pages/UnconcealQueuePage.jsx';
 
 const router = createBrowserRouter([
   {
@@ -31,6 +32,7 @@ const router = createBrowserRouter([
       { path: "epics/:id", element: <EpicEditorPage /> },
       { path: "research", element: <ResearchPage /> },
       { path: "personas", element: <PersonasPage /> },
+      { path: "unconceal", element: <UnconcealQueuePage /> },
       { path: "motive", element: <MotivePage /> }
     ],
   },
