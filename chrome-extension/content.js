@@ -252,7 +252,7 @@
             const r = await fetch(SAVE_URL, {
                 method: 'POST', mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [] })
+                body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [], ...instagramContextForSave() })
             });
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             await r.json();
@@ -572,7 +572,7 @@
                 const r = await fetch(SAVE_URL, {
                     method: 'POST', mode: 'cors',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_url: urls[i], source_url: location.href, general_tags: ['video-frame'] })
+                    body: JSON.stringify({ image_url: urls[i], source_url: location.href, general_tags: ['video-frame'], ...instagramContextForSave() })
                 });
                 if (r.ok) saved++;
             } catch (e) { /* keep going */ }
@@ -602,6 +602,52 @@
         const seg = decodeURIComponent(m[1]).toLowerCase();
         if (RESERVED_IG.has(seg)) return null;
         return seg;
+    }
+
+    // On a post/reel page ("/p/…", "/reel/…"), the author handle is the first
+    // "/username/" link in the post header.
+    function instagramPostAuthorHandle() {
+        if (!/^\/(p|reel|reels|tv)\//.test(location.pathname)) return null;
+        const anchors = document.querySelectorAll('article a[href^="/"], header a[href^="/"], a[href^="/"][role="link"]');
+        for (const a of anchors) {
+            const m = (a.getAttribute('href') || '').match(/^\/([^\/]+)\/$/);
+            if (m) {
+                const seg = m[1].toLowerCase();
+                if (!RESERVED_IG.has(seg)) return seg;
+            }
+        }
+        return null;
+    }
+
+    // The account handle relevant to the current page (profile first, else post author).
+    function detectedHandle() {
+        return instagramProfileHandle() || instagramPostAuthorHandle();
+    }
+
+    // A light account snapshot (only trustworthy on a profile page, where og:image
+    // is the avatar and og:title is "Name (@handle)").
+    function accountSnapshot() {
+        if (!instagramProfileHandle()) return null;
+        const ogTitle = metaContent('og:title');
+        const ogImage = metaContent('og:image');
+        let display_name = '';
+        const m = ogTitle.match(/^(.*?)\s*\(@/);
+        if (m) display_name = m[1].trim();
+        const snap = {};
+        if (display_name) snap.display_name = display_name;
+        if (ogImage) snap.avatar_url = ogImage;
+        return Object.keys(snap).length ? snap : null;
+    }
+
+    // Extra fields to attach to a save so the image carries its account context.
+    function instagramContextForSave() {
+        if (!isInstagram()) return {};
+        const handle = detectedHandle();
+        if (!handle) return {};
+        const extras = { instagram_handle: handle };
+        const snap = accountSnapshot();
+        if (snap) extras.source_account = snap;
+        return extras;
     }
 
     function metaContent(prop) {
@@ -681,7 +727,7 @@
     const personaOpen = personaFab.querySelector('.ss-persona-open');
 
     async function buildPersona() {
-        const handle = instagramProfileHandle();
+        const handle = detectedHandle();
         if (!handle) return;
         personaBtn.classList.remove('error', 'success');
         personaBtn.classList.add('loading');
@@ -710,10 +756,11 @@
     }
     personaBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); buildPersona(); });
 
+    let lastFabHandle = null;
     function refreshPersonaFab() {
-        const handle = isInstagram() ? instagramProfileHandle() : null;
+        const handle = isInstagram() ? detectedHandle() : null;
         if (handle) {
-            if (!personaFab.classList.contains('visible')) {
+            if (handle !== lastFabHandle) {
                 personaBtn.classList.remove('loading', 'success', 'error');
                 personaLabel.textContent = `Build persona · @${handle}`;
                 personaOpen.style.display = 'none';
@@ -722,13 +769,18 @@
         } else {
             personaFab.classList.remove('visible');
         }
+        lastFabHandle = handle;
     }
 
-    // Instagram is a SPA — watch for client-side route changes.
+    // Instagram is a SPA: post-author links load after the route changes, so poll
+    // both the path and the detected handle (not just the path).
     let lastPath = location.pathname;
     setInterval(() => {
-        if (location.pathname !== lastPath) { lastPath = location.pathname; refreshPersonaFab(); }
-    }, 1000);
+        if (location.pathname !== lastPath || (isInstagram() && detectedHandle() !== lastFabHandle)) {
+            lastPath = location.pathname;
+            refreshPersonaFab();
+        }
+    }, 800);
     window.addEventListener('popstate', refreshPersonaFab);
     refreshPersonaFab();
 
