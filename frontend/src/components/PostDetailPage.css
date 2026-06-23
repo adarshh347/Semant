@@ -243,6 +243,95 @@
     scrollbar-gutter: stable;
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   UNCONCEAL — per-image microscopic context (Aletheia + commentary)
+   ═══════════════════════════════════════════════════════════════════ */
+.unconceal-section { padding: 0.5rem 0 1rem; }
+.unconceal-intro { margin-bottom: 1.5rem; }
+.unconceal-intro h4 { font-family: var(--font-display); font-size: 1.3rem; color: var(--ink); margin: 0 0 0.4rem; }
+.unconceal-intro p { font-size: 0.9rem; color: var(--ink-muted); line-height: 1.55; margin: 0; }
+
+.uncon-kicker {
+    display: inline-block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent); font-weight: 700; margin-bottom: 0.6rem;
+}
+
+.uncon-aletheia {
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 1.1rem 1.25rem; margin-bottom: 1.5rem;
+}
+.uncon-block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+.uncon-run-btn {
+    display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 600;
+    color: var(--accent-ink); background: var(--accent); border: none; border-radius: var(--radius-pill);
+    padding: 0.45rem 0.9rem; cursor: pointer; transition: all 0.18s var(--ease);
+}
+.uncon-run-btn:hover:not(:disabled) { background: var(--accent-deep); }
+.uncon-run-btn:disabled { opacity: 0.6; cursor: progress; }
+.uncon-empty { font-size: 0.85rem; color: var(--ink-subtle); font-style: italic; margin: 0.5rem 0 0; }
+
+.uncon-reading { margin-top: 0.75rem; }
+.uncon-lens { margin-bottom: 0.9rem; }
+.uncon-lens-head { display: flex; justify-content: space-between; align-items: baseline; }
+.uncon-lens-name { font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+.uncon-lens-pct { font-size: 0.75rem; color: var(--ink-subtle); font-variant-numeric: tabular-nums; }
+.uncon-bar { height: 5px; background: var(--surface); border-radius: var(--radius-pill); overflow: hidden; margin: 0.3rem 0; }
+.uncon-bar-fill { display: block; height: 100%; background: var(--accent-gradient, var(--accent)); border-radius: var(--radius-pill); transition: width 0.6s var(--ease); }
+.uncon-lens-reading { font-size: 0.85rem; color: var(--ink-muted); line-height: 1.5; margin: 0.2rem 0 0; }
+.uncon-foot { font-size: 0.82rem; color: var(--ink-muted); margin: 0.5rem 0 0; }
+.uncon-foot strong { color: var(--accent); text-transform: uppercase; font-size: 0.68rem; letter-spacing: 0.06em; }
+
+.uncon-anatomy {
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 1rem 1.15rem; margin-bottom: 1.5rem;
+}
+.uncon-parts { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }
+.uncon-part-chip {
+    font-size: 0.78rem; color: var(--accent-ink); background: var(--accent);
+    border-radius: var(--radius-pill); padding: 0.25rem 0.7rem; font-weight: 600;
+}
+
+.uncon-commentary { margin-bottom: 1.25rem; display: flex; flex-direction: column; }
+.uncon-textarea {
+    width: 100%; min-height: 120px; resize: vertical; padding: 0.9rem 1rem;
+    border: 1px solid var(--line-strong); border-radius: var(--radius-md);
+    background: var(--surface); color: var(--ink); font-family: var(--font-sans);
+    font-size: 0.95rem; line-height: 1.6; transition: border-color 0.2s var(--ease);
+}
+.uncon-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.uncon-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.uncon-feed { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--ink-muted); cursor: pointer; }
+.uncon-feed input { accent-color: var(--accent); width: 16px; height: 16px; }
+.uncon-feed strong { color: var(--ink); }
+.uncon-save { display: inline-flex; align-items: center; gap: 0.4rem; }
+.uncon-saved { font-size: 0.75rem; color: var(--ink-subtle); }
+
+/* Source account (Darpan) */
+.source-account-section {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+    padding: 0.6rem 0.9rem;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-pill);
+    font-size: 0.85rem;
+    color: var(--ink);
+}
+.source-account-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex: none; }
+.source-account-text { color: var(--ink-muted); }
+.source-account-text strong { color: var(--ink); }
+.source-account-link {
+    margin-left: auto;
+    font-weight: 600;
+    color: var(--accent-deep);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.source-account-link:hover { text-decoration: underline; }
+
 /* Epic Badge */
 .epic-badge-section {
     display: flex;
