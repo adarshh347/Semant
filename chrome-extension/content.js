@@ -604,18 +604,44 @@
         return seg;
     }
 
-    // On a post/reel page ("/p/…", "/reel/…"), the author handle is the first
-    // "/username/" link in the post header.
+    // On a post/reel page ("/p/…", "/reel/…"), find the author of the post the
+    // user is *actually looking at*. This is surprisingly tricky because Instagram
+    // shows a post two different ways on desktop:
+    //   (a) standalone page  — the post is the centered column; the left
+    //       nav-sidebar links to OUR logged-in profile.
+    //   (b) modal overlay    — clicking a thumbnail opens <div role="dialog">
+    //       over the page behind it. The dialog is a carousel: previous/next
+    //       posts are rendered faded on the sides, and the page behind it still
+    //       has its own posts + our profile link.
+    // A naive "first /username/ link" therefore returns our own handle (nav
+    // sidebar / background) or an adjacent faded post. So we select by geometry:
+    // among visible "/username/" links inside the horizontally-centered band,
+    // pick the one highest on screen — that's the active post's header author.
     function instagramPostAuthorHandle() {
         if (!/^\/(p|reel|reels|tv)\//.test(location.pathname)) return null;
-        const anchors = document.querySelectorAll('article a[href^="/"], header a[href^="/"], a[href^="/"][role="link"]');
-        for (const a of anchors) {
+
+        const scope = document.querySelector('div[role="dialog"]') || document;
+        const vw = window.innerWidth;
+        const bandMin = vw * 0.18, bandMax = vw * 0.82;  // exclude side/nav columns
+
+        let best = null;
+        scope.querySelectorAll('a[href^="/"]').forEach(a => {
             const m = (a.getAttribute('href') || '').match(/^\/([^\/]+)\/$/);
-            if (m) {
-                const seg = m[1].toLowerCase();
-                if (!RESERVED_IG.has(seg)) return seg;
-            }
-        }
+            if (!m) return;
+            const seg = m[1].toLowerCase();
+            if (RESERVED_IG.has(seg)) return;
+            const r = a.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0) return;          // hidden
+            const cx = r.left + r.width / 2;
+            if (cx < bandMin || cx > bandMax) return;             // off-center post / sidebar
+            if (!best || r.top < best.top) best = { seg, top: r.top };
+        });
+        if (best) return best.seg;
+
+        // Fallback: og:title on a post page is "Name (@handle) • Instagram…".
+        const og = metaContent('og:title');
+        const at = og.match(/\(@([A-Za-z0-9._]+)\)/);
+        if (at && !RESERVED_IG.has(at[1].toLowerCase())) return at[1].toLowerCase();
         return null;
     }
 
