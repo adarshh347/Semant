@@ -18,7 +18,7 @@ from bson.objectid import ObjectId
 from bson.errors import InvalidId
 # shutil(high level file operations) vs os (low level file operations)
 import shutil
-from backend.schemas.post import Post, PostUpdate, PaginatedPosts, StoryGenerationRequest, AddTagRequest, AddTagAndStoryRequest, StoryFlowRequest, PostSuggestionRequest, VisionChatRequest, VisionRewriteRequest, NodeExpansionRequest, UrlUploadRequest, BrainstormRequest, LocalContextRequest, RegionAnnotationsRequest
+from backend.schemas.post import Post, PostUpdate, PaginatedPosts, StoryGenerationRequest, AddTagRequest, AddTagAndStoryRequest, StoryFlowRequest, PostSuggestionRequest, VisionChatRequest, VisionRewriteRequest, NodeExpansionRequest, UrlUploadRequest, BrainstormRequest, LocalContextRequest, RegionAnnotationsRequest, RegionDetectRequest
 
 from backend.database import post_collection,client
 import cloudinary
@@ -417,13 +417,55 @@ async def unconceal_suggest(post_id: str):
     return {"aletheia": aletheia, "draft_commentary": draft}
 
 
+def _clip_box_to_parent(box: dict, parent: dict) -> dict:
+    """Pull a fine sub-box inside its parent anchor's box so it can't float off the
+    object it belongs to (the vision model's boxes are estimates)."""
+    px, py = parent.get("x", 0.0), parent.get("y", 0.0)
+    pw, ph = parent.get("w", 1.0), parent.get("h", 1.0)
+    # pad the parent a touch so tight collars/cuffs at the edge aren't crushed
+    pad = 0.04
+    x0, y0 = max(0.0, px - pad), max(0.0, py - pad)
+    x1, y1 = min(1.0, px + pw + pad), min(1.0, py + ph + pad)
+    bx = min(max(box["x"], x0), x1)
+    by = min(max(box["y"], y0), y1)
+    bw = min(box["w"], x1 - bx)
+    bh = min(box["h"], y1 - by)
+    return {"x": round(bx, 4), "y": round(by, 4),
+            "w": round(max(bw, 0.01), 4), "h": round(max(bh, 0.01), 4)}
+
+
+def _match_parent(fine: dict, anchors: list) -> Optional[dict]:
+    """Link a fine part to a coarse anchor: prefer label match, else the anchor whose
+    box most contains the fine part's centre."""
+    plabel = (fine.get("parent_label") or "").lower()
+    if plabel:
+        for a in anchors:
+            if plabel in (a.get("label") or "").lower() or (a.get("label") or "").lower() in plabel:
+                return a
+    cx = fine["box"]["x"] + fine["box"]["w"] / 2
+    cy = fine["box"]["y"] + fine["box"]["h"] / 2
+    best, best_area = None, 1e9
+    for a in anchors:
+        b = a.get("box") or {}
+        if b.get("x", 0) <= cx <= b.get("x", 0) + b.get("w", 0) and \
+           b.get("y", 0) <= cy <= b.get("y", 0) + b.get("h", 0):
+            area = b.get("w", 1) * b.get("h", 1)
+            if area < best_area:  # smallest containing anchor wins
+                best, best_area = a, area
+    return best
+
+
 @router.post("/{post_id}/detect-regions")
-async def detect_regions(post_id: str):
+async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = None):
     """
-    Dissect the image into clickable parts ("anatomy") via the vision model. Returns
-    the detected regions and caches them on the post (without overwriting any the
-    curator has already prioritised/annotated).
+    Two-stage anatomy. STHŪLA (coarse): local YOLO11-seg gives whole-object instance
+    masks (real polygons) as anchors. SŪKṢMA (fine): the Groq vision model then dissects
+    those anchors SEMANTICALLY into sub-parts — garments, garment sub-sections, body
+    parts, textures — steered by `mode` and the curator's free-text `lens`. The fine
+    parts are clipped inside their parent anchor. Curator prioritisation/notes survive
+    re-runs. `coarse_only` returns just the anchors (fast).
     """
+    req = request or RegionDetectRequest()
     try:
         obj_id = ObjectId(post_id)
     except InvalidId:
@@ -433,22 +475,47 @@ async def detect_regions(post_id: str):
         raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
 
     photo_url = post.get("photo_url")
-    # Prefer the local YOLO11-seg model (real masks + polygons); fall back to the
-    # vision-LLM detector if segmentation is unavailable or finds nothing.
-    regions, source = None, "segmentation"
+
+    # --- Stage 1 · STHŪLA: coarse anchors with real masks (local YOLO11-seg). ---
+    anchors, source = None, "segmentation"
     try:
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             resp = await client.get(photo_url, headers=_image_fetch_headers(photo_url))
             resp.raise_for_status()
-            regions = await asyncio.to_thread(segmentation_service.segment_image_bytes, resp.content)
+            anchors = await asyncio.to_thread(segmentation_service.segment_image_bytes, resp.content)
     except Exception as e:
         print(f"Segmentation fetch/run failed, will fall back: {e}")
-        regions = None
-    if not regions:
-        regions = await vision_service.detect_regions(photo_url)
+        anchors = None
+    if not anchors:
+        # No local model / nothing found — the vision detector becomes the anchor source.
+        anchors = await vision_service.detect_regions(photo_url)
         source = "vision"
+    for a in anchors:
+        a.setdefault("depth", 0)
 
-    # Preserve any prioritisation/notes the curator already set (match by box+label).
+    # --- Stage 2 · SŪKṢMA: fine semantic decomposition (Groq vision). ---
+    fine = []
+    if not req.coarse_only:
+        try:
+            fine = await vision_service.decompose_regions(
+                photo_url, anchors=anchors, lens=req.lens or "", mode=req.mode or "general"
+            )
+        except Exception as e:
+            print(f"Fine decomposition failed (non-fatal): {e}")
+            fine = []
+        # Link each fine part to its anchor and pull it inside that anchor's box.
+        for f in fine:
+            parent = _match_parent(f, anchors)
+            if parent:
+                f["parent_id"] = parent.get("id")
+                f["box"] = _clip_box_to_parent(f["box"], parent.get("box") or {})
+            f.setdefault("depth", 1)
+
+    regions = (anchors or []) + fine
+    if fine:
+        source = f"{source}+sukshma"
+
+    # Preserve any prioritisation/notes the curator already set (match by id).
     existing = {r.get("id"): r for r in (post.get("region_annotations") or [])}
     for r in regions:
         prev = existing.get(r["id"])
@@ -462,7 +529,7 @@ async def detect_regions(post_id: str):
             r.setdefault("user_note", "")
 
     await post_collection.update_one({"_id": obj_id}, {"$set": {"region_annotations": regions}})
-    return {"regions": regions, "source": source}
+    return {"regions": regions, "source": source, "anchor_count": len(anchors or []), "fine_count": len(fine)}
 
 
 @router.post("/{post_id}/region-annotations")
