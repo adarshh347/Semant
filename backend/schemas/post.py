@@ -109,6 +109,15 @@ class RegionAnnotationsRequest(BaseModel):
     feed_to_persona: bool = True
 
 
+class RegionDetectRequest(BaseModel):
+    """Steer the Sūkṣma (fine-anatomy) pipeline. `mode` picks the subdivision
+    vocabulary; `lens` is the curator's free-text intention ('focus on the fabric
+    folds', 'the hands'); `coarse_only` skips the semantic decomposition stage."""
+    mode: Optional[str] = "general"        # general | garment | body | texture | material | composition
+    lens: Optional[str] = ""               # free-text intention prompt (always optional)
+    coarse_only: Optional[bool] = False    # if True, return only the YOLO anchors (fast)
+
+
 class LocalContextRequest(BaseModel):
     """Microscopic context the curator attaches to one image: their own
     unconcealment commentary, optionally alongside an Aletheia reading. Feeds the

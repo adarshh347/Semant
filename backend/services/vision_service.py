@@ -443,6 +443,132 @@ Generate ONLY the subtitle, no additional text or explanation:"""
             return []
 
 
+    async def decompose_regions(
+        self,
+        image_url: str,
+        anchors: Optional[list] = None,
+        lens: str = "",
+        mode: str = "general",
+        max_regions: int = 16,
+    ) -> list:
+        """
+        SŪKṢMA — the *fine* anatomy stage. Where YOLO gives coarse anchors (a whole
+        "person", a whole "object"), this uses the vision model to dissect each anchor
+        SEMANTICALLY into its sub-parts: individual garments, sub-sections of a garment
+        (collar, cuff, hem, sleeve, placket), body parts, materials, textures, edges.
+
+        - `anchors`: the coarse YOLO regions (label + normalized box) used as guidance,
+          so the model subdivides *within* what is actually there instead of inventing.
+        - `mode`: chooses the subdivision vocabulary (garment / body / texture / ...).
+        - `lens`: the curator's free-text intention ("the way the fabric folds at the
+          waist", "the hands"). Always optional — `general` mode works without it.
+
+        Returns a flat list of fine sub-regions, each with a normalized box, a parent
+        anchor label, a category and a description. (Boxes are model-estimated.)
+        """
+        if not self._is_available():
+            print("⚠️ Vision service not available - GROQ_API_KEY not set")
+            return []
+
+        # Tell the model what the coarse pass already found, so it stays grounded.
+        anchor_hint = ""
+        if anchors:
+            lines = []
+            for a in anchors[:8]:
+                b = a.get("box") or {}
+                try:
+                    lines.append(
+                        f'- {a.get("label", "region")} at box '
+                        f'x={round(float(b.get("x", 0)), 2)}, y={round(float(b.get("y", 0)), 2)}, '
+                        f'w={round(float(b.get("w", 0)), 2)}, h={round(float(b.get("h", 0)), 2)}'
+                    )
+                except (TypeError, ValueError):
+                    continue
+            if lines:
+                anchor_hint = (
+                    "\n\nThe coarse pass already located these whole objects (normalized "
+                    "boxes). Subdivide INSIDE these — your sub-parts' boxes must sit within "
+                    "the relevant parent box, and name the parent in \"parent\":\n"
+                    + "\n".join(lines)
+                )
+
+        focus = MODE_FOCUS.get((mode or "general").lower(), MODE_FOCUS["general"])
+        lens_hint = ""
+        if (lens or "").strip():
+            lens_hint = (
+                f"\n\nThe curator's INTENTION for this dissection: \"{lens.strip()}\". "
+                "Bias the parts you surface and how you describe them toward this intention, "
+                "but still return the structurally important parts too."
+            )
+
+        prompt = SOOKSHMA_PROMPT.replace("{focus}", focus) + anchor_hint + lens_hint + \
+            "\n\nDissect this image now. Return only the JSON."
+
+        try:
+            completion = self.client.chat.completions.create(
+                model=self.vision_model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                        ],
+                    }
+                ],
+                temperature=0.25,
+                max_tokens=1800,
+                top_p=1,
+                stream=False,
+            )
+            return self._parse_subregions(completion.choices[0].message.content, max_regions)
+        except Exception as e:
+            print(f"❌ Error in fine decomposition: {e}")
+            return []
+
+    def _parse_subregions(self, raw: Optional[str], max_regions: int = 16) -> list:
+        """Extract + normalize the fine sub-region JSON from a model response."""
+        if not raw:
+            return []
+        try:
+            cleaned = re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.MULTILINE).strip()
+            match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+            if not match:
+                return []
+            data = json.loads(match.group())
+
+            def clamp01(v):
+                try:
+                    return max(0.0, min(1.0, float(v)))
+                except (TypeError, ValueError):
+                    return 0.0
+
+            out = []
+            for i, r in enumerate((data.get("parts") or data.get("regions") or [])[:max_regions]):
+                box = r.get("box") or {}
+                x, y = clamp01(box.get("x")), clamp01(box.get("y"))
+                w, h = clamp01(box.get("w")), clamp01(box.get("h"))
+                if w <= 0.01 or h <= 0.01:
+                    continue
+                w = min(w, 1.0 - x)
+                h = min(h, 1.0 - y)
+                label = str(r.get("label", "")).strip() or "part"
+                out.append({
+                    "id": f"fine_{i}",
+                    "label": label,
+                    "category": str(r.get("category", "")).strip() or "part",
+                    "parent_label": str(r.get("parent", "")).strip(),
+                    "material": str(r.get("material", "")).strip(),
+                    "box": {"x": round(x, 4), "y": round(y, 4), "w": round(w, 4), "h": round(h, 4)},
+                    "description": str(r.get("description", "")).strip(),
+                    "depth": 1,
+                })
+            return out
+        except Exception as e:
+            print(f"❌ Error parsing sub-regions JSON: {e}")
+            return []
+
+
 # --- Region/"anatomy" detection prompt ---
 DETECT_PROMPT = """You are a precise visual detector. Dissect this image into its salient PARTS —
 its anatomy. Detect the distinct, meaningful regions: for a person that means body
@@ -503,6 +629,78 @@ Return strict JSON only:
   "concealed": "...",
   "uncertainty": "..."
 }"""
+
+
+# --- Sūkṣma: fine semantic decomposition vocabularies (one per mode) ---
+MODE_FOCUS = {
+    "general": (
+        "Surface the most meaningful FINE parts of whatever is present: for a person, "
+        "the individual garments AND their sub-sections (collar, lapel, placket, cuff, "
+        "sleeve, hem, waistband, pocket, neckline, fold, seam), plus salient body parts "
+        "(face, eyes, mouth, hair, neck, hands, fingers) and anything worn or held "
+        "(jewellery, bag, glasses). For objects/scenes, their constituent surfaces, "
+        "edges, and zones."
+    ),
+    "garment": (
+        "Dissect CLOTHING exhaustively. Name each separate garment (shirt, jacket, "
+        "trouser, sari, dupatta, scarf, shoe) AND decompose each into its sub-sections: "
+        "collar, lapel, placket, button row, cuff, sleeve (upper/fore), shoulder seam, "
+        "yoke, hem, waistband, pleat, drape, fold, pocket, neckline, fastening. Treat the "
+        "garment as having its own anatomy."
+    ),
+    "body": (
+        "Dissect the BODY / figure: head, face, eyes, brow, mouth, jaw, hair, neck, "
+        "shoulders, chest, arms, elbows, wrists, hands, fingers, waist, hips, legs, feet, "
+        "and the POSTURE/gesture lines. Note gaze direction and where weight rests."
+    ),
+    "texture": (
+        "Read the image as a field of TEXTURES and surface qualities: the weave/grain of "
+        "each fabric, knit vs woven, sheen vs matte, wrinkle and fold patterns, skin "
+        "texture, hair strands, roughness, smoothness, transparency. Each region is a "
+        "distinct textural patch and how it catches light."
+    ),
+    "material": (
+        "Read the image by MATERIAL: cotton, silk, denim, wool, leather, metal, glass, "
+        "skin, stone, wood, plastic, paper. For each region name the likely material and "
+        "fill \"material\", and describe how that material behaves (drapes, reflects, "
+        "creases, weighs)."
+    ),
+    "composition": (
+        "Dissect by COMPOSITION: foreground / midground / background planes, the light "
+        "source and the shadow it casts, leading lines, negative space, the focal point, "
+        "framing edges, and the colour blocks that structure the frame."
+    ),
+}
+
+
+SOOKSHMA_PROMPT = """You are Sūkṣma (सूक्ष्म, 'the subtle/fine'), the deep-anatomy reader inside Semant.
+A coarse detector has already found the WHOLE objects. Your job is the opposite of
+coarse: do NOT return a region for 'the whole person' or 'the whole object'. Go FINE.
+Dissect what is present into its constituent SUB-PARTS, the way an anatomist or a
+tailor would — many small, specific, non-overlapping parts.
+
+{focus}
+
+For EACH fine part return:
+- "label": 1-3 words naming the specific part ("left cuff", "shirt collar", "knuckles",
+  "hair parting", "sleeve fold"). Be specific; never just "person" or "clothing".
+- "parent": which whole object this part belongs to ("person", "jacket", "background"),
+  matching the coarse anchors when given.
+- "category": one of garment | garment-detail | body-part | hair | skin | accessory |
+  texture | material | edge | light | plane | object | other.
+- "material": the likely material if recognizable (cotton, silk, denim, skin, metal…),
+  else "".
+- "box": a TIGHT bounding box {"x","y","w","h"} in NORMALIZED 0..1 coords, ORIGIN
+  TOP-LEFT (x/y = top-left corner, w/h = size). The box must hug just THIS part and lie
+  inside its parent's box. Small parts have small boxes — a cuff is not the whole arm.
+- "description": one vivid, specific phrase — what it is and how it reads/feels/affects.
+
+Return 6 to 14 fine parts, the ones that genuinely carry the image. Make the boxes
+distinct (not all stacked on the same spot) and accurate. Resist the pull toward a few
+big generic regions — the whole point is the fine grain.
+
+Return STRICT JSON only:
+{"parts": [{"label":"...","parent":"...","category":"...","material":"...","box":{"x":0.0,"y":0.0,"w":0.0,"h":0.0},"description":"..."}]}"""
 
 
 # Singleton instance
