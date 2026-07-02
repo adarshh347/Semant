@@ -64,6 +64,12 @@
     panel.className = 'sharirasutra-panel';
     document.body.appendChild(panel);
 
+    // Floating split-queue chip (bottom-right) — visible while the queue is non-empty.
+    const queueChip = document.createElement('button');
+    queueChip.className = 'ss-queue-chip';
+    document.body.appendChild(queueChip);
+    queueChip.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); renderQueueView(); });
+
     let currentImage = null;
     let currentVideo = null;
     let hideTimeout = null;
@@ -652,9 +658,24 @@
         }
     }
 
-    // Stubs — replaced by the queue chip (Task 2) and queue view (Task 3).
-    function refreshQueueChip() {}
+    function queueStats() {
+        let capturing = 0, frames = 0;
+        for (const j of splitQueue.values()) { if (j.state === 'capturing') capturing++; frames += j.frames.length; }
+        return { jobs: splitQueue.size, capturing, frames };
+    }
+
+    function refreshQueueChip() {
+        const s = queueStats();
+        if (!s.jobs) { queueChip.classList.remove('visible'); return; }
+        queueChip.textContent = s.capturing
+            ? `⏳ ${s.capturing} splitting · ${s.frames} frames`
+            : `🎞 ${s.jobs} split${s.jobs > 1 ? 's' : ''} · ${s.frames} frames`;
+        queueChip.classList.add('visible');
+    }
+
+    // Stubs — replaced by the queue view (Task 3).
     function syncQueueJob(job) {}
+    function renderQueueView() {}
 
     // Header for the Alexia frame-review view
     function frameHeader(title) {
