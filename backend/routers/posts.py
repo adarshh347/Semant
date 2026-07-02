@@ -82,6 +82,16 @@ def post_helper(post) -> dict:
     }
 
 
+def post_handles(post: dict) -> list:
+    """All author handles on a post: multi-author field first, then legacy
+    singular, then whatever the source_url encodes. Ordered, deduped."""
+    return normalize_handles(
+        (post.get("instagram_handles") or [])
+        + [post.get("instagram_handle") or "",
+           handle_from_source_url(post.get("source_url")) or ""]
+    )
+
+
 
 
 
@@ -346,11 +356,13 @@ async def get_post_context(post_id: str):
     if not post:
         raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
 
-    handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url"))
+    handles = post_handles(post)
+    handle = handles[0] if handles else None
     persona = await persona_service.get_persona(handle) if handle else None
     return {
         "post": post_helper(post),
         "instagram_handle": handle,
+        "instagram_handles": handles,
         "persona": persona,  # full dossier + account details, or null if not built yet
     }
 
@@ -378,24 +390,26 @@ async def set_local_context(post_id: str, request: LocalContextRequest):
     }
     await post_collection.update_one({"_id": obj_id}, {"$set": {"local_context": local_context}})
 
-    # Roll up into the persona (microscopic → macroscopic).
-    handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url"))
+    # Roll up into the persona (microscopic → macroscopic). Collab posts carry
+    # several authors — feed every one of them.
+    handles = post_handles(post)
     fed = False
-    if handle and request.feed_to_persona and (local_context["commentary"] or request.aletheia):
-        try:
-            await persona_service.add_local_context(
-                handle=handle,
-                post_id=post_id,
-                image_url=post.get("photo_url"),
-                commentary=local_context["commentary"],
-                aletheia=request.aletheia,
-            )
-            fed = True
-        except Exception as e:
-            print(f"Persona local-context roll-up failed (non-fatal): {e}")
+    if handles and request.feed_to_persona and (local_context["commentary"] or request.aletheia):
+        for h in handles:
+            try:
+                await persona_service.add_local_context(
+                    handle=h,
+                    post_id=post_id,
+                    image_url=post.get("photo_url"),
+                    commentary=local_context["commentary"],
+                    aletheia=request.aletheia,
+                )
+                fed = True
+            except Exception as e:
+                print(f"Persona local-context roll-up failed for @{h} (non-fatal): {e}")
 
     updated = await post_collection.find_one({"_id": obj_id})
-    return {"post": post_helper(updated), "fed_to_persona": fed, "handle": handle}
+    return {"post": post_helper(updated), "fed_to_persona": fed, "handle": handles[0] if handles else None}
 
 
 @router.post("/{post_id}/unconceal-suggest")
@@ -558,21 +572,23 @@ async def save_region_annotations(post_id: str, request: RegionAnnotationsReques
                                    "updated_at": datetime.now(timezone.utc)}}
     )
 
-    # Roll prioritised part-correspondences up to the persona (microscopic → macroscopic).
-    handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url"))
+    # Roll prioritised part-correspondences up to the persona (microscopic →
+    # macroscopic). Collab posts carry several authors — feed every one of them.
+    handles = post_handles(post)
     fed = False
-    if handle and request.feed_to_persona:
+    if handles and request.feed_to_persona:
         notes = [
             f"{r.get('label', 'part')} — {r.get('user_note', '').strip()}"
             for r in request.regions
             if r.get("prioritised") and (r.get("user_note") or "").strip()
         ]
         if notes:
-            try:
-                await persona_service.add_region_correspondence(handle, post_id, post.get("photo_url"), notes)
-                fed = True
-            except Exception as e:
-                print(f"Persona region roll-up failed (non-fatal): {e}")
+            for h in handles:
+                try:
+                    await persona_service.add_region_correspondence(h, post_id, post.get("photo_url"), notes)
+                    fed = True
+                except Exception as e:
+                    print(f"Persona region roll-up failed for @{h} (non-fatal): {e}")
 
     updated = await post_collection.find_one({"_id": obj_id})
     return {"post": post_helper(updated), "fed_to_persona": fed}
