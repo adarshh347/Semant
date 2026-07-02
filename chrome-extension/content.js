@@ -710,14 +710,16 @@
     // Returns an ordered list; first entry is the primary author.
     function handlesForElement(el) {
         if (!isInstagram()) return [];
+        // Stories: the URL names the author authoritatively — mention stickers
+        // inside the story would otherwise pollute the element-anchored stages.
+        const story = instagramStoryHandle();
+        if (story) return [story];
         if (el) {
             const fromContainer = handlesFromContainer(el);
             if (fromContainer.length) return fromContainer;
             const near = handlesNearElement(el);
             if (near.length) return near;
         }
-        const story = instagramStoryHandle();
-        if (story) return [story];
         const author = instagramPostAuthorHandle();
         if (author) return [author];
         const profile = instagramProfileHandle();
