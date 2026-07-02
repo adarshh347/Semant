@@ -341,7 +341,7 @@
             rafScheduled = false;
             const top = document.elementFromPoint(x, y);
             if (top && (top === toolbar || toolbar.contains(top) || top === panel || panel.contains(top)
-                        || top === personaFab || personaFab.contains(top))) {
+                        || top === queueChip || top === personaFab || personaFab.contains(top))) {
                 if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
                 return;
             }
@@ -573,18 +573,27 @@
     // A queued job captures from its LIVE element immediately (it's on screen at
     // click time); jobs run in parallel; the user scrolls on and queues more. Frames
     // accumulate on the job and are mass-saved from the queue view.
-    const splitQueue = new Map();   // jobId -> job
+    const splitQueue = new Map();        // jobId -> job
     let nextJobId = 1;
     let queueViewOpen = false;
+    const capturingVideos = new Set();   // elements with an in-flight capture loop
 
     function queueSplit(video) {
         if (!video) return;
+        splitBtn.classList.remove('success', 'error', 'saving');
         for (const j of splitQueue.values()) {
             if (j.video === video) {
                 splitBtn.classList.add('success');
                 splitBtn.querySelector('span').textContent = '✓ Already queued';
                 return;
             }
+        }
+        // A discarded job's loop may still be winding down on this element — two
+        // loops on one video fight over currentTime and each other's 'seeked' events.
+        if (capturingVideos.has(video)) {
+            splitBtn.classList.add('error');
+            splitBtn.querySelector('span').textContent = '✗ Busy — retry in a sec';
+            return;
         }
         const duration = video.duration;
         if (!duration || !isFinite(duration) || duration <= 0) {
@@ -618,46 +627,54 @@
 
     async function captureFrames(job) {
         const video = job.video;
+        capturingVideos.add(video);
         const duration = video.duration;
         const wasPaused = video.paused, prevTime = video.currentTime, wasMuted = video.muted;
         video.muted = true;
         try { video.pause(); } catch (e) {}
 
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        let missed = 0;                    // consecutive seek timeouts
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            let missed = 0;                    // consecutive seek timeouts
 
-        for (let i = 0; i < job.total; i++) {
-            if (!video.isConnected) { job.error = 'video left the page'; break; }
-            if (missed >= 2) { job.error = 'stream stopped seeking'; break; }
-            const ok = await seekVideo(video, duration * ((i + 0.5) / job.total));
-            missed = ok ? 0 : missed + 1;
-            // rAF never fires in hidden tabs — settle with a timer instead (background
-            // throttling makes it ~1s there, which only slows the capture down).
-            await new Promise(r => setTimeout(r, 60));
-            const vw = video.videoWidth, vh = video.videoHeight;
-            if (!vw || !vh) continue;
-            canvas.width = vw; canvas.height = vh;
-            try {
-                ctx.drawImage(video, 0, 0, vw, vh);
-                job.frames.push(canvas.toDataURL('image/jpeg', 0.85));
-            } catch (err) {
-                console.error('Alexia: canvas tainted (cross-origin video, no CORS):', err);
-                job.error = 'protected video';
-                break;
+            for (let i = 0; i < job.total; i++) {
+                if (job.cancelled) break;      // discarded from the queue view
+                if (!video.isConnected) { job.error = 'video left the page'; break; }
+                if (missed >= 2) { job.error = 'stream stopped seeking'; break; }
+                const ok = await seekVideo(video, duration * ((i + 0.5) / job.total));
+                missed = ok ? 0 : missed + 1;
+                // rAF never fires in hidden tabs — settle with a timer instead (background
+                // throttling makes it ~1s there, which only slows the capture down).
+                await new Promise(r => setTimeout(r, 60));
+                const vw = video.videoWidth, vh = video.videoHeight;
+                if (!vw || !vh) continue;
+                canvas.width = vw; canvas.height = vh;
+                try {
+                    ctx.drawImage(video, 0, 0, vw, vh);
+                    job.frames.push(canvas.toDataURL('image/jpeg', 0.85));
+                } catch (err) {
+                    console.error('Alexia: canvas tainted (cross-origin video, no CORS):', err);
+                    job.error = 'protected video';
+                    break;
+                }
+                refreshQueueChip();
+                if (queueViewOpen) syncQueueJob(job);
             }
-            refreshQueueChip();
-            if (queueViewOpen) syncQueueJob(job);
-        }
 
-        job.state = job.frames.length
-            ? (job.error || job.frames.length < job.total ? 'partial' : 'captured')
-            : 'failed';
-        if (job.state === 'failed' && !job.error) job.error = 'no frames';
-        if (video.isConnected) {
-            try { video.currentTime = prevTime; } catch (e) {}
-            video.muted = wasMuted;
-            if (!wasPaused) { try { video.play(); } catch (e) {} }
+            if (!job.cancelled) {
+                job.state = job.frames.length
+                    ? (job.error || job.frames.length < job.total ? 'partial' : 'captured')
+                    : 'failed';
+                if (job.state === 'failed' && !job.error) job.error = 'no frames';
+            }
+            if (video.isConnected) {
+                try { video.currentTime = prevTime; } catch (e) {}
+                video.muted = wasMuted;
+                if (!wasPaused) { try { video.play(); } catch (e) {} }
+            }
+        } finally {
+            capturingVideos.delete(video);
         }
     }
 
@@ -749,6 +766,7 @@
             const drop = el('button', 'al-queue-drop', '✕');
             drop.addEventListener('click', (e) => {
                 e.preventDefault(); e.stopPropagation();
+                job.cancelled = true;          // stops an in-flight capture loop
                 splitQueue.delete(job.id);
                 refreshQueueChip(); renderQueueView();
             });
@@ -771,11 +789,19 @@
             e.preventDefault(); e.stopPropagation();
             massSaveQueue(queueSaveBtn);
         });
-        updateQueueBar();
+        if (massSaving) {
+            // A save is in flight on a (now detached) previous button — show its
+            // state; massSaveQueue's guard prevents a duplicate run either way.
+            queueSaveBtn.disabled = true;
+            queueSaveBtn.textContent = 'Saving…';
+        } else {
+            updateQueueBar();
+        }
         openPanel();
     }
 
     async function massSaveQueue(btn) {
+        if (massSaving) return;
         const settled = [...splitQueue.values()].filter(j => j.state !== 'capturing');
         const work = [];
         settled.forEach(j => j.frames.forEach((url, idx) => {
@@ -794,7 +820,8 @@
         if (saved) { settled.forEach(j => splitQueue.delete(j.id)); refreshQueueChip(); }
         setTimeout(() => {
             massSaving = false;
-            if (queueViewOpen) renderQueueView();   // saved jobs gone; bar rebuilt
+            // Rebuild only if the queue view is still up — never pop a closed panel open.
+            if (queueViewOpen && panel.classList.contains('open')) renderQueueView();
         }, 1200);
     }
 
