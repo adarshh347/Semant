@@ -37,6 +37,17 @@ def normalize_handle(raw: str) -> str:
     return h.lower()
 
 
+def normalize_handles(raw_list) -> list:
+    """Normalize a list of handles, dropping empties and duplicates, keeping order.
+    First element is the primary author (collab posts carry several)."""
+    out = []
+    for raw in raw_list or []:
+        h = normalize_handle(raw or "")
+        if h and h not in out:
+            out.append(h)
+    return out
+
+
 def handle_from_source_url(url: str) -> Optional[str]:
     """Extract an IG username from a saved post's source_url, if present."""
     if not url:
