@@ -691,9 +691,64 @@
         btn.textContent = saved ? `✓ Saved ${saved}` : '✗ Failed';
     }
 
+    // ---- Alexia: sweep a carousel post — collect every photo slide ---------------
+    async function sweepCarousel() {
+        const img = currentImage;
+        if (!img) return;
+        const car = findCarousel(img);
+        if (!car) {
+            sweepBtn.classList.add('error');
+            sweepBtn.querySelector('span').textContent = '✗ Not a carousel';
+            return;
+        }
+        sweepBtn.classList.remove('success', 'error');
+        sweepBtn.classList.add('saving');
+
+        const found = new Map();
+        collectSlides(car.track, found);
+
+        // Page forward, collecting as slides render. IG max is 20 slides; cap at 24.
+        // Re-query the chevron each step — React re-renders replace the node, and on
+        // the last slide it disappears. Two dry steps in a row = end (safety).
+        const MAX_STEPS = 24;
+        let steps = 0, dry = 0;
+        while (steps < MAX_STEPS && dry < 2) {
+            const next = nextButtonIn(car.wrapper, car.track);
+            if (!next) break;
+            next.click();
+            steps++;
+            sweepBtn.querySelector('span').textContent = `Reading ${found.size}…`;
+            const added = await waitForNewSlides(car.track, found);
+            dry = added ? 0 : dry + 1;
+        }
+
+        // Page back so the user's position is restored.
+        for (let i = 0; i < steps; i++) {
+            const prev = prevButtonIn(car.wrapper, car.track);
+            if (!prev) break;
+            prev.click();
+            await new Promise(r => setTimeout(r, 60));
+        }
+
+        sweepBtn.classList.remove('saving');
+        const urls = [...found.values()];
+        if (urls.length) {
+            sweepBtn.querySelector('span').textContent = 'Save all';
+            renderPickGrid(urls, {
+                title: 'Choose photos',
+                hint: `${urls.length} photo${urls.length > 1 ? 's' : ''} · tap to deselect`,
+                tags: ['carousel'],
+            });
+        } else {
+            sweepBtn.classList.add('error');
+            sweepBtn.querySelector('span').textContent = '✗ No images';
+        }
+    }
+
     saveBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); saveImage(); });
     brainstormBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); brainstormImage(); });
     splitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); splitVideo(); });
+    sweepBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); sweepCarousel(); });
 
     // ===========================================================================
     // Darpan — Instagram persona capture (profile pages)

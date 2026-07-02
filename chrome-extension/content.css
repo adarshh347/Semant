@@ -45,6 +45,10 @@
     background: linear-gradient(135deg, #3a3550 0%, #2b2740 100%) !important;
     color: #F3EFE6 !important;
 }
+.sharirasutra-sweep-btn {
+    background: linear-gradient(135deg, #2f7d6d 0%, #22665a 100%) !important;
+    color: #F3EFE6 !important;
+}
 /* shared action states (save + split) */
 .sharirasutra-btn.saving { background: #8a8278 !important; pointer-events: none; }
 .sharirasutra-btn.success { background: linear-gradient(135deg, #2f9e6f 0%, #1f8a5b 100%) !important; color: #fff !important; }
