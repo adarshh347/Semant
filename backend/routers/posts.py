@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 from io import BytesIO
 from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
-from backend.services.persona_service import persona_service, normalize_handle, handle_from_source_url
+from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
 from datetime import datetime, timezone
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
@@ -204,9 +204,13 @@ async def create_post_from_url(request: UrlUploadRequest):
              print("CHECK .ENV: CLOUDINARY_NAME is missing!")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
     
-    # Normalize the Instagram handle (if the extension supplied one) so the image
-    # carries its account context and links to the Darpan persona.
-    handle = normalize_handle(request.instagram_handle) if request.instagram_handle else None
+    # Normalize the Instagram handle(s) the extension supplied. Collab posts carry
+    # several authors; the first is primary and also fills the legacy singular field.
+    handles = normalize_handles(
+        (request.instagram_handles or [])
+        + ([request.instagram_handle] if request.instagram_handle else [])
+    )
+    handle = handles[0] if handles else None
 
     # Create the post document
     try:
@@ -219,6 +223,7 @@ async def create_post_from_url(request: UrlUploadRequest):
             "general_tags": request.general_tags or [],
             "source_url": request.source_url or request.image_url,  # page (or image) URL for reference
             "instagram_handle": handle,
+            "instagram_handles": handles or None,
             "source_account": request.source_account or None,
         }
 
@@ -227,11 +232,12 @@ async def create_post_from_url(request: UrlUploadRequest):
 
         # Attach this image to its account's persona (create a stub if new) so the
         # combined image+account context is available later.
-        if handle:
+        for i, h in enumerate(handles):
             try:
-                await persona_service.touch(handle, request.source_account)
+                # Account snapshot only describes the page's main author → primary only.
+                await persona_service.touch(h, request.source_account if i == 0 else None)
             except Exception as e:
-                print(f"Persona touch failed (non-fatal): {e}")
+                print(f"Persona touch failed for @{h} (non-fatal): {e}")
 
         created_post = await post_collection.find_one({"_id": new_post.inserted_id})
         return post_helper(created_post)
