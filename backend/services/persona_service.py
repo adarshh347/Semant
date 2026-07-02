@@ -86,7 +86,9 @@ class PersonaService:
         field (reliable, set on newer saves) OR the handle parsed from source_url."""
         rx = re.compile(rf"instagram\.com/{re.escape(handle)}(?:[/?#]|$)", re.I)
         cursor = post_collection.find(
-            {"$or": [{"instagram_handle": handle}, {"source_url": {"$regex": rx}}]},
+            {"$or": [{"instagram_handle": handle},
+                     {"instagram_handles": handle},
+                     {"source_url": {"$regex": rx}}]},
             {"photo_url": 1, "general_tags": 1, "source_url": 1, "instagram_handle": 1},
         )
         return await cursor.to_list(length=400)
