@@ -231,11 +231,12 @@
     // Largest srcset candidate, else currentSrc/src.
     function bestImageUrl(img) {
         let best = null, bestW = 0;
-        (img.srcset || '').split(',').forEach(part => {
+        // Split only on commas that actually separate candidates — a raw comma
+        // inside a URL must not break the parse.
+        (img.srcset || '').split(/,(?=\s*\S+\s+\d+w)/).forEach(part => {
             const m = part.trim().match(/^(\S+)\s+(\d+)w$/);
             if (m && +m[2] > bestW) { bestW = +m[2]; best = m[1]; }
         });
-        if (best) { try { new URL(best, location.href); } catch (e) { best = null; } }
         return best || img.currentSrc || img.src || '';
     }
 
@@ -279,7 +280,9 @@
         brainstormBtn.style.display = isVideo ? 'none' : '';
         saveBtn.style.display = isVideo ? 'none' : '';
         splitBtn.style.display = isVideo ? '' : 'none';
-        sweepBtn.style.display = 'none';   // shown per-image by showTarget when a carousel is detected
+        // Shown per-image by showTarget when a carousel is detected; while a sweep
+        // is running, leave it visible so the "Reading N…" progress stays on screen.
+        if (!sweeping) sweepBtn.style.display = 'none';
     }
 
     function showTarget(el, type) {
@@ -715,9 +718,10 @@
             sweepBtn.querySelector('span').textContent = '✗ Not a carousel';
             return;
         }
-        sweeping = true;
         sweepBtn.classList.remove('success', 'error');
         sweepBtn.classList.add('saving');
+        let steps = 0;
+        sweeping = true;
         try {
             const found = new Map();
             collectSlides(car.track, found);
@@ -727,7 +731,7 @@
             // the last slide it disappears. Dry steps showing a video slide don't count
             // (video slides add no images by design); 3 truly-dry steps = end (safety).
             const MAX_STEPS = 24;
-            let steps = 0, dry = 0;
+            let dry = 0;
             while (steps < MAX_STEPS && dry < 3) {
                 const next = nextButtonIn(car.wrapper, car.track);
                 if (!next) break;
@@ -739,15 +743,6 @@
                 else if (!car.track.querySelector('li video')) dry++;
             }
 
-            // Page back so the user's position is restored.
-            for (let i = 0; i < steps; i++) {
-                const prev = prevButtonIn(car.wrapper, car.track);
-                if (!prev) break;
-                prev.click();
-                await new Promise(r => setTimeout(r, 60));
-            }
-
-            sweepBtn.classList.remove('saving');
             const urls = [...found.values()];
             if (urls.length) {
                 sweepBtn.querySelector('span').textContent = 'Save all';
@@ -762,6 +757,14 @@
                 sweepBtn.querySelector('span').textContent = '✗ No images';
             }
         } finally {
+            // Page back so the user's position is restored — even on an exception.
+            for (let i = 0; i < steps; i++) {
+                const prev = prevButtonIn(car.wrapper, car.track);
+                if (!prev) break;
+                prev.click();
+                await new Promise(r => setTimeout(r, 60));
+            }
+            sweepBtn.classList.remove('saving');
             sweeping = false;
         }
     }
