@@ -44,9 +44,19 @@
         <line x1="8" y1="2" x2="8" y2="22"></line><line x1="16" y1="2" x2="16" y2="22"></line>
       </svg><span>Split → Save</span>`;
 
+    // Carousel → all photos button (Alexia), shown only when hovering a carousel image
+    const sweepBtn = document.createElement('button');
+    sweepBtn.className = 'sharirasutra-btn sharirasutra-sweep-btn';
+    sweepBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="13" height="13" rx="2"></rect>
+        <path d="M19 8v11a2 2 0 0 1-2 2H8"></path>
+      </svg><span>Save all</span>`;
+
     toolbar.appendChild(brainstormBtn);
     toolbar.appendChild(saveBtn);
     toolbar.appendChild(splitBtn);
+    toolbar.appendChild(sweepBtn);
     document.body.appendChild(toolbar);
 
     // ---- Analysis panel --------------------------------------------------------
@@ -164,11 +174,55 @@
         return overlap > 0.6 && aVid <= aImg * 4;     // reel ≈ same region; reject big backgrounds
     }
 
+    // ---- Carousel detection ------------------------------------------------------
+    // Instagram carousels are <ul> tracks of <li> slides with chevron <button>s in an
+    // ancestor wrapper. Only the current slide ±1 are in the DOM at any moment.
+    function nextButtonIn(wrapper, track) {
+        return pagerButtonIn(wrapper, track, 'next');
+    }
+    function prevButtonIn(wrapper, track) {
+        return pagerButtonIn(wrapper, track, 'prev');
+    }
+    function pagerButtonIn(wrapper, track, dir) {
+        // aria-label first (English UI), geometric fallback second (locale-proof).
+        const labels = dir === 'next' ? ['Next'] : ['Go back', 'Previous'];
+        for (const l of labels) {
+            const b = wrapper.querySelector(`button[aria-label="${l}"]`);
+            if (b) return b;
+        }
+        const tr = track.getBoundingClientRect();
+        const edge = dir === 'next' ? tr.right : tr.left;
+        for (const b of wrapper.querySelectorAll('button')) {
+            if (toolbar.contains(b) || panel.contains(b)) continue;
+            const r = b.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0 || r.width > 80 || r.height > 80) continue;
+            const cy = r.top + r.height / 2;
+            if (Math.abs(cy - (tr.top + tr.height / 2)) > tr.height * 0.2) continue;  // not vertically centered
+            if (Math.abs((r.left + r.width / 2) - edge) > 80) continue;               // not hugging that edge
+            return b;
+        }
+        return null;
+    }
+
+    // The hovered <img> → its carousel {track, wrapper}, or null if not a carousel.
+    // prevButtonIn matters too: on the LAST slide only "Go back" exists.
+    function findCarousel(img) {
+        const li = img.closest('li');
+        const track = li && li.closest('ul');
+        if (!track) return null;
+        let node = track.parentElement;
+        for (let depth = 0; node && depth < 5; depth++, node = node.parentElement) {
+            if (nextButtonIn(node, track) || prevButtonIn(node, track)) return { track, wrapper: node };
+        }
+        return null;
+    }
+
     function setToolbarMode(type) {
         const isVideo = type === 'video';
         brainstormBtn.style.display = isVideo ? 'none' : '';
         saveBtn.style.display = isVideo ? 'none' : '';
         splitBtn.style.display = isVideo ? '' : 'none';
+        sweepBtn.style.display = 'none';   // shown per-image by showTarget when a carousel is detected
     }
 
     function showTarget(el, type) {
@@ -179,15 +233,19 @@
         currentVideo = type === 'video' ? el : null;
         el.classList.add('sharirasutra-hover-highlight');
         setToolbarMode(type);
-        positionToolbar(el);
-        toolbar.classList.add('visible');
         if (type === 'image') {
             saveBtn.classList.remove('success', 'error', 'saving');
             saveBtn.querySelector('span').textContent = 'Save';
+            sweepBtn.classList.remove('success', 'error', 'saving');
+            sweepBtn.querySelector('span').textContent = 'Save all';
+            // Decide sweep visibility BEFORE positioning — it changes toolbar width.
+            sweepBtn.style.display = findCarousel(el) ? '' : 'none';
         } else {
             splitBtn.classList.remove('success', 'error', 'saving');
             splitBtn.querySelector('span').textContent = 'Split → Save';
         }
+        positionToolbar(el);
+        toolbar.classList.add('visible');
     }
 
     function hideToolbar() {
