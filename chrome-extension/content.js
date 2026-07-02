@@ -252,7 +252,7 @@
             const r = await fetch(SAVE_URL, {
                 method: 'POST', mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [], ...instagramContextForSave() })
+                body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [], ...instagramContextForSave(currentImage) })
             });
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             await r.json();
@@ -441,6 +441,10 @@
     async function splitVideo() {
         const video = currentVideo;
         if (!video) return;
+        // Capture author context NOW — the user reviews frames after scrolling,
+        // by which time currentVideo/page context may point at a different post.
+        const igContext = instagramContextForSave(video);
+        const sourceUrl = location.href;
         const duration = video.duration;
         if (!duration || !isFinite(duration) || duration <= 0) {
             splitBtn.classList.add('error');
@@ -488,7 +492,7 @@
         splitBtn.classList.remove('saving');
         splitBtn.querySelector('span').textContent = 'Split → Save';
         if (frames.length) {
-            renderFrameReview(frames);
+            renderFrameReview(frames, igContext, sourceUrl);
         } else {
             splitBtn.classList.add('error');
             splitBtn.querySelector('span').textContent = '✗ No frames';
@@ -509,7 +513,7 @@
     }
 
     // Review grid: all frames selected by default; tap to deselect; then save kept ones.
-    function renderFrameReview(frames) {
+    function renderFrameReview(frames, igContext, sourceUrl) {
         const items = frames.map(url => ({ url, selected: true }));
         clearPanel();
         panel.appendChild(frameHeader('Choose frames'));
@@ -555,14 +559,14 @@
         });
         save.addEventListener('click', (e) => {
             e.preventDefault(); e.stopPropagation();
-            saveFrames(items.filter(i => i.selected).map(i => i.url), save);
+            saveFrames(items.filter(i => i.selected).map(i => i.url), save, igContext, sourceUrl);
         });
 
         updateBar();
         openPanel();
     }
 
-    async function saveFrames(urls, btn) {
+    async function saveFrames(urls, btn, igContext, sourceUrl) {
         if (!urls.length) return;
         btn.disabled = true;
         let saved = 0;
@@ -572,7 +576,7 @@
                 const r = await fetch(SAVE_URL, {
                     method: 'POST', mode: 'cors',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_url: urls[i], source_url: location.href, general_tags: ['video-frame'], ...instagramContextForSave() })
+                    body: JSON.stringify({ image_url: urls[i], source_url: sourceUrl || location.href, general_tags: ['video-frame'], ...(igContext || {}) })
                 });
                 if (r.ok) saved++;
             } catch (e) { /* keep going */ }
