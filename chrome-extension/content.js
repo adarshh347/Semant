@@ -392,7 +392,10 @@
     }
 
     // ---- Brainstorm panel ------------------------------------------------------
-    function clearPanel() { while (panel.firstChild) panel.removeChild(panel.firstChild); }
+    function clearPanel() {
+        queueViewOpen = false;   // any other render replaces the queue view
+        while (panel.firstChild) panel.removeChild(panel.firstChild);
+    }
 
     function panelHeader() {
         const head = el('div', 'al-head');
@@ -673,9 +676,105 @@
         queueChip.classList.add('visible');
     }
 
-    // Stubs — replaced by the queue view (Task 3).
-    function syncQueueJob(job) {}
-    function renderQueueView() {}
+    // ---- Split-queue view ---------------------------------------------------------
+    function statusLabel(job) {
+        switch (job.state) {
+            case 'capturing': return `capturing ${job.frames.length}/${job.total}…`;
+            case 'captured':  return `${job.frames.length} frames`;
+            case 'partial':   return `partial · ${job.frames.length}/${job.total}`;
+            default:          return `✗ ${job.error || 'failed'}`;
+        }
+    }
+
+    function queueFrameCell(job, idx) {
+        const cell = el('div', 'al-frame' + (job.dropped.has(idx) ? '' : ' selected'));
+        const im = document.createElement('img'); im.src = job.frames[idx]; cell.appendChild(im);
+        cell.appendChild(el('span', 'al-frame-tick', '✓'));
+        cell.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            if (job.dropped.has(idx)) job.dropped.delete(idx); else job.dropped.add(idx);
+            cell.classList.toggle('selected', !job.dropped.has(idx));
+            updateQueueBar();
+        });
+        return cell;
+    }
+
+    // Append new frames / refresh the status of one job while the view is open —
+    // append-only so live capture doesn't flicker the grid or reset panel scroll.
+    function syncQueueJob(job) {
+        if (job._status && job._status.isConnected) {
+            job._status.textContent = statusLabel(job);
+            job._status.className = `al-queue-status st-${job.state}`;
+        }
+        if (job._grid && job._grid.isConnected) {
+            for (let i = job._grid.children.length; i < job.frames.length; i++) {
+                job._grid.appendChild(queueFrameCell(job, i));
+            }
+        }
+        updateQueueBar();
+    }
+
+    let queueSaveBtn = null;
+    function updateQueueBar() {
+        if (!queueSaveBtn || !queueSaveBtn.isConnected) return;
+        let n = 0, capturing = false;
+        for (const j of splitQueue.values()) {
+            if (j.state === 'capturing') { capturing = true; continue; }
+            n += j.frames.length - j.dropped.size;
+        }
+        queueSaveBtn.textContent = n
+            ? `Save all (${n} frame${n > 1 ? 's' : ''})${capturing ? ' · still splitting…' : ''}`
+            : (capturing ? 'Splitting…' : 'Save (none)');
+        queueSaveBtn.disabled = n === 0;
+    }
+
+    function renderQueueView() {
+        clearPanel();
+        queueViewOpen = true;
+        panel.appendChild(frameHeader('Split queue'));
+        const body = el('div', 'al-body al-frames-body');
+
+        if (!splitQueue.size) {
+            body.appendChild(el('div', 'al-frames-hint', 'Queue is empty — hover a video and press Split.'));
+        }
+        for (const job of splitQueue.values()) {
+            const sec = el('div', 'al-queue-job');
+            const head = el('div', 'al-queue-head');
+            const who = job.igContext.instagram_handle ? ` · @${job.igContext.instagram_handle}` : '';
+            head.appendChild(el('span', 'al-queue-title', `Video #${job.id}${who}`));
+            const status = el('span', `al-queue-status st-${job.state}`, statusLabel(job));
+            head.appendChild(status);
+            const drop = el('button', 'al-queue-drop', '✕');
+            drop.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                splitQueue.delete(job.id);
+                refreshQueueChip(); renderQueueView();
+            });
+            head.appendChild(drop);
+            sec.appendChild(head);
+
+            const grid = el('div', 'al-frames-grid');
+            job.frames.forEach((_, idx) => grid.appendChild(queueFrameCell(job, idx)));
+            sec.appendChild(grid);
+            job._status = status; job._grid = grid;
+            body.appendChild(sec);
+        }
+        panel.appendChild(body);
+
+        const bar = el('div', 'al-frames-bar');
+        queueSaveBtn = el('button', 'al-frames-save', '');
+        bar.appendChild(queueSaveBtn);
+        panel.appendChild(bar);
+        queueSaveBtn.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            massSaveQueue(queueSaveBtn);
+        });
+        updateQueueBar();
+        openPanel();
+    }
+
+    // Stub — replaced by mass save (Task 4).
+    function massSaveQueue(btn) {}
 
     // Header for the Alexia frame-review view
     function frameHeader(title) {
