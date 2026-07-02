@@ -217,6 +217,52 @@
         return null;
     }
 
+    // ---- Carousel slide collection -----------------------------------------------
+    // Largest srcset candidate, else currentSrc/src.
+    function bestImageUrl(img) {
+        let best = null, bestW = 0;
+        (img.srcset || '').split(',').forEach(part => {
+            const m = part.trim().match(/^(\S+)\s+(\d+)w$/);
+            if (m && +m[2] > bestW) { bestW = +m[2]; best = m[1]; }
+        });
+        return best || img.currentSrc || img.src || '';
+    }
+
+    // Dedupe key: same photo renders under different size params across steps,
+    // but the CDN filename is stable.
+    function slideUrlKey(u) {
+        try { return new URL(u, location.href).pathname.split('/').pop() || u; } catch (e) { return u; }
+    }
+
+    // Pull every photo currently rendered in the track into `found` (ordered Map).
+    // Returns how many NEW photos were added. Skips video slides.
+    function collectSlides(track, found) {
+        let added = 0;
+        track.querySelectorAll('li').forEach(li => {
+            if (li.querySelector('video')) return;               // video slide → skip
+            li.querySelectorAll('img').forEach(im => {
+                if (!isValidImage(im)) return;
+                const url = bestImageUrl(im);
+                if (!url || url.startsWith('data:')) return;
+                const key = slideUrlKey(url);
+                if (!found.has(key)) { found.set(key, url); added++; }
+            });
+        });
+        return added;
+    }
+
+    // After clicking Next, the new slide's <img> lands asynchronously — poll for it.
+    function waitForNewSlides(track, found) {
+        return new Promise((resolve) => {
+            const t0 = performance.now();
+            (function poll() {
+                const added = collectSlides(track, found);
+                if (added || performance.now() - t0 > 1000) return resolve(added);
+                setTimeout(poll, 100);
+            })();
+        });
+    }
+
     function setToolbarMode(type) {
         const isVideo = type === 'video';
         brainstormBtn.style.display = isVideo ? 'none' : '';
