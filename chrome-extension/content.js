@@ -662,7 +662,10 @@
                 if (queueViewOpen) syncQueueJob(job);
             }
 
-            if (!job.cancelled) {
+        } finally {
+            // Even on an unexpected throw: never leave a job stuck 'capturing',
+            // never leave the video paused/muted, never leak the registry entry.
+            if (!job.cancelled && job.state === 'capturing') {
                 job.state = job.frames.length
                     ? (job.error || job.frames.length < job.total ? 'partial' : 'captured')
                     : 'failed';
@@ -673,7 +676,6 @@
                 video.muted = wasMuted;
                 if (!wasPaused) { try { video.play(); } catch (e) {} }
             }
-        } finally {
             capturingVideos.delete(video);
         }
     }
