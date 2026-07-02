@@ -44,15 +44,31 @@
         <line x1="8" y1="2" x2="8" y2="22"></line><line x1="16" y1="2" x2="16" y2="22"></line>
       </svg><span>Split → Save</span>`;
 
+    // Carousel → all photos button (Alexia), shown only when hovering a carousel image
+    const sweepBtn = document.createElement('button');
+    sweepBtn.className = 'sharirasutra-btn sharirasutra-sweep-btn';
+    sweepBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="13" height="13" rx="2"></rect>
+        <path d="M19 8v11a2 2 0 0 1-2 2H8"></path>
+      </svg><span>Save all</span>`;
+
     toolbar.appendChild(brainstormBtn);
     toolbar.appendChild(saveBtn);
     toolbar.appendChild(splitBtn);
+    toolbar.appendChild(sweepBtn);
     document.body.appendChild(toolbar);
 
     // ---- Analysis panel --------------------------------------------------------
     const panel = document.createElement('div');
     panel.className = 'sharirasutra-panel';
     document.body.appendChild(panel);
+
+    // Floating split-queue chip (bottom-right) — visible while the queue is non-empty.
+    const queueChip = document.createElement('button');
+    queueChip.className = 'ss-queue-chip';
+    document.body.appendChild(queueChip);
+    queueChip.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); renderQueueView(); });
 
     let currentImage = null;
     let currentVideo = null;
@@ -63,6 +79,10 @@
     let bsImageUrl = null;   // image being interpreted
     let bsAnswers = [];      // [{question, choice}] accumulated across rounds
     let bsRound = 0;
+
+    // Carousel sweep state — guards re-entry while the carousel is flipping under
+    // the (stationary) cursor, which retriggers showTarget on each new slide.
+    let sweeping = false;
 
     // ---- helpers ---------------------------------------------------------------
     function el(tag, className, text) {
@@ -164,11 +184,111 @@
         return overlap > 0.6 && aVid <= aImg * 4;     // reel ≈ same region; reject big backgrounds
     }
 
+    // ---- Carousel detection ------------------------------------------------------
+    // Instagram carousels are <ul> tracks of <li> slides with chevron <button>s in an
+    // ancestor wrapper. Only the current slide ±1 are in the DOM at any moment.
+    function nextButtonIn(wrapper, track) {
+        return pagerButtonIn(wrapper, track, 'next');
+    }
+    function prevButtonIn(wrapper, track) {
+        return pagerButtonIn(wrapper, track, 'prev');
+    }
+    function pagerButtonIn(wrapper, track, dir) {
+        // aria-label first (English UI), geometric fallback second (locale-proof).
+        const labels = dir === 'next' ? ['Next'] : ['Go back', 'Previous'];
+        for (const l of labels) {
+            const b = wrapper.querySelector(`button[aria-label="${l}"]`);
+            if (b) return b;
+        }
+        const tr = track.getBoundingClientRect();
+        const edge = dir === 'next' ? tr.right : tr.left;
+        for (const b of wrapper.querySelectorAll('button')) {
+            if (toolbar.contains(b) || panel.contains(b)) continue;
+            if (!b.querySelector('svg') || b.textContent.trim()) continue;  // chevrons are icon-only
+            const r = b.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0 || r.width > 80 || r.height > 80) continue;
+            const cy = r.top + r.height / 2;
+            if (Math.abs(cy - (tr.top + tr.height / 2)) > tr.height * 0.2) continue;  // not vertically centered
+            if (Math.abs((r.left + r.width / 2) - edge) > 80) continue;               // not hugging that edge
+            return b;
+        }
+        return null;
+    }
+
+    // The hovered <img> → its carousel {track, wrapper}, or null if not a carousel.
+    // prevButtonIn matters too: on the LAST slide only "Go back" exists.
+    function findCarousel(img) {
+        const li = img.closest('li');
+        const track = li && li.closest('ul');
+        if (!track) return null;
+        // A slide <li> is essentially all image. This rejects look-alike <ul>/<li>
+        // pagers whose items are whole posts (e.g. the modal's prev/next-post track,
+        // where the li also holds header/caption/actions).
+        if (rectArea(img.getBoundingClientRect()) < rectArea(li.getBoundingClientRect()) * 0.5) return null;
+        if (track.querySelectorAll(':scope > li').length < 2) return null;
+        let node = track.parentElement;
+        for (let depth = 0; node && depth < 5; depth++, node = node.parentElement) {
+            if (nextButtonIn(node, track) || prevButtonIn(node, track)) return { track, wrapper: node };
+        }
+        return null;
+    }
+
+    // ---- Carousel slide collection -----------------------------------------------
+    // Largest srcset candidate, else currentSrc/src.
+    function bestImageUrl(img) {
+        let best = null, bestW = 0;
+        // Split only on commas that actually separate candidates — a raw comma
+        // inside a URL must not break the parse.
+        (img.srcset || '').split(/,(?=\s*\S+\s+\d+w)/).forEach(part => {
+            const m = part.trim().match(/^(\S+)\s+(\d+)w$/);
+            if (m && +m[2] > bestW) { bestW = +m[2]; best = m[1]; }
+        });
+        return best || img.currentSrc || img.src || '';
+    }
+
+    // Dedupe key: same photo renders under different size params across steps,
+    // but the CDN filename is stable.
+    function slideUrlKey(u) {
+        try { return new URL(u, location.href).pathname.split('/').pop() || u; } catch (e) { return u; }
+    }
+
+    // Pull every photo currently rendered in the track into `found` (ordered Map).
+    // Returns how many NEW photos were added. Skips video slides.
+    function collectSlides(track, found) {
+        let added = 0;
+        track.querySelectorAll('li').forEach(li => {
+            if (li.querySelector('video')) return;               // video slide → skip
+            li.querySelectorAll('img').forEach(im => {
+                if (!isValidImage(im)) return;
+                const url = bestImageUrl(im);
+                if (!url || url.startsWith('data:')) return;
+                const key = slideUrlKey(url);
+                if (!found.has(key)) { found.set(key, url); added++; }
+            });
+        });
+        return added;
+    }
+
+    // After clicking Next, the new slide's <img> lands asynchronously — poll for it.
+    function waitForNewSlides(track, found) {
+        return new Promise((resolve) => {
+            const t0 = performance.now();
+            (function poll() {
+                const added = collectSlides(track, found);
+                if (added || performance.now() - t0 > 1000) return resolve(added);
+                setTimeout(poll, 100);
+            })();
+        });
+    }
+
     function setToolbarMode(type) {
         const isVideo = type === 'video';
         brainstormBtn.style.display = isVideo ? 'none' : '';
         saveBtn.style.display = isVideo ? 'none' : '';
         splitBtn.style.display = isVideo ? '' : 'none';
+        // Shown per-image by showTarget when a carousel is detected; while a sweep
+        // is running, leave it visible so the "Reading N…" progress stays on screen.
+        if (!sweeping) sweepBtn.style.display = 'none';
     }
 
     function showTarget(el, type) {
@@ -179,15 +299,21 @@
         currentVideo = type === 'video' ? el : null;
         el.classList.add('sharirasutra-hover-highlight');
         setToolbarMode(type);
-        positionToolbar(el);
-        toolbar.classList.add('visible');
         if (type === 'image') {
             saveBtn.classList.remove('success', 'error', 'saving');
             saveBtn.querySelector('span').textContent = 'Save';
+            if (!sweeping) {
+                sweepBtn.classList.remove('success', 'error', 'saving');
+                sweepBtn.querySelector('span').textContent = 'Save all';
+                // Decide sweep visibility BEFORE positioning — it changes toolbar width.
+                sweepBtn.style.display = findCarousel(el) ? '' : 'none';
+            }
         } else {
             splitBtn.classList.remove('success', 'error', 'saving');
             splitBtn.querySelector('span').textContent = 'Split → Save';
         }
+        positionToolbar(el);
+        toolbar.classList.add('visible');
     }
 
     function hideToolbar() {
@@ -215,7 +341,7 @@
             rafScheduled = false;
             const top = document.elementFromPoint(x, y);
             if (top && (top === toolbar || toolbar.contains(top) || top === panel || panel.contains(top)
-                        || top === personaFab || personaFab.contains(top))) {
+                        || top === queueChip || top === personaFab || personaFab.contains(top))) {
                 if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
                 return;
             }
@@ -266,7 +392,10 @@
     }
 
     // ---- Brainstorm panel ------------------------------------------------------
-    function clearPanel() { while (panel.firstChild) panel.removeChild(panel.firstChild); }
+    function clearPanel() {
+        queueViewOpen = false;   // any other render replaces the queue view
+        while (panel.firstChild) panel.removeChild(panel.firstChild);
+    }
 
     function panelHeader() {
         const head = el('div', 'al-head');
@@ -428,75 +557,274 @@
     }
 
     // ---- Alexia: split a video into frames and save each ------------------------
+    // Resolves true on a real seek, false if 'seeked' never fired (streams).
     function seekVideo(video, t) {
         return new Promise((resolve) => {
             let done = false;
-            const finish = () => { if (done) return; done = true; video.removeEventListener('seeked', finish); resolve(); };
-            video.addEventListener('seeked', finish);
-            setTimeout(finish, 1500); // fallback if 'seeked' never fires (streams)
-            try { video.currentTime = t; } catch (e) { finish(); }
+            const finish = (ok) => { if (done) return; done = true; video.removeEventListener('seeked', onSeeked); resolve(ok); };
+            const onSeeked = () => finish(true);
+            video.addEventListener('seeked', onSeeked);
+            setTimeout(() => finish(false), 1500);
+            try { video.currentTime = t; } catch (e) { finish(false); }
         });
     }
 
-    async function splitVideo() {
-        const video = currentVideo;
+    // ---- Alexia: split queue — background captures + mass save -------------------
+    // A queued job captures from its LIVE element immediately (it's on screen at
+    // click time); jobs run in parallel; the user scrolls on and queues more. Frames
+    // accumulate on the job and are mass-saved from the queue view.
+    const splitQueue = new Map();        // jobId -> job
+    let nextJobId = 1;
+    let queueViewOpen = false;
+    const capturingVideos = new Set();   // elements with an in-flight capture loop
+
+    function queueSplit(video) {
         if (!video) return;
-        // Capture author context NOW — the user reviews frames after scrolling,
-        // by which time currentVideo/page context may point at a different post.
-        const igContext = instagramContextForSave(video);
-        const sourceUrl = location.href;
+        splitBtn.classList.remove('success', 'error', 'saving');
+        for (const j of splitQueue.values()) {
+            if (j.video === video) {
+                splitBtn.classList.add('success');
+                splitBtn.querySelector('span').textContent = '✓ Already queued';
+                return;
+            }
+        }
+        // A discarded job's loop may still be winding down on this element — two
+        // loops on one video fight over currentTime and each other's 'seeked' events.
+        if (capturingVideos.has(video)) {
+            splitBtn.classList.add('error');
+            splitBtn.querySelector('span').textContent = '✗ Busy — retry in a sec';
+            return;
+        }
         const duration = video.duration;
         if (!duration || !isFinite(duration) || duration <= 0) {
             splitBtn.classList.add('error');
             splitBtn.querySelector('span').textContent = '✗ No duration';
             return;
         }
-        // Rate: ~3 frames/sec, clamped to 8–60 evenly-spaced frames.
-        const n = Math.max(8, Math.min(60, Math.round(duration * 3)));
+        const job = {
+            id: nextJobId++,
+            video,
+            state: 'capturing',            // capturing | captured | partial | failed
+            frames: [],                    // dataURLs, grows during capture
+            dropped: new Set(),            // frame indexes deselected in the queue view
+            // Rate: ~3 frames/sec, clamped to 8–60 evenly-spaced frames.
+            total: Math.max(8, Math.min(60, Math.round(duration * 3))),
+            // Snapshot author context NOW — by save time the user has scrolled
+            // to a different post and live page context would be wrong.
+            igContext: instagramContextForSave(video),
+            sourceUrl: location.href,
+            error: null,
+        };
+        splitQueue.set(job.id, job);
+        splitBtn.classList.add('success');
+        splitBtn.querySelector('span').textContent = `✓ Queued #${job.id}`;
+        captureFrames(job).finally(() => {
+            refreshQueueChip();
+            if (queueViewOpen) syncQueueJob(job);
+        });
+        refreshQueueChip();
+    }
+
+    async function captureFrames(job) {
+        const video = job.video;
+        capturingVideos.add(video);
+        const duration = video.duration;
         const wasPaused = video.paused, prevTime = video.currentTime, wasMuted = video.muted;
         video.muted = true;
         try { video.pause(); } catch (e) {}
 
-        const restore = () => {
-            try { video.currentTime = prevTime; } catch (e) {}
-            video.muted = wasMuted;
-            if (!wasPaused) { try { video.play(); } catch (e) {} }
-        };
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            let missed = 0;                    // consecutive seek timeouts
 
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        splitBtn.classList.remove('success', 'error');
-        splitBtn.classList.add('saving');
-        const frames = [];
+            for (let i = 0; i < job.total; i++) {
+                if (job.cancelled) break;      // discarded from the queue view
+                if (!video.isConnected) { job.error = 'video left the page'; break; }
+                if (missed >= 2) { job.error = 'stream stopped seeking'; break; }
+                const ok = await seekVideo(video, duration * ((i + 0.5) / job.total));
+                missed = ok ? 0 : missed + 1;
+                // rAF never fires in hidden tabs — settle with a timer instead (background
+                // throttling makes it ~1s there, which only slows the capture down).
+                await new Promise(r => setTimeout(r, 60));
+                const vw = video.videoWidth, vh = video.videoHeight;
+                if (!vw || !vh) continue;
+                canvas.width = vw; canvas.height = vh;
+                try {
+                    ctx.drawImage(video, 0, 0, vw, vh);
+                    job.frames.push(canvas.toDataURL('image/jpeg', 0.85));
+                } catch (err) {
+                    console.error('Alexia: canvas tainted (cross-origin video, no CORS):', err);
+                    job.error = 'protected video';
+                    break;
+                }
+                refreshQueueChip();
+                if (queueViewOpen) syncQueueJob(job);
+            }
 
-        for (let i = 0; i < n; i++) {
-            splitBtn.querySelector('span').textContent = `Reading ${i + 1}/${n}…`;
-            await seekVideo(video, duration * ((i + 0.5) / n));
-            await new Promise(r => requestAnimationFrame(r));
-            const vw = video.videoWidth, vh = video.videoHeight;
-            if (!vw || !vh) continue;
-            canvas.width = vw; canvas.height = vh;
-            try {
-                ctx.drawImage(video, 0, 0, vw, vh);
-                frames.push(canvas.toDataURL('image/jpeg', 0.85));
-            } catch (err) {
-                console.error('Alexia: canvas tainted (cross-origin video, no CORS):', err);
-                restore();
-                splitBtn.classList.remove('saving'); splitBtn.classList.add('error');
-                splitBtn.querySelector('span').textContent = '✗ Protected video';
-                return;
+        } finally {
+            // Even on an unexpected throw: never leave a job stuck 'capturing',
+            // never leave the video paused/muted, never leak the registry entry.
+            if (!job.cancelled && job.state === 'capturing') {
+                job.state = job.frames.length
+                    ? (job.error || job.frames.length < job.total ? 'partial' : 'captured')
+                    : 'failed';
+                if (job.state === 'failed' && !job.error) job.error = 'no frames';
+            }
+            if (video.isConnected) {
+                try { video.currentTime = prevTime; } catch (e) {}
+                video.muted = wasMuted;
+                if (!wasPaused) { try { video.play(); } catch (e) {} }
+            }
+            capturingVideos.delete(video);
+        }
+    }
+
+    function queueStats() {
+        let capturing = 0, frames = 0;
+        for (const j of splitQueue.values()) { if (j.state === 'capturing') capturing++; frames += j.frames.length; }
+        return { jobs: splitQueue.size, capturing, frames };
+    }
+
+    function refreshQueueChip() {
+        const s = queueStats();
+        if (!s.jobs) { queueChip.classList.remove('visible'); return; }
+        queueChip.textContent = s.capturing
+            ? `⏳ ${s.capturing} splitting · ${s.frames} frames`
+            : `🎞 ${s.jobs} split${s.jobs > 1 ? 's' : ''} · ${s.frames} frames`;
+        queueChip.classList.add('visible');
+    }
+
+    // ---- Split-queue view ---------------------------------------------------------
+    function statusLabel(job) {
+        switch (job.state) {
+            case 'capturing': return `capturing ${job.frames.length}/${job.total}…`;
+            case 'captured':  return `${job.frames.length} frames`;
+            case 'partial':   return `partial · ${job.frames.length}/${job.total}`;
+            default:          return `✗ ${job.error || 'failed'}`;
+        }
+    }
+
+    function queueFrameCell(job, idx) {
+        const cell = el('div', 'al-frame' + (job.dropped.has(idx) ? '' : ' selected'));
+        const im = document.createElement('img'); im.src = job.frames[idx]; cell.appendChild(im);
+        cell.appendChild(el('span', 'al-frame-tick', '✓'));
+        cell.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            if (job.dropped.has(idx)) job.dropped.delete(idx); else job.dropped.add(idx);
+            cell.classList.toggle('selected', !job.dropped.has(idx));
+            updateQueueBar();
+        });
+        return cell;
+    }
+
+    // Append new frames / refresh the status of one job while the view is open —
+    // append-only so live capture doesn't flicker the grid or reset panel scroll.
+    function syncQueueJob(job) {
+        if (job._status && job._status.isConnected) {
+            job._status.textContent = statusLabel(job);
+            job._status.className = `al-queue-status st-${job.state}`;
+        }
+        if (job._grid && job._grid.isConnected) {
+            for (let i = job._grid.children.length; i < job.frames.length; i++) {
+                job._grid.appendChild(queueFrameCell(job, i));
             }
         }
+        updateQueueBar();
+    }
 
-        restore();
-        splitBtn.classList.remove('saving');
-        splitBtn.querySelector('span').textContent = 'Split → Save';
-        if (frames.length) {
-            renderFrameReview(frames, igContext, sourceUrl);
-        } else {
-            splitBtn.classList.add('error');
-            splitBtn.querySelector('span').textContent = '✗ No frames';
+    let queueSaveBtn = null;
+    let massSaving = false;    // freezes the bar so live captures can't overwrite save progress
+    function updateQueueBar() {
+        if (massSaving) return;
+        if (!queueSaveBtn || !queueSaveBtn.isConnected) return;
+        let n = 0, capturing = false;
+        for (const j of splitQueue.values()) {
+            if (j.state === 'capturing') { capturing = true; continue; }
+            n += j.frames.length - j.dropped.size;
         }
+        queueSaveBtn.textContent = n
+            ? `Save all (${n} frame${n > 1 ? 's' : ''})${capturing ? ' · still splitting…' : ''}`
+            : (capturing ? 'Splitting…' : 'Save (none)');
+        queueSaveBtn.disabled = n === 0;
+    }
+
+    function renderQueueView() {
+        clearPanel();
+        queueViewOpen = true;
+        panel.appendChild(frameHeader('Split queue'));
+        const body = el('div', 'al-body al-frames-body');
+
+        if (!splitQueue.size) {
+            body.appendChild(el('div', 'al-frames-hint', 'Queue is empty — hover a video and press Split.'));
+        }
+        for (const job of splitQueue.values()) {
+            const sec = el('div', 'al-queue-job');
+            const head = el('div', 'al-queue-head');
+            const who = job.igContext.instagram_handle ? ` · @${job.igContext.instagram_handle}` : '';
+            head.appendChild(el('span', 'al-queue-title', `Video #${job.id}${who}`));
+            const status = el('span', `al-queue-status st-${job.state}`, statusLabel(job));
+            head.appendChild(status);
+            const drop = el('button', 'al-queue-drop', '✕');
+            drop.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                job.cancelled = true;          // stops an in-flight capture loop
+                splitQueue.delete(job.id);
+                refreshQueueChip(); renderQueueView();
+            });
+            head.appendChild(drop);
+            sec.appendChild(head);
+
+            const grid = el('div', 'al-frames-grid');
+            job.frames.forEach((_, idx) => grid.appendChild(queueFrameCell(job, idx)));
+            sec.appendChild(grid);
+            job._status = status; job._grid = grid;
+            body.appendChild(sec);
+        }
+        panel.appendChild(body);
+
+        const bar = el('div', 'al-frames-bar');
+        queueSaveBtn = el('button', 'al-frames-save', '');
+        bar.appendChild(queueSaveBtn);
+        panel.appendChild(bar);
+        queueSaveBtn.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            massSaveQueue(queueSaveBtn);
+        });
+        if (massSaving) {
+            // A save is in flight on a (now detached) previous button — show its
+            // state; massSaveQueue's guard prevents a duplicate run either way.
+            queueSaveBtn.disabled = true;
+            queueSaveBtn.textContent = 'Saving…';
+        } else {
+            updateQueueBar();
+        }
+        openPanel();
+    }
+
+    async function massSaveQueue(btn) {
+        if (massSaving) return;
+        const settled = [...splitQueue.values()].filter(j => j.state !== 'capturing');
+        const work = [];
+        settled.forEach(j => j.frames.forEach((url, idx) => {
+            if (!j.dropped.has(idx)) work.push({ url, job: j });
+        }));
+        if (!work.length) return;
+        massSaving = true;
+        btn.disabled = true;
+        let saved = 0;
+        for (let i = 0; i < work.length; i++) {
+            btn.textContent = `Saving ${i + 1}/${work.length}…`;
+            if (await postFrame(work[i].url, ['video-frame'], work[i].job.igContext, work[i].job.sourceUrl)) saved++;
+        }
+        btn.classList.add(saved ? 'al-done' : 'al-fail');
+        btn.textContent = saved ? `✓ Saved ${saved}` : '✗ Failed';
+        if (saved) { settled.forEach(j => splitQueue.delete(j.id)); refreshQueueChip(); }
+        setTimeout(() => {
+            massSaving = false;
+            // Rebuild only if the queue view is still up — never pop a closed panel open.
+            if (queueViewOpen && panel.classList.contains('open')) renderQueueView();
+        }, 1200);
     }
 
     // Header for the Alexia frame-review view
@@ -512,14 +840,18 @@
         return head;
     }
 
-    // Review grid: all frames selected by default; tap to deselect; then save kept ones.
-    function renderFrameReview(frames, igContext, sourceUrl) {
-        const items = frames.map(url => ({ url, selected: true }));
+    // Review grid: all items selected by default; tap to deselect; then save kept ones.
+    // Used by both the video-frame flow and the carousel sweep. `igContext`/`sourceUrl`
+    // are captured by the caller at collection time — the user may scroll to another
+    // post before saving, so live page context would attribute the wrong author.
+    function renderPickGrid(urls, opts) {
+        const { title, hint, tags, noun = 'frame', igContext, sourceUrl } = opts;
+        const items = urls.map(url => ({ url, selected: true }));
         clearPanel();
-        panel.appendChild(frameHeader('Choose frames'));
+        panel.appendChild(frameHeader(title));
 
         const body = el('div', 'al-body al-frames-body');
-        body.appendChild(el('div', 'al-frames-hint', `${frames.length} frames · tap to deselect`));
+        body.appendChild(el('div', 'al-frames-hint', hint));
         const grid = el('div', 'al-frames-grid');
         items.forEach((it, idx) => {
             const cell = el('div', 'al-frame selected');
@@ -546,7 +878,7 @@
         const count = () => items.filter(i => i.selected).length;
         function updateBar() {
             const c = count();
-            save.textContent = c ? `Save ${c} frame${c > 1 ? 's' : ''}` : 'Save (none)';
+            save.textContent = c ? `Save ${c} ${noun}${c > 1 ? 's' : ''}` : 'Save (none)';
             save.disabled = c === 0;
             toggle.textContent = (c === items.length) ? 'Clear all' : 'Select all';
         }
@@ -559,35 +891,109 @@
         });
         save.addEventListener('click', (e) => {
             e.preventDefault(); e.stopPropagation();
-            saveFrames(items.filter(i => i.selected).map(i => i.url), save, igContext, sourceUrl);
+            saveFrames(items.filter(i => i.selected).map(i => i.url), save, tags, igContext, sourceUrl);
         });
 
         updateBar();
         openPanel();
     }
 
-    async function saveFrames(urls, btn, igContext, sourceUrl) {
-        if (!urls.length) return;
+    // One frame → backend. igContext/sourceUrl default to the live page when absent.
+    async function postFrame(url, tags, igContext, sourceUrl) {
+        try {
+            const r = await fetch(SAVE_URL, {
+                method: 'POST', mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_url: url, source_url: sourceUrl || location.href, general_tags: tags || [], ...(igContext || {}) })
+            });
+            return r.ok;
+        } catch (e) { return false; }
+    }
+
+    async function saveFrames(urls, btn, tags, igContext, sourceUrl) {
+        if (!urls.length) return 0;
         btn.disabled = true;
         let saved = 0;
         for (let i = 0; i < urls.length; i++) {
             btn.textContent = `Saving ${i + 1}/${urls.length}…`;
-            try {
-                const r = await fetch(SAVE_URL, {
-                    method: 'POST', mode: 'cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_url: urls[i], source_url: sourceUrl || location.href, general_tags: ['video-frame'], ...(igContext || {}) })
-                });
-                if (r.ok) saved++;
-            } catch (e) { /* keep going */ }
+            if (await postFrame(urls[i], tags, igContext, sourceUrl)) saved++;
         }
         btn.classList.add(saved ? 'al-done' : 'al-fail');
         btn.textContent = saved ? `✓ Saved ${saved}` : '✗ Failed';
+        return saved;
+    }
+
+    // ---- Alexia: sweep a carousel post — collect every photo slide ---------------
+    async function sweepCarousel() {
+        if (sweeping) return;
+        const img = currentImage;
+        if (!img) return;
+        // Capture author context NOW — same stale-context hazard as splitVideo:
+        // the user may scroll to another post before saving the picked slides.
+        const igContext = instagramContextForSave(img);
+        const sourceUrl = location.href;
+        const car = findCarousel(img);
+        if (!car) {
+            sweepBtn.classList.add('error');
+            sweepBtn.querySelector('span').textContent = '✗ Not a carousel';
+            return;
+        }
+        sweepBtn.classList.remove('success', 'error');
+        sweepBtn.classList.add('saving');
+        let steps = 0;
+        sweeping = true;
+        try {
+            const found = new Map();
+            collectSlides(car.track, found);
+
+            // Page forward, collecting as slides render. IG max is 20 slides; cap at 24.
+            // Re-query the chevron each step — React re-renders replace the node, and on
+            // the last slide it disappears. Dry steps showing a video slide don't count
+            // (video slides add no images by design); 3 truly-dry steps = end (safety).
+            const MAX_STEPS = 24;
+            let dry = 0;
+            while (steps < MAX_STEPS && dry < 3) {
+                const next = nextButtonIn(car.wrapper, car.track);
+                if (!next) break;
+                next.click();
+                steps++;
+                sweepBtn.querySelector('span').textContent = `Reading ${found.size}…`;
+                const added = await waitForNewSlides(car.track, found);
+                if (added) dry = 0;
+                else if (!car.track.querySelector('li video')) dry++;
+            }
+
+            const urls = [...found.values()];
+            if (urls.length) {
+                sweepBtn.querySelector('span').textContent = 'Save all';
+                renderPickGrid(urls, {
+                    title: 'Choose photos',
+                    hint: `${urls.length} photo${urls.length > 1 ? 's' : ''} · tap to deselect`,
+                    tags: ['carousel'],
+                    noun: 'photo',
+                    igContext, sourceUrl,
+                });
+            } else {
+                sweepBtn.classList.add('error');
+                sweepBtn.querySelector('span').textContent = '✗ No images';
+            }
+        } finally {
+            // Page back so the user's position is restored — even on an exception.
+            for (let i = 0; i < steps; i++) {
+                const prev = prevButtonIn(car.wrapper, car.track);
+                if (!prev) break;
+                prev.click();
+                await new Promise(r => setTimeout(r, 60));
+            }
+            sweepBtn.classList.remove('saving');
+            sweeping = false;
+        }
     }
 
     saveBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); saveImage(); });
     brainstormBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); brainstormImage(); });
-    splitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); splitVideo(); });
+    splitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); queueSplit(currentVideo); });
+    sweepBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); sweepCarousel(); });
 
     // ===========================================================================
     // Darpan — Instagram persona capture (profile pages)
