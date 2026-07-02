@@ -75,6 +75,7 @@ def post_helper(post) -> dict:
         "highlights": post.get("highlights", []),  # NEW: Underlined text collection
         "source_url": post.get("source_url"),
         "instagram_handle": post.get("instagram_handle"),
+        "instagram_handles": post.get("instagram_handles"),
         "source_account": post.get("source_account"),
         "local_context": post.get("local_context"),
         "region_annotations": post.get("region_annotations"),
