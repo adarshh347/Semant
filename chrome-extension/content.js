@@ -548,81 +548,113 @@
     }
 
     // ---- Alexia: split a video into frames and save each ------------------------
+    // Resolves true on a real seek, false if 'seeked' never fired (streams).
     function seekVideo(video, t) {
         return new Promise((resolve) => {
             let done = false;
-            const finish = () => { if (done) return; done = true; video.removeEventListener('seeked', finish); resolve(); };
-            video.addEventListener('seeked', finish);
-            setTimeout(finish, 1500); // fallback if 'seeked' never fires (streams)
-            try { video.currentTime = t; } catch (e) { finish(); }
+            const finish = (ok) => { if (done) return; done = true; video.removeEventListener('seeked', onSeeked); resolve(ok); };
+            const onSeeked = () => finish(true);
+            video.addEventListener('seeked', onSeeked);
+            setTimeout(() => finish(false), 1500);
+            try { video.currentTime = t; } catch (e) { finish(false); }
         });
     }
 
-    async function splitVideo() {
-        const video = currentVideo;
+    // ---- Alexia: split queue — background captures + mass save -------------------
+    // A queued job captures from its LIVE element immediately (it's on screen at
+    // click time); jobs run in parallel; the user scrolls on and queues more. Frames
+    // accumulate on the job and are mass-saved from the queue view.
+    const splitQueue = new Map();   // jobId -> job
+    let nextJobId = 1;
+    let queueViewOpen = false;
+
+    function queueSplit(video) {
         if (!video) return;
-        // Capture author context NOW — the user reviews frames after scrolling,
-        // by which time currentVideo/page context may point at a different post.
-        const igContext = instagramContextForSave(video);
-        const sourceUrl = location.href;
+        for (const j of splitQueue.values()) {
+            if (j.video === video) {
+                splitBtn.classList.add('success');
+                splitBtn.querySelector('span').textContent = '✓ Already queued';
+                return;
+            }
+        }
         const duration = video.duration;
         if (!duration || !isFinite(duration) || duration <= 0) {
             splitBtn.classList.add('error');
             splitBtn.querySelector('span').textContent = '✗ No duration';
             return;
         }
-        // Rate: ~3 frames/sec, clamped to 8–60 evenly-spaced frames.
-        const n = Math.max(8, Math.min(60, Math.round(duration * 3)));
+        const job = {
+            id: nextJobId++,
+            video,
+            state: 'capturing',            // capturing | captured | partial | failed
+            frames: [],                    // dataURLs, grows during capture
+            dropped: new Set(),            // frame indexes deselected in the queue view
+            // Rate: ~3 frames/sec, clamped to 8–60 evenly-spaced frames.
+            total: Math.max(8, Math.min(60, Math.round(duration * 3))),
+            // Snapshot author context NOW — by save time the user has scrolled
+            // to a different post and live page context would be wrong.
+            igContext: instagramContextForSave(video),
+            sourceUrl: location.href,
+            error: null,
+        };
+        splitQueue.set(job.id, job);
+        splitBtn.classList.add('success');
+        splitBtn.querySelector('span').textContent = `✓ Queued #${job.id}`;
+        captureFrames(job).finally(() => {
+            refreshQueueChip();
+            if (queueViewOpen) syncQueueJob(job);
+        });
+        refreshQueueChip();
+    }
+
+    async function captureFrames(job) {
+        const video = job.video;
+        const duration = video.duration;
         const wasPaused = video.paused, prevTime = video.currentTime, wasMuted = video.muted;
         video.muted = true;
         try { video.pause(); } catch (e) {}
 
-        const restore = () => {
-            try { video.currentTime = prevTime; } catch (e) {}
-            video.muted = wasMuted;
-            if (!wasPaused) { try { video.play(); } catch (e) {} }
-        };
-
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        splitBtn.classList.remove('success', 'error');
-        splitBtn.classList.add('saving');
-        const frames = [];
+        let missed = 0;                    // consecutive seek timeouts
 
-        for (let i = 0; i < n; i++) {
-            splitBtn.querySelector('span').textContent = `Reading ${i + 1}/${n}…`;
-            await seekVideo(video, duration * ((i + 0.5) / n));
-            await new Promise(r => requestAnimationFrame(r));
+        for (let i = 0; i < job.total; i++) {
+            if (!video.isConnected) { job.error = 'video left the page'; break; }
+            if (missed >= 2) { job.error = 'stream stopped seeking'; break; }
+            const ok = await seekVideo(video, duration * ((i + 0.5) / job.total));
+            missed = ok ? 0 : missed + 1;
+            // rAF never fires in hidden tabs — settle with a timer instead (background
+            // throttling makes it ~1s there, which only slows the capture down).
+            await new Promise(r => setTimeout(r, 60));
             const vw = video.videoWidth, vh = video.videoHeight;
             if (!vw || !vh) continue;
             canvas.width = vw; canvas.height = vh;
             try {
                 ctx.drawImage(video, 0, 0, vw, vh);
-                frames.push(canvas.toDataURL('image/jpeg', 0.85));
+                job.frames.push(canvas.toDataURL('image/jpeg', 0.85));
             } catch (err) {
                 console.error('Alexia: canvas tainted (cross-origin video, no CORS):', err);
-                restore();
-                splitBtn.classList.remove('saving'); splitBtn.classList.add('error');
-                splitBtn.querySelector('span').textContent = '✗ Protected video';
-                return;
+                job.error = 'protected video';
+                break;
             }
+            refreshQueueChip();
+            if (queueViewOpen) syncQueueJob(job);
         }
 
-        restore();
-        splitBtn.classList.remove('saving');
-        splitBtn.querySelector('span').textContent = 'Split → Save';
-        if (frames.length) {
-            renderPickGrid(frames, {
-                title: 'Choose frames',
-                hint: `${frames.length} frames · tap to deselect`,
-                tags: ['video-frame'],
-                igContext, sourceUrl,
-            });
-        } else {
-            splitBtn.classList.add('error');
-            splitBtn.querySelector('span').textContent = '✗ No frames';
+        job.state = job.frames.length
+            ? (job.error || job.frames.length < job.total ? 'partial' : 'captured')
+            : 'failed';
+        if (job.state === 'failed' && !job.error) job.error = 'no frames';
+        if (video.isConnected) {
+            try { video.currentTime = prevTime; } catch (e) {}
+            video.muted = wasMuted;
+            if (!wasPaused) { try { video.play(); } catch (e) {} }
         }
     }
+
+    // Stubs — replaced by the queue chip (Task 2) and queue view (Task 3).
+    function refreshQueueChip() {}
+    function syncQueueJob(job) {}
 
     // Header for the Alexia frame-review view
     function frameHeader(title) {
@@ -783,7 +815,7 @@
 
     saveBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); saveImage(); });
     brainstormBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); brainstormImage(); });
-    splitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); splitVideo(); });
+    splitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); queueSplit(currentVideo); });
     sweepBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); sweepCarousel(); });
 
     // ===========================================================================
