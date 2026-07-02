@@ -74,6 +74,10 @@
     let bsAnswers = [];      // [{question, choice}] accumulated across rounds
     let bsRound = 0;
 
+    // Carousel sweep state — guards re-entry while the carousel is flipping under
+    // the (stationary) cursor, which retriggers showTarget on each new slide.
+    let sweeping = false;
+
     // ---- helpers ---------------------------------------------------------------
     function el(tag, className, text) {
         const n = document.createElement(tag);
@@ -194,6 +198,7 @@
         const edge = dir === 'next' ? tr.right : tr.left;
         for (const b of wrapper.querySelectorAll('button')) {
             if (toolbar.contains(b) || panel.contains(b)) continue;
+            if (!b.querySelector('svg') || b.textContent.trim()) continue;  // chevrons are icon-only
             const r = b.getBoundingClientRect();
             if (r.width === 0 || r.height === 0 || r.width > 80 || r.height > 80) continue;
             const cy = r.top + r.height / 2;
@@ -210,6 +215,11 @@
         const li = img.closest('li');
         const track = li && li.closest('ul');
         if (!track) return null;
+        // A slide <li> is essentially all image. This rejects look-alike <ul>/<li>
+        // pagers whose items are whole posts (e.g. the modal's prev/next-post track,
+        // where the li also holds header/caption/actions).
+        if (rectArea(img.getBoundingClientRect()) < rectArea(li.getBoundingClientRect()) * 0.5) return null;
+        if (track.querySelectorAll(':scope > li').length < 2) return null;
         let node = track.parentElement;
         for (let depth = 0; node && depth < 5; depth++, node = node.parentElement) {
             if (nextButtonIn(node, track) || prevButtonIn(node, track)) return { track, wrapper: node };
@@ -225,6 +235,7 @@
             const m = part.trim().match(/^(\S+)\s+(\d+)w$/);
             if (m && +m[2] > bestW) { bestW = +m[2]; best = m[1]; }
         });
+        if (best) { try { new URL(best, location.href); } catch (e) { best = null; } }
         return best || img.currentSrc || img.src || '';
     }
 
@@ -282,10 +293,12 @@
         if (type === 'image') {
             saveBtn.classList.remove('success', 'error', 'saving');
             saveBtn.querySelector('span').textContent = 'Save';
-            sweepBtn.classList.remove('success', 'error', 'saving');
-            sweepBtn.querySelector('span').textContent = 'Save all';
-            // Decide sweep visibility BEFORE positioning — it changes toolbar width.
-            sweepBtn.style.display = findCarousel(el) ? '' : 'none';
+            if (!sweeping) {
+                sweepBtn.classList.remove('success', 'error', 'saving');
+                sweepBtn.querySelector('span').textContent = 'Save all';
+                // Decide sweep visibility BEFORE positioning — it changes toolbar width.
+                sweepBtn.style.display = findCarousel(el) ? '' : 'none';
+            }
         } else {
             splitBtn.classList.remove('success', 'error', 'saving');
             splitBtn.querySelector('span').textContent = 'Split → Save';
@@ -619,7 +632,7 @@
     // Review grid: all items selected by default; tap to deselect; then save kept ones.
     // Used by both the video-frame flow and the carousel sweep.
     function renderPickGrid(urls, opts) {
-        const { title, hint, tags } = opts;
+        const { title, hint, tags, noun = 'frame' } = opts;
         const items = urls.map(url => ({ url, selected: true }));
         clearPanel();
         panel.appendChild(frameHeader(title));
@@ -652,7 +665,7 @@
         const count = () => items.filter(i => i.selected).length;
         function updateBar() {
             const c = count();
-            save.textContent = c ? `Save ${c} frame${c > 1 ? 's' : ''}` : 'Save (none)';
+            save.textContent = c ? `Save ${c} ${noun}${c > 1 ? 's' : ''}` : 'Save (none)';
             save.disabled = c === 0;
             toggle.textContent = (c === items.length) ? 'Clear all' : 'Select all';
         }
@@ -693,6 +706,7 @@
 
     // ---- Alexia: sweep a carousel post — collect every photo slide ---------------
     async function sweepCarousel() {
+        if (sweeping) return;
         const img = currentImage;
         if (!img) return;
         const car = findCarousel(img);
@@ -701,47 +715,54 @@
             sweepBtn.querySelector('span').textContent = '✗ Not a carousel';
             return;
         }
+        sweeping = true;
         sweepBtn.classList.remove('success', 'error');
         sweepBtn.classList.add('saving');
+        try {
+            const found = new Map();
+            collectSlides(car.track, found);
 
-        const found = new Map();
-        collectSlides(car.track, found);
+            // Page forward, collecting as slides render. IG max is 20 slides; cap at 24.
+            // Re-query the chevron each step — React re-renders replace the node, and on
+            // the last slide it disappears. Dry steps showing a video slide don't count
+            // (video slides add no images by design); 3 truly-dry steps = end (safety).
+            const MAX_STEPS = 24;
+            let steps = 0, dry = 0;
+            while (steps < MAX_STEPS && dry < 3) {
+                const next = nextButtonIn(car.wrapper, car.track);
+                if (!next) break;
+                next.click();
+                steps++;
+                sweepBtn.querySelector('span').textContent = `Reading ${found.size}…`;
+                const added = await waitForNewSlides(car.track, found);
+                if (added) dry = 0;
+                else if (!car.track.querySelector('li video')) dry++;
+            }
 
-        // Page forward, collecting as slides render. IG max is 20 slides; cap at 24.
-        // Re-query the chevron each step — React re-renders replace the node, and on
-        // the last slide it disappears. Two dry steps in a row = end (safety).
-        const MAX_STEPS = 24;
-        let steps = 0, dry = 0;
-        while (steps < MAX_STEPS && dry < 2) {
-            const next = nextButtonIn(car.wrapper, car.track);
-            if (!next) break;
-            next.click();
-            steps++;
-            sweepBtn.querySelector('span').textContent = `Reading ${found.size}…`;
-            const added = await waitForNewSlides(car.track, found);
-            dry = added ? 0 : dry + 1;
-        }
+            // Page back so the user's position is restored.
+            for (let i = 0; i < steps; i++) {
+                const prev = prevButtonIn(car.wrapper, car.track);
+                if (!prev) break;
+                prev.click();
+                await new Promise(r => setTimeout(r, 60));
+            }
 
-        // Page back so the user's position is restored.
-        for (let i = 0; i < steps; i++) {
-            const prev = prevButtonIn(car.wrapper, car.track);
-            if (!prev) break;
-            prev.click();
-            await new Promise(r => setTimeout(r, 60));
-        }
-
-        sweepBtn.classList.remove('saving');
-        const urls = [...found.values()];
-        if (urls.length) {
-            sweepBtn.querySelector('span').textContent = 'Save all';
-            renderPickGrid(urls, {
-                title: 'Choose photos',
-                hint: `${urls.length} photo${urls.length > 1 ? 's' : ''} · tap to deselect`,
-                tags: ['carousel'],
-            });
-        } else {
-            sweepBtn.classList.add('error');
-            sweepBtn.querySelector('span').textContent = '✗ No images';
+            sweepBtn.classList.remove('saving');
+            const urls = [...found.values()];
+            if (urls.length) {
+                sweepBtn.querySelector('span').textContent = 'Save all';
+                renderPickGrid(urls, {
+                    title: 'Choose photos',
+                    hint: `${urls.length} photo${urls.length > 1 ? 's' : ''} · tap to deselect`,
+                    tags: ['carousel'],
+                    noun: 'photo',
+                });
+            } else {
+                sweepBtn.classList.add('error');
+                sweepBtn.querySelector('span').textContent = '✗ No images';
+            }
+        } finally {
+            sweeping = false;
         }
     }
 
