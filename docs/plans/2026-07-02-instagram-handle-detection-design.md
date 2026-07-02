@@ -27,15 +27,17 @@ element, not from the page. Multiple authors (collabs) all attach and all feed p
 New `handlesForElement(el)` returns an ordered list of handles (first = primary), via a
 resolution chain — each stage degrades to the next:
 
-1. **Container walk (structure)**: `el.closest('article')` (feed posts) or
+1. **Stories URL**: `location.pathname.match(/^\/stories\/([^\/]+)/)`. Checked FIRST — the URL
+   names the story author authoritatively; mention stickers inside a story are single-segment
+   profile links that would otherwise poison the element-anchored stages.
+2. **Container walk (structure)**: `el.closest('article')` (feed posts) or
    `el.closest('div[role="dialog"]')` (post modal). Inside the container, collect all distinct
    non-reserved `/handle/` links from its `header`. Collab posts render "userA and userB" as two
    header links, so all authors are captured naturally.
-2. **Proximity scan (geometry)** — for reels overlays and header-less containers: walk ancestors
+3. **Proximity scan (geometry)** — for reels overlays and header-less containers: walk ancestors
    from the media element; at each level collect *visible* profile-pattern links whose rect
    intersects the media element's rect (slightly expanded); accept the first ancestor yielding
    1–10 candidates. The cap rejects overly-broad ancestors (the feed root would match dozens).
-3. **Stories URL**: `location.pathname.match(/^\/stories\/([^\/]+)/)`.
 4. **Existing fallbacks**: `instagramPostAuthorHandle()` (geometric band, post pages), then
    `instagramProfileHandle()` (profile page — all media belongs to that account).
 

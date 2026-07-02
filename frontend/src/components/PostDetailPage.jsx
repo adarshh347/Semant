@@ -881,7 +881,7 @@ function PostDetailPage() {
                   {post.instagram_handle && (
                     <label className="uncon-feed">
                       <input type="checkbox" checked={feedPersona} onChange={(e) => setFeedPersona(e.target.checked)} />
-                      Also feed <strong>@{post.instagram_handle}</strong>’s persona
+                      Also feed <strong>{(post.instagram_handles || [post.instagram_handle]).map(h => `@${h}`).join(' + ')}</strong>{(post.instagram_handles || []).length > 1 ? "’ personas" : "’s persona"}
                     </label>
                   )}
                   <button className="action-btn primary uncon-save" onClick={saveLocalContext} disabled={ctxBusy || (!commentary.trim() && !aletheia)}>

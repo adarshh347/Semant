@@ -232,7 +232,7 @@ export default function RegionDetectorModal({ post, onClose, onSaved }) {
                     {post.instagram_handle && (
                         <label className="rd-feed">
                             <input type="checkbox" checked={feedPersona} onChange={e => setFeedPersona(e.target.checked)} />
-                            feed <strong>@{post.instagram_handle}</strong>
+                            feed <strong>{(post.instagram_handles || [post.instagram_handle]).map(h => `@${h}`).join(' + ')}</strong>
                         </label>
                     )}
                     <button className="rd-save" onClick={save} disabled={saving}>
