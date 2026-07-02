@@ -592,7 +592,11 @@
         splitBtn.classList.remove('saving');
         splitBtn.querySelector('span').textContent = 'Split → Save';
         if (frames.length) {
-            renderFrameReview(frames);
+            renderPickGrid(frames, {
+                title: 'Choose frames',
+                hint: `${frames.length} frames · tap to deselect`,
+                tags: ['video-frame'],
+            });
         } else {
             splitBtn.classList.add('error');
             splitBtn.querySelector('span').textContent = '✗ No frames';
@@ -612,14 +616,16 @@
         return head;
     }
 
-    // Review grid: all frames selected by default; tap to deselect; then save kept ones.
-    function renderFrameReview(frames) {
-        const items = frames.map(url => ({ url, selected: true }));
+    // Review grid: all items selected by default; tap to deselect; then save kept ones.
+    // Used by both the video-frame flow and the carousel sweep.
+    function renderPickGrid(urls, opts) {
+        const { title, hint, tags } = opts;
+        const items = urls.map(url => ({ url, selected: true }));
         clearPanel();
-        panel.appendChild(frameHeader('Choose frames'));
+        panel.appendChild(frameHeader(title));
 
         const body = el('div', 'al-body al-frames-body');
-        body.appendChild(el('div', 'al-frames-hint', `${frames.length} frames · tap to deselect`));
+        body.appendChild(el('div', 'al-frames-hint', hint));
         const grid = el('div', 'al-frames-grid');
         items.forEach((it, idx) => {
             const cell = el('div', 'al-frame selected');
@@ -659,14 +665,14 @@
         });
         save.addEventListener('click', (e) => {
             e.preventDefault(); e.stopPropagation();
-            saveFrames(items.filter(i => i.selected).map(i => i.url), save);
+            saveFrames(items.filter(i => i.selected).map(i => i.url), save, tags);
         });
 
         updateBar();
         openPanel();
     }
 
-    async function saveFrames(urls, btn) {
+    async function saveFrames(urls, btn, tags) {
         if (!urls.length) return;
         btn.disabled = true;
         let saved = 0;
@@ -676,7 +682,7 @@
                 const r = await fetch(SAVE_URL, {
                     method: 'POST', mode: 'cors',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_url: urls[i], source_url: location.href, general_tags: ['video-frame'], ...instagramContextForSave() })
+                    body: JSON.stringify({ image_url: urls[i], source_url: location.href, general_tags: tags || [], ...instagramContextForSave() })
                 });
                 if (r.ok) saved++;
             } catch (e) { /* keep going */ }
