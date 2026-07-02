@@ -715,7 +715,9 @@
     }
 
     let queueSaveBtn = null;
+    let massSaving = false;    // freezes the bar so live captures can't overwrite save progress
     function updateQueueBar() {
+        if (massSaving) return;
         if (!queueSaveBtn || !queueSaveBtn.isConnected) return;
         let n = 0, capturing = false;
         for (const j of splitQueue.values()) {
@@ -773,8 +775,28 @@
         openPanel();
     }
 
-    // Stub — replaced by mass save (Task 4).
-    function massSaveQueue(btn) {}
+    async function massSaveQueue(btn) {
+        const settled = [...splitQueue.values()].filter(j => j.state !== 'capturing');
+        const work = [];
+        settled.forEach(j => j.frames.forEach((url, idx) => {
+            if (!j.dropped.has(idx)) work.push({ url, job: j });
+        }));
+        if (!work.length) return;
+        massSaving = true;
+        btn.disabled = true;
+        let saved = 0;
+        for (let i = 0; i < work.length; i++) {
+            btn.textContent = `Saving ${i + 1}/${work.length}…`;
+            if (await postFrame(work[i].url, ['video-frame'], work[i].job.igContext, work[i].job.sourceUrl)) saved++;
+        }
+        btn.classList.add(saved ? 'al-done' : 'al-fail');
+        btn.textContent = saved ? `✓ Saved ${saved}` : '✗ Failed';
+        if (saved) { settled.forEach(j => splitQueue.delete(j.id)); refreshQueueChip(); }
+        setTimeout(() => {
+            massSaving = false;
+            if (queueViewOpen) renderQueueView();   // saved jobs gone; bar rebuilt
+        }, 1200);
+    }
 
     // Header for the Alexia frame-review view
     function frameHeader(title) {
@@ -847,23 +869,29 @@
         openPanel();
     }
 
+    // One frame → backend. igContext/sourceUrl default to the live page when absent.
+    async function postFrame(url, tags, igContext, sourceUrl) {
+        try {
+            const r = await fetch(SAVE_URL, {
+                method: 'POST', mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_url: url, source_url: sourceUrl || location.href, general_tags: tags || [], ...(igContext || {}) })
+            });
+            return r.ok;
+        } catch (e) { return false; }
+    }
+
     async function saveFrames(urls, btn, tags, igContext, sourceUrl) {
-        if (!urls.length) return;
+        if (!urls.length) return 0;
         btn.disabled = true;
         let saved = 0;
         for (let i = 0; i < urls.length; i++) {
             btn.textContent = `Saving ${i + 1}/${urls.length}…`;
-            try {
-                const r = await fetch(SAVE_URL, {
-                    method: 'POST', mode: 'cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_url: urls[i], source_url: sourceUrl || location.href, general_tags: tags || [], ...(igContext || {}) })
-                });
-                if (r.ok) saved++;
-            } catch (e) { /* keep going */ }
+            if (await postFrame(urls[i], tags, igContext, sourceUrl)) saved++;
         }
         btn.classList.add(saved ? 'al-done' : 'al-fail');
         btn.textContent = saved ? `✓ Saved ${saved}` : '✗ Failed';
+        return saved;
     }
 
     // ---- Alexia: sweep a carousel post — collect every photo slide ---------------
