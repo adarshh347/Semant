@@ -618,10 +618,13 @@
         splitQueue.set(job.id, job);
         splitBtn.classList.add('success');
         splitBtn.querySelector('span').textContent = `✓ Queued #${job.id}`;
-        captureFrames(job).finally(() => {
-            refreshQueueChip();
-            if (queueViewOpen) syncQueueJob(job);
-        });
+        if (qView && qView.splitting.list.isConnected) {
+            // Panel already open → the new job appears in Splitting immediately.
+            qView.splitting.list.appendChild(buildJobRow(job, 'split'));
+            updateSplitProgress(job);
+            updateQueueSections(); updateQueueBar();
+        }
+        captureFrames(job).finally(() => jobSettled(job));
         refreshQueueChip();
     }
 
@@ -659,7 +662,7 @@
                     break;
                 }
                 refreshQueueChip();
-                if (queueViewOpen) syncQueueJob(job);
+                updateSplitProgress(job);
             }
 
         } finally {
@@ -688,24 +691,87 @@
 
     function refreshQueueChip() {
         const s = queueStats();
+        queueChip.classList.toggle('splitting', s.capturing > 0);
         if (!s.jobs) { queueChip.classList.remove('visible'); return; }
         queueChip.textContent = s.capturing
-            ? `⏳ ${s.capturing} splitting · ${s.frames} frames`
-            : `🎞 ${s.jobs} split${s.jobs > 1 ? 's' : ''} · ${s.frames} frames`;
+            ? `${s.capturing} splitting · ${s.frames} frames`
+            : `${s.jobs} ready · ${s.frames} frames`;
         queueChip.classList.add('visible');
     }
 
-    // ---- Split-queue view ---------------------------------------------------------
-    function statusLabel(job) {
-        switch (job.state) {
-            case 'capturing': return `capturing ${job.frames.length}/${job.total}…`;
-            case 'captured':  return `${job.frames.length} frames`;
-            case 'partial':   return `partial · ${job.frames.length}/${job.total}`;
-            default:          return `✗ ${job.error || 'failed'}`;
-        }
+    // ---- Split-queue view -----------------------------------------------------
+    // Three live sections: Splitting (compact progress rows), Ready to save (frame
+    // grids, built once per job), Saving (upload rows that flash ✓ and clear).
+    // Jobs MOVE between sections — nothing is ever replaced or lost mid-choose.
+    let qView = null;          // {splitting, ready, saving, hint} while rendered
+    let queueSaveBtn = null;
+    let massSaving = false;    // freezes the bar so live captures can't overwrite save progress
+
+    function jobTitle(job) {
+        const who = job.igContext.instagram_handle ? ` · @${job.igContext.instagram_handle}` : '';
+        return `Video #${job.id}${who}`;
     }
 
-    function queueFrameCell(job, idx) {
+    function qSection(title) {
+        const sec = el('div', 'al-qsec');
+        sec.appendChild(el('div', 'al-qsec-kicker', title));
+        const list = el('div', 'al-qsec-list');
+        sec.appendChild(list);
+        return { sec, list };
+    }
+
+    function readyStatusText(job) {
+        if (job.state === 'captured') return `${job.frames.length} frames`;
+        if (job.state === 'partial') return `partial · ${job.frames.length}/${job.total}`;
+        return job.error || 'failed';
+    }
+
+    // Compact progress row — used by Splitting ('split', cancellable) and Saving ('save').
+    function buildJobRow(job, kind) {
+        const row = el('div', 'al-q-row');
+        const th = el('div', 'al-q-thumb');
+        const im = document.createElement('img');
+        if (job.frames.length) im.src = job.frames[0];
+        th.appendChild(im);
+        const mid = el('div', 'al-q-mid');
+        mid.appendChild(el('div', 'al-q-title', jobTitle(job)));
+        const bar = el('div', 'al-q-bar');
+        const fill = el('div', 'al-q-bar-fill');
+        bar.appendChild(fill);
+        mid.appendChild(bar);
+        const count = el('span', 'al-q-count', '');
+        row.appendChild(th); row.appendChild(mid); row.appendChild(count);
+        if (kind === 'split') {
+            const x = el('button', 'al-q-x', '×');
+            x.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                job.cancelled = true;          // stops the in-flight capture loop
+                splitQueue.delete(job.id);
+                row.remove();
+                refreshQueueChip(); updateQueueSections(); updateQueueBar();
+            });
+            row.appendChild(x);
+        }
+        job._row = { row, fill, count, im };
+        return row;
+    }
+
+    function updateSplitProgress(job) {
+        const r = job._row;
+        if (!r || !r.row.isConnected) return;
+        r.count.textContent = `${job.frames.length}/${job.total}`;
+        r.fill.style.width = `${Math.round((job.frames.length / job.total) * 100)}%`;
+        if (!r.im.getAttribute('src') && job.frames.length) r.im.src = job.frames[0];
+    }
+
+    function updateUploadProgress(job) {
+        const r = job._row;
+        if (!r || !r.row.isConnected || !job.uploadTotal) return;
+        r.count.textContent = `${job.uploadDone}/${job.uploadTotal}`;
+        r.fill.style.width = `${Math.round((job.uploadDone / job.uploadTotal) * 100)}%`;
+    }
+
+    function frameCell(job, idx) {
         const cell = el('div', 'al-frame' + (job.dropped.has(idx) ? '' : ' selected'));
         const im = document.createElement('img'); im.src = job.frames[idx]; cell.appendChild(im);
         cell.appendChild(el('span', 'al-frame-tick', '✓'));
@@ -718,29 +784,67 @@
         return cell;
     }
 
-    // Append new frames / refresh the status of one job while the view is open —
-    // append-only so live capture doesn't flicker the grid or reset panel scroll.
-    function syncQueueJob(job) {
-        if (job._status && job._status.isConnected) {
-            job._status.textContent = statusLabel(job);
-            job._status.className = `al-queue-status st-${job.state}`;
+    function buildReadyBlock(job) {
+        const block = el('div', 'al-q-block');
+        block.dataset.jobId = job.id;
+        const head = el('div', 'al-q-head');
+        head.appendChild(el('span', 'al-q-title', jobTitle(job)));
+        const status = el('span', `al-q-status st-${job.state}`);
+        status.appendChild(el('span', 'al-q-dot'));
+        status.appendChild(el('span', 'al-q-status-text', readyStatusText(job)));
+        head.appendChild(status);
+        const x = el('button', 'al-q-x', '×');
+        x.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            splitQueue.delete(job.id);
+            block.remove();
+            refreshQueueChip(); updateQueueSections(); updateQueueBar();
+        });
+        head.appendChild(x);
+        block.appendChild(head);
+        if (job.frames.length) {
+            const grid = el('div', 'al-frames-grid');
+            job.frames.forEach((_, idx) => grid.appendChild(frameCell(job, idx)));
+            block.appendChild(grid);
         }
-        if (job._grid && job._grid.isConnected) {
-            for (let i = job._grid.children.length; i < job.frames.length; i++) {
-                job._grid.appendChild(queueFrameCell(job, i));
-            }
-        }
-        updateQueueBar();
+        job._block = block;
+        return block;
     }
 
-    let queueSaveBtn = null;
-    let massSaving = false;    // freezes the bar so live captures can't overwrite save progress
+    function insertReadyBlock(job) {
+        if (!qView || !qView.ready.list.isConnected) return;
+        const next = [...qView.ready.list.children].find(b => +b.dataset.jobId > job.id);
+        qView.ready.list.insertBefore(buildReadyBlock(job), next || null);
+    }
+
+    // A capture finished (or was cancelled): move the job's row out of Splitting.
+    function jobSettled(job) {
+        refreshQueueChip();
+        const r = job._row;
+        if (r && r.row.isConnected) r.row.remove();
+        job._row = null;
+        if (splitQueue.has(job.id)) insertReadyBlock(job);
+        updateQueueSections(); updateQueueBar();
+    }
+
+    function updateQueueSections() {
+        if (!qView || !qView.splitting.sec.isConnected) return;
+        let any = false;
+        for (const s of [qView.splitting, qView.ready, qView.saving]) {
+            const has = s.list.children.length > 0;
+            s.sec.classList.toggle('al-hidden', !has);
+            if (has) any = true;
+        }
+        qView.hint.classList.toggle('al-hidden', any);
+    }
+
     function updateQueueBar() {
         if (massSaving) return;
         if (!queueSaveBtn || !queueSaveBtn.isConnected) return;
         let n = 0, capturing = false;
         for (const j of splitQueue.values()) {
             if (j.state === 'capturing') { capturing = true; continue; }
+            if (j.state === 'saving') continue;
             n += j.frames.length - j.dropped.size;
         }
         queueSaveBtn.textContent = n
@@ -755,31 +859,27 @@
         panel.appendChild(frameHeader('Split queue'));
         const body = el('div', 'al-body al-frames-body');
 
-        if (!splitQueue.size) {
-            body.appendChild(el('div', 'al-frames-hint', 'Queue is empty — hover a video and press Split.'));
-        }
-        for (const job of splitQueue.values()) {
-            const sec = el('div', 'al-queue-job');
-            const head = el('div', 'al-queue-head');
-            const who = job.igContext.instagram_handle ? ` · @${job.igContext.instagram_handle}` : '';
-            head.appendChild(el('span', 'al-queue-title', `Video #${job.id}${who}`));
-            const status = el('span', `al-queue-status st-${job.state}`, statusLabel(job));
-            head.appendChild(status);
-            const drop = el('button', 'al-queue-drop', '✕');
-            drop.addEventListener('click', (e) => {
-                e.preventDefault(); e.stopPropagation();
-                job.cancelled = true;          // stops an in-flight capture loop
-                splitQueue.delete(job.id);
-                refreshQueueChip(); renderQueueView();
-            });
-            head.appendChild(drop);
-            sec.appendChild(head);
+        qView = {
+            splitting: qSection('Splitting'),
+            ready: qSection('Ready to save'),
+            saving: qSection('Saving'),
+            hint: el('div', 'al-frames-hint', 'Queue is empty — hover a video and press Split.'),
+        };
+        body.appendChild(qView.splitting.sec);
+        body.appendChild(qView.ready.sec);
+        body.appendChild(qView.saving.sec);
+        body.appendChild(qView.hint);
 
-            const grid = el('div', 'al-frames-grid');
-            job.frames.forEach((_, idx) => grid.appendChild(queueFrameCell(job, idx)));
-            sec.appendChild(grid);
-            job._status = status; job._grid = grid;
-            body.appendChild(sec);
+        for (const job of splitQueue.values()) {
+            if (job.state === 'capturing') {
+                qView.splitting.list.appendChild(buildJobRow(job, 'split'));
+                updateSplitProgress(job);
+            } else if (job.state === 'saving') {
+                qView.saving.list.appendChild(buildJobRow(job, 'save'));
+                updateUploadProgress(job);
+            } else {
+                qView.ready.list.appendChild(buildReadyBlock(job));
+            }
         }
         panel.appendChild(body);
 
@@ -799,31 +899,80 @@
         } else {
             updateQueueBar();
         }
+        updateQueueSections();
         openPanel();
     }
 
     async function massSaveQueue(btn) {
         if (massSaving) return;
-        const settled = [...splitQueue.values()].filter(j => j.state !== 'capturing');
         const work = [];
-        settled.forEach(j => j.frames.forEach((url, idx) => {
-            if (!j.dropped.has(idx)) work.push({ url, job: j });
-        }));
+        const participating = [];
+        for (const j of splitQueue.values()) {
+            if (j.state === 'capturing' || j.state === 'saving') continue;
+            const kept = [];
+            j.frames.forEach((url, idx) => { if (!j.dropped.has(idx)) kept.push(url); });
+            if (!kept.length) continue;        // failed / fully-deselected jobs stay in Ready
+            j.uploadTotal = kept.length;
+            j.uploadDone = 0;
+            j.uploadOk = 0;
+            j._preSaveState = j.state;
+            participating.push(j);
+            kept.forEach(url => work.push({ url, job: j }));
+        }
         if (!work.length) return;
         massSaving = true;
         btn.disabled = true;
+
+        // Move participating jobs Ready → Saving (rows with upload progress).
+        participating.forEach(j => {
+            j.state = 'saving';
+            if (j._block && j._block.isConnected) j._block.remove();
+            j._block = null;
+            if (qView && qView.saving.list.isConnected) {
+                qView.saving.list.appendChild(buildJobRow(j, 'save'));
+                updateUploadProgress(j);
+            }
+        });
+        updateQueueSections();
+
         let saved = 0;
         for (let i = 0; i < work.length; i++) {
             btn.textContent = `Saving ${i + 1}/${work.length}…`;
-            if (await postFrame(work[i].url, ['video-frame'], work[i].job.igContext, work[i].job.sourceUrl)) saved++;
+            const ok = await postFrame(work[i].url, ['video-frame'], work[i].job.igContext, work[i].job.sourceUrl);
+            if (ok) { saved++; work[i].job.uploadOk++; }
+            work[i].job.uploadDone++;
+            updateUploadProgress(work[i].job);
         }
         btn.classList.add(saved ? 'al-done' : 'al-fail');
         btn.textContent = saved ? `✓ Saved ${saved}` : '✗ Failed';
-        if (saved) { settled.forEach(j => splitQueue.delete(j.id)); refreshQueueChip(); }
+
+        // Flash ✓ on the rows, then clear the saved jobs after a beat.
+        participating.forEach(j => {
+            const r = j._row;
+            if (r && r.row.isConnected) {
+                r.count.textContent = j.uploadOk ? `✓ ${j.uploadOk}` : '✗';
+                r.row.classList.toggle('al-q-done', j.uploadOk > 0);
+            }
+        });
+        if (saved) { participating.forEach(j => splitQueue.delete(j.id)); refreshQueueChip(); }
+
         setTimeout(() => {
             massSaving = false;
-            // Rebuild only if the queue view is still up — never pop a closed panel open.
-            if (queueViewOpen && panel.classList.contains('open')) renderQueueView();
+            participating.forEach(j => {
+                const r = j._row;
+                if (r && r.row.isConnected) r.row.remove();
+                j._row = null;
+                if (splitQueue.has(j.id)) {    // save failed — return the job to Ready
+                    j.state = j._preSaveState;
+                    insertReadyBlock(j);
+                }
+            });
+            updateQueueSections();
+            if (queueSaveBtn && queueSaveBtn.isConnected) {
+                queueSaveBtn.disabled = false;
+                queueSaveBtn.classList.remove('al-done', 'al-fail');
+                updateQueueBar();
+            }
         }, 1200);
     }
 
