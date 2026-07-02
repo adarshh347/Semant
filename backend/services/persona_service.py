@@ -37,6 +37,17 @@ def normalize_handle(raw: str) -> str:
     return h.lower()
 
 
+def normalize_handles(raw_list) -> list:
+    """Normalize a list of handles, dropping empties and duplicates, keeping order.
+    First element is the primary author (collab posts carry several)."""
+    out = []
+    for raw in raw_list or []:
+        h = normalize_handle(raw or "")
+        if h and h not in out:
+            out.append(h)
+    return out
+
+
 def handle_from_source_url(url: str) -> Optional[str]:
     """Extract an IG username from a saved post's source_url, if present."""
     if not url:
@@ -75,7 +86,9 @@ class PersonaService:
         field (reliable, set on newer saves) OR the handle parsed from source_url."""
         rx = re.compile(rf"instagram\.com/{re.escape(handle)}(?:[/?#]|$)", re.I)
         cursor = post_collection.find(
-            {"$or": [{"instagram_handle": handle}, {"source_url": {"$regex": rx}}]},
+            {"$or": [{"instagram_handle": handle},
+                     {"instagram_handles": handle},
+                     {"source_url": {"$regex": rx}}]},
             {"photo_url": 1, "general_tags": 1, "source_url": 1, "instagram_handle": 1},
         )
         return await cursor.to_list(length=400)

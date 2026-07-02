@@ -252,7 +252,7 @@
             const r = await fetch(SAVE_URL, {
                 method: 'POST', mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [], ...instagramContextForSave() })
+                body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [], ...instagramContextForSave(currentImage) })
             });
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             await r.json();
@@ -441,6 +441,10 @@
     async function splitVideo() {
         const video = currentVideo;
         if (!video) return;
+        // Capture author context NOW — the user reviews frames after scrolling,
+        // by which time currentVideo/page context may point at a different post.
+        const igContext = instagramContextForSave(video);
+        const sourceUrl = location.href;
         const duration = video.duration;
         if (!duration || !isFinite(duration) || duration <= 0) {
             splitBtn.classList.add('error');
@@ -488,7 +492,7 @@
         splitBtn.classList.remove('saving');
         splitBtn.querySelector('span').textContent = 'Split → Save';
         if (frames.length) {
-            renderFrameReview(frames);
+            renderFrameReview(frames, igContext, sourceUrl);
         } else {
             splitBtn.classList.add('error');
             splitBtn.querySelector('span').textContent = '✗ No frames';
@@ -509,7 +513,7 @@
     }
 
     // Review grid: all frames selected by default; tap to deselect; then save kept ones.
-    function renderFrameReview(frames) {
+    function renderFrameReview(frames, igContext, sourceUrl) {
         const items = frames.map(url => ({ url, selected: true }));
         clearPanel();
         panel.appendChild(frameHeader('Choose frames'));
@@ -555,14 +559,14 @@
         });
         save.addEventListener('click', (e) => {
             e.preventDefault(); e.stopPropagation();
-            saveFrames(items.filter(i => i.selected).map(i => i.url), save);
+            saveFrames(items.filter(i => i.selected).map(i => i.url), save, igContext, sourceUrl);
         });
 
         updateBar();
         openPanel();
     }
 
-    async function saveFrames(urls, btn) {
+    async function saveFrames(urls, btn, igContext, sourceUrl) {
         if (!urls.length) return;
         btn.disabled = true;
         let saved = 0;
@@ -572,7 +576,7 @@
                 const r = await fetch(SAVE_URL, {
                     method: 'POST', mode: 'cors',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_url: urls[i], source_url: location.href, general_tags: ['video-frame'], ...instagramContextForSave() })
+                    body: JSON.stringify({ image_url: urls[i], source_url: sourceUrl || location.href, general_tags: ['video-frame'], ...(igContext || {}) })
                 });
                 if (r.ok) saved++;
             } catch (e) { /* keep going */ }
@@ -602,6 +606,14 @@
         const seg = decodeURIComponent(m[1]).toLowerCase();
         if (RESERVED_IG.has(seg)) return null;
         return seg;
+    }
+
+    function instagramStoryHandle() {
+        // Stories URL is /stories/<handle>/<story-id>/
+        const m = location.pathname.match(/^\/stories\/([^\/]+)/);
+        if (!m) return null;
+        const seg = decodeURIComponent(m[1]).toLowerCase();
+        return RESERVED_IG.has(seg) ? null : seg;
     }
 
     // On a post/reel page ("/p/…", "/reel/…"), find the author of the post the
@@ -645,6 +657,75 @@
         return null;
     }
 
+    // "/handle/" (single non-reserved segment) → handle, else null.
+    function profileHrefHandle(a) {
+        const m = (a.getAttribute('href') || '').match(/^\/([^\/?#]+)\/?$/);
+        if (!m) return null;
+        const seg = decodeURIComponent(m[1]).toLowerCase();
+        return RESERVED_IG.has(seg) ? null : seg;
+    }
+
+    // Stage 1 — structure: the post container's header names its author(s).
+    // Feed posts are <article>s; opened posts render inside role="dialog".
+    // Collab posts put every author link in the header ("userA and userB").
+    function handlesFromContainer(el) {
+        const container = el.closest('article') || el.closest('div[role="dialog"]');
+        if (!container) return [];
+        const out = [];
+        container.querySelectorAll('header a[href^="/"]').forEach(a => {
+            const h = profileHrefHandle(a);
+            const r = a.getBoundingClientRect();
+            if (h && r.width > 0 && r.height > 0 && !out.includes(h)) out.push(h);
+        });
+        return out;
+    }
+
+    // Stage 2 — geometry: reels overlays have no <header>; the author link sits
+    // on/near the video. Walk up from the media element; at each ancestor take
+    // visible profile links whose rect intersects the (slightly expanded) media
+    // rect. Accept the first ancestor yielding 1..10 — more means we've reached
+    // a feed-level root and would pick up unrelated posts.
+    function handlesNearElement(el) {
+        const r = el.getBoundingClientRect();
+        const pad = 48;
+        const box = { l: r.left - pad, t: r.top - pad, r: r.right + pad, b: r.bottom + pad };
+        let node = el.parentElement;
+        for (let depth = 0; node && depth < 12; depth++, node = node.parentElement) {
+            const out = [];
+            node.querySelectorAll('a[href^="/"]').forEach(a => {
+                const h = profileHrefHandle(a);
+                if (!h || out.includes(h)) return;
+                const ar = a.getBoundingClientRect();
+                if (ar.width === 0 || ar.height === 0) return;
+                if (ar.right < box.l || ar.left > box.r || ar.bottom < box.t || ar.top > box.b) return;
+                out.push(h);
+            });
+            if (out.length >= 1 && out.length <= 10) return out;
+            if (out.length > 10) return [];   // too broad — bail to later stages
+        }
+        return [];
+    }
+
+    // The full chain: element-anchored first, then page-level fallbacks.
+    // Returns an ordered list; first entry is the primary author.
+    function handlesForElement(el) {
+        if (!isInstagram()) return [];
+        // Stories: the URL names the author authoritatively — mention stickers
+        // inside the story would otherwise pollute the element-anchored stages.
+        const story = instagramStoryHandle();
+        if (story) return [story];
+        if (el) {
+            const fromContainer = handlesFromContainer(el);
+            if (fromContainer.length) return fromContainer;
+            const near = handlesNearElement(el);
+            if (near.length) return near;
+        }
+        const author = instagramPostAuthorHandle();
+        if (author) return [author];
+        const profile = instagramProfileHandle();
+        return profile ? [profile] : [];
+    }
+
     // The account handle relevant to the current page (profile first, else post author).
     function detectedHandle() {
         return instagramProfileHandle() || instagramPostAuthorHandle();
@@ -666,11 +747,12 @@
     }
 
     // Extra fields to attach to a save so the image carries its account context.
-    function instagramContextForSave() {
+    // Anchored to the saved media element — the page may show many authors' posts.
+    function instagramContextForSave(mediaEl) {
         if (!isInstagram()) return {};
-        const handle = detectedHandle();
-        if (!handle) return {};
-        const extras = { instagram_handle: handle };
+        const handles = handlesForElement(mediaEl || null);
+        if (!handles.length) return {};
+        const extras = { instagram_handle: handles[0], instagram_handles: handles };
         const snap = accountSnapshot();
         if (snap) extras.source_account = snap;
         return extras;

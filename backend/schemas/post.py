@@ -40,6 +40,7 @@ class Post(BaseModel):
     highlights: Optional[List[Highlight]] = []  # NEW: Underlined text collection
     source_url: Optional[str] = None  # page the image was saved from
     instagram_handle: Optional[str] = None  # account the image came from (Darpan link)
+    instagram_handles: Optional[List[str]] = None  # ALL authors (collab posts); first = primary
     source_account: Optional[dict] = None  # light snapshot of that account at save time
     local_context: Optional[dict] = None  # microscopic per-image context (Aletheia + commentary)
     region_annotations: Optional[List[dict]] = None  # detected parts + user prioritisation/notes
@@ -101,6 +102,7 @@ class UrlUploadRequest(BaseModel):
     source_url: Optional[str] = None  # page the image was saved from
     general_tags: Optional[List[str]] = []
     instagram_handle: Optional[str] = None  # account the image came from (if on Instagram)
+    instagram_handles: Optional[List[str]] = None  # all authors on a collab post
     source_account: Optional[dict] = None  # light snapshot {display_name, avatar_url}
 
 class RegionAnnotationsRequest(BaseModel):

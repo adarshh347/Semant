@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 from io import BytesIO
 from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
-from backend.services.persona_service import persona_service, normalize_handle, handle_from_source_url
+from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
 from datetime import datetime, timezone
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
@@ -75,10 +75,21 @@ def post_helper(post) -> dict:
         "highlights": post.get("highlights", []),  # NEW: Underlined text collection
         "source_url": post.get("source_url"),
         "instagram_handle": post.get("instagram_handle"),
+        "instagram_handles": post.get("instagram_handles"),
         "source_account": post.get("source_account"),
         "local_context": post.get("local_context"),
         "region_annotations": post.get("region_annotations"),
     }
+
+
+def post_handles(post: dict) -> list:
+    """All author handles on a post: multi-author field first, then legacy
+    singular, then whatever the source_url encodes. Ordered, deduped."""
+    return normalize_handles(
+        (post.get("instagram_handles") or [])
+        + [post.get("instagram_handle") or "",
+           handle_from_source_url(post.get("source_url")) or ""]
+    )
 
 
 
@@ -203,9 +214,13 @@ async def create_post_from_url(request: UrlUploadRequest):
              print("CHECK .ENV: CLOUDINARY_NAME is missing!")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
     
-    # Normalize the Instagram handle (if the extension supplied one) so the image
-    # carries its account context and links to the Darpan persona.
-    handle = normalize_handle(request.instagram_handle) if request.instagram_handle else None
+    # Normalize the Instagram handle(s) the extension supplied. Collab posts carry
+    # several authors; the first is primary and also fills the legacy singular field.
+    handles = normalize_handles(
+        (request.instagram_handles or [])
+        + ([request.instagram_handle] if request.instagram_handle else [])
+    )
+    handle = handles[0] if handles else None
 
     # Create the post document
     try:
@@ -218,6 +233,7 @@ async def create_post_from_url(request: UrlUploadRequest):
             "general_tags": request.general_tags or [],
             "source_url": request.source_url or request.image_url,  # page (or image) URL for reference
             "instagram_handle": handle,
+            "instagram_handles": handles or None,
             "source_account": request.source_account or None,
         }
 
@@ -226,11 +242,12 @@ async def create_post_from_url(request: UrlUploadRequest):
 
         # Attach this image to its account's persona (create a stub if new) so the
         # combined image+account context is available later.
-        if handle:
+        for i, h in enumerate(handles):
             try:
-                await persona_service.touch(handle, request.source_account)
+                # Account snapshot only describes the page's main author → primary only.
+                await persona_service.touch(h, request.source_account if i == 0 else None)
             except Exception as e:
-                print(f"Persona touch failed (non-fatal): {e}")
+                print(f"Persona touch failed for @{h} (non-fatal): {e}")
 
         created_post = await post_collection.find_one({"_id": new_post.inserted_id})
         return post_helper(created_post)
@@ -339,11 +356,13 @@ async def get_post_context(post_id: str):
     if not post:
         raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
 
-    handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url"))
+    handles = post_handles(post)
+    handle = handles[0] if handles else None
     persona = await persona_service.get_persona(handle) if handle else None
     return {
         "post": post_helper(post),
         "instagram_handle": handle,
+        "instagram_handles": handles,
         "persona": persona,  # full dossier + account details, or null if not built yet
     }
 
@@ -371,24 +390,26 @@ async def set_local_context(post_id: str, request: LocalContextRequest):
     }
     await post_collection.update_one({"_id": obj_id}, {"$set": {"local_context": local_context}})
 
-    # Roll up into the persona (microscopic → macroscopic).
-    handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url"))
+    # Roll up into the persona (microscopic → macroscopic). Collab posts carry
+    # several authors — feed every one of them.
+    handles = post_handles(post)
     fed = False
-    if handle and request.feed_to_persona and (local_context["commentary"] or request.aletheia):
-        try:
-            await persona_service.add_local_context(
-                handle=handle,
-                post_id=post_id,
-                image_url=post.get("photo_url"),
-                commentary=local_context["commentary"],
-                aletheia=request.aletheia,
-            )
-            fed = True
-        except Exception as e:
-            print(f"Persona local-context roll-up failed (non-fatal): {e}")
+    if handles and request.feed_to_persona and (local_context["commentary"] or request.aletheia):
+        for h in handles:
+            try:
+                await persona_service.add_local_context(
+                    handle=h,
+                    post_id=post_id,
+                    image_url=post.get("photo_url"),
+                    commentary=local_context["commentary"],
+                    aletheia=request.aletheia,
+                )
+                fed = True
+            except Exception as e:
+                print(f"Persona local-context roll-up failed for @{h} (non-fatal): {e}")
 
     updated = await post_collection.find_one({"_id": obj_id})
-    return {"post": post_helper(updated), "fed_to_persona": fed, "handle": handle}
+    return {"post": post_helper(updated), "fed_to_persona": fed, "handle": handles[0] if handles else None}
 
 
 @router.post("/{post_id}/unconceal-suggest")
@@ -551,21 +572,23 @@ async def save_region_annotations(post_id: str, request: RegionAnnotationsReques
                                    "updated_at": datetime.now(timezone.utc)}}
     )
 
-    # Roll prioritised part-correspondences up to the persona (microscopic → macroscopic).
-    handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url"))
+    # Roll prioritised part-correspondences up to the persona (microscopic →
+    # macroscopic). Collab posts carry several authors — feed every one of them.
+    handles = post_handles(post)
     fed = False
-    if handle and request.feed_to_persona:
+    if handles and request.feed_to_persona:
         notes = [
             f"{r.get('label', 'part')} — {r.get('user_note', '').strip()}"
             for r in request.regions
             if r.get("prioritised") and (r.get("user_note") or "").strip()
         ]
         if notes:
-            try:
-                await persona_service.add_region_correspondence(handle, post_id, post.get("photo_url"), notes)
-                fed = True
-            except Exception as e:
-                print(f"Persona region roll-up failed (non-fatal): {e}")
+            for h in handles:
+                try:
+                    await persona_service.add_region_correspondence(h, post_id, post.get("photo_url"), notes)
+                    fed = True
+                except Exception as e:
+                    print(f"Persona region roll-up failed for @{h} (non-fatal): {e}")
 
     updated = await post_collection.find_one({"_id": obj_id})
     return {"post": post_helper(updated), "fed_to_persona": fed}
