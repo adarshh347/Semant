@@ -637,23 +637,32 @@ function PostDetailPage() {
                         />
                       ))}
                     </div>
-                    <div className="add-block-menu">
-                      <button className="add-block-btn" onClick={() => addBlock('paragraph')}>
+                    <div className="editor-subsection editor-tools-section">
+                      <div className="subsection-heading">
+                        <span className="subsection-kicker">Add block</span>
+                        <p>Insert a new passage, heading, or pull-quote into the draft.</p>
+                      </div>
+                      <div className="add-block-menu">
+                        <button className="add-block-btn" onClick={() => addBlock('paragraph')}>
                         <Pilcrow size={15} /> Paragraph
-                      </button>
-                      <button className="add-block-btn" onClick={() => addBlock('h1')}>
+                        </button>
+                        <button className="add-block-btn" onClick={() => addBlock('h1')}>
                         <Heading1 size={15} /> Heading
-                      </button>
-                      <button className="add-block-btn" onClick={() => addBlock('quote')}>
+                        </button>
+                        <button className="add-block-btn" onClick={() => addBlock('quote')}>
                         <Quote size={15} /> Quote
-                      </button>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Sutradhar's quill — AI composition from the image */}
-                    <div className="sutradhar-composer">
+                    <div className="editor-subsection sutradhar-composer">
                       <div className="composer-head">
-                        <span className="sd-spark"><Wand2 size={16} /></span>
-                        Compose with Sutradhar
+                        <div className="composer-heading">
+                          <span className="sd-spark"><Wand2 size={16} /></span>
+                          <span>Compose with Sutradhar</span>
+                        </div>
+                        <p>Use the image as a prompt, or steer the voice with a short instruction.</p>
                       </div>
                       <div className="composer-row">
                         <button
@@ -666,7 +675,7 @@ function PostDetailPage() {
                           Draft from image
                         </button>
                       </div>
-                      <div className="composer-row" style={{ marginTop: '0.6rem' }}>
+                      <div className="composer-row composer-row-tight">
                         <input
                           className="composer-input"
                           placeholder="Tell Sutradhar what to write…"
