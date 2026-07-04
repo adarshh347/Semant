@@ -65,6 +65,11 @@ sankalpa_collection = database.get_collection("sankalpa")
 # Instagram details + the images we already have from that account.
 persona_collection = database.get_collection("personas")
 
+# --- Anatomy Catalog (Issue #9): scaled category insights ---
+# anatomy_catalog_collection: cached aggregated anatomy category profiles +
+# LLM-synthesised insights on cross-image annotation patterns.
+anatomy_catalog_collection = database.get_collection("anatomy_catalog")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""
