@@ -16,6 +16,7 @@ import MotivePage from './pages/MotivePage.jsx';
 import ResearchPage from './pages/ResearchPage.jsx';
 import PersonasPage from './pages/PersonasPage.jsx';
 import UnconcealQueuePage from './pages/UnconcealQueuePage.jsx';
+import AnatomyPage from './pages/AnatomyPage.jsx';
 
 const router = createBrowserRouter([
   {
@@ -33,6 +34,7 @@ const router = createBrowserRouter([
       { path: "research", element: <ResearchPage /> },
       { path: "personas", element: <PersonasPage /> },
       { path: "unconceal", element: <UnconcealQueuePage /> },
+      { path: "anatomy", element: <AnatomyPage /> },
       { path: "motive", element: <MotivePage /> }
     ],
   },

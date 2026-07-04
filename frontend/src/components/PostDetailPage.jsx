@@ -352,6 +352,13 @@ function PostDetailPage() {
   const existingTextForAI = () =>
     editedBlocks.map(b => plainText(b.content)).join('\n\n').trim();
 
+  // Enter edit mode with the current post's blocks/tags loaded in
+  const startEditing = () => {
+    setIsEditing(true);
+    setEditedBlocks(post.text_blocks || []);
+    setEditedTags(post.general_tags || []);
+  };
+
   const draftFromImage = async () => {
     setAiError('');
     setAiBusy('draft');
@@ -637,23 +644,32 @@ function PostDetailPage() {
                         />
                       ))}
                     </div>
-                    <div className="add-block-menu">
-                      <button className="add-block-btn" onClick={() => addBlock('paragraph')}>
+                    <div className="editor-subsection editor-tools-section">
+                      <div className="subsection-heading">
+                        <span className="subsection-kicker">Add block</span>
+                        <p>Insert a new passage, heading, or pull-quote into the draft.</p>
+                      </div>
+                      <div className="add-block-menu">
+                        <button className="add-block-btn" onClick={() => addBlock('paragraph')}>
                         <Pilcrow size={15} /> Paragraph
-                      </button>
-                      <button className="add-block-btn" onClick={() => addBlock('h1')}>
+                        </button>
+                        <button className="add-block-btn" onClick={() => addBlock('h1')}>
                         <Heading1 size={15} /> Heading
-                      </button>
-                      <button className="add-block-btn" onClick={() => addBlock('quote')}>
+                        </button>
+                        <button className="add-block-btn" onClick={() => addBlock('quote')}>
                         <Quote size={15} /> Quote
-                      </button>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Sutradhar's quill — AI composition from the image */}
-                    <div className="sutradhar-composer">
+                    <div className="editor-subsection sutradhar-composer">
                       <div className="composer-head">
-                        <span className="sd-spark"><Wand2 size={16} /></span>
-                        Compose with Sutradhar
+                        <div className="composer-heading">
+                          <span className="sd-spark"><Wand2 size={16} /></span>
+                          <span>Compose with Sutradhar</span>
+                        </div>
+                        <p>Use the image as a prompt, or steer the voice with a short instruction.</p>
                       </div>
                       <div className="composer-row">
                         <button
@@ -666,7 +682,7 @@ function PostDetailPage() {
                           Draft from image
                         </button>
                       </div>
-                      <div className="composer-row" style={{ marginTop: '0.6rem' }}>
+                      <div className="composer-row composer-row-tight">
                         <input
                           className="composer-input"
                           placeholder="Tell Sutradhar what to write…"
@@ -688,9 +704,12 @@ function PostDetailPage() {
                       {aiError && <p className="composer-error">{aiError}</p>}
                     </div>
 
-                    <div className="edit-section" style={{ marginTop: '2rem' }}>
-                      <h4>Tags</h4>
-                      <div className="tags-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                    <div className="edit-section tags-edit-section">
+                      <div className="edit-section-head">
+                        <h4>Tags</h4>
+                      </div>
+                      <div className="editor-subsection tags-card">
+                        <div className="tags-container">
                         {editedTags.map(tag => (
                           <span key={tag} className="tag-item">
                             {tag}
@@ -702,11 +721,11 @@ function PostDetailPage() {
                             </button>
                           </span>
                         ))}
-                      </div>
+                        </div>
 
-                      {popularTags.length > 0 && (
-                        <div style={{ marginBottom: '0.5rem' }}>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>Popular: </span>
+                        {popularTags.length > 0 && (
+                          <div className="popular-tags-row">
+                            <span className="popular-tags-label">Popular:</span>
                           {popularTags.filter(tag => !editedTags.includes(tag)).slice(0, 5).map(tag => (
                             <button
                               key={tag}
@@ -716,20 +735,41 @@ function PostDetailPage() {
                               <Plus size={10} /> {tag}
                             </button>
                           ))}
-                        </div>
-                      )}
+                          </div>
+                        )}
 
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        <input
-                          type="text"
-                          placeholder="Add tag..."
-                          value={currentTagInput}
-                          onChange={(e) => setCurrentTagInput(e.target.value)}
-                          onKeyDown={handleTagInputKeyDown}
-                          className="tag-input"
-                        />
-                        <button className="action-btn" onClick={handleAddTag}><Plus size={16} /> Add</button>
+                        <div className="tag-input-row">
+                          <input
+                            type="text"
+                            placeholder="Add tag..."
+                            value={currentTagInput}
+                            onChange={(e) => setCurrentTagInput(e.target.value)}
+                            onKeyDown={handleTagInputKeyDown}
+                            className="tag-input"
+                          />
+                          <button className="action-btn tag-add-btn" onClick={handleAddTag}><Plus size={16} /> Add</button>
+                        </div>
                       </div>
+                    </div>
+                  </div>
+                ) : (!post.text_blocks || post.text_blocks.length === 0) ? (
+                  <div className="story-empty">
+                    <div className="story-empty-icon"><PenLine size={22} /></div>
+                    <h3 className="story-empty-title">No story yet</h3>
+                    <p className="story-empty-sub">
+                      This image is still silent. Write its story, or let Sutradhar
+                      draft one from what it sees.
+                    </p>
+                    <div className="story-empty-actions">
+                      <button className="story-empty-btn primary" onClick={startEditing}>
+                        <Edit size={15} /> Write the story
+                      </button>
+                      <button
+                        className="story-empty-btn"
+                        onClick={() => { startEditing(); draftFromImage(); }}
+                      >
+                        <Sparkles size={15} /> Draft from image
+                      </button>
                     </div>
                   </div>
                 ) : (

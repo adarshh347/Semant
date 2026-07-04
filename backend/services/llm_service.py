@@ -727,5 +727,71 @@ no quotes. Just the note.
             print(f"Error drafting unconcealment: {e}")
             return ""
 
+    # ------------------------------------------------------------------
+    # Anatomy Catalog — category insight synthesis (Issue #9)
+    # ------------------------------------------------------------------
+
+    def synthesize_anatomy_language(
+        self,
+        profile_text: str,
+        genre_tag: str = None,
+    ) -> dict:
+        """
+        Given an aggregated anatomy category profile (which parts the curator
+        notices, how often, at what intensity, and their notes), synthesise:
+        - A 'portrait' paragraph: the curator's anatomy language — what they
+          consistently see and respond to, and what that reveals.
+        - Per-category insights: for each top category, a sentence on why it
+          consistently affects the curator.
+
+        Returns dict: {portrait, per_category: [{label, insight}]}
+        """
+        if not self.client:
+            return {"portrait": "LLM unavailable.", "per_category": []}
+
+        genre_hint = f"\nThe curator is primarily looking at **{genre_tag}** images." if genre_tag else ""
+
+        prompt = f"""
+You are a perceptive visual-culture analyst. A curator has been annotating images —
+marking which anatomical parts of each image affect them, rating intensity (0-100),
+and writing notes about why. Here is their aggregated profile across many images:
+
+{profile_text}
+{genre_hint}
+
+TASK:
+1. Write a PORTRAIT (2-3 sentences) that describes the curator's "anatomy language" —
+   the pattern of what they consistently notice, what draws their eye, and what that
+   reveals about their way of seeing. Be specific and grounded in the data; avoid
+   generic statements. Use plain, sensuous language.
+
+2. For each of the top categories they respond to (up to 8), write ONE specific
+   sentence about WHY this part consistently affects them — what it does visually,
+   sensorially, or semantically. Ground it in their notes when available.
+
+OUTPUT — strict JSON only:
+{{
+  "portrait": "2-3 sentence synthesis of their anatomy language",
+  "per_category": [
+    {{"label": "neckline", "insight": "one sentence on why this part consistently affects the curator"}},
+    {{"label": "fabric fold", "insight": "..."}}
+  ]
+}}
+"""
+        try:
+            chat_completion = self.client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You write perceptive, grounded analyses of visual attention patterns. You output JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.model,
+                response_format={"type": "json_object"},
+                temperature=0.7,
+            )
+            return json.loads(chat_completion.choices[0].message.content)
+        except Exception as e:
+            print(f"Error in anatomy language synthesis: {e}")
+            return {"portrait": "Error synthesising anatomy language.", "per_category": []}
+
 
 llm_service = LLMService()

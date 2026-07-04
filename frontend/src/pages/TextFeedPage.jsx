@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import TextPostCard from '../components/TextPostCard'; // Use the feed card
-const API_URL = 'http://127.0.0.1:5007';
+const API_URL = 'http://127.0.0.1:5008';
 
 
 function TextFeedPage() {

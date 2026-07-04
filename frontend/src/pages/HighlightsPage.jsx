@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import PostFeedCard from '../components/PostFeedCard';
-const API_URL = 'http://127.0.0.1:5007';
+const API_URL = 'http://127.0.0.1:5008';
 
 function HighlightsPage() {
   const [posts, setPosts] = useState([]);
