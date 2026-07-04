@@ -3,7 +3,7 @@ import axios from 'axios';
 import UploadForm from '../components/UploadForm';
 import PostCard from '../components/PostCard';
 
-const API_URL='http://127.0.0.1:5007';
+const API_URL='http://127.0.0.1:5008';
 
 function HomePage(){
     const [posts,setPosts]= useState([]);
