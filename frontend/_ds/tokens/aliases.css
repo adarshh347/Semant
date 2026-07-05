@@ -1,0 +1,13 @@
+/* Aliases for tokens some component CSS references but the app never defined.
+   Added by /design-sync so those components render fully. Values follow the
+   existing scale/palette in theme.css (index.css). */
+:root {
+  --bg-card: var(--surface);
+  --text-main: var(--ink);
+  --text-muted: var(--ink-muted);
+  --accent-secondary: var(--info);
+  --space-5: 1.25rem;
+  --space-7: 1.75rem;
+  --space-14: 3.5rem;
+  --fs-h4: 1.125rem;
+}
