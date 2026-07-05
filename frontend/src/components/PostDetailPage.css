@@ -1073,6 +1073,24 @@
     outline: none;
 }
 
+/* One-line blocks hug their text. The global .ProseMirror (App.css) adds
+   1rem padding + 80px min-height for standalone editors; block editors get
+   their insets from .block-body and their min from .editor-content-wrapper,
+   so neutralise both here (scoped — other editors keep the global rule). */
+.editor-content-wrapper .ProseMirror {
+    padding: 0;
+    min-height: 0;
+}
+/* Default paragraph/heading/quote margins otherwise pad a single line top and
+   bottom; keep a little air only between stacked elements inside one block. */
+.editor-content-wrapper .ProseMirror > * {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+.editor-content-wrapper .ProseMirror > * + * {
+    margin-top: var(--space-2);
+}
+
 .ProseMirror p.is-editor-empty:first-child::before {
     color: var(--text-tertiary);
     content: attr(data-placeholder);
