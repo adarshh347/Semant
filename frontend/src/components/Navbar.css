@@ -7,6 +7,7 @@
   z-index: 100;
   padding: var(--space-3) clamp(1rem, 3vw, 2rem);
   background: transparent;
+  transition: padding 0.22s var(--ease), opacity 0.22s var(--ease);
 }
 
 .navbar {
@@ -21,8 +22,9 @@
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-xl);
+  box-shadow: none;
+  transition: padding 0.22s var(--ease), border-color 0.22s var(--ease), background-color 0.22s var(--ease), opacity 0.22s var(--ease);
 }
 
 /* Brand */
@@ -97,6 +99,27 @@
 
 .theme-toggle-btn {
   box-shadow: none !important;
+}
+
+.post-detail-editing .navbar-wrap {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.post-detail-editing .navbar {
+  padding: 0.45rem 0.7rem 0.45rem 1rem;
+  border-color: color-mix(in srgb, var(--line) 68%, transparent);
+  background: color-mix(in srgb, var(--glass-bg) 84%, transparent);
+  opacity: 0.92;
+}
+
+.post-detail-editing .nav-links a,
+.post-detail-editing .nav-actions {
+  opacity: 0.84;
+}
+
+.post-detail-editing .nav-logo {
+  font-size: 1.2rem;
 }
 
 /* Responsive */

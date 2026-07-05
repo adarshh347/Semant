@@ -451,6 +451,11 @@ function PostDetailPage() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [isDirty]);
 
+  useEffect(() => {
+    document.body.classList.toggle('post-detail-editing', isEditing);
+    return () => document.body.classList.remove('post-detail-editing');
+  }, [isEditing]);
+
   if (!post) {
     return (
       <div className="post-detail-page">
@@ -462,7 +467,7 @@ function PostDetailPage() {
   }
 
   return (
-    <div className="post-detail-page">
+    <div className={`post-detail-page${isEditing ? ' editing-mode' : ''}`}>
       {/* Underline Tooltip */}
       {showUnderlineTooltip && (
         <div
@@ -483,7 +488,7 @@ function PostDetailPage() {
       )}
 
       {/* Top Bar */}
-      <div className="post-detail-topbar">
+      <div className={`post-detail-topbar${isEditing ? ' compact' : ''}`}>
         <Link to="/gallery" className="back-link">
           <ArrowLeft size={18} /> Gallery
         </Link>
@@ -502,19 +507,14 @@ function PostDetailPage() {
           )}
           <ThemeToggle />
           <button
-            className={`action-btn ${isChatOpen ? 'primary' : 'secondary'}`}
+            className={`action-btn topbar-ai-btn ${isChatOpen ? 'primary' : 'secondary'}`}
             onClick={() => setIsChatOpen(!isChatOpen)}
             title="Toggle AI Assistant"
-            style={{ marginRight: '1rem' }}
           >
             <Sparkles size={16} /> AI Assistant
           </button>
           {!isEditing && (
-            <button className="action-btn" onClick={() => {
-              setIsEditing(true);
-              setEditedBlocks(post.text_blocks || []);
-              setEditedTags(post.general_tags || []);
-            }}>
+            <button className="action-btn" onClick={startEditing}>
               <Edit size={16} /> Edit
             </button>
           )}
@@ -620,134 +620,149 @@ function PostDetailPage() {
             {activeRightTab === 'content' && (
               <>
                 {isEditing ? (
-                  <div className="edit-section">
-                    <div className="edit-section-head">
-                      <h4>Story Blocks</h4>
-                    </div>
-                    <div className="editor-meta">
-                      <span><strong>{wordStats.words}</strong> words</span>
-                      <span><strong>{wordStats.minutes}</strong> min read</span>
-                      <span><strong>{editedBlocks.length}</strong> {editedBlocks.length === 1 ? 'block' : 'blocks'}</span>
-                    </div>
-                    <div className="advanced-editor">
-                      {editedBlocks.map((block, index) => (
-                        <RichTextBlock
-                          key={block.id}
-                          block={block}
-                          onContentChange={handleBlockContentChange}
-                          onColorChange={handleBlockColorChange}
-                          onDelete={deleteBlock}
-                          onMoveUp={(id) => moveBlock(id, -1)}
-                          onMoveDown={(id) => moveBlock(id, 1)}
-                          isFirst={index === 0}
-                          isLast={index === editedBlocks.length - 1}
-                        />
-                      ))}
-                    </div>
-                    <div className="editor-subsection editor-tools-section">
-                      <div className="subsection-heading">
-                        <span className="subsection-kicker">Add block</span>
-                        <p>Insert a new passage, heading, or pull-quote into the draft.</p>
+                  <div className="edit-shell">
+                    <div className="edit-shell-intro">
+                      <div className="edit-shell-heading">
+                        <span className="subsection-kicker">Writing studio</span>
+                        <h4>Shape the story quietly, then save when it feels right.</h4>
                       </div>
-                      <div className="add-block-menu">
-                        <button className="add-block-btn" onClick={() => addBlock('paragraph')}>
-                        <Pilcrow size={15} /> Paragraph
-                        </button>
-                        <button className="add-block-btn" onClick={() => addBlock('h1')}>
-                        <Heading1 size={15} /> Heading
-                        </button>
-                        <button className="add-block-btn" onClick={() => addBlock('quote')}>
-                        <Quote size={15} /> Quote
-                        </button>
+                      <div className="editor-meta">
+                        <span><strong>{wordStats.words}</strong> words</span>
+                        <span><strong>{wordStats.minutes}</strong> min read</span>
+                        <span><strong>{editedBlocks.length}</strong> {editedBlocks.length === 1 ? 'block' : 'blocks'}</span>
                       </div>
                     </div>
 
-                    {/* Sutradhar's quill — AI composition from the image */}
-                    <div className="editor-subsection sutradhar-composer">
-                      <div className="composer-head">
-                        <div className="composer-heading">
-                          <span className="sd-spark"><Wand2 size={16} /></span>
-                          <span>Compose with Sutradhar</span>
-                        </div>
-                        <p>Use the image as a prompt, or steer the voice with a short instruction.</p>
-                      </div>
-                      <div className="composer-row">
-                        <button
-                          className="composer-btn"
-                          onClick={draftFromImage}
-                          disabled={aiBusy !== null}
-                          title="Let the image speak — drafts a passage from what's seen"
-                        >
-                          {aiBusy === 'draft' ? <span className="sd-spin" /> : <Sparkles size={15} />}
-                          Draft from image
-                        </button>
-                      </div>
-                      <div className="composer-row composer-row-tight">
-                        <input
-                          className="composer-input"
-                          placeholder="Tell Sutradhar what to write…"
-                          value={aiPrompt}
-                          onChange={(e) => setAiPrompt(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && aiBusy === null && writeFromPrompt()}
-                          disabled={aiBusy !== null}
-                        />
-                        <button
-                          className="composer-btn primary"
-                          onClick={writeFromPrompt}
-                          disabled={aiBusy !== null || !aiPrompt.trim()}
-                        >
-                          {aiBusy === 'write' ? <span className="sd-spin" /> : <PenLine size={15} />}
-                          Write
-                        </button>
-                      </div>
-                      <p className="composer-hint">New passages are appended as blocks — reorder or edit them above, then Save.</p>
-                      {aiError && <p className="composer-error">{aiError}</p>}
-                    </div>
-
-                    <div className="edit-section tags-edit-section">
-                      <div className="edit-section-head">
-                        <h4>Tags</h4>
-                      </div>
-                      <div className="editor-subsection tags-card">
-                        <div className="tags-container">
-                        {editedTags.map(tag => (
-                          <span key={tag} className="tag-item">
-                            {tag}
-                            <button
-                              onClick={() => handleRemoveTag(tag)}
-                              className="remove-tag-btn"
-                            >
-                              <X size={12} />
-                            </button>
-                          </span>
-                        ))}
-                        </div>
-
-                        {popularTags.length > 0 && (
-                          <div className="popular-tags-row">
-                            <span className="popular-tags-label">Popular:</span>
-                          {popularTags.filter(tag => !editedTags.includes(tag)).slice(0, 5).map(tag => (
-                            <button
-                              key={tag}
-                              onClick={() => handleAddPopularTag(tag)}
-                              className="popular-tag-btn"
-                            >
-                              <Plus size={10} /> {tag}
-                            </button>
-                          ))}
+                    <div className="edit-layout">
+                      <div className="edit-main-column">
+                        <div className="edit-section">
+                          <div className="edit-section-head">
+                            <h4>Story blocks</h4>
                           </div>
-                        )}
+                          <div className="advanced-editor">
+                            {editedBlocks.map((block, index) => (
+                              <RichTextBlock
+                                key={block.id}
+                                block={block}
+                                onContentChange={handleBlockContentChange}
+                                onColorChange={handleBlockColorChange}
+                                onDelete={deleteBlock}
+                                onMoveUp={(id) => moveBlock(id, -1)}
+                                onMoveDown={(id) => moveBlock(id, 1)}
+                                isFirst={index === 0}
+                                isLast={index === editedBlocks.length - 1}
+                              />
+                            ))}
+                          </div>
+                        </div>
 
-                        <div className="tag-input-row">
-                          <input
-                            type="text"
-                            placeholder="Add tag..."
-                            value={currentTagInput}
-                            onChange={(e) => setCurrentTagInput(e.target.value)}
-                            onKeyDown={handleTagInputKeyDown}
-                            className="tag-input"
-                          />
-                          <button className="action-btn tag-add-btn" onClick={handleAddTag}><Plus size={16} /> Add</button>
+                        <div className="editor-subsection editor-tools-section">
+                          <div className="subsection-heading">
+                            <span className="subsection-kicker">Add block</span>
+                            <p>Insert a new passage, heading, or pull-quote into the draft.</p>
+                          </div>
+                          <div className="add-block-menu">
+                            <button className="add-block-btn" onClick={() => addBlock('paragraph')}>
+                              <Pilcrow size={15} /> Paragraph
+                            </button>
+                            <button className="add-block-btn" onClick={() => addBlock('h1')}>
+                              <Heading1 size={15} /> Heading
+                            </button>
+                            <button className="add-block-btn" onClick={() => addBlock('quote')}>
+                              <Quote size={15} /> Quote
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="edit-side-column">
+                        <div className="editor-subsection sutradhar-composer">
+                          <div className="composer-head">
+                            <div className="composer-heading">
+                              <span className="sd-spark"><Wand2 size={16} /></span>
+                              <span>Compose with Sutradhar</span>
+                            </div>
+                            <p>Use the image as a prompt, or steer the voice with a short instruction.</p>
+                          </div>
+                          <div className="composer-row">
+                            <button
+                              className="composer-btn"
+                              onClick={draftFromImage}
+                              disabled={aiBusy !== null}
+                              title="Let the image speak — drafts a passage from what's seen"
+                            >
+                              {aiBusy === 'draft' ? <span className="sd-spin" /> : <Sparkles size={15} />}
+                              Draft from image
+                            </button>
+                          </div>
+                          <div className="composer-row composer-row-tight">
+                            <input
+                              className="composer-input"
+                              placeholder="Tell Sutradhar what to write…"
+                              value={aiPrompt}
+                              onChange={(e) => setAiPrompt(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && aiBusy === null && writeFromPrompt()}
+                              disabled={aiBusy !== null}
+                            />
+                            <button
+                              className="composer-btn primary"
+                              onClick={writeFromPrompt}
+                              disabled={aiBusy !== null || !aiPrompt.trim()}
+                            >
+                              {aiBusy === 'write' ? <span className="sd-spin" /> : <PenLine size={15} />}
+                              Write
+                            </button>
+                          </div>
+                          <p className="composer-hint">New passages are appended as blocks. Reorder or edit them in the draft, then save.</p>
+                          {aiError && <p className="composer-error">{aiError}</p>}
+                        </div>
+
+                        <div className="edit-section tags-edit-section">
+                          <div className="edit-section-head">
+                            <h4>Tags</h4>
+                          </div>
+                          <div className="editor-subsection tags-card">
+                            <div className="tags-container">
+                              {editedTags.map(tag => (
+                                <span key={tag} className="tag-item">
+                                  {tag}
+                                  <button
+                                    onClick={() => handleRemoveTag(tag)}
+                                    className="remove-tag-btn"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+
+                            {popularTags.length > 0 && (
+                              <div className="popular-tags-row">
+                                <span className="popular-tags-label">Popular:</span>
+                                {popularTags.filter(tag => !editedTags.includes(tag)).slice(0, 5).map(tag => (
+                                  <button
+                                    key={tag}
+                                    onClick={() => handleAddPopularTag(tag)}
+                                    className="popular-tag-btn"
+                                  >
+                                    <Plus size={10} /> {tag}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="tag-input-row">
+                              <input
+                                type="text"
+                                placeholder="Add tag..."
+                                value={currentTagInput}
+                                onChange={(e) => setCurrentTagInput(e.target.value)}
+                                onKeyDown={handleTagInputKeyDown}
+                                className="tag-input"
+                              />
+                              <button className="action-btn tag-add-btn" onClick={handleAddTag}><Plus size={16} /> Add</button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
