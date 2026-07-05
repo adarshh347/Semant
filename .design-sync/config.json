@@ -1,0 +1,43 @@
+{
+  "pkg": "frontend",
+  "globalName": "Drishtikone",
+  "shape": "package",
+  "readmeHeader": ".design-sync/conventions.md",
+  "entry": "./frontend/_ds-barrel.mjs",
+  "srcDir": "src",
+  "cssEntry": "src/App.css",
+  "tokensPkg": "../_ds/tokens",
+  "tokensGlob": "*.css",
+  "provider": {
+    "component": "ThemeProvider",
+    "inner": {
+      "component": "MemoryRouter"
+    }
+  },
+  "overrides": {
+    "NavBar": { "cardMode": "single", "primaryStory": "Default", "viewport": "1220x128" },
+    "PostFeedCard": { "cardMode": "column" },
+    "TextPostCard": { "cardMode": "column" }
+  },
+  "componentSrcMap": {
+    "BoundingBoxEditor": "src/components/BoundingBoxEditor.jsx",
+    "ChatbotPanel": "src/components/ChatbotPanel.jsx",
+    "ImageSelectorModal": "src/components/ImageSelectorModal.jsx",
+    "MultiBlockEditor": "src/components/MultiBlockEditor.jsx",
+    "NavBar": "src/components/NavBar.jsx",
+    "PhraseGenerator": "src/components/PhraseGenerator.jsx",
+    "PostCard": "src/components/PostCard.jsx",
+    "PostDetailPage": "src/components/PostDetailPage.jsx",
+    "PostFeedCard": "src/components/PostFeedCard.jsx",
+    "PostSuggestionPanel": "src/components/PostSuggestionPanel.jsx",
+    "RegionDetectorModal": "src/components/RegionDetectorModal.jsx",
+    "RichTextBlock": "src/components/RichTextBlock.jsx",
+    "StoryFlow": "src/components/StoryFlow.jsx",
+    "TagFilter": "src/components/TagFilter.jsx",
+    "TextPostCard": "src/components/TextPostCard.jsx",
+    "ThemeToggle": "src/components/ThemeToggle.jsx",
+    "TipTapEditor": "src/components/TipTapEditor.jsx",
+    "UntaggedImagesSidebar": "src/components/UntaggedImagesSidebar.jsx",
+    "UploadForm": "src/components/UploadForm.jsx"
+  }
+}
