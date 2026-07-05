@@ -2,6 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
+// Import early so the X-API-Key header (axios default + fetch patch) is
+// installed before any component fires a request.
+import './config/api.js';
+
 import App from './App.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import GalleryPage from './pages/GalleryPage.jsx';

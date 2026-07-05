@@ -117,6 +117,55 @@
       background: #fee2e2;
       color: #991b1b;
     }
+
+    .api-key {
+      margin-top: 16px;
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .api-key label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+
+    .api-key input {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .api-key input:focus {
+      border-color: #5b9ab9;
+    }
+
+    .api-key button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 9px;
+      background: linear-gradient(135deg, #5b9ab9 0%, #7ab8d4 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .key-status {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #166534;
+      min-height: 14px;
+    }
   </style>
 </head>
 <body>
@@ -141,12 +190,19 @@
     </div>
   </div>
   
+  <div class="api-key">
+    <label for="apiKeyInput">API key (optional)</label>
+    <input id="apiKeyInput" type="password" placeholder="X-API-Key for the backend" autocomplete="off" />
+    <button id="saveKeyBtn" type="button">Save key</button>
+    <div id="keyStatus" class="key-status"></div>
+  </div>
+
   <a href="http://localhost:5173/gallery" target="_blank" class="open-gallery">
     Open Gallery
   </a>
-  
+
   <div id="status" class="status">Checking connection...</div>
-  
+
   <script src="popup.js"></script>
 </body>
 </html>
