@@ -841,14 +841,13 @@
 
 
 /* --- Text Editor Components --- */
-/* L4: story blocks are not cards. A block is a [gutter | body] row. The body
-   carries the one quiet affordance — a left rule + faint wash when active /
-   focused. The gutter (drag handle + overflow menu) is revealed on hover. */
+/* L4: story blocks are not cards. Notion pattern — the block TEXT sits flush at
+   the content-area's left edge (shares one x with "STORY BLOCKS" / "From
+   @handle"); the gutter (drag handle + overflow menu) floats OUT OF FLOW in the
+   left margin, revealed on hover, so it never indents the text. The active
+   left-accent is drawn in the margin via ::before, also without shifting text. */
 .rich-text-block {
     position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
     background: transparent;
     border: none;
     border-radius: 0;
@@ -862,31 +861,54 @@
     box-shadow: inset 0 2px 0 var(--accent);
 }
 
+/* Body: text flush at x0. Symmetric padding is cancelled by equal negative
+   margins so the hover/active wash gets breathing room without moving the text. */
 .block-body {
-    flex: 1 1 auto;
+    position: relative;
     min-width: 0;
-    border-left: 2px solid transparent;
-    padding-left: var(--space-4);
-    transition: border-color 0.2s var(--ease), background-color 0.2s var(--ease);
+    padding: 2px var(--space-2);
+    margin: 0 calc(-1 * var(--space-2));
+    border-radius: var(--radius-sm);
+    transition: background-color 0.2s var(--ease);
 }
 
-.rich-text-block:hover .block-body {
-    border-left-color: color-mix(in srgb, var(--line) 80%, transparent);
+/* Left rule lives in the margin (left of the text), never indents it. */
+.block-body::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 2px;
+    width: 2px;
+    border-radius: 1px;
+    background: transparent;
+    transition: background-color 0.2s var(--ease);
+}
+
+.rich-text-block:hover .block-body::before {
+    background: color-mix(in srgb, var(--line) 80%, transparent);
+}
+
+.rich-text-block:focus-within .block-body::before,
+.rich-text-block.is-active .block-body::before {
+    background: var(--accent);
 }
 
 .rich-text-block:focus-within .block-body,
 .rich-text-block.is-active .block-body {
-    border-left-color: var(--accent);
-    background: color-mix(in srgb, var(--accent-soft) 32%, transparent);
+    background: color-mix(in srgb, var(--accent-soft) 30%, transparent);
 }
 
-/* Left gutter — drag handle + overflow menu, quiet until hover/active/focus */
+/* Left gutter — floats in the content-area's left padding, quiet until
+   hover/active/focus. Absolute so it adds no width and no row height. */
 .block-gutter {
+    position: absolute;
+    top: var(--space-1);
+    left: calc(-1 * var(--space-6));
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--space-1);
-    padding-top: 2px;
     opacity: 0;
     transition: opacity 0.15s var(--ease);
 }
@@ -903,13 +925,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     /* A visible resting chip so the controls read as buttons, not empty boxes */
     background: var(--surface-2);
-    border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
     border-radius: var(--radius-sm);
-    color: var(--ink-muted);
+    color: var(--ink);
     cursor: pointer;
     transition: all 0.15s var(--ease);
 }
@@ -935,8 +957,8 @@
 
 .block-overflow {
     position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
+    top: 0;
+    left: calc(100% + 6px);
     z-index: 40;
     min-width: 12rem;
     display: flex;
@@ -1082,13 +1104,23 @@
     min-height: 0;
 }
 /* Default paragraph/heading/quote margins otherwise pad a single line top and
-   bottom; keep a little air only between stacked elements inside one block. */
+   bottom; keep gentle air only between stacked elements inside one block.
+   ~0.35rem reads as multi-paragraph prose without stacking a full blank line. */
 .editor-content-wrapper .ProseMirror > * {
     margin-top: 0;
     margin-bottom: 0;
 }
 .editor-content-wrapper .ProseMirror > * + * {
-    margin-top: var(--space-2);
+    margin-top: 0.35rem;
+}
+/* A trailing empty paragraph (ProseMirror renders it with a <br>) otherwise
+   adds a phantom blank line at the block's foot — collapse it, but never the
+   sole/first paragraph (that one holds the placeholder + click target). */
+.editor-content-wrapper .ProseMirror > p:last-child:not(:first-child):empty,
+.editor-content-wrapper .ProseMirror > p:last-child:not(:first-child):has(> br:only-child) {
+    margin-top: 0;
+    line-height: 0;
+    height: 0;
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
