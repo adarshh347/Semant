@@ -1032,7 +1032,11 @@ function PostDetailPage() {
                 <span><strong>{editedBlocks.length}</strong> {editedBlocks.length === 1 ? 'block' : 'blocks'}</span>
               </div>
               <div className="edit-actions-buttons">
-                <button className="action-btn primary" onClick={handleSave}><Save size={16} /> Save</button>
+                <button
+                  className={`action-btn${isDirty ? ' primary' : ''}`}
+                  onClick={handleSave}
+                  title={isDirty ? 'Save changes (⌘S)' : 'No unsaved changes'}
+                ><Save size={16} /> Save</button>
                 <button className="action-btn" onClick={() => {
                   setIsEditing(false);
                   setActiveBlockId(null);
