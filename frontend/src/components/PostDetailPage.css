@@ -1543,23 +1543,30 @@
     margin-top: var(--space-3);
 }
 
+/* Subtle inline "+" — block-type insertion now lives on the "/" menu; this quiet
+   affordance stays for the Sutradhar AI compose (and discoverability). */
 .block-insert-trigger {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    font-size: var(--fs-caption);
-    color: var(--ink-muted);
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    color: var(--ink-subtle);
     background: transparent;
-    border: 1px dashed color-mix(in srgb, var(--line) 70%, transparent);
-    border-radius: var(--radius-md);
-    padding: 0.4rem 0.7rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
     cursor: pointer;
+    opacity: 0.55;
     transition: all 0.18s var(--ease);
 }
-.block-insert-trigger:hover {
-    border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+.block-insert:hover .block-insert-trigger,
+.block-insert-trigger:hover,
+.block-insert-trigger:focus-visible,
+.block-insert-trigger[aria-expanded="true"] {
+    opacity: 1;
     color: var(--ink);
     background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+    border-color: color-mix(in srgb, var(--line) 70%, transparent);
 }
 .block-insert-trigger:focus-visible {
     outline: 2px solid var(--accent);

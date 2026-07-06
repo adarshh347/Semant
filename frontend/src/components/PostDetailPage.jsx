@@ -717,9 +717,11 @@ function PostDetailPage() {
                               className="block-insert-trigger"
                               aria-haspopup="menu"
                               aria-expanded={insertOpen}
+                              aria-label="Add block"
+                              title="Add block · or type / in a block"
                               onClick={() => setInsertOpen(o => !o)}
                             >
-                              <Plus size={15} /> Add block
+                              <Plus size={16} />
                             </button>
 
                             {insertOpen && (
