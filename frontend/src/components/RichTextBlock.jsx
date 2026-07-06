@@ -2,7 +2,9 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
+import Placeholder from '@tiptap/extension-placeholder';
 import React, { useEffect, useRef, useState } from 'react';
+import SlashCommand from './slashCommand';
 import {
   Bold, Italic, Underline as UnderlineIcon, Quote, Heading1, Pilcrow,
   Trash2, ChevronUp, ChevronDown, GripVertical, MoreHorizontal, Check,
@@ -34,7 +36,17 @@ function RichTextBlock({
   const menuRef = useRef(null);
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline],
+    extensions: [
+      StarterKit,
+      Underline,
+      Placeholder.configure({
+        placeholder: ({ node }) =>
+          node.type.name === 'heading'
+            ? 'Heading'
+            : "Write, or press '/' for commands",
+      }),
+      SlashCommand,
+    ],
     content: block.content,
     onUpdate: ({ editor }) => onContentChange(block.id, editor.getHTML()),
     onFocus: () => onFocusBlock?.(block.id),
