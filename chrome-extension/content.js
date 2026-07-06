@@ -14,6 +14,21 @@
     const DASHBOARD_URL = 'http://localhost:5173/personas';
     const MIN_IMAGE_SIZE = 100;
 
+    // Wraps fetch to attach the saved X-API-Key header (set in the popup) on
+    // every request to the Sharirasutra backend. When no key is saved, requests
+    // go out unauthenticated — fine against a backend with auth disabled.
+    async function apiFetch(url, options = {}) {
+        let apiKey;
+        try {
+            ({ apiKey } = await chrome.storage.sync.get('apiKey'));
+        } catch (_) { /* storage unavailable — proceed without a key */ }
+        const headers = {
+            ...(options.headers || {}),
+            ...(apiKey ? { 'X-API-Key': apiKey } : {}),
+        };
+        return fetch(url, { ...options, headers });
+    }
+
     // ---- Floating toolbar (Save + Brainstorm) ----------------------------------
     const toolbar = document.createElement('div');
     toolbar.className = 'sharirasutra-toolbar';
@@ -375,7 +390,7 @@
         saveBtn.classList.add('saving');
         saveBtn.querySelector('span').textContent = 'Saving…';
         try {
-            const r = await fetch(SAVE_URL, {
+            const r = await apiFetch(SAVE_URL, {
                 method: 'POST', mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [], ...instagramContextForSave(currentImage) })
@@ -524,7 +539,7 @@
     async function runBrainstorm() {
         renderLoading(bsImageUrl);
         try {
-            const r = await fetch(BRAINSTORM_URL, {
+            const r = await apiFetch(BRAINSTORM_URL, {
                 method: 'POST', mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image_url: bsImageUrl, source_url: location.href, answers: bsAnswers })
@@ -901,7 +916,7 @@
     // One frame → backend. igContext/sourceUrl default to the live page when absent.
     async function postFrame(url, tags, igContext, sourceUrl) {
         try {
-            const r = await fetch(SAVE_URL, {
+            const r = await apiFetch(SAVE_URL, {
                 method: 'POST', mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image_url: url, source_url: sourceUrl || location.href, general_tags: tags || [], ...(igContext || {}) })
@@ -1248,7 +1263,7 @@
         personaLabel.textContent = 'Reading profile…';
         try {
             const payload = scrapeInstagramProfile(handle);
-            const r = await fetch(PERSONA_INGEST_URL, {
+            const r = await apiFetch(PERSONA_INGEST_URL, {
                 method: 'POST', mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),

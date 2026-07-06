@@ -2,6 +2,7 @@
   "pkg": "frontend",
   "globalName": "Drishtikone",
   "shape": "package",
+  "projectId": "b067ece5-95c1-4716-986b-974fe80a0d0e",
   "readmeHeader": ".design-sync/conventions.md",
   "entry": "./frontend/_ds-barrel.mjs",
   "srcDir": "src",

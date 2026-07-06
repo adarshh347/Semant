@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str
     OPENROUTER_API_KEY: str
     GROQ_API_KEY: Optional[str] = None
-    
+    API_KEY: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -48,6 +48,10 @@ function PostDetailPage() {
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [selectedText, setSelectedText] = useState('');
   const [selectedBlockId, setSelectedBlockId] = useState(null);
+  const [activeBlockId, setActiveBlockId] = useState(null); // focused block in edit mode
+  const [draggingId, setDraggingId] = useState(null);       // block being dragged
+  const [dropTargetId, setDropTargetId] = useState(null);   // block hovered while dragging
+  const [insertOpen, setInsertOpen] = useState(false);      // "+" insertion menu
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBusy, setAiBusy] = useState(null); // 'draft' | 'write' | null
   const [aiError, setAiError] = useState('');
@@ -63,6 +67,7 @@ function PostDetailPage() {
   const dividerRef = useRef(null);
   const containerRef = useRef(null);
   const contentAreaRef = useRef(null);
+  const blockSeq = useRef(0); // monotonic, avoids Date.now() id collisions within a ms
 
   // Handler for when a story flow node is clicked
   const handleFlowNodeClick = (nodeText) => {
@@ -271,15 +276,46 @@ function PostDetailPage() {
     );
   };
 
+  // Single block factory — every creation point flows through here so the
+  // `origin` field is always set (human vs sutradhar). Id combines the clock
+  // with a monotonic counter so two blocks made in the same ms never collide.
+  const makeBlock = ({ type = 'paragraph', content = '', origin = 'human' }) => ({
+    id: `block_${Date.now()}_${blockSeq.current++}`,
+    type,
+    content,
+    color: 'transparent',
+    origin,
+  });
+
+  // Single, position-aware insertion path. Inserts AFTER the active block
+  // (or the caret's block); falls back to append when nothing is focused.
+  const insertBlock = (block) => {
+    setEditedBlocks(currentBlocks => {
+      const i = activeBlockId ? currentBlocks.findIndex(b => b.id === activeBlockId) : -1;
+      if (i < 0) return [...currentBlocks, block];
+      const next = [...currentBlocks];
+      next.splice(i + 1, 0, block);
+      return next;
+    });
+    setActiveBlockId(block.id);
+  };
+
   const addBlock = (type = 'paragraph') => {
     // Seed the TipTap node so Heading/Quote start in the right form.
     const seed = type === 'h1' ? '<h1></h1>' : type === 'quote' ? '<blockquote></blockquote>' : '';
-    const newBlock = { id: `block_${Date.now()}`, type, content: seed, color: 'transparent' };
-    setEditedBlocks(currentBlocks => [...currentBlocks, newBlock]);
+    insertBlock(makeBlock({ type, content: seed, origin: 'human' }));
   };
 
   const deleteBlock = (id) => {
-    setEditedBlocks(currentBlocks => currentBlocks.filter(b => b.id !== id));
+    const idx = editedBlocks.findIndex(b => b.id === id);
+    const remaining = editedBlocks.filter(b => b.id !== id);
+    setEditedBlocks(remaining);
+    // Don't leave activeBlockId dangling on a removed block, or position-aware
+    // insertion silently falls back to append. Move focus to a neighbour.
+    if (id === activeBlockId) {
+      const fallback = remaining[idx - 1] || remaining[idx] || null;
+      setActiveBlockId(fallback ? fallback.id : null);
+    }
   };
 
   const handleAddTag = () => {
@@ -301,13 +337,8 @@ function PostDetailPage() {
   };
 
   const handleSuggestionSelect = (suggestion) => {
-    const newBlock = {
-      id: `block_${Date.now()}`,
-      type: 'paragraph',
-      content: suggestion,
-      color: 'transparent'
-    };
-    setEditedBlocks([...editedBlocks, newBlock]);
+    // AI sidebar add-path — routes through the shared position-aware insertion.
+    insertBlock(makeBlock({ type: 'paragraph', content: suggestion, origin: 'sutradhar' }));
   };
 
   const handleTagInputKeyDown = (event) => {
@@ -317,7 +348,7 @@ function PostDetailPage() {
     }
   };
 
-  // --- Reorder blocks ---
+  // --- Reorder blocks (overflow menu: move up/down) ---
   const moveBlock = (id, dir) => {
     setEditedBlocks(blocks => {
       const i = blocks.findIndex(b => b.id === id);
@@ -327,6 +358,31 @@ function PostDetailPage() {
       [next[i], next[j]] = [next[j], next[i]];
       return next;
     });
+  };
+
+  // --- Reorder blocks (drag handle) ---
+  const handleBlockDragEnter = (targetId) => {
+    if (draggingId && targetId !== draggingId) setDropTargetId(targetId);
+  };
+
+  const handleBlockDrop = (targetId) => {
+    setEditedBlocks(blocks => {
+      if (!draggingId || draggingId === targetId) return blocks;
+      const from = blocks.findIndex(b => b.id === draggingId);
+      const to = blocks.findIndex(b => b.id === targetId);
+      if (from < 0 || to < 0) return blocks;
+      const next = [...blocks];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+    setDraggingId(null);
+    setDropTargetId(null);
+  };
+
+  const handleBlockDragEnd = () => {
+    setDraggingId(null);
+    setDropTargetId(null);
   };
 
   // --- Dirty state (unsaved changes) ---
@@ -352,10 +408,20 @@ function PostDetailPage() {
   const existingTextForAI = () =>
     editedBlocks.map(b => plainText(b.content)).join('\n\n').trim();
 
-  // Enter edit mode with the current post's blocks/tags loaded in
-  const startEditing = () => {
+  // Enter edit mode with the current post's blocks/tags loaded in.
+  // On an empty story, seed one focused empty paragraph so the caret is ready
+  // to type (skip when `seed:false`, e.g. the draft-from-image path fills it).
+  const startEditing = ({ seed = true } = {}) => {
     setIsEditing(true);
-    setEditedBlocks(post.text_blocks || []);
+    const existing = post.text_blocks || [];
+    if (existing.length === 0 && seed) {
+      const first = makeBlock({ type: 'paragraph' });
+      setEditedBlocks([first]);
+      setActiveBlockId(first.id);
+    } else {
+      setEditedBlocks(existing);
+      setActiveBlockId(null);
+    }
     setEditedTags(post.general_tags || []);
   };
 
@@ -366,10 +432,7 @@ function PostDetailPage() {
       const res = await epicService.autoRecommendText(post.photo_url, existingTextForAI());
       const text = res?.suggestion;
       if (!text) throw new Error('No suggestion returned');
-      setEditedBlocks(blocks => [
-        ...blocks,
-        { id: `block_${Date.now()}`, type: 'paragraph', content: htmlFromText(text), color: 'transparent' },
-      ]);
+      insertBlock(makeBlock({ type: 'paragraph', content: htmlFromText(text), origin: 'sutradhar' }));
     } catch (e) {
       setAiError('Could not draft from the image. Is the vision service running?');
     } finally {
@@ -386,10 +449,7 @@ function PostDetailPage() {
       const res = await epicService.promptEnhancedText(post.photo_url, prompt);
       const text = res?.suggestion;
       if (!text) throw new Error('No suggestion returned');
-      setEditedBlocks(blocks => [
-        ...blocks,
-        { id: `block_${Date.now()}`, type: 'paragraph', content: htmlFromText(text), color: 'transparent' },
-      ]);
+      insertBlock(makeBlock({ type: 'paragraph', content: htmlFromText(text), origin: 'sutradhar' }));
       setAiPrompt('');
     } catch (e) {
       setAiError('Could not write from that prompt. Is the vision service running?');
@@ -621,25 +681,12 @@ function PostDetailPage() {
               <>
                 {isEditing ? (
                   <div className="edit-shell">
-                    <div className="edit-shell-intro">
-                      <div className="edit-shell-heading">
-                        <span className="subsection-kicker">Writing studio</span>
-                        <h4>Shape the story quietly, then save when it feels right.</h4>
-                      </div>
-                      <div className="editor-meta">
-                        <span><strong>{wordStats.words}</strong> words</span>
-                        <span><strong>{wordStats.minutes}</strong> min read</span>
-                        <span><strong>{editedBlocks.length}</strong> {editedBlocks.length === 1 ? 'block' : 'blocks'}</span>
-                      </div>
-                    </div>
-
                     <div className="edit-layout">
-                      <div className="edit-main-column">
-                        <div className="edit-section">
-                          <div className="edit-section-head">
-                            <h4>Story blocks</h4>
-                          </div>
-                          <div className="advanced-editor">
+                      <div className="edit-section">
+                        <div className="edit-section-head">
+                          <h4>Story blocks</h4>
+                        </div>
+                        <div className="advanced-editor">
                             {editedBlocks.map((block, index) => (
                               <RichTextBlock
                                 key={block.id}
@@ -649,78 +696,93 @@ function PostDetailPage() {
                                 onDelete={deleteBlock}
                                 onMoveUp={(id) => moveBlock(id, -1)}
                                 onMoveDown={(id) => moveBlock(id, 1)}
+                                onFocusBlock={setActiveBlockId}
+                                isActive={block.id === activeBlockId}
                                 isFirst={index === 0}
                                 isLast={index === editedBlocks.length - 1}
+                                onDragStartBlock={setDraggingId}
+                                onDragEnterBlock={handleBlockDragEnter}
+                                onDropBlock={handleBlockDrop}
+                                onDragEndBlock={handleBlockDragEnd}
+                                isDropTarget={block.id === dropTargetId}
                               />
                             ))}
                           </div>
-                        </div>
 
-                        <div className="editor-subsection editor-tools-section">
-                          <div className="subsection-heading">
-                            <span className="subsection-kicker">Add block</span>
-                            <p>Insert a new passage, heading, or pull-quote into the draft.</p>
-                          </div>
-                          <div className="add-block-menu">
-                            <button className="add-block-btn" onClick={() => addBlock('paragraph')}>
-                              <Pilcrow size={15} /> Paragraph
-                            </button>
-                            <button className="add-block-btn" onClick={() => addBlock('h1')}>
-                              <Heading1 size={15} /> Heading
-                            </button>
-                            <button className="add-block-btn" onClick={() => addBlock('quote')}>
-                              <Quote size={15} /> Quote
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="edit-side-column">
-                        <div className="editor-subsection sutradhar-composer">
-                          <div className="composer-head">
-                            <div className="composer-heading">
-                              <span className="sd-spark"><Wand2 size={16} /></span>
-                              <span>Compose with Sutradhar</span>
-                            </div>
-                            <p>Use the image as a prompt, or steer the voice with a short instruction.</p>
-                          </div>
-                          <div className="composer-row">
+                          {/* Single insertion flow: manual block types + Sutradhar
+                              compose, inserted after the active block. */}
+                          <div className="block-insert">
                             <button
-                              className="composer-btn"
-                              onClick={draftFromImage}
-                              disabled={aiBusy !== null}
-                              title="Let the image speak — drafts a passage from what's seen"
+                              type="button"
+                              className="block-insert-trigger"
+                              aria-haspopup="menu"
+                              aria-expanded={insertOpen}
+                              onClick={() => setInsertOpen(o => !o)}
                             >
-                              {aiBusy === 'draft' ? <span className="sd-spin" /> : <Sparkles size={15} />}
-                              Draft from image
+                              <Plus size={15} /> Add block
                             </button>
+
+                            {insertOpen && (
+                              <div className="block-insert-menu" role="menu">
+                                <div className="block-insert-group">
+                                  <span className="block-insert-label">Write</span>
+                                  <div className="block-insert-row">
+                                    <button type="button" className="block-insert-item" onClick={() => { addBlock('paragraph'); setInsertOpen(false); }}>
+                                      <Pilcrow size={15} /> Paragraph
+                                    </button>
+                                    <button type="button" className="block-insert-item" onClick={() => { addBlock('h1'); setInsertOpen(false); }}>
+                                      <Heading1 size={15} /> Heading
+                                    </button>
+                                    <button type="button" className="block-insert-item" onClick={() => { addBlock('quote'); setInsertOpen(false); }}>
+                                      <Quote size={15} /> Quote
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="block-insert-group">
+                                  <span className="block-insert-label"><Wand2 size={13} /> Compose with Sutradhar</span>
+                                  <button
+                                    type="button"
+                                    className="block-insert-item"
+                                    onClick={draftFromImage}
+                                    disabled={aiBusy !== null}
+                                    title="Let the image speak — drafts a passage from what's seen"
+                                  >
+                                    {aiBusy === 'draft' ? <span className="sd-spin" /> : <Sparkles size={15} />}
+                                    Draft from image
+                                  </button>
+                                  <div className="block-insert-prompt">
+                                    <input
+                                      className="composer-input"
+                                      placeholder="Tell Sutradhar what to write…"
+                                      value={aiPrompt}
+                                      onChange={(e) => setAiPrompt(e.target.value)}
+                                      onKeyDown={(e) => e.key === 'Enter' && aiBusy === null && writeFromPrompt()}
+                                      disabled={aiBusy !== null}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="composer-btn primary"
+                                      onClick={writeFromPrompt}
+                                      disabled={aiBusy !== null || !aiPrompt.trim()}
+                                    >
+                                      {aiBusy === 'write' ? <span className="sd-spin" /> : <PenLine size={15} />}
+                                      Write
+                                    </button>
+                                  </div>
+                                  {aiError && <p className="composer-error">{aiError}</p>}
+                                </div>
+
+                                <p className="block-insert-hint">New blocks are inserted after the block you’re in. Reorder or edit them, then save.</p>
+                              </div>
+                            )}
                           </div>
-                          <div className="composer-row composer-row-tight">
-                            <input
-                              className="composer-input"
-                              placeholder="Tell Sutradhar what to write…"
-                              value={aiPrompt}
-                              onChange={(e) => setAiPrompt(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && aiBusy === null && writeFromPrompt()}
-                              disabled={aiBusy !== null}
-                            />
-                            <button
-                              className="composer-btn primary"
-                              onClick={writeFromPrompt}
-                              disabled={aiBusy !== null || !aiPrompt.trim()}
-                            >
-                              {aiBusy === 'write' ? <span className="sd-spin" /> : <PenLine size={15} />}
-                              Write
-                            </button>
-                          </div>
-                          <p className="composer-hint">New passages are appended as blocks. Reorder or edit them in the draft, then save.</p>
-                          {aiError && <p className="composer-error">{aiError}</p>}
                         </div>
 
-                        <div className="edit-section tags-edit-section">
-                          <div className="edit-section-head">
-                            <h4>Tags</h4>
-                          </div>
+                      <div className="edit-section tags-edit-section">
+                        <div className="edit-section-head">
+                          <h4>Tags</h4>
+                        </div>
                           <div className="editor-subsection tags-card">
                             <div className="tags-container">
                               {editedTags.map(tag => (
@@ -764,7 +826,6 @@ function PostDetailPage() {
                             </div>
                           </div>
                         </div>
-                      </div>
                     </div>
                   </div>
                 ) : (!post.text_blocks || post.text_blocks.length === 0) ? (
@@ -781,7 +842,7 @@ function PostDetailPage() {
                       </button>
                       <button
                         className="story-empty-btn"
-                        onClick={() => { startEditing(); draftFromImage(); }}
+                        onClick={() => { startEditing({ seed: false }); draftFromImage(); }}
                       >
                         <Sparkles size={15} /> Draft from image
                       </button>
@@ -801,6 +862,7 @@ function PostDetailPage() {
                       <div
                         key={block.id}
                         data-block-id={block.id}
+                        data-origin={block.origin || 'human'}
                         className="text-block-item"
                         dangerouslySetInnerHTML={{ __html: block.content }}
                         style={{
@@ -964,14 +1026,27 @@ function PostDetailPage() {
           {/* Edit actions */}
           {isEditing && (
             <div className="edit-actions">
-              <button className="action-btn primary" onClick={handleSave}><Save size={16} /> Save</button>
-              <button className="action-btn" onClick={() => {
-                setIsEditing(false);
-                setEditedTags(post.general_tags || []);
-                setEditedBlocks(post.text_blocks || []);
-              }}>
-                <XCircle size={16} /> Cancel
-              </button>
+              <div className="edit-statusline">
+                <span><strong>{wordStats.words}</strong> words</span>
+                <span><strong>{wordStats.minutes}</strong> min read</span>
+                <span><strong>{editedBlocks.length}</strong> {editedBlocks.length === 1 ? 'block' : 'blocks'}</span>
+              </div>
+              <div className="edit-actions-buttons">
+                <button
+                  className={`action-btn${isDirty ? ' primary' : ''}`}
+                  onClick={handleSave}
+                  title={isDirty ? 'Save changes (⌘S)' : 'No unsaved changes'}
+                ><Save size={16} /> Save</button>
+                <button className="action-btn" onClick={() => {
+                  setIsEditing(false);
+                  setActiveBlockId(null);
+                  setInsertOpen(false);
+                  setEditedTags(post.general_tags || []);
+                  setEditedBlocks(post.text_blocks || []);
+                }}>
+                  <XCircle size={16} /> Cancel
+                </button>
+              </div>
             </div>
           )}
         </div>

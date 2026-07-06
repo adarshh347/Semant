@@ -21,3 +21,11 @@ ds-bundle/
 
 # Local runtime logs
 scratchpad_backend.log
+scratchpad_frontend.log
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/

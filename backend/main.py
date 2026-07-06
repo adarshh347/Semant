@@ -1,10 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from backend.routers import posts, epics, phrases, research, personas, anatomy
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.database import post_collection
 from backend.schemas.post import PaginatedPosts
+from backend.security import require_api_key
 import math
 
 app = FastAPI(title="visual dictionary")
@@ -40,7 +41,7 @@ async def startup_event():
 # In backend/main.py
 
 # --- FULL IMPLEMENTATION DIRECTLY ON APP ---
-@app.get("/api/v1/posts/with-text", response_model=PaginatedPosts)
+@app.get("/api/v1/posts/with-text", response_model=PaginatedPosts, dependencies=[Depends(require_api_key)])
 async def get_posts_with_text_main(page: int = 1, limit: int = 50):
     query = {
         "text_blocks": {
@@ -78,13 +79,13 @@ async def get_posts_with_text_main(page: int = 1, limit: int = 50):
     return response_data
 
 # Include routers
-app.include_router(posts.router, prefix="/api/v1/posts", tags=["Posts"])
-app.include_router(posts.text_posts_router, prefix="/api/v1/posts", tags=["Posts Text"])
-app.include_router(epics.router, prefix="/api/v1/epics", tags=["Epics"])
-app.include_router(research.router, prefix="/api/v1/research", tags=["Research Agent"])
-app.include_router(personas.router, prefix="/api/v1/personas", tags=["Darpan Personas"])
-app.include_router(anatomy.router, prefix="/api/v1/anatomy", tags=["Anatomy Catalog"])
-app.include_router(phrases.router)
+app.include_router(posts.router, prefix="/api/v1/posts", tags=["Posts"], dependencies=[Depends(require_api_key)])
+app.include_router(posts.text_posts_router, prefix="/api/v1/posts", tags=["Posts Text"], dependencies=[Depends(require_api_key)])
+app.include_router(epics.router, prefix="/api/v1/epics", tags=["Epics"], dependencies=[Depends(require_api_key)])
+app.include_router(research.router, prefix="/api/v1/research", tags=["Research Agent"], dependencies=[Depends(require_api_key)])
+app.include_router(personas.router, prefix="/api/v1/personas", tags=["Darpan Personas"], dependencies=[Depends(require_api_key)])
+app.include_router(anatomy.router, prefix="/api/v1/anatomy", tags=["Anatomy Catalog"], dependencies=[Depends(require_api_key)])
+app.include_router(phrases.router, dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
 @app.get("/health")
