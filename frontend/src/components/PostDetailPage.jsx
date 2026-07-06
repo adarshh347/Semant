@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Sparkles, Plus, X, ChevronRight, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, Pilcrow, Heading1, Quote, Wand2, PenLine, Eye, Scan } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, X, ChevronRight, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, Wand2, PenLine, Eye, Scan } from 'lucide-react';
 import BoundingBoxEditor from './BoundingBoxEditor';
 import RegionDetectorModal from './RegionDetectorModal';
 import RichTextBlock from './RichTextBlock';
@@ -709,40 +709,33 @@ function PostDetailPage() {
                             ))}
                           </div>
 
-                          {/* Single insertion flow: manual block types + Sutradhar
-                              compose, inserted after the active block. */}
+                          {/* Insert row: a plain "+ Add block" (slash covers the
+                              block types) + a compact Sutradhar AI-compose that
+                              becomes /draft, /write in Phase 2. */}
                           <div className="block-insert">
                             <button
                               type="button"
                               className="block-insert-trigger"
-                              aria-haspopup="menu"
-                              aria-expanded={insertOpen}
-                              aria-label="Add block"
-                              title="Add block · or type / in a block"
-                              onClick={() => setInsertOpen(o => !o)}
+                              onClick={() => addBlock('paragraph')}
+                              title="Add an empty block · then type / for headings, quotes…"
                             >
-                              <Plus size={16} />
+                              <Plus size={16} /> Add block
                             </button>
 
-                            {insertOpen && (
-                              <div className="block-insert-menu" role="menu">
-                                <div className="block-insert-group">
-                                  <span className="block-insert-label">Write</span>
-                                  <div className="block-insert-row">
-                                    <button type="button" className="block-insert-item" onClick={() => { addBlock('paragraph'); setInsertOpen(false); }}>
-                                      <Pilcrow size={15} /> Paragraph
-                                    </button>
-                                    <button type="button" className="block-insert-item" onClick={() => { addBlock('h1'); setInsertOpen(false); }}>
-                                      <Heading1 size={15} /> Heading
-                                    </button>
-                                    <button type="button" className="block-insert-item" onClick={() => { addBlock('quote'); setInsertOpen(false); }}>
-                                      <Quote size={15} /> Quote
-                                    </button>
-                                  </div>
-                                </div>
+                            <div className="block-compose">
+                              <button
+                                type="button"
+                                className="block-compose-toggle"
+                                aria-haspopup="menu"
+                                aria-expanded={insertOpen}
+                                onClick={() => setInsertOpen(o => !o)}
+                                title="Compose with Sutradhar (AI) — becomes /draft, /write in Phase 2"
+                              >
+                                <Wand2 size={14} /> Compose with Sutradhar
+                              </button>
 
-                                <div className="block-insert-group">
-                                  <span className="block-insert-label"><Wand2 size={13} /> Compose with Sutradhar</span>
+                              {insertOpen && (
+                                <div className="block-compose-menu" role="menu">
                                   <button
                                     type="button"
                                     className="block-insert-item"
@@ -773,11 +766,10 @@ function PostDetailPage() {
                                     </button>
                                   </div>
                                   {aiError && <p className="composer-error">{aiError}</p>}
+                                  <p className="block-insert-hint">Inserted after the block you’re in. In Phase 2 these become <code>/draft</code> and <code>/write</code>.</p>
                                 </div>
-
-                                <p className="block-insert-hint">New blocks are inserted after the block you’re in. Reorder or edit them, then save.</p>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
                         </div>
 
