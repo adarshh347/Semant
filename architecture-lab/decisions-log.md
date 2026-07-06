@@ -89,3 +89,18 @@ Phase 1 (slash menu for block types, no AI) only needs Q1–Q3, which are LOCKED
 - **AI writing becomes slash commands too** (locked direction). Generation verbs at the caret: `/draft` (from image), `/write <prompt>` (write from instruction), `/continue`, `/describe`; transforms: `/rewrite`, `/expand`, `/shorten`, `/version` (offer an alternate, non-destructive). Reference inserts (later): `/part` (an annotated image region), `/lens` (an Aletheia reading) — these also wire the Visual↔Content complementarity from Lane 2. See vault → [[Slash command potentialities]].
 - **Retire the big Add-block card** now that slash covers block types; keep AI compose reachable+compact until Phase 2 slash-AI replaces it; keep a **recognisable** "+ Add block" button (it was flattened to near-white).
 - **Slash positioning bug:** switch floating-ui to `strategy: 'fixed'` so the menu stays pinned to the caret during inner-container scroll.
+
+---
+
+## Slash Phase 2 — context-aware + replace Compose (LOCKED)
+- **Context-aware menu:** empty/at-start block → structure trio + `/version`; mid-text caret → AI verbs (`/draft /write /continue /rewrite /expand /shorten`). The trio must NOT appear mid-text.
+- **Compose with Sutradhar button is removed entirely** — replaced by `/draft` + `/write` (min), reusing existing non-streaming endpoints. Keep a recognisable "+ Add block".
+- `/version` (empty context) = generate an alternate starting draft from the image (confirm if a different meaning was intended).
+- See `inline-ai-phase2.build.md`, vault → [[Slash command potentialities]].
+
+## Lane 4 — answers to the 5 questions (LOCKED unless noted)
+1. Persona line → **content meta-head only** (provenance). Lane 1 does NOT also render it. One home.
+2. Epic → **keep as a small chip** in the meta-head; not a full section.
+3. Highlight jump → **cross-tab (Story + scrollIntoView) now**; inline margin rail is a later enhancement.
+4. Edit-mode tags → **sticky/collapsible so reachable while writing** (not buried at the bottom of a long column).
+5. Underline hint → **remove the permanent strip**; rely on the selection tooltip.
