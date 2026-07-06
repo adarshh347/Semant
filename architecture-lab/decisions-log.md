@@ -82,3 +82,10 @@ Phase 1 (slash menu for block types, no AI) only needs Q1–Q3, which are LOCKED
 
 ## Reopened on #14
 - **Block rhythm still reads tall on screen** despite `min-height: 1.7em`. Root cause: `--space-5` is undefined in `index.css` (scale skips 4→6) yet used in 4 places incl. `.advanced-editor` gap; plus a residual paragraph margin. Fix the token + tighten one-line rhythm; verify by screenshot.
+
+---
+
+## Slash direction — expanded (from verification session)
+- **AI writing becomes slash commands too** (locked direction). Generation verbs at the caret: `/draft` (from image), `/write <prompt>` (write from instruction), `/continue`, `/describe`; transforms: `/rewrite`, `/expand`, `/shorten`, `/version` (offer an alternate, non-destructive). Reference inserts (later): `/part` (an annotated image region), `/lens` (an Aletheia reading) — these also wire the Visual↔Content complementarity from Lane 2. See vault → [[Slash command potentialities]].
+- **Retire the big Add-block card** now that slash covers block types; keep AI compose reachable+compact until Phase 2 slash-AI replaces it; keep a **recognisable** "+ Add block" button (it was flattened to near-white).
+- **Slash positioning bug:** switch floating-ui to `strategy: 'fixed'` so the menu stays pinned to the caret during inner-container scroll.
