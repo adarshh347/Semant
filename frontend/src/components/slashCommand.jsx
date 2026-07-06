@@ -79,7 +79,10 @@ const renderSlashMenu = () => {
     onStart: (props) => {
       el = document.createElement('div');
       el.className = 'slash-menu-floating';
-      el.style.position = 'absolute';
+      // 'fixed' (not absolute): the caret lives inside .content-area's own
+      // scroll container, so a fixed box positioned from the viewport rect stays
+      // glued to the caret as that container scrolls. autoUpdate tracks it.
+      el.style.position = 'fixed';
       el.style.top = '0';
       el.style.left = '0';
       el.style.zIndex = '80';
@@ -90,9 +93,16 @@ const renderSlashMenu = () => {
       draw(props);
 
       if (!props.clientRect) return;
-      const virtual = { getBoundingClientRect: () => props.clientRect() };
+      // contextElement anchors the virtual reference to a real DOM node inside
+      // .content-area, so autoUpdate can attach scroll listeners to that inner
+      // scroll container (a bare virtual ref has no ancestors to track).
+      const virtual = {
+        getBoundingClientRect: () => props.clientRect(),
+        contextElement: props.editor?.view?.dom,
+      };
       stopAutoUpdate = autoUpdate(virtual, el, () => {
         computePosition(virtual, el, {
+          strategy: 'fixed',
           placement: 'bottom-start',
           middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 })],
         }).then(({ x, y }) => {
