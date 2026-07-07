@@ -56,7 +56,8 @@ Key changes vs today:
 - Prompted by user taps (Track D pick) or by anchors, to mask non-catalog regions (drape, texture patch, light field). Class-agnostic → fills the "not just objects" purpose.
 
 **Phase 4 — SAM2 video + replay signals (the reel path, B2C/Track F).**
-- Promptable video segmentation with memory-bounded streaming makes "which part of which frame" real; pair with replay/dwell signals for the audience taste capture. **Heaviest; explicitly later.**
+- Promptable video segmentation with memory-bounded streaming makes "which part of which frame" real; pair with replay/dwell signals for the audience taste capture. **Heaviest.**
+- **LOCKED 2026-07-08:** Adarsh pulled this **into active scope** (Fork 3 — reel-slicing is central). It is no longer "later." Track B budgets SAM2's video role alongside its image role; Track F produces the concrete video plan (GPU-video serving, cost/latency, replay-signal capture) this cycle. Guardrail: the image pipeline (Phases 1–3) must stay independently shippable so video work can't block the MVP.
 
 ---
 

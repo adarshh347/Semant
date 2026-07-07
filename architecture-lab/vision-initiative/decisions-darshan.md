@@ -57,9 +57,26 @@ Six catalog keys preserved verbatim → `anatomy_catalog_service` keeps working 
 
 ---
 
-## Part 2 — The 6 strategy forks, framed in detail (Adarsh to decide)
+## Part 2 — The 6 strategy forks (RESOLVED 2026-07-08)
 
-Each: **what's at stake · the options · recommendation · what it changes downstream.** My recommendation is marked ★; the call is yours.
+**Adarsh's calls (LOCKED):**
+
+| Fork | Decision | vs my rec |
+|---|---|---|
+| 1 — Sequencing | **True parallel** — creator + audience built together | (I'd recommended creator-first; Adarsh chose the more ambitious parallel path) |
+| 2 — Track F official | **Yes** | matches |
+| 3 — Video/reels | **Pull video forward** — reel-slicing is central, invest this cycle | (I'd recommended image-first; Adarsh wants video now) |
+| 4 — Model depth | **Phased full-stack** (FashionCLIP → Fashionpedia → SAM2) | matches |
+| 5 — Pitch framing | **Keep both balanced** (dual B2B + B2C headline) | (I'd leaned consumer-vision-led; Adarsh wants both) |
+| 6 — Name taste graph | **Ruchi** (रुचि) — proposed, veto open | matches |
+
+**What this combination means (honest note):** parallel + video-forward + balanced-pitch is the **most ambitious and highest-surface-area** path — it maximizes the vision but front-loads the most build, the heaviest infra (GPU video serving early), and the widest message. It's a deliberate bet on scope over speed-to-demo. The tracks below are re-weighted accordingly: **Track F is now parallel (not "after A/C")**, and **video moves from Phase-later into active scope**. Guardrail: keep the image loop shippable on its own so video slippage can't sink the whole MVP.
+
+Detailed framing of each fork (stakes/options/tradeoffs) is preserved below for the record.
+
+---
+
+Each: **what's at stake · the options · recommendation · what it changes downstream.** ★ = my original recommendation; the **LOCKED** line is Adarsh's actual call.
 
 ### Fork 1 — Emphasis & sequencing: who do we build for first?
 **At stake:** how fast we get a *showable, credible* thing, and how much surface area we carry at once. The engine (parts → reading → taste-vector) is shared no matter what; this fork is about which *surface* we finish first.
@@ -67,28 +84,28 @@ Each: **what's at stake · the options · recommendation · what it changes down
 - **B. Audience-first (B2C lead)** — build the "read this image deeper" consumer app first. Flashier, bigger reach story — but it *still* needs the same engine, so you pay the engine cost with less to show early, and consumer UX polish is expensive.
 - **C. True parallel** — creator + audience together. Fastest to a two-sided story, but doubles the build surface and the risk while the engine is still unproven.
 **Recommendation:** **A.** The creator demo is the credibility artifact *and* the engine test; audience + brand layer on the same spine without a rewrite.
-**Changes downstream:** sets build order after A lands (B/C tracks → creator demo → then Track F). If B or C is chosen, Track F gets pulled forward and D must design consumer-first.
+**LOCKED → C (True parallel).** Build creator + audience together. Downstream: Track F runs in parallel with B/C/D (not after); Track D designs the creator surface *and* the stripped consumer variant together; the graph-ready schema (Track A-v2) must land first so both sides share it from day one.
 
 ### Fork 2 — Make Track F (B2C) official now?
 **At stake:** whether the consumer/chain research becomes a first-class, tracked workstream or stays an idea.
 - **A. Yes — make it official ★** — it's research-only and parallel-safe; formalizing it means it gets a findings doc + an umbrella checkbox and doesn't get lost. Costs nothing now.
 - **B. Hold** — keep it as strategy prose until the creator engine is proven, to stay focused.
 **Recommendation:** **A**, but *sequence its research after A/C findings* (it depends on the graph-ready schema + the reading engine). Official, not urgent.
-**Changes downstream:** adds Track F to the umbrella issue; a B2C findings pass gets scheduled.
+**LOCKED → A (official) + parallel** (per Fork 1). Track F is now a first-class parallel track, not a follow-on. Still gated on Track A-v2's schema landing so it builds on the shared graph.
 
 ### Fork 3 — How far into video/reels this cycle?
 **At stake:** the reel-slicing / "which part of a video is loved" capability is genuinely differentiated for B2C, but video (SAM2-video, streaming masks, replay signals) is the heaviest thing in the plan.
 - **A. Image-first, video Phase-later ★** — scope video in Track F, build the image MVP now, add video when the image loop is proven. Keeps the MVP shippable.
 - **B. Pull video forward** — treat reel-slicing as central to the consumer hook and invest now. Bigger wow, but heavy infra (GPU video serving) and it blocks the simpler image MVP.
 **Recommendation:** **A.** Video is a Phase-2 multiplier, not the wedge. The image "read deeper" hook already delivers the "level up from social media" feeling at a fraction of the cost.
-**Changes downstream:** Track F documents the video boundary; model-plan Phase 4 stays later.
+**LOCKED → B (Pull video forward).** Reel-slicing is treated as central this cycle. Downstream: model-plan Phase 4 (SAM2-video + replay signals) moves into active scope; Track F must produce a concrete video plan (GPU-video serving, cost/latency, replay-signal capture) now, not later. Guardrail retained: image loop stays independently shippable.
 
 ### Fork 4 — Model adoption depth (ties to Track B)
 **At stake:** technical credibility vs deploy weight. Real fashion CV models read far stronger (resume/portfolio) than "a GPT wrapper," but they need GPU-ish serving.
 - **A. Phased full-stack ★** — FashionCLIP now (light, no training, gives taste-vectors + better labels immediately), then Fashionpedia segmentation, then SAM2. Each phase earns its keep; ends with a genuinely credible stack.
 - **B. Light first** — FashionCLIP labels + the current LLM only; defer the heavy segmenters. Ships faster, but the "domain-deep felt reading per part" — the whole differentiator — stays shallow until you add them anyway.
 **Recommendation:** **A**, explicitly phased (FashionCLIP → Fashionpedia → SAM2). You get an early win (vectors) and a credible endpoint without a big-bang deploy.
-**Changes downstream:** Track B builds the benchmark + deploy/cost/fallback plan around this staging.
+**LOCKED → A (phased full-stack).** Track B builds the benchmark + deploy/cost/fallback plan around this staging. Note: with video pulled forward (Fork 3), SAM2 gets both its image *and* video roles budgeted together.
 
 ### Fork 5 — Which side leads the pitch (headline framing)?
 **At stake:** the *story* you tell (investor / resume / portfolio / landing). One engine, but the headline shapes perception.
@@ -96,7 +113,7 @@ Each: **what's at stake · the options · recommendation · what it changes down
 - **B. B2B taste-intelligence headline** — lead with the brand/creator business (revenue-credible, defensible, resume-strong for an AI/data role), consumer as the reach/flywheel. Safer for investor/enterprise framing, less inspiring as a story.
 - **C. Keep both balanced** — dual pitch; risks a diffuse "what is it" message.
 **Recommendation:** **A** for a portfolio/landing/vision context; note that for a pure *investor/enterprise* deck, **B** may convert better. Pick per audience — but the landing/motive page leads with **A** (the motive narratives already do).
-**Changes downstream:** shapes `motive-narratives.md` emphasis and which demo you feature.
+**LOCKED → C (keep both balanced).** Dual B2B+B2C headline. Downstream: `motive-narratives.md` keeps both the consumer manifesto *and* an equally-weighted brand/creator-intelligence cut — add a B2B-facing motive section so the two are balanced rather than consumer-led. Watch for message diffusion; keep one shared sentence on top ("the taste-and-story layer") so "both" doesn't read as "unclear."
 
 ### Fork 6 — Name the taste graph?
 **At stake:** the taste graph (parts × felt-meaning × vectors) is becoming the center of gravity — the thing users own and brands buy. A name makes it a product object, not plumbing.
@@ -104,11 +121,13 @@ Each: **what's at stake · the options · recommendation · what it changes down
 - **B. Not yet** — leave it unnamed until the app rebrand (Drishti vs Nazar) settles, to avoid naming sprawl.
 **Recommendation:** **A** — "Ruchi" as a working name for the taste graph; cheap, on-theme, and gives the B2C "taste given back to you" surface a noun. Veto freely.
 (*Aletheia is the one Greek name in an otherwise Sanskrit set — flagged earlier; still open.)
-**Changes downstream:** cosmetic; threads into naming in `decisions-log.md`.
+**LOCKED → A (working name "Ruchi"), veto open.** Cosmetic; threads into naming in `decisions-log.md`.
 
 ---
 
 ## Part 3 — What's still blocking a build
-- Adarsh picks Forks 1–6 above (Track A's 7 are locked).
-- Track A findings get a **v2 extension pass** (the pre-revamp findings don't yet include `part/attributes/embedding_id/actor` — the updated Track A prompt now asks for them).
+- ~~Adarsh picks Forks 1–6~~ **DONE** (locked above). Track A's 7 also locked.
+- **Track A-v2 extension pass** must land first — it's the schema both sides (creator + audience) share, so with the *parallel* build it's the critical-path unblocker (the pre-revamp findings don't yet include `part/attributes/embedding_id/actor`; the updated prompt asks for them).
+- Then B / C / D / F proceed **in parallel** (Fork 1). B budgets SAM2 for image **and** video (Forks 3+4); F produces the concrete video plan now (Fork 3).
 - Umbrella GitHub issue created (still missing) with A–F checkboxes.
+- Reconcile these locks into the main `decisions-log.md` once the other thread's tree is clean.

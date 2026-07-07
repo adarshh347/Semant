@@ -36,6 +36,14 @@ You paused for a reason. Most apps punish the pause with the next thing — Dars
 
 ---
 
+## E. Brand / industry cut (for the "for brands & studios" section / B2B — added per Fork 5 balanced pitch)
+
+**Taste, made measurable — without flattening it.**
+
+Trend tools tell you *what's* rising. Tagging tools tell you *what's* in the frame. Neither tells you *why* a look resonates — the part-level reasons a drape, a palette, a silhouette lands with a given audience. Darshan turns the culture's own close-reading into structured intelligence: a **taste graph** built from articulated *why*, part by part, across creators and audiences. Match creators to a campaign by **aesthetic taste**, not follower count. Ground your copy in the actual garment. Read demand as *reasons*, not just velocity. The signal is richer than likes because it's made of meaning — and it compounds.
+
+---
+
 ## D. The one-liners (for hero / meta / pitch)
 - *The taste-and-story layer for fashion and entertainment.*
 - *A level up from social media — for the people who make the culture, and the people who love it.*

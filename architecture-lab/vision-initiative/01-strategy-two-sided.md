@@ -122,7 +122,9 @@ Concrete deltas. Each track's prompt gets an addendum pointing here + to `model-
 
 ---
 
-## 7. Recommended build posture: creator-first, audience-ready, brand-monetized
+> **LOCKED 2026-07-08 (Adarsh, `decisions-darshan.md`):** the posture below was my *recommendation* (creator-first). Adarsh chose the more ambitious path — **true parallel** (creator + audience together), **video pulled forward** (reel-slicing central this cycle), **phased full-stack models**, **balanced B2B+B2C pitch**. So: Track A-v2 lands first as the shared spine, then **B/C/D/F run in parallel**, video is in active scope, and the guardrail below (keep the image loop independently shippable) becomes essential rather than optional. §7 kept for the reasoning.
+
+## 7. Build posture — recommended (superseded by the locked parallel path above)
 
 1. **Prove the creator loop first** (Track E's demo): one fashion image → Fashionpedia-grade parts → felt reading per part → taste signature → grounded editorial piece. This is the portfolio/resume artifact and validates the whole engine.
 2. **Design the audience surface against the same engine** from day one (Track A schema + Track C reading must be audience-plug-ready). Ship Aletheia-in-feed + one-tap forks as the B2C MVP once the engine is real.

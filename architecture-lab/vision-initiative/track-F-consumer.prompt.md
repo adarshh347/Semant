@@ -3,6 +3,8 @@
 **Read first:** `00-brief.md`, `01-strategy-two-sided.md`, `model-integration-plan.md`. **Do not edit code.** Write `responses/track-F-consumer.findings.md`. Web search allowed.
 **Depends on:** Track A (graph-ready `Region` schema) + Track C (reading engine). Research is parallel-safe; a *build* waits on A/C.
 
+> **LOCKED 2026-07-08 (`decisions-darshan.md`):** Track F is **official** and runs **in parallel** with B/C/D (not after) — Adarsh chose the true-parallel two-sided path. And **video/reels is pulled into active scope this cycle** (not Phase-later): Q5 below is now a *primary* deliverable, not a boundary-drawing exercise — produce a concrete SAM2-video + replay-signal plan with GPU-serving cost/latency. Keep the image-first audience hook independently shippable as the guardrail.
+
 ## Mission
 Design the **audience side** of Darshan and the **value chain** that connects audiences → creators → brands — the half that makes the project two-sided (strategy §1–§5). The hard constraint (Adarsh): **consumers must not do researcher-grade annotation.** Capture sophisticated taste signal through low-friction interaction that already feels good.
 

@@ -11,16 +11,18 @@ You're continuing the **Darshan** vision-pipeline initiative in the Semant repo 
 2. Re-read `architecture-lab/vision-initiative/decisions-darshan.md` (Track A locks + the 6 forks) and `architecture-lab/decisions-log.md`. Check the umbrella GitHub issue — **create it if still missing** ("Darshan — vision pipeline initiative (umbrella)", label `architecture`, checkboxes for tracks A–F, link #8/#9/#10).
 3. Read, in order: `00-brief.md` (+ v2 addendum), `01-strategy-two-sided.md`, `model-integration-plan.md`, then `responses/track-E-purpose.findings.md`, `responses/fashion-market-research.md`, `responses/track-A-datamodel.findings.md` (the pre-revamp pass).
 
-**State of decisions:**
-- **Track A's 7 questions: LOCKED** (`decisions-darshan.md` Part 1) — merge is near-free (0 rows of `bounding_box_tags`). Plus the v2 graph-ready fields (`part`, `attributes[]`, `embedding_id`, `actor`).
-- **6 strategy forks: check whether Adarsh has answered** (`decisions-darshan.md` Part 2). If yes → record the locks in `decisions-darshan.md`/`decisions-log.md` first.
+**State of decisions (all LOCKED — see `decisions-darshan.md`):**
+- **Track A's 7 questions: LOCKED** — merge is near-free (0 rows of `bounding_box_tags`). Plus v2 graph-ready fields (`part`, `attributes[]`, `embedding_id`, `actor`).
+- **6 strategy forks: LOCKED** — **true parallel** (creator + audience together), **phased full-stack models** (FashionCLIP→Fashionpedia→SAM2), **video/reels pulled into active scope**, **balanced B2B+B2C pitch**, Track F official, taste graph working-named **"Ruchi"**. This is the ambitious, high-surface-area path — keep the image loop independently shippable as the guardrail.
 
-**Then, research-only (no build until Adarsh says go):** pick the highest-value track and write `responses/track-{X}-*.findings.md` per its Output contract, ground every claim in real file+line refs, end with questions for Adarsh, commit `docs(arch-lab): …`, and stop. Recommended order:
-- **Track A-v2** (fast, small) — extend the findings with the final graph-ready `Region` schema, the `actor`-field resolution, and the embedding-storage plan (updated prompt: `track-A-datamodel.prompt.md`). Do this first if you want the spine finalized.
-- **Track B** (biggest unknown) — turn `model-integration-plan.md` into a benchmarked, deploy-costed, fallback-laddered segmentation plan (Fashionpedia vs DeepFashion2, SAM2 prompt strategy, GPU-serving + on-device fallback, domain detection).
-- **Track C** — FashionCLIP-as-taste-vector + RAG grounding; fashion-literate lenses; the two readings (deep creator + short consumer feed hook).
-- **Track F** — B2C taste capture + creator→brand chain (best *after* A-v2 + C land).
+**Critical path (parallel build was chosen, so the shared spine goes first):**
+1. **Track A-v2 FIRST** (fast, small, unblocks everyone) — extend the findings with the final graph-ready `Region` schema, the `actor`-field resolution (collapse `source`+`actor`?), and the embedding-storage plan (vectors out-of-row). Updated prompt: `track-A-datamodel.prompt.md`. Both creator and audience sides share this schema, so nothing parallel starts cleanly until it lands.
+2. **Then B / C / D / F in parallel** (each a research findings pass, still no app code until Adarsh greenlights the build):
+   - **Track B** — `model-integration-plan.md` → benchmarked, deploy-costed, fallback-laddered plan (Fashionpedia vs DeepFashion2, SAM2 image **+ video**, GPU-serving + on-device fallback, domain detection).
+   - **Track C** — FashionCLIP taste-vector + RAG grounding; fashion-literate lenses; two readings (deep creator + short consumer feed hook).
+   - **Track F** — B2C taste capture + creator→brand chain **+ the concrete video/reel plan** (now in scope).
+   - **Track D** — creator Visual pane as the design source for the stripped consumer variant.
 
-**Rules:** research + plan only until Adarsh locks the forks; ground in real file+line refs; end findings with questions for Adarsh; conventional commits per `workflow-protocol.md`; verify UI by screenshot only; don't touch the other thread's dirty files (`decisions-log.md`, vault, `frontend-research/`).
+**Rules:** research + plan only until Adarsh greenlights the build; ground in real file+line refs; end findings with questions for Adarsh; conventional commits per `workflow-protocol.md`; verify UI by screenshot only; don't touch the other thread's dirty files (`decisions-log.md`, vault, `frontend-research/`).
 
-**Recommended focus for this session:** **Track A-v2** (finalize the spine) → then **Track B** (model deep-plan). A-v2 is small and unblocks everything; B is the biggest technical unknown.
+**Recommended focus for this session:** **Track A-v2** (finalize the shared spine) — it's the critical-path unblocker for the parallel build. Then hand B/C/D/F to parallel sessions.
