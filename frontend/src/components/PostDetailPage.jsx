@@ -445,21 +445,6 @@ function PostDetailPage() {
     setEditedTags(post.general_tags || []);
   };
 
-  const draftFromImage = async () => {
-    setAiError('');
-    setAiBusy('draft');
-    try {
-      const res = await epicService.autoRecommendText(post.photo_url, existingTextForAI());
-      const text = res?.suggestion;
-      if (!text) throw new Error('No suggestion returned');
-      insertBlock(makeBlock({ type: 'paragraph', content: htmlFromText(text), origin: 'sutradhar' }));
-    } catch (e) {
-      setAiError('Could not draft from the image. Is the vision service running?');
-    } finally {
-      setAiBusy(null);
-    }
-  };
-
   // --- Inline AI slash commands (Phase 2) — non-streaming, land as sutradhar blocks ---
   const currentNodeText = (editor) => {
     try { return (editor?.state.selection.$from.parent.textContent || '').trim(); }
@@ -830,18 +815,12 @@ function PostDetailPage() {
                     <div className="story-empty-icon"><PenLine size={22} /></div>
                     <h3 className="story-empty-title">No story yet</h3>
                     <p className="story-empty-sub">
-                      This image is still silent. Write its story, or let Sutradhar
-                      draft one from what it sees.
+                      This image is still silent. Write its story — then type
+                      <code>/</code> to let Sutradhar draft from what it sees.
                     </p>
                     <div className="story-empty-actions">
                       <button className="story-empty-btn primary" onClick={startEditing}>
                         <Edit size={15} /> Write the story
-                      </button>
-                      <button
-                        className="story-empty-btn"
-                        onClick={() => { startEditing({ seed: false }); draftFromImage(); }}
-                      >
-                        <Sparkles size={15} /> Draft from image
                       </button>
                     </div>
                   </div>
