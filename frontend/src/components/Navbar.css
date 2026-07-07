@@ -101,6 +101,71 @@
   box-shadow: none !important;
 }
 
+/* ── Disclosure menu (collapsed nav) ─────────────────────────────────────
+   Hidden by default; CSS reveals it only on /posts/* (see the fullscreen
+   block below). Holds all 9 links + Upload when the rail collapses. */
+.nav-disclosure {
+  display: none;
+  position: relative;
+}
+.nav-disclosure-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-muted);
+  box-shadow: none;
+}
+.nav-disclosure-btn:hover { color: var(--ink); background: var(--surface-2); }
+
+.nav-disclosure-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+  min-width: 12rem;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+.nav-disclosure-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+.nav-disclosure-item:hover { background: var(--surface-2); color: var(--ink); }
+.nav-disclosure-item.active { color: var(--ink); }
+.nav-disclosure-sep {
+  height: 1px;
+  margin: var(--space-2) 0;
+  background: var(--line);
+}
+.nav-disclosure-upload { color: var(--accent); font-weight: 600; }
+
+/* ── Slim rail on /posts/* (Drishya) — hook already renders on the root ───
+   Inline links + standing Upload recede; the compact disclosure carries them. */
+.app-layout--fullscreen .navbar {
+  padding: 0.45rem 0.7rem 0.45rem 1rem;
+}
+.app-layout--fullscreen .nav-logo { font-size: 1.2rem; }
+.app-layout--fullscreen .nav-links,
+.app-layout--fullscreen .nav-cta { display: none; }
+.app-layout--fullscreen .nav-disclosure { display: inline-flex; }
+
 .post-detail-editing .navbar-wrap {
   padding-top: var(--space-2);
   padding-bottom: var(--space-2);
