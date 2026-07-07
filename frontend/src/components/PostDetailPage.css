@@ -199,7 +199,13 @@
     border-radius: var(--radius-md);
     box-shadow: none;
     border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
-    transition: box-shadow 0.3s ease, transform 0.24s var(--ease), opacity 0.24s var(--ease);
+    transition: box-shadow 0.3s ease, width 0.28s var(--ease);
+}
+
+/* During an active drag the pane must track the cursor 1:1 — no width easing. */
+.post-detail-split.resizing .post-detail-left,
+.post-detail-split.resizing .post-detail-right {
+    transition: none;
 }
 
 .editing-mode .post-detail-right {
@@ -223,13 +229,12 @@
     transition: padding 0.24s var(--ease), opacity 0.24s var(--ease);
 }
 
-.panel-header h3 {
-    margin: 0;
-    font-size: var(--fs-caption);
-    font-weight: 700;
-    color: var(--ink-muted);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
+/* Per-pane header = tabs (left) + a right-aligned actions slot. */
+.panel-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: auto;
 }
 
 .panel-tabs {
@@ -243,11 +248,6 @@
 }
 
 /* Right side of the Content panel header: tabs + the pencil that enters edit. */
-.panel-header-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-}
 .panel-edit-btn {
     display: inline-flex;
     align-items: center;
@@ -297,15 +297,6 @@
     padding-bottom: 0.55rem;
 }
 
-.editing-mode .post-detail-left {
-    opacity: 0.82;
-}
-
-.editing-mode .post-detail-left:focus-within,
-.editing-mode .post-detail-left:hover {
-    opacity: 1;
-}
-
 /* Left Pane Content */
 .image-display {
     flex: 1;
@@ -331,8 +322,9 @@
     transition: transform 0.3s ease;
 }
 
-/* Divider (now invisible dragging area between separated panels) */
+/* Divider — a focusable WAI-ARIA window splitter. Drag area + collapse toggle. */
 .split-divider {
+    position: relative;
     width: 10px;
     background-color: transparent;
     cursor: col-resize;
@@ -342,6 +334,11 @@
     display: flex;
     justify-content: center;
     align-items: center;
+}
+.split-divider:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-radius: 4px;
 }
 
 .split-divider::after {
@@ -355,9 +352,45 @@
 }
 
 .split-divider:hover::after,
+.split-divider:focus-visible::after,
 .split-divider.dragging::after {
     width: 2px;
     background-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+
+/* Collapse-to-rail toggle — revealed on hover/focus, always shown when collapsed. */
+.divider-collapse-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 34px;
+    padding: 0;
+    min-height: 0;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--surface-primary);
+    color: var(--ink-muted);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+    z-index: 6;
+}
+.split-divider:hover .divider-collapse-btn,
+.split-divider:focus-visible .divider-collapse-btn,
+.split-divider.collapsed .divider-collapse-btn {
+    opacity: 1;
+}
+.divider-collapse-btn:hover {
+    color: var(--ink);
+    border-color: var(--line-strong);
+    background: var(--surface-primary);
+    transform: translate(-50%, -50%);
 }
 
 /* Right Pane Content */
