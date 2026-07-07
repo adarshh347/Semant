@@ -14,3 +14,8 @@ Sharpen the creative purpose into something concrete and demonstrably useful. Th
 
 ## Output contract → `responses/track-E-purpose.findings.md`
 Primary niche(s) + why · job-to-be-done · differentiator table · the killer demo scenario · purpose→requirements map · questions for Adarsh.
+
+---
+
+## Addendum (v2 strategy — 2026-07-08) — DONE, see findings
+Track E findings written (`responses/track-E-purpose.findings.md`) and extended by `responses/fashion-market-research.md` + `01-strategy-two-sided.md`. Net: fashion-creative wedge **confirmed**, and widened to a **two-sided taste-and-story layer** ("a level up from social media") with a creator→brand value chain. Positioning line locked pending Adarsh: *the taste-and-story layer for fashion & entertainment*. Remaining forks in strategy §8.

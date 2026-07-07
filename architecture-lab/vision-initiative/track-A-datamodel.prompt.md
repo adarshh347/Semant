@@ -21,3 +21,13 @@ There are two systems that mark parts of an image — `bounding_box_tags` (manua
 
 ## Output contract → `responses/track-A-datamodel.findings.md`
 Comparison table · unified schema · migration plan · blast-radius list · open questions for Adarsh.
+
+---
+
+## Addendum (v2 strategy — 2026-07-08)
+Read `01-strategy-two-sided.md` + `model-integration-plan.md`. The project is now **two-sided (B2B+B2C)** and the region model must be **graph-ready**. Beyond the merge, plan these additive fields on `Region`:
+- `attributes: List[str]` — Fashionpedia fine-grained attributes (294-vocab).
+- `part: Optional[str]` — Fashionpedia apparel-part slot (distinct from coarse `category`).
+- `embedding` ref (id/pointer, not the vector inline) — FashionCLIP taste-vector home.
+- `actor`/`source` distinction rich enough to tell **auto vs creator vs audience** marks apart (audience one-tap signal and creator annotation share one schema).
+All additive + null-safe; do not block the core merge on them. See strategy §4 (taste graph) and §6 (Track A row).

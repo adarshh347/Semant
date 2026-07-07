@@ -41,3 +41,13 @@ E defines *who + why*. A gives a single truthful data spine so B/C/D don't diver
 ## 6. Naming
 - Initiative: **Darshan** (proposal).
 - The "native intelligence": keep **Aletheia** as the name but scaled — it graduates from a 3-lens reader to the context brain. Confirm.
+
+---
+
+## v2 addendum (2026-07-08) — two-sided direction
+The initiative is now explicitly **B2B + B2C**: a **taste-and-story layer** ("a level up from social media") serving creators *and* audiences, joined by a **taste graph** and a creator→brand value chain. New docs, read after this brief:
+- `01-strategy-two-sided.md` — the two-sided strategy, taste-and-story layer defined, track refurnishing, open forks.
+- `model-integration-plan.md` — concrete model stack (Fashionpedia, DeepFashion2, SAM2, FashionCLIP) staged.
+- `motive-narratives.md` — landing/motive copy.
+- `track-F-consumer.prompt.md` — NEW track: B2C taste capture + creator→brand chain + video/reel.
+Tracks A–E have v2 addenda at their file ends. Sequence still E→A→(B/C/D); F depends on A+C.

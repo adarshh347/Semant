@@ -20,3 +20,8 @@ Merge the two annotation UIs (manual Visual-pane + Unconceal anatomy) into **one
 
 ## Output contract → `responses/track-D-frontend.findings.md`
 Unified-surface structure · many-parts reveal model · pick→comment→remember flow · Aletheia placement · premium-enabling structure + kill-list · questions for Adarsh.
+
+---
+
+## Addendum (v2 strategy — 2026-07-08)
+Read `01-strategy-two-sided.md`. Fashionpedia yields **many** parts+attributes, so progressive, category-filtered, focus-dims-others reveal is even more load-bearing. Also: the creator Visual pane is the **design source** for the lighter **audience** interactions (Track F) — pick→comment→remember is the deep end of a ladder whose shallow end is one-tap. Keep the deep surface clean enough that a stripped consumer variant falls out of it.
