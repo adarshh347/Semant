@@ -4,14 +4,13 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Sparkles, Plus, X, ChevronRight, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, Eye, Scan } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, X, ChevronRight, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, Eye, Scan, MoreHorizontal } from 'lucide-react';
 import BoundingBoxEditor from './BoundingBoxEditor';
 import RegionDetectorModal from './RegionDetectorModal';
 import RichTextBlock from './RichTextBlock';
 import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
 import TagStrip from './TagStrip';
-import ThemeToggle from './ThemeToggle';
 import { API_URL } from '../config/api';
 import { epicService } from '../services/epicService';
 import './PostDetailPage.css';
@@ -66,10 +65,27 @@ function PostDetailPage() {
   const [ctxSavedAt, setCtxSavedAt] = useState(null);
   const [ctxError, setCtxError] = useState('');
   const [showAnatomy, setShowAnatomy] = useState(false);
+  const [topbarMenuOpen, setTopbarMenuOpen] = useState(false); // "⋯" overflow (Delete)
   const dividerRef = useRef(null);
   const containerRef = useRef(null);
   const contentAreaRef = useRef(null);
+  const topbarMenuRef = useRef(null);
   const blockSeq = useRef(0); // monotonic, avoids Date.now() id collisions within a ms
+
+  // Close the topbar "⋯" overflow on outside-click / Escape.
+  useEffect(() => {
+    if (!topbarMenuOpen) return undefined;
+    const onDocPointer = (e) => {
+      if (topbarMenuRef.current && !topbarMenuRef.current.contains(e.target)) setTopbarMenuOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setTopbarMenuOpen(false); };
+    document.addEventListener('mousedown', onDocPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [topbarMenuOpen]);
 
   // Handler for when a story flow node is clicked
   const handleFlowNodeClick = (nodeText) => {
@@ -627,14 +643,14 @@ function PostDetailPage() {
 
       {/* Top Bar */}
       <div className={`post-detail-topbar${isEditing ? ' compact' : ''}`}>
-        <Link to="/gallery" className="back-link">
-          <ArrowLeft size={18} /> Gallery
-        </Link>
-
-        {/* Sutradhar — the thread-holder (editor identity) */}
-        <div className="sutradhar-brand">
-          <span className="sd-name">Sutradhar</span>
-          <span className="sd-deva">सूत्रधार · the thread-holder</span>
+        <div className="topbar-left">
+          <Link to="/gallery" className="back-link">
+            <ArrowLeft size={18} /> Gallery
+          </Link>
+          {/* Sutradhar — folded to a small quiet left label (no center slot). */}
+          <span className="sutradhar-brand" title="सूत्रधार · the thread-holder">
+            <span className="sd-name">Sutradhar</span>
+          </span>
         </div>
 
         <div className="post-detail-actions">
@@ -643,22 +659,42 @@ function PostDetailPage() {
               <span className="dot" /> Unsaved
             </span>
           )}
-          <ThemeToggle />
+          {/* AI Assistant — de-weighted to a quiet secondary (slash carries
+              everyday AI; this opens the sidebar for occasional deep chat). */}
           <button
-            className={`action-btn topbar-ai-btn ${isChatOpen ? 'primary' : 'secondary'}`}
+            className={`action-btn topbar-ai-btn secondary${isChatOpen ? ' active' : ''}`}
             onClick={() => setIsChatOpen(!isChatOpen)}
             title="Toggle AI Assistant"
           >
             <Sparkles size={16} /> AI Assistant
           </button>
-          {!isEditing && (
-            <button className="action-btn" onClick={startEditing}>
-              <Edit size={16} /> Edit
+
+          {/* Rare + destructive Delete tucked behind a "⋯" overflow. */}
+          <div className="topbar-overflow" ref={topbarMenuRef}>
+            <button
+              type="button"
+              className="action-btn topbar-overflow-btn"
+              aria-haspopup="menu"
+              aria-expanded={topbarMenuOpen}
+              aria-label="More actions"
+              title="More actions"
+              onClick={() => setTopbarMenuOpen((o) => !o)}
+            >
+              <MoreHorizontal size={18} />
             </button>
-          )}
-          <button className="action-btn danger" onClick={handleDelete}>
-            <Trash2 size={16} /> Delete
-          </button>
+            {topbarMenuOpen && (
+              <div className="topbar-overflow-menu" role="menu">
+                <button
+                  type="button"
+                  className="topbar-overflow-item danger"
+                  role="menuitem"
+                  onClick={() => { setTopbarMenuOpen(false); handleDelete(); }}
+                >
+                  <Trash2 size={16} /> Delete post
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -701,28 +737,42 @@ function PostDetailPage() {
         <div className="post-detail-right" style={{ width: `${100 - leftPanelWidth}%` }}>
           <div className="panel-header">
             <h3>Content</h3>
-            <div className="panel-tabs">
-              <button
-                className={`panel-tab ${activeRightTab === 'content' ? 'active' : ''}`}
-                onClick={() => setActiveRightTab('content')}
-              >
-                Story
-              </button>
-              <button
-                className={`panel-tab ${activeRightTab === 'highlights' ? 'active' : ''}`}
-                onClick={() => setActiveRightTab('highlights')}
-              >
-                <Highlighter size={14} style={{ marginRight: '0.3rem' }} />
-                Highlights {highlights.length > 0 && <span className="highlight-count">{highlights.length}</span>}
-              </button>
-              <button
-                className={`panel-tab ${activeRightTab === 'unconceal' ? 'active' : ''}`}
-                onClick={() => setActiveRightTab('unconceal')}
-                title="Aletheia reading + your own commentary, attached to this image"
-              >
-                <Eye size={14} style={{ marginRight: '0.3rem' }} />
-                Unconceal {(post.local_context?.commentary || post.local_context?.aletheia) && <span className="highlight-count">•</span>}
-              </button>
+            <div className="panel-header-actions">
+              <div className="panel-tabs">
+                <button
+                  className={`panel-tab ${activeRightTab === 'content' ? 'active' : ''}`}
+                  onClick={() => setActiveRightTab('content')}
+                >
+                  Story
+                </button>
+                <button
+                  className={`panel-tab ${activeRightTab === 'highlights' ? 'active' : ''}`}
+                  onClick={() => setActiveRightTab('highlights')}
+                >
+                  <Highlighter size={14} style={{ marginRight: '0.3rem' }} />
+                  Highlights {highlights.length > 0 && <span className="highlight-count">{highlights.length}</span>}
+                </button>
+                <button
+                  className={`panel-tab ${activeRightTab === 'unconceal' ? 'active' : ''}`}
+                  onClick={() => setActiveRightTab('unconceal')}
+                  title="Aletheia reading + your own commentary, attached to this image"
+                >
+                  <Eye size={14} style={{ marginRight: '0.3rem' }} />
+                  Unconceal {(post.local_context?.commentary || post.local_context?.aletheia) && <span className="highlight-count">•</span>}
+                </button>
+              </div>
+              {/* Entry to editing lives on the Content panel, not the topbar. */}
+              {!isEditing && (
+                <button
+                  type="button"
+                  className="panel-edit-btn"
+                  title="Edit the story"
+                  aria-label="Edit the story"
+                  onClick={() => { setActiveRightTab('content'); startEditing(); }}
+                >
+                  <Edit size={15} />
+                </button>
+              )}
             </div>
           </div>
 
