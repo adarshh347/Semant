@@ -22,6 +22,7 @@ function RichTextBlock({
   onMoveUp,
   onMoveDown,
   onFocusBlock,
+  onAiCommand,
   isFirst,
   isLast,
   isActive,
@@ -45,7 +46,7 @@ function RichTextBlock({
             ? 'Heading'
             : "Write, or press '/' for commands",
       }),
-      SlashCommand,
+      SlashCommand.configure({ onAiCommand }),
     ],
     content: block.content,
     onUpdate: ({ editor }) => onContentChange(block.id, editor.getHTML()),
