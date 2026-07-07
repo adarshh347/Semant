@@ -1,15 +1,16 @@
 // frontend/src/components/PostDetailPage.jsx
 // LeetCode-style split-screen layout with Highlights feature
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Sparkles, Plus, X, ChevronRight, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, Pilcrow, Heading1, Quote, Wand2, PenLine, Eye, Scan } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, X, ChevronRight, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, Eye, Scan } from 'lucide-react';
 import BoundingBoxEditor from './BoundingBoxEditor';
 import RegionDetectorModal from './RegionDetectorModal';
 import RichTextBlock from './RichTextBlock';
 import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
+import TagStrip from './TagStrip';
 import ThemeToggle from './ThemeToggle';
 import { API_URL } from '../config/api';
 import { epicService } from '../services/epicService';
@@ -51,10 +52,11 @@ function PostDetailPage() {
   const [activeBlockId, setActiveBlockId] = useState(null); // focused block in edit mode
   const [draggingId, setDraggingId] = useState(null);       // block being dragged
   const [dropTargetId, setDropTargetId] = useState(null);   // block hovered while dragging
-  const [insertOpen, setInsertOpen] = useState(false);      // "+" insertion menu
   const [aiPrompt, setAiPrompt] = useState('');
-  const [aiBusy, setAiBusy] = useState(null); // 'draft' | 'write' | null
+  const [aiBusy, setAiBusy] = useState(null); // slash command key while running | null
   const [aiError, setAiError] = useState('');
+  // Minimal inline prompt for /write, positioned at the caret (viewport coords).
+  const [slashPrompt, setSlashPrompt] = useState({ open: false, x: 0, y: 0 });
   // Unconceal (per-image microscopic context)
   const [aletheia, setAletheia] = useState(null);     // { lenses, concealed, uncertainty }
   const [aletheiaBusy, setAletheiaBusy] = useState(false);
@@ -184,6 +186,24 @@ function PostDetailPage() {
     } catch (error) {
       console.error("Error removing highlight:", error);
     }
+  };
+
+  // Jump from a highlight card back to where the quote lives in the story.
+  // Uses the block_id saved with each highlight ↔ data-block-id on the reading
+  // block. Switches to the Story tab first, then scrolls + briefly flashes the
+  // target. Callers only pass a blockId when it resolves to a live block, so a
+  // missing/stale link simply never becomes clickable (graceful degradation).
+  const jumpToBlock = (blockId) => {
+    if (!blockId) return;
+    setActiveRightTab('content');
+    // Let the Story tab render before querying for the target node.
+    setTimeout(() => {
+      const el = contentAreaRef.current?.querySelector(`[data-block-id="${CSS.escape(blockId)}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('block-flash');
+      setTimeout(() => el.classList.remove('block-flash'), 1200);
+    }, 60);
   };
 
   // Close tooltip when clicking elsewhere
@@ -440,22 +460,73 @@ function PostDetailPage() {
     }
   };
 
-  const writeFromPrompt = async () => {
-    const prompt = aiPrompt.trim();
-    if (!prompt) return;
+  // --- Inline AI slash commands (Phase 2) — non-streaming, land as sutradhar blocks ---
+  const currentNodeText = (editor) => {
+    try { return (editor?.state.selection.$from.parent.textContent || '').trim(); }
+    catch { return ''; }
+  };
+
+  const buildAiPrompt = (key, instruction, nodeText) => {
+    switch (key) {
+      case 'write': return instruction;
+      case 'continue': return `Continue this passage naturally, matching its voice. Return only the continuation:\n\n${nodeText}`;
+      case 'rewrite': return `Rewrite this passage for clarity and flow, keeping its meaning. Return only the rewrite:\n\n${nodeText}`;
+      case 'expand': return `Expand this passage with vivid, relevant detail. Return only the expanded passage:\n\n${nodeText}`;
+      case 'shorten': return `Shorten this passage to its essence, keeping the key meaning. Return only the shortened passage:\n\n${nodeText}`;
+      default: return instruction || nodeText;
+    }
+  };
+
+  // Runs a generation and inserts one sutradhar block after the current one.
+  const runAiGenerate = async (key, nodeText, instruction) => {
     setAiError('');
-    setAiBusy('write');
+    setAiBusy(key);
     try {
-      const res = await epicService.promptEnhancedText(post.photo_url, prompt);
-      const text = res?.suggestion;
+      let text;
+      if (key === 'draft' || key === 'version') {
+        const res = await epicService.autoRecommendText(post.photo_url, existingTextForAI());
+        text = res?.suggestion;
+      } else {
+        const res = await epicService.promptEnhancedText(post.photo_url, buildAiPrompt(key, instruction, nodeText));
+        text = res?.suggestion;
+      }
       if (!text) throw new Error('No suggestion returned');
       insertBlock(makeBlock({ type: 'paragraph', content: htmlFromText(text), origin: 'sutradhar' }));
-      setAiPrompt('');
     } catch (e) {
-      setAiError('Could not write from that prompt. Is the vision service running?');
+      setAiError('Sutradhar could not write that. Is the vision service running?');
     } finally {
       setAiBusy(null);
     }
+  };
+
+  // Dispatched from the "/" menu (AI verbs). '/write' opens a minimal caret
+  // prompt; everything else runs immediately over the current block's text.
+  const runAiSlashCommand = ({ key, editor, range }) => {
+    if (editor && range) editor.chain().focus().deleteRange(range).run();
+    if (key === 'write') {
+      let x = 0; let y = 0;
+      try {
+        const c = editor.view.coordsAtPos(editor.state.selection.from);
+        x = c.left; y = c.bottom;
+      } catch { /* fall back to 0,0 */ }
+      setAiPrompt('');
+      setSlashPrompt({ open: true, x, y });
+      return;
+    }
+    runAiGenerate(key, currentNodeText(editor));
+  };
+
+  // Stable handle passed into each block editor; always calls the latest closure.
+  const aiCommandRef = useRef(null);
+  aiCommandRef.current = runAiSlashCommand;
+  const onAiCommand = useCallback((args) => aiCommandRef.current?.(args), []);
+
+  const submitSlashWrite = () => {
+    const instruction = aiPrompt.trim();
+    if (!instruction) return;
+    setSlashPrompt({ open: false, x: 0, y: 0 });
+    setAiPrompt('');
+    runAiGenerate('write', '', instruction);
   };
 
   // --- Unconceal: Aletheia reading + curator commentary (microscopic context) ---
@@ -544,6 +615,28 @@ function PostDetailPage() {
             <Underline size={16} />
             <span>Underline</span>
           </button>
+        </div>
+      )}
+
+      {/* Minimal inline prompt for "/write" — opens at the caret. */}
+      {slashPrompt.open && (
+        <div
+          className="slash-prompt"
+          style={{ position: 'fixed', left: slashPrompt.x, top: slashPrompt.y + 6, zIndex: 90 }}
+        >
+          <PenLine size={14} className="slash-prompt-icon" />
+          <input
+            autoFocus
+            className="slash-prompt-input"
+            placeholder="Tell Sutradhar what to write…"
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); submitSlashWrite(); }
+              else if (e.key === 'Escape') { setSlashPrompt({ open: false, x: 0, y: 0 }); setAiPrompt(''); }
+            }}
+            onBlur={() => setSlashPrompt({ open: false, x: 0, y: 0 })}
+          />
         </div>
       )}
 
@@ -649,36 +742,36 @@ function PostDetailPage() {
           </div>
 
           <div className="content-area" ref={contentAreaRef} onMouseUp={handleTextSelection}>
-            {/* Source account (Darpan persona context attached at save time) */}
-            {post.instagram_handle && (
-              <div className="source-account-section">
-                {post.source_account?.avatar_url && (
-                  <img className="source-account-avatar" src={post.source_account.avatar_url} alt="" referrerPolicy="no-referrer" />
-                )}
-                <span className="source-account-text">
-                  From <strong>@{post.instagram_handle}</strong>
-                  {post.source_account?.display_name ? ` · ${post.source_account.display_name}` : ''}
-                </span>
-                <Link to={`/personas#${post.instagram_handle}`} className="source-account-link">
-                  Open persona →
-                </Link>
-              </div>
-            )}
-
-            {/* Epic Association */}
-            {post.associated_epics && post.associated_epics.length > 0 && (
-              <div className="epic-badge-section">
-                <h5>Part of Epic</h5>
-                {post.associated_epics.map(epic => (
-                  <Link to={`/epics/${epic.epic_id}`} key={epic.epic_id} className="epic-link">
-                    <BookOpen size={14} /> {epic.title}
-                  </Link>
-                ))}
-              </div>
-            )}
-
             {activeRightTab === 'content' && (
-              <>
+              <div className="story-column">
+                {/* Meta-head — identity for this image: provenance (@handle) and
+                    an epic chip. Gated to the Story tab so it no longer bleeds
+                    onto Highlights / Unconceal, and lives here only (Lane 1 must
+                    not duplicate the handle in the topbar). */}
+                {(post.instagram_handle || (post.associated_epics && post.associated_epics.length > 0)) && (
+                  <div className="source-account-section meta-head">
+                    {post.instagram_handle && post.source_account?.avatar_url && (
+                      <img className="source-account-avatar" src={post.source_account.avatar_url} alt="" referrerPolicy="no-referrer" />
+                    )}
+                    {post.instagram_handle && (
+                      <span className="source-account-text">
+                        From <strong>@{post.instagram_handle}</strong>
+                        {post.source_account?.display_name ? ` · ${post.source_account.display_name}` : ''}
+                      </span>
+                    )}
+                    {(post.associated_epics || []).map(epic => (
+                      <Link to={`/epics/${epic.epic_id}`} key={epic.epic_id} className="epic-chip" title={`Part of epic: ${epic.title}`}>
+                        <BookOpen size={13} /> {epic.title}
+                      </Link>
+                    ))}
+                    {post.instagram_handle && (
+                      <Link to={`/personas#${post.instagram_handle}`} className="source-account-link">
+                        Open persona →
+                      </Link>
+                    )}
+                  </div>
+                )}
+
                 {isEditing ? (
                   <div className="edit-shell">
                     <div className="edit-layout">
@@ -697,6 +790,7 @@ function PostDetailPage() {
                                 onMoveUp={(id) => moveBlock(id, -1)}
                                 onMoveDown={(id) => moveBlock(id, 1)}
                                 onFocusBlock={setActiveBlockId}
+                                onAiCommand={onAiCommand}
                                 isActive={block.id === activeBlockId}
                                 isFirst={index === 0}
                                 isLast={index === editedBlocks.length - 1}
@@ -709,122 +803,25 @@ function PostDetailPage() {
                             ))}
                           </div>
 
-                          {/* Single insertion flow: manual block types + Sutradhar
-                              compose, inserted after the active block. */}
+                          {/* Insert row: a recognisable "+ Add block". Block types
+                              AND AI verbs (/draft /write /continue /rewrite …) now
+                              live on the "/" menu — no Compose button. */}
                           <div className="block-insert">
                             <button
                               type="button"
                               className="block-insert-trigger"
-                              aria-haspopup="menu"
-                              aria-expanded={insertOpen}
-                              onClick={() => setInsertOpen(o => !o)}
+                              onClick={() => addBlock('paragraph')}
+                              title="Add an empty block · then type / for block types or Sutradhar"
                             >
-                              <Plus size={15} /> Add block
+                              <Plus size={16} /> Add block
                             </button>
-
-                            {insertOpen && (
-                              <div className="block-insert-menu" role="menu">
-                                <div className="block-insert-group">
-                                  <span className="block-insert-label">Write</span>
-                                  <div className="block-insert-row">
-                                    <button type="button" className="block-insert-item" onClick={() => { addBlock('paragraph'); setInsertOpen(false); }}>
-                                      <Pilcrow size={15} /> Paragraph
-                                    </button>
-                                    <button type="button" className="block-insert-item" onClick={() => { addBlock('h1'); setInsertOpen(false); }}>
-                                      <Heading1 size={15} /> Heading
-                                    </button>
-                                    <button type="button" className="block-insert-item" onClick={() => { addBlock('quote'); setInsertOpen(false); }}>
-                                      <Quote size={15} /> Quote
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <div className="block-insert-group">
-                                  <span className="block-insert-label"><Wand2 size={13} /> Compose with Sutradhar</span>
-                                  <button
-                                    type="button"
-                                    className="block-insert-item"
-                                    onClick={draftFromImage}
-                                    disabled={aiBusy !== null}
-                                    title="Let the image speak — drafts a passage from what's seen"
-                                  >
-                                    {aiBusy === 'draft' ? <span className="sd-spin" /> : <Sparkles size={15} />}
-                                    Draft from image
-                                  </button>
-                                  <div className="block-insert-prompt">
-                                    <input
-                                      className="composer-input"
-                                      placeholder="Tell Sutradhar what to write…"
-                                      value={aiPrompt}
-                                      onChange={(e) => setAiPrompt(e.target.value)}
-                                      onKeyDown={(e) => e.key === 'Enter' && aiBusy === null && writeFromPrompt()}
-                                      disabled={aiBusy !== null}
-                                    />
-                                    <button
-                                      type="button"
-                                      className="composer-btn primary"
-                                      onClick={writeFromPrompt}
-                                      disabled={aiBusy !== null || !aiPrompt.trim()}
-                                    >
-                                      {aiBusy === 'write' ? <span className="sd-spin" /> : <PenLine size={15} />}
-                                      Write
-                                    </button>
-                                  </div>
-                                  {aiError && <p className="composer-error">{aiError}</p>}
-                                </div>
-
-                                <p className="block-insert-hint">New blocks are inserted after the block you’re in. Reorder or edit them, then save.</p>
-                              </div>
+                            {aiBusy && (
+                              <span className="ai-busy-pill" role="status">
+                                <span className="sd-spin" /> Sutradhar is writing…
+                              </span>
                             )}
                           </div>
-                        </div>
-
-                      <div className="edit-section tags-edit-section">
-                        <div className="edit-section-head">
-                          <h4>Tags</h4>
-                        </div>
-                          <div className="editor-subsection tags-card">
-                            <div className="tags-container">
-                              {editedTags.map(tag => (
-                                <span key={tag} className="tag-item">
-                                  {tag}
-                                  <button
-                                    onClick={() => handleRemoveTag(tag)}
-                                    className="remove-tag-btn"
-                                  >
-                                    <X size={12} />
-                                  </button>
-                                </span>
-                              ))}
-                            </div>
-
-                            {popularTags.length > 0 && (
-                              <div className="popular-tags-row">
-                                <span className="popular-tags-label">Popular:</span>
-                                {popularTags.filter(tag => !editedTags.includes(tag)).slice(0, 5).map(tag => (
-                                  <button
-                                    key={tag}
-                                    onClick={() => handleAddPopularTag(tag)}
-                                    className="popular-tag-btn"
-                                  >
-                                    <Plus size={10} /> {tag}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-
-                            <div className="tag-input-row">
-                              <input
-                                type="text"
-                                placeholder="Add tag..."
-                                value={currentTagInput}
-                                onChange={(e) => setCurrentTagInput(e.target.value)}
-                                onKeyDown={handleTagInputKeyDown}
-                                className="tag-input"
-                              />
-                              <button className="action-btn tag-add-btn" onClick={handleAddTag}><Plus size={16} /> Add</button>
-                            </div>
-                          </div>
+                          {aiError && <p className="composer-error">{aiError}</p>}
                         </div>
                     </div>
                   </div>
@@ -850,14 +847,6 @@ function PostDetailPage() {
                   </div>
                 ) : (
                   <>
-                    {/* Hint for underlining */}
-                    {post.text_blocks && post.text_blocks.length > 0 && (
-                      <div className="underline-hint">
-                        <Highlighter size={14} />
-                        <span>Select text to underline and save to Highlights</span>
-                      </div>
-                    )}
-
                     {(post.text_blocks || []).map((block) => (
                       <div
                         key={block.id}
@@ -885,7 +874,22 @@ function PostDetailPage() {
                     )}
                   </>
                 )}
-              </>
+
+                {/* Meta-foot — one home for tags, both modes. Sticky/collapsible
+                    while editing so they stay reachable down a long column. */}
+                <TagStrip
+                  mode={isEditing ? 'edit' : 'view'}
+                  tags={post.general_tags || []}
+                  editedTags={editedTags}
+                  popularTags={popularTags}
+                  currentTagInput={currentTagInput}
+                  onTagInputChange={setCurrentTagInput}
+                  onAddTag={handleAddTag}
+                  onRemoveTag={handleRemoveTag}
+                  onAddPopularTag={handleAddPopularTag}
+                  onTagInputKeyDown={handleTagInputKeyDown}
+                />
+              </div>
             )}
 
             {/* HIGHLIGHTS TAB (Replaced Flow Tab) */}
@@ -904,21 +908,37 @@ function PostDetailPage() {
                   </div>
                 ) : (
                   <div className="highlights-list">
-                    {highlights.map((highlight, index) => (
-                      <div key={highlight.id} className="highlight-card">
-                        <div className="highlight-number">{index + 1}</div>
-                        <blockquote className="highlight-text">
-                          "{highlight.text}"
-                        </blockquote>
-                        <button
-                          className="remove-highlight-btn"
-                          onClick={() => handleRemoveHighlight(highlight.id)}
-                          title="Remove highlight"
+                    {highlights.map((highlight, index) => {
+                      // Only offer the jump when the quote's source block still
+                      // exists — a null or stale block_id degrades to a plain card.
+                      const canJump = highlight.block_id
+                        && (post.text_blocks || []).some(b => b.id === highlight.block_id);
+                      return (
+                        <div
+                          key={highlight.id}
+                          className={`highlight-card${canJump ? ' jumpable' : ''}`}
+                          role={canJump ? 'button' : undefined}
+                          tabIndex={canJump ? 0 : undefined}
+                          title={canJump ? 'Jump to this passage in the story' : undefined}
+                          onClick={canJump ? () => jumpToBlock(highlight.block_id) : undefined}
+                          onKeyDown={canJump ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpToBlock(highlight.block_id); }
+                          } : undefined}
                         >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="highlight-number">{index + 1}</div>
+                          <blockquote className="highlight-text">
+                            "{highlight.text}"
+                          </blockquote>
+                          <button
+                            className="remove-highlight-btn"
+                            onClick={(e) => { e.stopPropagation(); handleRemoveHighlight(highlight.id); }}
+                            title="Remove highlight"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1011,18 +1031,6 @@ function PostDetailPage() {
             )}
           </div>
 
-          {/* Tags display (when not editing) */}
-          {!isEditing && activeRightTab === 'content' && (
-            <div className="tags-section">
-              <h4>Tags</h4>
-              <ul className="tags-list">
-                {(post.general_tags || []).map((tag) => (
-                  <li key={tag} className="tag-item">{tag}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           {/* Edit actions */}
           {isEditing && (
             <div className="edit-actions">
@@ -1040,7 +1048,7 @@ function PostDetailPage() {
                 <button className="action-btn" onClick={() => {
                   setIsEditing(false);
                   setActiveBlockId(null);
-                  setInsertOpen(false);
+                  setSlashPrompt({ open: false, x: 0, y: 0 });
                   setEditedTags(post.general_tags || []);
                   setEditedBlocks(post.text_blocks || []);
                 }}>
