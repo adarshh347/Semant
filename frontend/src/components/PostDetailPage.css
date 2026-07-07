@@ -402,40 +402,29 @@
 .source-account-link:hover { color: var(--ink); text-decoration: underline; }
 
 /* Epic Badge */
-.epic-badge-section {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: var(--space-7);
-    padding-bottom: var(--space-4);
-    border-bottom: 1px solid var(--line);
+/* Meta-head — the identity row that frames the top of the story column.
+   Reuses .source-account-section; adds wrapping so an epic chip can sit inline. */
+.meta-head {
+    flex-wrap: wrap;
 }
 
-.epic-badge-section h5 {
-    margin: 0;
-    font-weight: 600;
-    color: var(--text-tertiary);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.epic-link {
-    display: flex;
+/* Epic demoted from its own band to a small inline chip on the meta-head row. */
+.epic-chip {
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
+    gap: 0.35rem;
+    font-size: var(--fs-caption);
     font-weight: 600;
     color: var(--ink-muted);
     text-decoration: none;
-    padding: 0.3rem 0.7rem;
-    border-radius: var(--radius-md);
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-pill);
     background-color: color-mix(in srgb, var(--surface-2) 78%, transparent);
     border: 1px solid var(--line);
     transition: all 0.2s;
 }
 
-.epic-link:hover {
+.epic-chip:hover {
     background-color: var(--surface);
     color: var(--ink);
     box-shadow: none;
@@ -603,16 +592,15 @@
     padding: 0;
 }
 
-/* Tags */
-.tags-section h4 {
-    font-size: 0.85rem;
-    color: var(--text-tertiary);
-    margin-bottom: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 600;
+/* Story column — one framed surface for every content-tab state:
+   meta-head (identity) → story (empty / editing / reading) → meta-foot (tags).
+   The frame is identical in all three states so nothing reflows on transition. */
+.story-column {
+    display: flex;
+    flex-direction: column;
 }
 
+/* Tags */
 .tags-list {
     display: flex;
     flex-wrap: wrap;
@@ -1290,19 +1278,6 @@
 }
 
 /* Hint for underlining (appears above story blocks) */
-.underline-hint {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1rem;
-    background-color: var(--accent-surface);
-    border: 1px dashed var(--accent-primary);
-    border-radius: var(--radius-md);
-    color: var(--accent-primary);
-    font-size: 0.8rem;
-    margin-bottom: 1rem;
-}
-
 /* Highlight count badge in tab */
 .highlight-count {
     display: inline-flex;
@@ -1388,6 +1363,22 @@
     box-shadow: var(--shadow-md);
     border-color: var(--accent-primary);
     transform: translateX(2px);
+}
+
+/* A card that can jump back to its source block reads as clickable. */
+.highlight-card.jumpable { cursor: pointer; }
+.highlight-card.jumpable:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Brief flash on the target block after a jump, so the eye lands on it. */
+.block-flash {
+    animation: block-flash 1.2s var(--ease);
+}
+@keyframes block-flash {
+    0%, 100% { background-color: transparent; }
+    18% { background-color: var(--accent-soft); }
 }
 
 .highlight-number {
@@ -1576,51 +1567,43 @@
     outline-offset: 2px;
 }
 
-/* Compact AI-compose: a quiet labelled toggle opening a small popover — not a
-   full-width card. Becomes /draft, /write slash commands in Phase 2. */
-.block-compose {
-    position: relative;
-}
-.block-compose-toggle {
+/* Sutradhar-is-writing pill — the aiBusy state now that Compose is gone. */
+.ai-busy-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.45rem;
     font-size: var(--fs-caption);
     font-weight: 500;
-    color: var(--ink-subtle);
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: var(--radius-md);
-    padding: 0.4rem 0.6rem;
-    cursor: pointer;
-    transition: all 0.18s var(--ease);
-}
-.block-compose-toggle:hover,
-.block-compose-toggle[aria-expanded="true"] {
-    color: var(--ink);
-    background: color-mix(in srgb, var(--surface-2) 55%, transparent);
-}
-.block-compose-toggle .sd-spark { color: var(--accent); }
-.block-compose-toggle:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    color: var(--accent-deep);
+    background: color-mix(in srgb, var(--accent-soft) 45%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+    border-radius: var(--radius-pill);
+    padding: 0.25rem 0.7rem;
 }
 
-.block-compose-menu {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    z-index: 40;
-    width: min(22rem, 80vw);
-    display: flex;
-    flex-direction: column;
+/* Minimal inline "/write" prompt — floats at the caret, not a card. */
+.slash-prompt {
+    display: inline-flex;
+    align-items: center;
     gap: var(--space-2);
-    padding: var(--space-3);
+    padding: 0.4rem 0.6rem;
     background: var(--surface-primary);
-    border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
     border-radius: var(--radius-md);
-    box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 14%, transparent);
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 18%, transparent);
 }
+.slash-prompt-icon { color: var(--accent); flex: none; }
+.slash-prompt-input {
+    min-width: 18rem;
+    max-width: 60vw;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--fs-small);
+}
+.slash-prompt-input::placeholder { color: var(--ink-subtle); }
 
 .block-insert-item {
     display: inline-flex;
@@ -1779,11 +1762,78 @@
     margin: var(--space-2) 0 0;
 }
 
-.tags-edit-section {
-    padding-top: var(--space-6);
+/* ── Meta-foot: one TagStrip for both modes ─────────────────────────────── */
+/* Common: quiet metadata footer, separated from the story by a hairline. */
+.tag-strip {
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
     border-top: 1px solid color-mix(in srgb, var(--line) 66%, transparent);
+}
+
+.tag-strip-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--fs-caption);
+    font-weight: 700;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+}
+
+/* View: label + read-only chips on one wrapping row. */
+.tag-strip-view {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+}
+
+/* Edit: sticky to the bottom of the scrolling column and collapsible, so tags
+   stay reachable while writing a long story instead of being buried. */
+.tag-strip-edit {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
     gap: var(--space-3);
 }
+
+.tag-strip-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-1) 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    cursor: pointer;
+}
+.tag-strip-head:hover { background: transparent; transform: none; box-shadow: none; }
+
+.tag-strip-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    padding: 0 0.3rem;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    color: var(--ink-muted);
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.tag-strip-caret {
+    margin-left: auto;
+    color: var(--ink-subtle);
+    transition: transform 0.2s var(--ease);
+}
+.tag-strip-edit.collapsed .tag-strip-caret { transform: rotate(-90deg); }
 
 .tags-card {
     padding: var(--space-2) 0 0;
