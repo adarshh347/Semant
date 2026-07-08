@@ -94,6 +94,7 @@ class Post(BaseModel):
     source_account: Optional[dict] = None  # light snapshot of that account at save time
     local_context: Optional[dict] = None  # microscopic per-image context (Aletheia + commentary)
     region_annotations: Optional[List[Region]] = None  # unified regions: auto segments + curator/audience marks
+    domain: Optional[dict] = None  # FashionCLIP domain router first-cut {label, score, is_fashion} (Track B/C)
 
 class PostUpdate(BaseModel):
     # bounding_box_tags removed (Track A): the manual pixel-rect write path is retired.

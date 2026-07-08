@@ -19,6 +19,13 @@ from datetime import datetime, timezone
 from backend.database import region_embeddings_collection
 
 
+def make_embedding_id(post_id: str, region_id: str, model: str = "fashion-clip") -> str:
+    """Deterministic pointer for a (post, region, model) triple. Stable so re-running
+    enrichment is idempotent — the same region always maps to the same embedding_id,
+    letting callers cache (an embedding is immutable once computed)."""
+    return f"emb_{model}_{post_id}_{region_id}"
+
+
 async def upsert_embedding(
     embedding_id: str,
     vector: List[float],

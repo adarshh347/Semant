@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from io import BytesIO
 from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
+from backend.services import region_embedding_service
 from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
 from datetime import datetime, timezone
 from bson.objectid import ObjectId
@@ -79,6 +80,7 @@ def post_helper(post) -> dict:
         "source_account": post.get("source_account"),
         "local_context": post.get("local_context"),
         "region_annotations": post.get("region_annotations"),
+        "domain": post.get("domain"),
     }
 
 
@@ -603,6 +605,106 @@ async def save_region_annotations(post_id: str, request: RegionAnnotationsReques
 
     updated = await post_collection.find_one({"_id": obj_id})
     return {"post": post_helper(updated), "fed_to_persona": fed}
+
+
+def _compute_region_enrichment(img_bytes: bytes, regions: list, post_id: str) -> dict:
+    """CPU-bound FashionCLIP work (runs in a thread). For each region: crop → embed
+    (skip if already has embedding_id — immutable/cached) → and, on fashion images,
+    a first-cut part/attributes[]. Also routes the whole-image domain. Returns the
+    updated regions, the (embedding_id, vector, region_id) triples to persist, the
+    domain dict, and counts. Never mutates geometry or detector stamping."""
+    from backend.services import fashion_clip_service as fc
+    from backend.services.region_embedding_service import make_embedding_id
+
+    # Part/attribute labels only make sense on actual garment regions — not the whole
+    # figure, a face, hair, or background. Embeddings, by contrast, are computed for
+    # every region (the taste vector is useful regardless of category).
+    GARMENT_CATS = {"garment", "garment-detail", "accessory"}
+
+    img = fc._open_image(img_bytes)
+    domain = fc.classify_domain(img)
+    is_fashion = domain.get("is_fashion")
+
+    to_upsert = []
+    embedded = labeled = skipped = 0
+    out = []
+    for r in regions:
+        r = dict(r)  # copy; don't mutate the stored dict in place
+        # Cache: an embedding is immutable once computed.
+        if r.get("embedding_id"):
+            skipped += 1
+        else:
+            vec = fc.embed_image(fc._crop_norm(img, r.get("box")))
+            if vec is not None:
+                eid = make_embedding_id(post_id, r.get("id", "reg"))
+                r["embedding_id"] = eid
+                to_upsert.append((eid, vec, r.get("id")))
+                embedded += 1
+        # First-cut labels: fashion image AND a garment-category region; never overwrite
+        # existing part/attrs (a creator's or a later Fashionpedia pass wins).
+        if is_fashion and (r.get("category") or "").lower() in GARMENT_CATS:
+            lab = fc.label_region(img, r.get("box"))
+            if lab.get("part") and not r.get("part"):
+                r["part"] = lab["part"]
+                labeled += 1
+            if lab.get("attributes") and not r.get("attributes"):
+                r["attributes"] = lab["attributes"]
+        out.append(r)
+
+    return {"regions": out, "to_upsert": to_upsert, "domain": domain,
+            "embedded": embedded, "labeled": labeled, "skipped": skipped}
+
+
+@router.post("/{post_id}/enrich-regions")
+async def enrich_regions(post_id: str):
+    """FashionCLIP enrichment (Track B · Phase 1): vectorize existing regions into the
+    taste-graph sidecar (setting Region.embedding_id), add a first-cut part/attributes[]
+    on fashion regions, and tag the image's domain. Purely additive — does NOT create
+    or alter geometry/detector (that's detect-regions' job). Idempotent + cached."""
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    from backend.services import fashion_clip_service as fc
+    if not fc.is_available():
+        raise HTTPException(status_code=503,
+            detail="FashionCLIP unavailable (torch/transformers not installed on this deploy).")
+
+    photo_url = post.get("photo_url")
+    regions = post.get("region_annotations") or []
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(photo_url, headers=_image_fetch_headers(photo_url))
+            resp.raise_for_status()
+            img_bytes = resp.content
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not fetch image: {e}")
+
+    result = await asyncio.to_thread(_compute_region_enrichment, img_bytes, regions, post_id)
+
+    # Persist vectors OUT of the post doc, in the sidecar (keyed by embedding_id).
+    for eid, vec, rid in result["to_upsert"]:
+        await region_embedding_service.upsert_embedding(
+            eid, vec, model="fashion-clip", post_id=post_id, region_id=rid)
+
+    # Persist the embedding_id pointers + first-cut labels + the domain tag on the post.
+    await post_collection.update_one(
+        {"_id": obj_id},
+        {"$set": {"region_annotations": result["regions"], "domain": result["domain"]}},
+    )
+
+    updated = await post_collection.find_one({"_id": obj_id})
+    return {
+        "post": post_helper(updated),
+        "domain": result["domain"],
+        "embedded": result["embedded"],
+        "labeled": result["labeled"],
+        "skipped_cached": result["skipped"],
+    }
 
 # More general route comes after
 @router.get("/", response_model=PaginatedPosts)
