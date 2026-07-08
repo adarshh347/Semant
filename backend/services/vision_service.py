@@ -432,6 +432,8 @@ Generate ONLY the subtitle, no additional text or explanation:"""
                 label = str(r.get("label", "")).strip() or "region"
                 out.append({
                     "id": f"region_{i}",
+                    "actor": "auto",
+                    "detector": "vision",
                     "label": label,
                     "category": str(r.get("category", "")).strip(),
                     "box": {"x": round(x, 4), "y": round(y, 4), "w": round(w, 4), "h": round(h, 4)},
@@ -555,8 +557,12 @@ Generate ONLY the subtitle, no additional text or explanation:"""
                 label = str(r.get("label", "")).strip() or "part"
                 out.append({
                     "id": f"fine_{i}",
+                    "actor": "auto",
+                    "detector": "vision",
                     "label": label,
                     "category": str(r.get("category", "")).strip() or "part",
+                    # transient: used by the router's _match_parent to resolve parent_id,
+                    # then popped before persisting (parent_label is dropped from Region).
                     "parent_label": str(r.get("parent", "")).strip(),
                     "material": str(r.get("material", "")).strip(),
                     "box": {"x": round(x, 4), "y": round(y, 4), "w": round(w, 4), "h": round(h, 4)},

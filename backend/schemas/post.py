@@ -1,15 +1,65 @@
 # BaseModel is the foundational Pydantic class that all pydantic schemas inherit from
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional,Dict, List
 from datetime import datetime
 import uuid
 
 # a schema for bounding box coordinates
+# DEPRECATED (Darshan Track A): pixel bounding boxes are retired in favour of the
+# normalized `Region`/`RegionBox` model below. `bounding_box_tags` is kept read-only
+# (emits {}) for one release; no new writes. 0 rows in prod — no backfill.
 class BoundingBox(BaseModel):
     x: int
     y: int
     width: int
     height: int
+
+
+# --- Darshan unified region model (Track A) ------------------------------------
+# One region model for both auto-detected segments and creator/audience marks.
+# `region_annotations` (List[Region]) is the single source of truth; the six
+# catalog keys (category, label, prioritised, weight, user_note, material) are
+# preserved verbatim so anatomy_catalog_service needs zero query change.
+class RegionBox(BaseModel):
+    x: float
+    y: float
+    w: float
+    h: float
+
+
+class Region(BaseModel):
+    # Strict/typed, but permissive to unknown keys so Track B/C can evolve producer
+    # shapes (new attributes, embeddings) without a schema war.
+    model_config = ConfigDict(extra="allow")
+
+    id: str = Field(default_factory=lambda: f"reg_{uuid.uuid4()}")
+    # provenance (two-sided): who marked it, and — when auto — which detector.
+    actor: str = "auto"                              # auto | creator | audience
+    detector: Optional[str] = None                   # yolo | fashionpedia | sam2 | vision
+    # geometry (normalized 0..1, top-left origin) — unifies manual + auto, survives resize.
+    box: RegionBox
+    polygon: Optional[List[List[float]]] = None      # normalized, seg only
+    confidence: Optional[float] = None               # auto only
+    # semantics (catalog-critical keys kept verbatim).
+    label: str = ""                                  # catalog key
+    category: str = "other"                          # catalog key
+    material: str = ""                               # catalog key
+    description: str = ""
+    # fashion graph (Fashionpedia) — additive, null-safe (populated in Track B).
+    part: Optional[str] = None
+    attributes: List[str] = []
+    # taste vector (FashionCLIP) — pointer only; the vector lives out-of-row in the
+    # region_embeddings sidecar collection keyed by embedding_id (Track B fills it).
+    embedding_id: Optional[str] = None
+    # hierarchy.
+    depth: int = 0                                   # 0 anchor/whole · 1 fine part
+    parent_id: Optional[str] = None                  # replaces the dropped parent_label
+    # curator meaning (catalog-critical).
+    prioritised: bool = False                        # catalog key
+    weight: int = 0                                  # catalog key (summed iff prioritised)
+    user_note: str = ""                              # catalog key
+    # cross-surface link (optional; wired later by Lane 2 / Track D).
+    block_id: Optional[str] = None
 
 class TextBlock(BaseModel):
     id: str = Field(default_factory=lambda: f"block_{uuid.uuid4()}")
@@ -43,11 +93,11 @@ class Post(BaseModel):
     instagram_handles: Optional[List[str]] = None  # ALL authors (collab posts); first = primary
     source_account: Optional[dict] = None  # light snapshot of that account at save time
     local_context: Optional[dict] = None  # microscopic per-image context (Aletheia + commentary)
-    region_annotations: Optional[List[dict]] = None  # detected parts + user prioritisation/notes
+    region_annotations: Optional[List[Region]] = None  # unified regions: auto segments + curator/audience marks
 
 class PostUpdate(BaseModel):
+    # bounding_box_tags removed (Track A): the manual pixel-rect write path is retired.
     text_blocks: Optional[List[TextBlock]] = None
-    bounding_box_tags: Optional[dict[str, BoundingBox]] = None
     general_tags: Optional[List[str]] = None
     highlights: Optional[List[Highlight]] = None  # NEW: Can update highlights
 
@@ -106,8 +156,9 @@ class UrlUploadRequest(BaseModel):
     source_account: Optional[dict] = None  # light snapshot {display_name, avatar_url}
 
 class RegionAnnotationsRequest(BaseModel):
-    """The curator's prioritised regions + per-part 'how it affects me' notes."""
-    regions: List[dict] = []
+    """The curator's prioritised regions + per-part 'how it affects me' notes.
+    Validated against the unified Region model (also the manual-mark save target)."""
+    regions: List[Region] = []
     feed_to_persona: bool = True
 
 

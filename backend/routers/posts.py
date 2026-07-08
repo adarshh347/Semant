@@ -110,7 +110,7 @@ async def create_post(
         "photo_public_id": upload_result["public_id"],
         "updated_at": datetime.now(timezone.utc),
         "text_blocks": [], # Initialize as empty list
-        "bounding_box_tags": {}, # Initialize as empty dict
+        # bounding_box_tags retired (Track A): no longer initialized; reads emit {}.
         "general_tags": general_tags_str.split(',') if general_tags_str else []
     }
 
@@ -229,7 +229,7 @@ async def create_post_from_url(request: UrlUploadRequest):
             "photo_public_id": upload_result["public_id"],
             "updated_at": datetime.now(timezone.utc),
             "text_blocks": [],
-            "bounding_box_tags": {},
+            # bounding_box_tags retired (Track A): not initialized.
             "general_tags": request.general_tags or [],
             "source_url": request.source_url or request.image_url,  # page (or image) URL for reference
             "instagram_handle": handle,
@@ -271,7 +271,7 @@ async def create_multiple_posts(files: List[UploadFile] = File(...)):
             "photo_public_id": upload_result["public_id"],
             "updated_at": datetime.now(timezone.utc),
             "text_blocks": [],
-            "bounding_box_tags": {},
+            # bounding_box_tags retired (Track A): not initialized.
             "general_tags": []
         }
         created_posts_docs.append(post_document)
@@ -531,6 +531,9 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
                 f["parent_id"] = parent.get("id")
                 f["box"] = _clip_box_to_parent(f["box"], parent.get("box") or {})
             f.setdefault("depth", 1)
+            # parent_label was only a transient matching key — drop it (Track A:
+            # canonicalize on parent_id; parent_label is not a Region field).
+            f.pop("parent_label", None)
 
     regions = (anchors or []) + fine
     if fine:
@@ -539,11 +542,17 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
     # Preserve any prioritisation/notes the curator already set (match by id).
     existing = {r.get("id"): r for r in (post.get("region_annotations") or [])}
     for r in regions:
+        # Provenance defaults (Track A): every detected region is auto-authored.
+        r.setdefault("actor", "auto")
+        r.setdefault("detector", "vision")
         prev = existing.get(r["id"])
         if prev:
             r["prioritised"] = prev.get("prioritised", False)
             r["weight"] = prev.get("weight", 0)
             r["user_note"] = prev.get("user_note", "")
+            # a creator who edited an auto region keeps their authorship.
+            if prev.get("actor") == "creator":
+                r["actor"] = "creator"
         else:
             r.setdefault("prioritised", False)
             r.setdefault("weight", 0)
@@ -567,8 +576,10 @@ async def save_region_annotations(post_id: str, request: RegionAnnotationsReques
     if not post:
         raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
 
+    # request.regions is validated against the unified Region model; persist as dicts.
+    regions_data = [r.model_dump() for r in request.regions]
     await post_collection.update_one(
-        {"_id": obj_id}, {"$set": {"region_annotations": request.regions,
+        {"_id": obj_id}, {"$set": {"region_annotations": regions_data,
                                    "updated_at": datetime.now(timezone.utc)}}
     )
 
@@ -579,7 +590,7 @@ async def save_region_annotations(post_id: str, request: RegionAnnotationsReques
     if handles and request.feed_to_persona:
         notes = [
             f"{r.get('label', 'part')} — {r.get('user_note', '').strip()}"
-            for r in request.regions
+            for r in regions_data
             if r.get("prioritised") and (r.get("user_note") or "").strip()
         ]
         if notes:
