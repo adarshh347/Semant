@@ -175,6 +175,12 @@ The v2 pass (findings @ `0687d15`) posed 5 new questions (the v1 seven stay lock
 
 ---
 
+## Build setup (2026-07-08) — branch strategy
+- **`feat/darshan`** created off `feat/frontend` at `e9d2fe7` (research complete) = the vision-pipeline **build** branch. Keeps the large initiative (backend + shared frontend) isolated from the live Drishya UI work; merges back to `feat/frontend` at integration milestones. (Intentional divergence from workflow-protocol's "one branch" rule, which was Drishya-scoped.)
+- **Research docs stay on `feat/frontend`** (both threads read them); **build code lands on `feat/darshan`.**
+- Optional short-lived per-track branches (`feat/darshan-a`, …) merging into `feat/darshan` only if parallel build sessions actually run at once. Not needed to start.
+- **Start point: Track A backend** — fully locked (no open decisions), backend-only (near-zero `PostDetailPage.jsx` collision). Can begin immediately, in parallel with Adarsh answering the your-call shortlist (which gates B/C/D/F, not A). Defer all frontend/`BoundingBoxEditor` consolidation to Track D.
+
 ## Part 3 — What's still blocking a build
 - ~~Adarsh picks Forks 1–6~~ **DONE** (locked above). Track A's 7 also locked.
 - ~~**Track A-v2 extension pass** must land first~~ **DONE** — findings @ `0687d15`, all 5 v2 questions locked (Part 1b). The graph-ready, two-sided `Region` schema is now the settled shared spine for creator + audience.
