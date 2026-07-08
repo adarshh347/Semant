@@ -68,7 +68,7 @@ Six catalog keys preserved verbatim → `anatomy_catalog_service` keeps working 
 | 3 — Video/reels | **Pull video forward** — reel-slicing is central, invest this cycle | (I'd recommended image-first; Adarsh wants video now) |
 | 4 — Model depth | **Phased full-stack** (FashionCLIP → Fashionpedia → SAM2) | matches |
 | 5 — Pitch framing | **Keep both balanced** (dual B2B + B2C headline) | (I'd leaned consumer-vision-led; Adarsh wants both) |
-| 6 — Name taste graph | **Ruchi** (रुचि) — proposed, veto open | matches |
+| 6 — Name taste graph | **Rasa** (desi) + **Palette** (English) locked; cooler upgrade candidates under review (see below) | Ruchi dropped (food-brand clash) |
 
 **What this combination means (honest note):** parallel + video-forward + balanced-pitch is the **most ambitious and highest-surface-area** path — it maximizes the vision but front-loads the most build, the heaviest infra (GPU video serving early), and the widest message. It's a deliberate bet on scope over speed-to-demo. The tracks below are re-weighted accordingly: **Track F is now parallel (not "after A/C")**, and **video moves from Phase-later into active scope**. Guardrail: keep the image loop shippable on its own so video slippage can't sink the whole MVP.
 
@@ -121,7 +121,15 @@ Each: **what's at stake · the options · recommendation · what it changes down
 - **B. Not yet** — leave it unnamed until the app rebrand (Drishti vs Nazar) settles, to avoid naming sprawl.
 **Recommendation:** **A** — "Ruchi" as a working name for the taste graph; cheap, on-theme, and gives the B2C "taste given back to you" surface a noun. Veto freely.
 (*Aletheia is the one Greek name in an otherwise Sanskrit set — flagged earlier; still open.)
-**LOCKED → A (working name "Ruchi"), veto open.** Cosmetic; threads into naming in `decisions-log.md`.
+**LOCKED → Rasa (desi) + Palette (English)**, replacing Ruchi (dropped — clashes with the Ruchi food brand). **Upgrade candidates under active review** (Adarsh wants something less clichéd than Rasa / less flat than Palette), drawn from Kashmiri Śaiva aesthetics (Utpaladeva/Abhinavagupta) and phenomenology (Merleau-Ponty/Heidegger/Ihde):
+- **Dhvani** (ध्वनि) — resonance / the *suggested* meaning beyond the literal (Ānandavardhana→Abhinavagupta). Maps precisely to a *felt-meaning* layer. Short, sonorous, uncommon as a brand. ★ top desi upgrade.
+- **Pratibhā** (प्रतिभा) — the flash of aesthetic/creative intuition (Abhinavagupta's signature contribution). "Your Pratibha" = your eye's genius. Familiar as a name (± for market).
+- **Camatkāra** (चमत्कार) — aesthetic *rapture/relish*, the flash of taste (Utpala ties it to vimarśa). Meaning-richest; 4 syllables → least market-practical.
+- **Vimarśa** (विमर्श) — the reflective power that recognizes & relishes taste. Deep, distinctive; harder to spell/say.
+- **Pratyabhijñā** (प्रत्यभिज्ञा) — *recognition* (Utpaladeva's core: instantaneous self-recognition of what's already yours). Too long as a name — but ideal as a **tagline** ("your taste, recognized").
+- English/phenomenology: **Attunement** (Heidegger's Stimmung — how you're tuned to the world; accessible, elegant, taste-apt) · **Chiasm** (Merleau-Ponty — the intertwining of seer & seen; edgy, ownable, abstract) · **The Clearing** (Heidegger's Lichtung — where things come into appearance).
+- **Ihde note:** his vocabulary (multistability, mediation, hermeneutic relation, amplification–reduction) is stronger as **positioning language** than as a name — Darshan is precisely a *hermeneutic-relation* technology (you read the world *through* it) with an *amplification* structure (it amplifies the felt-meaning the scroll reduces). Use for copy; not a product noun.
+Threads into app naming (Drishti vs Nazar) in `decisions-log.md`.
 
 ---
 
