@@ -19,3 +19,10 @@ Aletheia today = 3–5 generic freeform lenses. Adarsh finds the phenomenologica
 
 ## Output contract → `responses/track-C-aletheia.findings.md`
 Current-Aletheia map · context-trigger design · deeper reading schema · context-engineering/RAG plan (what feeds inline AI) · feedback loop · questions for Adarsh.
+
+---
+
+## Addendum (v2 strategy — 2026-07-08)
+Read `01-strategy-two-sided.md` + `model-integration-plan.md`. Two additions to the mission:
+- **Taste-vector + RAG:** FashionCLIP embeddings are the taste vector; design RAG over the taste graph so the writer is grounded in *this image + this person's history* (upgrades the frequency-count catalog). Re-role the vision-LLM to *felt-reading/story*, not geometry.
+- **Two readings, one engine:** produce both the **deep creator reading** and a **short consumer reading** (the Aletheia-in-feed hook, strategy §5) + one-tap perceptual forks that double as audience taste signal. Lenses become fashion-literate (silhouette, drape, era/reference, styling logic, mood/story).

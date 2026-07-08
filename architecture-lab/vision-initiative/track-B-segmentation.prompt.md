@@ -20,3 +20,8 @@ Today's segmentation is YOLO11n-seg = COCO objects only (person/handbag), plus a
 
 ## Output contract → `responses/track-B-segmentation.findings.md`
 Current-pipeline map · YOLO-vs-LLM division · domain-detection plan · texture/material/atmosphere representation · model options table (with trade-offs) · optimality plan · questions for Adarsh.
+
+---
+
+## Addendum (v2 strategy — 2026-07-08)
+Read `model-integration-plan.md` — it is now the spine of this track. Don't re-discover the landscape; **plan the concrete adoption**: benchmark **Fashionpedia Attribute-Mask-RCNN vs DeepFashion2** for garment parts+attributes; **SAM2** for arbitrary regions (drape/texture/atmosphere) and the later **video/reel** path; **FashionCLIP** as semantic labeler + vectorizer; keep YOLO as cheap anchor and the vision-LLM re-roled to *reading only*. Deliver the **deploy/cost/latency table + fallback ladder** (GPU seg service with on-device YOLO+LLM fallback), and the **domain-detection** call (FashionCLIP zero-shot vs LLM). Note FashionFail OOD failures → design a low-confidence fallback.

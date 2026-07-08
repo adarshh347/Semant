@@ -47,3 +47,12 @@ Do §0–§1, then run **Track E** (`track-E-purpose.prompt.md`): sharpen the pu
 
 ## 7. Stay in sync
 Ask Adarsh when a decision is genuinely his; report status crisply (what you read, what you concluded, what you need). Don't drift into building.
+
+---
+
+## Update 2026-07-08 — Track E done + v2 two-sided strategy
+- Track E findings landed (`responses/track-E-purpose.findings.md`): fashion-creative wedge.
+- Market research landed (`responses/fashion-market-research.md`): adopt Fashionpedia/FashionCLIP/SAM.
+- **v2 strategy** now in `vision-initiative/`: `01-strategy-two-sided.md`, `model-integration-plan.md`, `motive-narratives.md`, and new **`track-F-consumer.prompt.md`** (B2C). Project is now B2B+B2C — a taste-and-story layer with a creator→brand chain.
+- Awaiting Adarsh on strategy §8 forks (creator-first vs audience-first; make Track F official; video timing; model depth; pitch framing; name the taste graph) + Track A's 7 questions before any build.
+- Umbrella GitHub issue still **not created** (open: #8,#9,#10,#13,#15,#19,#21).
