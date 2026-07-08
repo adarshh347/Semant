@@ -152,7 +152,7 @@ Each: **what's at stake · the options · recommendation · what it changes down
 **LOCKED (2026-07-08) → Anuraṇana + Écart.** Rasa/Palette/Ruchi superseded.
 - **Anuraṇana** (अनुरणन) — the *after-resonance, the echo that lingers once the bell stops* (Abhinavagupta's metaphor for suggestion). The taste graph as the felt overtone of your looking that keeps sounding.
 - **Écart** (Merleau-Ponty) — the *divergence/gap* that holds open the space where perception happens.
-- **Open sub-question (light, non-blocking):** do these name the *same* object (Anuraṇana = the देसी/consumer name for the taste graph, Écart = its phenomenology-facing/technical name), or *two distinct* things — e.g. **Anuraṇana = the taste graph** (the accruing resonance) and **Écart = the reading act / the pause Darshan opens in the scroll** (the generative gap where you actually see)? Proposed: the latter split (it gives the two concepts distinct homes). Adarsh to confirm the assignment.
+- **Assignment LOCKED (corroborated by Track C):** **Anuraṇana = the taste graph** (the accruing resonance of your looking) · **Écart = the reading act / the pause** Darshan opens in the scroll (the generative gap where you actually see) · **Aletheia stays** the name of the reading *engine*. Two tracks converged on this split independently.
 Threads into app naming (Drishti vs Nazar) in `decisions-log.md`.
 
 ---
