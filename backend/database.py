@@ -70,6 +70,13 @@ persona_collection = database.get_collection("personas")
 # LLM-synthesised insights on cross-image annotation patterns.
 anatomy_catalog_collection = database.get_collection("anatomy_catalog")
 
+# --- Darshan taste graph (Track A): region embedding sidecar ---
+# region_embeddings_collection: FashionCLIP taste-vectors stored OUT of the Region
+# doc, keyed by embedding_id. Region carries only the embedding_id pointer; the
+# vector lives here so post payloads stay light and the store is swappable
+# (Atlas Vector Search / external DB) later. Write path filled in Track B.
+region_embeddings_collection = database.get_collection("region_embeddings")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""
