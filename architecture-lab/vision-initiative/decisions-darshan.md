@@ -129,6 +129,27 @@ Each: **what's at stake · the options · recommendation · what it changes down
 - **Pratyabhijñā** (प्रत्यभिज्ञा) — *recognition* (Utpaladeva's core: instantaneous self-recognition of what's already yours). Too long as a name — but ideal as a **tagline** ("your taste, recognized").
 - English/phenomenology: **Attunement** (Heidegger's Stimmung — how you're tuned to the world; accessible, elegant, taste-apt) · **Chiasm** (Merleau-Ponty — the intertwining of seer & seen; edgy, ownable, abstract) · **The Clearing** (Heidegger's Lichtung — where things come into appearance).
 - **Ihde note:** his vocabulary (multistability, mediation, hermeneutic relation, amplification–reduction) is stronger as **positioning language** than as a name — Darshan is precisely a *hermeneutic-relation* technology (you read the world *through* it) with an *amplification* structure (it amplifies the felt-meaning the scroll reduces). Use for copy; not a product noun.
+
+**Deeper tier (Adarsh: the above are also anthology clichés — go deeper; bring in Ānandavardhana):**
+
+*Sanskrit poetics (Ānandavardhana / Abhinavagupta) — beyond dhvani:*
+- **Vyañjanā** (व्यञ्जना) — the *third semantic power*, suggestion itself: the function that produces dhvani, beyond abhidhā (denotation) and lakṣaṇā (indication). Dhvani is the *result*; vyañjanā is the *engine*. Precise, technical, ownable.
+- **Anuraṇana** (अनुरणन) — Abhinavagupta's metaphor for suggestion as the *after-resonance, the echo that lingers once the bell stops*. Gorgeous for a taste layer that keeps ringing. Uncommon.
+- **Pratīyamāna** (प्रतीयमान) — "that which is *implied/suggested*," the meaning beyond the literal (vs vācya). Conceptually exact; 5 syllables → hard as a market name.
+
+*Kashmiri Śaiva metaphysics (Utpaladeva) — beyond spanda/vimarśa:*
+- **Saṃvit** (संविद्) — the integral *mirror-consciousness* in which every appearance arises. The graph = your saṃvit, the aware field that holds your images. Short, deep, very ownable. ★ strong.
+- **Ābhāsa** (आभास) — the *shining-appearance / manifestation*; every image is an ābhāsa arising in saṃvit. The image *as* felt manifestation. Short, deep.
+- **Sphurattā** (स्फुरत्ता) — the *luminous throb/scintillation* of awareness (deeper than spanda). The shimmer of noticing.
+- **Unmeṣa** (उन्मेष) — the *opening/unfolding of the eye* (awareness flashing open). Evocative, ownable.
+
+*Phenomenology — beyond flesh/chiasm/aletheia:*
+- **Écart** (Merleau-Ponty) — the *divergence/gap* ("thickness of flesh") between seer and seen that *holds open* the space where perception happens. One sharp ownable word; the generative gap.
+- **Institution / Stiftung** (Merleau-Ponty, from Husserl) — the *founding and sedimenting of meaning over time*. The single most conceptually-exact term for an *accruing* taste graph — though "institution" reads heavy in English.
+- **Verweilen** (Heidegger) — *tarrying / lingering / the while*: the artwork gathers a "for-a-while," makes us *dwell*. Perfect meaning for "a level up from the scroll" — but German/hard.
+- **Ihde as framing, not name:** *epistemology engine*, *visualism / visual hermeneutics*, *variational method* — Darshan is a **visual-hermeneutic engine** (reading meaning *through* the image). Positioning copy, not a noun.
+
+**Current front-runners (deeper tier):** desi — **Saṃvit** (the aware mirror-field) or **Anuraṇana** (the lingering resonance); phenomenology — **Écart** (the generative gap) or **Institution/Stiftung** (the sediment of taste). Awaiting Adarsh's pick; Rasa/Palette remain the safe fallback.
 Threads into app naming (Drishti vs Nazar) in `decisions-log.md`.
 
 ---
