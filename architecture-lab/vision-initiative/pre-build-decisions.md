@@ -36,12 +36,24 @@ Mark each ✅ (accept) or ✏️ (override), then it's a build-ready contract.
 6. **Build serialization on `PostDetailPage.jsx`** — **[judgment]** → **Dedicated build slot: the Drishya thread pauses edits to `PostDetailPage.jsx`, Darshan `git pull`s latest, makes its scoped edit (remove Unconceal tab, swap editor mount, un-modal detection), commits + pushes, then the UI thread resumes.** This is *the* build-time coordination point (D overlaps Lanes 1/2/3 exactly). **← confirm the mechanism (pause vs branch-and-merge-order).**
 7. **Consumer variant scope now?** — **[confirm]** → **Later.** Keep D's deep surface clean enough that Track F extracts the one-tap lite variant; don't build F's UI inside D. ✅
 
+## Track F — consumer / B2C / chain / video
+
+1. **`taste_signals` separate store** — **[confirm]** → **Yes.** Audience taps become lightweight events in their own collection (referencing `region_id`/`embedding_id`), **not** full `Region` rows; `actor="audience"` Regions reserved for the rare audience-creates-a-mark case. The core F↔A decision — keeps consumer friction ≈0 and the creator array clean. ✅
+2. **Video: spike vs full pipeline** — **[judgment]** → **Spike now, full async worker immediately after** (same call as B6; same schema either way, so no rework). ✅ suggested. **← your call.**
+3. **Account gate** — **[confirm]** → **Anonymous/session users get the hook + forks; an account is the upsell that unlocks the saved taste portfolio.** Identity as upsell, not toll. ✅
+4. **Consent default** — **[judgment]** → **Explicit opt-in** for dwell/replay instrumentation (clear opt-in with visible value). Slightly less data, much stronger "taste given back, not harvested" trust story. ✅ suggested. **← your call.**
+5. **First signals cut** — **[confirm]** → **Rungs 2–3 (region tap + Aletheia fork)** as the MVP — highest signal-per-friction, both nearly free to serve; defer dwell (noisy) + save-reason to fast-follow. ✅
+6. **Brand-tier data boundary** — **[judgment]** → **Brands query anonymized aggregate taste trends + match to contractable *creators* only — never identified consumer profiles.** This is *the* privacy line the whole "level up, not harvest" thesis rests on; lock it explicitly before any brand-facing surface. ✅ suggested — **confirm, it's load-bearing.**
+7. **Audience portfolio separate from creator persona** — **[confirm]** → **Yes.** Shares the schema, separate store; audience signal must not leak into `persona_service`. ✅
+
 ---
 
 ## The genuinely-your-call shortlist (the rest are safe confirms)
-- **B6** — video: spike this cycle (rec) vs full async pipeline now.
+- **B6 / F2** — video: spike this cycle (rec) vs full async pipeline now.
 - **C2 / C3** — how personal the reading gets; own-history vs cross-curator retrieval.
 - **D2** — keep lightweight freehand creator marks, or tap-only.
 - **D6** — the `PostDetailPage.jsx` serialization mechanism with the Drishya thread.
+- **F4** — signal-capture consent: explicit opt-in (rec) vs on-by-default-opt-out.
+- **F6** — the brand-tier privacy boundary (anonymized aggregates + creator match only).
 
-Everything else is a low-risk technical default you can accept in a batch. Once these are marked, the build has a complete contract (pending Track F + the integration synthesis).
+Everything else is a low-risk technical default you can accept in a batch. Once these are marked, the build has a complete contract. **All six tracks (A–F) are now researched; this sheet is the full pre-build gate.**
