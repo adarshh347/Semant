@@ -28,7 +28,7 @@ Because the project is now two-sided (see strategy), the unified `Region` also c
 - `part: Optional[str]` — Fashionpedia apparel-part slot (distinct from coarse `category`).
 - `attributes: List[str] = []` — Fashionpedia fine-grained attribute vocab (294).
 - `embedding_id: Optional[str]` — pointer to the FashionCLIP taste-vector (vector stored out-of-row).
-- `actor: str` — who created the mark: `auto | creator | audience` (so a one-tap audience signal and a creator annotation share one schema). Keep `source: manual|auto` too, or fold both into `actor` — **Track A-v2 to pick the cleanest single field** (see updated prompt).
+- `actor: str` — who created the mark: `auto | creator | audience` (so a one-tap audience signal and a creator annotation share one schema). **RESOLVED in v2 (Part 1b Q1): collapse to this single `actor` field; `source` dropped.** `detector` carries auto-provenance.
 
 **Net unified `Region` (v2):**
 ```python
@@ -125,9 +125,27 @@ Each: **what's at stake · the options · recommendation · what it changes down
 
 ---
 
+## Part 1b — Track A-v2's 5 questions: LOCKED (2026-07-08)
+
+The v2 pass (findings @ `0687d15`) posed 5 new questions (the v1 seven stay locked, Part 1). Adarsh's calls:
+
+1. **Actor collapse → YES, drop `source`. LOCKED.** One field `actor: auto|creator|audience`; `actor` subsumes `source`, keeping both invites illegal pairs, zero migration (`source` never shipped, legacy regions default `actor="auto"`). `detector` carries auto-provenance.
+
+2. **Embedding store → sidecar Mongo `region_embeddings` collection NOW; external vector DB only when scale demands. LOCKED.** Standing up Qdrant/Pinecone for 77 regions is ops overhead with no payoff. `embedding_id` is the abstraction that lets you swap later without touching `Region` — start in-datastore, add Atlas Vector Search when retrieval latency/scale actually bites. Don't buy infra ahead of data.
+
+3. **`part` vs `category` → keep SEPARATE. LOCKED.** `category` is the coarse, catalog-critical vocab `aggregate_categories` buckets on — must stay stable. `part` is the fine Fashionpedia slot. Merging conflates two granularities and perturbs the catalog. Two fields.
+
+4. **Catalog bucket on `attributes` → NO, wait for the vector catalog; don't touch the frequency catalog. LOCKED.** 294-vocab attributes are high-cardinality; exact-match buckets fragment. They belong in FashionCLIP-space via similarity, not label counts. Keep the `(category, label)` catalog as-is. **→ FLAG for Track C:** attributes power vector retrieval there; this is strictly Track C's call to implement.
+
+5. **`actor="audience"` write path → entirely Track F's. LOCKED.** Track A guarantees the null-safe field + schema; the audience-ingest endpoint plus its auth/rate-limit/abuse handling are Track F's. Clean boundary.
+
+**Net:** the v2 `Region` schema in Part 1 (and `responses/track-A-datamodel.findings.md` §v2.2) is now fully locked — `source` field is removed in favour of `actor`; `part`/`attributes`/`embedding_id`/`block_id` all null-safe; FashionCLIP vectors live out-of-row in `region_embeddings` keyed by `embedding_id`.
+
+---
+
 ## Part 3 — What's still blocking a build
 - ~~Adarsh picks Forks 1–6~~ **DONE** (locked above). Track A's 7 also locked.
-- **Track A-v2 extension pass** must land first — it's the schema both sides (creator + audience) share, so with the *parallel* build it's the critical-path unblocker (the pre-revamp findings don't yet include `part/attributes/embedding_id/actor`; the updated prompt asks for them).
+- ~~**Track A-v2 extension pass** must land first~~ **DONE** — findings @ `0687d15`, all 5 v2 questions locked (Part 1b). The graph-ready, two-sided `Region` schema is now the settled shared spine for creator + audience.
 - Then B / C / D / F proceed **in parallel** (Fork 1). B budgets SAM2 for image **and** video (Forks 3+4); F produces the concrete video plan now (Fork 3).
 - Umbrella GitHub issue created (still missing) with A–F checkboxes.
 - Reconcile these locks into the main `decisions-log.md` once the other thread's tree is clean.
