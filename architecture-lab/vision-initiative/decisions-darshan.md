@@ -68,7 +68,7 @@ Six catalog keys preserved verbatim → `anatomy_catalog_service` keeps working 
 | 3 — Video/reels | **Pull video forward** — reel-slicing is central, invest this cycle | (I'd recommended image-first; Adarsh wants video now) |
 | 4 — Model depth | **Phased full-stack** (FashionCLIP → Fashionpedia → SAM2) | matches |
 | 5 — Pitch framing | **Keep both balanced** (dual B2B + B2C headline) | (I'd leaned consumer-vision-led; Adarsh wants both) |
-| 6 — Name taste graph | **Rasa** (desi) + **Palette** (English) locked; cooler upgrade candidates under review (see below) | Ruchi dropped (food-brand clash) |
+| 6 — Name taste graph | **Anuraṇana** (देसी) + **Écart** (phenomenology) LOCKED — deeper tier chosen | Ruchi/Rasa/Palette all superseded |
 
 **What this combination means (honest note):** parallel + video-forward + balanced-pitch is the **most ambitious and highest-surface-area** path — it maximizes the vision but front-loads the most build, the heaviest infra (GPU video serving early), and the widest message. It's a deliberate bet on scope over speed-to-demo. The tracks below are re-weighted accordingly: **Track F is now parallel (not "after A/C")**, and **video moves from Phase-later into active scope**. Guardrail: keep the image loop shippable on its own so video slippage can't sink the whole MVP.
 
@@ -149,7 +149,10 @@ Each: **what's at stake · the options · recommendation · what it changes down
 - **Verweilen** (Heidegger) — *tarrying / lingering / the while*: the artwork gathers a "for-a-while," makes us *dwell*. Perfect meaning for "a level up from the scroll" — but German/hard.
 - **Ihde as framing, not name:** *epistemology engine*, *visualism / visual hermeneutics*, *variational method* — Darshan is a **visual-hermeneutic engine** (reading meaning *through* the image). Positioning copy, not a noun.
 
-**Current front-runners (deeper tier):** desi — **Saṃvit** (the aware mirror-field) or **Anuraṇana** (the lingering resonance); phenomenology — **Écart** (the generative gap) or **Institution/Stiftung** (the sediment of taste). Awaiting Adarsh's pick; Rasa/Palette remain the safe fallback.
+**LOCKED (2026-07-08) → Anuraṇana + Écart.** Rasa/Palette/Ruchi superseded.
+- **Anuraṇana** (अनुरणन) — the *after-resonance, the echo that lingers once the bell stops* (Abhinavagupta's metaphor for suggestion). The taste graph as the felt overtone of your looking that keeps sounding.
+- **Écart** (Merleau-Ponty) — the *divergence/gap* that holds open the space where perception happens.
+- **Open sub-question (light, non-blocking):** do these name the *same* object (Anuraṇana = the देसी/consumer name for the taste graph, Écart = its phenomenology-facing/technical name), or *two distinct* things — e.g. **Anuraṇana = the taste graph** (the accruing resonance) and **Écart = the reading act / the pause Darshan opens in the scroll** (the generative gap where you actually see)? Proposed: the latter split (it gives the two concepts distinct homes). Adarsh to confirm the assignment.
 Threads into app naming (Drishti vs Nazar) in `decisions-log.md`.
 
 ---
