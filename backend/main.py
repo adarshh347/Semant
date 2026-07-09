@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import posts, epics, phrases, research, personas, anatomy
+from backend.routers import posts, epics, phrases, research, personas, anatomy, taste
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
+from backend.services.region_embedding_service import ensure_indexes
+from backend.services.taste_signal_service import ensure_indexes as ensure_taste_indexes
 from backend.database import post_collection
 from backend.schemas.post import PaginatedPosts
 from backend.security import require_api_key
@@ -35,6 +37,10 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     await test_connection()
+    # Index the taste-graph sidecar (idempotent; Track C retrieval filters on post_id)
+    await ensure_indexes()
+    # Index the audience signal store (Track F)
+    await ensure_taste_indexes()
     # Start the Research Article Agent background worker (drains the agent_runs queue)
     start_worker()
 
@@ -85,6 +91,12 @@ app.include_router(epics.router, prefix="/api/v1/epics", tags=["Epics"], depende
 app.include_router(research.router, prefix="/api/v1/research", tags=["Research Agent"], dependencies=[Depends(require_api_key)])
 app.include_router(personas.router, prefix="/api/v1/personas", tags=["Darpan Personas"], dependencies=[Depends(require_api_key)])
 app.include_router(anatomy.router, prefix="/api/v1/anatomy", tags=["Anatomy Catalog"], dependencies=[Depends(require_api_key)])
+# Track F. The consumer surface is intentionally NOT behind the curator API key — an
+# audience member pausing on an image has no key, and identity is the upsell, not the
+# toll (F3). It is gated instead by explicit opt-in, an opaque subject id, and a rate
+# limit. The brand tier IS keyed: aggregate taste intelligence is the paid product.
+app.include_router(taste.router, prefix="/api/v1/taste", tags=["Taste Signals (audience)"])
+app.include_router(taste.brand_router, prefix="/api/v1/taste/brand", tags=["Taste Intelligence (brand)"], dependencies=[Depends(require_api_key)])
 app.include_router(phrases.router, dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render

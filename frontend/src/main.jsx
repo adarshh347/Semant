@@ -10,8 +10,8 @@ import App from './App.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import GalleryPage from './pages/GalleryPage.jsx';
 import PostDetailPage from './components/PostDetailPage.jsx';
+import ReadDeeperPage from './pages/ReadDeeperPage.jsx';
 import HighlightsPage from './pages/HighlightsPage.jsx';
-import CroppedAnnotationsPage from './pages/CroppedAnnotationsPage.jsx';
 import './index.css';
 import TextFeedPage from './pages/TextFeedPage.jsx';
 import EpicsPage from './pages/EpicsPage.jsx';
@@ -31,7 +31,9 @@ const router = createBrowserRouter([
       { path: "gallery", element: <GalleryPage /> },
       { path: "highlights", element: <HighlightsPage /> },
       { path: "posts/:postId", element: <PostDetailPage /> },
-      { path: "posts/:postId/crops", element: <CroppedAnnotationsPage /> },
+      // Track F — the audience's "read deeper" pause (Écart), the lite variant of the
+      // creator's Visual pane.
+      { path: "read/:postId", element: <ReadDeeperPage /> },
       { path: "feed", element: <TextFeedPage /> },
       { path: "epics", element: <EpicsPage /> },
       { path: "epics/:id", element: <EpicEditorPage /> },

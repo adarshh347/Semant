@@ -2,6 +2,28 @@ import json
 from groq import Groq
 from backend.config import settings
 
+# --- Anuraṇana grounding (Darshan Track C §4) --------------------------------------
+# The writer used to see the image and the blocks and nothing else, so it wrote
+# competent, detached captions. `ground_prompt` puts the reading, the parts that moved
+# the curator, their nearest past correspondences, and their voice in front of the ask.
+GROUNDING_PREAMBLE = """GROUND YOUR WRITING IN THIS PERSON'S SEEING.
+Below is how this image was unconcealed, which of its parts moved this person and in
+their own words, how they have felt about parts like these before, and how they write.
+Treat it as evidence and as voice: write from what they noticed, not from a generic
+description of the image. Never quote these notes back verbatim, and never mention this
+briefing — let it show only in what you attend to and how you sound."""
+
+
+def ground_prompt(prompt: str, context_pack: str = "") -> str:
+    """Prepend the context pack to a prompt. An empty pack returns the prompt untouched,
+    so every writing path degrades to exactly its pre-Track-C behavior. The pack goes at
+    the front and the caller's ask stays at the tail — the two positions an LLM actually
+    attends to."""
+    if not context_pack:
+        return prompt
+    return f"{GROUNDING_PREAMBLE}\n\n{context_pack}\n\n---\n\n{prompt}"
+
+
 class EditorLLMService:
     def __init__(self):
         # Initialize Groq client with API key from settings
@@ -137,18 +159,21 @@ Write ONLY the refined prose, nothing else:"""
             print(f"Error in LLM post suggestion generation: {e}")
             return {"suggestion": "Error generating suggestion."}
 
-    def chat_with_vision(self, image_url: str, text_blocks: list, user_message: str, conversation_history: list = None) -> dict:
+    def chat_with_vision(self, image_url: str, text_blocks: list, user_message: str,
+                         conversation_history: list = None, context_pack: str = "") -> dict:
         """
         Vision-enabled chat using a TWO-STAGE PIPELINE:
         Stage 1: Maverick analyzes the image and generates raw understanding
         Stage 2: GPT-OSS-120B refines the output into literary prose
-        
+
         Args:
             image_url: URL of the image to analyze
             text_blocks: Existing text blocks for context
             user_message: User's chat message
             conversation_history: Previous messages in the conversation
-            
+            context_pack: Anuraṇana grounding (Track C) — the reading, the parts that
+                moved this person, their taste history, their voice. Empty → unchanged.
+
         Returns:
             Dictionary with 'response' key containing the refined AI response
         """
@@ -191,6 +216,7 @@ Provide a detailed, helpful response that:
 4. Is substantive and informative
 
 Respond clearly and concisely:"""
+        vision_prompt = ground_prompt(vision_prompt, context_pack)
 
         messages = [
             {"role": "system", "content": "You are a vision-enabled assistant. Describe what you see and respond helpfully. Be direct and avoid repetition."},
@@ -222,9 +248,14 @@ Respond clearly and concisely:"""
             )
             
             if needs_literary:
+                # Stage 2 is where voice is decided, so the pack must reach it too —
+                # grounding only stage 1 would sand the person's voice back off.
                 refined_response = self._literary_refine(
                     raw_text=raw_vision_response,
-                    context=f"Story context: {blocks_context[:1000]}\nUser asked: {user_message}",
+                    context=ground_prompt(
+                        f"Story context: {blocks_context[:1000]}\nUser asked: {user_message}",
+                        context_pack,
+                    ),
                     style_hint="evocative, literary prose suitable for a visual story"
                 )
                 return {"response": refined_response}
@@ -264,16 +295,18 @@ Please respond helpfully based on the text context provided."""
             print(f"Error in fallback chat: {e}")
             return {"response": "Sorry, I encountered an error. Please try again."}
 
-    def generate_node_expansion(self, node_text: str, image_url: str, story_context: str) -> dict:
+    def generate_node_expansion(self, node_text: str, image_url: str, story_context: str,
+                                context_pack: str = "") -> dict:
         """
         Generates a detailed literary expansion for a specific story flow node.
         Used when user clicks on a node in the StoryFlow visualization.
-        
+
         Args:
             node_text: The text of the clicked node (e.g., "The storm arrives")
             image_url: URL of the associated image
             story_context: The full story/text blocks for context
-            
+            context_pack: Anuraṇana grounding (Track C). Empty → unchanged behavior.
+
         Returns:
             Dictionary with 'expansion' key containing rich literary prose about this moment
         """
@@ -288,8 +321,9 @@ STORY MOMENT: "{node_text}"
 FULL STORY CONTEXT:
 {story_context[:3000]}
 
-Identify and describe visual elements that connect to or illuminate this specific moment. 
+Identify and describe visual elements that connect to or illuminate this specific moment.
 What in the image resonates with "{node_text}"?"""
+        vision_prompt = ground_prompt(vision_prompt, context_pack)
 
         try:
             vision_completion = self.client.chat.completions.create(
@@ -306,9 +340,10 @@ What in the image resonates with "{node_text}"?"""
             )
             
             visual_analysis = vision_completion.choices[0].message.content
-            
-            # Stage 2: Literary expansion using both visual analysis and story context
-            expansion_prompt = f"""You are a literary master expanding a story moment into rich prose.
+
+            # Stage 2: Literary expansion using both visual analysis and story context.
+            # Grounded too — the prose stage is where this person's voice is decided.
+            expansion_prompt = ground_prompt("""You are a literary master expanding a story moment into rich prose.""", context_pack) + f"""
 
 THE MOMENT: "{node_text}"
 
@@ -344,10 +379,13 @@ Write ONLY the expansion prose, no preamble or explanation:"""
             print(f"Error in node expansion: {e}")
             return {"expansion": f"Unable to expand this moment. Error: {str(e)}"}
 
-    def rewrite_with_vision(self, image_url: str, block_content: str, rewrite_instruction: str = "") -> dict:
+    def rewrite_with_vision(self, image_url: str, block_content: str,
+                            rewrite_instruction: str = "", context_pack: str = "") -> dict:
         """
         Rewrites a text block with awareness of the image content.
         Uses two-stage pipeline for literary quality.
+
+        `context_pack` is the Anuraṇana grounding (Track C); empty → unchanged behavior.
         """
         if not self.client:
             return {"rewritten": "LLM service is not configured (missing GROQ_API_KEY)."}
@@ -360,8 +398,8 @@ Write ONLY the expansion prose, no preamble or explanation:"""
                 "image_url": {"url": image_url}
             },
             {
-                "type": "text", 
-                "text": f"""Look at this image carefully.
+                "type": "text",
+                "text": ground_prompt(f"""Look at this image carefully.
 
 CURRENT TEXT:
 {block_content}
@@ -373,7 +411,7 @@ Keep the same general length but improve the quality, imagery, and connection to
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON object:
-{{"rewritten": "Your rewritten text here..."}}"""
+{{"rewritten": "Your rewritten text here..."}}""", context_pack)
             }
         ]
 

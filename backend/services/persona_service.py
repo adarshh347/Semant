@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 from bson.objectid import ObjectId
 
 from backend.database import persona_collection, post_collection
+from backend.services import lens_registry
 from backend.services.llm_service import llm_service
 from backend.services.vision_service import vision_service
 
@@ -81,17 +82,31 @@ class PersonaService:
             "updated_at": doc.get("updated_at"),
         }
 
-    async def _matched_posts(self, handle: str) -> List[dict]:
-        """Posts in our gallery from this account: by the stored `instagram_handle`
-        field (reliable, set on newer saves) OR the handle parsed from source_url."""
+    @staticmethod
+    def _authored_by(handle: str) -> dict:
+        """Filter for posts in our gallery from this account: by the stored
+        `instagram_handle`/`instagram_handles` fields (reliable, set on newer saves)
+        OR the handle parsed from source_url."""
         rx = re.compile(rf"instagram\.com/{re.escape(handle)}(?:[/?#]|$)", re.I)
+        return {"$or": [{"instagram_handle": handle},
+                        {"instagram_handles": handle},
+                        {"source_url": {"$regex": rx}}]}
+
+    async def _matched_posts(self, handle: str) -> List[dict]:
+        """Up to 400 posts from this account — enough to synthesize a dossier from."""
         cursor = post_collection.find(
-            {"$or": [{"instagram_handle": handle},
-                     {"instagram_handles": handle},
-                     {"source_url": {"$regex": rx}}]},
+            self._authored_by(handle),
             {"photo_url": 1, "general_tags": 1, "source_url": 1, "instagram_handle": 1},
         )
         return await cursor.to_list(length=400)
+
+    async def matched_post_ids(self, handle: str) -> List[str]:
+        """*Every* post id from this account, uncapped — the retrieval scope for
+        Anuraṇana (Track C §4). Deliberately separate from `_matched_posts`, whose 400
+        cap is fine for dossier synthesis but would silently truncate a taste search:
+        a curator with 1700 posts must not have their history sampled arbitrarily."""
+        cursor = post_collection.find(self._authored_by(handle), {"_id": 1})
+        return [str(d["_id"]) async for d in cursor]
 
     async def touch(self, handle: str, account: Optional[dict] = None) -> None:
         """
@@ -186,6 +201,57 @@ class PersonaService:
 
         return self.persona_helper(fresh)
 
+    @staticmethod
+    def _structured_reading(aletheia: Optional[dict]) -> Optional[dict]:
+        """The reading's skeleton, kept for retrieval and for the lens prior: which
+        lenses fired, how strongly, and which regions they rested on. Bounded — the
+        prose stays in `aletheia_note` and on the post's own `local_context`."""
+        if not aletheia:
+            return None
+        lenses = [
+            {
+                "name": str(lens.get("name") or "").strip(),
+                "intensity": max(0, min(100, int(lens.get("intensity") or 0))),
+                "region_ids": [str(r) for r in (lens.get("region_ids") or [])][:6],
+            }
+            for lens in (aletheia.get("lenses") or [])[:5]
+            if str(lens.get("name") or "").strip()
+        ]
+        if not lenses and not aletheia.get("tension"):
+            return None
+        return {
+            "domain": str(aletheia.get("domain") or "").strip(),
+            "lenses": lenses,
+            "tension": str(aletheia.get("tension") or "").strip()[:280],
+        }
+
+    async def lens_prior(self, handle: str, top_n: int = 3) -> dict:
+        """The lenses that habitually fire for this curator, and how much they may bias
+        the next reading — the §6.3 prior on lens selection.
+
+        Data-gated (settled decision): `strength` ramps from 0 on a thin corpus to 1 once
+        enough readings have accrued, so the prior never manufactures a taste it hasn't
+        observed. A guardrail either way — `lens_registry.select_lenses` bounds the prior
+        and always reserves a wildcard slot it cannot fill.
+
+        Returns `{"lenses": [], "strength": 0.0}` for a persona with no structured
+        readings (including every persona written before Track C): simply no prior.
+        """
+        doc = await persona_collection.find_one(
+            {"handle": normalize_handle(handle)}, {"local_contexts": 1}
+        )
+        if not doc:
+            return {"lenses": [], "strength": 0.0}
+        contexts = doc.get("local_contexts") or []
+        # Only readings with structure count toward the ramp; a flattened legacy note
+        # carries no lens data and must not inflate our confidence in the prior.
+        read_count = sum(1 for c in contexts if (c.get("reading") or {}).get("lenses"))
+        return {
+            "lenses": lens_registry.recurring_lenses(contexts, top_n=top_n),
+            "strength": lens_registry.prior_strength(read_count),
+            "reading_count": read_count,
+        }
+
     async def add_local_context(
         self, handle: str, post_id: str, image_url: Optional[str],
         commentary: str, aletheia: Optional[dict],
@@ -200,7 +266,8 @@ class PersonaService:
             return
         await self.touch(handle)  # ensure the persona exists
 
-        # Compact the Aletheia reading into a one-line note.
+        # Compact the Aletheia reading into a one-line note (the dossier prompt reads
+        # this; keep it for continuity with every persona written before Track C).
         al_note = ""
         if aletheia:
             parts = []
@@ -216,6 +283,11 @@ class PersonaService:
             "image_url": image_url,
             "commentary": (commentary or "").strip(),
             "aletheia_note": al_note,
+            # Track C §6.1: keep the reading's STRUCTURE alongside the flattened line.
+            # Flattening to prose lost which lenses fired and how strongly — exactly
+            # what the lens prior (§6.3) needs to learn how this person habitually
+            # looks. Capped: names, intensities and region links, not the full prose.
+            "reading": self._structured_reading(aletheia),
             "updated_at": datetime.now(timezone.utc),
         }
         # Replace any prior entry for this post, then append (cap 60).

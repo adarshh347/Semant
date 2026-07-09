@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, File, UploadFile, Form
+from fastapi import APIRouter, HTTPException, File, UploadFile, Form, BackgroundTasks
 from typing import Dict, Optional, List
 import uuid
 import os
@@ -12,13 +12,15 @@ from urllib.parse import urlparse
 from io import BytesIO
 from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
+from backend.services import region_embedding_service
+from backend.services import anuranana_service
 from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
 from datetime import datetime, timezone
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
 # shutil(high level file operations) vs os (low level file operations)
 import shutil
-from backend.schemas.post import Post, PostUpdate, PaginatedPosts, StoryGenerationRequest, AddTagRequest, AddTagAndStoryRequest, StoryFlowRequest, PostSuggestionRequest, VisionChatRequest, VisionRewriteRequest, NodeExpansionRequest, UrlUploadRequest, BrainstormRequest, LocalContextRequest, RegionAnnotationsRequest, RegionDetectRequest
+from backend.schemas.post import Post, PostUpdate, PaginatedPosts, StoryGenerationRequest, AddTagRequest, AddTagAndStoryRequest, StoryFlowRequest, PostSuggestionRequest, VisionChatRequest, VisionRewriteRequest, NodeExpansionRequest, UrlUploadRequest, BrainstormRequest, LocalContextRequest, RegionAnnotationsRequest, RegionDetectRequest, AletheiaReadRequest
 
 from backend.database import post_collection,client
 import cloudinary
@@ -79,6 +81,8 @@ def post_helper(post) -> dict:
         "source_account": post.get("source_account"),
         "local_context": post.get("local_context"),
         "region_annotations": post.get("region_annotations"),
+        "domain": post.get("domain"),
+        "aletheia_cache": post.get("aletheia_cache"),
     }
 
 
@@ -110,7 +114,7 @@ async def create_post(
         "photo_public_id": upload_result["public_id"],
         "updated_at": datetime.now(timezone.utc),
         "text_blocks": [], # Initialize as empty list
-        "bounding_box_tags": {}, # Initialize as empty dict
+        # bounding_box_tags retired (Track A): no longer initialized; reads emit {}.
         "general_tags": general_tags_str.split(',') if general_tags_str else []
     }
 
@@ -229,7 +233,7 @@ async def create_post_from_url(request: UrlUploadRequest):
             "photo_public_id": upload_result["public_id"],
             "updated_at": datetime.now(timezone.utc),
             "text_blocks": [],
-            "bounding_box_tags": {},
+            # bounding_box_tags retired (Track A): not initialized.
             "general_tags": request.general_tags or [],
             "source_url": request.source_url or request.image_url,  # page (or image) URL for reference
             "instagram_handle": handle,
@@ -271,7 +275,7 @@ async def create_multiple_posts(files: List[UploadFile] = File(...)):
             "photo_public_id": upload_result["public_id"],
             "updated_at": datetime.now(timezone.utc),
             "text_blocks": [],
-            "bounding_box_tags": {},
+            # bounding_box_tags retired (Track A): not initialized.
             "general_tags": []
         }
         created_posts_docs.append(post_document)
@@ -412,11 +416,55 @@ async def set_local_context(post_id: str, request: LocalContextRequest):
     return {"post": post_helper(updated), "fed_to_persona": fed, "handle": handles[0] if handles else None}
 
 
+async def _reading_context_for(post: dict, lens_hint: str = "") -> dict:
+    """The context Aletheia's lenses are chosen from (Track C §2).
+
+    Assembled from work already done — Track B's domain router, the regions the
+    detectors found, and the lenses that habitually fire for this curator (§6.3's
+    prior). No extra model calls. Everything here is optional: a post with no domain,
+    no regions and no persona yields an empty context, and the reading falls back to
+    the general three lenses — exactly today's behavior.
+    """
+    regions = post.get("region_annotations") or []
+    parts, attributes = [], []
+    for region in regions:
+        for key in ("part", "label"):
+            if region.get(key):
+                parts.append(region[key])
+        attributes.extend(region.get("attributes") or [])
+
+    # The prior is data-gated: strength ramps from 0 on a thin corpus, so a cold-start
+    # persona never biases the reading it hasn't earned.
+    prior = {"lenses": [], "strength": 0.0}
+    handles = post_handles(post)
+    if handles:
+        try:
+            prior = await persona_service.lens_prior(handles[0])
+        except Exception as e:
+            print(f"Lens prior unavailable (non-fatal, reading stays impersonal): {e}")
+
+    return {
+        "domain": (post.get("domain") or {}).get("label", ""),
+        "parts": parts,
+        "attributes": attributes,
+        "regions": [
+            {"id": r.get("id"), "label": r.get("label"), "part": r.get("part"),
+             "category": r.get("category")}
+            for r in regions if r.get("id")
+        ],
+        "persona_lenses": prior["lenses"],
+        "prior_strength": prior["strength"],
+        "lens_hint": lens_hint,
+    }
+
+
 @router.post("/{post_id}/unconceal-suggest")
 async def unconceal_suggest(post_id: str):
     """
     LLM pre-draft for the review queue: run Aletheia on the image and draft a
     first-person unconcealment commentary the curator can edit before saving.
+    The reading is context-triggered — its lenses come from the image's domain and
+    detected parts, biased (but never closed) by this curator's recurring lenses.
     """
     try:
         obj_id = ObjectId(post_id)
@@ -429,13 +477,67 @@ async def unconceal_suggest(post_id: str):
 
     image_url = post.get("photo_url")
     # Our images are public Cloudinary URLs, so the vision model can fetch directly.
-    aletheia = await vision_service.brainstorm_image(image_url)
+    context = await _reading_context_for(post)
+    aletheia = await vision_service.brainstorm_image(image_url, context=context)
     aletheia = aletheia or {"lenses": [], "concealed": "", "uncertainty": ""}
     aletheia.pop("questions", None)  # the queue note doesn't use the MCQ dialogue
 
     handle = post.get("instagram_handle") or handle_from_source_url(post.get("source_url")) or ""
     draft = await asyncio.to_thread(llm_service.draft_unconcealment, aletheia, handle)
     return {"aletheia": aletheia, "draft_commentary": draft}
+
+
+@router.post("/{post_id}/aletheia-read")
+async def aletheia_read(post_id: str, request: AletheiaReadRequest):
+    """
+    Read an image through Aletheia at one of two depths (Track C §5) — one engine,
+    two renders:
+
+      · `deep` — the creator's reading: every fired lens with its evidence and the
+        regions it rests on, the cross-lens tension, 1–3 perceptual forks.
+      · `hook` — the audience's: one distilled lens, one fork. The Écart, the pause
+        Darshan opens in the scroll.
+
+    Hook readings are **cached on the post** and served from cache thereafter: the same
+    image is read once, not once per viewer, which is what makes a scroll-pause reading
+    affordable at audience scale. `refresh: true` recomputes.
+
+    Track C emits the reading and its fork. Recording which fork an audience member taps
+    (`actor="audience"`) is Track F's endpoint, not this one.
+    """
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    depth = "hook" if (request.depth or "deep").lower() == "hook" else "deep"
+
+    # The hook is identical for every viewer of an image, so it is cached. The deep
+    # reading is a dialogue (answers reshape it round by round) and never is.
+    cached = (post.get("aletheia_cache") or {}).get("hook")
+    if depth == "hook" and cached and not request.refresh and not request.answers:
+        return {"aletheia": cached, "depth": depth, "cached": True}
+
+    context = await _reading_context_for(post, lens_hint=request.lens or "")
+    answers = [a.model_dump() for a in request.answers] if request.answers else None
+    reading = await vision_service.brainstorm_image(
+        post.get("photo_url"), answers=answers, context=context, depth=depth,
+    )
+    if reading is None:
+        raise HTTPException(status_code=502, detail="Reading unavailable (vision service error or unparseable response).")
+
+    if depth == "hook" and not answers:
+        await post_collection.update_one(
+            {"_id": obj_id},
+            {"$set": {"aletheia_cache.hook": reading,
+                      "aletheia_cache.updated_at": datetime.now(timezone.utc)}},
+        )
+
+    return {"aletheia": reading, "depth": depth, "cached": False}
 
 
 def _clip_box_to_parent(box: dict, parent: dict) -> dict:
@@ -531,6 +633,9 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
                 f["parent_id"] = parent.get("id")
                 f["box"] = _clip_box_to_parent(f["box"], parent.get("box") or {})
             f.setdefault("depth", 1)
+            # parent_label was only a transient matching key — drop it (Track A:
+            # canonicalize on parent_id; parent_label is not a Region field).
+            f.pop("parent_label", None)
 
     regions = (anchors or []) + fine
     if fine:
@@ -539,11 +644,17 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
     # Preserve any prioritisation/notes the curator already set (match by id).
     existing = {r.get("id"): r for r in (post.get("region_annotations") or [])}
     for r in regions:
+        # Provenance defaults (Track A): every detected region is auto-authored.
+        r.setdefault("actor", "auto")
+        r.setdefault("detector", "vision")
         prev = existing.get(r["id"])
         if prev:
             r["prioritised"] = prev.get("prioritised", False)
             r["weight"] = prev.get("weight", 0)
             r["user_note"] = prev.get("user_note", "")
+            # a creator who edited an auto region keeps their authorship.
+            if prev.get("actor") == "creator":
+                r["actor"] = "creator"
         else:
             r.setdefault("prioritised", False)
             r.setdefault("weight", 0)
@@ -553,11 +664,88 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
     return {"regions": regions, "source": source, "anchor_count": len(anchors or []), "fine_count": len(fine)}
 
 
+async def _embed_marked_regions(post_id: str) -> int:
+    """Track C §6.2 — the felt signal becomes a vector.
+
+    When a curator prioritises a part and writes what it does to them, that region is
+    the truest query into their taste graph — but it can only be queried if it has an
+    embedding. Regions marked by hand often have none (they were drawn, not detected,
+    or enrichment never ran). Embed exactly those: prioritised, noted, unvectorized.
+
+    Runs as a background task after the save responds, and is entirely best-effort —
+    FashionCLIP absent, image unfetchable, or a bad crop each just leave the region
+    unvectorized, costing it a place in future retrieval and nothing else.
+    """
+    from backend.services import fashion_clip_service as fc
+
+    if not fc.is_available():
+        return 0
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        return 0
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post or not post.get("photo_url"):
+        return 0
+
+    regions = post.get("region_annotations") or []
+    pending = [r for r in regions
+               if r.get("prioritised") and (r.get("user_note") or "").strip()
+               and not r.get("embedding_id")]
+    if not pending:
+        return 0
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(post["photo_url"], headers=_image_fetch_headers(post["photo_url"]))
+            resp.raise_for_status()
+            img_bytes = resp.content
+    except Exception as e:
+        print(f"Anuraṇana: could not fetch image to embed marked regions (non-fatal): {e}")
+        return 0
+
+    def _compute():
+        img = fc._open_image(img_bytes)
+        out = []
+        for region in pending:
+            vector = fc.embed_image(fc._crop_norm(img, region.get("box")))
+            if vector:
+                out.append((region["id"], vector))
+        return out
+
+    try:
+        computed = await asyncio.to_thread(_compute)
+    except Exception as e:
+        print(f"Anuraṇana: embedding marked regions failed (non-fatal): {e}")
+        return 0
+
+    by_id = {rid: vec for rid, vec in computed}
+    for region in regions:
+        vector = by_id.get(region.get("id"))
+        if not vector:
+            continue
+        embedding_id = region_embedding_service.make_embedding_id(post_id, region["id"])
+        await region_embedding_service.upsert_embedding(
+            embedding_id, vector, model="fashion-clip", post_id=post_id, region_id=region["id"]
+        )
+        region["embedding_id"] = embedding_id
+
+    if by_id:
+        await post_collection.update_one(
+            {"_id": obj_id}, {"$set": {"region_annotations": regions}}
+        )
+    print(f"Anuraṇana: vectorized {len(by_id)} newly-marked region(s) on post {post_id}")
+    return len(by_id)
+
+
 @router.post("/{post_id}/region-annotations")
-async def save_region_annotations(post_id: str, request: RegionAnnotationsRequest):
+async def save_region_annotations(post_id: str, request: RegionAnnotationsRequest,
+                                  background: BackgroundTasks = None):
     """
     Save the curator's prioritised regions + per-part 'how it affects me' notes. Also
-    rolls the prioritised correspondences up into the account's persona as evidence.
+    rolls the prioritised correspondences up into the account's persona as evidence,
+    and (in the background) embeds the newly-marked regions so the felt signal — not
+    just the label — accrues in the taste graph.
     """
     try:
         obj_id = ObjectId(post_id)
@@ -567,8 +755,10 @@ async def save_region_annotations(post_id: str, request: RegionAnnotationsReques
     if not post:
         raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
 
+    # request.regions is validated against the unified Region model; persist as dicts.
+    regions_data = [r.model_dump() for r in request.regions]
     await post_collection.update_one(
-        {"_id": obj_id}, {"$set": {"region_annotations": request.regions,
+        {"_id": obj_id}, {"$set": {"region_annotations": regions_data,
                                    "updated_at": datetime.now(timezone.utc)}}
     )
 
@@ -579,7 +769,7 @@ async def save_region_annotations(post_id: str, request: RegionAnnotationsReques
     if handles and request.feed_to_persona:
         notes = [
             f"{r.get('label', 'part')} — {r.get('user_note', '').strip()}"
-            for r in request.regions
+            for r in regions_data
             if r.get("prioritised") and (r.get("user_note") or "").strip()
         ]
         if notes:
@@ -590,8 +780,112 @@ async def save_region_annotations(post_id: str, request: RegionAnnotationsReques
                 except Exception as e:
                     print(f"Persona region roll-up failed for @{h} (non-fatal): {e}")
 
+    # Vectorize the parts they just marked — after the response, never blocking the save.
+    if background is not None:
+        background.add_task(_embed_marked_regions, post_id)
+
     updated = await post_collection.find_one({"_id": obj_id})
     return {"post": post_helper(updated), "fed_to_persona": fed}
+
+
+def _compute_region_enrichment(img_bytes: bytes, regions: list, post_id: str) -> dict:
+    """CPU-bound FashionCLIP work (runs in a thread). For each region: crop → embed
+    (skip if already has embedding_id — immutable/cached) → and, on fashion images,
+    a first-cut part/attributes[]. Also routes the whole-image domain. Returns the
+    updated regions, the (embedding_id, vector, region_id) triples to persist, the
+    domain dict, and counts. Never mutates geometry or detector stamping."""
+    from backend.services import fashion_clip_service as fc
+    from backend.services.region_embedding_service import make_embedding_id
+
+    # Part/attribute labels only make sense on actual garment regions — not the whole
+    # figure, a face, hair, or background. Embeddings, by contrast, are computed for
+    # every region (the taste vector is useful regardless of category).
+    GARMENT_CATS = {"garment", "garment-detail", "accessory"}
+
+    img = fc._open_image(img_bytes)
+    domain = fc.classify_domain(img)
+    is_fashion = domain.get("is_fashion")
+
+    to_upsert = []
+    embedded = labeled = skipped = 0
+    out = []
+    for r in regions:
+        r = dict(r)  # copy; don't mutate the stored dict in place
+        # Cache: an embedding is immutable once computed.
+        if r.get("embedding_id"):
+            skipped += 1
+        else:
+            vec = fc.embed_image(fc._crop_norm(img, r.get("box")))
+            if vec is not None:
+                eid = make_embedding_id(post_id, r.get("id", "reg"))
+                r["embedding_id"] = eid
+                to_upsert.append((eid, vec, r.get("id")))
+                embedded += 1
+        # First-cut labels: fashion image AND a garment-category region; never overwrite
+        # existing part/attrs (a creator's or a later Fashionpedia pass wins).
+        if is_fashion and (r.get("category") or "").lower() in GARMENT_CATS:
+            lab = fc.label_region(img, r.get("box"))
+            if lab.get("part") and not r.get("part"):
+                r["part"] = lab["part"]
+                labeled += 1
+            if lab.get("attributes") and not r.get("attributes"):
+                r["attributes"] = lab["attributes"]
+        out.append(r)
+
+    return {"regions": out, "to_upsert": to_upsert, "domain": domain,
+            "embedded": embedded, "labeled": labeled, "skipped": skipped}
+
+
+@router.post("/{post_id}/enrich-regions")
+async def enrich_regions(post_id: str):
+    """FashionCLIP enrichment (Track B · Phase 1): vectorize existing regions into the
+    taste-graph sidecar (setting Region.embedding_id), add a first-cut part/attributes[]
+    on fashion regions, and tag the image's domain. Purely additive — does NOT create
+    or alter geometry/detector (that's detect-regions' job). Idempotent + cached."""
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    from backend.services import fashion_clip_service as fc
+    if not fc.is_available():
+        raise HTTPException(status_code=503,
+            detail="FashionCLIP unavailable (torch/transformers not installed on this deploy).")
+
+    photo_url = post.get("photo_url")
+    regions = post.get("region_annotations") or []
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(photo_url, headers=_image_fetch_headers(photo_url))
+            resp.raise_for_status()
+            img_bytes = resp.content
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not fetch image: {e}")
+
+    result = await asyncio.to_thread(_compute_region_enrichment, img_bytes, regions, post_id)
+
+    # Persist vectors OUT of the post doc, in the sidecar (keyed by embedding_id).
+    for eid, vec, rid in result["to_upsert"]:
+        await region_embedding_service.upsert_embedding(
+            eid, vec, model="fashion-clip", post_id=post_id, region_id=rid)
+
+    # Persist the embedding_id pointers + first-cut labels + the domain tag on the post.
+    await post_collection.update_one(
+        {"_id": obj_id},
+        {"$set": {"region_annotations": result["regions"], "domain": result["domain"]}},
+    )
+
+    updated = await post_collection.find_one({"_id": obj_id})
+    return {
+        "post": post_helper(updated),
+        "domain": result["domain"],
+        "embedded": result["embedded"],
+        "labeled": result["labeled"],
+        "skipped_cached": result["skipped"],
+    }
 
 # More general route comes after
 @router.get("/", response_model=PaginatedPosts)
@@ -751,23 +1045,42 @@ async def generate_story(request: StoryGenerationRequest):
     posts_cursor = post_collection.find(query)
     
     aggregated_text = []
-    
+    exemplar = None  # the most recently-read post under this tag
+
     async for post in posts_cursor:
         # Extract text from text_blocks
         if "text_blocks" in post:
             for block in post["text_blocks"]:
                 if "content" in block and block["content"]:
                     aggregated_text.append(block["content"])
-                    
+        # A story spans many posts, but a context pack is per-image. Ground on the
+        # tag's exemplar: the post whose reading is freshest. Better a story rooted in
+        # one image genuinely unconcealed than a blur averaged over all of them.
+        lc = post.get("local_context") or {}
+        if lc.get("aletheia"):
+            stamp = lc.get("updated_at")
+            if exemplar is None or (stamp and stamp > (exemplar[0] or stamp)):
+                exemplar = (stamp, post)
+
     full_text = "\n\n".join(aggregated_text)
-    
+
+    context_pack = ""
+    if exemplar:
+        try:
+            pack = await anuranana_service.build_context_pack(exemplar[1])
+            context_pack = pack.get("text", "")
+        except Exception as e:
+            print(f"Anuraṇana pack unavailable for story (non-fatal): {e}")
+
     # Generate story
-    result = llm_service.generate_story_from_plot(
+    result = await asyncio.to_thread(
+        llm_service.generate_story_from_plot,
         aggregated_text=full_text,
         plot_suggestion=request.plot_suggestion,
-        user_commentary=request.user_commentary
+        user_commentary=request.user_commentary,
+        context_pack=context_pack,
     )
-    
+
     return result
 
 @router.get("/untagged/random", response_model=List[Post])
@@ -914,33 +1227,58 @@ async def generate_post_suggestion(request: PostSuggestionRequest):
     )
     return result
 
+async def _grounding_for(image_url: str) -> str:
+    """The Anuraṇana context pack for whatever post this image belongs to (Track C §4).
+
+    The writing endpoints are handed an `image_url`, not a post id, so we resolve the
+    post from the URL — which means grounding switches on with no frontend change
+    (the Visual pane is Track D's to touch). Never fatal: an image we don't own, a
+    missing reading, or a retrieval error all yield an empty pack, and an empty pack
+    makes the writer behave exactly as it did before Track C.
+    """
+    try:
+        pack = await anuranana_service.build_context_pack_for_image(image_url)
+        return pack.get("text", "")
+    except Exception as e:
+        print(f"Anuraṇana context pack unavailable (non-fatal, writing ungrounded): {e}")
+        return ""
+
+
 @router.post("/chat/vision")
 async def vision_chat(request: VisionChatRequest):
     """
     Vision-enabled chat that can see the image and understand context.
-    Uses Llama 4 Maverick for vision capabilities.
+    Uses Llama 4 Maverick for vision capabilities, grounded in this person's
+    reading of the image and their accrued taste (Anuraṇana).
     """
     # Convert Pydantic models to dict for LLM service
     text_blocks_dict = [block.dict() for block in request.text_blocks] if request.text_blocks else []
     conversation_dict = [msg.dict() for msg in request.conversation_history] if request.conversation_history else []
-    
-    result = editor_llm_service.chat_with_vision(
+    context_pack = await _grounding_for(request.image_url)
+
+    result = await asyncio.to_thread(
+        editor_llm_service.chat_with_vision,
         image_url=request.image_url,
         text_blocks=text_blocks_dict,
         user_message=request.user_message,
-        conversation_history=conversation_dict
+        conversation_history=conversation_dict,
+        context_pack=context_pack,
     )
     return result
 
 @router.post("/rewrite/vision")
 async def vision_rewrite(request: VisionRewriteRequest):
     """
-    Rewrites a text block with awareness of the image content.
+    Rewrites a text block with awareness of the image content, grounded in the
+    curator's reading and taste history.
     """
-    result = editor_llm_service.rewrite_with_vision(
+    context_pack = await _grounding_for(request.image_url)
+    result = await asyncio.to_thread(
+        editor_llm_service.rewrite_with_vision,
         image_url=request.image_url,
         block_content=request.block_content,
-        rewrite_instruction=request.rewrite_instruction or ""
+        rewrite_instruction=request.rewrite_instruction or "",
+        context_pack=context_pack,
     )
     return result
 
@@ -948,14 +1286,18 @@ async def vision_rewrite(request: VisionRewriteRequest):
 async def expand_flow_node(request: NodeExpansionRequest):
     """
     Generates a detailed literary expansion for a specific story flow node.
-    Uses two-stage pipeline: Maverick (vision) -> GPT-OSS (literary refinement).
-    
+    Uses two-stage pipeline: Maverick (vision) -> GPT-OSS (literary refinement),
+    grounded in the curator's reading and taste history.
+
     Called when user clicks on a node in the StoryFlow visualization.
     """
-    result = editor_llm_service.generate_node_expansion(
+    context_pack = await _grounding_for(request.image_url)
+    result = await asyncio.to_thread(
+        editor_llm_service.generate_node_expansion,
         node_text=request.node_text,
         image_url=request.image_url,
-        story_context=request.story_context
+        story_context=request.story_context,
+        context_pack=context_pack,
     )
     return result
 

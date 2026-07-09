@@ -1,0 +1,118 @@
+/* The consumer "read deeper" hook (Darshan Track F).
+ * Same token grammar as the creator's Visual pane — this is D's surface stripped, not a
+ * second design language. One accent, hairlines, no blur, no glow, no emoji chrome.
+ */
+
+.hook-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+    gap: 1.25rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    align-items: start;
+}
+@media (max-width: 900px) { .hook-shell { grid-template-columns: 1fr; } }
+
+.hook-card {
+    display: flex; flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.hook-stage { position: relative; line-height: 0; background: var(--surface-2); }
+.hook-stage img { display: block; width: 100%; height: auto; max-height: 68vh; object-fit: contain; }
+
+.hook-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.hook-shape {
+    fill: rgba(196, 83, 58, 0.10);
+    stroke: rgba(255, 255, 255, 0.9);
+    stroke-width: 2;
+    cursor: pointer;
+    pointer-events: all;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+.hook-shape:hover { fill: rgba(196, 83, 58, 0.24); stroke: var(--accent); }
+.hook-shape.is-tapped { fill: rgba(196, 83, 58, 0.36); stroke: var(--accent); stroke-width: 3; }
+
+/* the single gesture that opens the pause */
+.hook-cta {
+    position: absolute; left: 50%; bottom: 1.1rem; transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.8rem; font-weight: 600;
+    padding: 0.55rem 0.95rem;
+    border: none; border-radius: var(--radius-pill, 999px);
+    background: var(--accent); color: #fff; cursor: pointer;
+}
+.hook-cta:disabled { opacity: 0.6; cursor: default; }
+
+.hook-body { display: flex; flex-direction: column; gap: 0.6rem; padding: 1rem 1.15rem 1.15rem; }
+
+.hook-kicker {
+    font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent); font-weight: 700;
+}
+.hook-reading { margin: 0; font-size: 0.95rem; line-height: 1.6; color: var(--ink); }
+
+.hook-fork { display: flex; flex-direction: column; gap: 0.45rem; padding-top: 0.5rem; border-top: 1px solid var(--line); }
+.hook-prompt { margin: 0; font-size: 0.8rem; color: var(--ink-muted); }
+.hook-options { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.hook-option {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.75rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill, 999px);
+    background: transparent; color: var(--ink); cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+.hook-option:hover { border-color: var(--accent); background: var(--surface-hover); }
+.hook-option.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.hook-hint { margin: 0; font-size: 0.7rem; color: var(--ink-muted); }
+
+/* the reciprocity column */
+.hook-taste {
+    display: flex; flex-direction: column; gap: 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    padding: 1rem 1.1rem;
+}
+.hook-consent, .hook-portfolio { display: flex; flex-direction: column; gap: 0.55rem; }
+.hook-portfolio-head { display: flex; align-items: center; justify-content: space-between; }
+
+.hook-lean { display: flex; flex-direction: column; gap: 0.25rem; }
+.hook-lean-label { font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-muted); }
+.hook-lean-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.hook-chip {
+    font-size: 0.66rem; padding: 0.2rem 0.45rem;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--surface-2); color: var(--ink);
+}
+
+.hook-primary, .hook-ghost {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
+    font-size: 0.74rem; font-weight: 600;
+    padding: 0.45rem 0.7rem;
+    border-radius: var(--radius-md); cursor: pointer;
+}
+.hook-primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+.hook-ghost { background: transparent; color: var(--ink-muted); border: 1px solid var(--line); }
+.hook-ghost:hover { color: var(--ink); background: var(--surface-hover); }
+
+.hook-muted { margin: 0; font-size: 0.74rem; line-height: 1.55; color: var(--ink-muted); }
+.hook-muted strong { color: var(--ink); }
+.hook-subject { margin: 0; padding-top: 0.5rem; border-top: 1px solid var(--line); font-size: 0.62rem; color: var(--ink-muted); }
+.hook-subject code { font-size: 0.62rem; }
+.hook-error { grid-column: 1 / -1; font-size: 0.75rem; color: #c0392b; }
+
+.hook-spin {
+    width: 13px; height: 13px;
+    border: 2px solid currentColor; border-top-color: transparent;
+    border-radius: 50%; display: inline-block;
+    animation: hook-spin 0.7s linear infinite;
+}
+@keyframes hook-spin { to { transform: rotate(360deg); } }
