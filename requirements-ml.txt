@@ -1,18 +1,32 @@
 # Optional ML extras for the Darshan vision pipeline (Track B).
 # NOT in core requirements.txt on purpose: these are heavy (~2GB) and the services
-# that use them (fashion_clip_service, segmentation_service) lazy-import and degrade
-# gracefully when absent — so slim API deploys stay slim. Install on a box that
-# actually runs the vision pipeline:
+# that use them (fashion_clip_service, segmentation_service, fashion_segmentation_service)
+# lazy-import and degrade gracefully when absent — so slim API deploys stay slim.
+# Install on a box that actually runs the vision pipeline:
 #     pip install -r requirements-ml.txt
 #
-# torch is CPU-only here (Phase 1 needs no GPU). For a GPU box, install the CUDA
-# build of torch instead (see pytorch.org) — pending Adarsh's B1 GPU-path decision.
+# Everything here runs on CPU. Phase 2a's garment segmenter (SegFormer-B2, 27.4M params)
+# needs no GPU — ~2s per image on CPU. For a GPU box, install the CUDA build of torch
+# instead (see pytorch.org); B1 is settled serverless-first for the heavy Phase 2b models.
 
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
+# torchvision must come from the SAME index as torch. ultralytics depends on it and pip
+# will otherwise pull the default-index wheel, which is built against a different torch
+# and dies at import with "operator torchvision::nms does not exist".
+torchvision
 transformers
 pillow
 numpy
 
-# Phase 2+ (gated — not installed yet): ultralytics (YOLO), and the Fashionpedia /
-# SAM2 stacks once B2 (segmenter choice) + B1 (GPU serving) are decided.
+# Phase 2a — garment segmentation.
+# ultralytics: YOLO11-seg, the non-fashion detector and the graceful fallback.
+# opencv: connected components + contour tracing, to turn SegFormer's per-pixel
+#         semantic mask into instance polygons.
+# The segmenter weights (mattmdjaga/segformer_b2_clothes, ~110MB) download on first use.
+ultralytics
+opencv-python-headless
+
+# Phase 2b+ (gated — not installed): the real Fashionpedia stack (Attribute-Mask-RCNN /
+# Fashionformer) for the 19 fine apparel parts + 294 attributes, and SAM2. Both want a
+# GPU — they wait for the M4 or a serverless endpoint, per B1/B2.
