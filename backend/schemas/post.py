@@ -95,6 +95,7 @@ class Post(BaseModel):
     local_context: Optional[dict] = None  # microscopic per-image context (Aletheia + commentary)
     region_annotations: Optional[List[Region]] = None  # unified regions: auto segments + curator/audience marks
     domain: Optional[dict] = None  # FashionCLIP domain router first-cut {label, score, is_fashion} (Track B/C)
+    aletheia_cache: Optional[dict] = None  # cached feed-hook reading, computed once per image (Track C §5)
 
 class PostUpdate(BaseModel):
     # bounding_box_tags removed (Track A): the manual pixel-rect write path is retired.
@@ -189,3 +190,14 @@ class BrainstormRequest(BaseModel):
     image_url: str
     source_url: Optional[str] = None
     answers: Optional[List[BrainstormAnswer]] = None  # prior viewer choices, to refine the reading
+
+
+class AletheiaReadRequest(BaseModel):
+    """Two readings, one engine (Track C §5). `deep` is the creator's reading — every
+    fired lens with its evidence, region links, tension and 1–3 forks. `hook` is the
+    audience's: one distilled lens and one perceptual fork, for the pause in the scroll.
+    Hook readings are cached per image, so the same image is read once for all viewers."""
+    depth: Optional[str] = "deep"           # deep | hook
+    lens: Optional[str] = ""                # free-text intention; can pin a lens
+    answers: Optional[List[BrainstormAnswer]] = None  # prior forks chosen, to refine
+    refresh: Optional[bool] = False         # bypass the hook cache

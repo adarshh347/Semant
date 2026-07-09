@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 from bson.objectid import ObjectId
 
 from backend.database import persona_collection, post_collection
+from backend.services import lens_registry
 from backend.services.llm_service import llm_service
 from backend.services.vision_service import vision_service
 
@@ -200,6 +201,43 @@ class PersonaService:
 
         return self.persona_helper(fresh)
 
+    @staticmethod
+    def _structured_reading(aletheia: Optional[dict]) -> Optional[dict]:
+        """The reading's skeleton, kept for retrieval and for the lens prior: which
+        lenses fired, how strongly, and which regions they rested on. Bounded — the
+        prose stays in `aletheia_note` and on the post's own `local_context`."""
+        if not aletheia:
+            return None
+        lenses = [
+            {
+                "name": str(lens.get("name") or "").strip(),
+                "intensity": max(0, min(100, int(lens.get("intensity") or 0))),
+                "region_ids": [str(r) for r in (lens.get("region_ids") or [])][:6],
+            }
+            for lens in (aletheia.get("lenses") or [])[:5]
+            if str(lens.get("name") or "").strip()
+        ]
+        if not lenses and not aletheia.get("tension"):
+            return None
+        return {
+            "domain": str(aletheia.get("domain") or "").strip(),
+            "lenses": lenses,
+            "tension": str(aletheia.get("tension") or "").strip()[:280],
+        }
+
+    async def recurring_lenses(self, handle: str, top_n: int = 3) -> List[str]:
+        """The lenses that habitually fire for this curator — the §6.3 prior on lens
+        selection. A guardrail, not a straitjacket: `lens_registry.select_lenses`
+        bounds this prior and always reserves a wildcard slot the prior cannot fill.
+        Returns [] for a persona written before the structured roll-up existed, which
+        simply means no prior."""
+        doc = await persona_collection.find_one(
+            {"handle": normalize_handle(handle)}, {"local_contexts": 1}
+        )
+        if not doc:
+            return []
+        return lens_registry.recurring_lenses(doc.get("local_contexts") or [], top_n=top_n)
+
     async def add_local_context(
         self, handle: str, post_id: str, image_url: Optional[str],
         commentary: str, aletheia: Optional[dict],
@@ -214,7 +252,8 @@ class PersonaService:
             return
         await self.touch(handle)  # ensure the persona exists
 
-        # Compact the Aletheia reading into a one-line note.
+        # Compact the Aletheia reading into a one-line note (the dossier prompt reads
+        # this; keep it for continuity with every persona written before Track C).
         al_note = ""
         if aletheia:
             parts = []
@@ -230,6 +269,11 @@ class PersonaService:
             "image_url": image_url,
             "commentary": (commentary or "").strip(),
             "aletheia_note": al_note,
+            # Track C §6.1: keep the reading's STRUCTURE alongside the flattened line.
+            # Flattening to prose lost which lenses fired and how strongly — exactly
+            # what the lens prior (§6.3) needs to learn how this person habitually
+            # looks. Capped: names, intensities and region links, not the full prose.
+            "reading": self._structured_reading(aletheia),
             "updated_at": datetime.now(timezone.utc),
         }
         # Replace any prior entry for this post, then append (cap 60).
