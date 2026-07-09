@@ -79,8 +79,29 @@ _W_PRIOR = 0.4       # this curator's recurring lens (bounded; see PRIOR_CAP)
 _TRIGGER_CAP = 1.5   # a single lens can gain at most this much from triggers
 PRIOR_CAP = 0.4      # a lens gains the prior at most once — history nudges, never decides
 
+# The prior is DATA-GATED (settled: "prior + wildcard, data-gated"). Two readings do not
+# establish that someone reads for drape; they establish that a model said "drape" twice.
+# So the prior's strength ramps with the corpus: zero below the floor, linear to full.
+# The mechanism is built once and self-activates as taste actually accrues.
+PRIOR_RAMP_FLOOR = 3    # fewer structured readings than this → no prior at all
+PRIOR_RAMP_FULL = 12    # at/above this → the prior carries its full (still capped) weight
+
 MAX_LENSES_DEEP = 4
 MAX_LENSES_HOOK = 1
+
+
+def prior_strength(reading_count: int) -> float:
+    """How much this curator's history is allowed to bias the next reading, in [0, 1].
+
+    Cold start is exactly 0: on a thin corpus the "recurring" lenses are noise, and
+    biasing on them would manufacture a taste rather than observe one.
+    """
+    if reading_count < PRIOR_RAMP_FLOOR:
+        return 0.0
+    if reading_count >= PRIOR_RAMP_FULL:
+        return 1.0
+    span = PRIOR_RAMP_FULL - PRIOR_RAMP_FLOOR
+    return (reading_count - PRIOR_RAMP_FLOOR) / span
 
 
 def _trigger_score(lens: str, haystack: str) -> float:
@@ -97,13 +118,18 @@ def select_lenses(
     persona_lenses: Optional[Sequence[str]] = None,
     lens_hint: str = "",
     depth: str = "deep",
+    prior_strength: float = 1.0,
 ) -> Tuple[List[str], dict]:
     """
     Choose which lenses fire for this image.
 
+    `prior_strength` in [0, 1] scales how much `persona_lenses` may bias the choice —
+    see `prior_strength()`, which ramps it with the size of the curator's corpus. At 0
+    the prior is inert in every respect, including the wildcard preference.
+
     Returns `(lens_names, provenance)`. `provenance` records what drove the choice —
-    `{base, wildcard, prior_applied, triggered}` — so the reading can disclose when
-    the curator's history (not the image) put a lens on the page.
+    `{base, wildcard, prior_applied, prior_strength, triggered}` — so the reading can
+    disclose when the curator's history (not the image) put a lens on the page.
 
     Guarantees:
       · The wildcard slot is scored on the image alone — the prior is never consulted
@@ -119,7 +145,11 @@ def select_lenses(
     base = DOMAIN_LENSES.get((domain or "").lower(), GENERAL_LENSES)
     haystack = " ".join(str(x).lower() for x in list(parts or []) + list(attributes or []))
     hint = (lens_hint or "").lower()
-    prior = {str(p) for p in (persona_lenses or [])}
+    strength = max(0.0, min(1.0, float(prior_strength)))
+    # A zero-strength prior is no prior: it must not even steer the wildcard away from
+    # a lens, or a cold-start persona would silently shape the reading it cannot justify.
+    prior = {str(p) for p in (persona_lenses or [])} if strength > 0 else set()
+    prior_weight = min(_W_PRIOR, PRIOR_CAP) * strength
 
     # Two scores per lens: the honest one (image only) and the personalized one.
     image_score, full_score = {}, {}
@@ -128,12 +158,13 @@ def select_lenses(
         if hint and lens.lower() in hint:
             s += _W_HINT
         image_score[lens] = s
-        full_score[lens] = s + (min(_W_PRIOR, PRIOR_CAP) if lens in prior else 0.0)
+        full_score[lens] = s + (prior_weight if lens in prior else 0.0)
 
     if depth == "hook":
         # One distilled lens; the hook is a taste of the reading, not the reading.
         best = max(full_score, key=lambda l: (full_score[l], -base.index(l)))
         return [best], {"base": base, "wildcard": None, "prior_applied": best in prior,
+                        "prior_strength": strength,
                         "triggered": [l for l in base if _trigger_score(l, haystack) > 0]}
 
     k = min(MAX_LENSES_DEEP, len(base))
@@ -157,6 +188,7 @@ def select_lenses(
         "base": base,
         "wildcard": wildcard,
         "prior_applied": sorted(l for l in chosen if l in prior),
+        "prior_strength": strength,
         "triggered": [l for l in chosen if _trigger_score(l, haystack) > 0],
     }
 

@@ -309,6 +309,9 @@ Generate ONLY the subtitle, no additional text or explanation:"""
             persona_lenses=ctx.get("persona_lenses"),
             lens_hint=ctx.get("lens_hint", ""),
             depth=depth,
+            # Absent an explicit strength, assume a cold start: no prior. A caller that
+            # has measured the corpus passes the ramped value.
+            prior_strength=float(ctx.get("prior_strength", 0.0)),
         )
         prompt = ALETHEIA_PROMPT.format(
             context_header=lens_registry.render_context_header(

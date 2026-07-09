@@ -433,11 +433,13 @@ async def _reading_context_for(post: dict, lens_hint: str = "") -> dict:
                 parts.append(region[key])
         attributes.extend(region.get("attributes") or [])
 
-    persona_lenses = []
+    # The prior is data-gated: strength ramps from 0 on a thin corpus, so a cold-start
+    # persona never biases the reading it hasn't earned.
+    prior = {"lenses": [], "strength": 0.0}
     handles = post_handles(post)
     if handles:
         try:
-            persona_lenses = await persona_service.recurring_lenses(handles[0])
+            prior = await persona_service.lens_prior(handles[0])
         except Exception as e:
             print(f"Lens prior unavailable (non-fatal, reading stays impersonal): {e}")
 
@@ -450,7 +452,8 @@ async def _reading_context_for(post: dict, lens_hint: str = "") -> dict:
              "category": r.get("category")}
             for r in regions if r.get("id")
         ],
-        "persona_lenses": persona_lenses,
+        "persona_lenses": prior["lenses"],
+        "prior_strength": prior["strength"],
         "lens_hint": lens_hint,
     }
 

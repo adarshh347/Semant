@@ -225,18 +225,32 @@ class PersonaService:
             "tension": str(aletheia.get("tension") or "").strip()[:280],
         }
 
-    async def recurring_lenses(self, handle: str, top_n: int = 3) -> List[str]:
-        """The lenses that habitually fire for this curator — the §6.3 prior on lens
-        selection. A guardrail, not a straitjacket: `lens_registry.select_lenses`
-        bounds this prior and always reserves a wildcard slot the prior cannot fill.
-        Returns [] for a persona written before the structured roll-up existed, which
-        simply means no prior."""
+    async def lens_prior(self, handle: str, top_n: int = 3) -> dict:
+        """The lenses that habitually fire for this curator, and how much they may bias
+        the next reading — the §6.3 prior on lens selection.
+
+        Data-gated (settled decision): `strength` ramps from 0 on a thin corpus to 1 once
+        enough readings have accrued, so the prior never manufactures a taste it hasn't
+        observed. A guardrail either way — `lens_registry.select_lenses` bounds the prior
+        and always reserves a wildcard slot it cannot fill.
+
+        Returns `{"lenses": [], "strength": 0.0}` for a persona with no structured
+        readings (including every persona written before Track C): simply no prior.
+        """
         doc = await persona_collection.find_one(
             {"handle": normalize_handle(handle)}, {"local_contexts": 1}
         )
         if not doc:
-            return []
-        return lens_registry.recurring_lenses(doc.get("local_contexts") or [], top_n=top_n)
+            return {"lenses": [], "strength": 0.0}
+        contexts = doc.get("local_contexts") or []
+        # Only readings with structure count toward the ramp; a flattened legacy note
+        # carries no lens data and must not inflate our confidence in the prior.
+        read_count = sum(1 for c in contexts if (c.get("reading") or {}).get("lenses"))
+        return {
+            "lenses": lens_registry.recurring_lenses(contexts, top_n=top_n),
+            "strength": lens_registry.prior_strength(read_count),
+            "reading_count": read_count,
+        }
 
     async def add_local_context(
         self, handle: str, post_id: str, image_url: Optional[str],

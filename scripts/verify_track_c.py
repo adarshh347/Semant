@@ -257,7 +257,8 @@ async def main():
     fashion, prov = lr.select_lenses(domain="fashion", attributes=["draped", "flowing", "pleated"])
     assert "Drape" in fashion
     habit = ["Era", "Styling-logic", "Mood/Story"]
-    biased, prov2 = lr.select_lenses(domain="fashion", attributes=["draped", "flowing"], persona_lenses=habit)
+    biased, prov2 = lr.select_lenses(domain="fashion", attributes=["draped", "flowing"],
+                                     persona_lenses=habit, prior_strength=1.0)
     assert "Drape" in biased, "a habitual lens displaced one the image evidenced"
     assert any(l not in habit for l in biased), "echo chamber: every lens came from history"
     hook, _ = lr.select_lenses(domain="fashion", depth="hook")
@@ -267,6 +268,18 @@ async def main():
     print(f"    hook       : {hook}")
     assert len(hook) == 1
     print("    ✅ domain triggers lenses; evidence outranks habit; wildcard keeps it open")
+
+    # The prior is data-gated: it must be completely inert on a thin corpus.
+    ramp = [(n, lr.prior_strength(n)) for n in (0, 1, 2, 3, 6, 9, 12, 40)]
+    print(f"    prior ramp : {[(n, round(s,2)) for n, s in ramp]}")
+    assert lr.prior_strength(0) == 0.0 and lr.prior_strength(2) == 0.0, "cold start biases"
+    assert lr.prior_strength(40) == 1.0 and 0 < lr.prior_strength(7) < 1, "ramp not monotone"
+    cold, cold_prov = lr.select_lenses(domain="fashion", attributes=["draped", "flowing"],
+                                       persona_lenses=habit, prior_strength=0.0)
+    none_at_all, _ = lr.select_lenses(domain="fashion", attributes=["draped", "flowing"])
+    assert cold == none_at_all, f"zero-strength prior still steered selection: {cold} vs {none_at_all}"
+    assert cold_prov["prior_applied"] == [] and cold_prov["prior_strength"] == 0.0
+    print("    ✅ at zero strength a heavy prior is inert — identical to having no persona")
 
     # ---- 5. evidence-bound reading, no phantom regions ---------------------------
     print("\n[5] Reading schema")
