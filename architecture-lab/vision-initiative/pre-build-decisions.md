@@ -8,7 +8,7 @@ Mark each ✅ (accept) or ✏️ (override), then it's a build-ready contract.
 
 ## Track B — segmentation / model stack
 
-1. **GPU serving path** — **[confirm]** → **Serverless/hosted first** (Replicate / Modal / HF Inference); self-host only when volume justifies. Matches the Track-A "don't buy infra ahead of data" call (77 regions today). ✅ suggested.
+1. **GPU serving path** — **✅ SETTLED → Serverless-first** (Replicate / Modal / Runpod, pay-per-call). Decided by hardware reality, not preference: neither the 4GB GPU nor the M4 (Apple MPS broken for SAM2) can serve the heavy models; AWS free tier is CPU-only. See `infra-hardware-plan.md`. Self-host never; AWS credits for CPU deploy + a capped experiment budget.
 2. **Fashion segmenter** — **[confirm]** → **Fashionformer first (SOTA seg+attr), Attribute-Mask-RCNN as simpler-to-serve fallback, benchmark both on real Drishya posts.** Don't lock without the bench. ✅
 3. **Non-fashion domains this cycle** — **[judgment]** → **SAM2 + LLM naming only** for architecture/photography; no dedicated models until fashion is proven. One deep domain first. (Consistent with the locked fashion wedge.) ✅ suggested.
 4. **Dedup/precedence** — **[confirm]** → **Fashionpedia > SAM2(tap) > YOLO** for garments; keep overlapping detections only if IoU < τ; `detector` records provenance. Lives in Track B (per Track A Q6). ✅
