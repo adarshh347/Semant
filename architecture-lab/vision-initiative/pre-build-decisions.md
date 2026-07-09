@@ -29,11 +29,11 @@ Mark each ✅ (accept) or ✏️ (override), then it's a build-ready contract.
 ## Track D — unified Visual pane
 
 1. **Un-modal vs modal** — **[confirm]** → **Fully in-pane**; promote `RegionDetectorModal`'s body into the live Visual pane, detection as an async in-pane action. The whole "dynamic surface" premise. ✅
-2. **Manual marks survive?** — **[judgment]** → **Keep a lightweight freehand draw** for what detection misses (`actor="creator"`), but the *primary* creator action becomes **tap-an-auto-region + comment.** Don't delete freehand entirely; demote it. ✅ suggested (biggest scope lever — override to "tap-only" if you want D leaner).
+2. **Manual marks survive?** — **✅ SETTLED → Keep a lightweight freehand draw** (`actor="creator"`) for what detection misses; the *primary* creator action is **tap-an-auto-region + comment.** Keeps capability (project rule: don't delete a path before its replacement is proven), just demotes freehand from the main surface.
 3. **Save cadence** — **[confirm]** → **Autosave-on-blur, debounced.** If full-array saves get chatty on the live pane, revisit the per-region upsert endpoint Track A flagged (Q4). ✅
 4. **Reading-strip placement** — **[judgment]** → **A calm strip under the image** (keeps reading↔region co-located; per-lens `region_ids` highlight parts). Side panel fits more lenses but breaks co-location. ✅ suggested.
 5. **`/crops` + pixel system** — **[confirm]** → **Retire both** (Track A retires `bounding_box_tags`; blast-radius found no other reader — reconfirm at build). ✅
-6. **Build serialization on `PostDetailPage.jsx`** — **[judgment]** → **Dedicated build slot: the Drishya thread pauses edits to `PostDetailPage.jsx`, Darshan `git pull`s latest, makes its scoped edit (remove Unconceal tab, swap editor mount, un-modal detection), commits + pushes, then the UI thread resumes.** This is *the* build-time coordination point (D overlaps Lanes 1/2/3 exactly). **← confirm the mechanism (pause vs branch-and-merge-order).**
+6. **Build serialization on `PostDetailPage.jsx`** — **✅ SETTLED → Dedicated pause-slot.** The Drishya thread pauses edits to `PostDetailPage.jsx`; Darshan `git pull`s latest, makes its scoped edit (remove Unconceal tab, swap editor mount, un-modal detection) in one focused pass, commits + pushes; the UI thread resumes. Backend prep (Phase 0) needs no slot; only the frontend edits do. **Adarsh must confirm the Drishya thread is paused on that file before Phase 1 starts.**
 7. **Consumer variant scope now?** — **[confirm]** → **Later.** Keep D's deep surface clean enough that Track F extracts the one-tap lite variant; don't build F's UI inside D. ✅
 
 ## Track F — consumer / B2C / chain / video
