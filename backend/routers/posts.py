@@ -13,6 +13,7 @@ from io import BytesIO
 from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
 from backend.services import region_embedding_service
+from backend.services import anuranana_service
 from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
 from datetime import datetime, timezone
 from bson.objectid import ObjectId
@@ -864,23 +865,42 @@ async def generate_story(request: StoryGenerationRequest):
     posts_cursor = post_collection.find(query)
     
     aggregated_text = []
-    
+    exemplar = None  # the most recently-read post under this tag
+
     async for post in posts_cursor:
         # Extract text from text_blocks
         if "text_blocks" in post:
             for block in post["text_blocks"]:
                 if "content" in block and block["content"]:
                     aggregated_text.append(block["content"])
-                    
+        # A story spans many posts, but a context pack is per-image. Ground on the
+        # tag's exemplar: the post whose reading is freshest. Better a story rooted in
+        # one image genuinely unconcealed than a blur averaged over all of them.
+        lc = post.get("local_context") or {}
+        if lc.get("aletheia"):
+            stamp = lc.get("updated_at")
+            if exemplar is None or (stamp and stamp > (exemplar[0] or stamp)):
+                exemplar = (stamp, post)
+
     full_text = "\n\n".join(aggregated_text)
-    
+
+    context_pack = ""
+    if exemplar:
+        try:
+            pack = await anuranana_service.build_context_pack(exemplar[1])
+            context_pack = pack.get("text", "")
+        except Exception as e:
+            print(f"Anuraṇana pack unavailable for story (non-fatal): {e}")
+
     # Generate story
-    result = llm_service.generate_story_from_plot(
+    result = await asyncio.to_thread(
+        llm_service.generate_story_from_plot,
         aggregated_text=full_text,
         plot_suggestion=request.plot_suggestion,
-        user_commentary=request.user_commentary
+        user_commentary=request.user_commentary,
+        context_pack=context_pack,
     )
-    
+
     return result
 
 @router.get("/untagged/random", response_model=List[Post])
@@ -1027,33 +1047,58 @@ async def generate_post_suggestion(request: PostSuggestionRequest):
     )
     return result
 
+async def _grounding_for(image_url: str) -> str:
+    """The Anuraṇana context pack for whatever post this image belongs to (Track C §4).
+
+    The writing endpoints are handed an `image_url`, not a post id, so we resolve the
+    post from the URL — which means grounding switches on with no frontend change
+    (the Visual pane is Track D's to touch). Never fatal: an image we don't own, a
+    missing reading, or a retrieval error all yield an empty pack, and an empty pack
+    makes the writer behave exactly as it did before Track C.
+    """
+    try:
+        pack = await anuranana_service.build_context_pack_for_image(image_url)
+        return pack.get("text", "")
+    except Exception as e:
+        print(f"Anuraṇana context pack unavailable (non-fatal, writing ungrounded): {e}")
+        return ""
+
+
 @router.post("/chat/vision")
 async def vision_chat(request: VisionChatRequest):
     """
     Vision-enabled chat that can see the image and understand context.
-    Uses Llama 4 Maverick for vision capabilities.
+    Uses Llama 4 Maverick for vision capabilities, grounded in this person's
+    reading of the image and their accrued taste (Anuraṇana).
     """
     # Convert Pydantic models to dict for LLM service
     text_blocks_dict = [block.dict() for block in request.text_blocks] if request.text_blocks else []
     conversation_dict = [msg.dict() for msg in request.conversation_history] if request.conversation_history else []
-    
-    result = editor_llm_service.chat_with_vision(
+    context_pack = await _grounding_for(request.image_url)
+
+    result = await asyncio.to_thread(
+        editor_llm_service.chat_with_vision,
         image_url=request.image_url,
         text_blocks=text_blocks_dict,
         user_message=request.user_message,
-        conversation_history=conversation_dict
+        conversation_history=conversation_dict,
+        context_pack=context_pack,
     )
     return result
 
 @router.post("/rewrite/vision")
 async def vision_rewrite(request: VisionRewriteRequest):
     """
-    Rewrites a text block with awareness of the image content.
+    Rewrites a text block with awareness of the image content, grounded in the
+    curator's reading and taste history.
     """
-    result = editor_llm_service.rewrite_with_vision(
+    context_pack = await _grounding_for(request.image_url)
+    result = await asyncio.to_thread(
+        editor_llm_service.rewrite_with_vision,
         image_url=request.image_url,
         block_content=request.block_content,
-        rewrite_instruction=request.rewrite_instruction or ""
+        rewrite_instruction=request.rewrite_instruction or "",
+        context_pack=context_pack,
     )
     return result
 
@@ -1061,14 +1106,18 @@ async def vision_rewrite(request: VisionRewriteRequest):
 async def expand_flow_node(request: NodeExpansionRequest):
     """
     Generates a detailed literary expansion for a specific story flow node.
-    Uses two-stage pipeline: Maverick (vision) -> GPT-OSS (literary refinement).
-    
+    Uses two-stage pipeline: Maverick (vision) -> GPT-OSS (literary refinement),
+    grounded in the curator's reading and taste history.
+
     Called when user clicks on a node in the StoryFlow visualization.
     """
-    result = editor_llm_service.generate_node_expansion(
+    context_pack = await _grounding_for(request.image_url)
+    result = await asyncio.to_thread(
+        editor_llm_service.generate_node_expansion,
         node_text=request.node_text,
         image_url=request.image_url,
-        story_context=request.story_context
+        story_context=request.story_context,
+        context_pack=context_pack,
     )
     return result
 
