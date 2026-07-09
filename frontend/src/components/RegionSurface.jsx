@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Sparkles, Star, Scan, Plus, Eye, Check, MoreHorizontal, AlertCircle } from 'lucide-react';
+import { Sparkles, Star, Scan, Plus, Eye, Check, MoreHorizontal, AlertCircle, Expand } from 'lucide-react';
 import { API_URL } from '../config/api';
+import RegionOverlay from './RegionOverlay';
+import RegionLightbox from './RegionLightbox';
 import './RegionSurface.css';
 
 const BASE = `${API_URL}/api/v1/posts`;
@@ -75,6 +77,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
 
     const [natural, setNatural] = useState(null);        // {w,h} — the image's own pixels
     const [content, setContent] = useState(null);        // the rendered, letterboxed box
+    const [fullscreen, setFullscreen] = useState(false); // Phase 2 — the lightbox
 
     const stageRef = useRef(null);
     const imgRef = useRef(null);
@@ -252,17 +255,6 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
     const labelVisible = (r) =>
         focusId === r.id || (filtering && !focusId) || (viewMap === 'outline' && r.prioritised);
 
-    const shapeClass = (r) => {
-        const cls = ['rs-shape', `rs-shape--${viewMap}`];
-        if (r.actor === 'creator') cls.push('rs-shape--creator');
-        if (r.prioritised) cls.push('is-pri');
-        if (selectedId === r.id) cls.push('is-sel');
-        if (activeId === r.id) cls.push('is-active');
-        if (viewMap === 'focus' && focusId && focusId !== r.id) cls.push('is-dim');
-        if (viewMap !== 'focus' && focusId === r.id) cls.push('is-lit');
-        return cls.join(' ');
-    };
-
     // --- keyboard: roving cursor through the parts -----------------------------------
     const onListKeyDown = (e) => {
         const ids = visible.map(r => r.id);
@@ -283,12 +275,13 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
         listRef.current?.querySelector(`[data-rid="${next}"]`)?.scrollIntoView({ block: 'nearest' });
     };
 
-    const shapePoints = (r) => {
-        if (!natural) return '';
-        return r.polygon.map(([x, y]) => `${x * natural.w},${y * natural.h}`).join(' ');
-    };
-
     const busy = status === 'detecting';
+
+    // Clicking the photograph itself (not a region, not while marking) opens it full
+    // screen. Regions stop their own clicks, so selecting a part never triggers this.
+    const onStageClick = (e) => {
+        if (!drawing && e.target.tagName === 'IMG') setFullscreen(true);
+    };
 
     return (
         <div className="rs-root">
@@ -305,45 +298,24 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
                         onMouseMove={onStageMove}
                         onMouseUp={onStageUp}
                         onMouseLeave={() => draft && onStageUp()}
+                        onClick={onStageClick}
                     >
                         <img ref={imgRef} src={post.photo_url} alt="" referrerPolicy="no-referrer"
                             onLoad={onImgLoad} />
 
-                        {natural && (
-                            /* The overlay carries the image's own pixel space and letterboxes
-                               exactly as the image does. This is the alignment fix. */
-                            <svg
-                                className="rs-svg"
-                                viewBox={`0 0 ${natural.w} ${natural.h}`}
-                                preserveAspectRatio="xMidYMid meet"
-                                aria-hidden="true"
-                            >
-                                {visible.map(r => {
-                                    const common = {
-                                        className: shapeClass(r),
-                                        vectorEffect: 'non-scaling-stroke',
-                                        onClick: () => setSelectedId(r.id),
-                                        onMouseEnter: () => setActiveId(r.id),
-                                        onMouseLeave: () => setActiveId(null),
-                                    };
-                                    // Polygons by default; a rect only where the detector gave
-                                    // us no outline (a creator's freehand mark, or legacy data).
-                                    if (Array.isArray(r.polygon) && r.polygon.length > 2) {
-                                        return <polygon key={r.id} {...common} points={shapePoints(r)} />;
-                                    }
-                                    const b = r.box || {};
-                                    return <rect key={r.id} {...common}
-                                        x={b.x * natural.w} y={b.y * natural.h}
-                                        width={b.w * natural.w} height={b.h * natural.h} />;
-                                })}
-                                {draft && (
-                                    <rect className="rs-draft" vectorEffect="non-scaling-stroke"
-                                        x={Math.min(draft.x0, draft.x1) * natural.w}
-                                        y={Math.min(draft.y0, draft.y1) * natural.h}
-                                        width={Math.abs(draft.x1 - draft.x0) * natural.w}
-                                        height={Math.abs(draft.y1 - draft.y0) * natural.h} />
-                                )}
-                            </svg>
+                        {/* The overlay carries the image's own pixel space and letterboxes
+                            exactly as the image does — shared with the lightbox. */}
+                        <RegionOverlay
+                            natural={natural} regions={visible} viewMap={viewMap}
+                            selectedId={selectedId} activeId={activeId} focusId={focusId}
+                            onSelect={setSelectedId} onActivate={setActiveId} draft={draft}
+                        />
+
+                        {!drawing && (
+                            <button className="rs-expand" onClick={() => setFullscreen(true)}
+                                title="See the image full screen" aria-label="See the image full screen">
+                                <Expand size={15} />
+                            </button>
                         )}
 
                         {/* Labels + saved-state dots live in HTML, positioned against the
@@ -538,6 +510,21 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
                     )}
                 </aside>
             </div>
+
+            {/* Phase 2 — the dedicated "see the image properly" surface. Same overlay,
+                same maps, at full size with zoom and pan. */}
+            {fullscreen && natural && (
+                <RegionLightbox
+                    post={post}
+                    regions={visible}
+                    natural={natural}
+                    aletheia={aletheia}
+                    viewMap={viewMap}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    onClose={() => setFullscreen(false)}
+                />
+            )}
         </div>
     );
 }
