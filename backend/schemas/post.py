@@ -35,7 +35,10 @@ class Region(BaseModel):
     id: str = Field(default_factory=lambda: f"reg_{uuid.uuid4()}")
     # provenance (two-sided): who marked it, and — when auto — which detector.
     actor: str = "auto"                              # auto | creator | audience
-    detector: Optional[str] = None                   # yolo | fashionpedia | sam2 | vision
+    # yolo (COCO) | segformer_clothes (Phase 2a garment segmenter) | fashionpedia
+    # (Phase 2b, fine parts + attributes) | sam2 | vision (LLM). Records which model
+    # actually produced the region — precedence and dedup depend on telling them apart.
+    detector: Optional[str] = None
     # geometry (normalized 0..1, top-left origin) — unifies manual + auto, survives resize.
     box: RegionBox
     polygon: Optional[List[List[float]]] = None      # normalized, seg only
