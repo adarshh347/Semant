@@ -91,6 +91,8 @@ def segment_image_bytes(data: bytes, conf: float = 0.30, max_regions: int = 12) 
                 polygon = _simplify(pts)
             regions.append({
                 "id": f"seg_{i}",
+                "actor": "auto",
+                "detector": "yolo",
                 "label": label,
                 "category": _category(label),
                 "box": box,

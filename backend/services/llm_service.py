@@ -82,16 +82,21 @@ class LLMService:
                 "plot_suggestions": ["Error generating suggestions."]
             }
 
-    def generate_story_from_plot(self, aggregated_text: str, plot_suggestion: str, user_commentary: str) -> dict:
+    def generate_story_from_plot(self, aggregated_text: str, plot_suggestion: str,
+                                 user_commentary: str, context_pack: str = "") -> dict:
         """
         Generates a long story based on the aggregated text, a specific plot suggestion, and user commentary.
+
+        `context_pack` is the Anuraṇana grounding (Track C §4) — the reading, the parts
+        that moved this person, their taste history and voice. Empty → unchanged.
         """
         if not self.client:
             return {"story": "LLM service is not configured (missing GROQ_API_KEY)."}
 
+        grounding = f"\n{context_pack}\n" if context_pack else ""
         prompt = f"""
         You are a creative storyteller. Write a compelling, long-form story based on the following inputs:
-
+        {grounding}
         1. BACKGROUND CONTEXT (from existing posts):
         {aggregated_text[:5000]}
 

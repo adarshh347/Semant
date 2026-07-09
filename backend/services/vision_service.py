@@ -9,6 +9,7 @@ import re
 from typing import Optional, Dict, Any
 from groq import Groq
 from backend.config import settings
+from backend.services import lens_registry
 
 
 class VisionService:
@@ -266,10 +267,16 @@ Generate ONLY the subtitle, no additional text or explanation:"""
             return ""
 
 
-    async def brainstorm_image(self, image_url: str, answers: Optional[list] = None) -> Optional[Dict[str, Any]]:
+    async def brainstorm_image(
+        self,
+        image_url: str,
+        answers: Optional[list] = None,
+        context: Optional[Dict[str, Any]] = None,
+        depth: str = "deep",
+    ) -> Optional[Dict[str, Any]]:
         """
-        "Aletheia" interpretive DIALOGUE: unconceal an image through three lenses
-        (Phenomenological, Semiotic, Atmospheric), and pose clickable multiple-choice
+        "Aletheia" interpretive DIALOGUE: unconceal an image through lenses **the
+        image's own context selects** (Track C §2), and pose clickable multiple-choice
         questions that hand the looking back to the viewer. The viewer's answers
         (passed in `answers`) reshape the next reading — a back-and-forth that
         deepens the interpretation each round.
@@ -278,14 +285,44 @@ Generate ONLY the subtitle, no additional text or explanation:"""
             image_url: image URL or base64 data URL of the image to interpret
             answers: optional list of prior {"question": str, "choice": str} the
                      viewer has already chosen, to sharpen this round.
+            context: optional {domain, parts[], attributes[], regions[], persona_lenses[],
+                     lens_hint} — from Track B's router/detections and the curator's
+                     persona. Absent or empty → the general three lenses (today's read).
+            depth: "deep" (creator: all fired lenses, evidence, forks) or "hook"
+                   (audience: one distilled lens + one fork, hard token cap).
 
         Returns:
-            Normalized dict {lenses:[{name,reading,intensity}],
-            questions:[{prompt,options}], concealed, uncertainty}, or None.
+            Normalized dict {lenses:[{name,reading,intensity,evidence,region_ids}],
+            tension, questions:[{prompt,options}], concealed, uncertainty, domain,
+            lens_provenance}, or None.
         """
         if not self._is_available():
             print("⚠️ Vision service not available - GROQ_API_KEY not set")
             return None
+
+        ctx = context or {}
+        regions = ctx.get("regions") or []
+        lens_names, provenance = lens_registry.select_lenses(
+            domain=ctx.get("domain"),
+            parts=ctx.get("parts"),
+            attributes=ctx.get("attributes"),
+            persona_lenses=ctx.get("persona_lenses"),
+            lens_hint=ctx.get("lens_hint", ""),
+            depth=depth,
+            # Absent an explicit strength, assume a cold start: no prior. A caller that
+            # has measured the corpus passes the ramped value.
+            prior_strength=float(ctx.get("prior_strength", 0.0)),
+        )
+        prompt = ALETHEIA_PROMPT.format(
+            context_header=lens_registry.render_context_header(
+                domain=ctx.get("domain"), parts=ctx.get("parts"),
+                attributes=ctx.get("attributes"), regions=regions,
+            ),
+            lens_block=lens_registry.render_lens_block(lens_names),
+            n_questions="exactly 1" if depth == "hook" else "1–3",
+        )
+        if depth == "hook":
+            prompt += ALETHEIA_HOOK_SUFFIX
 
         # Fold any prior answers into the prompt so the reading responds to them.
         feedback = ""
@@ -309,24 +346,38 @@ Generate ONLY the subtitle, no additional text or explanation:"""
                     {
                         "role": "user",
                         "content": [
-                            {"type": "text", "text": ALETHEIA_PROMPT + feedback + "\n\nUnconceal this image. Return only the JSON."},
+                            {"type": "text", "text": prompt + feedback + "\n\nUnconceal this image. Return only the JSON."},
                             {"type": "image_url", "image_url": {"url": image_url}},
                         ],
                     }
                 ],
                 temperature=0.65,
-                max_tokens=1100,
+                max_tokens=320 if depth == "hook" else 1100,
                 top_p=1,
                 stream=False,
             )
             raw = completion.choices[0].message.content
-            return self._parse_aletheia(raw)
+            reading = self._parse_aletheia(
+                raw, valid_region_ids={str(r.get("id")) for r in regions if r.get("id")}
+            )
+            if reading is not None:
+                reading["domain"] = ctx.get("domain") or ""
+                reading["lens_provenance"] = provenance
+            return reading
         except Exception as e:
             print(f"❌ Error in brainstorm analysis: {e}")
             return None
 
-    def _parse_aletheia(self, raw: Optional[str]) -> Optional[Dict[str, Any]]:
-        """Extract and normalize the Aletheia JSON from a model response."""
+    def _parse_aletheia(
+        self, raw: Optional[str], valid_region_ids: Optional[set] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Extract and normalize the Aletheia JSON from a model response.
+
+        `evidence`/`region_ids`/`tension` are Track C §3 additions and parse null-safely:
+        a model that omits them yields exactly the old shape. Cited region ids are
+        intersected with the ids actually on the post, so a hallucinated part can never
+        reach the UI's lens↔region highlight.
+        """
         if not raw:
             return None
         try:
@@ -337,17 +388,22 @@ Generate ONLY the subtitle, no additional text or explanation:"""
                 return None
             data = json.loads(match.group())
 
-            # Normalize lenses: list of {name, reading, intensity:int 0-100}
+            # Normalize lenses: {name, reading, intensity:int 0-100, evidence, region_ids}
             lenses = []
             for lens in (data.get("lenses") or [])[:5]:
                 try:
                     intensity = int(round(float(lens.get("intensity", 0))))
                 except (TypeError, ValueError):
                     intensity = 0
+                cited = [str(r).strip() for r in (lens.get("region_ids") or []) if str(r).strip()]
+                if valid_region_ids is not None:
+                    cited = [r for r in cited if r in valid_region_ids]
                 lenses.append({
                     "name": str(lens.get("name", "")).strip(),
                     "reading": str(lens.get("reading", "")).strip(),
                     "intensity": max(0, min(100, intensity)),
+                    "evidence": str(lens.get("evidence", "")).strip(),
+                    "region_ids": cited[:6],
                 })
 
             # Normalize questions: list of {prompt, options:[str]} (1-4 options each)
@@ -360,6 +416,7 @@ Generate ONLY the subtitle, no additional text or explanation:"""
 
             return {
                 "lenses": lenses,
+                "tension": str(data.get("tension", "")).strip(),
                 "questions": questions,
                 "concealed": str(data.get("concealed", "")).strip(),
                 "uncertainty": str(data.get("uncertainty", "")).strip(),
@@ -432,6 +489,8 @@ Generate ONLY the subtitle, no additional text or explanation:"""
                 label = str(r.get("label", "")).strip() or "region"
                 out.append({
                     "id": f"region_{i}",
+                    "actor": "auto",
+                    "detector": "vision",
                     "label": label,
                     "category": str(r.get("category", "")).strip(),
                     "box": {"x": round(x, 4), "y": round(y, 4), "w": round(w, 4), "h": round(h, 4)},
@@ -555,8 +614,12 @@ Generate ONLY the subtitle, no additional text or explanation:"""
                 label = str(r.get("label", "")).strip() or "part"
                 out.append({
                     "id": f"fine_{i}",
+                    "actor": "auto",
+                    "detector": "vision",
                     "label": label,
                     "category": str(r.get("category", "")).strip() or "part",
+                    # transient: used by the router's _match_parent to resolve parent_id,
+                    # then popped before persisting (parent_label is dropped from Region).
                     "parent_label": str(r.get("parent", "")).strip(),
                     "material": str(r.get("material", "")).strip(),
                     "box": {"x": round(x, 4), "y": round(y, 4), "w": round(w, 4), "h": round(h, 4)},
@@ -591,6 +654,9 @@ Return STRICT JSON only:
 
 
 # --- Aletheia interpretive prompt (image brainstorm dialogue) ---
+# Track C §2/§3: the lens set is no longer hard-coded. `{lens_block}` is filled from
+# the domain→lens registry and `{context_header}` from what the detectors actually
+# found, so the reading is *specific to this image* rather than generically three-lensed.
 ALETHEIA_PROMPT = """You are Aletheia, an interpretive companion inside Semant. A person scrolling a
 feed has paused on an image. Your task is NOT to caption it (what is depicted)
 but to help them UNCONCEAL it — to make perceptible how the image appears and
@@ -600,35 +666,50 @@ This is a DIALOGUE. You offer a reading, then pose a few multiple-choice questio
 that hand the looking back to the viewer. Their clicks sharpen your next reading,
 so the image is unconcealed together, round by round.
 
+{context_header}
+
 Rules:
 - Look closely at the ACTUAL image. Never invent details you cannot see.
 - Plain, sensuous, specific language. No art-jargon padding. Keep it short.
 - Each lens is a distinct voice and may disagree with the others.
 - Disclose your uncertainty rather than bluffing (the "earth that resists").
+- GROUND EACH LENS IN THE IMAGE: give an "evidence" phrase naming what you actually
+  see that licenses the claim, and cite the "region_ids" of the parts it rests on
+  (only ids offered above; use [] if none fit). A claim you cannot ground, don't make.
 - Questions are perceptual/interpretive, never a factual quiz. Each offers a real
   FORK in how to see — 2 to 4 short options (a few words each). There is no
   "correct" option; each opens a different reading.
 
 Produce:
-1. LENSES (3):
-   - Phenomenological — how it meets a lived body: weight, texture, temperature,
-     movement, where the eye is pulled.
-   - Semiotic — its denotation vs connotation; what it culturally signifies.
-   - Atmospheric — the mood/Stimmung it radiates, the emotional temperature.
-   Each lens: 1–2 sentences + an "intensity" 0–100 (how strongly this lens
-   speaks for this image) for the UI bars.
-2. QUESTIONS (1–3): each a short prompt + 2–4 short options, inviting the viewer
+1. LENSES — use EXACTLY these, in this order:
+{lens_block}
+   Each lens: 1–2 sentences of "reading", an "intensity" 0–100 (how strongly this
+   lens speaks for this image) for the UI bars, an "evidence" phrase, and "region_ids".
+2. TENSION — one line naming where the lenses disagree (that friction is the reading's
+   real content). Empty string if they genuinely converge.
+3. QUESTIONS ({n_questions}): each a short prompt + 2–4 short options, inviting the viewer
    to choose how to see (e.g. "What pulls your eye first?", "What is this image's
    weather?"). These drive the back-and-forth.
-3. CONCEALED — one line on what lies outside the frame / what the image withholds.
+4. CONCEALED — one line on what lies outside the frame / what the image withholds.
 
 Return strict JSON only:
-{
-  "lenses": [{"name": "...", "reading": "...", "intensity": 0}],
-  "questions": [{"prompt": "...", "options": ["...", "..."]}],
+{{
+  "lenses": [{{"name": "...", "reading": "...", "intensity": 0, "evidence": "...", "region_ids": ["..."]}}],
+  "tension": "...",
+  "questions": [{{"prompt": "...", "options": ["...", "..."]}}],
   "concealed": "...",
   "uncertainty": "..."
-}"""
+}}"""
+
+# The feed-hook render (§5): same engine, one distilled lens and one fork. The scroll
+# pause is worth a sentence, not an essay — and a hard token cap keeps it cheap at
+# audience scale.
+ALETHEIA_HOOK_SUFFIX = """
+
+RENDER MODE: FEED HOOK. The viewer has paused mid-scroll — you have one breath.
+Give ONE lens, its reading distilled to 1–2 sentences, and exactly ONE question
+(the single most perceptually alive fork). Keep "concealed" to a short clause.
+Everything else stays as specified."""
 
 
 # --- Sūkṣma: fine semantic decomposition vocabularies (one per mode) ---

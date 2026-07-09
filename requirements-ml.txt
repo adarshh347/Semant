@@ -1,0 +1,18 @@
+# Optional ML extras for the Darshan vision pipeline (Track B).
+# NOT in core requirements.txt on purpose: these are heavy (~2GB) and the services
+# that use them (fashion_clip_service, segmentation_service) lazy-import and degrade
+# gracefully when absent — so slim API deploys stay slim. Install on a box that
+# actually runs the vision pipeline:
+#     pip install -r requirements-ml.txt
+#
+# torch is CPU-only here (Phase 1 needs no GPU). For a GPU box, install the CUDA
+# build of torch instead (see pytorch.org) — pending Adarsh's B1 GPU-path decision.
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+transformers
+pillow
+numpy
+
+# Phase 2+ (gated — not installed yet): ultralytics (YOLO), and the Fashionpedia /
+# SAM2 stacks once B2 (segmenter choice) + B1 (GPU serving) are decided.
