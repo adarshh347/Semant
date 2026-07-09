@@ -81,17 +81,31 @@ class PersonaService:
             "updated_at": doc.get("updated_at"),
         }
 
-    async def _matched_posts(self, handle: str) -> List[dict]:
-        """Posts in our gallery from this account: by the stored `instagram_handle`
-        field (reliable, set on newer saves) OR the handle parsed from source_url."""
+    @staticmethod
+    def _authored_by(handle: str) -> dict:
+        """Filter for posts in our gallery from this account: by the stored
+        `instagram_handle`/`instagram_handles` fields (reliable, set on newer saves)
+        OR the handle parsed from source_url."""
         rx = re.compile(rf"instagram\.com/{re.escape(handle)}(?:[/?#]|$)", re.I)
+        return {"$or": [{"instagram_handle": handle},
+                        {"instagram_handles": handle},
+                        {"source_url": {"$regex": rx}}]}
+
+    async def _matched_posts(self, handle: str) -> List[dict]:
+        """Up to 400 posts from this account — enough to synthesize a dossier from."""
         cursor = post_collection.find(
-            {"$or": [{"instagram_handle": handle},
-                     {"instagram_handles": handle},
-                     {"source_url": {"$regex": rx}}]},
+            self._authored_by(handle),
             {"photo_url": 1, "general_tags": 1, "source_url": 1, "instagram_handle": 1},
         )
         return await cursor.to_list(length=400)
+
+    async def matched_post_ids(self, handle: str) -> List[str]:
+        """*Every* post id from this account, uncapped — the retrieval scope for
+        Anuraṇana (Track C §4). Deliberately separate from `_matched_posts`, whose 400
+        cap is fine for dossier synthesis but would silently truncate a taste search:
+        a curator with 1700 posts must not have their history sampled arbitrarily."""
+        cursor = post_collection.find(self._authored_by(handle), {"_id": 1})
+        return [str(d["_id"]) async for d in cursor]
 
     async def touch(self, handle: str, account: Optional[dict] = None) -> None:
         """
