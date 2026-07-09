@@ -227,7 +227,12 @@ def render_context_header(
             f"{r.get('id')}({r.get('label') or r.get('part') or r.get('category') or '?'})"
             for r in regions[:14] if r.get("id")
         )
-        lines.append(f"- Region ids you may cite in `region_ids`: {listed}")
+        # Imperative, not permissive: a lens whose claim points at no part cannot be
+        # highlighted on the image, and the reading↔geometry link is the whole point.
+        lines.append(
+            f"- PART IDS — every lens MUST cite 1–3 of these in its `region_ids`, "
+            f"choosing the parts its claim actually rests on: {listed}"
+        )
     return "\n".join(lines)
 
 

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.routers import posts, epics, phrases, research, personas, anatomy
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
+from backend.services.region_embedding_service import ensure_indexes
 from backend.database import post_collection
 from backend.schemas.post import PaginatedPosts
 from backend.security import require_api_key
@@ -35,6 +36,8 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     await test_connection()
+    # Index the taste-graph sidecar (idempotent; Track C retrieval filters on post_id)
+    await ensure_indexes()
     # Start the Research Article Agent background worker (drains the agent_runs queue)
     start_worker()
 

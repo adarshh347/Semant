@@ -4,9 +4,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Sparkles, Plus, X, ChevronRight, ChevronLeft, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, Eye, Scan, MoreHorizontal } from 'lucide-react';
-import BoundingBoxEditor from './BoundingBoxEditor';
-import RegionDetectorModal from './RegionDetectorModal';
+import { ArrowLeft, Sparkles, Plus, X, ChevronRight, ChevronLeft, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, MoreHorizontal } from 'lucide-react';
+import VisualPane from './VisualPane';
 import RichTextBlock from './RichTextBlock';
 import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
@@ -49,7 +48,9 @@ function PostDetailPage() {
   const [popularTags, setPopularTags] = useState([]);
   const [loadingPopularTags, setLoadingPopularTags] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(SPLIT_DEFAULT); // percentage
-  const [activeLeftTab, setActiveLeftTab] = useState('image');
+  // 'regions' by default: the unified pane IS the working surface; 'image' hides the
+  // overlay for a clean look at the photograph.
+  const [activeLeftTab, setActiveLeftTab] = useState('regions');
   const [activeRightTab, setActiveRightTab] = useState('content');
   const [isChatOpen, setIsChatOpen] = useState(false); // AI Sidebar toggle
   const [clickedNode, setClickedNode] = useState(null); // For node expansion in chatbot
@@ -67,14 +68,8 @@ function PostDetailPage() {
   // Minimal inline prompt for /write, positioned at the caret (viewport coords).
   const [slashPrompt, setSlashPrompt] = useState({ open: false, x: 0, y: 0 });
   // Unconceal (per-image microscopic context)
-  const [aletheia, setAletheia] = useState(null);     // { lenses, concealed, uncertainty }
-  const [aletheiaBusy, setAletheiaBusy] = useState(false);
-  const [commentary, setCommentary] = useState('');
-  const [feedPersona, setFeedPersona] = useState(true);
-  const [ctxBusy, setCtxBusy] = useState(false);
-  const [ctxSavedAt, setCtxSavedAt] = useState(null);
-  const [ctxError, setCtxError] = useState('');
-  const [showAnatomy, setShowAnatomy] = useState(false);
+  // Aletheia reading, curator commentary and region detection all moved into
+  // VisualPane (Track D) — they belong beside the image, not in a tab across the split.
   const [topbarMenuOpen, setTopbarMenuOpen] = useState(false); // "⋯" overflow (Delete)
   const dividerRef = useRef(null);
   const containerRef = useRef(null);
@@ -112,12 +107,6 @@ function PostDetailPage() {
       setEditedBlocks(response.data.text_blocks || []);
       setEditedTags(response.data.general_tags || []);
       setHighlights(response.data.highlights || []);
-      const lc = response.data.local_context;
-      if (lc) {
-        setCommentary(lc.commentary || '');
-        setAletheia(lc.aletheia || null);
-        setCtxSavedAt(lc.updated_at || null);
-      }
     } catch (error) {
       console.error("Error fetching post:", error);
     }
@@ -593,37 +582,6 @@ function PostDetailPage() {
     runAiGenerate('write', '', instruction);
   };
 
-  // --- Unconceal: Aletheia reading + curator commentary (microscopic context) ---
-  const runAletheia = async () => {
-    setCtxError(''); setAletheiaBusy(true);
-    try {
-      const res = await axios.post(`${API_URL}/api/v1/posts/brainstorm`, {
-        image_url: post.photo_url,
-        source_url: post.source_url || '',
-      });
-      // keep only the interpretive parts (drop the MCQ questions for the in-app note)
-      const { lenses, concealed, uncertainty } = res.data || {};
-      setAletheia({ lenses: lenses || [], concealed: concealed || '', uncertainty: uncertainty || '' });
-    } catch (e) {
-      setCtxError('Aletheia could not read this image (is the vision service running?).');
-    } finally { setAletheiaBusy(false); }
-  };
-
-  const saveLocalContext = async () => {
-    setCtxError(''); setCtxBusy(true);
-    try {
-      const res = await axios.post(`${API_URL}/api/v1/posts/${postId}/local-context`, {
-        commentary,
-        aletheia,
-        feed_to_persona: feedPersona,
-      });
-      setCtxSavedAt(res.data?.post?.local_context?.updated_at || new Date().toISOString());
-      setPost(res.data.post);
-    } catch (e) {
-      setCtxError('Could not save the context.');
-    } finally { setCtxBusy(false); }
-  };
-
   // --- Keyboard save (Cmd/Ctrl+S) + unsaved-changes guard ---
   useEffect(() => {
     const onKey = (e) => {
@@ -766,6 +724,8 @@ function PostDetailPage() {
         {/* Left Pane - Image */}
         <div className="post-detail-left" style={{ width: `${leftPanelWidth}%` }}>
           <div className="panel-header">
+            {/* Was a dead toggle (set state, rendered nothing). Now a real layer
+                control over the one unified region surface. */}
             <div className="panel-tabs">
               <button
                 className={`panel-tab ${activeLeftTab === 'image' ? 'active' : ''}`}
@@ -774,10 +734,10 @@ function PostDetailPage() {
                 Image
               </button>
               <button
-                className={`panel-tab ${activeLeftTab === 'bbox' ? 'active' : ''}`}
-                onClick={() => setActiveLeftTab('bbox')}
+                className={`panel-tab ${activeLeftTab === 'regions' ? 'active' : ''}`}
+                onClick={() => setActiveLeftTab('regions')}
               >
-                Annotations
+                Regions
               </button>
             </div>
             {/* Right-aligned per-pane actions slot (kept for Lane 3 verbs). */}
@@ -785,7 +745,11 @@ function PostDetailPage() {
           </div>
 
           <div className="image-display">
-            <BoundingBoxEditor post={post} onUpdate={fetchPost} />
+            <VisualPane
+              post={post}
+              showRegions={activeLeftTab === 'regions'}
+              onPostChange={setPost}
+            />
           </div>
         </div>
 
@@ -834,14 +798,9 @@ function PostDetailPage() {
                   <Highlighter size={14} style={{ marginRight: '0.3rem' }} />
                   Highlights {highlights.length > 0 && <span className="highlight-count">{highlights.length}</span>}
                 </button>
-                <button
-                  className={`panel-tab ${activeRightTab === 'unconceal' ? 'active' : ''}`}
-                  onClick={() => setActiveRightTab('unconceal')}
-                  title="Aletheia reading + your own commentary, attached to this image"
-                >
-                  <Eye size={14} style={{ marginRight: '0.3rem' }} />
-                  Unconceal {(post.local_context?.commentary || post.local_context?.aletheia) && <span className="highlight-count">•</span>}
-                </button>
+                {/* Unconceal tab retired (Track D §4): the reading is only powerful
+                    beside the parts it cites, so Aletheia + commentary now live in the
+                    Visual pane. The right pane reclaims a tab. */}
               </div>
               {/* Right-aligned actions slot — entry to editing lives here. */}
               <div className="panel-actions">
@@ -1056,91 +1015,6 @@ function PostDetailPage() {
               </div>
             )}
 
-            {/* UNCONCEAL TAB — per-image microscopic context (Aletheia + your commentary) */}
-            {activeRightTab === 'unconceal' && (
-              <div className="unconceal-section">
-                <div className="unconceal-intro">
-                  <h4>Unconceal this image</h4>
-                  <p>Let Aletheia read it, then add your own seeing. What you save attaches to this image{post.instagram_handle ? <> and can feed <strong>@{post.instagram_handle}</strong>’s persona</> : ''}.</p>
-                </div>
-
-                {/* Anatomy — clickable detected parts */}
-                <div className="uncon-anatomy">
-                  <div className="uncon-block-head">
-                    <span className="uncon-kicker">Anatomy</span>
-                    <button className="uncon-run-btn" onClick={() => setShowAnatomy(true)}>
-                      <Scan size={14} /> Detect parts
-                    </button>
-                  </div>
-                  {(post.region_annotations || []).filter(r => r.prioritised).length > 0 ? (
-                    <div className="uncon-parts">
-                      {(post.region_annotations || []).filter(r => r.prioritised).map(r => (
-                        <span className="uncon-part-chip" key={r.id} title={r.user_note || r.description}>
-                          {r.label}{r.weight ? ` · ${r.weight}` : ''}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="uncon-empty">Dissect the image into clickable parts, then star the ones that affect you and say how.</p>
-                  )}
-                </div>
-
-                {/* Aletheia reading */}
-                <div className="uncon-aletheia">
-                  <div className="uncon-block-head">
-                    <span className="uncon-kicker">Aletheia</span>
-                    <button className="uncon-run-btn" onClick={runAletheia} disabled={aletheiaBusy}>
-                      {aletheiaBusy ? <span className="sd-spin" /> : <Sparkles size={14} />}
-                      {aletheia ? 'Re-read' : 'Read the image'}
-                    </button>
-                  </div>
-                  {aletheia && (aletheia.lenses?.length > 0 || aletheia.concealed) ? (
-                    <div className="uncon-reading">
-                      {(aletheia.lenses || []).map((lens, i) => (
-                        <div className="uncon-lens" key={i}>
-                          <div className="uncon-lens-head">
-                            <span className="uncon-lens-name">{lens.name}</span>
-                            <span className="uncon-lens-pct">{lens.intensity ?? 0}</span>
-                          </div>
-                          <div className="uncon-bar"><span className="uncon-bar-fill" style={{ width: `${Math.max(0, Math.min(100, lens.intensity ?? 0))}%` }} /></div>
-                          <p className="uncon-lens-reading">{lens.reading}</p>
-                        </div>
-                      ))}
-                      {aletheia.concealed && <p className="uncon-foot"><strong>Concealed</strong> — {aletheia.concealed}</p>}
-                      {aletheia.uncertainty && <p className="uncon-foot"><strong>Uncertain</strong> — {aletheia.uncertainty}</p>}
-                    </div>
-                  ) : (
-                    <p className="uncon-empty">No reading yet — run Aletheia to get a starting interpretation, or write your own below.</p>
-                  )}
-                </div>
-
-                {/* Curator commentary */}
-                <div className="uncon-commentary">
-                  <span className="uncon-kicker">Your unconcealment</span>
-                  <textarea
-                    className="uncon-textarea"
-                    placeholder="What does this image do to you? What does it withhold? Write what only you can see…"
-                    value={commentary}
-                    onChange={(e) => setCommentary(e.target.value)}
-                  />
-                </div>
-
-                {/* Save + feed toggle */}
-                <div className="uncon-actions">
-                  {post.instagram_handle && (
-                    <label className="uncon-feed">
-                      <input type="checkbox" checked={feedPersona} onChange={(e) => setFeedPersona(e.target.checked)} />
-                      Also feed <strong>{(post.instagram_handles || [post.instagram_handle]).map(h => `@${h}`).join(' + ')}</strong>{(post.instagram_handles || []).length > 1 ? "’ personas" : "’s persona"}
-                    </label>
-                  )}
-                  <button className="action-btn primary uncon-save" onClick={saveLocalContext} disabled={ctxBusy || (!commentary.trim() && !aletheia)}>
-                    {ctxBusy ? <span className="sd-spin" /> : <Save size={16} />} Attach context
-                  </button>
-                  {ctxSavedAt && !ctxBusy && <span className="uncon-saved">saved {new Date(ctxSavedAt).toLocaleString()}</span>}
-                </div>
-                {ctxError && <p className="composer-error">{ctxError}</p>}
-              </div>
-            )}
           </div>
 
           {/* Edit actions */}
@@ -1193,14 +1067,7 @@ function PostDetailPage() {
         </button>
       </div>
 
-      {/* Anatomy — clickable region detection + per-part correspondence */}
-      {showAnatomy && (
-        <RegionDetectorModal
-          post={post}
-          onClose={() => setShowAnatomy(false)}
-          onSaved={(updated) => { setPost(updated); }}
-        />
-      )}
+      {/* Region detection is no longer a modal — it happens in the Visual pane itself. */}
     </div>
   );
 }
