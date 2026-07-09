@@ -11,6 +11,7 @@ import LandingPage from './pages/LandingPage.jsx';
 import GalleryPage from './pages/GalleryPage.jsx';
 import PostDetailPage from './components/PostDetailPage.jsx';
 import ReadDeeperPage from './pages/ReadDeeperPage.jsx';
+import RegionSurfaceLab from './pages/RegionSurfaceLab.jsx';
 import HighlightsPage from './pages/HighlightsPage.jsx';
 import './index.css';
 import TextFeedPage from './pages/TextFeedPage.jsx';
@@ -34,6 +35,8 @@ const router = createBrowserRouter([
       // Track F — the audience's "read deeper" pause (Écart), the lite variant of the
       // creator's Visual pane.
       { path: "read/:postId", element: <ReadDeeperPage /> },
+      // Track D Phase 1 — dev harness for RegionSurface, before it is mounted for real.
+      { path: "lab/region-surface/:postId", element: <RegionSurfaceLab /> },
       { path: "feed", element: <TextFeedPage /> },
       { path: "epics", element: <EpicsPage /> },
       { path: "epics/:id", element: <EpicEditorPage /> },
