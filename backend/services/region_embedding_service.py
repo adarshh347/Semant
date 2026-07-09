@@ -20,6 +20,24 @@ from datetime import datetime, timezone
 from backend.database import region_embeddings_collection
 
 
+async def ensure_indexes() -> None:
+    """Index the fields the read paths actually filter on.
+
+    `search_similar` scopes retrieval with `{post_id: {$in: [...]}}` — and a prolific
+    curator's scope is thousands of ids, so an unindexed scan of this collection grows
+    with the whole corpus rather than with the curator. `get_embedding` looks up by
+    `embedding_id`.
+
+    Idempotent (Mongo no-ops an existing index) and non-fatal: a failure here costs
+    query speed, never correctness, and must not take the API down at boot.
+    """
+    try:
+        await region_embeddings_collection.create_index("post_id", name="post_id_idx")
+        await region_embeddings_collection.create_index("embedding_id", name="embedding_id_idx")
+    except Exception as e:
+        print(f"⚠️ region_embeddings index creation skipped (non-fatal): {e}")
+
+
 def make_embedding_id(post_id: str, region_id: str, model: str = "fashion-clip") -> str:
     """Deterministic pointer for a (post, region, model) triple. Stable so re-running
     enrichment is idempotent — the same region always maps to the same embedding_id,

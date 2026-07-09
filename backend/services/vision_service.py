@@ -339,6 +339,15 @@ Generate ONLY the subtitle, no additional text or explanation:"""
                     "If the image now feels settled, return an empty \"questions\" list."
                 )
 
+        # Back-loaded reminder. The region_ids rule sits mid-prompt, where models attend
+        # worst ("lost in the middle") — and the deep read, with more lenses to produce,
+        # reliably dropped the citations while the single-lens hook kept them. Restating
+        # the requirement at the tail, next to the ask, is what makes it stick.
+        closing = "\n\nUnconceal this image. Return only the JSON."
+        if regions:
+            closing = ("\n\nUnconceal this image. Every lens must cite 1–3 `region_ids` "
+                       "copied exactly from the PART IDS list. Return only the JSON.")
+
         try:
             completion = self.client.chat.completions.create(
                 model=self.vision_model,
@@ -346,7 +355,7 @@ Generate ONLY the subtitle, no additional text or explanation:"""
                     {
                         "role": "user",
                         "content": [
-                            {"type": "text", "text": prompt + feedback + "\n\nUnconceal this image. Return only the JSON."},
+                            {"type": "text", "text": prompt + feedback + closing},
                             {"type": "image_url", "image_url": {"url": image_url}},
                         ],
                     }
@@ -674,8 +683,11 @@ Rules:
 - Each lens is a distinct voice and may disagree with the others.
 - Disclose your uncertainty rather than bluffing (the "earth that resists").
 - GROUND EACH LENS IN THE IMAGE: give an "evidence" phrase naming what you actually
-  see that licenses the claim, and cite the "region_ids" of the parts it rests on
-  (only ids offered above; use [] if none fit). A claim you cannot ground, don't make.
+  see that licenses the claim, and cite in "region_ids" the parts it rests on. Every
+  lens carries 1–3 ids, copied EXACTLY from the PART IDS list above (the bare id, e.g.
+  "seg_0" — never the label, never a name you invented). Return [] only when the list
+  above is empty. Do not put ids inside "evidence"; they belong in "region_ids".
+  A claim you cannot ground, don't make.
 - Questions are perceptual/interpretive, never a factual quiz. Each offers a real
   FORK in how to see — 2 to 4 short options (a few words each). There is no
   "correct" option; each opens a different reading.
