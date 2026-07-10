@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Scan, Star, Sparkles, Plus, Eye, Check } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { useRegionStore } from '../state/regionStore';
@@ -70,6 +70,18 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
     const [ctxBusy, setCtxBusy] = useState(false);
 
     const stageRef = useRef(null);
+    const listRef = useRef(null);
+
+    // A part can now be selected from the far side of the split (a chip in the story).
+    // The polygon lights up on its own, but the row that carries the note can be forty
+    // rows down a scrolled list — so bring it to the selection rather than making the
+    // curator hunt for what they just pointed at.
+    useEffect(() => {
+        if (!selectedId) return;
+        listRef.current
+            ?.querySelector('.vp-row.is-sel')
+            ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, [selectedId]);
 
     const togglePriority = (id) => {
         const r = regions.find(x => x.id === id);
@@ -410,7 +422,7 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
                     </div>
                 )}
 
-                <div className="vp-list">
+                <div className="vp-list" ref={listRef}>
                     {!regions.length && !detecting && <p className="vp-muted">No parts yet — dissect the image.</p>}
                     {grouped.map(({ anchor, children }) => (
                         <div key={anchor.id} className="vp-group">

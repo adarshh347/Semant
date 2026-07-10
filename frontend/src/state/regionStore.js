@@ -130,6 +130,21 @@ export function useRegionState(post, onPostChange) {
         setLensRegionIds(null);
     }, []);
 
+    /**
+     * Look at these regions — the story pointing back at the image.
+     *
+     * A `/part` chip names one region and behaves exactly like clicking its polygon. A
+     * `/lens` chip names several, and there is no such thing as selecting several parts:
+     * it borrows the lens-citation channel, which already knows how to hold a set and
+     * already dims everything outside it.
+     */
+    const focusRegions = useCallback((ids) => {
+        const list = (ids || []).filter(Boolean);
+        if (!list.length) return;
+        setSelectedId(list[0]);
+        setLensRegionIds(list.length > 1 ? new Set(list) : null);
+    }, []);
+
     /** The region→story link (`Region.block_id`), written when a chip is inserted. */
     const linkRegionToBlock = useCallback((regionId, blockId) => {
         if (!regionId || !blockId) return;
@@ -146,7 +161,7 @@ export function useRegionState(post, onPostChange) {
 
     return useMemo(() => ({
         regions, setRegions, updateRegion, addRegion, regionById,
-        selectedId, selectRegion, setSelectedId,
+        selectedId, selectRegion, setSelectedId, focusRegions,
         hoveredId, setHoveredId,
         lensRegionIds, setLensRegionIds,
         focusIds,
@@ -156,7 +171,7 @@ export function useRegionState(post, onPostChange) {
         persist, scheduleSave, linkRegionToBlock,
     }), [
         regions, setRegions, updateRegion, addRegion, regionById,
-        selectedId, selectRegion, hoveredId, lensRegionIds, focusIds,
+        selectedId, selectRegion, focusRegions, hoveredId, lensRegionIds, focusIds,
         aletheia, lensFor, feedPersona, saveState, error,
         persist, scheduleSave, linkRegionToBlock,
     ]);

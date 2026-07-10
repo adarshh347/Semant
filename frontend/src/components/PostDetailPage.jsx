@@ -635,6 +635,94 @@ function PostDetailPage() {
   });
   const refCounts = useCallback(() => refCountsRef.current(), []);
 
+  // --- Visual ↔ Content: the two directions of the same edge --------------------------
+  //
+  // region → block. Which blocks talk about the hovered part? Two sources, because two
+  // things can create the edge: a chip the curator inserted (ids live in the block's
+  // markup) and Region.block_id (written when that chip landed, and by "write about this
+  // part"). Reading both means a block still lights up when a chip is deleted but the
+  // block_id survives, and vice versa — the link degrades instead of vanishing.
+  // `post` is still null while loading — these hooks run before the early return.
+  const liveBlocks = useMemo(
+    () => (isEditing ? editedBlocks : (post?.text_blocks || [])),
+    [isEditing, editedBlocks, post],
+  );
+
+  const blockRegionIds = useMemo(() => {
+    const map = new Map();
+    for (const b of liveBlocks) {
+      const ids = new Set();
+      const re = /data-region-ids="([^"]*)"/g;
+      let m;
+      while ((m = re.exec(b.content || '')) !== null) {
+        m[1].split(',').forEach((id) => id && ids.add(id));
+      }
+      map.set(b.id, ids);
+    }
+    return map;
+  }, [liveBlocks]);
+
+  const linkedBlockIds = useMemo(() => {
+    const focus = regionStore.hoveredId;
+    if (!focus) return new Set();
+    const linked = new Set();
+    for (const [blockId, ids] of blockRegionIds) if (ids.has(focus)) linked.add(blockId);
+    const region = regionStore.regions.find((r) => r.id === focus);
+    if (region?.block_id) linked.add(region.block_id);
+    return linked;
+  }, [regionStore.hoveredId, regionStore.regions, blockRegionIds]);
+
+  // block → region. Delegated, so it catches chips in the TipTap editor and chips in the
+  // read view's dangerouslySetInnerHTML alike — the read view has no React to bind to.
+  const chipClickRef = useRef(null);
+  chipClickRef.current = (e) => {
+    const chip = e.target.closest?.('[data-region-ref]');
+    if (!chip) return;
+    const ids = (chip.getAttribute('data-region-ids') || '').split(',').filter(Boolean);
+    if (!ids.length) return;
+
+    // The overlay is what does the highlighting, so a chip clicked while the pane is
+    // showing the bare photograph must bring the regions back first.
+    setActiveLeftTab('regions');
+    if (leftPanelWidth <= SPLIT_RAIL + 1) {
+      setLeftPanelWidth(preCollapseWidthRef.current ?? SPLIT_DEFAULT);
+      preCollapseWidthRef.current = null;
+    }
+    regionStore.focusRegions(ids);
+
+    // Let the pane re-render (and un-collapse) before we scroll to it.
+    setTimeout(() => {
+      document.querySelector('.post-detail-left .vp-stage')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }, 60);
+  };
+
+  useEffect(() => {
+    const area = contentAreaRef.current;
+    if (!area) return undefined;
+    const onClick = (e) => chipClickRef.current?.(e);
+    area.addEventListener('click', onClick);
+    return () => area.removeEventListener('click', onClick);
+  }, [post]);
+
+  // A chip is lit when the image is looking at exactly what it points at. Painted after
+  // every commit rather than toggled on click, because the read view's blocks are
+  // `dangerouslySetInnerHTML` — React rewrites those children on re-render and would
+  // silently wipe any class we set by hand. This makes the class a projection of the
+  // store rather than a fact we have to keep true.
+  useEffect(() => {
+    const area = contentAreaRef.current;
+    if (!area) return;
+    const focus = regionStore.focusIds;
+    area.querySelectorAll('[data-region-ref]').forEach((chip) => {
+      const ids = (chip.getAttribute('data-region-ids') || '').split(',').filter(Boolean);
+      // Set equality, not overlap: selecting one part must not light a lens chip that
+      // merely happens to cite it among others.
+      const lit = !!focus && ids.length === focus.size && ids.every((id) => focus.has(id));
+      chip.classList.toggle('is-active', lit);
+    });
+  });
+
   const submitSlashWrite = () => {
     const instruction = aiPrompt.trim();
     if (!instruction) return;
@@ -946,6 +1034,7 @@ function PostDetailPage() {
                                 onRefCommand={onRefCommand}
                                 refCounts={refCounts}
                                 isActive={block.id === activeBlockId}
+                                isLinked={linkedBlockIds.has(block.id)}
                                 isFirst={index === 0}
                                 isLast={index === editedBlocks.length - 1}
                                 onDragStartBlock={setDraggingId}
@@ -1000,7 +1089,7 @@ function PostDetailPage() {
                         key={block.id}
                         data-block-id={block.id}
                         data-origin={block.origin || 'human'}
-                        className="text-block-item"
+                        className={`text-block-item${linkedBlockIds.has(block.id) ? ' is-linked' : ''}`}
                         dangerouslySetInnerHTML={{ __html: block.content }}
                         style={{
                           backgroundColor: block.color && block.color !== 'inherit' && block.color !== '#2a2a2a' ? block.color : 'transparent',
