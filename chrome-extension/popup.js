@@ -23,7 +23,7 @@ async function checkConnection() {
     const headers = apiKey ? { 'X-API-Key': apiKey } : {};
 
     try {
-        const response = await fetch('http://localhost:5007/api/v1/posts/?limit=1', { headers });
+        const response = await fetch('http://localhost:8000/api/v1/posts/?limit=1', { headers });
         if (response.ok) {
             statusEl.className = 'status connected';
             statusEl.textContent = '✓ Connected to Sharirasutra';

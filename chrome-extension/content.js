@@ -8,9 +8,9 @@
 (function () {
     'use strict';
 
-    const SAVE_URL = 'http://localhost:5007/api/v1/posts/upload-from-url';
-    const BRAINSTORM_URL = 'http://localhost:5007/api/v1/posts/brainstorm';
-    const PERSONA_INGEST_URL = 'http://localhost:5007/api/v1/personas/ingest';
+    const SAVE_URL = 'http://localhost:8000/api/v1/posts/upload-from-url';
+    const BRAINSTORM_URL = 'http://localhost:8000/api/v1/posts/brainstorm';
+    const PERSONA_INGEST_URL = 'http://localhost:8000/api/v1/personas/ingest';
     const DASHBOARD_URL = 'http://localhost:5173/personas';
     const MIN_IMAGE_SIZE = 100;
 

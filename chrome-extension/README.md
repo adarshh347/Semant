@@ -30,7 +30,7 @@ A Chrome extension that lets you save images from any website to your Sharirasut
 ## Requirements
 
 - The Sharirasutra backend must be running (`uvicorn backend.main:app --reload --host 0.0.0.0 --port 5007`)
-- The extension connects to `localhost:5007`
+- The extension connects to `localhost:8000`
 
 ## Features
 
