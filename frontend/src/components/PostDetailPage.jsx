@@ -12,6 +12,7 @@ import StoryFlow from './StoryFlow';
 import TagStrip from './TagStrip';
 import { API_URL } from '../config/api';
 import { epicService } from '../services/epicService';
+import { RegionStoreContext, useRegionState } from '../state/regionStore';
 import './PostDetailPage.css';
 
 // Convert plain AI text (paragraphs split by blank lines) into simple HTML blocks.
@@ -78,6 +79,11 @@ function PostDetailPage() {
   const preEditWidthRef = useRef(null);   // width to restore when leaving edit
   const preCollapseWidthRef = useRef(null); // width to restore when un-collapsing
   const blockSeq = useRef(0); // monotonic, avoids Date.now() id collisions within a ms
+
+  // The regions and the reading, held once for both panes (Visual↔Content). The Visual
+  // pane marks them; the story points at them. Declared before the `!post` early return
+  // so the hook order never changes, and it tolerates a null post while loading.
+  const regionStore = useRegionState(post, setPost);
 
   // Close the topbar "⋯" overflow on outside-click / Escape.
   useEffect(() => {
@@ -620,6 +626,7 @@ function PostDetailPage() {
   }
 
   return (
+    <RegionStoreContext.Provider value={regionStore}>
     <div className={`post-detail-page${isEditing ? ' editing-mode' : ''}`}>
       {/* Underline Tooltip */}
       {showUnderlineTooltip && (
@@ -1069,6 +1076,7 @@ function PostDetailPage() {
 
       {/* Region detection is no longer a modal — it happens in the Visual pane itself. */}
     </div>
+    </RegionStoreContext.Provider>
   );
 }
 
