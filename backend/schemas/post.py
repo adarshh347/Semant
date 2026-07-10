@@ -64,6 +64,24 @@ class Region(BaseModel):
     # cross-surface link (optional; wired later by Lane 2 / Track D).
     block_id: Optional[str] = None
 
+# --- Source group (Darshan · feature-source-groups Phase 1) ------------------------
+# The thread that ties sibling images together. A reel is a *sequence* of frames; a
+# carousel (Phase 2) a *set* of slides. Ungrouped, "Split → Save" turns a reel into
+# orphan Posts with no memory of which frames are neighbours or in what order — which
+# is exactly the context the reading and the taste graph need. `t_ms` is a richer
+# proximity axis than the index alone: two frames 200ms apart are near-duplicates.
+class SourceGroup(BaseModel):
+    # permissive to unknown keys so Phase 2/3 producers (carousel, video) can add
+    # fields without a schema war — same posture as Region.
+    model_config = ConfigDict(extra="allow")
+
+    group_id: Optional[str] = None          # shared uuid across all siblings; null for a lone single
+    group_type: str = "single"              # reel | carousel | video | post | single
+    sequence_index: Optional[int] = None    # position within the group (capture/slide order); null for single
+    sequence_total: Optional[int] = None    # total in the group, if known
+    t_ms: Optional[int] = None              # video-frame timestamp (ms into the source video)
+
+
 class TextBlock(BaseModel):
     id: str = Field(default_factory=lambda: f"block_{uuid.uuid4()}")
     type: str  # e.g., 'h1', 'paragraph', 'quote'
@@ -103,6 +121,7 @@ class Post(BaseModel):
     region_annotations: Optional[List[Region]] = None  # unified regions: auto segments + curator/audience marks
     domain: Optional[dict] = None  # FashionCLIP domain router first-cut {label, score, is_fashion} (Track B/C)
     aletheia_cache: Optional[dict] = None  # cached feed-hook reading, computed once per image (Track C §5)
+    source_group: Optional[SourceGroup] = None  # sibling thread: reel frames / carousel slides (Phase 1)
 
 class PostUpdate(BaseModel):
     # bounding_box_tags removed (Track A): the manual pixel-rect write path is retired.
@@ -163,6 +182,7 @@ class UrlUploadRequest(BaseModel):
     instagram_handle: Optional[str] = None  # account the image came from (if on Instagram)
     instagram_handles: Optional[List[str]] = None  # all authors on a collab post
     source_account: Optional[dict] = None  # light snapshot {display_name, avatar_url}
+    source_group: Optional[SourceGroup] = None  # sibling thread stamped by the extension at split time
 
 class RegionAnnotationsRequest(BaseModel):
     """The curator's prioritised regions + per-part 'how it affects me' notes.

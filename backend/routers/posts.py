@@ -84,6 +84,7 @@ def post_helper(post) -> dict:
         "region_annotations": post.get("region_annotations"),
         "domain": post.get("domain"),
         "aletheia_cache": post.get("aletheia_cache"),
+        "source_group": post.get("source_group"),
     }
 
 
@@ -240,6 +241,14 @@ async def create_post_from_url(request: UrlUploadRequest):
             "instagram_handle": handle,
             "instagram_handles": handles or None,
             "source_account": request.source_account or None,
+            # The sibling thread (reel frames / carousel slides). Persist only a real
+            # group — a lone "single" carries no group_id and stores nothing, so old
+            # posts and grouped posts are told apart by presence, not a sentinel.
+            "source_group": (
+                request.source_group.model_dump()
+                if request.source_group and request.source_group.group_id
+                else None
+            ),
         }
 
         new_post = await post_collection.insert_one(post_document)
@@ -343,6 +352,43 @@ async def get_post_by_id(post_id: str):
         return post_helper(post)
 
     raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+
+@router.get("/{post_id}/siblings")
+async def get_post_siblings(post_id: str):
+    """
+    The images that came from the same reel / carousel as this one, in order.
+
+    A reel is a sequence; its frames are siblings. This returns the whole group ordered
+    by sequence_index, then t_ms as the finer axis (two frames can share nothing else
+    but their millisecond into the video). Graceful when there is no group: a single
+    save, or an older post from before source groups, returns just itself with
+    group_id null — the caller never has to special-case "ungrouped".
+    """
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    group_id = (post.get("source_group") or {}).get("group_id")
+    if not group_id:
+        # No thread — the post is its own (degenerate) group.
+        return {"group_id": None, "count": 1, "siblings": [post_helper(post)]}
+
+    cursor = post_collection.find({"source_group.group_id": group_id}).sort(
+        [("source_group.sequence_index", 1), ("source_group.t_ms", 1)]
+    )
+    siblings = [post_helper(p) async for p in cursor]
+    return {
+        "group_id": group_id,
+        "group_type": (post.get("source_group") or {}).get("group_type"),
+        "count": len(siblings),
+        "siblings": siblings,
+    }
 
 
 @router.get("/{post_id}/context")

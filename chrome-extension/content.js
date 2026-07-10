@@ -393,7 +393,7 @@
             const r = await apiFetch(SAVE_URL, {
                 method: 'POST', mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [], ...instagramContextForSave(currentImage) })
+                body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [], ...instagramContextForSave(currentImage), source_group: { group_type: 'single' } })
             });
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             await r.json();
@@ -621,6 +621,11 @@
             video,
             state: 'capturing',            // capturing | captured | partial | failed
             frames: [],                    // dataURLs, grows during capture
+            // Source group (Phase 1): ONE group_id per reel session, so every frame
+            // this split produces remembers it is a sibling of the others.
+            groupId: (crypto.randomUUID ? crypto.randomUUID()
+                : 'grp_' + Date.now().toString(36) + Math.random().toString(36).slice(2)),
+            frameMeta: [],                 // per-frame { t_ms }, index-aligned with frames[]
             dropped: new Set(),            // frame indexes deselected in the queue view
             // Rate: ~3 frames/sec, clamped to 8–60 evenly-spaced frames.
             total: Math.max(8, Math.min(60, Math.round(duration * 3))),
@@ -657,7 +662,12 @@
                 if (job.cancelled) break;      // discarded from the queue view
                 if (!video.isConnected) { job.error = 'video left the page'; break; }
                 if (missed >= 2) { job.error = 'stream stopped seeking'; break; }
-                const ok = await seekVideo(video, duration * ((i + 0.5) / job.total));
+                // The moment we sample — the timestamp of THIS frame in the source video.
+                // Captured here, next to the seek, so it stays true even when a frame is
+                // skipped below (a skipped frame pushes neither a dataURL nor a t_ms, so
+                // frames[] and frameMeta[] never drift out of alignment).
+                const seekSec = duration * ((i + 0.5) / job.total);
+                const ok = await seekVideo(video, seekSec);
                 missed = ok ? 0 : missed + 1;
                 // rAF never fires in hidden tabs — settle with a timer instead (background
                 // throttling makes it ~1s there, which only slows the capture down).
@@ -668,6 +678,7 @@
                 try {
                     ctx.drawImage(video, 0, 0, vw, vh);
                     job.frames.push(canvas.toDataURL('image/jpeg', 0.85));
+                    job.frameMeta.push({ t_ms: Math.round(seekSec * 1000) });
                 } catch (err) {
                     console.error('Alexia: canvas tainted (cross-origin video, no CORS):', err);
                     job.error = 'protected video';
@@ -821,16 +832,33 @@
         if (massSaving) return;
         const settled = [...splitQueue.values()].filter(j => j.state !== 'capturing');
         const work = [];
-        settled.forEach(j => j.frames.forEach((url, idx) => {
-            if (!j.dropped.has(idx)) work.push({ url, job: j });
-        }));
+        // Build each job's source group over the frames actually being saved: dropped
+        // frames leave the group, so the kept ones are renumbered 0..k-1 in capture
+        // order and sequence_total is that k. t_ms stays the true video timestamp, so it
+        // remains monotonic across the group even where an index was dropped.
+        settled.forEach(j => {
+            const kept = j.frames
+                .map((url, idx) => ({ url, idx }))
+                .filter(f => !j.dropped.has(f.idx));
+            kept.forEach((f, seq) => work.push({
+                url: f.url,
+                job: j,
+                sourceGroup: {
+                    group_id: j.groupId,
+                    group_type: 'reel',
+                    sequence_index: seq,
+                    sequence_total: kept.length,
+                    t_ms: (j.frameMeta[f.idx] || {}).t_ms,
+                },
+            }));
+        });
         if (!work.length) return;
         massSaving = true;
         btn.disabled = true;
         let saved = 0;
         for (let i = 0; i < work.length; i++) {
             btn.textContent = `Saving ${i + 1}/${work.length}…`;
-            if (await postFrame(work[i].url, ['video-frame'], work[i].job.igContext, work[i].job.sourceUrl)) saved++;
+            if (await postFrame(work[i].url, ['video-frame'], work[i].job.igContext, work[i].job.sourceUrl, work[i].sourceGroup)) saved++;
         }
         btn.classList.add(saved ? 'al-done' : 'al-fail');
         btn.textContent = saved ? `✓ Saved ${saved}` : '✗ Failed';
@@ -914,12 +942,18 @@
     }
 
     // One frame → backend. igContext/sourceUrl default to the live page when absent.
-    async function postFrame(url, tags, igContext, sourceUrl) {
+    // sourceGroup (optional) threads reel frames together; omitting it lands the image
+    // as an ungrouped single, so the carousel sweep and single saves are unaffected.
+    async function postFrame(url, tags, igContext, sourceUrl, sourceGroup) {
         try {
             const r = await apiFetch(SAVE_URL, {
                 method: 'POST', mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_url: url, source_url: sourceUrl || location.href, general_tags: tags || [], ...(igContext || {}) })
+                body: JSON.stringify({
+                    image_url: url, source_url: sourceUrl || location.href,
+                    general_tags: tags || [], ...(igContext || {}),
+                    ...(sourceGroup ? { source_group: sourceGroup } : {}),
+                })
             });
             return r.ok;
         } catch (e) { return false; }
