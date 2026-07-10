@@ -19,6 +19,7 @@ from backend.schemas.epic import (
 )
 from backend.services.epic_service import epic_service
 from backend.services.vision_service import vision_service
+from backend.services import anuranana_service
 from backend.database import post_collection
 from backend.schemas.post import TextBlock
 from bson.objectid import ObjectId
@@ -247,14 +248,17 @@ async def vision_auto_recommend(request: VisionSuggestionRequest):
     Generate auto-recommended text based on image analysis.
     
     Uses vision AI to analyze the image and generate text that
-    complements existing textual context.
+    complements existing textual context, grounded in the curator's reading of
+    this image and their accrued taste (Anuraṇana, Track C).
     """
     if request.suggestion_type != "auto_recommend":
         raise HTTPException(status_code=400, detail="Use suggestion_type='auto_recommend'")
-    
+
+    context_pack = await anuranana_service.grounding_for_image(request.image_url)
     result = await vision_service.auto_recommend_text(
         image_url=request.image_url,
-        existing_text=request.existing_text
+        existing_text=request.existing_text,
+        context_pack=context_pack,
     )
     
     if result is None:
@@ -269,17 +273,24 @@ async def vision_prompt_enhance(request: VisionSuggestionRequest):
     Generate text based on image + user prompt.
     
     Uses vision AI to analyze the image and generate text
-    following the user's specific prompt/direction.
+    following the user's specific prompt/direction, grounded in the curator's
+    reading and taste history (Anuraṇana, Track C).
     """
     if request.suggestion_type != "prompt_enhance":
         raise HTTPException(status_code=400, detail="Use suggestion_type='prompt_enhance'")
-    
+
     if not request.user_prompt:
         raise HTTPException(status_code=400, detail="user_prompt is required for prompt_enhance")
-    
+
+    # The ask steers retrieval — "write about the sleeve" should pull sleeve-like
+    # correspondences out of the taste history, not the image's loudest part.
+    context_pack = await anuranana_service.grounding_for_image(
+        request.image_url, ask=request.user_prompt,
+    )
     result = await vision_service.prompt_enhanced_text(
         image_url=request.image_url,
-        user_prompt=request.user_prompt
+        user_prompt=request.user_prompt,
+        context_pack=context_pack,
     )
     
     if result is None:

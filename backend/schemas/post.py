@@ -69,6 +69,10 @@ class TextBlock(BaseModel):
     type: str  # e.g., 'h1', 'paragraph', 'quote'
     content: str
     color: Optional[str] = None
+    # Provenance: who wrote it. The frontend has stamped this since the slash-command
+    # lane, but the field was missing here — so Pydantic dropped it on every save and
+    # a sutradhar block came back from the server indistinguishable from a human one.
+    origin: str = "human"           # human | sutradhar
 
 class EpicRef(BaseModel):
     epic_id: str

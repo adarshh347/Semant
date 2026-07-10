@@ -10,8 +10,10 @@ import RichTextBlock from './RichTextBlock';
 import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
 import TagStrip from './TagStrip';
+import RefPicker from './RefPicker';
 import { API_URL } from '../config/api';
 import { epicService } from '../services/epicService';
+import { RegionStoreContext, useRegionState } from '../state/regionStore';
 import './PostDetailPage.css';
 
 // Convert plain AI text (paragraphs split by blank lines) into simple HTML blocks.
@@ -65,8 +67,11 @@ function PostDetailPage() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBusy, setAiBusy] = useState(null); // slash command key while running | null
   const [aiError, setAiError] = useState('');
+  const [writingRegionId, setWritingRegionId] = useState(null); // "write about this part"
   // Minimal inline prompt for /write, positioned at the caret (viewport coords).
   const [slashPrompt, setSlashPrompt] = useState({ open: false, x: 0, y: 0 });
+  // The /part · /lens picker, positioned at the caret the same way.
+  const [refPicker, setRefPicker] = useState({ open: false, x: 0, y: 0, kind: 'part' });
   // Unconceal (per-image microscopic context)
   // Aletheia reading, curator commentary and region detection all moved into
   // VisualPane (Track D) — they belong beside the image, not in a tab across the split.
@@ -78,6 +83,11 @@ function PostDetailPage() {
   const preEditWidthRef = useRef(null);   // width to restore when leaving edit
   const preCollapseWidthRef = useRef(null); // width to restore when un-collapsing
   const blockSeq = useRef(0); // monotonic, avoids Date.now() id collisions within a ms
+
+  // The regions and the reading, held once for both panes (Visual↔Content). The Visual
+  // pane marks them; the story points at them. Declared before the `!post` early return
+  // so the hook order never changes, and it tolerates a null post while loading.
+  const regionStore = useRegionState(post, setPost);
 
   // Close the topbar "⋯" overflow on outside-click / Escape.
   useEffect(() => {
@@ -552,6 +562,72 @@ function PostDetailPage() {
     }
   };
 
+  // --- "Write about this part" ---------------------------------------------------
+  // The Visual pane's answer to the blank page: pick a part, and Sutradhar writes from
+  // what you noticed about it. The server grounds the call in this image's reading and
+  // the curator's taste (Anuraṇana); the ask below only has to point at ONE part, and
+  // to carry that part's own note — the context pack caps its note list, so a region
+  // the curator hasn't prioritised could otherwise be missing from its own briefing.
+  const buildRegionPrompt = (region, lens) => {
+    const what = [region.category, region.material].filter(Boolean).join(' · ');
+    const lines = [
+      `Write about a single part of this image: "${region.label || 'this part'}"${what ? ` (${what})` : ''}.`,
+    ];
+    const note = (region.user_note || '').trim();
+    if (note) lines.push(`What this person said about it, in their own words: "${note}"`);
+    if (lens?.reading) lines.push(`The ${lens.name} lens reads it as: "${lens.reading}"`);
+    lines.push(
+      'Stay with this one part — do not describe the whole image.',
+      // Handing the note over invites the model to hand it straight back. It did: the
+      // first draft opened by repeating the curator's own sentence at them. The note is
+      // evidence of what they noticed, not a line to be quoted.
+      'Never repeat their words back to them. Write from what they noticed, in their voice.',
+      'Two short paragraphs. No preamble, no heading. Return only the passage.',
+    );
+    return lines.join('\n');
+  };
+
+  const escHtml = (s) => String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  // The seeded block opens with a chip, so the passage is visibly *about* that part and
+  // clicking it walks straight back to the polygon it came from.
+  const withChip = (region, html) => {
+    const label = escHtml(region.label || 'part');
+    const chip = `<span data-region-ref data-ref-kind="part" data-region-ids="${escHtml(region.id)}"`
+      + ` data-label="${label}" class="ref-chip ref-chip--part">${label}</span>`;
+    return html.replace('<p>', `<p>${chip} `);
+  };
+
+  const writeAboutRegion = async (region) => {
+    if (!region || writingRegionId) return;
+    // `seed: false` — on an empty story the generated block IS the first block; seeding
+    // an empty paragraph would leave a blank line above every passage written this way.
+    if (!isEditing) startEditing({ seed: false });
+    setActiveRightTab('content');
+    setAiError('');
+    setWritingRegionId(region.id);
+    setAiBusy('part');
+    try {
+      const prompt = buildRegionPrompt(region, regionStore.lensFor(region.id));
+      const res = await epicService.promptEnhancedText(post.photo_url, prompt);
+      const text = res?.suggestion;
+      if (!text) throw new Error('No suggestion returned');
+      const block = makeBlock({
+        type: 'paragraph',
+        content: withChip(region, htmlFromText(text)),
+        origin: 'sutradhar',
+      });
+      insertBlock(block);
+      regionStore.linkRegionToBlock(region.id, block.id);
+    } catch {
+      setAiError('Sutradhar could not write about that part. Is the vision service running?');
+    } finally {
+      setWritingRegionId(null);
+      setAiBusy(null);
+    }
+  };
+
   // Dispatched from the "/" menu (AI verbs). '/write' opens a minimal caret
   // prompt; everything else runs immediately over the current block's text.
   const runAiSlashCommand = ({ key, editor, range }) => {
@@ -569,10 +645,150 @@ function PostDetailPage() {
     runAiGenerate(key, currentNodeText(editor));
   };
 
-  // Stable handle passed into each block editor; always calls the latest closure.
+  // --- Inline references into the image (/part, /lens) -------------------------------
+  // The editor whose caret the picker opened at. Held in a ref, not state: the picker's
+  // own input takes focus, and by the time a row is clicked React's selection state
+  // would be a render behind.
+  const refEditorRef = useRef(null);
+
+  const caretAt = (editor) => {
+    try {
+      const c = editor.view.coordsAtPos(editor.state.selection.from);
+      return { x: c.left, y: c.bottom };
+    } catch { return { x: 0, y: 0 }; }
+  };
+
+  const runRefSlashCommand = ({ key, editor, range }) => {
+    if (editor && range) editor.chain().focus().deleteRange(range).run();
+    refEditorRef.current = editor;
+    const { x, y } = caretAt(editor);
+    setRefPicker({ open: true, x, y, kind: key });
+  };
+
+  const closeRefPicker = () => setRefPicker({ open: false, x: 0, y: 0, kind: 'part' });
+
+  /** Drop the chip, and record the region→story edge from the other side. */
+  const insertRef = (raw) => {
+    const { kind } = refPicker;
+    const editor = refEditorRef.current;
+    closeRefPicker();
+    if (!editor) return;
+
+    const attrs = kind === 'lens'
+      ? { refKind: 'lens', regionIds: (raw.region_ids || []).join(','), label: raw.name }
+      : { refKind: 'part', regionIds: raw.id, label: raw.label || 'part' };
+    editor.chain().focus().insertRegionRef(attrs).run();
+
+    // Region.block_id — so the pane can ask "which block talks about me?" without
+    // parsing every block's HTML. Only a part owns a single block; a lens spans many.
+    if (kind === 'part' && activeBlockId) regionStore.linkRegionToBlock(raw.id, activeBlockId);
+  };
+
+  // Stable handles passed into each block editor; always call the latest closure.
   const aiCommandRef = useRef(null);
   aiCommandRef.current = runAiSlashCommand;
   const onAiCommand = useCallback((args) => aiCommandRef.current?.(args), []);
+
+  const refCommandRef = useRef(null);
+  refCommandRef.current = runRefSlashCommand;
+  const onRefCommand = useCallback((args) => refCommandRef.current?.(args), []);
+
+  // Read when the menu opens, so a part marked (or a reading run) after this editor
+  // was created still offers its command.
+  const refCountsRef = useRef(null);
+  refCountsRef.current = () => ({
+    parts: regionStore.regions.length,
+    lenses: (regionStore.aletheia?.lenses || []).length,
+  });
+  const refCounts = useCallback(() => refCountsRef.current(), []);
+
+  // --- Visual ↔ Content: the two directions of the same edge --------------------------
+  //
+  // region → block. Which blocks talk about the hovered part? Two sources, because two
+  // things can create the edge: a chip the curator inserted (ids live in the block's
+  // markup) and Region.block_id (written when that chip landed, and by "write about this
+  // part"). Reading both means a block still lights up when a chip is deleted but the
+  // block_id survives, and vice versa — the link degrades instead of vanishing.
+  // `post` is still null while loading — these hooks run before the early return.
+  const liveBlocks = useMemo(
+    () => (isEditing ? editedBlocks : (post?.text_blocks || [])),
+    [isEditing, editedBlocks, post],
+  );
+
+  const blockRegionIds = useMemo(() => {
+    const map = new Map();
+    for (const b of liveBlocks) {
+      const ids = new Set();
+      const re = /data-region-ids="([^"]*)"/g;
+      let m;
+      while ((m = re.exec(b.content || '')) !== null) {
+        m[1].split(',').forEach((id) => id && ids.add(id));
+      }
+      map.set(b.id, ids);
+    }
+    return map;
+  }, [liveBlocks]);
+
+  const linkedBlockIds = useMemo(() => {
+    const focus = regionStore.hoveredId;
+    if (!focus) return new Set();
+    const linked = new Set();
+    for (const [blockId, ids] of blockRegionIds) if (ids.has(focus)) linked.add(blockId);
+    const region = regionStore.regions.find((r) => r.id === focus);
+    if (region?.block_id) linked.add(region.block_id);
+    return linked;
+  }, [regionStore.hoveredId, regionStore.regions, blockRegionIds]);
+
+  // block → region. Delegated, so it catches chips in the TipTap editor and chips in the
+  // read view's dangerouslySetInnerHTML alike — the read view has no React to bind to.
+  const chipClickRef = useRef(null);
+  chipClickRef.current = (e) => {
+    const chip = e.target.closest?.('[data-region-ref]');
+    if (!chip) return;
+    const ids = (chip.getAttribute('data-region-ids') || '').split(',').filter(Boolean);
+    if (!ids.length) return;
+
+    // The overlay is what does the highlighting, so a chip clicked while the pane is
+    // showing the bare photograph must bring the regions back first.
+    setActiveLeftTab('regions');
+    if (leftPanelWidth <= SPLIT_RAIL + 1) {
+      setLeftPanelWidth(preCollapseWidthRef.current ?? SPLIT_DEFAULT);
+      preCollapseWidthRef.current = null;
+    }
+    regionStore.focusRegions(ids);
+
+    // Let the pane re-render (and un-collapse) before we scroll to it.
+    setTimeout(() => {
+      document.querySelector('.post-detail-left .vp-stage')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }, 60);
+  };
+
+  useEffect(() => {
+    const area = contentAreaRef.current;
+    if (!area) return undefined;
+    const onClick = (e) => chipClickRef.current?.(e);
+    area.addEventListener('click', onClick);
+    return () => area.removeEventListener('click', onClick);
+  }, [post]);
+
+  // A chip is lit when the image is looking at exactly what it points at. Painted after
+  // every commit rather than toggled on click, because the read view's blocks are
+  // `dangerouslySetInnerHTML` — React rewrites those children on re-render and would
+  // silently wipe any class we set by hand. This makes the class a projection of the
+  // store rather than a fact we have to keep true.
+  useEffect(() => {
+    const area = contentAreaRef.current;
+    if (!area) return;
+    const focus = regionStore.focusIds;
+    area.querySelectorAll('[data-region-ref]').forEach((chip) => {
+      const ids = (chip.getAttribute('data-region-ids') || '').split(',').filter(Boolean);
+      // Set equality, not overlap: selecting one part must not light a lens chip that
+      // merely happens to cite it among others.
+      const lit = !!focus && ids.length === focus.size && ids.every((id) => focus.has(id));
+      chip.classList.toggle('is-active', lit);
+    });
+  });
 
   const submitSlashWrite = () => {
     const instruction = aiPrompt.trim();
@@ -620,6 +836,7 @@ function PostDetailPage() {
   }
 
   return (
+    <RegionStoreContext.Provider value={regionStore}>
     <div className={`post-detail-page${isEditing ? ' editing-mode' : ''}`}>
       {/* Underline Tooltip */}
       {showUnderlineTooltip && (
@@ -660,6 +877,19 @@ function PostDetailPage() {
             onBlur={() => setSlashPrompt({ open: false, x: 0, y: 0 })}
           />
         </div>
+      )}
+
+      {/* "/part" and "/lens" — a picker of what the image already holds. */}
+      {refPicker.open && (
+        <RefPicker
+          kind={refPicker.kind}
+          x={refPicker.x}
+          y={refPicker.y}
+          regions={regionStore.regions}
+          lenses={regionStore.aletheia?.lenses || []}
+          onPick={insertRef}
+          onClose={closeRefPicker}
+        />
       )}
 
       {/* Top Bar */}
@@ -749,6 +979,8 @@ function PostDetailPage() {
               post={post}
               showRegions={activeLeftTab === 'regions'}
               onPostChange={setPost}
+              onWriteAboutRegion={writeAboutRegion}
+              writingRegionId={writingRegionId}
             />
           </div>
         </div>
@@ -868,7 +1100,10 @@ function PostDetailPage() {
                                 onMoveDown={(id) => moveBlock(id, 1)}
                                 onFocusBlock={setActiveBlockId}
                                 onAiCommand={onAiCommand}
+                                onRefCommand={onRefCommand}
+                                refCounts={refCounts}
                                 isActive={block.id === activeBlockId}
+                                isLinked={linkedBlockIds.has(block.id)}
                                 isFirst={index === 0}
                                 isLast={index === editedBlocks.length - 1}
                                 onDragStartBlock={setDraggingId}
@@ -923,7 +1158,7 @@ function PostDetailPage() {
                         key={block.id}
                         data-block-id={block.id}
                         data-origin={block.origin || 'human'}
-                        className="text-block-item"
+                        className={`text-block-item${linkedBlockIds.has(block.id) ? ' is-linked' : ''}`}
                         dangerouslySetInnerHTML={{ __html: block.content }}
                         style={{
                           backgroundColor: block.color && block.color !== 'inherit' && block.color !== '#2a2a2a' ? block.color : 'transparent',
@@ -1069,6 +1304,7 @@ function PostDetailPage() {
 
       {/* Region detection is no longer a modal — it happens in the Visual pane itself. */}
     </div>
+    </RegionStoreContext.Provider>
   );
 }
 

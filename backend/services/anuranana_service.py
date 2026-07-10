@@ -287,3 +287,21 @@ async def build_context_pack_for_image(image_url: str, ask: str = "") -> dict:
     if not post:
         return {"text": "", "sections": {}, "retrieved": [], "stats": {"post_id": None}}
     return await build_context_pack(post, ask=ask)
+
+
+async def grounding_for_image(image_url: str, ask: str = "") -> str:
+    """The pack's prompt text for an image, or "" — the one entry point every writing
+    endpoint should use.
+
+    Grounding used to be wired per-router, which is why `/vision/auto-recommend` and
+    `/vision/prompt-enhance` — the endpoints the editor's `/draft` and `/write` actually
+    call — stayed ungrounded long after Track C shipped. Never fatal: an image we don't
+    own, a missing reading, or a retrieval error all yield "", and an empty pack makes
+    the writer behave exactly as it did before Track C.
+    """
+    try:
+        pack = await build_context_pack_for_image(image_url, ask=ask)
+        return pack.get("text", "")
+    except Exception as e:
+        print(f"Anuraṇana context pack unavailable (non-fatal, writing ungrounded): {e}")
+        return ""

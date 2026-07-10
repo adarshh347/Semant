@@ -1280,18 +1280,11 @@ async def generate_post_suggestion(request: PostSuggestionRequest):
 async def _grounding_for(image_url: str) -> str:
     """The Anuraṇana context pack for whatever post this image belongs to (Track C §4).
 
-    The writing endpoints are handed an `image_url`, not a post id, so we resolve the
-    post from the URL — which means grounding switches on with no frontend change
-    (the Visual pane is Track D's to touch). Never fatal: an image we don't own, a
-    missing reading, or a retrieval error all yield an empty pack, and an empty pack
-    makes the writer behave exactly as it did before Track C.
+    Thin alias now that the helper lives beside the pack it builds — `epics.py` needs
+    the same grounding for the editor's `/draft` and `/write`, and two copies of this
+    is how one of them ends up forgotten.
     """
-    try:
-        pack = await anuranana_service.build_context_pack_for_image(image_url)
-        return pack.get("text", "")
-    except Exception as e:
-        print(f"Anuraṇana context pack unavailable (non-fatal, writing ungrounded): {e}")
-        return ""
+    return await anuranana_service.grounding_for_image(image_url)
 
 
 @router.post("/chat/vision")
