@@ -5,6 +5,7 @@ import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
 import React, { useEffect, useRef, useState } from 'react';
 import SlashCommand from './slashCommand';
+import RegionRef from './regionRef';
 import {
   Bold, Italic, Underline as UnderlineIcon, Quote, Heading1, Pilcrow,
   Trash2, ChevronUp, ChevronDown, GripVertical, MoreHorizontal, Check,
@@ -23,9 +24,12 @@ function RichTextBlock({
   onMoveDown,
   onFocusBlock,
   onAiCommand,
+  onRefCommand,
+  refCounts,
   isFirst,
   isLast,
   isActive,
+  isLinked,
   // drag-to-reorder
   onDragStartBlock,
   onDragEnterBlock,
@@ -40,13 +44,14 @@ function RichTextBlock({
     extensions: [
       StarterKit,
       Underline,
+      RegionRef,
       Placeholder.configure({
         placeholder: ({ node }) =>
           node.type.name === 'heading'
             ? 'Heading'
             : "Write, or press '/' for commands",
       }),
-      SlashCommand.configure({ onAiCommand }),
+      SlashCommand.configure({ onAiCommand, onRefCommand, refCounts }),
     ],
     content: block.content,
     onUpdate: ({ editor }) => onContentChange(block.id, editor.getHTML()),
@@ -88,7 +93,8 @@ function RichTextBlock({
 
   return (
     <div
-      className={`rich-text-block${isActive ? ' is-active' : ''}${isDropTarget ? ' is-drop-target' : ''}`}
+      className={`rich-text-block${isActive ? ' is-active' : ''}${isDropTarget ? ' is-drop-target' : ''}${isLinked ? ' is-linked' : ''}`}
+      data-block-id={block.id}
       data-origin={block.origin || 'human'}
       style={{ backgroundColor: wash }}
       onDragEnter={() => onDragEnterBlock?.(block.id)}

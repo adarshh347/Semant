@@ -10,6 +10,7 @@ import RichTextBlock from './RichTextBlock';
 import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
 import TagStrip from './TagStrip';
+import RefPicker from './RefPicker';
 import { API_URL } from '../config/api';
 import { epicService } from '../services/epicService';
 import { RegionStoreContext, useRegionState } from '../state/regionStore';
@@ -68,6 +69,8 @@ function PostDetailPage() {
   const [aiError, setAiError] = useState('');
   // Minimal inline prompt for /write, positioned at the caret (viewport coords).
   const [slashPrompt, setSlashPrompt] = useState({ open: false, x: 0, y: 0 });
+  // The /part · /lens picker, positioned at the caret the same way.
+  const [refPicker, setRefPicker] = useState({ open: false, x: 0, y: 0, kind: 'part' });
   // Unconceal (per-image microscopic context)
   // Aletheia reading, curator commentary and region detection all moved into
   // VisualPane (Track D) — they belong beside the image, not in a tab across the split.
@@ -575,10 +578,62 @@ function PostDetailPage() {
     runAiGenerate(key, currentNodeText(editor));
   };
 
-  // Stable handle passed into each block editor; always calls the latest closure.
+  // --- Inline references into the image (/part, /lens) -------------------------------
+  // The editor whose caret the picker opened at. Held in a ref, not state: the picker's
+  // own input takes focus, and by the time a row is clicked React's selection state
+  // would be a render behind.
+  const refEditorRef = useRef(null);
+
+  const caretAt = (editor) => {
+    try {
+      const c = editor.view.coordsAtPos(editor.state.selection.from);
+      return { x: c.left, y: c.bottom };
+    } catch { return { x: 0, y: 0 }; }
+  };
+
+  const runRefSlashCommand = ({ key, editor, range }) => {
+    if (editor && range) editor.chain().focus().deleteRange(range).run();
+    refEditorRef.current = editor;
+    const { x, y } = caretAt(editor);
+    setRefPicker({ open: true, x, y, kind: key });
+  };
+
+  const closeRefPicker = () => setRefPicker({ open: false, x: 0, y: 0, kind: 'part' });
+
+  /** Drop the chip, and record the region→story edge from the other side. */
+  const insertRef = (raw) => {
+    const { kind } = refPicker;
+    const editor = refEditorRef.current;
+    closeRefPicker();
+    if (!editor) return;
+
+    const attrs = kind === 'lens'
+      ? { refKind: 'lens', regionIds: (raw.region_ids || []).join(','), label: raw.name }
+      : { refKind: 'part', regionIds: raw.id, label: raw.label || 'part' };
+    editor.chain().focus().insertRegionRef(attrs).run();
+
+    // Region.block_id — so the pane can ask "which block talks about me?" without
+    // parsing every block's HTML. Only a part owns a single block; a lens spans many.
+    if (kind === 'part' && activeBlockId) regionStore.linkRegionToBlock(raw.id, activeBlockId);
+  };
+
+  // Stable handles passed into each block editor; always call the latest closure.
   const aiCommandRef = useRef(null);
   aiCommandRef.current = runAiSlashCommand;
   const onAiCommand = useCallback((args) => aiCommandRef.current?.(args), []);
+
+  const refCommandRef = useRef(null);
+  refCommandRef.current = runRefSlashCommand;
+  const onRefCommand = useCallback((args) => refCommandRef.current?.(args), []);
+
+  // Read when the menu opens, so a part marked (or a reading run) after this editor
+  // was created still offers its command.
+  const refCountsRef = useRef(null);
+  refCountsRef.current = () => ({
+    parts: regionStore.regions.length,
+    lenses: (regionStore.aletheia?.lenses || []).length,
+  });
+  const refCounts = useCallback(() => refCountsRef.current(), []);
 
   const submitSlashWrite = () => {
     const instruction = aiPrompt.trim();
@@ -667,6 +722,19 @@ function PostDetailPage() {
             onBlur={() => setSlashPrompt({ open: false, x: 0, y: 0 })}
           />
         </div>
+      )}
+
+      {/* "/part" and "/lens" — a picker of what the image already holds. */}
+      {refPicker.open && (
+        <RefPicker
+          kind={refPicker.kind}
+          x={refPicker.x}
+          y={refPicker.y}
+          regions={regionStore.regions}
+          lenses={regionStore.aletheia?.lenses || []}
+          onPick={insertRef}
+          onClose={closeRefPicker}
+        />
       )}
 
       {/* Top Bar */}
@@ -875,6 +943,8 @@ function PostDetailPage() {
                                 onMoveDown={(id) => moveBlock(id, 1)}
                                 onFocusBlock={setActiveBlockId}
                                 onAiCommand={onAiCommand}
+                                onRefCommand={onRefCommand}
+                                refCounts={refCounts}
                                 isActive={block.id === activeBlockId}
                                 isFirst={index === 0}
                                 isLast={index === editedBlocks.length - 1}

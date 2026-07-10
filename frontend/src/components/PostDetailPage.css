@@ -1996,3 +1996,54 @@
         padding: var(--space-6) var(--space-4) var(--space-8);
     }
 }
+
+/* ── Inline references into the image (/part · /lens) ───────────────────────────────
+ *
+ * A chip is a piece of the sentence, not a widget dropped into it: it sits on the text
+ * baseline, borrows the text's size, and carries a single hairline. The only thing that
+ * marks it as live is that it responds — hover lifts it, and clicking it moves the
+ * image. `part` and `lens` differ by weight, not by hue, because two saturated colours
+ * in a paragraph would fight the prose they are supposed to serve.
+ */
+.ref-chip {
+    display: inline;
+    padding: 0.05em 0.35em;
+    margin: 0 0.06em;
+    font-size: 0.94em;
+    line-height: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+    background: color-mix(in srgb, var(--accent-soft) 45%, transparent);
+    color: var(--ink);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.14s var(--ease), border-color 0.14s var(--ease);
+}
+.ref-chip:hover {
+    background: color-mix(in srgb, var(--accent-soft) 85%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.ref-chip--lens {
+    font-style: italic;
+    border-style: dashed;
+    background: transparent;
+}
+.ref-chip--lens:hover { background: color-mix(in srgb, var(--accent-soft) 50%, transparent); }
+
+/* The region→block direction: hovering a part in the Visual pane lights the blocks
+   that point at it. A left rule, not a wash — a wash would fight the block colours the
+   curator already chose. */
+.rich-text-block.is-linked,
+.text-block-item.is-linked {
+    box-shadow: inset 2px 0 0 var(--accent);
+    border-radius: var(--radius-md);
+}
+.text-block-item.is-linked { transition: box-shadow 0.16s var(--ease); }
+
+/* The block→region direction lands here: the chip the curator clicked stays marked
+   while the image moves, so the sentence and the polygon are visibly one act. */
+.ref-chip.is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
