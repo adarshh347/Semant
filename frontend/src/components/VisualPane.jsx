@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Scan, Star, Sparkles, Plus, Eye, Check } from 'lucide-react';
+import { Scan, Star, Sparkles, Plus, Eye, Check, PenLine } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { useRegionStore } from '../state/regionStore';
 import './VisualPane.css';
@@ -41,7 +41,8 @@ const hasNote = (r) => !!(r.user_note || '').trim();
  * the shared store, because the story on the other side of the split now points at
  * them. See `state/regionStore.js`.
  */
-export default function VisualPane({ post, showRegions = true, onPostChange }) {
+export default function VisualPane({ post, showRegions = true, onPostChange,
+                                     onWriteAboutRegion, writingRegionId = null }) {
     const {
         regions, setRegions, updateRegion, addRegion,
         selectedId, selectRegion, setSelectedId,
@@ -483,6 +484,20 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
                             value={selected.user_note || ''}
                             onChange={e => updateRegion(selected.id, { user_note: e.target.value })}
                             onBlur={scheduleSave} />
+
+                        {/* The shortest path from noticing a part to writing about it.
+                            Sutradhar already has the reading and the note as context —
+                            this just points it at one part and drops the passage into
+                            the story, linked back to the polygon it came from. */}
+                        {onWriteAboutRegion && (
+                            <button className="vp-write" disabled={!!writingRegionId}
+                                onClick={() => onWriteAboutRegion(selected)}>
+                                {writingRegionId === selected.id
+                                    ? <span className="vp-spin" /> : <PenLine size={13} />}
+                                {writingRegionId === selected.id
+                                    ? 'Writing…' : 'Write about this part'}
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <p className="vp-muted vp-pick">Select a part to say how it affects you.</p>

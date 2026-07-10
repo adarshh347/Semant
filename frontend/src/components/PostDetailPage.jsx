@@ -67,6 +67,7 @@ function PostDetailPage() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBusy, setAiBusy] = useState(null); // slash command key while running | null
   const [aiError, setAiError] = useState('');
+  const [writingRegionId, setWritingRegionId] = useState(null); // "write about this part"
   // Minimal inline prompt for /write, positioned at the caret (viewport coords).
   const [slashPrompt, setSlashPrompt] = useState({ open: false, x: 0, y: 0 });
   // The /part · /lens picker, positioned at the caret the same way.
@@ -561,6 +562,72 @@ function PostDetailPage() {
     }
   };
 
+  // --- "Write about this part" ---------------------------------------------------
+  // The Visual pane's answer to the blank page: pick a part, and Sutradhar writes from
+  // what you noticed about it. The server grounds the call in this image's reading and
+  // the curator's taste (Anuraṇana); the ask below only has to point at ONE part, and
+  // to carry that part's own note — the context pack caps its note list, so a region
+  // the curator hasn't prioritised could otherwise be missing from its own briefing.
+  const buildRegionPrompt = (region, lens) => {
+    const what = [region.category, region.material].filter(Boolean).join(' · ');
+    const lines = [
+      `Write about a single part of this image: "${region.label || 'this part'}"${what ? ` (${what})` : ''}.`,
+    ];
+    const note = (region.user_note || '').trim();
+    if (note) lines.push(`What this person said about it, in their own words: "${note}"`);
+    if (lens?.reading) lines.push(`The ${lens.name} lens reads it as: "${lens.reading}"`);
+    lines.push(
+      'Stay with this one part — do not describe the whole image.',
+      // Handing the note over invites the model to hand it straight back. It did: the
+      // first draft opened by repeating the curator's own sentence at them. The note is
+      // evidence of what they noticed, not a line to be quoted.
+      'Never repeat their words back to them. Write from what they noticed, in their voice.',
+      'Two short paragraphs. No preamble, no heading. Return only the passage.',
+    );
+    return lines.join('\n');
+  };
+
+  const escHtml = (s) => String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  // The seeded block opens with a chip, so the passage is visibly *about* that part and
+  // clicking it walks straight back to the polygon it came from.
+  const withChip = (region, html) => {
+    const label = escHtml(region.label || 'part');
+    const chip = `<span data-region-ref data-ref-kind="part" data-region-ids="${escHtml(region.id)}"`
+      + ` data-label="${label}" class="ref-chip ref-chip--part">${label}</span>`;
+    return html.replace('<p>', `<p>${chip} `);
+  };
+
+  const writeAboutRegion = async (region) => {
+    if (!region || writingRegionId) return;
+    // `seed: false` — on an empty story the generated block IS the first block; seeding
+    // an empty paragraph would leave a blank line above every passage written this way.
+    if (!isEditing) startEditing({ seed: false });
+    setActiveRightTab('content');
+    setAiError('');
+    setWritingRegionId(region.id);
+    setAiBusy('part');
+    try {
+      const prompt = buildRegionPrompt(region, regionStore.lensFor(region.id));
+      const res = await epicService.promptEnhancedText(post.photo_url, prompt);
+      const text = res?.suggestion;
+      if (!text) throw new Error('No suggestion returned');
+      const block = makeBlock({
+        type: 'paragraph',
+        content: withChip(region, htmlFromText(text)),
+        origin: 'sutradhar',
+      });
+      insertBlock(block);
+      regionStore.linkRegionToBlock(region.id, block.id);
+    } catch {
+      setAiError('Sutradhar could not write about that part. Is the vision service running?');
+    } finally {
+      setWritingRegionId(null);
+      setAiBusy(null);
+    }
+  };
+
   // Dispatched from the "/" menu (AI verbs). '/write' opens a minimal caret
   // prompt; everything else runs immediately over the current block's text.
   const runAiSlashCommand = ({ key, editor, range }) => {
@@ -912,6 +979,8 @@ function PostDetailPage() {
               post={post}
               showRegions={activeLeftTab === 'regions'}
               onPostChange={setPost}
+              onWriteAboutRegion={writeAboutRegion}
+              writingRegionId={writingRegionId}
             />
           </div>
         </div>
