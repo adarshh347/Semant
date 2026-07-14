@@ -131,3 +131,53 @@ Rules: **one illustration per view**, single line weight, `--ink` stroke + one `
 ## Changelog (keep this living)
 - **v1 · 2026-07-14** — created from the *Claude for teachers* reference + our token audit. Applies to landing Pass 2; extend to Atelier/Loom/feed as they're built.
 - _next_ — add per-surface notes (Atelier pane, Loom, feed cards) once designed; capture any token changes here.
+
+---
+
+## 7. Anthropic-site study (d.1) — the next level of minimalism
+Decoded from the Anthropic **announcement** pages. This is a *quieter, more confident* register than the teachers page — worth stealing wholesale for our explanatory + editorial surfaces.
+
+| What the eye sees | Architectural cause | Our move |
+|---|---|---|
+| Serene, almost empty | **centered, single-column announcement**; enormous top whitespace; one headline, one date, one image | use for Read articles, About, changelog, any "statement" page |
+| Confident headline | **big bold serif**, near-black, tight leading, centered, 2 lines max | our `--font-display` at `--fs-display`, weight 600, centered variant |
+| Tiny loud label | **bold UPPERCASE eyebrow** ("Announcements"), small, ink (not muted) | eyebrow variant: `--fs-caption`, 700, `--tracking-wide`, `--ink` |
+| Signature illustration | **a muted-pastel rounded card holding a hand-drawn thick-black-line motif** (globe/objects) — flat, naive, warm | **new illustration register** — see §4 update below |
+| Unique "brand" feel in a tiny detail | **a custom peach text-selection highlight** | add a `::selection` token — see §1 update |
+| Restraint everywhere | **no shadows, no gradients, flat pastel panels, one line weight** | matches our kill-list; go flatter still |
+
+**The big lesson:** their personality lives in **two cheap, high-signal details** — the *hand-drawn diagram on a pastel card*, and the *peach selection colour*. Neither costs performance; both read as taste. We adopt both.
+
+### 1-update · Colour — add the muted-pastel set + the selection highlight
+Anthropic pairs the warm-paper base with a small family of **muted, chalky pastels** used *only as illustration-card backgrounds* (never as text/UI colour):
+| Pastel (card bg only) | ~hex | Use |
+|---|---|---|
+| Sage | `#C6D4C6` | diagram card background |
+| Clay/peach | `#EAC7B4` | diagram card background |
+| Sky | `#C4D2DD` | diagram card background |
+| Wheat | `#E7D9B8` | diagram card background |
+- **Rule:** pastels are **backgrounds for hand-drawn diagrams only** — one per card, never on text, buttons, or more than one card in view at once. They're the "warm" without breaking the one-accent rule (terracotta stays the single *interactive* accent).
+- **Selection highlight (adopt):** add `--highlight: #F2C9B6;` (soft terracotta-peach) and set `::selection { background: var(--highlight); color: var(--ink); }` site-wide. A unique selection colour is a free, high-taste signal.
+
+### 4-update · Illustration — the pastel-card + hand-drawn-line register (preferred over doodles)
+Replace the "generic Open-Doodles" idea for *concept/diagram* spots with Anthropic's register:
+- a **flat rounded pastel card** (`--radius-lg`, one pastel bg, no shadow) containing **one hand-drawn, thick single-weight black line motif**.
+- For Semant this is perfect for **"dissect an image into parts"** diagrams: a naive line drawing of a garment/figure with a few parts circled + a label line — literally the product's idea, in their style.
+- Keep Open Doodles / unDraw (CC0) only for people/empty-state warmth; the **pastel-card hand-drawn diagram is the house diagram style** for See·Read·Write and explainer sections.
+- Diagrams should **dissect into short analysis** (their pattern): the drawing + a 1-line reading beside it, not a decorative blob.
+
+---
+
+## 8. Immediate site fixes (d.1) — nav mark, hero image, colour
+Concrete corrections to the current build (from the d.1 screenshots of our own landing):
+
+1. **Nav logo mark** — the little dot/symbol beside "Semant" (`.nav-logo-mark`) doesn't fit. Anthropic just sets the **wordmark itself** as the logo (`ANTHROP\C`, no separate icon). **Do the same: drop the dot; set "Semant" in `--font-display`** as the wordmark, one weight, tight tracking. If a mark is ever wanted, it must be a **bespoke on-concept glyph** (a reading/seeing/framed-part mark), never a generic dot/asterisk.
+2. **Hero image** — retire `leg-palm.jpg` **and** strip the leftover neon toolbar buttons (Brainstorm/Save/Split→Save/Save-all — the killed BoundingBoxEditor pills) that are pasted over it. Replace with **register-1**: a real editorial image (fashion/art) carrying **only our thin terracotta region overlay** on 2–3 parts — the product's own truth as the hero visual. (Concept diagrams elsewhere use the §4 pastel-card style.)
+3. **Colour — be creative but elegant:** base stays warm paper + one terracotta interactive accent; add the muted-pastel cards (§1-update) for diagrams and the peach `::selection`. That's the whole "creative" surface — restraint is the elegance.
+
+---
+
+## Changelog (keep this living)
+- **v1 · 2026-07-14** — created from the *Claude for teachers* reference + token audit.
+- **v1.1 · 2026-07-14 (d.1)** — added the Anthropic-site study: muted-pastel illustration cards, hand-drawn black-line diagram register, the peach `::selection` highlight, centered-announcement layout, and the immediate nav-mark / hero-image / colour fixes.
+- _next_ — per-surface notes (Atelier pane, Loom, feed cards) as they're built.
