@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import {
   BlockNoteSchema,
   defaultBlockSpecs,
@@ -21,38 +21,32 @@ import { regionRefInline } from './regionRefInline';
 import './Manuscript.css';
 
 /**
- * Manuscript — the writer pane of the Chiasm workspace (Editor Path B, Phase 2).
+ * Manuscript — the writer pane of the Chiasm workspace (Editor Path B).
  *
- * One BlockNote document replaces Path A's N-editors-per-block. Storage stays as
- * `text_blocks` (HTML) — we seed from and serialise to it through the Phase-1
- * converter (`blockConvert`), so every block id (and thus every Highlight/Region
- * `block_id` cross-link) survives. Themed to the plum v1.3 tokens via BlockNote's
- * CSS variables (see Manuscript.css).
+ * One BlockNote document replaces Path A's N-editors-per-block; storage stays as
+ * `text_blocks` (HTML) round-tripped through the converter, so block ids and every
+ * reference attr survive. Themed to the plum v1.3 tokens.
  *
  * Props:
- *   - initialBlocks: text_blocks to seed the document with (seeded once per key).
- *   - onChange(textBlocks): debounced; hands serialised text_blocks back to the
- *     parent so the existing save/dirty flow keeps working unchanged.
- *   - editable: false renders a read-only document.
- *
- * Custom /part and /lens blocks + inline AI are Phases 3–4; this phase stands the
- * single editor up, ports the context-aware slash menu, and adopts BlockNote's own
- * side-menu / drag / formatting toolbar.
+ *   - initialBlocks / onChange / editable — seed + serialise (Phase 2).
+ *   - store — the shared Chiasm store, read for context (Phase 3+).
+ *   - onRefTrigger(kind) — the `/part` · `/lens` slash items call this so the parent
+ *     (which owns the RefPicker + regions) can open the picker at the caret; the
+ *     parent then calls the imperative `insertRegionChip` (Phase 4).
+ * Ref handle: { insertRegionChip(attrs), currentBlockId() }.
  */
 
 const schema = BlockNoteSchema.create({
   blockSpecs: { ...defaultBlockSpecs },
-  // The /part · /lens chip — a custom inline content that preserves main's
-  // <span data-region-ref …> markup through the round-trip (Phase 3).
+  // The /part · /lens chip — a custom inline content preserving main's
+  // <span data-region-ref …> markup (with the Mention identity) through the round-trip.
   inlineContentSpecs: { ...defaultInlineContentSpecs, regionRef: regionRefInline },
 });
 
-// Context-aware slash menu: STRUCTURE first when the block is empty / at its start
-// (you're choosing a block type), Sutradhar AI first mid-text (you're transforming
-// what you've written). AI items are stubs here — Phase 4 wires them to our
-// endpoints (/chat/vision, /rewrite/vision, /flow/expand-node).
+// Sutradhar (the AI name) is retired per the Chiasm lexicon — provenance lives in
+// block `origin`. These seed a sutradhar-origin block; the endpoints wire in Phase 4b.
 const AI_STUB = [
-  { key: 'draft', title: 'Draft with Sutradhar', subtext: 'Write from what the image shows (wires in Phase 4)' },
+  { key: 'draft', title: 'Draft from the image', subtext: 'Write from what the image shows (wires in Phase 4)' },
   { key: 'continue', title: 'Continue writing', subtext: 'Extend this passage (Phase 4)' },
   { key: 'rewrite', title: 'Rewrite', subtext: 'Rephrase the selection (Phase 4)' },
 ];
@@ -61,11 +55,10 @@ function aiSlashItems(editor) {
   return AI_STUB.map((a) => ({
     title: a.title,
     subtext: a.subtext,
-    aliases: [a.key, 'ai', 'sutradhar'],
-    group: 'Sutradhar',
+    aliases: [a.key, 'ai'],
+    group: 'AI',
     icon: <span aria-hidden>✶</span>,
     onItemClick: () => {
-      // Phase-4 seam: insert a placeholder paragraph marked as sutradhar-authored.
       insertOrUpdateBlockForSlashMenu(editor, {
         type: 'paragraph',
         props: { origin: 'sutradhar', color: null },
@@ -74,8 +67,27 @@ function aiSlashItems(editor) {
   }));
 }
 
-// True when the caret sits in an empty block (or at its very start) — the moment
-// you're picking a block type rather than transforming prose.
+// /part · /lens — reference the image. They defer to the parent's RefPicker (which
+// holds the regions + the store); the pick comes back through insertRegionChip.
+function refSlashItems(onRefTrigger) {
+  return [
+    {
+      title: 'Part', subtext: 'Reference a region of the image',
+      aliases: ['part', 'region', 'ref', 'chip'], group: 'Chiasm',
+      icon: <span aria-hidden>◈</span>,
+      onItemClick: () => onRefTrigger?.('part'),
+    },
+    {
+      title: 'Lens', subtext: 'Cite an Aletheia reading',
+      aliases: ['lens', 'reading', 'aletheia'], group: 'Chiasm',
+      icon: <span aria-hidden>◎</span>,
+      onItemClick: () => onRefTrigger?.('lens'),
+    },
+  ];
+}
+
+// True when the caret sits in an empty block — you're picking a block type, not
+// transforming prose.
 function atBlockStart(editor) {
   try {
     const block = editor.getTextCursorPosition().block;
@@ -88,10 +100,11 @@ function atBlockStart(editor) {
   }
 }
 
-export default function Manuscript({ initialBlocks = [], onChange, editable = true, store = null }) {
-  // The shared Chiasm store (regions/percepts/mentions) — read for context; the
-  // Mention-backed /part, inline mentions and bidirectional highlight wire in Phase 4.
-  void store;
+const Manuscript = forwardRef(function Manuscript(
+  { initialBlocks = [], onChange, editable = true, store = null, onRefTrigger = null },
+  ref,
+) {
+  void store; // read for context by the parent; deep use (highlight) is Phase 4b
   const { theme } = useTheme();
   const editor = useCreateBlockNote({ schema });
 
@@ -99,11 +112,27 @@ export default function Manuscript({ initialBlocks = [], onChange, editable = tr
   const debounceRef = useRef(null);
   // The live editor's default schema strips unknown props (origin/color), so we
   // carry provenance + colour in a side-channel keyed by block id and restore it
-  // on serialise. Phase 3 promotes origin/actor to real custom-block props.
+  // on serialise. (Custom-block origin props are a later refinement.)
   const metaRef = useRef(new Map());
 
-  // Seed once from text_blocks (via the converter). Guarded so re-renders don't
-  // clobber in-progress edits.
+  // Imperative handle — the parent inserts a region chip after the RefPicker resolves.
+  useImperativeHandle(ref, () => ({
+    currentBlockId: () => {
+      try { return editor.getTextCursorPosition()?.block?.id ?? null; } catch { return null; }
+    },
+    insertRegionChip: ({ refKind = 'part', regionIds = '', label = 'part', perceptId = '', mentionId = '', blockId = null }) => {
+      try {
+        if (blockId) editor.setTextCursorPosition(blockId, 'end');
+        editor.insertInlineContent([
+          { type: 'regionRef', props: { refKind, regionIds, perceptId, mentionId, label } },
+          ' ', // a trailing space so the caret doesn't stick to the atom
+        ]);
+        editor.focus();
+      } catch { /* editor not ready */ }
+    },
+  }), [editor]);
+
+  // Seed once from text_blocks (via the converter).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -119,9 +148,7 @@ export default function Manuscript({ initialBlocks = [], onChange, editable = tr
     return () => { cancelled = true; };
   }, [editor, initialBlocks]);
 
-  // Serialise back to text_blocks on change (debounced) so the parent's save/dirty
-  // flow sees ordinary text_blocks. Whole-doc conversion is cheap at this cadence.
-  // Restore origin/colour by id (a newly-typed block defaults to human/no-wash).
+  // Serialise back to text_blocks (debounced); restore origin/colour by id.
   const handleChange = () => {
     if (!onChange) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -148,12 +175,19 @@ export default function Manuscript({ initialBlocks = [], onChange, editable = tr
           triggerCharacter="/"
           getItems={async (query) => {
             const structure = getDefaultReactSlashMenuItems(editor);
+            const refs = refSlashItems(onRefTrigger);
             const ai = aiSlashItems(editor);
-            const ordered = atBlockStart(editor) ? [...structure, ...ai] : [...ai, ...structure];
+            // At a fresh block you're choosing structure; mid-prose you're
+            // referencing or transforming — so refs + AI lead there.
+            const ordered = atBlockStart(editor)
+              ? [...structure, ...refs, ...ai]
+              : [...refs, ...ai, ...structure];
             return filterSuggestionItems(ordered, query);
           }}
         />
       </BlockNoteView>
     </div>
   );
-}
+});
+
+export default Manuscript;

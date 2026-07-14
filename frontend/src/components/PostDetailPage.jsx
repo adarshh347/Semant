@@ -653,39 +653,61 @@ function PostDetailPage() {
   // The editor whose caret the picker opened at. Held in a ref, not state: the picker's
   // own input takes focus, and by the time a row is clicked React's selection state
   // would be a render behind.
-  const refEditorRef = useRef(null);
+  // The Manuscript editor handle + the block the picker opened at (held in refs:
+  // the picker's own input takes focus, so React state would be a render behind).
+  const manuscriptRef = useRef(null);
+  const refBlockIdRef = useRef(null);
+  const icSeq = useRef(0);
 
-  const caretAt = (editor) => {
+  // /part · /lens in Manuscript → open the RefPicker at the caret, remembering the
+  // block so the chip (and its Mention) land in the right place after the pick.
+  const onRefTrigger = (kind) => {
+    let x = 0; let y = 0;
     try {
-      const c = editor.view.coordsAtPos(editor.state.selection.from);
-      return { x: c.left, y: c.bottom };
-    } catch { return { x: 0, y: 0 }; }
-  };
-
-  const runRefSlashCommand = ({ key, editor, range }) => {
-    if (editor && range) editor.chain().focus().deleteRange(range).run();
-    refEditorRef.current = editor;
-    const { x, y } = caretAt(editor);
-    setRefPicker({ open: true, x, y, kind: key });
+      const rect = window.getSelection()?.getRangeAt(0)?.getBoundingClientRect();
+      if (rect) { x = rect.left; y = rect.bottom; }
+    } catch { /* no selection */ }
+    refBlockIdRef.current = manuscriptRef.current?.currentBlockId?.() || null;
+    setRefPicker({ open: true, x, y, kind });
   };
 
   const closeRefPicker = () => setRefPicker({ open: false, x: 0, y: 0, kind: 'part' });
 
-  /** Drop the chip, and record the region→story edge from the other side. */
+  // Legacy Path-A entry (RichTextBlock is no longer rendered) — kept so refCommandRef
+  // resolves; routes to the same picker.
+  const runRefSlashCommand = ({ key } = {}) => onRefTrigger(key || 'part');
+
+  /** Drop the chip in Manuscript AND record the Mention (Region.block_id kept primary). */
   const insertRef = (raw) => {
     const { kind } = refPicker;
-    const editor = refEditorRef.current;
+    const blockId = refBlockIdRef.current;
     closeRefPicker();
-    if (!editor) return;
+    const handle = manuscriptRef.current;
+    if (!handle) return;
 
-    const attrs = kind === 'lens'
-      ? { refKind: 'lens', regionIds: (raw.region_ids || []).join(','), label: raw.name }
-      : { refKind: 'part', regionIds: raw.id, label: raw.label || 'part' };
-    editor.chain().focus().insertRegionRef(attrs).run();
+    const inlineContentId = `ic_${Date.now().toString(36)}_${icSeq.current++}`;
 
-    // Region.block_id — so the pane can ask "which block talks about me?" without
-    // parsing every block's HTML. Only a part owns a single block; a lens spans many.
-    if (kind === 'part' && activeBlockId) regionStore.linkRegionToBlock(raw.id, activeBlockId);
+    if (kind === 'lens') {
+      const regionIds = raw.region_ids || [];
+      // A lens cites several regions — one Mention per region, all in this block.
+      regionIds.forEach((rid) => regionStore.addMention({
+        regionId: rid, blockId, inlineContentId, form: 'inline', relationType: 'cites', actor: 'human',
+      }));
+      handle.insertRegionChip({ refKind: 'lens', regionIds: regionIds.join(','), label: raw.name, blockId });
+      return;
+    }
+
+    // /part — inserting a reference IS attention: ensure the Percept, write the Mention.
+    const percept = regionStore.ensurePercept(raw);
+    const mention = regionStore.addMention({
+      perceptId: percept?.id || null, regionId: raw.id, blockId, inlineContentId,
+      form: 'inline', relationType: 'cites', actor: 'human',
+    });
+    if (blockId) regionStore.linkRegionToBlock(raw.id, blockId); // Region.block_id — primary edge
+    handle.insertRegionChip({
+      refKind: 'part', regionIds: raw.id, label: raw.label || 'part',
+      perceptId: percept?.id || '', mentionId: mention?.id || '', blockId,
+    });
   };
 
   // Stable handles passed into each block editor; always call the latest closure.
@@ -1103,9 +1125,11 @@ function PostDetailPage() {
                             block/drag/insert handlers are now dead — removed in
                             Phase 5. */}
                         <Manuscript
+                          ref={manuscriptRef}
                           initialBlocks={editedBlocks}
                           onChange={setEditedBlocks}
                           store={regionStore}
+                          onRefTrigger={onRefTrigger}
                         />
                         {aiError && <p className="composer-error">{aiError}</p>}
                       </div>
