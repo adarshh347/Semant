@@ -1,5 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { API_URL } from '../config/api';
+import {
+    makePercept, upsertPercept, perceptForRegion,
+    makeMention, addMention as addMentionPure, removeMentionsForBlock,
+    blockIdsForRegion as blockIdsForRegionPure, mentionsFromBlocks,
+} from './perceptMentions';
 
 const BASE = `${API_URL}/api/v1/posts`;
 const AUTOSAVE_MS = 800;
@@ -40,6 +45,11 @@ export { RegionStoreContext };
 export function useRegionState(post, onPostChange) {
     const [regions, setRegionsState] = useState([]);
     const [aletheia, setAletheia] = useState(null);
+    // Product-layer relationship model (Chiasm assembly · Phase 1). NOT persisted
+    // to a backend table yet: percepts are the attention objects around regions,
+    // mentions the region↔block join. `Region.block_id` stays the primary edge.
+    const [percepts, setPercepts] = useState([]);
+    const [mentions, setMentions] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
     const [hoveredId, setHoveredId] = useState(null);
     const [lensRegionIds, setLensRegionIds] = useState(null); // Set | null
@@ -65,11 +75,22 @@ export function useRegionState(post, onPostChange) {
     useEffect(() => {
         if (!post || loadedFor.current === post.id) return;
         loadedFor.current = post.id;
-        setRegions(post.region_annotations || []);
+        const loadedRegions = post.region_annotations || [];
+        setRegions(loadedRegions);
         setAletheia(post.local_context?.aletheia || null);
         setSelectedId(null);
         setHoveredId(null);
         setLensRegionIds(null);
+        // Reconstruct the relationship model from what's already stored, so existing
+        // links resolve with no backend table and nothing regresses migrating off
+        // Path A: mentions from the chips in the blocks, creator percepts for every
+        // region that already bears an attention signal (a block_id or a note).
+        setMentions(mentionsFromBlocks(post.text_blocks || []));
+        setPercepts(
+            loadedRegions
+                .filter((r) => r.block_id || r.user_note || r.prioritised)
+                .reduce((ps, r) => upsertPercept(ps, makePercept(r, { actor: 'creator' })), []),
+        );
     }, [post, setRegions]);
 
     // A pending edit must not be lost because a pane unmounted.
@@ -151,6 +172,38 @@ export function useRegionState(post, onPostChange) {
         updateRegion(regionId, { block_id: blockId }, { save: true });
     }, [updateRegion]);
 
+    // ── Percepts + Mentions (product-layer; Phase 1) ─────────────────────────
+    // The attention object around a region — idempotent (one creator per region).
+    const ensurePercept = useCallback((region, { actor = 'creator' } = {}) => {
+        if (!region?.id) return null;
+        const p = makePercept(region, { actor });
+        setPercepts((ps) => upsertPercept(ps, p));
+        return p;
+    }, []);
+
+    const perceptForRegionId = useCallback(
+        (regionId, actor = 'creator') => perceptForRegion(percepts, regionId, actor),
+        [percepts],
+    );
+
+    // Record a region↔block edge. Idempotent per edge (deterministic id).
+    const addMention = useCallback((input) => {
+        const men = makeMention(input);
+        setMentions((ms) => addMentionPure(ms, men));
+        return men;
+    }, []);
+
+    // When a block is deleted (or its chip removed), drop its edges.
+    const removeBlockMentions = useCallback((blockId) => {
+        setMentions((ms) => removeMentionsForBlock(ms, blockId));
+    }, []);
+
+    // Which blocks talk about this region — Mentions ∪ the primary Region.block_id.
+    const blockIdsForRegion = useCallback(
+        (regionId) => blockIdsForRegionPure(mentions, regions, regionId),
+        [mentions, regions],
+    );
+
     // What the surfaces are looking at. Everything else recedes.
     const focusIds = useMemo(() => {
         if (lensRegionIds?.size) return lensRegionIds;
@@ -169,10 +222,15 @@ export function useRegionState(post, onPostChange) {
         feedPersona, setFeedPersona,
         saveState, error, setError,
         persist, scheduleSave, linkRegionToBlock,
+        // Percepts + Mentions (Phase 1)
+        percepts, ensurePercept, perceptForRegionId,
+        mentions, addMention, removeBlockMentions, blockIdsForRegion,
     }), [
         regions, setRegions, updateRegion, addRegion, regionById,
         selectedId, selectRegion, focusRegions, hoveredId, lensRegionIds, focusIds,
         aletheia, lensFor, feedPersona, saveState, error,
         persist, scheduleSave, linkRegionToBlock,
+        percepts, ensurePercept, perceptForRegionId,
+        mentions, addMention, removeBlockMentions, blockIdsForRegion,
     ]);
 }
