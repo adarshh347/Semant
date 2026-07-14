@@ -88,7 +88,10 @@ function atBlockStart(editor) {
   }
 }
 
-export default function Manuscript({ initialBlocks = [], onChange, editable = true }) {
+export default function Manuscript({ initialBlocks = [], onChange, editable = true, store = null }) {
+  // The shared Chiasm store (regions/percepts/mentions) — read for context; the
+  // Mention-backed /part, inline mentions and bidirectional highlight wire in Phase 4.
+  void store;
   const { theme } = useTheme();
   const editor = useCreateBlockNote({ schema });
 

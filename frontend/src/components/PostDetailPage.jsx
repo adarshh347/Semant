@@ -1105,6 +1105,7 @@ function PostDetailPage() {
                         <Manuscript
                           initialBlocks={editedBlocks}
                           onChange={setEditedBlocks}
+                          store={regionStore}
                         />
                         {aiError && <p className="composer-error">{aiError}</p>}
                       </div>
