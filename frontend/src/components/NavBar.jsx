@@ -4,96 +4,145 @@ import { Menu, ChevronDown, Upload as UploadIcon } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import './Navbar.css';
 
-// One source of truth for the global links — rendered inline everywhere, and
-// again inside the disclosure menu that replaces them on /posts/* (Drishya).
-const NAV_LINKS = [
+// Primary nav — only what a user *does* (the IA declutter). Four destinations.
+const PRIMARY_LINKS = [
   ['/gallery', 'Gallery'],
-  ['/highlights', 'Highlights'],
-  ['/feed', 'Feed'],
-  ['/epics', 'Epics'],
+  ['/feed', 'Read'],
+  ['/atelier', 'Atelier'],
+  ['/you', 'You'],
+];
+
+// Demoted tooling — reachable, not shouting. Behind the "Tools" overflow now;
+// moves under ⌘K in the Foundation pass. (Highlights/Epics fold into "You".)
+const TOOLS_LINKS = [
   ['/research', 'Research'],
-  ['/personas', 'Personas'],
   ['/unconceal', 'Unconceal'],
   ['/anatomy', 'Anatomy'],
   ['/motive', 'Motive'],
 ];
 
 function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const discRef = useRef(null);
+  // One open-menu at a time: 'tools' (normal nav overflow) | 'disclosure'
+  // (the collapsed rail on /posts/*) | null.
+  const [openMenu, setOpenMenu] = useState(null);
+  const navRef = useRef(null);
 
-  // Close the disclosure on outside-click / Escape (same shape as the block menu).
+  // Close any menu on outside-click / Escape (same shape as the block menu).
   useEffect(() => {
-    if (!menuOpen) return undefined;
+    if (!openMenu) return undefined;
     const onDocPointer = (e) => {
-      if (discRef.current && !discRef.current.contains(e.target)) setMenuOpen(false);
+      if (navRef.current && !navRef.current.contains(e.target)) setOpenMenu(null);
     };
-    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpenMenu(null); };
     document.addEventListener('mousedown', onDocPointer);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onDocPointer);
       document.removeEventListener('keydown', onKey);
     };
-  }, [menuOpen]);
+  }, [openMenu]);
+
+  const close = () => setOpenMenu(null);
 
   return (
     <header className="navbar-wrap">
-      <nav className="navbar">
+      <nav className="navbar" ref={navRef}>
         <NavLink to="/" className="nav-logo">
           <span className="nav-logo-mark" aria-hidden="true"></span>
           Semant
         </NavLink>
 
-        {/* Inline links — the everyday nav. CSS hides these on /posts/*. */}
+        {/* Inline primary links — the everyday nav. CSS hides these on /posts/*. */}
         <div className="nav-links">
-          {NAV_LINKS.map(([to, label]) => (
+          {PRIMARY_LINKS.map(([to, label]) => (
             <NavLink key={to} to={to}>{label}</NavLink>
           ))}
         </div>
 
         <div className="nav-actions">
+          {/* Tools overflow — the demoted tooling, one quiet dropdown. CSS hides
+              it on /posts/*, where the full disclosure carries everything. */}
+          <div className="nav-tools">
+            <button
+              type="button"
+              className="nav-tools-btn"
+              aria-haspopup="menu"
+              aria-expanded={openMenu === 'tools'}
+              onClick={() => setOpenMenu((m) => (m === 'tools' ? null : 'tools'))}
+            >
+              Tools <ChevronDown size={14} />
+            </button>
+            {openMenu === 'tools' && (
+              <div className="nav-menu" role="menu">
+                {TOOLS_LINKS.map(([to, label]) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    role="menuitem"
+                    className="nav-menu-item"
+                    onClick={close}
+                  >
+                    {label}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+
           <ThemeToggle />
-          {/* Standing Upload CTA — CSS hides it on /posts/*, where it folds
-              into the disclosure menu instead. */}
+
+          {/* Standing Upload CTA — CSS hides it on /posts/*, where it folds into
+              the disclosure menu instead. */}
           <NavLink to="/gallery" className="btn btn-primary btn-sm nav-cta">
             Upload
           </NavLink>
 
-          {/* Disclosure — CSS reveals it only on /posts/*. Holds all 9 links
-              plus Upload, so nothing is lost when the rail collapses. */}
-          <div className="nav-disclosure" ref={discRef}>
+          {/* Disclosure — CSS reveals it only on /posts/*. Holds primary + tools
+              + Upload, so nothing is lost when the rail collapses. */}
+          <div className="nav-disclosure">
             <button
               type="button"
               className="nav-disclosure-btn"
               aria-haspopup="menu"
-              aria-expanded={menuOpen}
+              aria-expanded={openMenu === 'disclosure'}
               aria-label="Navigation menu"
-              onClick={() => setMenuOpen((o) => !o)}
+              onClick={() => setOpenMenu((m) => (m === 'disclosure' ? null : 'disclosure'))}
             >
               <Menu size={18} />
               <ChevronDown size={14} />
             </button>
 
-            {menuOpen && (
-              <div className="nav-disclosure-menu" role="menu">
-                {NAV_LINKS.map(([to, label]) => (
+            {openMenu === 'disclosure' && (
+              <div className="nav-menu nav-menu--wide" role="menu">
+                {PRIMARY_LINKS.map(([to, label]) => (
                   <NavLink
                     key={to}
                     to={to}
                     role="menuitem"
-                    className="nav-disclosure-item"
-                    onClick={() => setMenuOpen(false)}
+                    className="nav-menu-item"
+                    onClick={close}
                   >
                     {label}
                   </NavLink>
                 ))}
-                <div className="nav-disclosure-sep" />
+                <div className="nav-menu-sep" />
+                {TOOLS_LINKS.map(([to, label]) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    role="menuitem"
+                    className="nav-menu-item"
+                    onClick={close}
+                  >
+                    {label}
+                  </NavLink>
+                ))}
+                <div className="nav-menu-sep" />
                 <NavLink
                   to="/gallery"
                   role="menuitem"
-                  className="nav-disclosure-item nav-disclosure-upload"
-                  onClick={() => setMenuOpen(false)}
+                  className="nav-menu-item nav-menu-upload"
+                  onClick={close}
                 >
                   <UploadIcon size={15} /> Upload
                 </NavLink>
