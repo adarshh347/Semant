@@ -10,7 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@blocknote/core": "^0.51.4",
+    "@blocknote/mantine": "^0.51.4",
+    "@blocknote/react": "^0.51.4",
     "@floating-ui/dom": "^1.7.6",
+    "@mantine/core": "^8.3.18",
+    "@mantine/hooks": "^8.3.18",
     "@tiptap/extension-floating-menu": "^3.8.0",
     "@tiptap/extension-placeholder": "^3.27.2",
     "@tiptap/react": "^3.7.2",

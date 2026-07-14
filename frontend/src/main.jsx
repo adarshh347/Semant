@@ -21,6 +21,7 @@ import ResearchPage from './pages/ResearchPage.jsx';
 import PersonasPage from './pages/PersonasPage.jsx';
 import UnconcealQueuePage from './pages/UnconcealQueuePage.jsx';
 import AnatomyPage from './pages/AnatomyPage.jsx';
+import BlockNoteLab from './pages/BlockNoteLab.jsx';
 
 const router = createBrowserRouter([
   {
@@ -41,6 +42,8 @@ const router = createBrowserRouter([
       { path: "personas", element: <PersonasPage /> },
       { path: "unconceal", element: <UnconcealQueuePage /> },
       { path: "anatomy", element: <AnatomyPage /> },
+      // Editor Path B · Phase 0 — isolated BlockNote spike, before Phase 2 touches PostDetailPage.
+      { path: "lab/blocknote", element: <BlockNoteLab /> },
       { path: "motive", element: <MotivePage /> }
     ],
   },
