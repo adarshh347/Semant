@@ -7,6 +7,7 @@ import axios from 'axios';
 import { ArrowLeft, Sparkles, Plus, X, ChevronRight, ChevronLeft, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, MoreHorizontal } from 'lucide-react';
 import VisualPane from './VisualPane';
 import RichTextBlock from './RichTextBlock';
+import Manuscript from './blocknote/Manuscript';
 import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
 import TagStrip from './TagStrip';
@@ -854,52 +855,20 @@ function PostDetailPage() {
                     <div className="edit-layout">
                       <div className="edit-section">
                         <div className="edit-section-head">
-                          <h4>Story blocks</h4>
+                          <h4>Manuscript</h4>
                         </div>
-                        <div className="advanced-editor">
-                            {editedBlocks.map((block, index) => (
-                              <RichTextBlock
-                                key={block.id}
-                                block={block}
-                                onContentChange={handleBlockContentChange}
-                                onColorChange={handleBlockColorChange}
-                                onDelete={deleteBlock}
-                                onMoveUp={(id) => moveBlock(id, -1)}
-                                onMoveDown={(id) => moveBlock(id, 1)}
-                                onFocusBlock={setActiveBlockId}
-                                onAiCommand={onAiCommand}
-                                isActive={block.id === activeBlockId}
-                                isFirst={index === 0}
-                                isLast={index === editedBlocks.length - 1}
-                                onDragStartBlock={setDraggingId}
-                                onDragEnterBlock={handleBlockDragEnter}
-                                onDropBlock={handleBlockDrop}
-                                onDragEndBlock={handleBlockDragEnd}
-                                isDropTarget={block.id === dropTargetId}
-                              />
-                            ))}
-                          </div>
-
-                          {/* Insert row: a recognisable "+ Add block". Block types
-                              AND AI verbs (/draft /write /continue /rewrite …) now
-                              live on the "/" menu — no Compose button. */}
-                          <div className="block-insert">
-                            <button
-                              type="button"
-                              className="block-insert-trigger"
-                              onClick={() => addBlock('paragraph')}
-                              title="Add an empty block · then type / for block types or Sutradhar"
-                            >
-                              <Plus size={16} /> Add block
-                            </button>
-                            {aiBusy && (
-                              <span className="ai-busy-pill" role="status">
-                                <span className="sd-spin" /> Sutradhar is writing…
-                              </span>
-                            )}
-                          </div>
-                          {aiError && <p className="composer-error">{aiError}</p>}
-                        </div>
+                        {/* Editor Path B — one BlockNote document (Manuscript)
+                            replaces the Path-A per-block editors. Seeded from and
+                            saved to text_blocks via the converter, so every block
+                            id (and Highlight/Region cross-link) survives. The old
+                            block/drag/insert handlers are now dead — removed in
+                            Phase 5. */}
+                        <Manuscript
+                          initialBlocks={editedBlocks}
+                          onChange={setEditedBlocks}
+                        />
+                        {aiError && <p className="composer-error">{aiError}</p>}
+                      </div>
                     </div>
                   </div>
                 ) : (!post.text_blocks || post.text_blocks.length === 0) ? (
