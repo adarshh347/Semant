@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import UploadForm from '../components/UploadForm';
 import TagFilter from '../components/TagFilter';
 import UntaggedImagesSidebar from '../components/UntaggedImagesSidebar';
 import StoryFlow from '../components/StoryFlow';
 import PhraseGenerator from '../components/PhraseGenerator';
+import { useToast } from '../components/ui';
 
 import { API_URL } from '../config/api';
 
 function GalleryPage() {
-  const [posts, setPosts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
   const [selectedTag, setSelectedTag] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -24,20 +24,28 @@ function GalleryPage() {
   const [loadingStory, setLoadingStory] = useState(false);
   const [showUntaggedSidebar, setShowUntaggedSidebar] = useState(false);
 
-  const fetchPosts = async (page, tag) => {
-    try {
-      let url = `${API_URL}/api/v1/posts?page=${page}&limit=50`;
-      if (tag) {
-        url += `&tag=${tag}`;
-      }
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Paginated gallery read → TanStack Query. Keyed on page + tag so switching
+  // either refetches (and caches) automatically; no manual effect.
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['posts', currentPage, selectedTag],
+    queryFn: async () => {
+      let url = `${API_URL}/api/v1/posts?page=${currentPage}&limit=50`;
+      if (selectedTag) url += `&tag=${selectedTag}`;
       const response = await axios.get(url);
-      setPosts(response.data.posts);
-      setTotalPages(response.data.total_pages);
-      setCurrentPage(response.data.current_page);
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-    }
-  };
+      return response.data;
+    },
+    placeholderData: (prev) => prev, // keep the old page visible while the next loads
+  });
+
+  const posts = data?.posts ?? [];
+  const totalPages = data?.total_pages ?? 0;
+
+  // Any write elsewhere (upload, phrase save, story attach) just invalidates the
+  // cache; the query refetches itself.
+  const refreshPosts = () => queryClient.invalidateQueries({ queryKey: ['posts'] });
 
   const handleAnalyzeTag = async () => {
     if (!selectedTag) return;
@@ -70,20 +78,20 @@ function GalleryPage() {
       setShowUntaggedSidebar(true);
     } catch (error) {
       console.error("Error generating story:", error);
-      alert("Failed to generate story.");
+      toast({ variant: 'error', title: 'Story generation failed', description: 'Please try again.' });
     } finally {
       setLoadingStory(false);
     }
   };
 
-  const handleImageSelect = (image) => {
-    fetchPosts(currentPage, selectedTag);
-    alert(`Story associated with image! Tag "${selectedTag}" has been added.`);
+  const handleImageSelect = () => {
+    refreshPosts();
+    toast({
+      variant: 'success',
+      title: 'Story linked to image',
+      description: `Tag "${selectedTag}" was added.`,
+    });
   };
-
-  useEffect(() => {
-    fetchPosts(currentPage, selectedTag);
-  }, [currentPage, selectedTag]);
 
   const handleTagSelect = (tag) => {
     setSelectedTag(tag);
@@ -101,7 +109,7 @@ function GalleryPage() {
         <p>"Every image is a story waiting to be told."</p>
       </div>
 
-      <UploadForm onUploadSuccess={() => fetchPosts(1, selectedTag)} />
+      <UploadForm onUploadSuccess={() => { setCurrentPage(1); refreshPosts(); }} />
       <hr />
       <TagFilter onTagSelect={handleTagSelect} />
 
@@ -195,6 +203,13 @@ function GalleryPage() {
         </button>
       </div>
 
+      {isError && (
+        <p style={{ textAlign: 'center', color: 'var(--ink-muted)' }}>Couldn't load the gallery.</p>
+      )}
+      {isLoading && posts.length === 0 && (
+        <p style={{ textAlign: 'center', color: 'var(--ink-muted)' }}>Loading the collection…</p>
+      )}
+
       <div className="gallery-grid">
         {posts.map((post) => (
           <div key={post.id} className="gallery-item">
@@ -206,7 +221,7 @@ function GalleryPage() {
                 </div>
               )}
             </Link>
-            <PhraseGenerator post={post} onPhraseSaved={() => fetchPosts(currentPage, selectedTag)} />
+            <PhraseGenerator post={post} onPhraseSaved={refreshPosts} />
           </div>
         ))}
       </div>
