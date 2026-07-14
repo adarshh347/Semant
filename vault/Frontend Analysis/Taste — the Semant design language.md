@@ -181,3 +181,43 @@ Concrete corrections to the current build (from the d.1 screenshots of our own l
 - **v1 · 2026-07-14** — created from the *Claude for teachers* reference + token audit.
 - **v1.1 · 2026-07-14 (d.1)** — added the Anthropic-site study: muted-pastel illustration cards, hand-drawn black-line diagram register, the peach `::selection` highlight, centered-announcement layout, and the immediate nav-mark / hero-image / colour fixes.
 - _next_ — per-surface notes (Atelier pane, Loom, feed cards) as they're built.
+
+---
+
+## 9. Semant identity — LOCKED: **Paper + Ultramarine** (the un-Anthropic palette)
+**Why:** our old tokens (warm cream + terracotta + serif) *were* Anthropic's palette. We keep the *principles* (minimalism, whitespace, one accent, muted diagram cards, unique selection, hand-drawn line art) but **own the surface**: a warm paper base against a **cool electric ultramarine** accent — warm/cool tension Anthropic doesn't have. **This supersedes every terracotta value in §1 and §7.**
+
+### The signature idea
+**Ultramarine = the colour of attention.** It's the accent *and* the colour of our **region-overlay marks** — the thin annotation lines/labels that are Semant's own, un-copyable visual language. Lean on those marks as the brand motif instead of borrowed hand-drawn globes.
+
+### Palette (replaces the accent + pastel rows)
+| Role | Token | Value | Note |
+|---|---|---|---|
+| Page base | `--bg` | `#FAF8F3` | keep the warm paper (invites; contrasts the cool accent) |
+| Ink | `--ink` | `#14140F` | display + max contrast |
+| Body ink | `--ink-muted` | `#66625A` | all body copy |
+| **Accent (the one)** | `--accent` | `#2733CC` | ultramarine — CTAs' *secondary*, links, emphasis, **region marks** |
+| Accent deep (hover) | `--accent-deep` | `#1B24A6` | |
+| Accent wash | `--accent-soft` | `#E7E9F9` | at most one section tint |
+| Accent ink | `--accent-ink` | `#FFFFFF` | text on ultramarine |
+| Primary action | `--ink` pill | `#14140F` | black pill stays the primary; ultramarine is the *accent*, not the button |
+| **Selection** | `--highlight` | `#DADEF6` | pale-blue `::selection` (our version of the peach detail) |
+
+**Cool diagram-card pastels** (replace the warm sage/clay set — those read Anthropic):
+| Card bg | ~hex |
+|---|---|
+| Sky | `#C9D6E6` |
+| Stone | `#DBD8D0` |
+| Blue-grey | `#CCD3DE` |
+| Pale ultramarine | `#DCE0F5` |
+
+### Type (optional divergence)
+Keep **Fraunces** for now (loaded, works). If we want a sharper break from Anthropic's chunky serif later, shift the display to a **higher-contrast editorial serif** (e.g. Newsreader / Spectral / Playfair) — flagged, not required. The ultramarine accent + cool cards + blue selection already carry most of the divergence.
+
+### Scope note (Foundation change)
+Swapping `--accent` terracotta→ultramarine in `index.css` **re-skins the whole app** (accent is token-driven). Do it as a deliberate token change and spot-check the main screens (landing, gallery, a post/Atelier), not just the landing.
+
+## Changelog
+- **v1 · 2026-07-14** — from the *Claude for teachers* reference + token audit.
+- **v1.1 · 2026-07-14 (d.1)** — Anthropic-site study: pastel diagram cards, peach `::selection`, nav/hero fixes.
+- **v1.2 · 2026-07-14 (originality)** — **LOCKED identity: Paper + Ultramarine.** Supersedes terracotta; accent + region-marks = ultramarine; cool diagram cards; pale-blue selection; Fraunces kept (serif-swap optional). The region-overlay marks are the signature motif.
