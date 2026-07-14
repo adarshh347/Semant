@@ -1,0 +1,103 @@
+/* The /part · /lens picker.
+ *
+ * Deliberately the same box as .slash-menu / .slash-prompt — same surface, same hairline,
+ * same shadow, same easing. It opens from the same "/" gesture at the same caret, so it
+ * must read as the same object wearing a different face, not as a second menu system.
+ */
+
+.ref-picker {
+    display: flex;
+    flex-direction: column;
+    min-width: 17rem;
+    max-width: 22rem;
+    background: var(--surface-primary);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 18%, transparent);
+    overflow: hidden;
+}
+
+.ref-picker-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    color: var(--accent);
+}
+.ref-picker-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--fs-small);
+}
+.ref-picker-input::placeholder { color: var(--ink-subtle); }
+
+.ref-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-1);
+    max-height: 15rem;
+    overflow-y: auto;
+}
+
+.ref-picker-empty {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+}
+
+.ref-picker-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.12s var(--ease);
+}
+.ref-picker-item.is-selected,
+.ref-picker-item:hover {
+    background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface));
+}
+
+.ref-picker-body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.ref-picker-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--fs-small);
+    font-weight: 600;
+    line-height: 1.2;
+}
+.ref-picker-star { color: var(--accent); flex: none; }
+.ref-picker-dot {
+    width: 5px; height: 5px; flex: none;
+    border-radius: 50%;
+    background: var(--accent);
+}
+.ref-picker-sub {
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ref-picker-badge {
+    flex: none;
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    padding: 0.1rem 0.4rem;
+    border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+    border-radius: var(--radius-pill, 999px);
+}

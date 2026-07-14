@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any
 from groq import Groq
 from backend.config import settings
 from backend.services import lens_registry
+from backend.services.editor_llm_service import ground_prompt
 
 
 class VisionService:
@@ -81,9 +82,10 @@ class VisionService:
             return None
     
     async def auto_recommend_text(
-        self, 
-        image_url: str, 
-        existing_text: Optional[str] = None
+        self,
+        image_url: str,
+        existing_text: Optional[str] = None,
+        context_pack: str = ""
     ) -> Optional[str]:
         """
         Generate auto-recommended text based on image analysis and existing text.
@@ -94,13 +96,14 @@ class VisionService:
         Args:
             image_url: URL of the image to analyze
             existing_text: Existing text content for context
-            
+            context_pack: Anuraṇana grounding (Track C). Empty → unchanged behavior.
+
         Returns:
             Generated text recommendation, or None if service unavailable
         """
         if not self._is_available():
             return None
-        
+
         # Build context-aware prompt
         if existing_text:
             prompt = f"""Analyze this image and generate a descriptive, narrative text that complements the following existing context:
@@ -127,13 +130,14 @@ Requirements:
 5. Use sensory language and literary devices
 
 Generate the text:"""
-        
-        return await self.analyze_image(image_url, prompt)
-    
+
+        return await self.analyze_image(image_url, ground_prompt(prompt, context_pack))
+
     async def prompt_enhanced_text(
-        self, 
-        image_url: str, 
-        user_prompt: str
+        self,
+        image_url: str,
+        user_prompt: str,
+        context_pack: str = ""
     ) -> Optional[str]:
         """
         Generate text based on image analysis enhanced by user prompt.
@@ -144,13 +148,14 @@ Generate the text:"""
         Args:
             image_url: URL of the image to analyze
             user_prompt: User's specific prompt or direction
-            
+            context_pack: Anuraṇana grounding (Track C). Empty → unchanged behavior.
+
         Returns:
             Generated text based on prompt and image, or None if service unavailable
         """
         if not self._is_available():
             return None
-        
+
         enhanced_prompt = f"""Analyze this image and generate text based on the following user direction:
 
 User Direction:
@@ -164,8 +169,8 @@ Requirements:
 5. Make the text vivid and engaging
 
 Generate the text:"""
-        
-        return await self.analyze_image(image_url, enhanced_prompt)
+
+        return await self.analyze_image(image_url, ground_prompt(enhanced_prompt, context_pack))
     
     async def suggest_story_connection(
         self, 

@@ -9,7 +9,10 @@ Mark each ✅ (accept) or ✏️ (override), then it's a build-ready contract.
 ## Track B — segmentation / model stack
 
 1. **GPU serving path** — **✅ SETTLED → Serverless-first** (Replicate / Modal / Runpod, pay-per-call). Decided by hardware reality, not preference: neither the 4GB GPU nor the M4 (Apple MPS broken for SAM2) can serve the heavy models; AWS free tier is CPU-only. See `infra-hardware-plan.md`. Self-host never; AWS credits for CPU deploy + a capped experiment budget.
-2. **Fashion segmenter** — **[confirm]** → **Fashionformer first (SOTA seg+attr), Attribute-Mask-RCNN as simpler-to-serve fallback, benchmark both on real Drishya posts.** Don't lock without the bench. ✅
+2. **Fashion segmenter** — **✅ SETTLED (phased, given hardware) → 2a now, 2b on M4/serverless.**
+   - **Phase 2a (NOW, CPU/4GB-friendly):** a lightweight clothes-parsing segmenter that runs on today's hardware without serverless — real *garment-region* segmentation replacing YOLO's COCO "person/handbag" (recommend a HuggingFace SegFormer clothes model, e.g. `mattmdjaga/segformer_b2_clothes`; the build session verifies it's current + CPU-runnable and picks the best available). Gets us off COCO-only immediately.
+   - **Phase 2b (LATER, M4/serverless):** the full **Fashionpedia Attribute-Mask-RCNN / Fashionformer** for the fine 19 apparel parts + 294 attributes — heavier, wants GPU; benchmark the two then.
+   - Rationale: the light model delivers the real win (proper garment regions) on the current 4GB; the heavy attribute model waits for the M4 rather than blocking. Consistent with B1 serverless-first + "don't buy infra ahead of data."
 3. **Non-fashion domains this cycle** — **[judgment]** → **SAM2 + LLM naming only** for architecture/photography; no dedicated models until fashion is proven. One deep domain first. (Consistent with the locked fashion wedge.) ✅ suggested.
 4. **Dedup/precedence** — **[confirm]** → **Fashionpedia > SAM2(tap) > YOLO** for garments; keep overlapping detections only if IoU < τ; `detector` records provenance. Lives in Track B (per Track A Q6). ✅
 5. **SAM2 laziness** — **[confirm]** → **On-demand (tap / "reveal more"), never dense-on-upload.** The main cost lever; also shapes Track D's reveal UX. ✅

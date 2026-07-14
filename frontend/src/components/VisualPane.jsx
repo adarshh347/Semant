@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Scan, Star, Sparkles, Plus, Eye, Check } from 'lucide-react';
+import { Scan, Star, Sparkles, Plus, Eye, Check, PenLine } from 'lucide-react';
 import { API_URL } from '../config/api';
+import { useRegionStore } from '../state/regionStore';
 import './VisualPane.css';
 
 const BASE = `${API_URL}/api/v1/posts`;
-const AUTOSAVE_MS = 800;
 
 // Sūkṣma subdivision modes. "General" is always available; the rest steer the
 // fine pass toward a particular kind of anatomy.
@@ -36,17 +36,28 @@ const hasNote = (r) => !!(r.user_note || '').trim();
  * The mess problem is real once Fashionpedia yields dozens of parts, so nothing is
  * shown all at once: anchors first, fine parts on demand, labels only where you're
  * looking, and selecting anything dims everything else.
+ *
+ * The regions and the reading are no longer this pane's private state — they live in
+ * the shared store, because the story on the other side of the split now points at
+ * them. See `state/regionStore.js`.
  */
-export default function VisualPane({ post, showRegions = true, onPostChange }) {
-    const [regions, setRegions] = useState(post.region_annotations || []);
-    const [selectedId, setSelectedId] = useState(null);
-    const [hoveredId, setHoveredId] = useState(null);
-    const [lensRegionIds, setLensRegionIds] = useState(null); // Set | null (reading-strip hover)
+export default function VisualPane({ post, showRegions = true, onPostChange,
+                                     onWriteAboutRegion, writingRegionId = null }) {
+    const {
+        regions, setRegions, updateRegion, addRegion,
+        selectedId, selectRegion, setSelectedId,
+        setHoveredId,
+        lensRegionIds, setLensRegionIds,
+        focusIds,
+        aletheia, setAletheia, lensFor,
+        feedPersona, setFeedPersona,
+        saveState, error, setError,
+        scheduleSave,
+    } = useRegionStore();
 
     const [detecting, setDetecting] = useState(false);
     const [mode, setMode] = useState('general');
     const [lens, setLens] = useState('');
-    const [error, setError] = useState('');
 
     const [revealFine, setRevealFine] = useState(false);
     const [catFilter, setCatFilter] = useState(new Set());
@@ -55,62 +66,29 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
     const [drawing, setDrawing] = useState(false);      // "+ mark" armed
     const [draft, setDraft] = useState(null);           // rect being dragged
 
-    const [aletheia, setAletheia] = useState(post.local_context?.aletheia || null);
     const [reading, setReading] = useState(false);
     const [commentary, setCommentary] = useState(post.local_context?.commentary || '');
-    const [feedPersona, setFeedPersona] = useState(true);
     const [ctxBusy, setCtxBusy] = useState(false);
 
-    const [saveState, setSaveState] = useState('idle');  // idle | saving | saved
-    const saveTimer = useRef(null);
     const stageRef = useRef(null);
-    const regionsRef = useRef(regions);
-    regionsRef.current = regions;
+    const listRef = useRef(null);
 
-    // --- persistence ---------------------------------------------------------------
-    // Autosave on blur, debounced (locked D3). The endpoint takes the whole array, so
-    // a burst of edits must collapse into one write rather than racing each other.
-    const persist = useCallback(async (next) => {
-        setSaveState('saving');
-        try {
-            const res = await fetch(`${BASE}/${post.id}/region-annotations`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ regions: next, feed_to_persona: feedPersona }),
-            });
-            if (!res.ok) throw new Error();
-            const data = await res.json();
-            onPostChange?.(data.post);
-            setSaveState('saved');
-            setTimeout(() => setSaveState(s => (s === 'saved' ? 'idle' : s)), 1600);
-        } catch {
-            setError('Could not save your marks.');
-            setSaveState('idle');
-        }
-    }, [post.id, feedPersona, onPostChange]);
-
-    const scheduleSave = useCallback(() => {
-        clearTimeout(saveTimer.current);
-        saveTimer.current = setTimeout(() => persist(regionsRef.current), AUTOSAVE_MS);
-    }, [persist]);
-
-    // A pending edit must not be lost because the pane unmounted.
-    useEffect(() => () => clearTimeout(saveTimer.current), []);
-
-    const update = (id, patch, { save = false } = {}) => {
-        setRegions(rs => {
-            const next = rs.map(r => (r.id === id ? { ...r, ...patch } : r));
-            regionsRef.current = next;
-            return next;
-        });
-        if (save) scheduleSave();
-    };
+    // A part can now be selected from the far side of the split (a chip in the story).
+    // The polygon lights up on its own, but the row that carries the note can be forty
+    // rows down a scrolled list — so bring it to the selection rather than making the
+    // curator hunt for what they just pointed at.
+    useEffect(() => {
+        if (!selectedId) return;
+        listRef.current
+            ?.querySelector('.vp-row.is-sel')
+            ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, [selectedId]);
 
     const togglePriority = (id) => {
         const r = regions.find(x => x.id === id);
         if (!r) return;
-        update(id, { prioritised: !r.prioritised, weight: !r.prioritised ? (r.weight || 60) : 0 });
-        setSelectedId(id);
+        updateRegion(id, { prioritised: !r.prioritised, weight: !r.prioritised ? (r.weight || 60) : 0 });
+        selectRegion(id);
         scheduleSave();   // one tap is the shallow rung of the ladder — it must stick on its own
     };
 
@@ -129,12 +107,11 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
             if (!res.ok) throw new Error();
             const data = await res.json();
             setRegions(data.regions || []);
-            regionsRef.current = data.regions || [];
             setSelectedId(null);
         } catch {
             setError('Detection failed — is the backend running?');
         } finally { setDetecting(false); }
-    }, [post.id, mode, lens]);
+    }, [post.id, mode, lens, setRegions, setSelectedId, setError]);
 
     // --- the reading (Aletheia, deep) ----------------------------------------------
     const runAletheia = async () => {
@@ -205,10 +182,8 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
             category: 'other', material: '', description: '', attributes: [],
             depth: 0, prioritised: false, weight: 0, user_note: '',
         };
-        const next = [...regionsRef.current, region];
-        setRegions(next); regionsRef.current = next;
-        setSelectedId(region.id);
-        scheduleSave();
+        addRegion(region, { save: true });
+        selectRegion(region.id);
     };
 
     // --- what is visible -----------------------------------------------------------
@@ -243,14 +218,9 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
     const fineHidden = regions.filter(r => !isAnchor(r)).length
         - visible.filter(r => !isAnchor(r)).length;
 
-    // Focus: an explicit selection, or the regions a hovered lens points at. Everything
-    // else recedes — this is what keeps forty parts from screaming at once.
-    const focusIds = useMemo(() => {
-        if (lensRegionIds?.size) return lensRegionIds;
-        if (hoveredId) return new Set([hoveredId]);
-        if (selectedId) return new Set([selectedId]);
-        return null;
-    }, [lensRegionIds, hoveredId, selectedId]);
+    // `focusIds` — an explicit selection, or the regions a hovered lens points at —
+    // now comes from the store, because a chip clicked in the story must move this
+    // pane's focus exactly as a lens hover does.
 
     const labelVisible = (r) =>
         focusIds?.has(r.id) || (!focusIds && (isAnchor(r) || r.prioritised)) || (filtersActive && !focusIds);
@@ -260,9 +230,7 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
     const notedCount = regions.filter(hasNote).length;
 
     // The lens that speaks about the selected part — the reading, exactly where you comment.
-    const lensForSelected = (aletheia?.lenses || []).find(
-        l => (l.region_ids || []).includes(selectedId),
-    );
+    const lensForSelected = lensFor(selectedId);
 
     const anchors = visible.filter(isAnchor);
     const fine = visible.filter(r => !isAnchor(r));
@@ -298,7 +266,7 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
                                 const common = {
                                     className: shapeClass(r),
                                     vectorEffect: 'non-scaling-stroke',
-                                    onClick: () => setSelectedId(r.id),
+                                    onClick: () => selectRegion(r.id),
                                     onMouseEnter: () => setHoveredId(r.id),
                                     onMouseLeave: () => setHoveredId(null),
                                 };
@@ -325,7 +293,7 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
                         <span key={`dot-${r.id}`} className="vp-note-dot"
                             title={r.user_note}
                             style={{ left: `${(r.box.x + r.box.w) * 100}%`, top: `${r.box.y * 100}%` }}
-                            onClick={() => setSelectedId(r.id)} />
+                            onClick={() => selectRegion(r.id)} />
                     ))}
 
                     {showRegions && visible.filter(labelVisible).map(r => (
@@ -333,7 +301,7 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
                             className={`vp-label${isAnchor(r) ? '' : ' vp-label--fine'}`
                                 + `${r.prioritised ? ' is-pri' : ''}${selectedId === r.id ? ' is-sel' : ''}`}
                             style={{ left: `${r.box.x * 100}%`, top: `${r.box.y * 100}%` }}
-                            onClick={() => setSelectedId(r.id)}>
+                            onClick={() => selectRegion(r.id)}>
                             {r.label}{r.prioritised ? ' ★' : ''}
                         </span>
                     ))}
@@ -359,7 +327,7 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
                                     <button key={i} type="button" className="vp-lens"
                                         onMouseEnter={() => setLensRegionIds(new Set(l.region_ids || []))}
                                         onMouseLeave={() => setLensRegionIds(null)}
-                                        onClick={() => (l.region_ids || [])[0] && setSelectedId(l.region_ids[0])}
+                                        onClick={() => (l.region_ids || [])[0] && selectRegion(l.region_ids[0])}
                                         title={(l.region_ids || []).length
                                             ? `Highlights ${l.region_ids.length} part(s)` : 'No parts cited'}>
                                         <span className="vp-lens-head">
@@ -455,18 +423,18 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
                     </div>
                 )}
 
-                <div className="vp-list">
+                <div className="vp-list" ref={listRef}>
                     {!regions.length && !detecting && <p className="vp-muted">No parts yet — dissect the image.</p>}
                     {grouped.map(({ anchor, children }) => (
                         <div key={anchor.id} className="vp-group">
-                            <Row r={anchor} {...{ selectedId, setSelectedId, togglePriority, setHoveredId }} />
+                            <Row r={anchor} {...{ selectedId, selectRegion, togglePriority, setHoveredId }} />
                             {children.map(c => (
-                                <Row key={c.id} r={c} indent {...{ selectedId, setSelectedId, togglePriority, setHoveredId }} />
+                                <Row key={c.id} r={c} indent {...{ selectedId, selectRegion, togglePriority, setHoveredId }} />
                             ))}
                         </div>
                     ))}
                     {orphanFine.map(c => (
-                        <Row key={c.id} r={c} {...{ selectedId, setSelectedId, togglePriority, setHoveredId }} />
+                        <Row key={c.id} r={c} {...{ selectedId, selectRegion, togglePriority, setHoveredId }} />
                     ))}
 
                     {fineHidden > 0 && (
@@ -506,7 +474,7 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
                             <div className="vp-weight">
                                 <label>Intensity <strong>{selected.weight || 0}</strong></label>
                                 <input type="range" min="0" max="100" value={selected.weight || 0}
-                                    onChange={e => update(selected.id, { weight: Number(e.target.value) })}
+                                    onChange={e => updateRegion(selected.id, { weight: Number(e.target.value) })}
                                     onMouseUp={scheduleSave} onKeyUp={scheduleSave} />
                             </div>
                         )}
@@ -514,8 +482,22 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
                         <textarea className="vp-note"
                             placeholder={`How does “${selected.label}” affect you? What does it do?`}
                             value={selected.user_note || ''}
-                            onChange={e => update(selected.id, { user_note: e.target.value })}
+                            onChange={e => updateRegion(selected.id, { user_note: e.target.value })}
                             onBlur={scheduleSave} />
+
+                        {/* The shortest path from noticing a part to writing about it.
+                            Sutradhar already has the reading and the note as context —
+                            this just points it at one part and drops the passage into
+                            the story, linked back to the polygon it came from. */}
+                        {onWriteAboutRegion && (
+                            <button className="vp-write" disabled={!!writingRegionId}
+                                onClick={() => onWriteAboutRegion(selected)}>
+                                {writingRegionId === selected.id
+                                    ? <span className="vp-spin" /> : <PenLine size={13} />}
+                                {writingRegionId === selected.id
+                                    ? 'Writing…' : 'Write about this part'}
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <p className="vp-muted vp-pick">Select a part to say how it affects you.</p>
@@ -532,11 +514,11 @@ export default function VisualPane({ post, showRegions = true, onPostChange }) {
     );
 }
 
-function Row({ r, indent, selectedId, setSelectedId, togglePriority, setHoveredId }) {
+function Row({ r, indent, selectedId, selectRegion, togglePriority, setHoveredId }) {
     return (
         <div
             className={`vp-row${indent ? ' vp-row--child' : ''}${selectedId === r.id ? ' is-sel' : ''}${r.prioritised ? ' is-pri' : ''}`}
-            onClick={() => setSelectedId(r.id)}
+            onClick={() => selectRegion(r.id)}
             onMouseEnter={() => setHoveredId(r.id)}
             onMouseLeave={() => setHoveredId(null)}
         >

@@ -1,0 +1,126 @@
+/* Full-screen region lightbox (Darshan Track D · Phase 2).
+ *
+ * Same token grammar as the pane. No blur, no glow, no emoji. The chrome recedes so the
+ * image can be the whole event; controls sit on hairline-bordered rails, not islands.
+ */
+
+.rl {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    /* Opaque, not 97%: at 3% the app's navbar reads straight through the top rail and
+       the whole thing looks like a broken overlay rather than a place to look. */
+    background: #0c0b09;
+    color: var(--ink);
+}
+.rl:focus { outline: none; }
+.rl :is(button) { box-sizing: border-box; }
+.rl :is(button) svg { flex: none; }
+
+.rl-bar {
+    display: flex; align-items: center; gap: 0.9rem;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+}
+
+.rl-maps { display: flex; gap: 0.25rem; }
+.rl-chip {
+    font-size: 0.68rem; text-transform: capitalize;
+    padding: 0.28rem 0.6rem;
+    border-radius: var(--radius-pill, 999px);
+    border: 1px solid transparent;
+    background: transparent; color: var(--ink-muted); cursor: pointer;
+}
+.rl-chip:hover { color: var(--ink); background: var(--surface-hover); }
+.rl-chip.on { color: var(--ink); border-color: var(--line); background: var(--surface-2); }
+
+.rl-zoom { margin-left: auto; display: flex; align-items: center; gap: 0.3rem; }
+.rl-scale {
+    min-width: 3.4rem; text-align: center;
+    font-size: 0.7rem; color: var(--ink-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.rl-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0; flex: none;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+    background: transparent; color: var(--ink-muted); cursor: pointer;
+}
+.rl-icon:hover:not(:disabled) { color: var(--ink); background: var(--surface-hover); }
+.rl-icon:disabled { opacity: 0.4; cursor: default; }
+.rl-icon:focus-visible, .rl-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rl-close { margin-left: 0.2rem; }
+
+/* the stage clips; the canvas moves inside it */
+.rl-stage {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    touch-action: none;      /* we own the gestures */
+    cursor: zoom-in;
+}
+.rl-stage.is-pannable { cursor: grab; }
+.rl-stage.is-dragging { cursor: grabbing; }
+
+/* The image and the overlay share this one box, and one transform moves both together —
+   so they cannot drift apart at any zoom.
+   The box is the full stage, not the image's aspect: `object-fit: contain` and
+   `preserveAspectRatio="meet"` then letterbox identically inside it. (Sizing the box by
+   aspect-ratio seems tidier, but the moment max-width clamps it the image letterboxes
+   *inside* the box and the box stops being the image — which is the whole invariant.) */
+.rl-canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-origin: center center;
+    will-change: transform;
+}
+.rl-canvas img {
+    display: block; width: 100%; height: 100%;
+    object-fit: contain;
+    user-select: none; -webkit-user-drag: none;
+}
+.rl-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.rl-label {
+    position: absolute;
+    transform: translate(0, -115%);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--accent); color: #fff;
+    white-space: nowrap; pointer-events: none;
+    line-height: 1.3;
+}
+
+.rl-foot {
+    display: flex; align-items: center;
+    min-height: 46px; padding: 0.55rem 0.9rem;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+}
+.rl-hint { margin: 0; font-size: 0.7rem; color: var(--ink-muted); }
+.rl-hint kbd {
+    font: inherit; font-size: 0.66rem;
+    padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px;
+    background: var(--surface-2); color: var(--ink);
+}
+
+.rl-caption { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; min-width: 0; }
+.rl-caption strong { font-size: 0.86rem; color: var(--ink); }
+.rl-lens { font-size: 0.74rem; color: var(--ink-muted); }
+.rl-lens em { font-style: normal; color: var(--ink); font-weight: 600; }
+.rl-note {
+    font-size: 0.74rem; color: var(--ink);
+    padding-left: 0.5rem; border-left: 2px solid var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rl-canvas { will-change: auto; }
+}

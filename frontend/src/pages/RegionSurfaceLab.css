@@ -1,0 +1,35 @@
+/* Dev harness chrome. Deliberately plain — nothing here should read as product. */
+
+.lab { padding: 1rem; display: flex; flex-direction: column; gap: 0.9rem; align-items: flex-start; }
+
+.lab-bar {
+    display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+    width: 100%; padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--line);
+}
+.lab-kicker {
+    font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent); font-weight: 700;
+}
+.lab-widths { display: flex; gap: 0.3rem; }
+.lab-w {
+    font-size: 0.68rem; padding: 0.25rem 0.55rem;
+    border: 1px solid var(--line); border-radius: var(--radius-pill, 999px);
+    color: var(--ink-muted); text-decoration: none;
+}
+.lab-w:hover { color: var(--ink); background: var(--surface-hover); }
+.lab-w.on { color: #fff; background: var(--accent); border-color: var(--accent); }
+.lab-meta { margin-left: auto; font-size: 0.66rem; color: var(--ink-muted); }
+
+/* The pane under test: a fixed-width box, like a split-pane column. The window stays
+   wide, so anything that responds here is responding to the CONTAINER. */
+.lab-pane {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    overflow: hidden;
+    resize: horizontal;          /* drag to explore widths by hand */
+    max-width: 100%;
+}
+
+.lab-msg { padding: 2rem; color: var(--ink-muted); font-size: 0.8rem; }

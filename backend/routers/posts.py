@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from io import BytesIO
 from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
+from backend.services import fashion_segmentation_service
 from backend.services import region_embedding_service
 from backend.services import anuranana_service
 from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
@@ -578,6 +579,32 @@ def _match_parent(fine: dict, anchors: list) -> Optional[dict]:
     return best
 
 
+async def _resolve_is_fashion(post: dict, obj_id, img_bytes: bytes) -> bool:
+    """Is this a fashion image? Decides whether the garment segmenter runs (Phase 2a).
+
+    Prefers the domain tag Track B Phase 1's FashionCLIP router already stored. When it's
+    absent — detect-regions often runs before enrich-regions — classify on the fly and
+    persist it, so the routing decision doesn't depend on the order the curator happened
+    to press the buttons. Falls back to False (i.e. plain YOLO) if FashionCLIP is
+    unavailable: a slim deploy still detects, it just detects generically.
+    """
+    stored = post.get("domain") or {}
+    if stored.get("label"):
+        return bool(stored.get("is_fashion"))
+
+    from backend.services import fashion_clip_service as fc
+    if not fc.is_available():
+        return False
+    try:
+        domain = await asyncio.to_thread(
+            lambda: fc.classify_domain(fc._open_image(img_bytes)))
+    except Exception as e:
+        print(f"Domain routing failed (non-fatal, defaulting to YOLO): {e}")
+        return False
+    await post_collection.update_one({"_id": obj_id}, {"$set": {"domain": domain}})
+    return bool(domain.get("is_fashion"))
+
+
 @router.post("/{post_id}/detect-regions")
 async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = None):
     """
@@ -599,13 +626,36 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
 
     photo_url = post.get("photo_url")
 
-    # --- Stage 1 · STHŪLA: coarse anchors with real masks (local YOLO11-seg). ---
+    # --- Stage 1 · STHŪLA: coarse anchors with real masks. ---
+    # Domain-routed (Track B Phase 2a): a fashion image gets the garment segmenter, whose
+    # regions ARE the anatomy — top, skirt, belt — instead of YOLO's one COCO "person".
+    # Everything else gets YOLO, which is also the fallback whenever the garment model
+    # is unavailable or sees nothing. The vision-LLM remains the last resort.
     anchors, source = None, "segmentation"
     try:
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             resp = await client.get(photo_url, headers=_image_fetch_headers(photo_url))
             resp.raise_for_status()
-            anchors = await asyncio.to_thread(segmentation_service.segment_image_bytes, resp.content)
+            img_bytes = resp.content
+
+        is_fashion = await _resolve_is_fashion(post, obj_id, img_bytes)
+        garments = None
+        if is_fashion:
+            garments = await asyncio.to_thread(
+                fashion_segmentation_service.segment_image_bytes, img_bytes)
+
+        yolo_regions = await asyncio.to_thread(segmentation_service.segment_image_bytes, img_bytes)
+
+        if garments:
+            # Locked precedence: the garment segmenter outranks YOLO for garments and the
+            # figure that contains them. YOLO's non-garment objects (a couch, a chair)
+            # survive — the garment model literally cannot see them.
+            anchors = fashion_segmentation_service.merge_with_precedence(
+                garments, yolo_regions or [])
+            source = "segformer_clothes" + ("+yolo" if yolo_regions else "")
+        else:
+            anchors = yolo_regions
+            source = "yolo" if yolo_regions else "segmentation"
     except Exception as e:
         print(f"Segmentation fetch/run failed, will fall back: {e}")
         anchors = None
@@ -1230,18 +1280,11 @@ async def generate_post_suggestion(request: PostSuggestionRequest):
 async def _grounding_for(image_url: str) -> str:
     """The Anuraṇana context pack for whatever post this image belongs to (Track C §4).
 
-    The writing endpoints are handed an `image_url`, not a post id, so we resolve the
-    post from the URL — which means grounding switches on with no frontend change
-    (the Visual pane is Track D's to touch). Never fatal: an image we don't own, a
-    missing reading, or a retrieval error all yield an empty pack, and an empty pack
-    makes the writer behave exactly as it did before Track C.
+    Thin alias now that the helper lives beside the pack it builds — `epics.py` needs
+    the same grounding for the editor's `/draft` and `/write`, and two copies of this
+    is how one of them ends up forgotten.
     """
-    try:
-        pack = await anuranana_service.build_context_pack_for_image(image_url)
-        return pack.get("text", "")
-    except Exception as e:
-        print(f"Anuraṇana context pack unavailable (non-fatal, writing ungrounded): {e}")
-        return ""
+    return await anuranana_service.grounding_for_image(image_url)
 
 
 @router.post("/chat/vision")
