@@ -1,0 +1,72 @@
+/* Radix Toast — Semant plum v1.3. Quiet paper card; accent reserved for the
+   left status rule, never a loud fill. */
+
+.ui-toast-viewport {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  z-index: 230;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(92vw, 24rem);
+  max-width: 100vw;
+  margin: 0;
+  padding: var(--space-4);
+  list-style: none;
+  outline: none;
+}
+
+.ui-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 0.75rem 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.ui-toast--success { border-left-color: var(--accent); }
+.ui-toast--error   { border-left-color: #B4453C; }
+.ui-toast--info    { border-left-color: var(--info); }
+
+.ui-toast-icon { display: inline-flex; flex-shrink: 0; margin-top: 1px; color: var(--ink-muted); }
+.ui-toast--success .ui-toast-icon { color: var(--accent); }
+.ui-toast--error .ui-toast-icon   { color: #B4453C; }
+
+.ui-toast-text { flex: 1; min-width: 0; }
+.ui-toast-title { margin: 0; font-size: 0.875rem; font-weight: 600; color: var(--ink); }
+.ui-toast-desc  { margin: 0.15rem 0 0; font-size: 0.8rem; line-height: 1.4; color: var(--ink-muted); }
+
+.ui-toast-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-subtle);
+  cursor: pointer;
+  transition: background-color 0.14s var(--ease), color 0.14s var(--ease);
+}
+.ui-toast-close:hover { background: var(--surface-hover); color: var(--ink); }
+
+/* Radix drives these data-states for enter/exit + swipe. */
+.ui-toast[data-state='open']   { animation: ui-toast-in 0.2s var(--ease); }
+.ui-toast[data-state='closed'] { animation: ui-toast-out 0.14s var(--ease); }
+.ui-toast[data-swipe='move']   { transform: translateX(var(--radix-toast-swipe-move-x)); }
+.ui-toast[data-swipe='cancel'] { transform: translateX(0); transition: transform 0.18s var(--ease); }
+.ui-toast[data-swipe='end']    { animation: ui-toast-out 0.14s var(--ease); }
+
+@keyframes ui-toast-in  { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes ui-toast-out { from { opacity: 1; } to { opacity: 0; transform: translateX(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-toast[data-state] { animation: none; }
+}
