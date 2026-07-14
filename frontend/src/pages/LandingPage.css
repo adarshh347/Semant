@@ -67,13 +67,14 @@
 }
 .landing-prose em { color: var(--ink); font-style: italic; font-weight: 500; }
 
-/* Emphasis quote — italic Fraunces in INK, not colour. */
+/* Emphasis quote — italic Fraunces in ultramarine: the section's single accent
+   (v1.2 identity — the accent carries emphasis + links + region marks). */
 .landing-pullquote {
   font-family: var(--font-display);
   font-style: italic;
   font-size: var(--fs-h3);
   line-height: 1.35;
-  color: var(--ink);
+  color: var(--accent);
   max-width: 26ch;
   margin: var(--space-6) 0 0 0;
 }
@@ -144,7 +145,7 @@
   color: var(--ink);
   margin: 0 0 var(--space-6) 0;
 }
-.landing-wedge em { font-style: italic; color: var(--ink); }
+.landing-wedge em { font-style: italic; color: var(--accent); }
 
 .landing-lede {
   font-size: var(--fs-body-lg);
@@ -216,9 +217,9 @@
   align-items: center;
   gap: var(--space-5);
 }
-.landing-card--clay { background: var(--pastel-clay); }
-.landing-card--sage { background: var(--pastel-sage); }
 .landing-card--sky { background: var(--pastel-sky); }
+.landing-card--stone { background: var(--pastel-stone); }
+.landing-card--bluegrey { background: var(--pastel-bluegrey); }
 
 .motif { width: min(72%, 220px); height: auto; }
 
@@ -235,7 +236,7 @@
 /* ── Close (centered announcement register, d.1 §7) ───────────────────── */
 .landing-close { text-align: center; padding-block: var(--space-24); }
 .landing-close-line { margin-left: auto; margin-right: auto; max-width: 24ch; }
-.landing-close-line em { font-style: italic; color: var(--ink); }
+.landing-close-line em { font-style: italic; color: var(--accent); }
 .landing-close-sub { margin-left: auto; margin-right: auto; }
 
 /* ── Responsive ───────────────────────────────────────────────────────── */
