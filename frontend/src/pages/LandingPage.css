@@ -217,7 +217,7 @@
   align-items: center;
   gap: var(--space-5);
 }
-.landing-card--sky { background: var(--pastel-sky); }
+.landing-card--mauve { background: var(--pastel-mauve); }
 .landing-card--stone { background: var(--pastel-stone); }
 .landing-card--bluegrey { background: var(--pastel-bluegrey); }
 

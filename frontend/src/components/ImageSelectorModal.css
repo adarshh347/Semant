@@ -184,8 +184,10 @@
     justify-content: flex-end;
 }
 
-.btn-primary,
-.btn-secondary {
+/* Scoped to the modal — these were leaking globally (unscoped .btn-primary
+   overrode the app's ink-pill primary via load order, tinting the nav Upload). */
+.image-selector-modal .btn-primary,
+.image-selector-modal .btn-secondary {
     padding: 0.8rem 1.5rem;
     border-radius: 8px;
     font-size: 1rem;
@@ -195,23 +197,23 @@
     border: none;
 }
 
-.btn-primary {
+.image-selector-modal .btn-primary {
     background: var(--accent-primary);
     color: #000;
 }
 
-.btn-primary:hover {
+.image-selector-modal .btn-primary:hover {
     background: #e5c150;
     box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
 }
 
-.btn-secondary {
+.image-selector-modal .btn-secondary {
     background: transparent;
     border: 1px solid var(--border-subtle);
     color: var(--text-main);
 }
 
-.btn-secondary:hover {
+.image-selector-modal .btn-secondary:hover {
     background: rgba(255, 255, 255, 0.05);
     border-color: var(--text-muted);
 }

@@ -47,52 +47,51 @@
   --radius-pill: 999px;
 
   /* ============================ LIGHT — "Paper" ============================ */
-  --bg: #FAF8F3;
+  --bg: #FAF7F5;
   --surface: #FFFFFF;
-  --surface-2: #F4F1EA;
-  --surface-hover: #EFEBE1;
+  --surface-2: #F3EEF1;
+  --surface-hover: #ECE4EA;
 
-  --ink: #14140F;
-  --ink-muted: #6F6A61;
-  --ink-subtle: #9C968B;
-  --ink-inverse: #FBF9F5;
+  --ink: #17121A;
+  --ink-muted: #6C6470;
+  --ink-subtle: #9A909E;
+  --ink-inverse: #FAF7F5;
 
-  --line: #E7E2D8;
-  --line-strong: #D6CFC0;
+  --line: #E7E0E4;
+  --line-strong: #D6CDD3;
 
-  /* LOCKED identity — Paper + Ultramarine (design language v1.2, §9).
-     Ultramarine is THE accent: links, emphasis, and the signature region marks.
-     The primary button stays the ink pill; ultramarine is never the button. */
-  --accent: #2733CC;
-  --accent-deep: #1B24A6;
-  --accent-soft: #E7E9F9;
+  /* RE-LOCKED identity — Paper + Plum / aubergine (design language v1.3, §10).
+     Plum is THE accent: links, emphasis, and the signature region marks.
+     The primary button is the ink pill; the accent is NEVER a bright button fill. */
+  --accent: #5E2B50;
+  --accent-deep: #4A2140;
+  --accent-soft: #EFE6EE;
   --accent-ink: #FFFFFF;
   --info: #4A4A6A;
 
-  /* Text-selection highlight — bespoke pale-blue signal (v1.2). Site-wide via
+  /* Text-selection highlight — bespoke pale-plum signal (v1.3). Site-wide via
      ::selection below. */
-  --highlight: #DADEF6;
+  --highlight: #E7D8E6;
 
-  /* Cool muted-pastel illustration cards (v1.2 §9): backgrounds for hand-drawn
-     diagram motifs ONLY — never on text, buttons, or >1 card in view. Cool set
-     (replaces the warm sage/clay — those read Anthropic). Theme-agnostic on
-     purpose (the diagram ink stays black on pastel in both light and dark). */
-  --pastel-sky: #C9D6E6;
-  --pastel-stone: #DBD8D0;
+  /* Plum-leaning cool muted-pastel illustration cards (v1.3 §10): backgrounds
+     for hand-drawn diagram motifs ONLY — never on text, buttons, or >1 card in
+     view. Theme-agnostic (the diagram ink stays black on pastel in both themes). */
+  --pastel-mauve: #D6CDDA;
+  --pastel-stone: #DBD6D8;
   --pastel-bluegrey: #CCD3DE;
-  --pastel-ultramarine: #DCE0F5;
+  --pastel-paleplum: #E4DAE6;
   /* Fixed dark ink for diagram line-work so it stays black-on-pastel in dark
      mode (plain --ink flips to light). */
-  --diagram-ink: #14140F;
+  --diagram-ink: #17121A;
 
   --shadow-sm: 0 1px 2px rgba(26, 24, 20, 0.04), 0 2px 6px rgba(26, 24, 20, 0.05);
   --shadow-md: 0 4px 12px rgba(26, 24, 20, 0.07), 0 12px 28px rgba(26, 24, 20, 0.06);
   --shadow-lg: 0 12px 32px rgba(26, 24, 20, 0.10), 0 24px 64px rgba(26, 24, 20, 0.09);
   --shadow-xl: 0 20px 50px rgba(26, 24, 20, 0.14), 0 36px 80px rgba(26, 24, 20, 0.12);
 
-  --glass-bg: rgba(250, 248, 243, 0.72);
+  --glass-bg: rgba(250, 247, 245, 0.72);
   --glass-border: rgba(255, 255, 255, 0.5);
-  --accent-gradient: linear-gradient(135deg, #2733CC 0%, #1B24A6 100%);
+  --accent-gradient: linear-gradient(135deg, #5E2B50 0%, #4A2140 100%);
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -118,24 +117,25 @@
 
 /* ============================ DARK — "Ink" ================================= */
 [data-theme='dark'] {
-  --bg: #14120E;
-  --surface: #1C1A15;
-  --surface-2: #24211B;
-  --surface-hover: #2C291F;
+  /* Clean plum-charcoal base (v1.3 §10) — replaces the old brown near-black. */
+  --bg: #191419;
+  --surface: #241D24;
+  --surface-2: #2C242C;
+  --surface-hover: #342B34;
 
-  --ink: #F3EFE6;
-  --ink-muted: #A8A294;
-  --ink-subtle: #7C766A;
-  --ink-inverse: #14120E;
+  --ink: #F0EAEF;
+  --ink-muted: #A093A0;
+  --ink-subtle: #7C737C;
+  --ink-inverse: #191419;
 
-  --line: #322E26;
-  --line-strong: #433E33;
+  --line: #332B33;
+  --line-strong: #443B44;
 
-  /* Ultramarine, brightened for legibility on dark paper (v1.2 §9). */
-  --accent: #6C77F2;
-  --accent-deep: #5966E6;
-  --accent-soft: #20233C;
-  --accent-ink: #FFFFFF;
+  /* Plum, lightened for legibility on the dark plum-charcoal (v1.3 §10). */
+  --accent: #C08BB4;
+  --accent-deep: #B078A4;
+  --accent-soft: #2A1F29;
+  --accent-ink: #17121A;
   --info: #9C9CC4;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.35);
@@ -143,9 +143,12 @@
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5), 0 24px 64px rgba(0, 0, 0, 0.5);
   --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.6), 0 36px 80px rgba(0, 0, 0, 0.55);
 
-  --glass-bg: rgba(20, 18, 14, 0.72);
+  --glass-bg: rgba(25, 20, 25, 0.72);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --accent-gradient: linear-gradient(135deg, #6C77F2 0%, #5966E6 100%);
+  --accent-gradient: linear-gradient(135deg, #C08BB4 0%, #B078A4 100%);
+
+  /* Pale-plum selection on dark (v1.3 §10). */
+  --highlight: #3A2C39;
 }
 
 /* ============================ Base ======================================== */
@@ -214,14 +217,18 @@ button:hover {
 button:active { transform: translateY(0); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
-/* Primary button (also covers .primary used across the app) */
+/* Primary button — the ink pill (design language v1.3): --ink fill, --bg text,
+   in BOTH themes. The accent is never a bright button fill; it's reserved for
+   marks/links/emphasis. A non-primary button gets at most an accent-outlined pill. */
 button.primary, .btn-primary {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--ink);
+  color: var(--bg);
   border: 1px solid transparent;
+  border-radius: var(--radius-pill);
 }
 button.primary:hover, .btn-primary:hover {
-  background: var(--accent-deep);
+  background: var(--ink);
+  opacity: 0.9;
   border-color: transparent;
 }
 

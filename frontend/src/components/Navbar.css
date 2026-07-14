@@ -85,6 +85,7 @@
 
 .nav-cta {
   box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-pill); /* the CTA is a true ink pill (v1.3 button grammar) */
 }
 .nav-cta:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 

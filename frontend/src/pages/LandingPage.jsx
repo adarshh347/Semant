@@ -87,7 +87,7 @@ const PANELS = [
     n: '01',
     title: 'See — reading, not tagging.',
     line: 'A tagger flattens the picture to a list. Semant decomposes it into the parts that carry the meaning.',
-    pastel: 'sky',
+    pastel: 'mauve',
     motif: <SeeMotif />,
     reading: 'Not “a gown” — the neckline, the drape, the patterned hem.',
   },
