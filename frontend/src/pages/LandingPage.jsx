@@ -1,24 +1,112 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import legPalmImage from '../assets/leg-palm.jpg';
+import editorialImage from '../assets/background.jpeg';
 import './LandingPage.css';
 
 /**
- * Semant landing — the motive-based front page (Landing revamp, Pass 2 · Phase 2a).
+ * Semant landing — the motive-based front page (Pass 2 · Phase 2a, refit to the
+ * Semant design language v1.1).
  *
- * Built around one act: See · Read · Write. Editorial, type-led, honest copy — the
- * voice is lifted from `architecture-lab/landing-articles/01–03` with the product
- * word swapped to Semant. Phase 2a is fully static (no motion); the DOM is shaped
- * for Phase 2b to attach Motion reveals + a GSAP ScrollTrigger scrub to the
- * `.demo-*` nodes without restructuring. `data-reveal` marks 2b's reveal targets.
+ * Built around one act: See · Read · Write. Editorial, type-led, restrained.
+ * Two image registers, used strictly (design-language §4 / §7):
+ *   • Hero = register-1, the *real editorial image* carrying only our thin
+ *     terracotta region overlay on a few parts — the product's own truth.
+ *   • Spine = register-2, one *muted-pastel card* per panel holding a hand-drawn
+ *     thick-black-line motif that dissects an image into parts + a 1-line reading.
+ * Colour discipline: warm paper + one terracotta *interactive* accent + the
+ * pastel diagram cards; nothing else. Primary action is the ink pill; emphasis
+ * is italic Fraunces, never colour.
+ *
+ * Phase 2a is fully static. [data-reveal] marks Phase 2b's reveal targets, and
+ * this static state IS the prefers-reduced-motion fallback 2b degrades to.
  */
 
-// The three parts the demo "reads" — true to the actual image (a cast hand + forearm),
-// so nothing on the page claims more than the picture shows.
-const DEMO_PARTS = [
-  { id: 'p1', label: 'the taut tendon', top: '34%', left: '58%' },
-  { id: 'p2', label: 'the fall of light', top: '18%', left: '30%' },
-  { id: 'p3', label: 'the loosening grip', top: '68%', left: '40%' },
+// Hero region overlay — 2–3 thin terracotta boxes on garment parts (register-1).
+const HERO_REGIONS = [
+  { label: 'the neckline', top: '26%', left: '46%', width: '20%', height: '13%' },
+  { label: 'the drape', top: '52%', left: '38%', width: '26%', height: '20%' },
+  { label: 'the patterned hem', top: '74%', left: '34%', width: '30%', height: '15%' },
+];
+
+/* ── Hand-drawn diagram motifs (thick single-weight black line + one terracotta
+   accent). Fixed dark stroke via --diagram-ink so they stay black-on-pastel in
+   dark mode. One motif per pastel card. ─────────────────────────────────────── */
+
+function SeeMotif() {
+  // A garment dissected into parts — two ink markers, one terracotta (the pick).
+  return (
+    <svg className="motif" viewBox="0 0 240 180" role="img" aria-label="A garment decomposed into parts.">
+      <g fill="none" stroke="var(--diagram-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M96 44 q24 -14 48 0 l16 26 -14 9 v70 q-26 10 -52 0 v-70 l-14 -9 z" />
+        <path d="M120 40 v14" />
+      </g>
+      <circle cx="120" cy="118" r="13" fill="none" stroke="var(--diagram-ink)" strokeWidth="3" />
+      <circle cx="150" cy="150" r="11" fill="none" stroke="var(--diagram-ink)" strokeWidth="3" />
+      {/* the picked part — the one accent */}
+      <circle cx="120" cy="47" r="15" fill="none" stroke="var(--accent)" strokeWidth="3.5" />
+    </svg>
+  );
+}
+
+function ReadMotif() {
+  // A part, read: a lens over a swatch + a written reading line.
+  return (
+    <svg className="motif" viewBox="0 0 240 180" role="img" aria-label="A felt reading of a part.">
+      <g fill="none" stroke="var(--diagram-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="40" y="52" width="78" height="78" rx="8" />
+        <path d="M52 74 q14 -10 28 0 t28 0" />
+        <path d="M52 92 q14 -10 28 0 t28 0" />
+        <path d="M52 110 q14 -10 28 0 t28 0" />
+        <line x1="150" y1="132" x2="176" y2="158" />
+      </g>
+      {/* the lens ring — the one accent */}
+      <circle cx="132" cy="112" r="26" fill="none" stroke="var(--accent)" strokeWidth="3.5" />
+    </svg>
+  );
+}
+
+function WriteMotif() {
+  // Words from parts: a page of lines with one picked word marked.
+  return (
+    <svg className="motif" viewBox="0 0 240 180" role="img" aria-label="A paragraph grounded in the picked parts.">
+      <g fill="none" stroke="var(--diagram-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="52" y="34" width="112" height="128" rx="8" />
+        <line x1="70" y1="66" x2="146" y2="66" />
+        <line x1="70" y1="88" x2="146" y2="88" />
+        <line x1="70" y1="110" x2="120" y2="110" />
+        <line x1="70" y1="132" x2="146" y2="132" />
+      </g>
+      {/* the picked word, carried into the prose — the one accent */}
+      <rect x="126" y="102" width="38" height="16" rx="5" fill="none" stroke="var(--accent)" strokeWidth="3.5" />
+    </svg>
+  );
+}
+
+const PANELS = [
+  {
+    n: '01',
+    title: 'See — reading, not tagging.',
+    line: 'A tagger flattens the picture to a list. Semant decomposes it into the parts that carry the meaning.',
+    pastel: 'clay',
+    motif: <SeeMotif />,
+    reading: 'Not “a gown” — the neckline, the drape, the patterned hem.',
+  },
+  {
+    n: '02',
+    title: 'Read — a felt reading, part by part.',
+    line: 'Each part read through the lenses the image itself calls for — an interpretation you can extend and write from.',
+    pastel: 'sage',
+    motif: <ReadMotif />,
+    reading: '“The drape gives where the neckline holds — softness argued against restraint.”',
+  },
+  {
+    n: '03',
+    title: 'Write — words that could sound like you.',
+    line: 'The aim: prose grounded in the parts you picked and your accumulating voice — not generic slop.',
+    pastel: 'sky',
+    motif: <WriteMotif />,
+    reading: 'The picked part, carried into the sentence — in your own words.',
+  },
 ];
 
 export default function LandingPage() {
@@ -27,22 +115,20 @@ export default function LandingPage() {
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <header className="landing-hero" data-reveal>
         <div className="landing-hero-copy">
-          <span className="landing-kicker">See · Read · Write</span>
-          <span className="landing-wordmark">Semant</span>
+          <span className="landing-eyebrow">See · Read · Write</span>
           <h1 className="landing-wedge">
-            Every tool tells you <em>what’s</em> in an image.
-            <br />
-            Semant tells you <em>why it moves you</em> — part by part, in your own words.
+            Every tool tells you <em>what’s</em> in an image. Semant tells you{' '}
+            <em>why it moves you</em> — part by part, in your own words.
           </h1>
           <p className="landing-lede">
-            Close-reading for the age of the scroll. Not another place to save
-            images — an instrument for seeing them.
+            Close-reading for the age of the scroll — an instrument for seeing
+            images, not another place to save them.
           </p>
           <div className="landing-cta-row">
-            <Link to="/gallery" className="landing-cta">
-              Explore the Gallery <span className="landing-cta-arrow" aria-hidden>→</span>
+            <Link to="/gallery" className="landing-pill">
+              Explore the Gallery <span aria-hidden>→</span>
             </Link>
-            <a href="#see-read-write" className="landing-cta-secondary">
+            <a href="#see-read-write" className="landing-textlink">
               See how it reads <span aria-hidden>↓</span>
             </a>
           </div>
@@ -50,21 +136,29 @@ export default function LandingPage() {
 
         <figure className="landing-hero-figure">
           <div className="landing-hero-frame">
-            <img src={legPalmImage} alt="A cast of a hand and forearm, lit from the side." />
+            <img src={editorialImage} alt="An editorial fashion figure in a patterned gown." />
+            {HERO_REGIONS.map((r) => (
+              <span
+                key={r.label}
+                className="landing-region"
+                style={{ top: r.top, left: r.left, width: r.width, height: r.height }}
+              >
+                <span className="landing-region-label">{r.label}</span>
+              </span>
+            ))}
           </div>
-          <figcaption className="landing-hero-vlabel">Reading, not tagging</figcaption>
         </figure>
       </header>
 
       {/* ── The problem ──────────────────────────────────────────────────── */}
-      <section className="landing-section landing-problem" data-reveal>
-        <span className="landing-kicker landing-kicker--accent">The problem</span>
+      <section className="landing-section" data-reveal>
+        <span className="landing-eyebrow">The problem</span>
         <h2 className="landing-h2">Saving is not seeing.</h2>
         <p className="landing-prose">
-          We have never had more places to <em>save</em> an image — and never
-          understood them less. A moodboard is an archive of your attention with
-          the attention removed. It remembers <em>that</em> you stopped. It
-          forgets <em>why</em> — and the why is the only part that matters.
+          We have never had more places to save an image — and never understood
+          them less. A moodboard is an archive of your attention with the
+          attention removed. It remembers <em>that</em> you stopped; it forgets
+          <em> why</em> — and the why is the only part that matters.
         </p>
         <p className="landing-pullquote">Saving is a reflex. Seeing is a practice.</p>
       </section>
@@ -72,111 +166,56 @@ export default function LandingPage() {
       {/* ── See · Read · Write — the spine ───────────────────────────────── */}
       <section id="see-read-write" className="landing-section landing-spine">
         <div className="landing-spine-head" data-reveal>
-          <span className="landing-kicker landing-kicker--accent">The act</span>
-          <h2 className="landing-h2">See · Read · Write</h2>
+          <span className="landing-eyebrow">The act</span>
+          <h2 className="landing-h2">See · Read · Write.</h2>
           <p className="landing-prose">
             One image, slowed down — decomposed into meaningful parts, read part
-            by part, and written from. Here is the whole loop on a single frame.
+            by part, and written from.
           </p>
         </div>
 
-        {/* SEE */}
-        <article className="landing-panel" data-reveal>
-          <div className="landing-panel-copy">
-            <span className="landing-numeral">01</span>
-            <h3 className="landing-h3">See — reading, not tagging.</h3>
-            <p className="landing-prose">
-              A tagger flattens the picture to a list: <em>hand, arm, 94%.</em>{' '}
-              Semant decomposes it into the parts that carry the meaning — the
-              taut tendon, the fall of light, the loosening grip.
-            </p>
-          </div>
-          <figure className="landing-demo" aria-label="The image, decomposed into parts.">
-            <div className="landing-demo-frame">
-              <img src={legPalmImage} alt="The same cast, with three parts marked." />
-              {DEMO_PARTS.map((p) => (
-                <span
-                  key={p.id}
-                  className="landing-demo-part"
-                  style={{ top: p.top, left: p.left }}
-                >
-                  <span className="landing-demo-dot" aria-hidden />
-                  <span className="landing-demo-part-label">{p.label}</span>
-                </span>
-              ))}
+        {PANELS.map((p, i) => (
+          <article
+            key={p.n}
+            className={`landing-panel${i % 2 === 1 ? ' landing-panel--reverse' : ''}`}
+            data-reveal
+          >
+            <div className="landing-panel-copy">
+              <span className="landing-numeral">{p.n}</span>
+              <h3 className="landing-h3">{p.title}</h3>
+              <p className="landing-prose">{p.line}</p>
             </div>
-          </figure>
-        </article>
-
-        {/* READ */}
-        <article className="landing-panel landing-panel--reverse" data-reveal>
-          <div className="landing-panel-copy">
-            <span className="landing-numeral">02</span>
-            <h3 className="landing-h3">Read — a felt reading, part by part.</h3>
-            <p className="landing-prose">
-              Each part read through the lenses the image itself calls for — an
-              interpretation you can disagree with, extend, and write from.
-            </p>
-          </div>
-          <figure className="landing-reading" aria-label="A felt reading of a part.">
-            <span className="landing-reading-tag">the loosening grip</span>
-            <blockquote className="landing-reading-line">
-              “The grip performs strength while the slack fingers quietly refuse
-              it — control and its release held in the same hand.”
-            </blockquote>
-          </figure>
-        </article>
-
-        {/* WRITE */}
-        <article className="landing-panel" data-reveal>
-          <div className="landing-panel-copy">
-            <span className="landing-numeral">03</span>
-            <h3 className="landing-h3">Write — words that sound like you.</h3>
-            <p className="landing-prose">
-              It writes <em>with</em> you, not <em>for</em> you. The real visual
-              detail is right there, grounded in the image and in your
-              accumulating voice — no generic slop, no “✨ obsessed with this vibe ✨.”
-            </p>
-          </div>
-          <figure className="landing-draft" aria-label="A paragraph assembled from the picked parts.">
-            <div className="landing-draft-card">
-              <p>
-                The forearm holds a quiet argument: the{' '}
-                <mark>taut tendon</mark> insists on effort while the{' '}
-                <mark>loosening grip</mark> lets it go, and the{' '}
-                <mark>fall of light</mark> down the wrist takes the side of
-                release. Strength, caught in the act of forgetting itself.
-              </p>
-              <span className="landing-draft-origin">written with Semant · from your picks</span>
-            </div>
-          </figure>
-        </article>
+            <figure className={`landing-card landing-card--${p.pastel}`}>
+              {p.motif}
+              <figcaption className="landing-card-reading">{p.reading}</figcaption>
+            </figure>
+          </article>
+        ))}
       </section>
 
       {/* ── The payoff ───────────────────────────────────────────────────── */}
-      <section className="landing-section landing-payoff" data-reveal>
-        <span className="landing-kicker landing-kicker--accent">The payoff</span>
+      <section className="landing-section" data-reveal>
+        <span className="landing-eyebrow">The payoff</span>
         <h2 className="landing-h2">Your taste is your edge.</h2>
         <p className="landing-prose">
           When everyone can generate everything, the one thing that can’t be
-          faked is a point of view. Do this a hundred times and a{' '}
-          <em>portrait of your own eye</em> appears — the motifs you return to,
-          the details you can’t stop noticing, your taste written down as
-          language instead of scattered across boards you’ll never reopen.
+          faked is a point of view. Do this a hundred times and a portrait of
+          your own eye appears — the details you can’t stop noticing, your taste
+          written down as language instead of scattered across boards you’ll
+          never reopen.
         </p>
         <p className="landing-pullquote">Your taste, given back — not harvested.</p>
       </section>
 
-      {/* ── Close ────────────────────────────────────────────────────────── */}
+      {/* ── Close (centered announcement register) ───────────────────────── */}
       <section className="landing-section landing-close" data-reveal>
         <h2 className="landing-h2 landing-close-line">
-          Tagging tells you what you’re looking at.
-          <br />
-          Reading tells you what you’re <em>seeing</em>.
+          Tagging tells you what you’re looking at. Reading tells you what
+          you’re <em>seeing</em>.
         </h2>
         <p className="landing-prose landing-close-sub">We only care about the second one.</p>
-        <Link to="/gallery" className="landing-cta landing-cta--lg">
-          Start seeing <span className="landing-cta-arrow" aria-hidden>→</span>
+        <Link to="/gallery" className="landing-pill landing-pill--lg">
+          Start seeing <span aria-hidden>→</span>
         </Link>
       </section>
     </div>

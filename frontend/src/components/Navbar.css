@@ -42,15 +42,6 @@
 }
 .nav-logo:hover { opacity: 0.75; }
 
-.nav-logo-mark {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--accent-gradient);
-  box-shadow: inset -4px -4px 0 rgba(0, 0, 0, 0.14);
-  flex-shrink: 0;
-}
-
 /* Links */
 .nav-links {
   display: flex;

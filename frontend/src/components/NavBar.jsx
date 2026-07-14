@@ -47,10 +47,9 @@ function Navbar() {
   return (
     <header className="navbar-wrap">
       <nav className="navbar" ref={navRef}>
-        <NavLink to="/" className="nav-logo">
-          <span className="nav-logo-mark" aria-hidden="true"></span>
-          Semant
-        </NavLink>
+        {/* The wordmark IS the logo (d.1 §8.1) — no generic dot/asterisk. Any
+            future mark must be a bespoke, on-concept glyph. */}
+        <NavLink to="/" className="nav-logo">Semant</NavLink>
 
         {/* Inline primary links — the everyday nav. CSS hides these on /posts/*. */}
         <div className="nav-links">
