@@ -55,9 +55,9 @@ const regionName = (r) => r.label || r.part || r.category || 'part';
  * Self-contained: it owns its data fetching and saving, responds to its OWN width via
  * container queries (a pane is not a viewport), and mounts anywhere.
  */
-export default function RegionSurface({ post, aletheia = null, onPostChange }) {
-    const [regions, setRegions] = useState(post.region_annotations || []);
-    const [selectedId, setSelectedId] = useState(null);
+export default function RegionSurface({ post, aletheia = null, onPostChange, store = null }) {
+    const [regionsInt, setRegionsInt] = useState(post.region_annotations || []);
+    const [selectedIdInt, setSelectedIdInt] = useState(null);
     const [activeId, setActiveId] = useState(null);      // keyboard cursor / hover
 
     const [viewMap, setViewMap] = useState(
@@ -83,8 +83,27 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
     const imgRef = useRef(null);
     const listRef = useRef(null);
     const saveTimer = useRef(null);
-    const regionsRef = useRef(regions);
-    regionsRef.current = regions;
+    const regionsRef = useRef(regionsInt);
+    regionsRef.current = regionsInt;
+
+    // ── Data layer ───────────────────────────────────────────────────────────
+    // The shared store when mounted in Chiasm (the single source both panes read),
+    // internal state when standalone (the lab). Selection + hover + regions live in
+    // ONE place per mount; the store is the only channel to Manuscript.
+    const regions = store ? store.regions : regionsInt;
+    const selectedId = store ? store.selectedId : selectedIdInt;
+    const setSelectedId = store ? store.selectRegion : setSelectedIdInt;
+    const setHovered = store ? store.setHoveredId : () => {};
+    const commitRegions = store
+        ? store.setRegions
+        : (next) => { regionsRef.current = typeof next === 'function' ? next(regionsRef.current) : next; setRegionsInt(regionsRef.current); };
+    // A Percept is created only on a DELIBERATE attention signal — mark-affecting,
+    // a note, a freehand mark, /part — never on hover or render. Idempotent (one
+    // creator percept per region), so repeated signals don't multiply.
+    const attend = store ? store.ensurePercept : () => {};
+    // Move the keyboard/hover cursor AND tell the store what the eye is on (drives
+    // the region→Manuscript highlight). This is a glance, not attention.
+    const activate = (id) => { setActiveId(id); setHovered(id); };
 
     // --- geometry: where the image ACTUALLY is inside the stage ---------------------
     // `object-fit: contain` letterboxes. Labels and the freehand tool live in HTML, so
@@ -115,7 +134,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
     };
 
     // --- persistence: autosave on blur, debounced -----------------------------------
-    const persist = useCallback(async (next) => {
+    const persistInt = useCallback(async (next) => {
         setSaveState('saving');
         try {
             const res = await fetch(`${BASE}/${post.id}/region-annotations`, {
@@ -134,26 +153,27 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
         }
     }, [post.id, onPostChange]);
 
-    const scheduleSave = useCallback(() => {
+    const scheduleSaveInt = useCallback(() => {
         clearTimeout(saveTimer.current);
-        saveTimer.current = setTimeout(() => persist(regionsRef.current), AUTOSAVE_MS);
-    }, [persist]);
+        saveTimer.current = setTimeout(() => persistInt(regionsRef.current), AUTOSAVE_MS);
+    }, [persistInt]);
 
     useEffect(() => () => clearTimeout(saveTimer.current), []);
 
-    const update = (id, patch) => {
-        setRegions(rs => {
-            const next = rs.map(r => (r.id === id ? { ...r, ...patch } : r));
-            regionsRef.current = next;
-            return next;
-        });
-    };
+    // When the store owns the data it also owns saving; the internal path is the
+    // lab-standalone fallback.
+    const scheduleSave = store ? store.scheduleSave : scheduleSaveInt;
+    const update = store
+        ? store.updateRegion
+        : (id, patch) => commitRegions(rs => rs.map(r => (r.id === id ? { ...r, ...patch } : r)));
 
     const togglePriority = (id) => {
-        const r = regionsRef.current.find(x => x.id === id);
+        const r = regions.find(x => x.id === id);
         if (!r) return;
-        update(id, { prioritised: !r.prioritised, weight: !r.prioritised ? (r.weight || 60) : 0 });
+        const next = !r.prioritised;
+        update(id, { prioritised: next, weight: next ? (r.weight || 60) : 0 });
         setSelectedId(id);
+        if (next) attend(r);   // marking a part as affecting IS attention → a Percept
         scheduleSave();   // one tap is the shallow rung — it must stick on its own
     };
 
@@ -172,8 +192,8 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
             if (!res.ok) throw new Error();
             const data = await res.json();
             const next = data.regions || [];
-            setRegions(next); regionsRef.current = next;
-            setSelectedId(null); setActiveId(null);
+            commitRegions(next);
+            setSelectedId(null); activate(null);
             setViewMap(next.length > QUIET_THRESHOLD ? 'quiet' : 'outline');
             setStatus('idle');
         } catch {
@@ -215,9 +235,9 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
             label: 'my mark', category: 'other', material: '', description: '',
             attributes: [], depth: 0, prioritised: false, weight: 0, user_note: '',
         };
-        const next = [...regionsRef.current, region];
-        setRegions(next); regionsRef.current = next;
+        commitRegions(rs => [...rs, region]);
         setSelectedId(region.id);
+        attend(region);   // a freehand mark is a deliberate act of attention → a Percept
         scheduleSave();
     };
 
@@ -271,7 +291,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
         } else if (e.key === '*') { togglePriority(activeId); return; }
         else return;
         e.preventDefault();
-        setActiveId(next);
+        activate(next);
         listRef.current?.querySelector(`[data-rid="${next}"]`)?.scrollIntoView({ block: 'nearest' });
     };
 
@@ -308,7 +328,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
                         <RegionOverlay
                             natural={natural} regions={visible} viewMap={viewMap}
                             selectedId={selectedId} activeId={activeId} focusId={focusId}
-                            onSelect={setSelectedId} onActivate={setActiveId} draft={draft}
+                            onSelect={setSelectedId} onActivate={activate} draft={draft}
                         />
 
                         {!drawing && (
@@ -441,7 +461,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
                     ) : (
                         <div className="rs-list" role="listbox" tabIndex={0} ref={listRef}
                             aria-label="Parts of the image" aria-activedescendant={activeId || undefined}
-                            onKeyDown={onListKeyDown} onBlur={() => setActiveId(null)}>
+                            onKeyDown={onListKeyDown} onBlur={() => activate(null)}>
                             {visible.map(r => {
                                 const lens = lensFor(r.id);
                                 return (
@@ -451,8 +471,8 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
                                             + `${activeId === r.id ? ' is-active' : ''}`
                                             + `${r.prioritised ? ' is-pri' : ''}`
                                             + `${!isAnchor(r) ? ' rs-row--fine' : ''}`}
-                                        onMouseEnter={() => setActiveId(r.id)}
-                                        onMouseLeave={() => setActiveId(null)}
+                                        onMouseEnter={() => activate(r.id)}
+                                        onMouseLeave={() => activate(null)}
                                         onClick={() => setSelectedId(r.id)}>
                                         <button className="rs-star" tabIndex={-1}
                                             aria-label={r.prioritised ? `Unmark ${regionName(r)}` : `${regionName(r)} affected me`}
@@ -503,7 +523,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange }) {
                                 placeholder={`How does “${regionName(selected)}” affect you?`}
                                 value={selected.user_note || ''}
                                 onChange={e => update(selected.id, { user_note: e.target.value })}
-                                onBlur={scheduleSave} />
+                                onBlur={() => { scheduleSave(); if ((selected.user_note || '').trim()) attend(selected); }} />
                         </div>
                     ) : (
                         regions.length > 0 && <p className="rs-muted rs-pick">Select a part to say how it affects you.</p>

@@ -6,6 +6,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Sparkles, Plus, X, ChevronRight, ChevronLeft, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, MoreHorizontal } from 'lucide-react';
 import VisualPane from './VisualPane';
+import RegionSurface from './RegionSurface';
 import RichTextBlock from './RichTextBlock';
 import Manuscript from './blocknote/Manuscript';
 import ChatbotPanel from './ChatbotPanel';
@@ -89,6 +90,8 @@ function PostDetailPage() {
   // pane marks them; the story points at them. Declared before the `!post` early return
   // so the hook order never changes, and it tolerates a null post while loading.
   const regionStore = useRegionState(post, setPost);
+  // Dev affordance — inspect the shared Chiasm store from the console (Field↔Manuscript).
+  useEffect(() => { if (import.meta.env?.DEV) window.__chiasm = regionStore; }, [regionStore]);
 
   // Close the topbar "⋯" overflow on outside-click / Escape.
   useEffect(() => {
@@ -976,12 +979,16 @@ function PostDetailPage() {
           </div>
 
           <div className="image-display">
-            <VisualPane
+            {/* Chiasm · Field — the advanced region surface (RegionSurface +
+                Overlay + Lightbox), wired to the shared store so selection/hover
+                and attention (percepts) are the single channel to Manuscript.
+                Replaces the VisualPane per Track D. write-about-part re-wires in
+                Phase 4. */}
+            <RegionSurface
               post={post}
-              showRegions={activeLeftTab === 'regions'}
+              aletheia={regionStore.aletheia}
               onPostChange={setPost}
-              onWriteAboutRegion={writeAboutRegion}
-              writingRegionId={writingRegionId}
+              store={regionStore}
             />
           </div>
         </div>
