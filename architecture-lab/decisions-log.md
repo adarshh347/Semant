@@ -104,3 +104,34 @@ Phase 1 (slash menu for block types, no AI) only needs Q1–Q3, which are LOCKED
 3. Highlight jump → **cross-tab (Story + scrollIntoView) now**; inline margin rail is a later enhancement.
 4. Edit-mode tags → **sticky/collapsible so reachable while writing** (not buried at the bottom of a long column).
 5. Underline hint → **remove the permanent strip**; rely on the selection tooltip.
+
+---
+
+## Lane 1 — top chrome: answers to the 5 questions (LOCKED)
+1. **Sutradhar brand** → fold to a small quiet label at the topbar's left (next to the back-link). No dedicated center slot. (Dropping is also acceptable; the trace is carried by block `origin`.)
+2. **Navbar collapse** → on `/posts/*`, collapse the 9 links into a single disclosure menu (☰▾), using the existing `app-layout--fullscreen` CSS hook (reachable now — no new plumbing). Not a shrunk-but-visible rail.
+3. **Edit button** → remove the standalone top Edit button; entry to editing is a **pencil affordance on the Content panel header** (not pure edit-on-focus — reading page, avoid accidental edits).
+4. **AI Assistant** → keep in the topbar but **de-weight from primary to a quiet secondary** button (slash now carries everyday AI; the sidebar is for occasional deep conversation).
+5. **Upload vs back-link** → keep the back-link (page's own exit) and logo (home); **fold the Upload CTA into the collapsed navbar menu** rather than a standing button on post pages.
+
+Every capability stays reachable: theme (navbar, dup removed), 9 links + Upload (menu), leave (back-link), AI (secondary button), edit (pencil), delete (topbar "⋯" overflow).
+
+---
+
+## Lane 2 — split shell: answers to the 5 questions (LOCKED)
+1. **Region model (Q1)** → **DEFERRED to Darshan Track A.** Lean is Option A (merge into one region model) but this is a Foundation data decision that also gates Lanes 3 & 6 — do NOT build it in the Lane 2 shell pass. Lane 2 touches no region data.
+2. **Edit mode** → the Visual pane **narrows** via a width preset on the SSOT (`leftPanelWidth`), smooth transition, restore on exit. Replaces the opacity-dim.
+3. **Divider presets** → **yes**: a collapse-to-rail toggle ("focus the writing") + double-click-to-reset to 45%, alongside drag.
+4. **Panel titles** → **drop** the "Visual"/"Content" `<h3>`s; header = tabs (left) + a right-aligned actions slot.
+5. **Split primitive** → **keep the hand-rolled divider** (no `allotment` dep); harden it to the WAI-ARIA APG window-splitter pattern (focusable separator, role/aria-value*, Arrow-key resize).
+
+---
+
+## Front-door revamp — answers to the 5 decisions (LOCKED 2026-07-14)
+1. **Wordmark** → **Latin "Semant"**. Drop `दृष्टिकोण` (it *is* Drishtikone). Sanskrit terms → section names only; no tagline in Pass 1.
+2. **Room names** → **Atelier + Loom** (over Studio/Writer — wanted brand vibes). Workspace (image+read+write, today `PostDetailPage`/"Drishya") = **Atelier**; standalone editor = **Loom**. Routes-later: `/atelier/:postId`, `/loom`.
+3. **Primary nav** → **`Gallery · Read · Atelier · You`**. Demote Research / Unconceal / Anatomy / Motive to a **Tools** overflow now; ⌘K (cmdk) in the Foundation pass. Delete dead `pages/NavBar.jsx` (unimported, malformed, still says "Framewise").
+4. **Landing motion stack** → **Motion + GSAP** (scroll storytelling). No Tailwind; Aceternity/Magic-UI reference-only.
+5. **First execution** → **SPLIT**: Pass 1 = rebrand + nav (fast/low-risk); Pass 2 = landing redesign (own build). Spec: `front-door-revamp.build.md`.
+
+Grounding fix: rebrand is **9 occurrences / 7 files, 3 user-visible** — not "13 spots". `frontend/package.json` name = `"frontend"` (not a brand spot); token pkg `drishtikone-tokens` → `semant-tokens`.

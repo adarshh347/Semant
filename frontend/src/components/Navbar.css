@@ -42,15 +42,6 @@
 }
 .nav-logo:hover { opacity: 0.75; }
 
-.nav-logo-mark {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--accent-gradient);
-  box-shadow: inset -4px -4px 0 rgba(0, 0, 0, 0.14);
-  flex-shrink: 0;
-}
-
 /* Links */
 .nav-links {
   display: flex;
@@ -94,6 +85,7 @@
 
 .nav-cta {
   box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-pill); /* the CTA is a true ink pill (v1.3 button grammar) */
 }
 .nav-cta:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 
@@ -101,9 +93,68 @@
   box-shadow: none !important;
 }
 
+/* ── Tools overflow (normal nav) ─────────────────────────────────────────
+   A single quiet dropdown for the demoted tooling. Hidden on /posts/*, where
+   the full disclosure takes over. */
+.nav-tools { position: relative; display: inline-flex; }
+.nav-tools-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.7rem;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-muted);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  transition: color 0.2s var(--ease), background-color 0.2s var(--ease);
+}
+.nav-tools-btn:hover { color: var(--ink); background: var(--surface-2); }
+
+/* ── Shared dropdown menu (Tools + the collapsed disclosure) ─────────────── */
+.nav-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+  min-width: 11rem;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+.nav-menu--wide { min-width: 12rem; }
+.nav-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+.nav-menu-item:hover { background: var(--surface-2); color: var(--ink); }
+.nav-menu-item.active { color: var(--ink); }
+.nav-menu-sep {
+  height: 1px;
+  margin: var(--space-2) 0;
+  background: var(--line);
+}
+.nav-menu-upload { color: var(--accent); font-weight: 600; }
+
 /* ── Disclosure menu (collapsed nav) ─────────────────────────────────────
    Hidden by default; CSS reveals it only on /posts/* (see the fullscreen
-   block below). Holds all 9 links + Upload when the rail collapses. */
+   block below). Holds primary + tools + Upload when the rail collapses. */
 .nav-disclosure {
   display: none;
   position: relative;
@@ -121,41 +172,6 @@
 }
 .nav-disclosure-btn:hover { color: var(--ink); background: var(--surface-2); }
 
-.nav-disclosure-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 200;
-  min-width: 12rem;
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-2);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-}
-.nav-disclosure-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.6rem;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-sans);
-  font-size: var(--fs-small);
-  font-weight: 500;
-  color: var(--ink-muted);
-  text-decoration: none;
-}
-.nav-disclosure-item:hover { background: var(--surface-2); color: var(--ink); }
-.nav-disclosure-item.active { color: var(--ink); }
-.nav-disclosure-sep {
-  height: 1px;
-  margin: var(--space-2) 0;
-  background: var(--line);
-}
-.nav-disclosure-upload { color: var(--accent); font-weight: 600; }
-
 /* ── Slim rail on /posts/* (Drishya) — hook already renders on the root ───
    Inline links + standing Upload recede; the compact disclosure carries them. */
 .app-layout--fullscreen .navbar {
@@ -163,6 +179,7 @@
 }
 .app-layout--fullscreen .nav-logo { font-size: 1.2rem; }
 .app-layout--fullscreen .nav-links,
+.app-layout--fullscreen .nav-tools,
 .app-layout--fullscreen .nav-cta { display: none; }
 .app-layout--fullscreen .nav-disclosure { display: inline-flex; }
 

@@ -22,6 +22,9 @@ import ResearchPage from './pages/ResearchPage.jsx';
 import PersonasPage from './pages/PersonasPage.jsx';
 import UnconcealQueuePage from './pages/UnconcealQueuePage.jsx';
 import AnatomyPage from './pages/AnatomyPage.jsx';
+import BlockNoteLab from './pages/BlockNoteLab.jsx';
+import ManuscriptLab from './pages/ManuscriptLab.jsx';
+import PlaceholderPage from './components/PlaceholderPage.jsx';
 
 const router = createBrowserRouter([
   {
@@ -44,7 +47,39 @@ const router = createBrowserRouter([
       { path: "personas", element: <PersonasPage /> },
       { path: "unconceal", element: <UnconcealQueuePage /> },
       { path: "anatomy", element: <AnatomyPage /> },
-      { path: "motive", element: <MotivePage /> }
+      // Editor Path B · Phase 0 — isolated BlockNote spike, before Phase 2 touches PostDetailPage.
+      { path: "lab/blocknote", element: <BlockNoteLab /> },
+      { path: "lab/manuscript", element: <ManuscriptLab /> },
+      // Primary-nav destinations, stubbed on-taste until their full pages land.
+      // Atelier = the per-post workspace (/posts/:postId); this is its on-ramp
+      // until the route rename. You = the taste/profile hub over Highlights/Epics.
+      {
+        path: "atelier",
+        element: (
+          <PlaceholderPage
+            eyebrow="Workspace"
+            title="The Atelier"
+            lede="Your image, read part by part, and written from — all in one room. Open an image from the Gallery to begin."
+            cta={{ to: "/gallery", label: "Open the Gallery" }}
+          />
+        ),
+      },
+      {
+        path: "you",
+        element: (
+          <PlaceholderPage
+            eyebrow="Your taste"
+            title="You"
+            lede="Your eye, written down — the details you keep noticing, given back to you. Your highlights and epics live here; the taste portrait is on the way."
+            links={[
+              { to: "/highlights", label: "Highlights" },
+              { to: "/epics", label: "Epics" },
+            ]}
+          />
+        ),
+      },
+      { path: "motive", element: <MotivePage /> },
+      { path: "motive/:slug", element: <MotivePage /> }
     ],
   },
 ]);

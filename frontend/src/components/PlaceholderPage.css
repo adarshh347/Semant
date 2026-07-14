@@ -1,0 +1,80 @@
+/* frontend/src/components/PlaceholderPage.css */
+/* On-taste placeholder for not-yet-built nav destinations. See the Semant
+   design language: big Fraunces, muted body, one ink-pill CTA, whitespace. */
+
+.placeholder {
+  min-height: calc(100vh - 96px);
+  display: flex;
+  align-items: center;
+  background: var(--bg);
+  color: var(--ink);
+  padding: var(--space-16) clamp(1.5rem, 6vw, 4rem);
+}
+
+.placeholder-inner { max-width: 40rem; }
+
+.placeholder-eyebrow {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  margin-bottom: var(--space-5);
+}
+
+.placeholder-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+  margin: 0 0 var(--space-6) 0;
+}
+
+.placeholder-lede {
+  font-size: var(--fs-body-lg);
+  line-height: 1.6;
+  color: var(--ink-muted);
+  max-width: 46ch;
+  margin: 0 0 var(--space-8) 0;
+}
+
+/* The single primary action — the ink pill (design-language rule: primary is
+   ink, accent is the secondary colour). */
+.placeholder-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.95rem 1.75rem;
+  background: var(--ink);
+  color: var(--bg);
+  text-decoration: none;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  transition: transform 0.2s var(--ease), opacity 0.2s var(--ease);
+}
+.placeholder-pill:hover { transform: translateY(-2px); opacity: 0.9; }
+
+.placeholder-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
+}
+.placeholder-link {
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.placeholder-link:hover { color: var(--ink); border-bottom-color: var(--accent); }

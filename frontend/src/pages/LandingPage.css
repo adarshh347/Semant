@@ -1,208 +1,261 @@
 /* frontend/src/pages/LandingPage.css */
-/* Editorial Gallery hero — token-driven, light + dark. */
+/* =============================================================================
+   Semant landing — motive-based front page (Pass 2 · Phase 2a), refit to the
+   Semant design language v1.1.
 
-.landing-page {
-  min-height: 100vh;
+   Discipline: warm paper base + ONE terracotta *interactive* accent + muted
+   pastel diagram cards; nothing else. Primary action = the ink pill; emphasis =
+   italic Fraunces (never colour). Flat-on-paper, hairline borders only where
+   earned, section rhythm at --space-16+. No decorative gradients/glows.
+   Static (Phase 2a) — 2b attaches Motion/GSAP to [data-reveal]/.landing-card,
+   and this state is the reduced-motion fallback.
+   ============================================================================= */
+
+.landing {
   width: 100%;
   background: var(--bg);
   color: var(--ink);
-  display: flex;
-  flex-direction: column;
+  font-family: var(--font-sans);
 }
 
-.landing-hero {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  min-height: calc(100vh - 96px);
-  padding: clamp(2rem, 4vw, 5rem) clamp(2rem, 6vw, 8rem);
-  gap: clamp(2rem, 5vw, 6rem);
-  align-items: center;
-  position: relative;
-  overflow: hidden;
+/* Shared section rhythm — air is the material. */
+.landing-section {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--space-16) clamp(1.5rem, 6vw, 4rem);
 }
 
-/* Soft accent glow behind the hero */
-.landing-hero::before {
-  content: '';
-  position: absolute;
-  top: -15%;
-  right: -8%;
-  width: 520px;
-  height: 520px;
-  background: radial-gradient(circle, var(--accent-soft), transparent 70%);
-  opacity: 0.9;
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* Left side - Text content */
-.landing-content {
-  position: relative;
-  z-index: 1;
-  max-width: 580px;
-  padding: 2rem 0;
-}
-
-.landing-tagline {
+/* One display + one body + one eyebrow per section. */
+.landing-eyebrow {
   display: block;
-  margin-bottom: 1.5rem;
-}
-
-.landing-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-display);
-  font-weight: 500;
-  line-height: 1.08;
-  margin: 0 0 1.5rem 0;
-  color: var(--ink);
-  letter-spacing: var(--tracking-tight);
-}
-
-.landing-title em {
-  font-style: italic;
-  color: var(--accent);
-}
-
-.landing-title-hindi {
-  font-family: var(--font-deva);
-  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
   font-weight: 600;
-  display: block;
-  margin-bottom: 0.75rem;
-  color: var(--ink-muted);
-  letter-spacing: 0;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  margin-bottom: var(--space-5);
 }
 
-.landing-description {
+.landing-h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+  margin: 0 0 var(--space-6) 0;
+  max-width: 20ch;
+}
+
+.landing-h3 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ink);
+  margin: var(--space-3) 0 var(--space-4) 0;
+}
+
+/* Body is muted, short measure — the elegance tell. */
+.landing-prose {
   font-size: var(--fs-body-lg);
-  line-height: 1.7;
+  line-height: 1.6;
   color: var(--ink-muted);
-  margin-bottom: 2.5rem;
-  max-width: 46ch;
+  max-width: 60ch;
+  margin: 0;
+}
+.landing-prose em { color: var(--ink); font-style: italic; font-weight: 500; }
+
+/* Emphasis quote — italic Fraunces in ultramarine: the section's single accent
+   (v1.2 identity — the accent carries emphasis + links + region marks). */
+.landing-pullquote {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--fs-h3);
+  line-height: 1.35;
+  color: var(--accent);
+  max-width: 26ch;
+  margin: var(--space-6) 0 0 0;
 }
 
-/* CTAs */
-.landing-cta-row {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-}
-
-.landing-cta {
+/* ── The single primary action: the ink pill ──────────────────────────── */
+.landing-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 2rem;
-  background: var(--accent);
-  color: var(--accent-ink);
+  gap: 0.5rem;
+  padding: 0.95rem 1.75rem;
+  background: var(--ink);
+  color: var(--bg);
   text-decoration: none;
+  font-family: var(--font-sans);
   font-size: 0.95rem;
   font-weight: 600;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.25s var(--ease);
+  border-radius: var(--radius-pill);
+  transition: transform 0.2s var(--ease), opacity 0.2s var(--ease);
 }
-.landing-cta:hover {
-  background: var(--accent-deep);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-.landing-cta-arrow { transition: transform 0.25s var(--ease); }
-.landing-cta:hover .landing-cta-arrow { transform: translateX(4px); }
+.landing-pill:hover { transform: translateY(-2px); opacity: 0.9; }
+.landing-pill span { transition: transform 0.2s var(--ease); }
+.landing-pill:hover span { transform: translateX(3px); }
+.landing-pill--lg { padding: 1.1rem 2.25rem; font-size: 1.05rem; margin-top: var(--space-8); }
 
-.landing-cta-secondary {
+/* Secondary = quiet text link; terracotta only on the hover underline
+   (the single interactive accent). */
+.landing-textlink {
   display: inline-flex;
   align-items: center;
-  padding: 1rem 0.5rem;
+  gap: 0.4rem;
   color: var(--ink-muted);
   text-decoration: none;
   font-size: 0.95rem;
   font-weight: 600;
   border-bottom: 1px solid transparent;
-  transition: all 0.2s var(--ease);
+  padding-bottom: 2px;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
 }
-.landing-cta-secondary:hover { color: var(--ink); border-bottom-color: var(--accent); }
+.landing-textlink:hover { color: var(--ink); border-bottom-color: var(--accent); }
 
-/* Right side - Image */
-.landing-image-container {
-  position: relative;
-  z-index: 1;
+.landing-cta-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 2rem 0;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  margin-top: var(--space-8);
 }
 
-.landing-image-frame {
+/* ── Hero (asymmetric: text ~55% left, image right) ───────────────────── */
+.landing-hero {
+  max-width: 1280px;
+  margin: 0 auto;
+  min-height: calc(100vh - 96px);
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: center;
+  padding: var(--space-12) clamp(1.5rem, 6vw, 4rem);
+}
+.landing-hero-copy { max-width: 640px; }
+
+.landing-wedge {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+  margin: 0 0 var(--space-6) 0;
+}
+.landing-wedge em { font-style: italic; color: var(--accent); }
+
+.landing-lede {
+  font-size: var(--fs-body-lg);
+  line-height: 1.6;
+  color: var(--ink-muted);
+  max-width: 48ch;
+  margin: 0;
+}
+
+/* Register-1: the real editorial image + our thin region overlay only. */
+.landing-hero-figure { margin: 0; }
+.landing-hero-frame {
   position: relative;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-lg);
   border: 1px solid var(--line);
-  max-height: 80vh;
 }
+.landing-hero-frame img { display: block; width: 100%; height: auto; object-fit: cover; }
 
-.landing-image {
-  display: block;
-  max-width: 100%;
-  max-height: 80vh;
-  object-fit: cover;
-  filter: saturate(1.02);
-  transition: transform 0.6s var(--ease);
-}
-.landing-image-frame:hover .landing-image { transform: scale(1.03); }
-
-.landing-decorative-text {
+.landing-region {
   position: absolute;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  font-size: 0.7rem;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--ink-subtle);
-  right: -1.75rem;
-  top: 50%;
-  transform: translateY(-50%);
+  border: 1.5px solid var(--accent);
+  border-radius: 3px;
+}
+.landing-region-label {
+  position: absolute;
+  top: -1.55rem;
+  left: -1.5px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: var(--accent-ink);
+  background: var(--accent);
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  white-space: nowrap;
 }
 
-/* Feature blocks */
-.landing-features {
-  display: flex;
-  gap: 3rem;
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--line);
+/* ── The spine (See · Read · Write) ───────────────────────────────────── */
+.landing-spine-head { margin-bottom: clamp(3rem, 7vw, 6rem); }
+
+.landing-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: center;
+  padding: var(--space-12) 0;
 }
-.landing-feature { flex: 1; }
-.landing-feature-number {
+.landing-panel + .landing-panel { border-top: 1px solid var(--line); }
+.landing-panel--reverse .landing-panel-copy { order: 2; }
+
+.landing-numeral {
+  display: block;
   font-family: var(--font-display);
-  font-size: 1rem;
-  color: var(--accent);
-  margin-bottom: 0.5rem;
-}
-.landing-feature-text {
-  font-size: var(--fs-small);
-  color: var(--ink-muted);
-  line-height: 1.6;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink-subtle);
+  letter-spacing: var(--tracking-wide);
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
-  .landing-hero { grid-template-columns: 1fr; padding: 2rem; gap: 2.5rem; min-height: auto; }
-  .landing-content { order: 2; max-width: 100%; padding: 0; }
-  .landing-image-container { order: 1; height: auto; padding: 1rem 0; }
-  .landing-image-frame { max-height: 50vh; }
-  .landing-image { max-height: 50vh; }
-  .landing-decorative-text { display: none; }
-  .landing-features { flex-direction: column; gap: 1.5rem; }
+/* Register-2: one muted-pastel card holding a hand-drawn motif + 1-line reading.
+   Flat — no shadow. Pastel is illustration background only. */
+.landing-card {
+  margin: 0;
+  padding: clamp(1.75rem, 4vw, 2.75rem);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+}
+.landing-card--mauve { background: var(--pastel-mauve); }
+.landing-card--stone { background: var(--pastel-stone); }
+.landing-card--bluegrey { background: var(--pastel-bluegrey); }
+
+.motif { width: min(72%, 220px); height: auto; }
+
+.landing-card-reading {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--fs-body-lg);
+  line-height: 1.4;
+  text-align: center;
+  color: var(--diagram-ink); /* stays dark on the pastel in both themes */
+  max-width: 34ch;
 }
 
-@media (max-width: 640px) {
-  .landing-hero { padding: 1.5rem; }
+/* ── Close (centered announcement register, d.1 §7) ───────────────────── */
+.landing-close { text-align: center; padding-block: var(--space-24); }
+.landing-close-line { margin-left: auto; margin-right: auto; max-width: 24ch; }
+.landing-close-line em { font-style: italic; color: var(--accent); }
+.landing-close-sub { margin-left: auto; margin-right: auto; }
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .landing-hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    gap: 2.5rem;
+  }
+  .landing-hero-copy { order: 2; }
+  .landing-hero-figure { order: 1; }
+
+  .landing-panel { grid-template-columns: 1fr; gap: 2rem; }
+  .landing-panel--reverse .landing-panel-copy { order: 0; }
+  .landing-card { order: 2; }
+}
+
+@media (max-width: 560px) {
   .landing-cta-row { width: 100%; }
-  .landing-cta { flex: 1; justify-content: center; }
-  .landing-features { margin-top: 2rem; padding-top: 1.5rem; }
+  .landing-pill { flex: 1; justify-content: center; }
+  .landing-region-label { font-size: 0.6rem; }
 }

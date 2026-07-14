@@ -90,6 +90,38 @@
   margin-bottom: 0;
 }
 
+/* Next-article footer — quiet, editorial, flat on paper. */
+.motive-next {
+  max-width: 68ch;
+  margin: clamp(3rem, 7vw, 5rem) auto 0;
+  padding-top: 2rem;
+  border-top: 1px solid var(--line);
+}
+.motive-next-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-decoration: none;
+}
+.motive-next-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+.motive-next-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+  transition: color 0.2s var(--ease);
+}
+.motive-next-link:hover .motive-next-title { color: var(--accent); }
+
 @media (max-width: 640px) {
   .motive-body p { font-size: 1rem; }
 }
