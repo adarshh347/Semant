@@ -47,12 +47,12 @@
   --radius-pill: 999px;
 
   /* ============================ LIGHT — "Paper" ============================ */
-  --bg: #FBF9F5;
+  --bg: #FAF8F3;
   --surface: #FFFFFF;
   --surface-2: #F4F1EA;
   --surface-hover: #EFEBE1;
 
-  --ink: #1A1814;
+  --ink: #14140F;
   --ink-muted: #6F6A61;
   --ink-subtle: #9C968B;
   --ink-inverse: #FBF9F5;
@@ -60,36 +60,39 @@
   --line: #E7E2D8;
   --line-strong: #D6CFC0;
 
-  --accent: #C4533A;
-  --accent-deep: #A53F2A;
-  --accent-soft: #F7E8E2;
+  /* LOCKED identity — Paper + Ultramarine (design language v1.2, §9).
+     Ultramarine is THE accent: links, emphasis, and the signature region marks.
+     The primary button stays the ink pill; ultramarine is never the button. */
+  --accent: #2733CC;
+  --accent-deep: #1B24A6;
+  --accent-soft: #E7E9F9;
   --accent-ink: #FFFFFF;
   --info: #4A4A6A;
 
-  /* Text-selection highlight — a bespoke peach signal (Anthropic-study d.1).
-     Site-wide via ::selection below. */
-  --highlight: #F2C9B6;
+  /* Text-selection highlight — bespoke pale-blue signal (v1.2). Site-wide via
+     ::selection below. */
+  --highlight: #DADEF6;
 
-  /* Muted-pastel illustration cards (d.1 §7): backgrounds for hand-drawn
-     diagram motifs ONLY — never on text, buttons, or >1 card in view.
-     Theme-agnostic on purpose (the diagram ink stays black on pastel in both
-     light and dark), so they are not redefined in the dark block. */
-  --pastel-sage: #C6D4C6;
-  --pastel-clay: #EAC7B4;
-  --pastel-sky: #C4D2DD;
-  --pastel-wheat: #E7D9B8;
+  /* Cool muted-pastel illustration cards (v1.2 §9): backgrounds for hand-drawn
+     diagram motifs ONLY — never on text, buttons, or >1 card in view. Cool set
+     (replaces the warm sage/clay — those read Anthropic). Theme-agnostic on
+     purpose (the diagram ink stays black on pastel in both light and dark). */
+  --pastel-sky: #C9D6E6;
+  --pastel-stone: #DBD8D0;
+  --pastel-bluegrey: #CCD3DE;
+  --pastel-ultramarine: #DCE0F5;
   /* Fixed dark ink for diagram line-work so it stays black-on-pastel in dark
      mode (plain --ink flips to light). */
-  --diagram-ink: #1A1814;
+  --diagram-ink: #14140F;
 
   --shadow-sm: 0 1px 2px rgba(26, 24, 20, 0.04), 0 2px 6px rgba(26, 24, 20, 0.05);
   --shadow-md: 0 4px 12px rgba(26, 24, 20, 0.07), 0 12px 28px rgba(26, 24, 20, 0.06);
   --shadow-lg: 0 12px 32px rgba(26, 24, 20, 0.10), 0 24px 64px rgba(26, 24, 20, 0.09);
   --shadow-xl: 0 20px 50px rgba(26, 24, 20, 0.14), 0 36px 80px rgba(26, 24, 20, 0.12);
 
-  --glass-bg: rgba(251, 249, 245, 0.72);
+  --glass-bg: rgba(250, 248, 243, 0.72);
   --glass-border: rgba(255, 255, 255, 0.5);
-  --accent-gradient: linear-gradient(135deg, #D2654A 0%, #C4533A 100%);
+  --accent-gradient: linear-gradient(135deg, #2733CC 0%, #1B24A6 100%);
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -128,10 +131,11 @@
   --line: #322E26;
   --line-strong: #433E33;
 
-  --accent: #D2654A;
-  --accent-deep: #B84E33;
-  --accent-soft: #2E211B;
-  --accent-ink: #14120E;
+  /* Ultramarine, brightened for legibility on dark paper (v1.2 §9). */
+  --accent: #6C77F2;
+  --accent-deep: #5966E6;
+  --accent-soft: #20233C;
+  --accent-ink: #FFFFFF;
   --info: #9C9CC4;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.35);
@@ -141,7 +145,7 @@
 
   --glass-bg: rgba(20, 18, 14, 0.72);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --accent-gradient: linear-gradient(135deg, #D2654A 0%, #B84E33 100%);
+  --accent-gradient: linear-gradient(135deg, #6C77F2 0%, #5966E6 100%);
 }
 
 /* ============================ Base ======================================== */
