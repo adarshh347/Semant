@@ -1,0 +1,63 @@
+/* =============================================================================
+   Manuscript — BlockNote themed to the Semant plum (v1.3) tokens.
+
+   BlockNote is themed entirely through its own `--bn-*` CSS variables, remapped
+   onto our design tokens. Because our tokens already flip light/dark, mapping
+   once makes BlockNote follow our themes automatically.
+
+   Specificity: `.manuscript .bn-container[data-color-scheme]` (0,3,0) beats
+   BlockNote's own `.bn-container[data-color-scheme="light|dark"]` (0,2,0).
+   ============================================================================= */
+
+.manuscript {
+  width: 100%;
+}
+
+.manuscript .bn-container[data-color-scheme] {
+  --bn-colors-editor-text: var(--ink);
+  --bn-colors-editor-background: transparent;
+
+  --bn-colors-menu-text: var(--ink);
+  --bn-colors-menu-background: var(--surface);
+
+  --bn-colors-tooltip-text: var(--ink);
+  --bn-colors-tooltip-background: var(--surface-2);
+
+  --bn-colors-hovered-text: var(--ink);
+  --bn-colors-hovered-background: var(--surface-hover);
+
+  --bn-colors-selected-text: var(--accent-ink);
+  --bn-colors-selected-background: var(--accent);
+
+  --bn-colors-disabled-text: var(--ink-subtle);
+  --bn-colors-disabled-background: var(--surface-2);
+
+  --bn-colors-shadow: var(--line-strong);
+  --bn-colors-border: var(--line);
+  --bn-colors-side-menu: var(--ink-subtle);
+
+  --bn-colors-highlights-blue-background: var(--accent-soft);
+
+  --bn-font-family: var(--font-sans);
+  --bn-border-radius: var(--radius-md);
+}
+
+/* Editorial voice: headings pick up our display serif. */
+.manuscript .bn-container [class*='blockContent'] h1,
+.manuscript .bn-container [class*='blockContent'] h2,
+.manuscript .bn-container [class*='blockContent'] h3 {
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Comfortable reading measure + our body ink for prose. */
+.manuscript .bn-editor {
+  padding-inline: 0;
+  color: var(--ink);
+}
+
+/* The slash-menu "Sutradhar" group + selection read in plum. */
+.manuscript .bn-container [data-color-scheme] ::selection {
+  background: var(--highlight);
+  color: var(--ink);
+}

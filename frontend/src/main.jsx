@@ -22,6 +22,7 @@ import PersonasPage from './pages/PersonasPage.jsx';
 import UnconcealQueuePage from './pages/UnconcealQueuePage.jsx';
 import AnatomyPage from './pages/AnatomyPage.jsx';
 import BlockNoteLab from './pages/BlockNoteLab.jsx';
+import ManuscriptLab from './pages/ManuscriptLab.jsx';
 import PlaceholderPage from './components/PlaceholderPage.jsx';
 
 const router = createBrowserRouter([
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
       { path: "anatomy", element: <AnatomyPage /> },
       // Editor Path B · Phase 0 — isolated BlockNote spike, before Phase 2 touches PostDetailPage.
       { path: "lab/blocknote", element: <BlockNoteLab /> },
+      { path: "lab/manuscript", element: <ManuscriptLab /> },
       // Primary-nav destinations, stubbed on-taste until their full pages land.
       // Atelier = the per-post workspace (/posts/:postId); this is its on-ramp
       // until the route rename. You = the taste/profile hub over Highlights/Epics.
