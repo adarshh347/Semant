@@ -132,11 +132,15 @@ Adopt at Foundation/Behaviour; harvest at Structure; keep the moat bespoke.
 
 ---
 
-## Questions for Adarsh
-1. **Wordmark:** Latin "Semant" (my rec) — or keep a Sanskrit anchor (a *correct* one, not दृष्टिकोण) as a tagline?
-2. **Page name:** **Studio** for the image+read+write page and **Writer** for the standalone tool (my rec) — or Study / Reading?
-3. **Primary nav set:** OK to cut primary nav to **Gallery · Read · Studio · You(taste/profile)** and push Research/Unconceal-queue/Anatomy behind ⌘K + a tools menu?
-4. **Landing motion stack:** Motion + GSAP (my rec for scroll storytelling), or Motion-only to keep it lean?
-5. **First execution scope:** front-door pass as one build (rebrand + nav + landing) — or split landing into its own second pass so the rebrand+nav lands faster?
+## Decisions (RESOLVED 2026-07-14)
+1. **Wordmark → Latin "Semant".** Drop `दृष्टिकोण` (it *is* Drishtikone). Sanskrit terms live as section names, not the app title; no tagline in Pass 1.
+2. **Room names → Atelier + Loom** (chosen over Studio/Writer — "more brand vibes"). The image+read+write workspace = **Atelier**; the standalone editor = **Loom**. Warm, craft-forward, English-legible; echoes the "weave" thread. Routes-later: `/atelier/:postId`, `/loom`.
+3. **Primary nav → `Gallery · Read · Atelier · You`** — confirmed. Research / Unconceal-queue / Anatomy / Motive demoted to a Tools menu now, ⌘K (cmdk) in the Foundation pass.
+4. **Landing motion stack → Motion + GSAP** (scroll storytelling) — confirmed; no Tailwind, Aceternity/Magic-UI reference-only.
+5. **First execution → SPLIT.** Pass 1 = rebrand + nav (fast, low-risk); Pass 2 = landing redesign (its own build). See `front-door-revamp.build.md`.
 
-*Research + plan only — no app code touched. The spine: reorient every surface from "the pipeline" to "the act" (See·Read·Write); rebrand to Semant; cut the nav to what users do and push tools behind ⌘K; make the landing demonstrate the wedge with motion; and make the block editor one component mounted as both Studio (with image) and Writer (standalone), synced by one persistence contract.*
+**Grounding correction:** rebrand is **9 occurrences / 7 files, only 3 user-visible** — not "13 spots". `frontend/package.json` name is `"frontend"` (not a brand spot); the token sub-package `drishtikone-tokens` is. Dead `pages/NavBar.jsx` still says the pre-Drishtikone name "Framewise" — delete it. Full table in `front-door-revamp.build.md`.
+
+> Naming note: elsewhere in this doc "Studio" = **Atelier** and "Writer" = **Loom** (written before the naming was locked).
+
+*Research + plan only — no app code touched. The spine: reorient every surface from "the pipeline" to "the act" (See·Read·Write); rebrand to Semant; cut the nav to what users do and push tools behind ⌘K; make the landing demonstrate the wedge with motion; and make the block editor one component mounted as both Atelier (with image) and Loom (standalone), synced by one persistence contract.*
