@@ -1,0 +1,23 @@
+/* Radix Tooltip — Semant plum v1.3. Ink surface on paper; readable in both themes. */
+
+.ui-tooltip {
+  max-width: 18rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--ink-inverse);
+  background: var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  z-index: 220;
+  user-select: none;
+  animation: ui-tooltip-in 0.12s var(--ease);
+}
+
+.ui-tooltip-arrow { fill: var(--ink); }
+
+@keyframes ui-tooltip-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .ui-tooltip { animation: none; } }
