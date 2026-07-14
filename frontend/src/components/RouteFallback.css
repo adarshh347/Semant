@@ -1,0 +1,32 @@
+/* Suspense route fallback — Semant plum v1.3. */
+
+.route-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 60vh;
+  width: 100%;
+  color: var(--ink-subtle);
+}
+
+.route-fallback-spinner {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  animation: route-fallback-spin 0.7s linear infinite;
+}
+
+.route-fallback-label {
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+@keyframes route-fallback-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .route-fallback-spinner { animation-duration: 1.6s; }
+}

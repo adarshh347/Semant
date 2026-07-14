@@ -1,30 +1,36 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
 // Import early so the X-API-Key header (axios default + fetch patch) is
 // installed before any component fires a request.
 import './config/api.js';
-
-import App from './App.jsx';
-import LandingPage from './pages/LandingPage.jsx';
-import GalleryPage from './pages/GalleryPage.jsx';
-import PostDetailPage from './components/PostDetailPage.jsx';
-import ReadDeeperPage from './pages/ReadDeeperPage.jsx';
-import RegionSurfaceLab from './pages/RegionSurfaceLab.jsx';
-import HighlightsPage from './pages/HighlightsPage.jsx';
 import './index.css';
-import TextFeedPage from './pages/TextFeedPage.jsx';
-import EpicsPage from './pages/EpicsPage.jsx';
-import EpicEditorPage from './pages/EpicEditorPage.jsx';
-import MotivePage from './pages/MotivePage.jsx';
-import ResearchPage from './pages/ResearchPage.jsx';
-import PersonasPage from './pages/PersonasPage.jsx';
-import UnconcealQueuePage from './pages/UnconcealQueuePage.jsx';
-import AnatomyPage from './pages/AnatomyPage.jsx';
-import BlockNoteLab from './pages/BlockNoteLab.jsx';
-import ManuscriptLab from './pages/ManuscriptLab.jsx';
+
+// Eager: the shell + the tiny inline placeholder (rendered directly in route
+// config, not as a route element).
+import App from './App.jsx';
 import PlaceholderPage from './components/PlaceholderPage.jsx';
+
+// Lazy: every route page splits into its own chunk and loads on demand. This is
+// what pulls the heavy editor deps (BlockNote/TipTap on the /posts, /lab/*, and
+// epic-editor routes) and the Gallery out of the initial bundle.
+const LandingPage = lazy(() => import('./pages/LandingPage.jsx'));
+const GalleryPage = lazy(() => import('./pages/GalleryPage.jsx'));
+const PostDetailPage = lazy(() => import('./components/PostDetailPage.jsx'));
+const ReadDeeperPage = lazy(() => import('./pages/ReadDeeperPage.jsx'));
+const RegionSurfaceLab = lazy(() => import('./pages/RegionSurfaceLab.jsx'));
+const HighlightsPage = lazy(() => import('./pages/HighlightsPage.jsx'));
+const TextFeedPage = lazy(() => import('./pages/TextFeedPage.jsx'));
+const EpicsPage = lazy(() => import('./pages/EpicsPage.jsx'));
+const EpicEditorPage = lazy(() => import('./pages/EpicEditorPage.jsx'));
+const MotivePage = lazy(() => import('./pages/MotivePage.jsx'));
+const ResearchPage = lazy(() => import('./pages/ResearchPage.jsx'));
+const PersonasPage = lazy(() => import('./pages/PersonasPage.jsx'));
+const UnconcealQueuePage = lazy(() => import('./pages/UnconcealQueuePage.jsx'));
+const AnatomyPage = lazy(() => import('./pages/AnatomyPage.jsx'));
+const BlockNoteLab = lazy(() => import('./pages/BlockNoteLab.jsx'));
+const ManuscriptLab = lazy(() => import('./pages/ManuscriptLab.jsx'));
 
 const router = createBrowserRouter([
   {
