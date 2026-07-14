@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   BlockNoteSchema,
   defaultBlockSpecs,
+  defaultInlineContentSpecs,
   filterSuggestionItems,
   insertOrUpdateBlockForSlashMenu,
 } from '@blocknote/core';
@@ -16,6 +17,7 @@ import '@blocknote/mantine/style.css';
 
 import { useTheme } from '../../context/ThemeContext';
 import { textBlocksToBlockNote, blockNoteToTextBlocks } from './blockConvert';
+import { regionRefInline } from './regionRefInline';
 import './Manuscript.css';
 
 /**
@@ -40,6 +42,9 @@ import './Manuscript.css';
 
 const schema = BlockNoteSchema.create({
   blockSpecs: { ...defaultBlockSpecs },
+  // The /part · /lens chip — a custom inline content that preserves main's
+  // <span data-region-ref …> markup through the round-trip (Phase 3).
+  inlineContentSpecs: { ...defaultInlineContentSpecs, regionRef: regionRefInline },
 });
 
 // Context-aware slash menu: STRUCTURE first when the block is empty / at its start

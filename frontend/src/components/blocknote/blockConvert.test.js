@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { ServerBlockNoteEditor } from '@blocknote/server-util';
 import {
+  BlockNoteSchema,
+  defaultInlineContentSpecs,
+  createInlineContentSpec,
+} from '@blocknote/core';
+import {
   textBlocksToBlockNote,
   blockNoteToTextBlocks,
   toBlockNoteType,
@@ -10,8 +15,32 @@ import {
 // The engine used in tests — a headless BlockNote that does real HTML⇄blocks in Node,
 // exactly what the live editor does in the browser (Phase 2).
 let engine;
+// A schema-aware engine mirroring the Manuscript's regionRef contract (Phase 3):
+// same on-disk markup, so the converter preserves the /part · /lens chip. (A core
+// inline spec, since server-util is DOM-only; the browser uses the React version.)
+let chipEngine;
 beforeAll(() => {
   engine = ServerBlockNoteEditor.create();
+  const regionRef = createInlineContentSpec(
+    { type: 'regionRef', propSchema: { refKind: { default: 'part' }, regionIds: { default: '' }, label: { default: '' } }, content: 'none' },
+    {
+      render: (ic) => {
+        const s = document.createElement('span');
+        s.setAttribute('data-region-ref', '');
+        s.setAttribute('data-ref-kind', ic.props.refKind);
+        s.setAttribute('data-region-ids', ic.props.regionIds);
+        s.setAttribute('data-label', ic.props.label);
+        s.className = `ref-chip ref-chip--${ic.props.refKind}`;
+        s.textContent = ic.props.label;
+        return { dom: s };
+      },
+      parse: (el) => (el.hasAttribute('data-region-ref')
+        ? { refKind: el.getAttribute('data-ref-kind') || 'part', regionIds: el.getAttribute('data-region-ids') || '', label: el.getAttribute('data-label') || el.textContent || '' }
+        : undefined),
+    },
+  );
+  const schema = BlockNoteSchema.create({ inlineContentSpecs: { ...defaultInlineContentSpecs, regionRef } });
+  chipEngine = ServerBlockNoteEditor.create({ schema });
 });
 
 const roundTrip = async (textBlocks) =>
@@ -119,6 +148,43 @@ describe('cross-link integrity', () => {
     expect(bn.map((b) => b.id)).toEqual(STORY.map((b) => b.id));
     const back = await blockNoteToTextBlocks(bn, engine);
     expect(back.map((b) => b.id)).toEqual(STORY.map((b) => b.id));
+  });
+});
+
+describe('region-ref chips (Phase 3 — no data loss on edit)', () => {
+  const chipRoundTrip = async (textBlocks) =>
+    blockNoteToTextBlocks(await textBlocksToBlockNote(textBlocks, chipEngine), chipEngine);
+
+  it('preserves a /part chip (data-region-ids survives edit+save)', async () => {
+    const story = [
+      { id: 'block_c', type: 'paragraph', origin: 'human', color: null,
+        content: '<p>The <span data-region-ref data-ref-kind="part" data-region-ids="reg_1" data-label="drape" class="ref-chip ref-chip--part">drape</span> holds the light.</p>' },
+    ];
+    const out = await chipRoundTrip(story);
+    expect(out[0].content).toContain('data-region-ids="reg_1"');
+    expect(out[0].content).toContain('data-region-ref');
+    expect(out[0].content).toContain('drape');
+    expect(out[0].id).toBe('block_c'); // id still preserved
+  });
+
+  it('preserves a /lens chip spanning multiple regions', async () => {
+    const story = [
+      { id: 'block_l', type: 'paragraph', origin: 'sutradhar', color: null,
+        content: '<p><span data-region-ref data-ref-kind="lens" data-region-ids="reg_1,reg_2,reg_3" data-label="Phenomenological" class="ref-chip ref-chip--lens">Phenomenological</span> reads the tension.</p>' },
+    ];
+    const out = await chipRoundTrip(story);
+    expect(out[0].content).toContain('data-region-ids="reg_1,reg_2,reg_3"');
+    expect(out[0].content).toContain('data-ref-kind="lens"');
+    expect(out[0].origin).toBe('sutradhar');
+  });
+
+  it('under the DEFAULT (chip-less) schema the span would flatten — proves the spec is load-bearing', async () => {
+    const story = [
+      { id: 'block_x', type: 'paragraph', origin: 'human', color: null,
+        content: '<p>The <span data-region-ref data-region-ids="reg_1" data-label="hem">hem</span> falls.</p>' },
+    ];
+    const out = await blockNoteToTextBlocks(await textBlocksToBlockNote(story, engine), engine);
+    expect(out[0].content).not.toContain('data-region-ids'); // flattens without the spec
   });
 });
 

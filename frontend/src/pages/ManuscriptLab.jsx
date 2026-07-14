@@ -11,6 +11,8 @@ const SAMPLE = [
   { id: 'block_p1', type: 'paragraph', content: '<p>The drape softens the <strong>severe</strong> shoulder.</p>', origin: 'human', color: null },
   { id: 'block_sut', type: 'paragraph', content: '<p>An <em>Aletheia</em> reading, drafted for you.</p>', origin: 'sutradhar', color: null },
   { id: 'block_wash', type: 'paragraph', content: '<p>A remembered line.</p>', origin: 'human', color: '#fef3c7' },
+  { id: 'block_chip', type: 'paragraph', origin: 'human', color: null,
+    content: '<p>The <span data-region-ref data-ref-kind="part" data-region-ids="reg_1" data-label="shoulder drape" class="ref-chip ref-chip--part">shoulder drape</span> carries the meaning.</p>' },
   { id: 'block_q', type: 'quote', content: '<blockquote>The moat stays ours.</blockquote>', origin: 'human', color: null },
 ];
 
