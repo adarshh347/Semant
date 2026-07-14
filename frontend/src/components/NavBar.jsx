@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Menu, ChevronDown, Upload as UploadIcon } from 'lucide-react';
+import { Menu, ChevronDown, Upload as UploadIcon, Command as CommandIcon } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import { Tooltip } from './ui';
 import './Navbar.css';
+
+// Ask the shell-level CommandPalette (App.jsx) to open. Decoupled via event so
+// the NavBar owns no palette state.
+const openCommandPalette = () => window.dispatchEvent(new CustomEvent('semant:open-command'));
 
 // Primary nav — only what a user *does* (the IA declutter). Four destinations.
 const PRIMARY_LINKS = [
@@ -87,6 +92,19 @@ function Navbar() {
               </div>
             )}
           </div>
+
+          {/* ⌘K command palette trigger — the demoted Tools also live in here. */}
+          <Tooltip content="Search — ⌘K">
+            <button
+              type="button"
+              className="nav-cmdk-btn"
+              aria-label="Open command palette (⌘K)"
+              onClick={openCommandPalette}
+            >
+              <CommandIcon size={15} />
+              <span className="nav-cmdk-kbd">K</span>
+            </button>
+          </Tooltip>
 
           <ThemeToggle />
 

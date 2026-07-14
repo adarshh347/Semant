@@ -1,6 +1,7 @@
 // frontend/src/App.jsx
 import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './components/NavBar';
+import CommandPalette from './components/CommandPalette';
 import './App.css';
 
 function App() {
@@ -15,6 +16,8 @@ function App() {
       <main className={isFullscreenPage ? 'app-main--fullscreen' : (isLandingPage ? '' : 'app-content')}>
         <Outlet />
       </main>
+      {/* Global ⌘K command palette — one shell-level mount for every route. */}
+      <CommandPalette />
     </div>
   );
 }

@@ -115,6 +115,29 @@
 }
 .nav-tools-btn:hover { color: var(--ink); background: var(--surface-2); }
 
+/* ⌘K command-palette trigger — quiet, sits between Tools and ThemeToggle. */
+.nav-cmdk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: color 0.2s var(--ease), background-color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.nav-cmdk-btn:hover { color: var(--ink); background: var(--surface-2); border-color: var(--line-strong); }
+.nav-cmdk-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.nav-cmdk-kbd {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink-subtle);
+}
+
 /* ── Shared dropdown menu (Tools + the collapsed disclosure) ─────────────── */
 .nav-menu {
   position: absolute;
