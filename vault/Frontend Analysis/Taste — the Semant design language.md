@@ -221,3 +221,60 @@ Swapping `--accent` terracotta→ultramarine in `index.css` **re-skins the whole
 - **v1 · 2026-07-14** — from the *Claude for teachers* reference + token audit.
 - **v1.1 · 2026-07-14 (d.1)** — Anthropic-site study: pastel diagram cards, peach `::selection`, nav/hero fixes.
 - **v1.2 · 2026-07-14 (originality)** — **LOCKED identity: Paper + Ultramarine.** Supersedes terracotta; accent + region-marks = ultramarine; cool diagram cards; pale-blue selection; Fraunces kept (serif-swap optional). The region-overlay marks are the signature motif.
+
+---
+
+## 10. Semant identity — RE-LOCKED v1.3: **Paper + Plum (aubergine)**
+Ultramarine (§9) read too generic/cool and clashed with the warm-brown dark base. **Final: warm paper + a deep aubergine/plum accent, on a clean plum-charcoal dark.** Moody, artful, fashion — and un-Anthropic. **This supersedes §9 (ultramarine) and all terracotta.** Principles unchanged (minimalism, one accent, cool diagram cards, unique selection, region-marks = the signature).
+
+### Signature
+**Plum = the colour of attention.** The accent *and* the region-overlay marks. The marks are the brand's one, un-copyable colour moment.
+
+### Tokens — LIGHT ("Paper")
+| Token | Value | Note |
+|---|---|---|
+| `--bg` | `#FAF7F5` | warm paper, faint plum warmth |
+| `--surface` / `--surface-2` | `#FFFFFF` / `#F3EEF1` | |
+| `--ink` | `#17121A` | display + max contrast |
+| `--ink-muted` | `#6C6470` | all body copy |
+| `--ink-subtle` | `#9A909E` | eyebrows/meta |
+| `--line` / `--line-strong` | `#E7E0E4` / `#D6CDD3` | hairlines |
+| **`--accent`** | `#5E2B50` | aubergine — links, emphasis, **region marks** |
+| `--accent-deep` | `#4A2140` | hover |
+| `--accent-soft` | `#EFE6EE` | ≤1 section tint |
+| `--accent-ink` | `#FFFFFF` | text on plum |
+| **`--highlight`** | `#E7D8E6` | pale-plum `::selection` |
+
+### Tokens — DARK ("Ink", clean plum-charcoal — replaces the brown #14120E)
+| Token | Value |
+|---|---|
+| `--bg` | `#191419` |
+| `--surface` / `--surface-2` / `--surface-hover` | `#241D24` / `#2C242C` / `#342B34` |
+| `--ink` / `--ink-muted` / `--ink-subtle` | `#F0EAEF` / `#A093A0` / `#7C737C` |
+| `--line` / `--line-strong` | `#332B33` / `#443B44` |
+| **`--accent`** (brightened mauve) | `#C08BB4` |
+| `--accent-deep` | `#B078A4` |
+| `--accent-soft` | `#2A1F29` |
+| `--accent-ink` (dark text on mauve) | `#17121A` |
+| **`--highlight`** | `#3A2C39` |
+
+### Diagram-card pastels (cool, plum-leaning)
+| Card | ~hex |
+|---|---|
+| Mauve | `#D6CDDA` |
+| Stone | `#DBD6D8` |
+| Blue-grey | `#CCD3DE` |
+| Pale plum | `#E4DAE6` |
+
+### Buttons (fix the "Upload doesn't look cool")
+- **Primary action = ink pill** (`--ink` bg, `--bg` text) in both themes — *not* a filled accent. The old bright-accent Upload button is the tell; demote it.
+- Accent is for **marks, links, emphasis** — never the default button fill. A single accent-outlined pill is the most colour a button gets.
+
+### Type
+Keep **Fraunces**; optional later shift to a higher-contrast serif. The plum accent + clean dark + pale-plum selection carry the divergence.
+
+## Changelog
+- **v1 · 2026-07-14** — from *Claude for teachers* + token audit.
+- **v1.1 (d.1)** — Anthropic-site study: pastel cards, peach selection, nav/hero fixes.
+- **v1.2 (originality)** — identity Paper + Ultramarine (superseded).
+- **v1.3 · 2026-07-14 — RE-LOCKED: Paper + Plum (aubergine).** Warm paper + deep plum accent, clean plum-charcoal dark, pale-plum selection, plum region-marks as signature, Upload → ink pill. Supersedes ultramarine + terracotta.
