@@ -1,8 +1,8 @@
-/* Drishtikone brand fonts (loaded at runtime from Google Fonts). */
+/* Semant brand fonts (loaded at runtime from Google Fonts). */
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@500;600&family=Spline+Sans+Mono:wght@400;500&display=swap");
 
 /* =============================================================================
-   Drishtikone — Global stylesheet
+   Semant — Global stylesheet
    "Editorial Gallery": warm paper/ink neutrals, heritage terracotta accent,
    Fraunces display serif + Inter UI. Mirrors /design-system/tokens.css.
 

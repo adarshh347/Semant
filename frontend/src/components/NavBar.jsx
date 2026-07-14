@@ -42,7 +42,7 @@ function Navbar() {
       <nav className="navbar">
         <NavLink to="/" className="nav-logo">
           <span className="nav-logo-mark" aria-hidden="true"></span>
-          Drishtikone
+          Semant
         </NavLink>
 
         {/* Inline links — the everyday nav. CSS hides these on /posts/*. */}

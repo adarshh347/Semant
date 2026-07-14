@@ -12,13 +12,13 @@ function LandingPage() {
           <span className="landing-tagline eyebrow">A Visual Storytelling Studio</span>
 
           <h1 className="landing-title">
-            <span className="landing-title-hindi">दृष्टिकोण</span>
+            <span className="landing-title-mark">Semant</span>
             See more in <em>every</em> frame.
           </h1>
 
           <p className="landing-description">
             An interactive canvas where images meet narrative. Gather your frames,
-            tag the details that matter, and let Drishtikone weave them into
+            tag the details that matter, and let Semant weave them into
             semantic stories and long-form visual epics.
           </p>
 
