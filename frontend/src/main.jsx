@@ -73,7 +73,8 @@ const router = createBrowserRouter([
           />
         ),
       },
-      { path: "motive", element: <MotivePage /> }
+      { path: "motive", element: <MotivePage /> },
+      { path: "motive/:slug", element: <MotivePage /> }
     ],
   },
 ]);
