@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import axios from 'axios';
 import { ArrowLeft, Sparkles, Plus, X, ChevronRight, ChevronLeft, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, MoreHorizontal } from 'lucide-react';
 import VisualPane from './VisualPane';
@@ -30,15 +31,11 @@ const htmlFromText = (text) =>
 // Strip HTML to count words / reading time.
 const plainText = (html) => (html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ');
 
-// Split-pane width presets (% of the split row). `leftPanelWidth` is the single
-// source of truth — both panes derive their width from it.
+// Field | Manuscript split sizes (% of the row) — react-resizable-panels props.
 const SPLIT_DEFAULT = 45; // resting ratio
-const SPLIT_EDIT = 30;    // Visual narrows while writing
-const SPLIT_RAIL = 4;     // collapsed "focus the writing" rail
-const SPLIT_MIN = 20;     // drag / arrow-key clamp
+const SPLIT_MIN = 20;
 const SPLIT_MAX = 80;
-const SPLIT_STEP = 2;     // arrow-key nudge
-const clampSplit = (w) => Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, w));
+const SPLIT_RAIL = 4;     // collapsed "focus the writing" rail
 
 function PostDetailPage() {
   const [post, setPost] = useState(null);
@@ -51,7 +48,9 @@ function PostDetailPage() {
   const [currentTagInput, setCurrentTagInput] = useState('');
   const [popularTags, setPopularTags] = useState([]);
   const [loadingPopularTags, setLoadingPopularTags] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(SPLIT_DEFAULT); // percentage
+  // Field | Manuscript split is owned by react-resizable-panels (persists via
+  // autoSaveId); we track only whether the Field is collapsed, for the toggle icon.
+  const [isCollapsed, setIsCollapsed] = useState(false);
   // 'regions' by default: the unified pane IS the working surface; 'image' hides the
   // overlay for a clean look at the photograph.
   const [activeLeftTab, setActiveLeftTab] = useState('regions');
@@ -78,12 +77,9 @@ function PostDetailPage() {
   // Aletheia reading, curator commentary and region detection all moved into
   // VisualPane (Track D) — they belong beside the image, not in a tab across the split.
   const [topbarMenuOpen, setTopbarMenuOpen] = useState(false); // "⋯" overflow (Delete)
-  const dividerRef = useRef(null);
-  const containerRef = useRef(null);
   const contentAreaRef = useRef(null);
   const topbarMenuRef = useRef(null);
-  const preEditWidthRef = useRef(null);   // width to restore when leaving edit
-  const preCollapseWidthRef = useRef(null); // width to restore when un-collapsing
+  const fieldPanelRef = useRef(null); // the Field Panel imperative handle (collapse/expand)
   const blockSeq = useRef(0); // monotonic, avoids Date.now() id collisions within a ms
 
   // The regions and the reading, held once for both panes (Visual↔Content). The Visual
@@ -275,95 +271,13 @@ function PostDetailPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Resizable divider logic
-  const isDraggingRef = useRef(false);
-  const isCollapsed = leftPanelWidth <= SPLIT_RAIL + 1;
-
-  const handleMouseDown = (e) => {
-    isDraggingRef.current = true;
-    dividerRef.current?.classList.add('dragging');
-    // Suppress the width transition so the pane tracks the cursor 1:1.
-    containerRef.current?.classList.add('resizing');
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    e.preventDefault();
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!isDraggingRef.current || !containerRef.current) return;
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
-      if (newWidth >= SPLIT_MIN && newWidth <= SPLIT_MAX) {
-        setLeftPanelWidth(newWidth);
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        dividerRef.current?.classList.remove('dragging');
-        containerRef.current?.classList.remove('resizing');
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      }
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
-
-  // Divider presets — all just setters on the single source of truth.
-  const resetWidth = () => { preCollapseWidthRef.current = null; setLeftPanelWidth(SPLIT_DEFAULT); };
+  // "Focus the writing" — collapse the Field to a rail, or bring it back. Drag +
+  // keyboard resize + min/max clamp are handled natively by <PanelResizeHandle>.
   const toggleCollapse = () => {
-    if (leftPanelWidth <= SPLIT_RAIL + 1) {
-      // expand back to the width held before collapsing (default if none)
-      const restore = preCollapseWidthRef.current ?? SPLIT_DEFAULT;
-      preCollapseWidthRef.current = null;
-      setLeftPanelWidth(restore);
-    } else {
-      preCollapseWidthRef.current = leftPanelWidth;
-      setLeftPanelWidth(SPLIT_RAIL);
-    }
+    const panel = fieldPanelRef.current;
+    if (!panel) return;
+    if (panel.isCollapsed()) panel.expand(); else panel.collapse();
   };
-
-  // WAI-ARIA window-splitter keys: ←/→ nudge, Home = collapse, End = reset,
-  // Enter/Space = toggle collapse.
-  const handleDividerKeyDown = (e) => {
-    switch (e.key) {
-      case 'ArrowLeft':
-        e.preventDefault(); setLeftPanelWidth((w) => clampSplit(w - SPLIT_STEP)); break;
-      case 'ArrowRight':
-        e.preventDefault(); setLeftPanelWidth((w) => clampSplit(w + SPLIT_STEP)); break;
-      case 'Home':
-        e.preventDefault(); preCollapseWidthRef.current = leftPanelWidth; setLeftPanelWidth(SPLIT_RAIL); break;
-      case 'End':
-        e.preventDefault(); resetWidth(); break;
-      case 'Enter':
-      case ' ':
-        e.preventDefault(); toggleCollapse(); break;
-      default:
-        break;
-    }
-  };
-
-  // Entering edit narrows the Visual pane via the SSOT (smooth width transition);
-  // leaving edit restores the pre-edit width. Replaces the old opacity dim.
-  useEffect(() => {
-    if (isEditing) {
-      if (preEditWidthRef.current === null) preEditWidthRef.current = leftPanelWidth;
-      setLeftPanelWidth(SPLIT_EDIT);
-    } else if (preEditWidthRef.current !== null) {
-      setLeftPanelWidth(preEditWidthRef.current);
-      preEditWidthRef.current = null;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing]);
 
   const handleSave = async () => {
     try {
@@ -826,15 +740,12 @@ function PostDetailPage() {
     // The overlay is what does the highlighting, so a chip clicked while the pane is
     // showing the bare photograph must bring the regions back first.
     setActiveLeftTab('regions');
-    if (leftPanelWidth <= SPLIT_RAIL + 1) {
-      setLeftPanelWidth(preCollapseWidthRef.current ?? SPLIT_DEFAULT);
-      preCollapseWidthRef.current = null;
-    }
+    if (fieldPanelRef.current?.isCollapsed()) fieldPanelRef.current.expand();
     regionStore.focusRegions(ids);
 
     // Let the pane re-render (and un-collapse) before we scroll to it.
     setTimeout(() => {
-      document.querySelector('.post-detail-left .vp-stage')
+      document.querySelector('.post-detail-left .rs-stage')
         ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     }, 60);
   };
@@ -1024,10 +935,20 @@ function PostDetailPage() {
         </div>
       </div>
 
-      {/* Split Container */}
-      <div className="post-detail-split" ref={containerRef}>
-        {/* Left Pane - Image */}
-        <div className="post-detail-left" style={{ width: `${leftPanelWidth}%` }}>
+      {/* Field | Manuscript split — react-resizable-panels; width persists via autoSaveId. */}
+      <PanelGroup direction="horizontal" autoSaveId="chiasm-split" className="post-detail-split">
+        {/* Field pane */}
+        <Panel
+          className="post-detail-left"
+          ref={fieldPanelRef}
+          collapsible
+          collapsedSize={SPLIT_RAIL}
+          minSize={SPLIT_MIN}
+          maxSize={SPLIT_MAX}
+          defaultSize={SPLIT_DEFAULT}
+          onCollapse={() => setIsCollapsed(true)}
+          onExpand={() => setIsCollapsed(false)}
+        >
           <div className="panel-header">
             {/* Was a dead toggle (set state, rendered nothing). Now a real layer
                 control over the one unified region surface. */}
@@ -1064,38 +985,24 @@ function PostDetailPage() {
               writingRegionId={writingRegionId}
             />
           </div>
-        </div>
+        </Panel>
 
-        {/* Resizable divider — WAI-ARIA window splitter over the same SSOT. */}
-        <div
-          className={`split-divider${isCollapsed ? ' collapsed' : ''}`}
-          ref={dividerRef}
-          role="separator"
-          tabIndex={0}
-          aria-orientation="vertical"
-          aria-label="Resize panels — arrow keys to nudge, Enter to collapse"
-          aria-valuemin={SPLIT_MIN}
-          aria-valuemax={SPLIT_MAX}
-          aria-valuenow={Math.round(leftPanelWidth)}
-          onMouseDown={handleMouseDown}
-          onDoubleClick={resetWidth}
-          onKeyDown={handleDividerKeyDown}
-        >
+        {/* Resize handle — drag + keyboard resize + min/max clamp are native; the
+            button collapses the Field to a rail ("focus the writing"). */}
+        <PanelResizeHandle className={`split-divider${isCollapsed ? ' collapsed' : ''}`}>
           <button
             type="button"
             className="divider-collapse-btn"
-            aria-label={isCollapsed ? 'Expand the Visual pane' : 'Collapse the Visual pane to a rail'}
-            title={isCollapsed ? 'Expand Visual' : 'Collapse Visual (focus writing)'}
-            onMouseDown={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => e.stopPropagation()}
+            aria-label={isCollapsed ? 'Expand the Field' : 'Collapse the Field to a rail'}
+            title={isCollapsed ? 'Expand Field' : 'Collapse Field (focus writing)'}
             onClick={toggleCollapse}
           >
             {isCollapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
           </button>
-        </div>
+        </PanelResizeHandle>
 
-        {/* Right Pane - Content */}
-        <div className="post-detail-right" style={{ width: `${100 - leftPanelWidth}%` }}>
+        {/* Manuscript pane */}
+        <Panel className="post-detail-right" minSize={SPLIT_MIN}>
           <div className="panel-header">
             <div className="panel-tabs">
                 <button
@@ -1327,8 +1234,8 @@ function PostDetailPage() {
               </div>
             </div>
           )}
-        </div>
-      </div>
+        </Panel>
+      </PanelGroup>
 
       {/* AI Slide-out Sidebar */}
       <div className={`ai-sidebar-backdrop ${isChatOpen ? 'open' : ''}`} onClick={() => setIsChatOpen(false)}></div>

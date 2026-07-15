@@ -491,10 +491,6 @@ hr {
   box-sizing: border-box;
 }
 
-.allotment-sash {
-  background-color: #555 !important;
-}
-
 .image-pane-resizable {
   height: 100%;
 }
