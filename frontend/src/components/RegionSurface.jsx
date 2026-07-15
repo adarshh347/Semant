@@ -55,7 +55,7 @@ const regionName = (r) => r.label || r.part || r.category || 'part';
  * Self-contained: it owns its data fetching and saving, responds to its OWN width via
  * container queries (a pane is not a viewport), and mounts anywhere.
  */
-export default function RegionSurface({ post, aletheia = null, onPostChange, store = null }) {
+export default function RegionSurface({ post, aletheia = null, onPostChange, store = null, onWriteAboutRegion = null, writingRegionId = null }) {
     const [regionsInt, setRegionsInt] = useState(post.region_annotations || []);
     const [selectedIdInt, setSelectedIdInt] = useState(null);
     const [activeId, setActiveId] = useState(null);      // keyboard cursor / hover
@@ -527,6 +527,14 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
                                 value={selected.user_note || ''}
                                 onChange={e => update(selected.id, { user_note: e.target.value })}
                                 onBlur={() => { scheduleSave(); if ((selected.user_note || '').trim()) attend(selected); }} />
+                            {onWriteAboutRegion && (
+                                <button className="rs-write" disabled={writingRegionId === selected.id}
+                                    onClick={() => onWriteAboutRegion(selected)}
+                                    title="Let the writer draft a passage grounded in this part">
+                                    {writingRegionId === selected.id ? <span className="rs-spin" /> : <Sparkles size={13} />}
+                                    {writingRegionId === selected.id ? 'Writing…' : 'Write about this'}
+                                </button>
+                            )}
                         </div>
                     ) : (
                         regions.length > 0 && <p className="rs-muted rs-pick">Select a part to say how it affects you.</p>

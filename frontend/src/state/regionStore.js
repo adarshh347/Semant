@@ -225,6 +225,8 @@ export function useRegionState(post, onPostChange) {
         // Percepts + Mentions (Phase 1)
         percepts, ensurePercept, perceptForRegionId,
         mentions, addMention, removeBlockMentions, blockIdsForRegion,
+        // The image, so a /part evidence block can crop a region by reference.
+        photoUrl: post?.photo_url ?? null,
     }), [
         regions, setRegions, updateRegion, addRegion, regionById,
         selectedId, selectRegion, focusRegions, hoveredId, lensRegionIds, focusIds,
@@ -232,5 +234,6 @@ export function useRegionState(post, onPostChange) {
         persist, scheduleSave, linkRegionToBlock,
         percepts, ensurePercept, perceptForRegionId,
         mentions, addMention, removeBlockMentions, blockIdsForRegion,
+        post,
     ]);
 }

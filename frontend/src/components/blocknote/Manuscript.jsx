@@ -18,6 +18,7 @@ import '@blocknote/mantine/style.css';
 import { useTheme } from '../../context/ThemeContext';
 import { textBlocksToBlockNote, blockNoteToTextBlocks } from './blockConvert';
 import { regionRefInline } from './regionRefInline';
+import { partRefBlock } from './partRefBlock';
 import './Manuscript.css';
 
 /**
@@ -37,11 +38,39 @@ import './Manuscript.css';
  */
 
 const schema = BlockNoteSchema.create({
-  blockSpecs: { ...defaultBlockSpecs },
+  // The /part evidence block (block-form) — createReactBlockSpec is a factory in 0.51.
+  blockSpecs: { ...defaultBlockSpecs, partRef: partRefBlock() },
   // The /part · /lens chip — a custom inline content preserving main's
   // <span data-region-ref …> markup (with the Mention identity) through the round-trip.
   inlineContentSpecs: { ...defaultInlineContentSpecs, regionRef: regionRefInline },
 });
+
+// @ — a lighter path to the inline mention (the chip): pick a region from the store,
+// same Mention machinery as /part-inline (form:'inline', relationType:'cites').
+function atMentionItems(editor, store, icSeqRef) {
+  return (store?.regions || []).map((r) => ({
+    title: r.label || 'part',
+    subtext: [r.category, r.material].filter(Boolean).join(' · '),
+    aliases: [r.label, r.category].filter(Boolean),
+    group: 'Parts',
+    icon: <span aria-hidden>◈</span>,
+    onItemClick: () => {
+      let blockId = null;
+      try { blockId = editor.getTextCursorPosition()?.block?.id ?? null; } catch { /* */ }
+      const inlineContentId = `ic_${Date.now().toString(36)}_${icSeqRef.current++}`;
+      const percept = store.ensurePercept?.(r);
+      const mention = store.addMention?.({
+        perceptId: percept?.id || null, regionId: r.id, blockId, inlineContentId,
+        form: 'inline', relationType: 'cites', actor: 'human',
+      });
+      if (blockId) store.linkRegionToBlock?.(r.id, blockId);
+      editor.insertInlineContent([
+        { type: 'regionRef', props: { refKind: 'part', regionIds: r.id, label: r.label || 'part', perceptId: percept?.id || '', mentionId: mention?.id || '' } },
+        ' ',
+      ]);
+    },
+  }));
+}
 
 // Sutradhar (the AI name) is retired per the Chiasm lexicon — provenance lives in
 // block `origin`. These seed a sutradhar-origin block; the endpoints wire in Phase 4b.
@@ -72,10 +101,16 @@ function aiSlashItems(editor) {
 function refSlashItems(onRefTrigger) {
   return [
     {
-      title: 'Part', subtext: 'Reference a region of the image',
+      title: 'Part', subtext: 'Reference a region of the image (inline chip)',
       aliases: ['part', 'region', 'ref', 'chip'], group: 'Chiasm',
       icon: <span aria-hidden>◈</span>,
       onItemClick: () => onRefTrigger?.('part'),
+    },
+    {
+      title: 'Part (block)', subtext: 'Lift a region into an evidence block',
+      aliases: ['part block', 'evidence', 'crop'], group: 'Chiasm',
+      icon: <span aria-hidden>▣</span>,
+      onItemClick: () => onRefTrigger?.('part-block'),
     },
     {
       title: 'Lens', subtext: 'Cite an Aletheia reading',
@@ -104,12 +139,12 @@ const Manuscript = forwardRef(function Manuscript(
   { initialBlocks = [], onChange, editable = true, store = null, onRefTrigger = null },
   ref,
 ) {
-  void store; // context (RegionStoreContext) carries the store to the chips directly
   const { theme } = useTheme();
   const editor = useCreateBlockNote({ schema });
 
   const seededRef = useRef(false);
   const debounceRef = useRef(null);
+  const icSeqRef = useRef(0); // inline-content ids for @-inserted chips
   // The live editor's default schema strips unknown props (origin/color), so we
   // carry provenance + colour in a side-channel keyed by block id and restore it
   // on serialise. (Custom-block origin props are a later refinement.)
@@ -129,6 +164,37 @@ const Manuscript = forwardRef(function Manuscript(
         ]);
         editor.focus();
       } catch { /* editor not ready */ }
+    },
+    // The /part BLOCK form — an evidence block after the caret's block.
+    insertPartBlock: ({ regionId = '', perceptId = '', mentionId = '', label = 'part', origin = 'human', blockId = null }) => {
+      try {
+        const ref = blockId || editor.getTextCursorPosition()?.block?.id;
+        if (!ref) return null;
+        const inserted = editor.insertBlocks(
+          [{ type: 'partRef', props: { regionId, perceptId, mentionId, label, origin } }],
+          ref, 'after',
+        );
+        editor.focus();
+        return inserted?.[0]?.id ?? null;
+      } catch { return null; }
+    },
+    // write-about-part — a new paragraph block (origin sutradhar) grounded in the
+    // region: a leading chip + the generated prose. Origin rides the meta side-channel.
+    insertSutradharBlock: ({ text = '', chipProps = null, blockId = null }) => {
+      try {
+        const ref = blockId || editor.getTextCursorPosition()?.block?.id;
+        const content = [];
+        if (chipProps) {
+          content.push({ type: 'regionRef', props: chipProps });
+          content.push({ type: 'text', text: ' ', styles: {} });
+        }
+        content.push({ type: 'text', text: text || '', styles: {} });
+        const inserted = editor.insertBlocks([{ type: 'paragraph', content }], ref, 'after');
+        const newId = inserted?.[0]?.id ?? null;
+        if (newId) metaRef.current.set(newId, { origin: 'sutradhar', color: null });
+        editor.focus();
+        return newId;
+      } catch { return null; }
     },
   }), [editor]);
 
@@ -189,6 +255,11 @@ const Manuscript = forwardRef(function Manuscript(
               : [...refs, ...ai, ...structure];
             return filterSuggestionItems(ordered, query);
           }}
+        />
+        {/* @ — the light inline-mention path (same Mention machinery as /part-inline). */}
+        <SuggestionMenuController
+          triggerCharacter="@"
+          getItems={async (query) => filterSuggestionItems(atMentionItems(editor, store, icSeqRef), query)}
         />
       </BlockNoteView>
     </div>

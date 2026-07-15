@@ -370,3 +370,16 @@
 @media (prefers-reduced-motion: reduce) {
     .rs-shape, .rs-row, .rs-skel-row { transition: none; animation: none; }
 }
+
+/* "Write about this" — hand off the selected part to the Manuscript (Phase 4b). */
+.rs-write {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    margin-top: var(--space-3);
+    padding: 0.5rem 0.85rem;
+    font-family: var(--font-sans); font-size: var(--fs-small); font-weight: 600;
+    color: var(--accent-ink); background: var(--accent);
+    border: 1px solid transparent; border-radius: var(--radius-pill);
+    cursor: pointer; transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.rs-write:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+.rs-write:disabled { opacity: 0.6; cursor: default; }

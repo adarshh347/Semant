@@ -644,15 +644,23 @@ function PostDetailPage() {
       const res = await epicService.promptEnhancedText(post.photo_url, prompt);
       const text = res?.suggestion;
       if (!text) throw new Error('No suggestion returned');
-      const block = makeBlock({
-        type: 'paragraph',
-        content: withChip(region, htmlFromText(text)),
-        origin: 'sutradhar',
+      const handle = manuscriptRef.current;
+      if (!handle) throw new Error('editor not ready');
+      // A grounded sutradhar block (origin sutradhar), led by the chip of the region
+      // it interprets. The Mention interprets (block form); Region.block_id stays primary.
+      const percept = regionStore.ensurePercept(region);
+      const inlineContentId = `ic_${Date.now().toString(36)}_${icSeq.current++}`;
+      const newBlockId = handle.insertSutradharBlock({
+        text,
+        chipProps: { refKind: 'part', regionIds: region.id, label: region.label || 'part', perceptId: percept?.id || '' },
       });
-      insertBlock(block);
-      regionStore.linkRegionToBlock(region.id, block.id);
+      regionStore.addMention({
+        perceptId: percept?.id || null, regionId: region.id, blockId: newBlockId, inlineContentId,
+        form: 'block', relationType: 'interprets', actor: 'sutradhar',
+      });
+      if (newBlockId) regionStore.linkRegionToBlock(region.id, newBlockId);
     } catch {
-      setAiError('Sutradhar could not write about that part. Is the vision service running?');
+      setAiError('Could not write about that part. Is the vision service running?');
     } finally {
       setWritingRegionId(null);
       setAiBusy(null);
@@ -721,6 +729,20 @@ function PostDetailPage() {
         regionId: rid, blockId, inlineContentId, form: 'inline', relationType: 'cites', actor: 'human',
       }));
       handle.insertRegionChip({ refKind: 'lens', regionIds: regionIds.join(','), label: raw.name, blockId });
+      return;
+    }
+
+    if (kind === 'part-block') {
+      // The evidence BLOCK form — sustained attention; a Mention that INTERPRETS.
+      const percept = regionStore.ensurePercept(raw);
+      const newBlockId = handle.insertPartBlock({
+        regionId: raw.id, perceptId: percept?.id || '', label: raw.label || 'part', origin: 'human', blockId,
+      });
+      regionStore.addMention({
+        perceptId: percept?.id || null, regionId: raw.id, blockId: newBlockId, inlineContentId,
+        form: 'block', relationType: 'interprets', actor: 'human',
+      });
+      if (newBlockId) regionStore.linkRegionToBlock(raw.id, newBlockId);
       return;
     }
 
@@ -1038,6 +1060,8 @@ function PostDetailPage() {
               aletheia={regionStore.aletheia}
               onPostChange={setPost}
               store={regionStore}
+              onWriteAboutRegion={writeAboutRegion}
+              writingRegionId={writingRegionId}
             />
           </div>
         </div>
