@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { createReactInlineContentSpec } from '@blocknote/react';
+import { RegionStoreContext } from '../../state/regionStore';
 
 /**
  * regionRef — the inline chip that references the image, as a BlockNote custom
@@ -47,6 +48,35 @@ function chipAttrs({ refKind, regionIds, perceptId, mentionId, label }) {
   return a;
 }
 
+// The editor-side chip. Reads the store via context so it lights ITSELF when its
+// region is focused — React owns the class (nothing for an imperative toggle to
+// wipe), keeping the highlight purely store-driven.
+function RegionRefChip({ p }) {
+  const store = useContext(RegionStoreContext);
+  const ids = (p.regionIds || '').split(',').filter(Boolean);
+  const focused = !!store?.focusIds && ids.some((id) => store.focusIds.has(id));
+  const attrs = chipAttrs(p);
+  return (
+    <span
+      {...attrs}
+      className={`${attrs.className}${focused ? ' is-focus' : ''}`}
+      contentEditable={false}
+      role="button"
+      tabIndex={0}
+      aria-label={`Region reference: ${p.label}`}
+      onMouseEnter={() => emit('semant:region-hover', p.regionIds)}
+      onMouseLeave={() => emit('semant:region-hover', '')}
+      // a11y: keyboard focus illuminates the region the same as hover.
+      onFocus={() => emit('semant:region-hover', p.regionIds)}
+      onBlur={() => emit('semant:region-hover', '')}
+      onClick={() => emit('semant:region-focus', p.regionIds)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emit('semant:region-focus', p.regionIds); } }}
+    >
+      {p.label}
+    </span>
+  );
+}
+
 export const regionRefInline = createReactInlineContentSpec(
   {
     type: 'regionRef',
@@ -60,20 +90,7 @@ export const regionRefInline = createReactInlineContentSpec(
     content: 'none',
   },
   {
-    render: (props) => {
-      const p = props.inlineContent.props;
-      return (
-        <span
-          {...chipAttrs(p)}
-          contentEditable={false}
-          onMouseEnter={() => emit('semant:region-hover', p.regionIds)}
-          onMouseLeave={() => emit('semant:region-hover', '')}
-          onClick={() => emit('semant:region-focus', p.regionIds)}
-        >
-          {p.label}
-        </span>
-      );
-    },
+    render: (props) => <RegionRefChip p={props.inlineContent.props} />,
     // Save exactly this markup (ref-chip + the data-* identity), NOT BlockNote's
     // node-view wrapper — so the read view styles and resolves the chip identically.
     toExternalHTML: (props) => {

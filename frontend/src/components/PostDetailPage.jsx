@@ -93,6 +93,33 @@ function PostDetailPage() {
   // Dev affordance — inspect the shared Chiasm store from the console (Field↔Manuscript).
   useEffect(() => { if (import.meta.env?.DEV) window.__chiasm = regionStore; }, [regionStore]);
 
+  // Chip → Field: the regionRef chip emits semant:region-* DOM events; they drive the
+  // store (hover throttled to one write per frame so rapid hover targets the highlight,
+  // not a doc re-render). RegionSurface reads store.hoveredId/selectedId — no cross-pane
+  // DOM coupling. A store ref keeps the listeners registered once.
+  const storeRef = useRef(regionStore);
+  storeRef.current = regionStore;
+  useEffect(() => {
+    let raf = null;
+    let pending = null;
+    const flush = () => { raf = null; storeRef.current.setHoveredId(pending); };
+    const onHover = (e) => {
+      pending = (e.detail?.regionIds || [])[0] || null;
+      if (raf == null) raf = requestAnimationFrame(flush);
+    };
+    const onFocus = (e) => {
+      const ids = e.detail?.regionIds || [];
+      if (ids.length) storeRef.current.focusRegions(ids);
+    };
+    window.addEventListener('semant:region-hover', onHover);
+    window.addEventListener('semant:region-focus', onFocus);
+    return () => {
+      window.removeEventListener('semant:region-hover', onHover);
+      window.removeEventListener('semant:region-focus', onFocus);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
   // Close the topbar "⋯" overflow on outside-click / Escape.
   useEffect(() => {
     if (!topbarMenuOpen) return undefined;

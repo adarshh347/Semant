@@ -262,7 +262,10 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
     const hiddenFine = regions.filter(r => !isAnchor(r)).length
         - visible.filter(r => !isAnchor(r)).length;
 
-    const focusId = activeId || selectedId;
+    // Focus follows the store too: hovering/selecting a chip in Manuscript writes
+    // store.hoveredId/selectedId, and the Field illuminates that region from here —
+    // purely store-driven, no cross-pane DOM coupling.
+    const focusId = activeId || (store ? store.hoveredId : null) || selectedId;
     const selected = regions.find(r => r.id === selectedId);
     const prioritisedCount = regions.filter(r => r.prioritised).length;
 

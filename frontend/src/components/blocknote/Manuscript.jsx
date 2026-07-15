@@ -104,7 +104,7 @@ const Manuscript = forwardRef(function Manuscript(
   { initialBlocks = [], onChange, editable = true, store = null, onRefTrigger = null },
   ref,
 ) {
-  void store; // read for context by the parent; deep use (highlight) is Phase 4b
+  void store; // context (RegionStoreContext) carries the store to the chips directly
   const { theme } = useTheme();
   const editor = useCreateBlockNote({ schema });
 
@@ -161,6 +161,11 @@ const Manuscript = forwardRef(function Manuscript(
       onChange(merged);
     }, 400);
   };
+
+  // Field → Manuscript highlight is store-driven at the chip: each RegionRefChip
+  // reads the store via RegionStoreContext and lights itself when its region is
+  // focused (many-to-many — every chip citing the region lights). No imperative DOM,
+  // no doc re-render, no cross-pane coupling.
 
   return (
     <div className="manuscript">
