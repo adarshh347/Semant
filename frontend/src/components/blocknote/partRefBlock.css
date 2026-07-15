@@ -1,0 +1,56 @@
+/* The /part evidence block — a flat plum-framed card holding the region crop,
+   its label and provenance. Sustained attention, not prose rhythm. */
+.bn-partref {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  user-select: none;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), background-color 0.15s var(--ease);
+}
+.bn-partref.is-focus {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.bn-partref__crop {
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+  border-radius: var(--radius-sm);
+  background-repeat: no-repeat;
+  background-color: var(--surface-2);
+}
+.bn-partref__crop--empty {
+  background: var(--surface-2);
+}
+
+.bn-partref__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  justify-content: center;
+}
+.bn-partref__kind {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.bn-partref__label {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--fs-body-lg);
+  color: var(--ink);
+}
+.bn-partref__origin {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--ink-subtle);
+}

@@ -56,8 +56,16 @@
   color: var(--ink);
 }
 
-/* The slash-menu "Sutradhar" group + selection read in plum. */
 .manuscript .bn-container [data-color-scheme] ::selection {
   background: var(--highlight);
   color: var(--ink);
+}
+
+/* ── Field → Manuscript highlight (store-driven, Phase 4a-ii) ─────────────── */
+/* The chip whose region is focused in the Field lifts in plum; others stay quiet.
+   Driven by RegionRefChip reading the store via context (React owns the class). */
+.manuscript .ref-chip.is-focus {
+  background: var(--accent-soft);
+  outline: 1.5px solid var(--accent);
+  outline-offset: 0;
 }

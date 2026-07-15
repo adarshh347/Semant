@@ -3,10 +3,10 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import axios from 'axios';
 import { ArrowLeft, Sparkles, Plus, X, ChevronRight, ChevronLeft, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, MoreHorizontal } from 'lucide-react';
-import VisualPane from './VisualPane';
-import RichTextBlock from './RichTextBlock';
+import RegionSurface from './RegionSurface';
 import Manuscript from './blocknote/Manuscript';
 import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
@@ -29,15 +29,11 @@ const htmlFromText = (text) =>
 // Strip HTML to count words / reading time.
 const plainText = (html) => (html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ');
 
-// Split-pane width presets (% of the split row). `leftPanelWidth` is the single
-// source of truth — both panes derive their width from it.
+// Field | Manuscript split sizes (% of the row) — react-resizable-panels props.
 const SPLIT_DEFAULT = 45; // resting ratio
-const SPLIT_EDIT = 30;    // Visual narrows while writing
-const SPLIT_RAIL = 4;     // collapsed "focus the writing" rail
-const SPLIT_MIN = 20;     // drag / arrow-key clamp
+const SPLIT_MIN = 20;
 const SPLIT_MAX = 80;
-const SPLIT_STEP = 2;     // arrow-key nudge
-const clampSplit = (w) => Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, w));
+const SPLIT_RAIL = 4;     // collapsed "focus the writing" rail
 
 function PostDetailPage() {
   const [post, setPost] = useState(null);
@@ -50,7 +46,9 @@ function PostDetailPage() {
   const [currentTagInput, setCurrentTagInput] = useState('');
   const [popularTags, setPopularTags] = useState([]);
   const [loadingPopularTags, setLoadingPopularTags] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(SPLIT_DEFAULT); // percentage
+  // Field | Manuscript split is owned by react-resizable-panels (persists via
+  // autoSaveId); we track only whether the Field is collapsed, for the toggle icon.
+  const [isCollapsed, setIsCollapsed] = useState(false);
   // 'regions' by default: the unified pane IS the working surface; 'image' hides the
   // overlay for a clean look at the photograph.
   const [activeLeftTab, setActiveLeftTab] = useState('regions');
@@ -77,18 +75,44 @@ function PostDetailPage() {
   // Aletheia reading, curator commentary and region detection all moved into
   // VisualPane (Track D) — they belong beside the image, not in a tab across the split.
   const [topbarMenuOpen, setTopbarMenuOpen] = useState(false); // "⋯" overflow (Delete)
-  const dividerRef = useRef(null);
-  const containerRef = useRef(null);
   const contentAreaRef = useRef(null);
   const topbarMenuRef = useRef(null);
-  const preEditWidthRef = useRef(null);   // width to restore when leaving edit
-  const preCollapseWidthRef = useRef(null); // width to restore when un-collapsing
+  const fieldPanelRef = useRef(null); // the Field Panel imperative handle (collapse/expand)
   const blockSeq = useRef(0); // monotonic, avoids Date.now() id collisions within a ms
 
   // The regions and the reading, held once for both panes (Visual↔Content). The Visual
   // pane marks them; the story points at them. Declared before the `!post` early return
   // so the hook order never changes, and it tolerates a null post while loading.
   const regionStore = useRegionState(post, setPost);
+  // Dev affordance — inspect the shared Chiasm store from the console (Field↔Manuscript).
+  useEffect(() => { if (import.meta.env?.DEV) window.__chiasm = regionStore; }, [regionStore]);
+
+  // Chip → Field: the regionRef chip emits semant:region-* DOM events; they drive the
+  // store (hover throttled to one write per frame so rapid hover targets the highlight,
+  // not a doc re-render). RegionSurface reads store.hoveredId/selectedId — no cross-pane
+  // DOM coupling. A store ref keeps the listeners registered once.
+  const storeRef = useRef(regionStore);
+  storeRef.current = regionStore;
+  useEffect(() => {
+    let raf = null;
+    let pending = null;
+    const flush = () => { raf = null; storeRef.current.setHoveredId(pending); };
+    const onHover = (e) => {
+      pending = (e.detail?.regionIds || [])[0] || null;
+      if (raf == null) raf = requestAnimationFrame(flush);
+    };
+    const onFocus = (e) => {
+      const ids = e.detail?.regionIds || [];
+      if (ids.length) storeRef.current.focusRegions(ids);
+    };
+    window.addEventListener('semant:region-hover', onHover);
+    window.addEventListener('semant:region-focus', onFocus);
+    return () => {
+      window.removeEventListener('semant:region-hover', onHover);
+      window.removeEventListener('semant:region-focus', onFocus);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   // Close the topbar "⋯" overflow on outside-click / Escape.
   useEffect(() => {
@@ -245,95 +269,13 @@ function PostDetailPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Resizable divider logic
-  const isDraggingRef = useRef(false);
-  const isCollapsed = leftPanelWidth <= SPLIT_RAIL + 1;
-
-  const handleMouseDown = (e) => {
-    isDraggingRef.current = true;
-    dividerRef.current?.classList.add('dragging');
-    // Suppress the width transition so the pane tracks the cursor 1:1.
-    containerRef.current?.classList.add('resizing');
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    e.preventDefault();
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!isDraggingRef.current || !containerRef.current) return;
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
-      if (newWidth >= SPLIT_MIN && newWidth <= SPLIT_MAX) {
-        setLeftPanelWidth(newWidth);
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        dividerRef.current?.classList.remove('dragging');
-        containerRef.current?.classList.remove('resizing');
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      }
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
-
-  // Divider presets — all just setters on the single source of truth.
-  const resetWidth = () => { preCollapseWidthRef.current = null; setLeftPanelWidth(SPLIT_DEFAULT); };
+  // "Focus the writing" — collapse the Field to a rail, or bring it back. Drag +
+  // keyboard resize + min/max clamp are handled natively by <PanelResizeHandle>.
   const toggleCollapse = () => {
-    if (leftPanelWidth <= SPLIT_RAIL + 1) {
-      // expand back to the width held before collapsing (default if none)
-      const restore = preCollapseWidthRef.current ?? SPLIT_DEFAULT;
-      preCollapseWidthRef.current = null;
-      setLeftPanelWidth(restore);
-    } else {
-      preCollapseWidthRef.current = leftPanelWidth;
-      setLeftPanelWidth(SPLIT_RAIL);
-    }
+    const panel = fieldPanelRef.current;
+    if (!panel) return;
+    if (panel.isCollapsed()) panel.expand(); else panel.collapse();
   };
-
-  // WAI-ARIA window-splitter keys: ←/→ nudge, Home = collapse, End = reset,
-  // Enter/Space = toggle collapse.
-  const handleDividerKeyDown = (e) => {
-    switch (e.key) {
-      case 'ArrowLeft':
-        e.preventDefault(); setLeftPanelWidth((w) => clampSplit(w - SPLIT_STEP)); break;
-      case 'ArrowRight':
-        e.preventDefault(); setLeftPanelWidth((w) => clampSplit(w + SPLIT_STEP)); break;
-      case 'Home':
-        e.preventDefault(); preCollapseWidthRef.current = leftPanelWidth; setLeftPanelWidth(SPLIT_RAIL); break;
-      case 'End':
-        e.preventDefault(); resetWidth(); break;
-      case 'Enter':
-      case ' ':
-        e.preventDefault(); toggleCollapse(); break;
-      default:
-        break;
-    }
-  };
-
-  // Entering edit narrows the Visual pane via the SSOT (smooth width transition);
-  // leaving edit restores the pre-edit width. Replaces the old opacity dim.
-  useEffect(() => {
-    if (isEditing) {
-      if (preEditWidthRef.current === null) preEditWidthRef.current = leftPanelWidth;
-      setLeftPanelWidth(SPLIT_EDIT);
-    } else if (preEditWidthRef.current !== null) {
-      setLeftPanelWidth(preEditWidthRef.current);
-      preEditWidthRef.current = null;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing]);
 
   const handleSave = async () => {
     try {
@@ -614,15 +556,23 @@ function PostDetailPage() {
       const res = await epicService.promptEnhancedText(post.photo_url, prompt);
       const text = res?.suggestion;
       if (!text) throw new Error('No suggestion returned');
-      const block = makeBlock({
-        type: 'paragraph',
-        content: withChip(region, htmlFromText(text)),
-        origin: 'sutradhar',
+      const handle = manuscriptRef.current;
+      if (!handle) throw new Error('editor not ready');
+      // A grounded sutradhar block (origin sutradhar), led by the chip of the region
+      // it interprets. The Mention interprets (block form); Region.block_id stays primary.
+      const percept = regionStore.ensurePercept(region);
+      const inlineContentId = `ic_${Date.now().toString(36)}_${icSeq.current++}`;
+      const newBlockId = handle.insertSutradharBlock({
+        text,
+        chipProps: { refKind: 'part', regionIds: region.id, label: region.label || 'part', perceptId: percept?.id || '' },
       });
-      insertBlock(block);
-      regionStore.linkRegionToBlock(region.id, block.id);
+      regionStore.addMention({
+        perceptId: percept?.id || null, regionId: region.id, blockId: newBlockId, inlineContentId,
+        form: 'block', relationType: 'interprets', actor: 'sutradhar',
+      });
+      if (newBlockId) regionStore.linkRegionToBlock(region.id, newBlockId);
     } catch {
-      setAiError('Sutradhar could not write about that part. Is the vision service running?');
+      setAiError('Could not write about that part. Is the vision service running?');
     } finally {
       setWritingRegionId(null);
       setAiBusy(null);
@@ -650,39 +600,75 @@ function PostDetailPage() {
   // The editor whose caret the picker opened at. Held in a ref, not state: the picker's
   // own input takes focus, and by the time a row is clicked React's selection state
   // would be a render behind.
-  const refEditorRef = useRef(null);
+  // The Manuscript editor handle + the block the picker opened at (held in refs:
+  // the picker's own input takes focus, so React state would be a render behind).
+  const manuscriptRef = useRef(null);
+  const refBlockIdRef = useRef(null);
+  const icSeq = useRef(0);
 
-  const caretAt = (editor) => {
+  // /part · /lens in Manuscript → open the RefPicker at the caret, remembering the
+  // block so the chip (and its Mention) land in the right place after the pick.
+  const onRefTrigger = (kind) => {
+    let x = 0; let y = 0;
     try {
-      const c = editor.view.coordsAtPos(editor.state.selection.from);
-      return { x: c.left, y: c.bottom };
-    } catch { return { x: 0, y: 0 }; }
-  };
-
-  const runRefSlashCommand = ({ key, editor, range }) => {
-    if (editor && range) editor.chain().focus().deleteRange(range).run();
-    refEditorRef.current = editor;
-    const { x, y } = caretAt(editor);
-    setRefPicker({ open: true, x, y, kind: key });
+      const rect = window.getSelection()?.getRangeAt(0)?.getBoundingClientRect();
+      if (rect) { x = rect.left; y = rect.bottom; }
+    } catch { /* no selection */ }
+    refBlockIdRef.current = manuscriptRef.current?.currentBlockId?.() || null;
+    setRefPicker({ open: true, x, y, kind });
   };
 
   const closeRefPicker = () => setRefPicker({ open: false, x: 0, y: 0, kind: 'part' });
 
-  /** Drop the chip, and record the region→story edge from the other side. */
+  // Legacy Path-A entry (RichTextBlock is no longer rendered) — kept so refCommandRef
+  // resolves; routes to the same picker.
+  const runRefSlashCommand = ({ key } = {}) => onRefTrigger(key || 'part');
+
+  /** Drop the chip in Manuscript AND record the Mention (Region.block_id kept primary). */
   const insertRef = (raw) => {
     const { kind } = refPicker;
-    const editor = refEditorRef.current;
+    const blockId = refBlockIdRef.current;
     closeRefPicker();
-    if (!editor) return;
+    const handle = manuscriptRef.current;
+    if (!handle) return;
 
-    const attrs = kind === 'lens'
-      ? { refKind: 'lens', regionIds: (raw.region_ids || []).join(','), label: raw.name }
-      : { refKind: 'part', regionIds: raw.id, label: raw.label || 'part' };
-    editor.chain().focus().insertRegionRef(attrs).run();
+    const inlineContentId = `ic_${Date.now().toString(36)}_${icSeq.current++}`;
 
-    // Region.block_id — so the pane can ask "which block talks about me?" without
-    // parsing every block's HTML. Only a part owns a single block; a lens spans many.
-    if (kind === 'part' && activeBlockId) regionStore.linkRegionToBlock(raw.id, activeBlockId);
+    if (kind === 'lens') {
+      const regionIds = raw.region_ids || [];
+      // A lens cites several regions — one Mention per region, all in this block.
+      regionIds.forEach((rid) => regionStore.addMention({
+        regionId: rid, blockId, inlineContentId, form: 'inline', relationType: 'cites', actor: 'human',
+      }));
+      handle.insertRegionChip({ refKind: 'lens', regionIds: regionIds.join(','), label: raw.name, blockId });
+      return;
+    }
+
+    if (kind === 'part-block') {
+      // The evidence BLOCK form — sustained attention; a Mention that INTERPRETS.
+      const percept = regionStore.ensurePercept(raw);
+      const newBlockId = handle.insertPartBlock({
+        regionId: raw.id, perceptId: percept?.id || '', label: raw.label || 'part', origin: 'human', blockId,
+      });
+      regionStore.addMention({
+        perceptId: percept?.id || null, regionId: raw.id, blockId: newBlockId, inlineContentId,
+        form: 'block', relationType: 'interprets', actor: 'human',
+      });
+      if (newBlockId) regionStore.linkRegionToBlock(raw.id, newBlockId);
+      return;
+    }
+
+    // /part — inserting a reference IS attention: ensure the Percept, write the Mention.
+    const percept = regionStore.ensurePercept(raw);
+    const mention = regionStore.addMention({
+      perceptId: percept?.id || null, regionId: raw.id, blockId, inlineContentId,
+      form: 'inline', relationType: 'cites', actor: 'human',
+    });
+    if (blockId) regionStore.linkRegionToBlock(raw.id, blockId); // Region.block_id — primary edge
+    handle.insertRegionChip({
+      refKind: 'part', regionIds: raw.id, label: raw.label || 'part',
+      perceptId: percept?.id || '', mentionId: mention?.id || '', blockId,
+    });
   };
 
   // Stable handles passed into each block editor; always call the latest closure.
@@ -752,15 +738,12 @@ function PostDetailPage() {
     // The overlay is what does the highlighting, so a chip clicked while the pane is
     // showing the bare photograph must bring the regions back first.
     setActiveLeftTab('regions');
-    if (leftPanelWidth <= SPLIT_RAIL + 1) {
-      setLeftPanelWidth(preCollapseWidthRef.current ?? SPLIT_DEFAULT);
-      preCollapseWidthRef.current = null;
-    }
+    if (fieldPanelRef.current?.isCollapsed()) fieldPanelRef.current.expand();
     regionStore.focusRegions(ids);
 
     // Let the pane re-render (and un-collapse) before we scroll to it.
     setTimeout(() => {
-      document.querySelector('.post-detail-left .vp-stage')
+      document.querySelector('.post-detail-left .rs-stage')
         ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     }, 60);
   };
@@ -950,10 +933,20 @@ function PostDetailPage() {
         </div>
       </div>
 
-      {/* Split Container */}
-      <div className="post-detail-split" ref={containerRef}>
-        {/* Left Pane - Image */}
-        <div className="post-detail-left" style={{ width: `${leftPanelWidth}%` }}>
+      {/* Field | Manuscript split — react-resizable-panels; width persists via autoSaveId. */}
+      <PanelGroup direction="horizontal" autoSaveId="chiasm-split" className="post-detail-split">
+        {/* Field pane */}
+        <Panel
+          className="post-detail-left"
+          ref={fieldPanelRef}
+          collapsible
+          collapsedSize={SPLIT_RAIL}
+          minSize={SPLIT_MIN}
+          maxSize={SPLIT_MAX}
+          defaultSize={SPLIT_DEFAULT}
+          onCollapse={() => setIsCollapsed(true)}
+          onExpand={() => setIsCollapsed(false)}
+        >
           <div className="panel-header">
             {/* Was a dead toggle (set state, rendered nothing). Now a real layer
                 control over the one unified region surface. */}
@@ -976,46 +969,38 @@ function PostDetailPage() {
           </div>
 
           <div className="image-display">
-            <VisualPane
+            {/* Chiasm · Field — the advanced region surface (RegionSurface +
+                Overlay + Lightbox), wired to the shared store so selection/hover
+                and attention (percepts) are the single channel to Manuscript.
+                Replaces the VisualPane per Track D. write-about-part re-wires in
+                Phase 4. */}
+            <RegionSurface
               post={post}
-              showRegions={activeLeftTab === 'regions'}
+              aletheia={regionStore.aletheia}
               onPostChange={setPost}
+              store={regionStore}
               onWriteAboutRegion={writeAboutRegion}
               writingRegionId={writingRegionId}
             />
           </div>
-        </div>
+        </Panel>
 
-        {/* Resizable divider — WAI-ARIA window splitter over the same SSOT. */}
-        <div
-          className={`split-divider${isCollapsed ? ' collapsed' : ''}`}
-          ref={dividerRef}
-          role="separator"
-          tabIndex={0}
-          aria-orientation="vertical"
-          aria-label="Resize panels — arrow keys to nudge, Enter to collapse"
-          aria-valuemin={SPLIT_MIN}
-          aria-valuemax={SPLIT_MAX}
-          aria-valuenow={Math.round(leftPanelWidth)}
-          onMouseDown={handleMouseDown}
-          onDoubleClick={resetWidth}
-          onKeyDown={handleDividerKeyDown}
-        >
+        {/* Resize handle — drag + keyboard resize + min/max clamp are native; the
+            button collapses the Field to a rail ("focus the writing"). */}
+        <PanelResizeHandle className={`split-divider${isCollapsed ? ' collapsed' : ''}`}>
           <button
             type="button"
             className="divider-collapse-btn"
-            aria-label={isCollapsed ? 'Expand the Visual pane' : 'Collapse the Visual pane to a rail'}
-            title={isCollapsed ? 'Expand Visual' : 'Collapse Visual (focus writing)'}
-            onMouseDown={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => e.stopPropagation()}
+            aria-label={isCollapsed ? 'Expand the Field' : 'Collapse the Field to a rail'}
+            title={isCollapsed ? 'Expand Field' : 'Collapse Field (focus writing)'}
             onClick={toggleCollapse}
           >
             {isCollapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
           </button>
-        </div>
+        </PanelResizeHandle>
 
-        {/* Right Pane - Content */}
-        <div className="post-detail-right" style={{ width: `${100 - leftPanelWidth}%` }}>
+        {/* Manuscript pane */}
+        <Panel className="post-detail-right" minSize={SPLIT_MIN}>
           <div className="panel-header">
             <div className="panel-tabs">
                 <button
@@ -1096,8 +1081,11 @@ function PostDetailPage() {
                             block/drag/insert handlers are now dead — removed in
                             Phase 5. */}
                         <Manuscript
+                          ref={manuscriptRef}
                           initialBlocks={editedBlocks}
                           onChange={setEditedBlocks}
+                          store={regionStore}
+                          onRefTrigger={onRefTrigger}
                         />
                         {aiError && <p className="composer-error">{aiError}</p>}
                       </div>
@@ -1244,8 +1232,8 @@ function PostDetailPage() {
               </div>
             </div>
           )}
-        </div>
-      </div>
+        </Panel>
+      </PanelGroup>
 
       {/* AI Slide-out Sidebar */}
       <div className={`ai-sidebar-backdrop ${isChatOpen ? 'open' : ''}`} onClick={() => setIsChatOpen(false)}></div>

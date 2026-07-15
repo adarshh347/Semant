@@ -21,8 +21,10 @@ const shapeClassFor = (r, { viewMap, selectedId, activeId, focusId }) => {
     if (r.prioritised) cls.push('is-pri');
     if (selectedId === r.id) cls.push('is-sel');
     if (activeId === r.id) cls.push('is-active');
-    if (viewMap === 'focus' && focusId && focusId !== r.id) cls.push('is-dim');
-    if (viewMap !== 'focus' && focusId === r.id) cls.push('is-lit');
+    // Attention narrows: when a region is focused (row/chip hover, selection),
+    // the unrelated ones recede in every map — not only in the 'focus' map.
+    if (focusId && focusId !== r.id) cls.push('is-dim');
+    if (focusId === r.id) cls.push('is-lit');
     return cls.join(' ');
 };
 

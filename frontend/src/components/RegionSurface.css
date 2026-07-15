@@ -73,13 +73,13 @@
 /* quiet: hairline markers. Forty of these read as texture, not clutter. */
 .rs-shape--quiet { stroke: rgba(255, 255, 255, 0.28); stroke-width: 1; }
 .rs-shape--quiet:hover, .rs-shape--quiet.is-lit {
-    stroke: var(--accent); stroke-width: 2; fill: rgba(196, 83, 58, 0.14);
+    stroke: var(--accent); stroke-width: 2; fill: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 /* outline: the exact border, always. */
 .rs-shape--outline { stroke: rgba(255, 255, 255, 0.72); stroke-width: 1.5; }
 .rs-shape--outline:hover, .rs-shape--outline.is-lit {
-    stroke: var(--accent); stroke-width: 2.5; fill: rgba(196, 83, 58, 0.16);
+    stroke: var(--accent); stroke-width: 2.5; fill: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 /* focus: one part speaks; the rest recede to near-invisible. */
@@ -87,17 +87,17 @@
 .rs-shape--focus.is-dim { opacity: 0.06; }
 .rs-shape--focus.is-dim:hover { opacity: 0.45; }
 .rs-shape--focus:not(.is-dim) {
-    stroke: var(--accent); stroke-width: 2.5; fill: rgba(196, 83, 58, 0.2);
+    stroke: var(--accent); stroke-width: 2.5; fill: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
-.rs-shape.is-pri { stroke: var(--accent); fill: rgba(196, 83, 58, 0.24); }
-.rs-shape.is-sel { stroke: var(--accent); stroke-width: 3; fill: rgba(196, 83, 58, 0.26); }
+.rs-shape.is-pri { stroke: var(--accent); fill: color-mix(in srgb, var(--accent) 24%, transparent); }
+.rs-shape.is-sel { stroke: var(--accent); stroke-width: 3; fill: color-mix(in srgb, var(--accent) 26%, transparent); }
 /* the keyboard cursor, visible on the polygon itself */
 .rs-shape.is-active { stroke: #fff; stroke-width: 3; stroke-dasharray: 5 3; }
 /* a creator's own mark reads as deliberate, never mistaken for a detection */
 .rs-shape--creator { stroke-dasharray: 5 3; stroke: var(--accent); }
 
-.rs-draft { fill: rgba(196, 83, 58, 0.14); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4 3; }
+.rs-draft { fill: color-mix(in srgb, var(--accent) 14%, transparent); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4 3; }
 
 .rs-label {
     position: absolute;
@@ -370,3 +370,16 @@
 @media (prefers-reduced-motion: reduce) {
     .rs-shape, .rs-row, .rs-skel-row { transition: none; animation: none; }
 }
+
+/* "Write about this" — hand off the selected part to the Manuscript (Phase 4b). */
+.rs-write {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    margin-top: var(--space-3);
+    padding: 0.5rem 0.85rem;
+    font-family: var(--font-sans); font-size: var(--fs-small); font-weight: 600;
+    color: var(--accent-ink); background: var(--accent);
+    border: 1px solid transparent; border-radius: var(--radius-pill);
+    cursor: pointer; transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.rs-write:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+.rs-write:disabled { opacity: 0.6; cursor: default; }

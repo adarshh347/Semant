@@ -21,21 +21,34 @@ let engine;
 let chipEngine;
 beforeAll(() => {
   engine = ServerBlockNoteEditor.create();
+  // Mirrors regionRefInline's markup contract (core spec — server-util is DOM-only).
   const regionRef = createInlineContentSpec(
-    { type: 'regionRef', propSchema: { refKind: { default: 'part' }, regionIds: { default: '' }, label: { default: '' } }, content: 'none' },
+    { type: 'regionRef', propSchema: { refKind: { default: 'part' }, regionIds: { default: '' }, perceptId: { default: '' }, mentionId: { default: '' }, label: { default: '' } }, content: 'none' },
     {
       render: (ic) => {
+        const p = ic.props;
+        const regionId = (p.regionIds || '').split(',').filter(Boolean)[0] || '';
         const s = document.createElement('span');
         s.setAttribute('data-region-ref', '');
-        s.setAttribute('data-ref-kind', ic.props.refKind);
-        s.setAttribute('data-region-ids', ic.props.regionIds);
-        s.setAttribute('data-label', ic.props.label);
-        s.className = `ref-chip ref-chip--${ic.props.refKind}`;
-        s.textContent = ic.props.label;
+        s.setAttribute('data-ref-kind', p.refKind);
+        s.setAttribute('data-inline-type', p.refKind);
+        s.setAttribute('data-region-ids', p.regionIds);
+        if (regionId) s.setAttribute('data-region-id', regionId);
+        if (p.perceptId) s.setAttribute('data-percept-id', p.perceptId);
+        if (p.mentionId) s.setAttribute('data-mention-id', p.mentionId);
+        s.setAttribute('data-label', p.label);
+        s.className = `ref-chip ref-chip--${p.refKind}`;
+        s.textContent = p.label;
         return { dom: s };
       },
       parse: (el) => (el.hasAttribute('data-region-ref')
-        ? { refKind: el.getAttribute('data-ref-kind') || 'part', regionIds: el.getAttribute('data-region-ids') || '', label: el.getAttribute('data-label') || el.textContent || '' }
+        ? {
+            refKind: el.getAttribute('data-inline-type') || el.getAttribute('data-ref-kind') || 'part',
+            regionIds: el.getAttribute('data-region-ids') || el.getAttribute('data-region-id') || '',
+            perceptId: el.getAttribute('data-percept-id') || '',
+            mentionId: el.getAttribute('data-mention-id') || '',
+            label: el.getAttribute('data-label') || el.textContent || '',
+          }
         : undefined),
     },
   );
@@ -165,6 +178,30 @@ describe('region-ref chips (Phase 3 — no data loss on edit)', () => {
     expect(out[0].content).toContain('data-region-ref');
     expect(out[0].content).toContain('drape');
     expect(out[0].id).toBe('block_c'); // id still preserved
+  });
+
+  it('preserves EVERY reference attr through import→export (the Phase-3 gate)', async () => {
+    const story = [
+      {
+        id: 'block_ref', type: 'paragraph', origin: 'sutradhar', color: null,
+        content:
+          '<p>The <span data-region-ref data-inline-type="part" data-ref-kind="part" ' +
+          'data-region-ids="reg_1" data-region-id="reg_1" ' +
+          'data-percept-id="pct_creator_reg_1" data-mention-id="men_pct_block_ref_ic1" ' +
+          'data-label="shoulder drape" class="ref-chip ref-chip--part">shoulder drape</span> holds it.</p>',
+      },
+    ];
+    const out = await chipRoundTrip(story);
+    const html = out[0].content;
+    // data-block-id is block-level — the block id itself must survive (the read view emits it).
+    expect(out[0].id).toBe('block_ref');
+    // Every inline reference attr survives — semantic, not incidental.
+    for (const attr of ['data-region-ref', 'data-inline-type', 'data-region-ids', 'data-region-id', 'data-percept-id', 'data-mention-id']) {
+      expect(html).toContain(attr);
+    }
+    expect(html).toContain('data-percept-id="pct_creator_reg_1"');
+    expect(html).toContain('data-mention-id="men_pct_block_ref_ic1"');
+    expect(html).toContain('data-region-id="reg_1"');
   });
 
   it('preserves a /lens chip spanning multiple regions', async () => {
