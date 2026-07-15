@@ -1,34 +1,27 @@
-
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
+import { useQuery } from '@tanstack/react-query';
 import TextPostCard from '../components/TextPostCard'; // Use the feed card
-const API_URL = 'http://127.0.0.1:5008';
-
+import { API_URL } from '../config/api';
 
 function TextFeedPage() {
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
 
-  const fetchTextPosts = async (page) => {
-    try {
-      setLoading(true);
-      // Fetches posts with text_blocks, 20 per page
-      const response = await axios.get(`${API_URL}/api/v1/posts/with-text?page=${page}&limit=20`);
-      setPosts(response.data.posts);
-      setTotalPages(response.data.total_pages);
-      setCurrentPage(response.data.current_page);
-    } catch (error) {
-      console.error("Error fetching text posts:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Feed read → TanStack Query. Uses the shared API_URL (previously hardcoded
+  // to a stale :5008, which bypassed the .env backend).
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['feed', currentPage],
+    queryFn: async () => {
+      const response = await axios.get(
+        `${API_URL}/api/v1/posts/with-text?page=${currentPage}&limit=20`,
+      );
+      return response.data;
+    },
+    placeholderData: (prev) => prev,
+  });
 
-  useEffect(() => {
-    fetchTextPosts(currentPage);
-  }, [currentPage]);
+  const posts = data?.posts ?? [];
+  const totalPages = data?.total_pages ?? 0;
 
   return (
     <div className="main-content-card"> {/* Wrap in the standard card for consistent padding/background */}
@@ -37,8 +30,10 @@ function TextFeedPage() {
         <p>Explore posts with rich descriptions.</p>
       </div>
 
-      {loading ? (
+      {isLoading && posts.length === 0 ? (
         <p style={{ textAlign: 'center' }}>Loading feed...</p>
+      ) : isError ? (
+        <p style={{ textAlign: 'center' }}>Couldn't load the feed.</p>
       ) : (
         <>
           <div className="highlights-feed"> {/* Use the feed layout class */}

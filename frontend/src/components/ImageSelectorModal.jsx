@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config/api';
+import { Dialog, DialogContent, useToast } from './ui';
 import './ImageSelectorModal.css';
 
+// Proof-of-kit swap: this non-Chiasm modal now rides on the themed Radix Dialog
+// (focus-trap, Esc, scroll-lock, a11y from Radix; surface from plum v1.3 tokens)
+// instead of a hand-rolled overlay. Behaviour and props are unchanged.
 const ImageSelectorModal = ({ isOpen, onClose, epicId, blockId, onImageSelect }) => {
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
     const [editedSubtitle, setEditedSubtitle] = useState('');
+    const { toast } = useToast();
 
     useEffect(() => {
         if (isOpen && epicId && blockId) {
@@ -24,7 +29,7 @@ const ImageSelectorModal = ({ isOpen, onClose, epicId, blockId, onImageSelect })
             setSuggestions(response.data);
         } catch (error) {
             console.error('Error loading image suggestions:', error);
-            alert('Failed to load image suggestions');
+            toast({ variant: 'error', title: 'Couldn’t load image suggestions' });
         } finally {
             setLoading(false);
         }
@@ -44,20 +49,18 @@ const ImageSelectorModal = ({ isOpen, onClose, epicId, blockId, onImageSelect })
             onClose();
         } catch (error) {
             console.error('Error saving image:', error);
-            alert('Failed to save image');
+            toast({ variant: 'error', title: 'Couldn’t save the image' });
         }
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content image-selector-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>Select Image for Story Block</h2>
-                    <button className="close-btn" onClick={onClose}>&times;</button>
-                </div>
-
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+            <DialogContent
+                title="Select Image for Story Block"
+                description="Pick an AI-suggested image and refine its subtitle."
+                size="lg"
+                className="image-selector-modal"
+            >
                 {loading ? (
                     <div className="loading-state">
                         <div className="spinner"></div>
@@ -105,8 +108,8 @@ const ImageSelectorModal = ({ isOpen, onClose, epicId, blockId, onImageSelect })
                         )}
                     </>
                 )}
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 };
 
