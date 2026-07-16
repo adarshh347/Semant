@@ -58,7 +58,7 @@ function renderImage(props, context) {
 function renderLink(props) {
   const { href, children, ...rest } = props;
   return (
-    <Link to={href} {...rest}>
+    <Link to={href} viewTransition {...rest}>
       {children}
     </Link>
   );

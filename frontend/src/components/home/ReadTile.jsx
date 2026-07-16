@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { cldAt, cldLqip } from '../../lib/cloudinary';
+import { cldCrop, cldLqip } from '../../lib/cloudinary';
 import { fetchRecentPosts } from './homeData';
 
 // Read (1×1). One Aletheia hook — an image with the reading's opening move and a
@@ -23,13 +23,13 @@ export default function ReadTile() {
       {isLoading || !post ? (
         <p className="tile-muted">Finding an image to read…</p>
       ) : (
-        <Link to={`/read/${post.id}`} className="read-hook">
+        <Link to={`/read/${post.id}`} className="read-hook" viewTransition>
           <div
             className="read-stage"
             style={{ backgroundImage: `url("${cldLqip(post.photo_url)}")` }}
           >
             <img
-              src={cldAt(post.photo_url, 480)}
+              src={cldCrop(post.photo_url, 560, 360)}
               alt="An image waiting to be read"
               loading="lazy"
               onLoad={(e) => e.currentTarget.classList.add('is-loaded')}

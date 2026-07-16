@@ -252,6 +252,22 @@ button.primary:hover, .btn-primary:hover {
 }
 .chip-accent { background: var(--accent-soft); color: var(--accent-deep); border-color: transparent; }
 
+/* ===================== View Transitions (route nav) ====================== */
+/* React Router fires document.startViewTransition on `<Link viewTransition>`
+   (Home ↔ Archive ↔ Chiasm). Tune the default root cross-fade to our easing,
+   and stand fully down under reduced-motion. Non-supporting browsers just do a
+   normal instant navigation. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.3s;
+  animation-timing-function: var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+
 /* ============================ Scrollbar =================================== */
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-track { background: transparent; }

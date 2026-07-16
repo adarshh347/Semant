@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import NumberFlow from '@number-flow/react';
 import {
   fetchRecentPosts, perceptCount, wordCount, updatedWithin, isInProgress,
 } from './homeData';
@@ -36,7 +37,9 @@ export default function WeekTile() {
         <dl className="week-stats">
           {stats.map((s) => (
             <div key={s.label} className="week-stat">
-              <dt className="week-num">{s.n.toLocaleString()}</dt>
+              <dt className="week-num">
+                <NumberFlow value={s.n} trend={0} />
+              </dt>
               <dd className="week-label">{s.label}</dd>
             </div>
           ))}
