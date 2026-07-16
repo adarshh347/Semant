@@ -60,15 +60,21 @@
   width: 2rem;
   height: 2rem;
   flex-shrink: 0;
-  border: 1px solid transparent;
+  border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--ink-muted);
+  /* A resting surface + hairline so the ✕ reads as a real button, not a faint
+     floating glyph. Still restrained — no accent until focus. */
+  background: var(--surface-2);
+  color: var(--ink);
   cursor: pointer;
-  transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
+  transition: background-color 0.18s var(--ease), color 0.18s var(--ease),
+    border-color 0.18s var(--ease);
 }
-.ui-dialog-close:hover { background: var(--surface-hover); color: var(--ink); }
+.ui-dialog-close:hover { background: var(--surface-hover); color: var(--ink); border-color: var(--line-strong); }
 .ui-dialog-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Pin the ✕ glyph: as a flex child it can otherwise collapse to 0 width
+   (the icon renders as an invisible sliver — the original "faint ✕"). */
+.ui-dialog-close svg { flex-shrink: 0; width: 18px; height: 18px; }
 
 .ui-dialog-body {
   padding: var(--space-5);
@@ -83,4 +89,57 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ui-dialog-overlay, .ui-dialog { animation: none; }
+}
+
+/* ---- Legacy UploadForm, dialog-native --------------------------------------
+   The form's `.upload-form-container` carries its own card chrome (padding,
+   surface, border, shadow) — inside the already-padded dialog body that reads
+   as a card-within-a-card. Scoped to `.ui-dialog-body` so the shared
+   `.tag-filter` card on the Gallery is untouched. Strip the chrome, stack the
+   fields, and dress the controls in plum tokens. */
+.ui-dialog-body .upload-form-container {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+.ui-dialog-body .upload-form-container form {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+.ui-dialog-body .upload-form-container form > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ui-dialog-body .upload-form-container label {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+.ui-dialog-body .upload-form-container input[type='text'] {
+  min-width: 0;           /* was 250px — let it fill the narrower dialog column */
+  width: 100%;
+}
+.ui-dialog-body .upload-form-container input[type='file'] {
+  font-size: var(--fs-small);
+  color: var(--ink-muted);
+}
+.ui-dialog-body .upload-form-container button[type='submit'] {
+  align-self: flex-start;
+  margin-top: var(--space-1);
+  background: var(--ink);
+  color: var(--bg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  box-shadow: none;
+}
+.ui-dialog-body .upload-form-container button[type='submit']:hover {
+  opacity: 0.9;
+  transform: none;
 }

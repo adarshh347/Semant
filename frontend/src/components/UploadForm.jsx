@@ -59,7 +59,7 @@ function UploadForm({ onUploadSuccess }) {
 
   return (
     <div className="upload-form-container">
-      <h2>Upload New Post(s)</h2>
+      {/* Heading omitted: the dialog already titles this ("Add to the archive"). */}
       <form onSubmit={handleSubmit}>
         <div>
           <label>Select Image(s):</label>
