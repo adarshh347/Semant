@@ -7,6 +7,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './config/api.js';
 
 import App from './App.jsx';
+import HomePage from './pages/HomePage.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import GalleryPage from './pages/GalleryPage.jsx';
 import PostDetailPage from './components/PostDetailPage.jsx';
@@ -31,7 +32,10 @@ const router = createBrowserRouter([
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: <LandingPage /> },
+      // The curated bento is now the entry. The marketing landing keeps a home
+      // at /welcome (still linked for the logged-out pitch).
+      { index: true, element: <HomePage /> },
+      { path: "welcome", element: <LandingPage /> },
       { path: "gallery", element: <GalleryPage /> },
       { path: "highlights", element: <HighlightsPage /> },
       { path: "posts/:postId", element: <PostDetailPage /> },

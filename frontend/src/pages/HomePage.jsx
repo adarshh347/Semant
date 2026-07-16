@@ -1,43 +1,25 @@
-import {useState,useEffect} from 'react';
-import axios from 'axios';
-import UploadForm from '../components/UploadForm';
-import PostCard from '../components/PostCard';
+// The Home — a curated plum bento (the app's index route). Each tile is a door
+// into the work, fed by a small cached useQuery; size = importance. Editorial,
+// one accent per tile, the ◈ region-mark as the running motif. Responsive 4→2→1.
+import HeroTile from '../components/home/HeroTile';
+import ContinueTile from '../components/home/ContinueTile';
+import TasteTile from '../components/home/TasteTile';
+import ReadTile from '../components/home/ReadTile';
+import ArchiveTile from '../components/home/ArchiveTile';
+import PerceptsTile from '../components/home/PerceptsTile';
+import WeekTile from '../components/home/WeekTile';
+import './HomePage.css';
 
-const API_URL='http://127.0.0.1:5008';
-
-function HomePage(){
-    const [posts,setPosts]= useState([]);
-
-    const fetchPosts = async()=>{
-        try{
-        const response= await axios.get(`${API_URL}/api/v1/posts/`);
-        setPosts(response.data);
-
-            }
-        catch(error){
-            console.error("Error fetching posts:", error);
-            }
-        };
-
-      useEffect(() => {
-    fetchPosts();
-  }, []);
-
-
-return (
-    <div>
-      <UploadForm onUploadSuccess={fetchPosts} />
-      <hr />
-      <h2>Gallery</h2>
-      <div className="gallery-grid">
-        {posts.map((post) => (
-          // Use the new PostCard component in our loop
-          <PostCard key={post.id} post={post} />
-        ))}
-      </div>
+export default function HomePage() {
+  return (
+    <div className="home-bento">
+      <HeroTile />
+      <ContinueTile />
+      <TasteTile />
+      <ReadTile />
+      <ArchiveTile />
+      <PerceptsTile />
+      <WeekTile />
     </div>
   );
-
-    }
-
-export default HomePage;
+}
