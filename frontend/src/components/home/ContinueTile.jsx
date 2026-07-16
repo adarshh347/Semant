@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import useEmblaCarousel from 'embla-carousel-react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { cldAt, cldLqip } from '../../lib/cloudinary';
+import { cldCrop, cldLqip } from '../../lib/cloudinary';
 import {
   fetchRecentPosts, isInProgress, titleOf, progressLine,
 } from './homeData';
@@ -60,13 +60,13 @@ export default function ContinueTile() {
         <div className="tile-continue-embla" ref={emblaRef}>
           <div className="tile-continue-track">
             {items.map((p) => (
-              <Link key={p.id} to={`/posts/${p.id}`} className="continue-card">
+              <Link key={p.id} to={`/posts/${p.id}`} className="continue-card" viewTransition>
                 <div
                   className="continue-thumb"
                   style={{ backgroundImage: `url("${cldLqip(p.photo_url)}")` }}
                 >
                   <img
-                    src={cldAt(p.photo_url, 360)}
+                    src={cldCrop(p.photo_url, 320, 400)}
                     alt={titleOf(p)}
                     loading="lazy"
                     onLoad={(e) => e.currentTarget.classList.add('is-loaded')}

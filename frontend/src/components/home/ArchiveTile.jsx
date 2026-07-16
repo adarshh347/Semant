@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { cldAt, cldLqip } from '../../lib/cloudinary';
+import { cldCrop, cldLqip } from '../../lib/cloudinary';
 import { fetchRecentPosts, fetchArchiveCount } from './homeData';
 
 // The Archive (1×1). A live 3-image mosaic + "N images →" — the door to the full
@@ -23,7 +23,7 @@ export default function ArchiveTile() {
   const label = count != null ? `${count.toLocaleString()} images` : 'the archive';
 
   return (
-    <Link to="/gallery" className="tile tile-archive">
+    <Link to="/gallery" className="tile tile-archive" viewTransition>
       <span className="eyebrow">The Archive</span>
       <div className="archive-mosaic">
         {mosaic.map((p, i) => (
@@ -33,7 +33,7 @@ export default function ArchiveTile() {
             style={{ backgroundImage: `url("${cldLqip(p.photo_url)}")` }}
           >
             <img
-              src={cldAt(p.photo_url, i === 0 ? 480 : 240)}
+              src={i === 0 ? cldCrop(p.photo_url, 360, 460) : cldCrop(p.photo_url, 240, 240)}
               alt=""
               loading="lazy"
               onLoad={(e) => e.currentTarget.classList.add('is-loaded')}

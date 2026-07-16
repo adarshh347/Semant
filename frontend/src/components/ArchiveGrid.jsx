@@ -21,17 +21,21 @@ import { API_URL } from '../config/api';
 import { cldAt, cldSrcSet, cldLqip } from '../lib/cloudinary';
 import './ArchiveGrid.css';
 
-const PAGE_SIZE = 50;
+export const PAGE_SIZE = 50;
 
 // Load the tiny LQIP thumb once to read the true aspect ratio; fall back to a
-// 4:5 portrait if a probe fails so a broken image can't wedge the layout.
+// 4:5 portrait if a probe fails — or simply never resolves. A single hanging
+// image URL (older posts can carry non-Cloudinary sources) must not wedge the
+// whole page's fetch, so the probe is bounded by a timeout.
 function probeAspect(lqipUrl) {
   return new Promise((resolve) => {
+    let done = false;
+    const finish = (dims) => { if (!done) { done = true; resolve(dims); } };
     const img = new Image();
-    img.onload = () =>
-      resolve({ width: img.naturalWidth || 4, height: img.naturalHeight || 5 });
-    img.onerror = () => resolve({ width: 4, height: 5 });
+    img.onload = () => finish({ width: img.naturalWidth || 4, height: img.naturalHeight || 5 });
+    img.onerror = () => finish({ width: 4, height: 5 });
     img.src = lqipUrl;
+    setTimeout(() => finish({ width: 4, height: 5 }), 4000);
   });
 }
 
@@ -58,21 +62,30 @@ function renderImage(props, context) {
 function renderLink(props) {
   const { href, children, ...rest } = props;
   return (
-    <Link to={href} {...rest}>
+    <Link to={href} viewTransition {...rest}>
       {children}
     </Link>
   );
 }
 
-export default function ArchiveGrid({ selectedTag }) {
+export default function ArchiveGrid({ selectedTag, startPage = 1 }) {
   const queryClient = useQueryClient();
   // Bumped when an upload lands — remounts the scroller so a new image appears.
   const [nonce, setNonce] = useState(0);
   const seenRef = useRef(null);
+  const scopeRef = useRef(null);
 
-  // Fresh de-dup memory per filter / refresh.
-  const scopeKey = `${selectedTag ?? '__all__'}:${nonce}`;
+  // Fresh de-dup memory per filter / refresh / timeline jump.
+  const scopeKey = `${selectedTag ?? '__all__'}:${startPage}:${nonce}`;
   useMemo(() => { seenRef.current = new Set(); }, [scopeKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A timeline jump re-anchors the scroller to a page offset; bring that new
+  // anchor up to the top so the jumped-to images are what you see.
+  useEffect(() => {
+    if (startPage > 1 && scopeRef.current) {
+      scopeRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
+    }
+  }, [startPage]);
 
   useEffect(() => {
     const onChanged = () => {
@@ -85,7 +98,9 @@ export default function ArchiveGrid({ selectedTag }) {
 
   const fetchPage = useCallback(
     async (index) => {
-      const page = index + 1;
+      // Anchor at startPage: index 0 is the jumped-to page, and we page forward
+      // (toward older) from there.
+      const page = startPage + index;
       const data = await queryClient.fetchQuery({
         queryKey: ['posts', 'archive', selectedTag ?? '__all__', page],
         queryFn: async () => {
@@ -126,27 +141,29 @@ export default function ArchiveGrid({ selectedTag }) {
         }),
       );
     },
-    [selectedTag, queryClient],
+    [selectedTag, queryClient, startPage],
   );
 
   return (
-    <InfiniteScroll
-      key={scopeKey}
-      singleton
-      fetch={fetchPage}
-      fetchRootMargin="800px 0px"
-      offscreenRootMargin="2000px 0px"
-      loading={<p className="arch-status">Loading more of the archive…</p>}
-      finished={<p className="arch-status">You've reached the end of the archive.</p>}
-      error={<p className="arch-status">Couldn't load more of the archive.</p>}
-    >
-      <RowsPhotoAlbum
-        photos={[]}
-        targetRowHeight={230}
-        spacing={10}
-        rowConstraints={{ singleRowMaxHeight: 340 }}
-        render={{ image: renderImage, link: renderLink }}
-      />
-    </InfiniteScroll>
+    <div ref={scopeRef} className="archive-grid-scope">
+      <InfiniteScroll
+        key={scopeKey}
+        singleton
+        fetch={fetchPage}
+        fetchRootMargin="800px 0px"
+        offscreenRootMargin="2000px 0px"
+        loading={<p className="arch-status">Loading more of the archive…</p>}
+        finished={<p className="arch-status">You've reached the end of the archive.</p>}
+        error={<p className="arch-status">Couldn't load more of the archive.</p>}
+      >
+        <RowsPhotoAlbum
+          photos={[]}
+          targetRowHeight={230}
+          spacing={10}
+          rowConstraints={{ singleRowMaxHeight: 340 }}
+          render={{ image: renderImage, link: renderLink }}
+        />
+      </InfiniteScroll>
+    </div>
   );
 }

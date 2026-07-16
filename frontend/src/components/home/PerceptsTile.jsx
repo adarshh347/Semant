@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchRecentPosts, percepts, perceptLabel } from './homeData';
+import PerceptCrop from './PerceptCrop';
 
 // Parts you recently noticed (3×1). Recent Percept chips (◈, plum) drawn from the
 // region annotations on your recent readings — each a jump back to that image's
@@ -12,19 +13,22 @@ export default function PerceptsTile() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Flatten recent posts → their marked parts, newest first, deduped by label.
-  const chips = [];
+  // Flatten recent posts → their marked parts (need a box to crop), newest
+  // first, deduped by label.
+  const marks = [];
   const seen = new Set();
   for (const post of data ?? []) {
+    if (!post.photo_url) continue;
     for (const region of percepts(post)) {
+      if (!region.box) continue;
       const label = perceptLabel(region);
       const key = label.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
-      chips.push({ label, postId: post.id, regionId: region.id });
-      if (chips.length >= 12) break;
+      marks.push({ label, region, postId: post.id, photoUrl: post.photo_url });
+      if (marks.length >= 8) break;
     }
-    if (chips.length >= 12) break;
+    if (marks.length >= 8) break;
   }
 
   return (
@@ -32,11 +36,19 @@ export default function PerceptsTile() {
       <span className="eyebrow">Parts you recently noticed</span>
       {isLoading ? (
         <p className="tile-muted">Gathering the parts you marked…</p>
-      ) : chips.length > 0 ? (
-        <div className="percept-chips">
-          {chips.map((c) => (
-            <Link key={`${c.postId}:${c.regionId}`} to={`/posts/${c.postId}`} className="percept-chip">
-              <span className="mark" aria-hidden>◈</span> {c.label}
+      ) : marks.length > 0 ? (
+        <div className="percept-strip">
+          {marks.map((m) => (
+            <Link
+              key={`${m.postId}:${m.region.id}`}
+              to={`/posts/${m.postId}`}
+              className="percept-lift"
+              viewTransition
+            >
+              <PerceptCrop photoUrl={m.photoUrl} region={m.region} label={m.label} />
+              <span className="percept-lift-label">
+                <span className="mark" aria-hidden>◈</span> {m.label}
+              </span>
             </Link>
           ))}
         </div>

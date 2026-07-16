@@ -18,7 +18,7 @@ export default function HeroTile() {
         <em>part by part, in your own words.</em>
       </p>
       <div className="tile-hero-cta">
-        <Link to="/gallery" className="btn btn-primary btn-lg">
+        <Link to="/gallery" className="btn btn-primary btn-lg" viewTransition>
           Enter the Archive <span aria-hidden>→</span>
         </Link>
         <button type="button" className="tile-hero-textlink" onClick={openUpload}>

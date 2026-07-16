@@ -15,13 +15,17 @@
   padding-bottom: var(--space-8);
 }
 
-.tile-hero     { grid-area: hero; }
-.tile-continue { grid-area: cont; }
-.tile-taste    { grid-area: taste; }
-.tile-read     { grid-area: read; }
-.tile-archive  { grid-area: archive; }
-.tile-percepts { grid-area: percept; }
-.tile-week     { grid-area: week; }
+/* Grid placement lives on the motion slots (the direct grid children); the
+   tile fills its slot. */
+.slot-hero    { grid-area: hero; }
+.slot-cont    { grid-area: cont; }
+.slot-taste   { grid-area: taste; }
+.slot-read    { grid-area: read; }
+.slot-archive { grid-area: archive; }
+.slot-percept { grid-area: percept; }
+.slot-week    { grid-area: week; }
+.bento-slot { display: flex; min-width: 0; }
+.bento-slot > * { flex: 1; min-width: 0; }
 
 /* ---- shared tile chrome ------------------------------------------------- */
 .tile {
@@ -34,13 +38,15 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  transition: transform 0.25s var(--ease), border-color 0.25s var(--ease),
-    box-shadow 0.25s var(--ease);
+  /* Transform is owned by Motion (the slot's whileHover); keep only the
+     surface transitions here so the two never fight. */
+  transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
 }
-/* Interactive tiles (whole card is a link) lift on hover. */
 a.tile { text-decoration: none; color: inherit; }
+/* Hover chrome (border + shadow) reacts whether the pointer is over the slot or
+   the tile; the lift itself is Motion's. */
+.bento-slot:hover > .tile,
 a.tile:hover {
-  transform: translateY(-2px);
   border-color: var(--line-strong);
   box-shadow: var(--shadow-md);
 }
@@ -53,12 +59,14 @@ a.tile:hover {
 }
 .tile-title {
   font-family: var(--font-display);
+  font-optical-sizing: auto;
   font-weight: 500;
-  font-size: var(--fs-h3);
-  line-height: 1.15;
+  font-size: 1.5rem;
+  line-height: 1.1;
   letter-spacing: var(--tracking-tight);
   color: var(--ink);
   margin: 0.15rem 0 0;
+  text-wrap: balance;
 }
 .tile-muted {
   color: var(--ink-muted);
@@ -90,10 +98,11 @@ a.tile:hover {
 .tile-hero-eyebrow { color: var(--ink-subtle); }
 .tile-hero-mark {
   font-family: var(--font-display);
+  font-optical-sizing: auto;
   font-weight: 600;
   font-size: var(--fs-display);
-  line-height: 1;
-  letter-spacing: var(--tracking-tight);
+  line-height: 0.98;
+  letter-spacing: -0.028em;
   color: var(--ink);
   margin: 0.25rem 0 0;
 }
@@ -189,8 +198,10 @@ a.tile:hover {
 .continue-meta { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
 .continue-name {
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-optical-sizing: auto;
+  font-size: 1.0625rem;
   font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
@@ -275,23 +286,49 @@ a.tile:hover {
 .tile-archive:hover .archive-cell { filter: saturate(1.05); }
 .archive-count { margin-top: 0.1rem; }
 
-/* ---- Percepts ----------------------------------------------------------- */
-.percept-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); align-content: flex-start; }
-.percept-chip {
+/* ---- Percepts (lifted crops) ------------------------------------------- */
+.percept-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.percept-lift {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-decoration: none;
+  color: inherit;
+  max-width: 160px;
+}
+/* The crop tile: fixed height, width follows the crop's aspect (set inline). */
+.percept-crop {
+  height: 92px;
+  border-radius: var(--radius-sm);
+  overflow: visible;              /* the polygon clip can exceed a tight box */
+  display: flex;
+}
+.percept-crop img {
+  height: 100%;
+  width: auto;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease);
+  /* A soft plum ground behind the clipped shape reads as the "lift". */
+  filter: drop-shadow(0 2px 6px rgba(23, 18, 26, 0.18));
+}
+.percept-crop img.is-loaded { opacity: 1; }
+.percept-lift-label {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: var(--fs-small);
-  font-weight: 500;
-  padding: 0.35rem 0.75rem;
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-  color: var(--ink-muted);
-  border: 1px solid var(--line);
-  text-decoration: none;
-  transition: border-color 0.2s var(--ease), color 0.2s var(--ease);
+  gap: 0.3rem;
+  font-size: var(--fs-caption);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.percept-chip:hover { border-color: var(--accent); color: var(--ink); }
+.percept-lift:hover .percept-lift-label { color: var(--ink); }
 
 /* ---- This week (the one dark tile) ------------------------------------- */
 .tile-week {
@@ -310,11 +347,13 @@ a.tile:hover {
 .week-stat { display: flex; align-items: baseline; gap: 0.5rem; }
 .week-num {
   font-family: var(--font-display);
-  font-size: 2rem;
+  font-optical-sizing: auto;
+  font-size: 2.125rem;
   font-weight: 500;
   line-height: 1;
   color: var(--bg);
-  letter-spacing: var(--tracking-tight);
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
 }
 .week-label {
   margin: 0;
@@ -345,7 +384,7 @@ a.tile:hover {
       "percept percept"
       "week    week";
   }
-  .tile-continue { min-height: 320px; }
+  .slot-cont { min-height: 320px; }
 }
 
 @media (max-width: 600px) {
@@ -365,32 +404,12 @@ a.tile:hover {
   .continue-card { flex-basis: 60%; }
 }
 
-/* Load motion — tiles fade + rise on mount, gently staggered. Small (12px),
-   on `--ease`, never bouncy. Wrapped in `no-preference` so reduced-motion users
-   just get the static tiles (nothing to override). */
-@media (prefers-reduced-motion: no-preference) {
-  .home-bento > * {
-    animation: tile-rise 0.5s var(--ease) both;
-  }
-  .home-bento > *:nth-child(1) { animation-delay: 0.00s; }
-  .home-bento > *:nth-child(2) { animation-delay: 0.05s; }
-  .home-bento > *:nth-child(3) { animation-delay: 0.09s; }
-  .home-bento > *:nth-child(4) { animation-delay: 0.13s; }
-  .home-bento > *:nth-child(5) { animation-delay: 0.17s; }
-  .home-bento > *:nth-child(6) { animation-delay: 0.21s; }
-  .home-bento > *:nth-child(7) { animation-delay: 0.25s; }
-  @keyframes tile-rise {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: none; }
-  }
-}
-
-/* Motion is a lift on hover, the blur-up cross-fade, and the load rise above.
-   Honour the reduced-motion preference — fall back to the static state. */
+/* The staggered reveal + hover-lift are Motion's (HomePage.jsx), already gated
+   on prefers-reduced-motion. Here we only make sure the blur-up cross-fades
+   also fall back to static under reduced motion. */
 @media (prefers-reduced-motion: reduce) {
-  .tile,
-  a.tile:hover,
   .continue-thumb img,
   .read-stage img,
-  .archive-cell img { transition: none; transform: none; }
+  .archive-cell img,
+  .percept-crop img { transition: none; }
 }
