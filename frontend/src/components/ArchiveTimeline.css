@@ -52,6 +52,15 @@
   flex-shrink: 0;
 }
 .arch-tl-mark.is-major .arch-tl-tick { width: 11px; height: 2px; background: var(--ink-subtle); }
+
+/* A loaded sequence, marked on the rail with the region-mark glyph. */
+.arch-tl-mark.is-seq { justify-content: flex-end; }
+.arch-tl-seqmark {
+  color: var(--accent);
+  font-size: 0.6rem;
+  line-height: 1;
+  margin-right: 1px;
+}
 .arch-tl-label {
   font-size: 0.625rem;
   line-height: 1;
