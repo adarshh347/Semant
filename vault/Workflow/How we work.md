@@ -14,3 +14,11 @@ Two assistants + one human:
 - Verify UI by screenshot, not by reading code. See [[Constraints we must not break]].
 - One lane / one battlefield at a time. Research can run in parallel sessions; building stays serial.
 - Distil durable lessons here in the vault; keep ephemeral working files in `architecture-lab/`.
+
+
+
+
+
+
+
+**data-contract problem**.
