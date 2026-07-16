@@ -101,10 +101,13 @@ export default function CommandPalette() {
         </Command.Group>
 
         <Command.Group heading="Actions">
-          <Command.Item value="Upload image new" onSelect={() => run(() => navigate('/gallery'))}>
+          <Command.Item
+            value="Upload image new add archive"
+            onSelect={() => run(() => window.dispatchEvent(new CustomEvent('semant:open-upload')))}
+          >
             <span className="cmdk-item-icon"><Upload size={16} /></span>
             <span className="cmdk-item-label">Upload an image</span>
-            <span className="cmdk-item-hint">Add to the gallery</span>
+            <span className="cmdk-item-hint">Add to the archive</span>
           </Command.Item>
           <Command.Item
             value="Toggle theme dark light appearance"

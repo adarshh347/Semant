@@ -2,6 +2,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './components/NavBar';
 import CommandPalette from './components/CommandPalette';
+import UploadDialog from './components/UploadDialog';
 import './App.css';
 
 function App() {
@@ -18,6 +19,8 @@ function App() {
       </main>
       {/* Global ⌘K command palette — one shell-level mount for every route. */}
       <CommandPalette />
+      {/* Global upload dialog — opened from ⌘K or the Archive's Upload button. */}
+      <UploadDialog />
     </div>
   );
 }
