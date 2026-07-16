@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "Alexia — Image & Video Saver",
-    "description": "Alexia & Aletheia, unconcealers: save images, split videos into frames, and interpret any image — from any website.",
-    "version": "1.0.0",
+    "name": "Alexia \u2014 Image & Video Saver",
+    "description": "Alexia & Aletheia, unconcealers: save images, split videos into frames, and interpret any image \u2014 from any website.",
+    "version": "1.1.0",
     "permissions": [
         "activeTab",
         "storage"

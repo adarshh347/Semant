@@ -26,6 +26,22 @@ saveUrlBtn.addEventListener('click', () => {
     chrome.storage.sync.set({ backendUrl }, checkConnection);
 });
 
+// --- Mute the overlay ---------------------------------------------------------
+// Same chrome.storage.sync key the content script (and its Alt+Shift+S shortcut)
+// uses, so the popup toggle and the keyboard shortcut stay in lockstep.
+const muteToggle = document.getElementById('muteToggle');
+
+chrome.storage.sync.get('overlayMuted', ({ overlayMuted }) => {
+    muteToggle.checked = !!overlayMuted;
+});
+muteToggle.addEventListener('change', () => {
+    chrome.storage.sync.set({ overlayMuted: muteToggle.checked });
+});
+// Reflect a shortcut toggle made while the popup is open.
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync' && changes.overlayMuted) muteToggle.checked = !!changes.overlayMuted.newValue;
+});
+
 // --- API key management -----------------------------------------------------
 const keyInput = document.getElementById('apiKeyInput');
 const saveKeyBtn = document.getElementById('saveKeyBtn');
