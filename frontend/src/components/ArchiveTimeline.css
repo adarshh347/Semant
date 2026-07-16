@@ -1,0 +1,100 @@
+/* The Archive date-scrubber rail — a thin fixed timeline down the right edge. */
+.arch-timeline {
+  position: fixed;
+  right: 6px;
+  top: 92px;
+  bottom: 20px;
+  width: 84px;
+  z-index: 40;
+  pointer-events: none; /* only the track catches input */
+  font-family: var(--font-sans);
+}
+
+.arch-tl-track {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  pointer-events: auto;
+  cursor: ns-resize;
+  touch-action: none;
+}
+/* The rail line itself sits on the far right; ticks/labels hang to its left. */
+.arch-tl-track::after {
+  content: '';
+  position: absolute;
+  right: 5px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  transition: background-color 0.2s var(--ease);
+}
+.arch-tl-track:hover::after { background: var(--accent); }
+
+.arch-tl-mark {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  width: 100%;
+  color: var(--ink-subtle);
+}
+.arch-tl-tick {
+  width: 7px;
+  height: 1px;
+  background: var(--line-strong);
+  flex-shrink: 0;
+}
+.arch-tl-mark.is-major .arch-tl-tick { width: 11px; height: 2px; background: var(--ink-subtle); }
+.arch-tl-label {
+  font-size: 0.625rem;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0.5;
+  transition: opacity 0.2s var(--ease), color 0.2s var(--ease);
+}
+.arch-tl-mark.is-major .arch-tl-label { font-weight: 600; opacity: 0.85; color: var(--ink-muted); }
+.arch-tl-track:hover .arch-tl-label { opacity: 0.9; }
+
+/* The current-position thumb on the rail. */
+.arch-tl-thumb {
+  position: absolute;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 3px var(--bg);
+  transition: top 0.12s var(--ease);
+  pointer-events: none;
+}
+
+/* The floating date read-out while scrubbing. */
+.arch-tl-bubble {
+  position: absolute;
+  right: 22px;
+  transform: translateY(-50%);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--bg);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .arch-timeline { display: none; } /* touch scroll is enough on small screens */
+}
+@media (prefers-reduced-motion: reduce) {
+  .arch-tl-thumb, .arch-tl-track::after, .arch-tl-label { transition: none; }
+}
