@@ -19,7 +19,7 @@ function inFormField(el) {
 // `g` then a letter, within the sequence window. Kept in one place so the help
 // sheet can render the exact same list.
 export const GOTO_SHORTCUTS = [
-  ['g h', 'Home', '/'],
+  ['g h', 'Home', '/home'],
   ['g g', 'Gallery', '/gallery'],
   ['g r', 'Read', '/feed'],
   ['g a', 'Atelier', '/atelier'],
@@ -32,7 +32,7 @@ export default function GlobalShortcuts() {
   const navigate = useNavigate();
 
   // Navigation sequences (react-hotkeys-hook uses `>` as the sequence delimiter).
-  useHotkeys('g>h', () => navigate('/'), SEQ);
+  useHotkeys('g>h', () => navigate('/home'), SEQ);
   useHotkeys('g>g', () => navigate('/gallery'), SEQ);
   useHotkeys('g>r', () => navigate('/feed'), SEQ);
   useHotkeys('g>a', () => navigate('/atelier'), SEQ);

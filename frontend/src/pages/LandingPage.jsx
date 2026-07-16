@@ -125,8 +125,8 @@ export default function LandingPage() {
             images, not another place to save them.
           </p>
           <div className="landing-cta-row">
-            <Link to="/gallery" className="landing-pill">
-              Explore the Gallery <span aria-hidden>→</span>
+            <Link to="/home" className="landing-pill">
+              Enter <span aria-hidden>→</span>
             </Link>
             <a href="#see-read-write" className="landing-textlink">
               See how it reads <span aria-hidden>↓</span>

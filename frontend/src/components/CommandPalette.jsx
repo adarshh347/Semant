@@ -19,7 +19,7 @@ const NAVIGATE = [
   { to: '/feed', label: 'Read', hint: 'Latest stories', icon: <BookOpen size={16} /> },
   { to: '/atelier', label: 'Atelier', hint: 'The per-image workspace', icon: <Palette size={16} /> },
   { to: '/you', label: 'You', hint: 'Highlights & epics', icon: <User size={16} /> },
-  { to: '/', label: 'Home', hint: 'The bento dashboard', icon: <Home size={16} /> },
+  { to: '/home', label: 'Home', hint: 'The bento dashboard', icon: <Home size={16} /> },
 ];
 
 // Demoted tooling — mirrors NavBar TOOLS_LINKS (the ones that "move under ⌘K").

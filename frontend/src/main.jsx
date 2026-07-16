@@ -32,10 +32,10 @@ const router = createBrowserRouter([
     path: "/",
     element: <App />,
     children: [
-      // The curated bento is now the entry. The marketing landing keeps a home
-      // at /welcome (still linked for the logged-out pitch).
-      { index: true, element: <HomePage /> },
-      { path: "welcome", element: <LandingPage /> },
+      // '/' is the motive See·Read·Write front door; its "Enter" CTA leads into
+      // the app at /home, the curated bento dashboard.
+      { index: true, element: <LandingPage /> },
+      { path: "home", element: <HomePage /> },
       { path: "gallery", element: <GalleryPage /> },
       { path: "highlights", element: <HighlightsPage /> },
       { path: "posts/:postId", element: <PostDetailPage /> },
