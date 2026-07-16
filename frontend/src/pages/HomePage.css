@@ -365,8 +365,28 @@ a.tile:hover {
   .continue-card { flex-basis: 60%; }
 }
 
-/* Motion is a lift on hover only, and the blur-up cross-fade. Honour the
-   reduced-motion preference — fall back to the static state. */
+/* Load motion — tiles fade + rise on mount, gently staggered. Small (12px),
+   on `--ease`, never bouncy. Wrapped in `no-preference` so reduced-motion users
+   just get the static tiles (nothing to override). */
+@media (prefers-reduced-motion: no-preference) {
+  .home-bento > * {
+    animation: tile-rise 0.5s var(--ease) both;
+  }
+  .home-bento > *:nth-child(1) { animation-delay: 0.00s; }
+  .home-bento > *:nth-child(2) { animation-delay: 0.05s; }
+  .home-bento > *:nth-child(3) { animation-delay: 0.09s; }
+  .home-bento > *:nth-child(4) { animation-delay: 0.13s; }
+  .home-bento > *:nth-child(5) { animation-delay: 0.17s; }
+  .home-bento > *:nth-child(6) { animation-delay: 0.21s; }
+  .home-bento > *:nth-child(7) { animation-delay: 0.25s; }
+  @keyframes tile-rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+}
+
+/* Motion is a lift on hover, the blur-up cross-fade, and the load rise above.
+   Honour the reduced-motion preference — fall back to the static state. */
 @media (prefers-reduced-motion: reduce) {
   .tile,
   a.tile:hover,

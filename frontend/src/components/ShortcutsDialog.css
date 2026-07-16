@@ -1,0 +1,45 @@
+/* Shortcuts sheet — plum tokens, editorial rows with <kbd> chips. */
+.sc-group + .sc-group { margin-top: var(--space-5); }
+.sc-group-label { display: block; margin-bottom: var(--space-2); }
+
+.sc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.sc-row:last-child { border-bottom: none; }
+
+.sc-label {
+  font-size: var(--fs-small);
+  color: var(--ink-muted);
+}
+
+.sc-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+.sc-kbd {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  line-height: 1;
+  min-width: 1.4rem;
+  padding: 0.3rem 0.45rem;
+  text-align: center;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 0 var(--line-strong);
+}

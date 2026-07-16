@@ -3,6 +3,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './components/NavBar';
 import CommandPalette from './components/CommandPalette';
 import UploadDialog from './components/UploadDialog';
+import GlobalShortcuts from './components/GlobalShortcuts';
+import ShortcutsDialog from './components/ShortcutsDialog';
 import './App.css';
 
 function App() {
@@ -23,6 +25,9 @@ function App() {
       <CommandPalette />
       {/* Global upload dialog — opened from ⌘K or the Archive's Upload button. */}
       <UploadDialog />
+      {/* App-wide keyboard shortcuts (g-nav, ?) + the shortcuts sheet. */}
+      <GlobalShortcuts />
+      <ShortcutsDialog />
     </div>
   );
 }
