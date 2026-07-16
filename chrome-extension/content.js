@@ -8,11 +8,33 @@
 (function () {
     'use strict';
 
-    const SAVE_URL = 'http://localhost:5007/api/v1/posts/upload-from-url';
-    const BRAINSTORM_URL = 'http://localhost:5007/api/v1/posts/brainstorm';
-    const PERSONA_INGEST_URL = 'http://localhost:5007/api/v1/personas/ingest';
+    // Backend base URL. Defaults to the local dev backend (keep in sync with
+    // frontend/.env VITE_API_URL). Overridable at runtime from the popup, which
+    // stores 'backendUrl' in chrome.storage.sync — so the port can't silently
+    // drift again the way 5007 → 8000 did.
+    let API_BASE = 'http://localhost:8000';
+    let SAVE_URL = `${API_BASE}/api/v1/posts/upload-from-url`;
+    let BRAINSTORM_URL = `${API_BASE}/api/v1/posts/brainstorm`;
+    let PERSONA_INGEST_URL = `${API_BASE}/api/v1/personas/ingest`;
     const DASHBOARD_URL = 'http://localhost:5173/personas';
     const MIN_IMAGE_SIZE = 100;
+
+    // Recompute the endpoint URLs whenever the configured base changes.
+    function applyBackendBase(base) {
+        if (!base) return;
+        API_BASE = String(base).replace(/\/+$/, '');
+        SAVE_URL = `${API_BASE}/api/v1/posts/upload-from-url`;
+        BRAINSTORM_URL = `${API_BASE}/api/v1/posts/brainstorm`;
+        PERSONA_INGEST_URL = `${API_BASE}/api/v1/personas/ingest`;
+    }
+
+    try {
+        chrome.storage.sync.get('backendUrl', ({ backendUrl }) => applyBackendBase(backendUrl));
+        // Keep in sync if the user changes it in the popup while a tab is open.
+        chrome.storage.onChanged?.addListener((changes, area) => {
+            if (area === 'sync' && changes.backendUrl) applyBackendBase(changes.backendUrl.newValue);
+        });
+    } catch (_) { /* storage unavailable — fall back to the default base */ }
 
     // Wraps fetch to attach the saved X-API-Key header (set in the popup) on
     // every request to the Sharirasutra backend. When no key is saved, requests

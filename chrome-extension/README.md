@@ -29,8 +29,8 @@ A Chrome extension that lets you save images from any website to your Sharirasut
 
 ## Requirements
 
-- The Sharirasutra backend must be running (`uvicorn backend.main:app --reload --host 0.0.0.0 --port 5007`)
-- The extension connects to `localhost:5007`
+- The Sharirasutra backend must be running (`uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000`)
+- The extension connects to `localhost:8000` by default. If your backend runs on a different port, set it in the popup's **Backend URL** field (stored per-browser, no reload needed).
 
 ## Features
 
@@ -54,8 +54,9 @@ Or create simple colored squares as placeholders.
 
 ## Troubleshooting
 
-**"Backend not running" error:**
-- Make sure uvicorn is running on port 5007
+**"No backend at ..." error:**
+- Make sure uvicorn is running (default expected port: 8000)
+- Confirm the popup's **Backend URL** matches the port uvicorn is bound to
 - Check the terminal for any errors
 
 **Button doesn't appear:**
