@@ -34,10 +34,10 @@ A Chrome extension that lets you save images from any website to your Sharirasut
 
 ## Features
 
-- ✨ One-click image saving
-- 🖼️ Works on any website
-- 🔍 Only shows button on images larger than 100x100px
-- 📱 Instant feedback (Saving... → ✓ Saved!)
+- **One quiet hover toolbar** (Read · Save · Split · Save all) — a single ink bar, context-aware: Split appears on videos, Save all on carousels.
+- **The Collection tray** — ONE unified, minimizable queue for everything collected: single saves, carousel sweeps, and video splits, each tagged by origin. Review frames/slides (tap to deselect), then mass-save. The Aletheia reading panel is a separate surface, so a reading can never clobber the queue (and vice versa).
+- **Mute** — silence the whole overlay while just browsing: the popup toggle or **Alt+Shift+S** (persisted in `chrome.storage.sync`; in-flight captures keep running).
+- Only reacts to images larger than 100×100px; works on any website.
 
 ## Icon Generation
 
