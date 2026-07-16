@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import UploadForm from '../components/UploadForm';
 import TagFilter from '../components/TagFilter';
@@ -12,7 +12,6 @@ import { useToast } from '../components/ui';
 import { API_URL } from '../config/api';
 
 function GalleryPage() {
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedTag, setSelectedTag] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -27,21 +26,66 @@ function GalleryPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Paginated gallery read → TanStack Query. Keyed on page + tag so switching
-  // either refetches (and caches) automatically; no manual effect.
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['posts', currentPage, selectedTag],
-    queryFn: async () => {
-      let url = `${API_URL}/api/v1/posts?page=${currentPage}&limit=50`;
+  // Archive read → TanStack Query `useInfiniteQuery`, keyed on tag only. The
+  // page cursor lives inside the query (pageParam), so it can't fight React
+  // state the way the old `currentPage` + Prev/Next did. Query orders and
+  // de-dupes in-flight requests, so a fast scroll can never resolve pages out
+  // of order or show a stale/duplicated page — the race is gone structurally.
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['posts', 'infinite', selectedTag],
+    queryFn: async ({ pageParam }) => {
+      let url = `${API_URL}/api/v1/posts?page=${pageParam}&limit=50`;
       if (selectedTag) url += `&tag=${selectedTag}`;
       const response = await axios.get(url);
       return response.data;
     },
-    placeholderData: (prev) => prev, // keep the old page visible while the next loads
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.current_page < lastPage.total_pages ? lastPage.current_page + 1 : undefined,
   });
 
-  const posts = data?.posts ?? [];
-  const totalPages = data?.total_pages ?? 0;
+  // Flatten every loaded page into one ordered list, de-duped by id so a
+  // boundary shift (a fresh upload nudging offsets) can never render the same
+  // post twice.
+  const posts = useMemo(() => {
+    const seen = new Set();
+    const flat = [];
+    for (const page of data?.pages ?? []) {
+      for (const post of page.posts ?? []) {
+        if (seen.has(post.id)) continue;
+        seen.add(post.id);
+        flat.push(post);
+      }
+    }
+    return flat;
+  }, [data]);
+
+  // IntersectionObserver sentinel — when the tail scrolls near the viewport,
+  // pull the next page. rootMargin prefetches before it's actually visible so
+  // scrolling stays continuous; the hasNextPage/isFetchingNextPage guards keep
+  // it from firing overlapping loads.
+  const sentinelRef = useRef(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '600px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Any write elsewhere (upload, phrase save, story attach) just invalidates the
   // cache; the query refetches itself.
@@ -94,8 +138,9 @@ function GalleryPage() {
   };
 
   const handleTagSelect = (tag) => {
+    // Changing the tag changes the query key → the infinite query restarts at
+    // page 1 on its own; no page state to reset.
     setSelectedTag(tag);
-    setCurrentPage(1);
     setSummaryData(null);
     setActivePlotIndex(null);
     setGeneratedStory(null);
@@ -109,7 +154,7 @@ function GalleryPage() {
         <p>"Every image is a story waiting to be told."</p>
       </div>
 
-      <UploadForm onUploadSuccess={() => { setCurrentPage(1); refreshPosts(); }} />
+      <UploadForm onUploadSuccess={() => { refreshPosts(); }} />
       <hr />
       <TagFilter onTagSelect={handleTagSelect} />
 
@@ -193,16 +238,6 @@ function GalleryPage() {
         </div>
       )}
 
-      <div className="pagination">
-        <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}>
-          &larr; Previous
-        </button>
-        <span style={{ color: 'var(--text-secondary)' }}>Page {currentPage} of {totalPages}</span>
-        <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage >= totalPages}>
-          Next &rarr;
-        </button>
-      </div>
-
       {isError && (
         <p style={{ textAlign: 'center', color: 'var(--ink-muted)' }}>Couldn't load the gallery.</p>
       )}
@@ -225,6 +260,17 @@ function GalleryPage() {
           </div>
         ))}
       </div>
+
+      {/* Infinite-scroll sentinel — the observer above watches this and pulls
+          the next page as it nears the viewport. */}
+      <div ref={sentinelRef} style={{ height: 1 }} aria-hidden="true" />
+
+      {isFetchingNextPage && (
+        <p style={{ textAlign: 'center', color: 'var(--ink-muted)' }}>Loading more…</p>
+      )}
+      {!hasNextPage && posts.length > 0 && (
+        <p style={{ textAlign: 'center', color: 'var(--ink-muted)' }}>You've reached the end of the archive.</p>
+      )}
 
       <UntaggedImagesSidebar
         isVisible={showUntaggedSidebar}
