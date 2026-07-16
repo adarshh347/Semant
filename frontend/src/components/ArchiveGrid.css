@@ -53,6 +53,51 @@
   border-radius: var(--radius-pill, 999px);
 }
 
+/* Controls row — tag filter (left, flexible) + the view toggle (right). */
+.archive-controls {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.archive-controls > :first-child { flex: 1; min-width: 0; }
+
+.archive-viewtoggle {
+  display: inline-flex;
+  flex: none;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.archive-viewbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+.archive-viewbtn:hover { color: var(--ink); background: transparent; transform: none; box-shadow: none; }
+.archive-viewbtn.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+@media (max-width: 560px) {
+  .archive-viewlabel { display: none; } /* icons only on narrow screens */
+}
+
 /* Floating "back to newest" pill — shown when the timeline has anchored the
    grid at an older offset (the infinite scroll only pages forward from there). */
 .archive-newest {
