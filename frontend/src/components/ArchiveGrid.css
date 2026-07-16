@@ -1,0 +1,131 @@
+/* The Archive grid — plum v1.3. react-photo-album owns layout geometry; we only
+   style the image tiles and the blur-up. */
+
+.arch-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm, 6px);
+  /* The blurred LQIP rides as the element's own background, so a loading tile
+     shows the blurred image (never grey) until the full-res pixels paint. */
+  background-color: var(--surface-2);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* A touch of extra blur + scale while loading, lifted on load for a soft
+     settle rather than a hard swap. */
+  filter: blur(6px);
+  transform: scale(1.02);
+  transition: filter 0.45s var(--ease, ease-out), transform 0.45s var(--ease, ease-out);
+}
+
+.arch-img.is-loaded {
+  filter: none;
+  transform: none;
+}
+
+/* A quiet plum outline on hover — the tile as a door, not decoration. */
+.react-photo-album a,
+.react-photo-album button {
+  border-radius: var(--radius-sm, 6px);
+  outline: 1px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.2s var(--ease, ease-out);
+}
+.react-photo-album a:hover,
+.react-photo-album a:focus-visible {
+  outline-color: var(--accent);
+}
+
+/* Archive page header — title left, a single quiet Upload CTA right. */
+.archive-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4, 1.25rem);
+}
+.archive-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+  border-radius: var(--radius-pill, 999px);
+}
+
+/* Controls row — tag filter (left, flexible) + the view toggle (right). */
+.archive-controls {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.archive-controls > :first-child { flex: 1; min-width: 0; }
+
+.archive-viewtoggle {
+  display: inline-flex;
+  flex: none;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.archive-viewbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+.archive-viewbtn:hover { color: var(--ink); background: transparent; transform: none; box-shadow: none; }
+.archive-viewbtn.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+@media (max-width: 560px) {
+  .archive-viewlabel { display: none; } /* icons only on narrow screens */
+}
+
+/* Floating "back to newest" pill — shown when the timeline has anchored the
+   grid at an older offset (the infinite scroll only pages forward from there). */
+.archive-newest {
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 auto var(--space-4);
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+.archive-newest:hover { border-color: var(--ink); background: var(--surface-2); }
+
+.arch-status {
+  text-align: center;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  padding: var(--space-4, 1.25rem) 0;
+}

@@ -2,10 +2,15 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './components/NavBar';
 import CommandPalette from './components/CommandPalette';
+import UploadDialog from './components/UploadDialog';
+import GlobalShortcuts from './components/GlobalShortcuts';
+import ShortcutsDialog from './components/ShortcutsDialog';
 import './App.css';
 
 function App() {
   const location = useLocation();
+  // '/' is the full-bleed motive landing (the front door); the bento Home lives
+  // at /home and sits in the standard content column like the other app pages.
   const isLandingPage = location.pathname === '/';
   // Full-screen pages that should not have the app-content wrapper
   const isFullscreenPage = location.pathname.startsWith('/posts/');
@@ -18,6 +23,11 @@ function App() {
       </main>
       {/* Global ⌘K command palette — one shell-level mount for every route. */}
       <CommandPalette />
+      {/* Global upload dialog — opened from ⌘K or the Archive's Upload button. */}
+      <UploadDialog />
+      {/* App-wide keyboard shortcuts (g-nav, ?) + the shortcuts sheet. */}
+      <GlobalShortcuts />
+      <ShortcutsDialog />
     </div>
   );
 }

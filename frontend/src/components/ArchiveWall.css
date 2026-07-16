@@ -1,0 +1,62 @@
+/* Virtualized uniform-square Archive view (Grid + fisheye Wall). Its own scroll
+   container so windowing is local and cheap. */
+.arch-wall {
+  position: relative;
+  height: calc(100vh - 264px);
+  min-height: 420px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: var(--radius-lg);
+  overscroll-behavior: contain;
+}
+.arch-wall-inner {
+  position: relative;
+  width: 100%;
+}
+
+.wall-cell {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 3px;
+  background-color: var(--surface-2);
+  background-size: cover;
+  background-position: center;
+  transform-origin: center center;
+  transition: transform 0.12s var(--ease), box-shadow 0.12s var(--ease);
+  cursor: pointer;
+}
+.wall-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.35s var(--ease);
+}
+.wall-cell img.is-loaded { opacity: 1; }
+
+/* The magnified cell lifts above its neighbours with a soft shadow + plum ring. */
+.is-fisheye .wall-cell {
+  will-change: transform;
+}
+.is-fisheye .wall-cell[style*='z-index'] {
+  box-shadow: var(--shadow-lg);
+  outline: 1px solid var(--accent);
+}
+/* Grid mode (no fisheye): a quiet hover outline. */
+.arch-wall:not(.is-fisheye) .wall-cell:hover {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.arch-wall-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wall-cell { transition: none; }
+}

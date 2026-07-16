@@ -7,6 +7,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './config/api.js';
 
 import App from './App.jsx';
+import HomePage from './pages/HomePage.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import GalleryPage from './pages/GalleryPage.jsx';
 import PostDetailPage from './components/PostDetailPage.jsx';
@@ -31,7 +32,10 @@ const router = createBrowserRouter([
     path: "/",
     element: <App />,
     children: [
+      // '/' is the motive See·Read·Write front door; its "Enter" CTA leads into
+      // the app at /home, the curated bento dashboard.
       { index: true, element: <LandingPage /> },
+      { path: "home", element: <HomePage /> },
       { path: "gallery", element: <GalleryPage /> },
       { path: "highlights", element: <HighlightsPage /> },
       { path: "posts/:postId", element: <PostDetailPage /> },

@@ -9,8 +9,10 @@ import './Navbar.css';
 // the NavBar owns no palette state.
 const openCommandPalette = () => window.dispatchEvent(new CustomEvent('semant:open-command'));
 
-// Primary nav — only what a user *does* (the IA declutter). Four destinations.
+// Primary nav — only what a user *does* (the IA declutter). Home is the bento
+// dashboard (index route); the rest are what you do from there.
 const PRIMARY_LINKS = [
+  ['/home', 'Home'],
   ['/gallery', 'Gallery'],
   ['/feed', 'Read'],
   ['/atelier', 'Atelier'],
@@ -59,7 +61,7 @@ function Navbar() {
         {/* Inline primary links — the everyday nav. CSS hides these on /posts/*. */}
         <div className="nav-links">
           {PRIMARY_LINKS.map(([to, label]) => (
-            <NavLink key={to} to={to}>{label}</NavLink>
+            <NavLink key={to} to={to} end={to === '/home'}>{label}</NavLink>
           ))}
         </div>
 
@@ -135,6 +137,7 @@ function Navbar() {
                   <NavLink
                     key={to}
                     to={to}
+                    end={to === '/home'}
                     role="menuitem"
                     className="nav-menu-item"
                     onClick={close}
