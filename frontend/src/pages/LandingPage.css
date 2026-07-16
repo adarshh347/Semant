@@ -1,14 +1,15 @@
 /* frontend/src/pages/LandingPage.css */
 /* =============================================================================
-   Semant landing — motive-based front page (Pass 2 · Phase 2a), refit to the
-   Semant design language v1.1.
+   Semant landing — motive-based front page, on the design language v1.3
+   (Paper + Plum).
 
-   Discipline: warm paper base + ONE terracotta *interactive* accent + muted
-   pastel diagram cards; nothing else. Primary action = the ink pill; emphasis =
+   Discipline: warm paper base + ONE plum *interactive* accent + muted pastel
+   diagram cards; nothing else. Primary action = the ink pill; emphasis =
    italic Fraunces (never colour). Flat-on-paper, hairline borders only where
    earned, section rhythm at --space-16+. No decorative gradients/glows.
-   Static (Phase 2a) — 2b attaches Motion/GSAP to [data-reveal]/.landing-card,
-   and this state is the reduced-motion fallback.
+   Phase 2b reveal: [data-reveal] sections rise 12px + fade on --ease as they
+   enter (the hook in LandingPage.jsx); under prefers-reduced-motion the
+   transition never applies, so the static state is the fallback.
    ============================================================================= */
 
 .landing {
@@ -16,6 +17,20 @@
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
+}
+
+/* Phase 2b reveal — motion only for those who haven't opted out; everyone else
+   simply sees the static sections (no hidden state to rescue). */
+@media (prefers-reduced-motion: no-preference) {
+  .landing [data-reveal] {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.55s var(--ease), transform 0.55s var(--ease);
+  }
+  .landing [data-reveal].is-revealed {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Shared section rhythm — air is the material. */
@@ -39,6 +54,7 @@
 
 .landing-h2 {
   font-family: var(--font-display);
+  font-optical-sizing: auto;
   font-size: var(--fs-h1);
   font-weight: 500;
   line-height: 1.1;
@@ -46,6 +62,7 @@
   color: var(--ink);
   margin: 0 0 var(--space-6) 0;
   max-width: 20ch;
+  text-wrap: balance;
 }
 
 .landing-h3 {
@@ -67,8 +84,8 @@
 }
 .landing-prose em { color: var(--ink); font-style: italic; font-weight: 500; }
 
-/* Emphasis quote — italic Fraunces in ultramarine: the section's single accent
-   (v1.2 identity — the accent carries emphasis + links + region marks). */
+/* Emphasis quote — italic Fraunces in plum: the section's single accent
+   (v1.3 identity — the accent carries emphasis + links + region marks). */
 .landing-pullquote {
   font-family: var(--font-display);
   font-style: italic;
@@ -99,7 +116,7 @@
 .landing-pill:hover span { transform: translateX(3px); }
 .landing-pill--lg { padding: 1.1rem 2.25rem; font-size: 1.05rem; margin-top: var(--space-8); }
 
-/* Secondary = quiet text link; terracotta only on the hover underline
+/* Secondary = quiet text link; plum only on the hover underline
    (the single interactive accent). */
 .landing-textlink {
   display: inline-flex;
@@ -127,7 +144,8 @@
 .landing-hero {
   max-width: 1280px;
   margin: 0 auto;
-  min-height: calc(100vh - 96px);
+  /* dvh, not vh — vh over-measures under iOS Safari's collapsing chrome. */
+  min-height: calc(100dvh - 96px);
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: clamp(2rem, 6vw, 6rem);
@@ -138,12 +156,14 @@
 
 .landing-wedge {
   font-family: var(--font-display);
+  font-optical-sizing: auto;
   font-size: var(--fs-display);
   font-weight: 500;
   line-height: 1.05;
   letter-spacing: var(--tracking-tight);
   color: var(--ink);
   margin: 0 0 var(--space-6) 0;
+  text-wrap: balance;
 }
 .landing-wedge em { font-style: italic; color: var(--accent); }
 
