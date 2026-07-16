@@ -7,7 +7,9 @@ import './App.css';
 
 function App() {
   const location = useLocation();
-  const isLandingPage = location.pathname === '/';
+  // The full-bleed marketing landing now lives at /welcome; '/' is the bento Home,
+  // which sits in the standard content column like the other app pages.
+  const isLandingPage = location.pathname === '/welcome';
   // Full-screen pages that should not have the app-content wrapper
   const isFullscreenPage = location.pathname.startsWith('/posts/');
 
