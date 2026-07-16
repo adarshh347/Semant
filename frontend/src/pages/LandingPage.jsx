@@ -1,39 +1,65 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import editorialImage from '../assets/background.jpeg';
 import './LandingPage.css';
 
+// Phase 2b, finally: a restrained reveal on the [data-reveal] sections — rise
+// 12px + fade on --ease, once, as each enters the viewport. CSS owns the look;
+// under prefers-reduced-motion the transition never applies, so the static
+// Phase-2a state IS the fallback, exactly as promised below.
+function useReveal() {
+  useEffect(() => {
+    const els = document.querySelectorAll('.landing [data-reveal]');
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('is-revealed');
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { rootMargin: '0px 0px -10% 0px' },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+}
+
 /**
- * Semant landing — the motive-based front page (Pass 2 · Phase 2a, refit to the
- * Semant design language v1.1).
+ * Semant landing — the motive-based front page, on the design language v1.3
+ * (Paper + Plum), positioned per architecture-lab/responses/market-targets.md:
+ * visual creators (fashion-first) articulating their taste, against moodboard
+ * drift and AI slop. Copy drawn from the landing-articles (01 saving-is-not-
+ * seeing · 02 your-taste-is-your-edge · 03 reading-not-tagging · 04 chiasm).
  *
  * Built around one act: See · Read · Write. Editorial, type-led, restrained.
  * Two image registers, used strictly (design-language §4 / §7):
  *   • Hero = register-1, the *real editorial image* carrying only our thin
- *     terracotta region overlay on a few parts — the product's own truth.
+ *     plum region overlay on a few parts — the product's own truth.
  *   • Spine = register-2, one *muted-pastel card* per panel holding a hand-drawn
  *     thick-black-line motif that dissects an image into parts + a 1-line reading.
- * Colour discipline: warm paper + one terracotta *interactive* accent + the
- * pastel diagram cards; nothing else. Primary action is the ink pill; emphasis
- * is italic Fraunces, never colour.
+ * Colour discipline: warm paper + one plum *interactive* accent + the pastel
+ * diagram cards; nothing else. Primary action is the ink pill; emphasis is
+ * italic Fraunces, never colour.
  *
- * Phase 2a is fully static. [data-reveal] marks Phase 2b's reveal targets, and
- * this static state IS the prefers-reduced-motion fallback 2b degrades to.
+ * [data-reveal] sections get the Phase 2b rise-and-fade (useReveal above);
+ * the static markup IS the prefers-reduced-motion fallback.
  */
 
-// Hero region overlay — 2–3 thin terracotta boxes on garment parts (register-1).
+// Hero region overlay — 2–3 thin plum boxes on garment parts (register-1).
 const HERO_REGIONS = [
   { label: 'the neckline', top: '26%', left: '46%', width: '20%', height: '13%' },
   { label: 'the drape', top: '52%', left: '38%', width: '26%', height: '20%' },
   { label: 'the patterned hem', top: '74%', left: '34%', width: '30%', height: '15%' },
 ];
 
-/* ── Hand-drawn diagram motifs (thick single-weight black line + one terracotta
+/* ── Hand-drawn diagram motifs (thick single-weight black line + one plum
    accent). Fixed dark stroke via --diagram-ink so they stay black-on-pastel in
    dark mode. One motif per pastel card. ─────────────────────────────────────── */
 
 function SeeMotif() {
-  // A garment dissected into parts — two ink markers, one terracotta (the pick).
+  // A garment dissected into parts — two ink markers, one plum (the pick).
   return (
     <svg className="motif" viewBox="0 0 240 180" role="img" aria-label="A garment decomposed into parts.">
       <g fill="none" stroke="var(--diagram-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -110,6 +136,7 @@ const PANELS = [
 ];
 
 export default function LandingPage() {
+  useReveal();
   return (
     <div className="landing">
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
@@ -155,10 +182,13 @@ export default function LandingPage() {
         <span className="landing-eyebrow">The problem</span>
         <h2 className="landing-h2">Saving is not seeing.</h2>
         <p className="landing-prose">
-          We have never had more places to save an image — and never understood
-          them less. A moodboard is an archive of your attention with the
-          attention removed. It remembers <em>that</em> you stopped; it forgets
-          <em> why</em> — and the why is the only part that matters.
+          Pinterest, Cosmos, Are.na, Savee, a thousand screenshots you will
+          never open again — we have never had more places to <em>save</em> an
+          image, and the reason you saved it evaporates the second you scroll
+          on. A moodboard is an archive of your attention with the attention
+          removed: it remembers <em>that</em> you stopped and forgets{' '}
+          <em>why</em>. Designers call the result drift. It isn&rsquo;t a lack
+          of inspiration. It&rsquo;s a lack of seeing.
         </p>
         <p className="landing-pullquote">Saving is a reflex. Seeing is a practice.</p>
       </section>
@@ -198,13 +228,37 @@ export default function LandingPage() {
         <span className="landing-eyebrow">The payoff</span>
         <h2 className="landing-h2">Your taste is your edge.</h2>
         <p className="landing-prose">
-          When everyone can generate everything, the one thing that can’t be
-          faked is a point of view. Do this a hundred times and a portrait of
-          your own eye appears — the details you can’t stop noticing, your taste
-          written down as language instead of scattered across boards you’ll
-          never reopen.
+          When everyone can generate everything, the specific way <em>you</em>{' '}
+          see is the last unautomatable thing you own. Read a hundred images
+          this way and a portrait of your own eye appears — the motifs you
+          return to, the details you can&rsquo;t stop noticing — your taste
+          written down as language instead of scattered across boards
+          you&rsquo;ll never reopen. Then it writes <em>with</em> you, not{' '}
+          <em>for</em> you: captions, lookbook lines, notes grounded in the real
+          detail and in your accumulated voice. For stylists, creative
+          directors, and anyone building an aesthetic in public — words that
+          sound like the person who saw the thing.
         </p>
         <p className="landing-pullquote">Your taste, given back — not harvested.</p>
+      </section>
+
+      {/* ── The room — Chiasm (article 04) ───────────────────────────────── */}
+      <section className="landing-section" data-reveal>
+        <span className="landing-eyebrow">The room</span>
+        <h2 className="landing-h2">Chiasm — the crossing.</h2>
+        <p className="landing-prose">
+          Most software keeps the image on one side and your words on the
+          other, the detail that moved you stuck behind glass. Semant&rsquo;s
+          workspace has two shores — the <em>Field</em>, where the image is
+          taken apart by attention, and the <em>Manuscript</em>, where it
+          becomes language — and the product is the crossing between them. The
+          drape you mark travels into the sentence as a live thing: hover the
+          word and the shape lights up on the image; write about it and the
+          image remembers being written about.
+        </p>
+        <p className="landing-pullquote">
+          Not a nicer editor — a medium where seeing and saying cross.
+        </p>
       </section>
 
       {/* ── Close (centered announcement register) ───────────────────────── */}
@@ -214,7 +268,7 @@ export default function LandingPage() {
           you’re <em>seeing</em>.
         </h2>
         <p className="landing-prose landing-close-sub">We only care about the second one.</p>
-        <Link to="/gallery" className="landing-pill landing-pill--lg">
+        <Link to="/home" className="landing-pill landing-pill--lg">
           Start seeing <span aria-hidden>→</span>
         </Link>
       </section>
