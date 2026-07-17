@@ -78,7 +78,7 @@ export default function RefPicker({ kind, regions, lenses, percepts = [], ground
                 noted: hasNote(r),
                 raw: r,
             }));
-    }, [kind, regions, lenses, query]);
+    }, [kind, regions, lenses, percepts, grounds, query]);
 
     const pick = (i) => { const it = items[i]; if (it) onPick(it.raw); };
 

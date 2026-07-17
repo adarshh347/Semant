@@ -319,6 +319,8 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
                         {store && (
                             <GroundLayers
                                 grounds={store.grounds || []}
+                                regions={regions}
+                                natural={natural}
                                 content={content}
                                 recall={recallPlayer.active ? recallPlayer : null}
                                 recallOnly

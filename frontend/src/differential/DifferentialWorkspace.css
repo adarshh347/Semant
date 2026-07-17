@@ -195,10 +195,51 @@
     height: 100%;
 }
 
-/* brush mode: the pointer is the tool; region shapes must not eat it */
-.diff-stage.is-brushing { cursor: none; touch-action: none; }
-.diff-stage.is-brushing .diff-svg { pointer-events: none; }
-.diff-stage.is-brushing .diff-svg * { pointer-events: none; }
+/* drawing mode (brush/trace): the pointer is the tool; shapes must not eat it */
+.diff-stage.is-drawing { cursor: crosshair; touch-action: none; }
+.diff-stage.is-brushing { cursor: none; }
+.diff-stage.is-drawing .diff-svg,
+.diff-stage.is-drawing .diff-svg * { pointer-events: none; }
+
+/* ── the SVG Ground layer (shared with Chiasm recall) ───────────────────── */
+.gl-path-ribbon { fill: var(--accent); }
+.gl-path-center { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; opacity: 0.9; }
+.gl-path-chevron { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.gl-boundary-band { fill: none; stroke: var(--accent); stroke-linecap: round; }
+.gl-boundary-center { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 4; }
+.gl-frame-line { stroke: var(--accent); stroke-width: 1.25; }
+.gl-region { fill: var(--accent); stroke: var(--accent); stroke-width: 1.25; }
+.gl-region.is-lit { stroke-width: 1.75; }
+.gl-draft { opacity: 0.7; }
+
+/* trace sub-mode — L5 inline, above the stage */
+.diff-subtools {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+}
+.diff-subtool {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+.diff-subtool:hover { background: var(--surface-hover); color: var(--text-primary); }
+.diff-subtool.on { color: var(--accent); background: var(--accent-soft); }
+.diff-band {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: 0.4rem;
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+}
+.diff-band input { width: 5rem; accent-color: var(--accent); }
 
 .diff-brush-cursor {
     position: absolute;

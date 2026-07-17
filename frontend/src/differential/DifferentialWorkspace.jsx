@@ -6,61 +6,67 @@ import {
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
 import useStageGeometry, { useNaturalSize, pointerToNormalized } from './useStageGeometry';
-import { makeGround, resolveGround } from './grounds';
+import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
 import './DifferentialWorkspace.css';
 
 /**
  * Differential — the dedicated percept-construction workspace (v1).
  *
- * A full-workspace MODE inside PostDetailPage, not a route: unsaved Manuscript
- * content lives in PostDetailPage state, and a route change would unmount and
- * silently lose it. The Chiasm shell stays mounted (hidden) underneath.
+ * A full-workspace MODE inside PostDetailPage, not a route: the Chiasm shell
+ * stays mounted (hidden) so unsaved Manuscript state survives enter/leave.
  *
- * Increment A shipped the shell + architecture. Increment B ships the first
- * full circulation: Brush → Soft Field Ground → composer → expression Percept
- * → /percept Mention (in Chiasm) → recall. Trace/Collect/Connect/Frame land
- * with C–D.
+ * Increments A+B shipped the shell, the shared stage geometry, the grounds/
+ * percepts round-trip, and the first full circulation with Soft Field. C adds
+ * the spatial vocabulary: Path, Boundary (Trace sub-mode), Frame, and Region
+ * select/multi-select into Percepts — each with its recall signature.
  */
 
 const TOOLS = [
-    { key: 'select', label: 'Select', icon: MousePointer2, ready: true, hint: 'Point at evidence' },
-    { key: 'brush', label: 'Brush', icon: Brush, ready: true, hint: 'Soft Field — paint where the light lives' },
-    { key: 'trace', label: 'Trace', icon: PenTool, ready: false, hint: 'Path · Boundary' },
-    { key: 'collect', label: 'Collect', icon: Group, ready: false, hint: 'Constellation' },
-    { key: 'connect', label: 'Connect', icon: Waypoints, ready: false, hint: 'Relation' },
-    { key: 'frame', label: 'Frame', icon: Frame, ready: false, hint: 'The whole image' },
+    { key: 'select', label: 'Select', icon: MousePointer2, hint: 'Point at parts — ⇧ to gather several' },
+    { key: 'brush', label: 'Brush', icon: Brush, hint: 'Soft Field — paint where the light lives' },
+    { key: 'trace', label: 'Trace', icon: PenTool, hint: 'Path or Boundary — draw a line' },
+    { key: 'collect', label: 'Collect', icon: Group, ready: false, hint: 'Constellation (next increment)' },
+    { key: 'connect', label: 'Connect', icon: Waypoints, ready: false, hint: 'Relation (next increment)' },
+    { key: 'frame', label: 'Frame', icon: Frame, hint: 'The whole image as evidence' },
 ];
+const READY = new Set(['select', 'brush', 'trace', 'frame']);
 
-export const PERCEPT_PROPERTIES = [
+// The percept's optional felt qualities (spec list). Local — nothing outside
+// composes these, and exporting a constant here would break Fast Refresh.
+const PERCEPT_PROPERTIES = [
     'light', 'colour', 'material', 'movement', 'composition',
     'attention', 'atmosphere', 'repetition', 'contrast',
 ];
 
 const regionName = (r) => r?.label || r?.part || r?.category || 'part';
 
-const groundTitle = (g) => {
+const groundTitle = (g, regions = []) => {
     if (g.label) return g.label;
     switch (g.ground_type) {
         case 'field': return `Soft field · ${(g.strokes || []).length} stroke${(g.strokes || []).length !== 1 ? 's' : ''}`;
-        case 'region': return 'Region';
+        case 'path': return 'Path';
+        case 'boundary': return 'Boundary';
+        case 'frame': return 'Frame · whole image';
+        case 'region': {
+            const r = regions.find((x) => x.id === g.region_id);
+            return r ? regionName(r) : 'Region';
+        }
         default: return g.ground_type;
     }
 };
 
-// Minimum normalized pointer travel before we append another sample.
 const MIN_SAMPLE_DIST = 0.004;
 
 export default function DifferentialWorkspace({ post, store, onExit }) {
     const [tool, setTool] = useState('select');
-    const [untouched, setUntouched] = useState(false); // O — the image, unannotated
+    const [traceSub, setTraceSub] = useState('path');  // path | boundary
+    const [untouched, setUntouched] = useState(false);
     const [brushRadius, setBrushRadius] = useState(0.045);
-    const [draftStrokes, setDraftStrokes] = useState([]);   // committed-to-draft strokes
-    const [liveStroke, setLiveStroke] = useState(null);     // the stroke under the pointer
-    const [hoverPt, setHoverPt] = useState(null);           // brush cursor ring
-    // The composer — "What do you notice?" Opens after a Ground commits
-    // (immediate rhythm); closing it never destroys the Ground (accumulative).
-    const [composer, setComposer] = useState(null);         // { groundId, expression, properties }
+    const [bandWidth, setBandWidth] = useState(0.06);
+    const [draft, setDraft] = useState(null);
+    const [picked, setPicked] = useState(() => new Set());   // multi-selected region ids
+    const [composer, setComposer] = useState(null);          // { groundIds, expression, properties }
     const stageRef = useRef(null);
     const drawingRef = useRef(false);
     const [natural, onImgLoad] = useNaturalSize();
@@ -69,7 +75,7 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
     const {
         regions, selectedId, selectRegion, hoveredId, setHoveredId,
         grounds, percepts, saveState, metaSaveState,
-        addGround, removeGround, selectedGroundId, selectGround,
+        addGround, removeGround, groundById, selectedGroundId, selectGround,
         setHoveredGroundId, focusGroundIds,
         addExpressionPercept, playRecall, clearRecall, recall,
     } = store;
@@ -81,74 +87,161 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
         [percepts],
     );
 
-    const draftAll = useMemo(
-        () => (liveStroke ? [...draftStrokes, liveStroke] : draftStrokes),
-        [draftStrokes, liveStroke],
-    );
+    // ── the draft, shaped for the layers ─────────────────────────────────────
+    const draftForLayers = useMemo(() => {
+        if (!draft) return null;
+        if (draft.kind === 'field') {
+            const strokes = draft.live ? [...draft.strokes, draft.live] : draft.strokes;
+            return { kind: 'field', strokes };
+        }
+        return { kind: draft.kind, points: draft.points, band_width: draft.band_width };
+    }, [draft]);
 
-    // ── brush gestures ────────────────────────────────────────────────────────
+    const hasDraft = draft && (draft.kind === 'field'
+        ? (draft.strokes.length > 0 || draft.live)
+        : draft.points.length > 1);
+
+    // ── gestures ─────────────────────────────────────────────────────────────
     const onStagePointerDown = (e) => {
-        if (tool !== 'brush' || untouched) return;
+        if (untouched) return;
         const p = pointerToNormalized(e, stageRef.current, content);
         if (!p) return;
-        e.currentTarget.setPointerCapture?.(e.pointerId);
-        drawingRef.current = true;
-        setLiveStroke({
-            points: [[p.x, p.y, e.pressure || 0]],
-            radius: brushRadius,
-            strength: 0.8,
-            op: e.altKey ? 'sub' : 'add',
-        });
+        if (tool === 'brush') {
+            e.currentTarget.setPointerCapture?.(e.pointerId);
+            drawingRef.current = true;
+            setDraft((d) => ({
+                kind: 'field',
+                strokes: d?.kind === 'field' ? d.strokes : [],
+                live: { points: [[p.x, p.y, e.pressure || 0]], radius: brushRadius, strength: 0.8, op: e.altKey ? 'sub' : 'add' },
+            }));
+        } else if (tool === 'trace') {
+            e.currentTarget.setPointerCapture?.(e.pointerId);
+            drawingRef.current = true;
+            setDraft({ kind: traceSub, points: [[p.x, p.y, e.pressure || 0]], band_width: bandWidth });
+        }
     };
 
+    const [brushCursor, setBrushCursor] = useState(null);
     const onStagePointerMove = (e) => {
+        const p = pointerToNormalized(e, stageRef.current, content);
+        if (tool === 'brush') setBrushCursor(p);
+        if (!drawingRef.current || !p) return;
         if (tool === 'brush') {
-            const p = pointerToNormalized(e, stageRef.current, content);
-            setHoverPt(p);
-            if (drawingRef.current && p) {
-                setLiveStroke((s) => {
-                    if (!s) return s;
-                    const last = s.points[s.points.length - 1];
-                    if (Math.hypot(p.x - last[0], p.y - last[1]) < MIN_SAMPLE_DIST) return s;
-                    return { ...s, points: [...s.points, [p.x, p.y, e.pressure || 0]] };
-                });
-            }
+            setDraft((d) => {
+                if (!d?.live) return d;
+                const last = d.live.points[d.live.points.length - 1];
+                if (Math.hypot(p.x - last[0], p.y - last[1]) < MIN_SAMPLE_DIST) return d;
+                return { ...d, live: { ...d.live, points: [...d.live.points, [p.x, p.y, e.pressure || 0]] } };
+            });
+        } else if (tool === 'trace') {
+            setDraft((d) => {
+                if (!d?.points) return d;
+                const last = d.points[d.points.length - 1];
+                if (Math.hypot(p.x - last[0], p.y - last[1]) < MIN_SAMPLE_DIST) return d;
+                return { ...d, points: [...d.points, [p.x, p.y, e.pressure || 0]] };
+            });
         }
     };
 
     const endStroke = useCallback(() => {
         if (!drawingRef.current) return;
         drawingRef.current = false;
-        setLiveStroke((s) => {
-            if (s && s.points.length > 1) setDraftStrokes((d) => [...d, s]);
-            return null;
+        setDraft((d) => {
+            if (!d) return d;
+            if (d.kind === 'field') {
+                const strokes = d.live && d.live.points.length > 1 ? [...d.strokes, d.live] : d.strokes;
+                return { ...d, strokes, live: null };
+            }
+            return d.points.length > 1 ? d : null;  // a stray tap is not a line
         });
     }, []);
 
-    const undoStroke = useCallback(() => setDraftStrokes((d) => d.slice(0, -1)), []);
-    const clearDraft = useCallback(() => { setDraftStrokes([]); setLiveStroke(null); drawingRef.current = false; }, []);
+    const clearDraft = useCallback(() => { setDraft(null); drawingRef.current = false; }, []);
+    const undoStroke = useCallback(() => {
+        setDraft((d) => {
+            if (!d || d.kind !== 'field') return d;
+            return { ...d, strokes: d.strokes.slice(0, -1) };
+        });
+    }, []);
 
-    /** Commit the draft as a field Ground, then invite the noticing. */
-    const commitField = useCallback(() => {
-        if (!draftStrokes.length) return;
-        const ground = addGround(makeGround('field', { strokes: draftStrokes }));
+    const openComposer = useCallback((groundIds) => {
+        setComposer({ groundIds: Array.isArray(groundIds) ? groundIds : [groundIds], expression: '', properties: [] });
+    }, []);
+
+    // ── commits ──────────────────────────────────────────────────────────────
+    const commitDraft = useCallback(() => {
+        if (!draft) return;
+        let ground = null;
+        if (draft.kind === 'field') {
+            const strokes = draft.live ? [...draft.strokes, draft.live] : draft.strokes;
+            if (!strokes.length) return;
+            ground = addGround(makeGround('field', { strokes }));
+        } else if (draft.kind === 'path') {
+            if (draft.points.length < 2) return;
+            ground = addGround(makeGround('path', { points: draft.points, arrowhead: true }));
+        } else if (draft.kind === 'boundary') {
+            if (draft.points.length < 2) return;
+            ground = addGround(makeGround('boundary', { points: draft.points, band_width: draft.band_width }));
+        }
         clearDraft();
+        if (ground) { selectGround(ground.id); openComposer(ground.id); }
+    }, [draft, addGround, clearDraft, selectGround, openComposer]);
+
+    const commitFrame = useCallback(() => {
+        // Frame is one action: the whole image, holding whatever's already picked.
+        const evidence = [...pickedGroundIds()];
+        const ground = addGround(makeGround('frame', { whole: true, evidence_ids: evidence }));
         selectGround(ground.id);
-        setComposer({ groundId: ground.id, expression: '', properties: [] });
-    }, [draftStrokes, addGround, clearDraft, selectGround]);
+        openComposer(ground.id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [addGround, selectGround, openComposer, picked, selectedGroundId, grounds]);
+
+    // Region-adapter Grounds for the currently-picked regions (dedupe by region).
+    function pickedGroundIds() {
+        const ids = new Set();
+        if (selectedGroundId) ids.add(selectedGroundId);
+        for (const rid of picked) {
+            const existing = grounds.find((g) => g.ground_type === 'region' && g.region_id === rid);
+            ids.add(existing ? existing.id : null);
+        }
+        return [...ids].filter(Boolean);
+    }
+
+    const composeFromRegions = useCallback(() => {
+        const ids = picked.size ? [...picked] : (selectedId ? [selectedId] : []);
+        if (!ids.length) return;
+        const groundIds = ids.map((rid) => {
+            const existing = grounds.find((g) => g.ground_type === 'region' && g.region_id === rid);
+            if (existing) return existing.id;
+            const r = regions.find((x) => x.id === rid);
+            return addGround(groundFromRegion(rid, { label: r ? regionName(r) : '' })).id;
+        });
+        setPicked(new Set());
+        openComposer(groundIds);
+    }, [picked, selectedId, grounds, regions, addGround, openComposer]);
 
     const savePercept = useCallback(() => {
         if (!composer) return;
         const expression = composer.expression.trim();
         if (!expression) return;
         const p = addExpressionPercept({
-            expression,
-            ground_ids: [composer.groundId],
-            properties: composer.properties,
+            expression, ground_ids: composer.groundIds, properties: composer.properties,
         });
         setComposer(null);
-        playRecall(p.id);   // the noticing performs itself once, as confirmation
+        playRecall(p.id);
     }, [composer, addExpressionPercept, playRecall]);
+
+    // ── region pick (Select tool) ───────────────────────────────────────────
+    const handleRegionPick = useCallback((id, e) => {
+        if (tool !== 'select') return;
+        if (e?.shiftKey) {
+            setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+        } else {
+            setPicked(new Set([id]));
+        }
+        selectRegion(id);
+        selectGround(null);
+    }, [tool, selectRegion, selectGround]);
 
     // ── keyboard ─────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -157,22 +250,24 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
             if (e.code === 'KeyO' && !e.repeat) setUntouched(true);
             else if (e.key === 'Escape') {
                 if (recall) clearRecall();
-                else if (composer) setComposer(null);       // the Ground survives
-                else if (draftAll.length) clearDraft();      // a draft is not yet a Ground
+                else if (composer) setComposer(null);
+                else if (hasDraft) clearDraft();
+                else if (picked.size) setPicked(new Set());
                 else { selectRegion(null); selectGround(null); setHoveredId(null); }
-            } else if (e.key === '[') setBrushRadius((r) => Math.max(0.012, r * 0.82));
-            else if (e.key === ']') setBrushRadius((r) => Math.min(0.16, r * 1.22));
+            } else if (tool === 'brush' && e.key === '[') setBrushRadius((r) => Math.max(0.012, r * 0.82));
+            else if (tool === 'brush' && e.key === ']') setBrushRadius((r) => Math.min(0.16, r * 1.22));
+            else if (tool === 'trace' && traceSub === 'boundary' && e.key === '[') setBandWidth((w) => Math.max(0.02, w * 0.82));
+            else if (tool === 'trace' && traceSub === 'boundary' && e.key === ']') setBandWidth((w) => Math.min(0.2, w * 1.22));
             else if (e.key.toLowerCase() === 'b') setTool('brush');
             else if (e.key.toLowerCase() === 'v') setTool('select');
-            else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && draftStrokes.length) {
-                e.preventDefault(); undoStroke();
-            }
+            else if (e.key.toLowerCase() === 't') setTool('trace');
+            else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoStroke(); }
         };
         const up = (e) => { if (e.code === 'KeyO') setUntouched(false); };
         window.addEventListener('keydown', down);
         window.addEventListener('keyup', up);
         return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
-    }, [recall, clearRecall, composer, draftAll.length, draftStrokes.length, clearDraft, undoStroke, selectRegion, selectGround, setHoveredId]);
+    }, [recall, clearRecall, composer, hasDraft, picked, clearDraft, undoStroke, tool, traceSub, selectRegion, selectGround, setHoveredId]);
 
     const saving = saveState === 'saving' || metaSaveState === 'saving';
     const saved = saveState === 'saved' || metaSaveState === 'saved';
@@ -180,18 +275,16 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
     const selected = regions.find((r) => r.id === selectedId) || null;
     const selectedGround = grounds.find((g) => g.id === selectedGroundId) || null;
     const focusId = hoveredId || selectedId;
+    const litIds = picked.size ? picked : null;
 
-    const detachedGrounds = grounds.filter(
-        (g) => resolveGround(g, { regions, grounds })?.detached,
-    );
-
-    const composerGround = composer ? grounds.find((g) => g.id === composer.groundId) : null;
-
+    const detachedGrounds = grounds.filter((g) => resolveGround(g, { regions, grounds })?.detached);
     const brushing = tool === 'brush' && !untouched;
+    const tracing = tool === 'trace' && !untouched;
+    const drawingTool = brushing || tracing;
 
     return (
         <div className="diff-root" data-tool={tool}>
-            {/* ── top bar — compact: return · identity · image state · saves ── */}
+            {/* ── top bar ── */}
             <header className="diff-topbar">
                 <button type="button" className="diff-back" onClick={onExit}
                     title="Back to Chiasm — the Manuscript is exactly as you left it">
@@ -202,10 +295,8 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                     {post?.instagram_handle && <span className="diff-handle">@{post.instagram_handle}</span>}
                 </div>
                 <div className="diff-topbar-right">
-                    <button type="button"
-                        className={`diff-untouched${untouched ? ' on' : ''}`}
-                        onClick={() => setUntouched(u => !u)}
-                        title="See the untouched image (hold O)">
+                    <button type="button" className={`diff-untouched${untouched ? ' on' : ''}`}
+                        onClick={() => setUntouched((u) => !u)} title="See the untouched image (hold O)">
                         <Eye size={14} /> <span>Untouched</span>
                     </button>
                     <span className={`diff-save diff-save--${saving ? 'saving' : saved ? 'saved' : 'idle'}`}>
@@ -216,120 +307,138 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
             </header>
 
             <div className="diff-body">
-                {/* ── tool rail — L5: inline tools, no box ── */}
+                {/* ── tool rail ── */}
                 <nav className="diff-tools" aria-label="Perceptual operations">
-                    {TOOLS.map(({ key, label, icon: Icon, ready, hint }) => (
-                        <button key={key} type="button"
-                            className={`diff-tool${tool === key ? ' on' : ''}`}
-                            disabled={!ready}
-                            aria-pressed={tool === key}
-                            title={`${label} — ${hint}`}
-                            onClick={() => ready && setTool(key)}>
-                            <Icon size={16} />
-                            <span className="diff-tool-label">{label}</span>
-                        </button>
-                    ))}
+                    {TOOLS.map((t) => {
+                        const ready = READY.has(t.key);
+                        return (
+                            <button key={t.key} type="button"
+                                className={`diff-tool${tool === t.key ? ' on' : ''}`}
+                                disabled={!ready} aria-pressed={tool === t.key}
+                                title={`${t.label} — ${t.hint}`}
+                                onClick={() => {
+                                    if (!ready) return;
+                                    if (t.key === 'frame') { commitFrame(); return; }
+                                    setTool(t.key);
+                                }}>
+                                <t.icon size={16} />
+                                <span className="diff-tool-label">{t.label}</span>
+                            </button>
+                        );
+                    })}
                 </nav>
 
-                {/* ── stage — image-dominant; every layer shares the geometry ── */}
+                {/* ── stage ── */}
                 <main className="diff-stage-col">
+                    {/* trace sub-mode — appears only with the Trace tool (L5 inline) */}
+                    {tracing && (
+                        <div className="diff-subtools" role="radiogroup" aria-label="Trace mode">
+                            <button type="button" role="radio" aria-checked={traceSub === 'path'}
+                                className={`diff-subtool${traceSub === 'path' ? ' on' : ''}`}
+                                onClick={() => setTraceSub('path')}>Path</button>
+                            <button type="button" role="radio" aria-checked={traceSub === 'boundary'}
+                                className={`diff-subtool${traceSub === 'boundary' ? ' on' : ''}`}
+                                onClick={() => setTraceSub('boundary')}>Boundary</button>
+                            {traceSub === 'boundary' && (
+                                <label className="diff-band">band
+                                    <input type="range" min="0.02" max="0.2" step="0.005" value={bandWidth}
+                                        onChange={(e) => setBandWidth(Number(e.target.value))} />
+                                </label>
+                            )}
+                        </div>
+                    )}
+
                     <div className={
                         `diff-stage${untouched ? ' is-untouched' : ''}`
-                        + `${brushing ? ' is-brushing' : ''}`
+                        + `${drawingTool ? ' is-drawing' : ''}`
                         + `${recallPlayer.receding ? ' is-recalling' : ''}`}
                         ref={stageRef}
                         style={natural ? { '--diff-ar': `${natural.w} / ${natural.h}` } : undefined}
                         onPointerDown={onStagePointerDown}
                         onPointerMove={onStagePointerMove}
                         onPointerUp={endStroke}
-                        onPointerLeave={() => { endStroke(); setHoverPt(null); }}>
+                        onPointerLeave={() => { endStroke(); setBrushCursor(null); }}>
                         <img src={post.photo_url} alt="" referrerPolicy="no-referrer" onLoad={onImgLoad} />
                         {!untouched && (
                             <>
                                 <RegionOverlay
-                                    natural={natural}
-                                    regions={regions}
-                                    viewMap="quiet"
-                                    selectedId={selectedId}
-                                    activeId={hoveredId}
-                                    focusId={focusId}
-                                    onSelect={tool === 'select' ? selectRegion : undefined}
+                                    natural={natural} regions={regions} viewMap="quiet"
+                                    selectedId={selectedId} activeId={hoveredId} focusId={focusId} litIds={litIds}
+                                    onSelect={tool === 'select' ? handleRegionPick : undefined}
                                     onActivate={tool === 'select' ? setHoveredId : undefined}
                                     className="diff-svg"
                                 />
                                 <GroundLayers
-                                    grounds={grounds}
-                                    content={content}
+                                    grounds={grounds} regions={regions} natural={natural} content={content}
                                     focusGroundIds={focusGroundIds}
                                     recall={recallPlayer.active ? recallPlayer : null}
-                                    draftStrokes={draftAll}
+                                    draft={draftForLayers}
                                 />
                             </>
                         )}
-                        {/* brush cursor — a quiet ring, dashed while subtracting */}
-                        {brushing && hoverPt && content && (
+                        {brushing && brushCursor && content && (
                             <span className="diff-brush-cursor" style={{
-                                left: content.x + hoverPt.x * content.w,
-                                top: content.y + hoverPt.y * content.h,
-                                width: brushRadius * content.w * 2,
-                                height: brushRadius * content.w * 2,
+                                left: content.x + brushCursor.x * content.w,
+                                top: content.y + brushCursor.y * content.h,
+                                width: brushRadius * content.w * 2, height: brushRadius * content.w * 2,
                             }} />
                         )}
-                        {/* recall caption — the expression, spoken over the image */}
-                        {recallPlayer.caption && (
-                            <p className="diff-recall-caption">{recallPlayer.caption}</p>
-                        )}
+                        {recallPlayer.caption && <p className="diff-recall-caption">{recallPlayer.caption}</p>}
                     </div>
                     <p className="diff-stage-hint">
-                        {untouched
-                            ? 'The untouched image. Release O to see your evidence again.'
-                            : tool === 'brush'
-                                ? 'Paint where it lives. [ and ] size the brush · hold ⌥ to lift paint away · Esc clears the draft.'
-                                : 'Select a part, or take the Brush (B) and paint a soft field of attention.'}
+                        {untouched ? 'The untouched image. Release O to see your evidence again.'
+                            : brushing ? 'Paint where it lives. [ ] size · ⌥ lifts paint away · Esc clears the draft.'
+                                : tracing ? (traceSub === 'path'
+                                    ? 'Draw a path — a directed line through what moves you. Esc clears it.'
+                                    : 'Draw a boundary — the seam where one thing becomes another. [ ] widen the band.')
+                                    : 'Select parts (⇧ to gather several), or take a tool: Brush (B), Trace (T), Frame.'}
                     </p>
                 </main>
 
-                {/* ── inspector — contextual, quiet ── */}
+                {/* ── inspector ── */}
                 <aside className="diff-inspector">
-                    {/* draft — editable before it becomes evidence */}
-                    {draftAll.length > 0 && (
+                    {/* draft */}
+                    {hasDraft && !composer && (
                         <div className="diff-insp-draft">
-                            <span className="diff-eyebrow">Draft field</span>
-                            <p className="diff-insp-hint">{draftAll.length} stroke{draftAll.length !== 1 ? 's' : ''} — still yours to shape.</p>
+                            <span className="diff-eyebrow">Draft {draft.kind}</span>
+                            <p className="diff-insp-hint">
+                                {draft.kind === 'field'
+                                    ? `${draftForLayers.strokes.length} stroke${draftForLayers.strokes.length !== 1 ? 's' : ''} — still yours to shape.`
+                                    : 'A line, still yours to shape.'}
+                            </p>
                             <div className="diff-insp-row-actions">
-                                <button type="button" className="diff-primary" onClick={commitField}>
-                                    Keep this field
+                                <button type="button" className="diff-primary" onClick={commitDraft}>
+                                    Keep this {draft.kind}
                                 </button>
-                                <button type="button" className="diff-quiet" onClick={undoStroke} title="Undo the last stroke (⌘Z)">
-                                    <Undo2 size={13} /> Undo
-                                </button>
+                                {draft.kind === 'field' && (
+                                    <button type="button" className="diff-quiet" onClick={undoStroke} title="Undo the last stroke (⌘Z)">
+                                        <Undo2 size={13} /> Undo
+                                    </button>
+                                )}
                                 <button type="button" className="diff-quiet" onClick={clearDraft}>Clear</button>
                             </div>
                         </div>
                     )}
 
-                    {/* composer — what do you notice? */}
+                    {/* composer */}
                     {composer && (
                         <div className="diff-composer">
                             <div className="diff-composer-head">
                                 <span className="diff-eyebrow">Percept</span>
                                 <button type="button" className="diff-icon-btn" onClick={() => setComposer(null)}
-                                    title="Later — the field stays; compose when ready">
+                                    title="Later — the grounds stay; compose when ready">
                                     <X size={13} />
                                 </button>
                             </div>
                             <p className="diff-composer-ask">What do you notice?</p>
-                            <textarea
-                                autoFocus
-                                className="diff-composer-input"
+                            <textarea autoFocus className="diff-composer-input"
                                 placeholder="Say it as you saw it…"
                                 value={composer.expression}
                                 onChange={(e) => setComposer((c) => ({ ...c, expression: e.target.value }))}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); savePercept(); }
                                     if (e.key === 'Escape') { e.stopPropagation(); setComposer(null); }
-                                }}
-                            />
+                                }} />
                             <div className="diff-composer-props">
                                 {PERCEPT_PROPERTIES.map((prop) => (
                                     <button key={prop} type="button"
@@ -337,8 +446,7 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                         onClick={() => setComposer((c) => ({
                                             ...c,
                                             properties: c.properties.includes(prop)
-                                                ? c.properties.filter((x) => x !== prop)
-                                                : [...c.properties, prop],
+                                                ? c.properties.filter((x) => x !== prop) : [...c.properties, prop],
                                         }))}>
                                         {prop}
                                     </button>
@@ -349,62 +457,61 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                     disabled={!composer.expression.trim()} onClick={savePercept}>
                                     Keep this percept
                                 </button>
-                                <button type="button" className="diff-quiet" onClick={() => setComposer(null)}>
-                                    Later
-                                </button>
+                                <button type="button" className="diff-quiet" onClick={() => setComposer(null)}>Later</button>
                             </div>
-                            {composerGround && (
-                                <p className="diff-insp-hint">Grounded in: {groundTitle(composerGround)}</p>
-                            )}
+                            <p className="diff-insp-hint">
+                                Grounded in: {composer.groundIds.map((id) => groundTitle(groundById(id) || {}, regions)).join(' · ')}
+                            </p>
                         </div>
                     )}
 
-                    {/* selection — a part, or a ground */}
-                    {!composer && selectedGround && (
+                    {/* selection — a picked set of regions */}
+                    {!composer && !hasDraft && picked.size > 0 && (
+                        <div className="diff-insp-ground">
+                            <span className="diff-eyebrow">{picked.size} part{picked.size !== 1 ? 's' : ''} gathered</span>
+                            <p className="diff-insp-hint">
+                                {[...picked].map((id) => regionName(regions.find((r) => r.id === id))).join(' · ')}
+                            </p>
+                            <div className="diff-insp-row-actions">
+                                <button type="button" className="diff-primary" onClick={composeFromRegions}>
+                                    Compose a percept
+                                </button>
+                                <button type="button" className="diff-quiet" onClick={() => setPicked(new Set())}>Clear</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* selection — a single Ground */}
+                    {!composer && !hasDraft && picked.size === 0 && selectedGround && (
                         <div className="diff-insp-ground">
                             <span className="diff-eyebrow">{selectedGround.ground_type} · evidence</span>
-                            <h3 className="diff-insp-name">{groundTitle(selectedGround)}</h3>
+                            <h3 className="diff-insp-name">{groundTitle(selectedGround, regions)}</h3>
                             <div className="diff-insp-meta">
                                 <span className="diff-chip">{selectedGround.actor}</span>
                                 {selectedGround.detector && <span className="diff-chip">{selectedGround.detector}</span>}
+                                {selectedGround.ground_type === 'frame' && (selectedGround.evidence_ids || []).length > 0 && (
+                                    <span className="diff-chip diff-chip--dim">{selectedGround.evidence_ids.length} inside</span>
+                                )}
                             </div>
                             <div className="diff-insp-row-actions">
                                 <button type="button" className="diff-primary"
-                                    onClick={() => setComposer({ groundId: selectedGround.id, expression: '', properties: [] })}>
-                                    Compose a percept
-                                </button>
+                                    onClick={() => openComposer(selectedGround.id)}>Compose a percept</button>
                                 <button type="button" className="diff-quiet"
-                                    onClick={() => removeGround(selectedGround.id)}>
-                                    Remove
-                                </button>
+                                    onClick={() => removeGround(selectedGround.id)}>Remove</button>
                             </div>
                         </div>
                     )}
-                    {!composer && !selectedGround && selected && (
-                        <div className="diff-insp-ground">
-                            <span className="diff-eyebrow">Region · evidence</span>
-                            <h3 className="diff-insp-name">{regionName(selected)}</h3>
-                            <div className="diff-insp-meta">
-                                <span className="diff-chip">{selected.actor || 'auto'}</span>
-                                {selected.detector && <span className="diff-chip">{selected.detector}</span>}
-                                {selected.category && <span className="diff-chip diff-chip--dim">{selected.category}</span>}
-                                {selected.material && <span className="diff-chip diff-chip--dim">{selected.material}</span>}
-                            </div>
-                            {(selected.user_note || '').trim() && (
-                                <p className="diff-insp-note">“{selected.user_note}”</p>
-                            )}
-                        </div>
-                    )}
-                    {!composer && !selectedGround && !selected && draftAll.length === 0 && (
+
+                    {!composer && !hasDraft && picked.size === 0 && !selectedGround && !selected && grounds.length === 0 && (
                         <div className="diff-insp-empty">
                             <span className="diff-eyebrow">Inspector</span>
-                            <p>Nothing under attention. Take the Brush (<kbd>B</kbd>) and paint
-                                where the image holds you, or press <kbd>O</kbd> for the untouched photograph.</p>
+                            <p>Nothing under attention. Select parts, take the Brush (<kbd>B</kbd>) or Trace
+                                (<kbd>T</kbd>), or press <kbd>O</kbd> for the untouched photograph.</p>
                         </div>
                     )}
 
                     {/* the grounds so far */}
-                    {grounds.length > 0 && (
+                    {grounds.length > 0 && !composer && (
                         <div className="diff-insp-grounds">
                             <span className="diff-eyebrow">Grounds</span>
                             {grounds.map((g) => (
@@ -413,8 +520,10 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                     onClick={() => selectGround(g.id === selectedGroundId ? null : g.id)}
                                     onMouseEnter={() => setHoveredGroundId(g.id)}
                                     onMouseLeave={() => setHoveredGroundId(null)}>
-                                    <span className="diff-ground-glyph" aria-hidden>◐</span>
-                                    <span className="diff-ground-name">{groundTitle(g)}</span>
+                                    <span className="diff-ground-glyph" aria-hidden>
+                                        {{ field: '◐', path: '↝', boundary: '∥', frame: '▣', region: '◈' }[g.ground_type] || '◇'}
+                                    </span>
+                                    <span className="diff-ground-name">{groundTitle(g, regions)}</span>
                                 </button>
                             ))}
                         </div>
@@ -427,8 +536,7 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                             {expressionPercepts.map((p) => (
                                 <div key={p.id} className="diff-percept-row">
                                     <button type="button" className="diff-icon-btn diff-percept-play"
-                                        title="Replay this noticing on the image"
-                                        onClick={() => playRecall(p.id)}>
+                                        title="Replay this noticing on the image" onClick={() => playRecall(p.id)}>
                                         <Play size={12} />
                                     </button>
                                     <span className="diff-percept-text">{p.expression}</span>
