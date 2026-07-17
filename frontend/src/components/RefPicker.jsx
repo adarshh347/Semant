@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Star, Crosshair, Eye } from 'lucide-react';
+import { Star, Crosshair, Eye, Sparkle } from 'lucide-react';
 import './RefPicker.css';
+
+// One glyph per Ground type — the sub-line of a percept row shows what kind of
+// evidence carries the noticing, without spending words on it.
+const GROUND_GLYPHS = {
+    region: '◈', field: '◐', path: '↝', boundary: '∥',
+    constellation: '⁘', relation: '⤝', frame: '▣',
+};
 
 const hasNote = (r) => !!(r.user_note || '').trim();
 
@@ -16,7 +23,7 @@ const hasNote = (r) => !!(r.user_note || '').trim();
  * Keyboard mirrors SlashMenu exactly (↑/↓/Enter/Esc), because this opens from the same
  * "/" gesture and a different set of keys here would be a small betrayal.
  */
-export default function RefPicker({ kind, regions, lenses, x, y, onPick, onClose }) {
+export default function RefPicker({ kind, regions, lenses, percepts = [], grounds = [], x, y, onPick, onClose }) {
     const [index, setIndex] = useState(0);
     const [query, setQuery] = useState('');
     const inputRef = useRef(null);
@@ -26,6 +33,23 @@ export default function RefPicker({ kind, regions, lenses, x, y, onPick, onClose
 
     const items = useMemo(() => {
         const q = query.toLowerCase().trim();
+        if (kind === 'percept') {
+            // Expression percepts — the durable noticings. Title is the expression
+            // itself; the sub shows the evidence types that ground it.
+            const typeFor = (gid) => grounds.find((g) => g.id === gid)?.ground_type;
+            return (percepts || [])
+                .filter(p => !q || (p.expression || '').toLowerCase().includes(q))
+                .map(p => {
+                    const types = [...new Set((p.ground_ids || []).map(typeFor).filter(Boolean))];
+                    return {
+                        id: p.id,
+                        title: p.expression || 'percept',
+                        sub: types.map(t => `${GROUND_GLYPHS[t] || ''} ${t}`).join(' · '),
+                        badge: `${(p.ground_ids || []).length} ground${(p.ground_ids || []).length !== 1 ? 's' : ''}`,
+                        raw: p,
+                    };
+                });
+        }
         if (kind === 'lens') {
             return (lenses || [])
                 .filter(l => !q || (l.name || '').toLowerCase().includes(q))
@@ -67,13 +91,13 @@ export default function RefPicker({ kind, regions, lenses, x, y, onPick, onClose
 
     return (
         <div className="ref-picker" style={{ position: 'fixed', left: x, top: y + 6, zIndex: 95 }}
-            role="dialog" aria-label={kind === 'lens' ? 'Cite a lens' : 'Point at a part'}>
+            role="dialog" aria-label={kind === 'lens' ? 'Cite a lens' : kind === 'percept' ? 'Recall a percept' : 'Point at a part'}>
             <div className="ref-picker-head">
-                {kind === 'lens' ? <Eye size={13} /> : <Crosshair size={13} />}
+                {kind === 'lens' ? <Eye size={13} /> : kind === 'percept' ? <Sparkle size={13} /> : <Crosshair size={13} />}
                 <input
                     ref={inputRef}
                     className="ref-picker-input"
-                    placeholder={kind === 'lens' ? 'Which lens?' : 'Which part?'}
+                    placeholder={kind === 'lens' ? 'Which lens?' : kind === 'percept' ? 'Which noticing?' : 'Which part?'}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={onKeyDown}
@@ -85,7 +109,9 @@ export default function RefPicker({ kind, regions, lenses, x, y, onPick, onClose
 
             {items.length === 0 ? (
                 <div className="ref-picker-empty">
-                    {kind === 'lens' ? 'No lenses match.' : 'No parts match.'}
+                    {kind === 'lens' ? 'No lenses match.'
+                        : kind === 'percept' ? 'No percepts yet — compose one in Differential.'
+                            : 'No parts match.'}
                 </div>
             ) : (
                 <div className="ref-picker-list" role="listbox">

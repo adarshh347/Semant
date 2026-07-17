@@ -118,6 +118,12 @@ function refSlashItems(onRefTrigger) {
       icon: <span aria-hidden>◎</span>,
       onItemClick: () => onRefTrigger?.('lens'),
     },
+    {
+      title: 'Percept', subtext: 'Mention a noticing — focus replays it on the image',
+      aliases: ['percept', 'noticing', 'recall', 'differential'], group: 'Chiasm',
+      icon: <span aria-hidden>✦</span>,
+      onItemClick: () => onRefTrigger?.('percept'),
+    },
   ];
 }
 

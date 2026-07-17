@@ -3,6 +3,8 @@ import { Sparkles, Star, Scan, Plus, Eye, Check, MoreHorizontal, AlertCircle, Ex
 import { API_URL } from '../config/api';
 import RegionOverlay from './RegionOverlay';
 import RegionLightbox from './RegionLightbox';
+import GroundLayers from '../differential/GroundLayers';
+import { useRecallPlayer } from '../differential/recall';
 import useStageGeometry, { useNaturalSize, pointerToNormalized } from '../differential/useStageGeometry';
 import './RegionSurface.css';
 
@@ -111,6 +113,11 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
     // matching viewBox + preserveAspectRatio. The contract itself is shared with the
     // Differential stage (differential/useStageGeometry) — one letterbox math, everywhere.
     const { content } = useStageGeometry(stageRef, natural);
+
+    // Recall — a focused percept-Mention replays its noticing HERE, on the pane
+    // beside the writing. Resting state stays quiet: GroundLayers mounts in
+    // recall-only mode, so evidence appears only while a Percept performs.
+    const recallPlayer = useRecallPlayer(store);
 
     // --- persistence: autosave on blur, debounced -----------------------------------
     const persistInt = useCallback(async (next) => {
@@ -285,7 +292,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
                 {/* ── stage ─────────────────────────────────────────────────────────── */}
                 <section className="rs-stage-col">
                     <div
-                        className={`rs-stage${drawing ? ' is-drawing' : ''}`}
+                        className={`rs-stage${drawing ? ' is-drawing' : ''}${recallPlayer.receding ? ' is-recalling' : ''}`}
                         ref={stageRef}
                         // The stage takes the image's own aspect, so a portrait photo
                         // fills its box instead of floating in a wide letterbox.
@@ -306,6 +313,20 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
                             selectedId={selectedId} activeId={activeId} focusId={focusId}
                             onSelect={setSelectedId} onActivate={activate} draft={draft}
                         />
+
+                        {/* Recall (Differential v1) — Grounds appear only while a
+                            percept-Mention performs; the resting pane stays quiet. */}
+                        {store && (
+                            <GroundLayers
+                                grounds={store.grounds || []}
+                                content={content}
+                                recall={recallPlayer.active ? recallPlayer : null}
+                                recallOnly
+                            />
+                        )}
+                        {recallPlayer.caption && (
+                            <p className="rs-recall-caption">{recallPlayer.caption}</p>
+                        )}
 
                         {!drawing && (
                             <button className="rs-expand" onClick={() => setFullscreen(true)}

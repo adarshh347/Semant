@@ -195,6 +195,48 @@
     height: 100%;
 }
 
+/* brush mode: the pointer is the tool; region shapes must not eat it */
+.diff-stage.is-brushing { cursor: none; touch-action: none; }
+.diff-stage.is-brushing .diff-svg { pointer-events: none; }
+.diff-stage.is-brushing .diff-svg * { pointer-events: none; }
+
+.diff-brush-cursor {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border: 1px solid color-mix(in srgb, var(--accent) 75%, white);
+    border-radius: 50%;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18); /* legible on light AND dark pixels */
+}
+
+/* recall: the image steps back; the evidence performs */
+.diff-stage.is-recalling img {
+    opacity: 0.55;
+    filter: saturate(0.55);
+}
+
+.diff-recall-caption {
+    position: absolute;
+    left: 50%;
+    bottom: 1.1rem;
+    transform: translateX(-50%);
+    max-width: min(80%, 34rem);
+    margin: 0;
+    padding: 0.4rem 0.9rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 0.95rem;
+    font-style: italic;
+    text-align: center;
+    color: #FAF7F5;
+    background: rgba(23, 18, 26, 0.78);
+    border-radius: var(--radius-pill);
+    animation: diff-caption-in 480ms ease both;
+}
+@keyframes diff-caption-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .diff-stage-hint {
     margin: 0;
     font-size: 0.72rem;
@@ -258,6 +300,147 @@
     background: var(--surface);
 }
 
+/* ── inspector: draft · composer · grounds · percepts ───────────────────── */
+.diff-insp-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.7rem;
+    flex-wrap: wrap;
+}
+
+/* the ink pill is the primary — the accent is never a button fill */
+.diff-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.34rem 0.85rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ink-inverse, #FAF7F5);
+    background: var(--ink, #17121A);
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+.diff-primary:disabled { opacity: 0.45; cursor: default; }
+.diff-primary:hover:not(:disabled) { background: var(--accent-deep); }
+
+.diff-quiet {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+.diff-quiet:hover { background: var(--surface-hover); color: var(--text-primary); }
+
+.diff-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    cursor: pointer;
+}
+.diff-icon-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+
+/* composer — the one surface that earns a border (it's being edited) */
+.diff-composer {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-md);
+    padding: 0.75rem;
+}
+.diff-composer-head { display: flex; align-items: center; justify-content: space-between; }
+.diff-composer-ask {
+    margin: 0.45rem 0 0.5rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 0.98rem;
+    color: var(--text-primary);
+}
+.diff-composer-input {
+    width: 100%;
+    min-height: 4.2rem;
+    resize: vertical;
+    padding: 0.5rem 0.6rem;
+    font: inherit;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--text-primary);
+    background: var(--surface-2);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    outline: none;
+}
+.diff-composer-input:focus { border-color: var(--accent); background: var(--surface); }
+
+.diff-composer-props {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.28rem;
+    margin-top: 0.55rem;
+}
+.diff-prop {
+    padding: 0.16rem 0.55rem;
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+.diff-prop:hover { color: var(--text-primary); border-color: var(--line-strong); }
+.diff-prop.on {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+/* grounds — quiet rows, whitespace-separated */
+.diff-ground-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    padding: 0.34rem 0.4rem;
+    margin-top: 0.15rem;
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-align: left;
+}
+.diff-ground-row:hover { background: var(--surface-hover); color: var(--text-primary); }
+.diff-ground-row.is-sel { background: var(--accent-soft); color: var(--text-primary); }
+.diff-ground-glyph { color: var(--accent); font-size: 0.8rem; }
+.diff-ground-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* percepts — the noticings, each replayable */
+.diff-percept-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.34rem 0.15rem;
+}
+.diff-percept-play { flex: none; color: var(--accent); margin-top: 0.05rem; }
+.diff-percept-text {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
 .diff-insp-detached .diff-detached-row {
     margin: 0.4rem 0 0;
     font-size: 0.72rem;
@@ -286,4 +469,5 @@
 
 @media (prefers-reduced-motion: reduce) {
     .diff-stage img { transition: none; }
+    .diff-recall-caption { animation: none; }
 }

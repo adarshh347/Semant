@@ -104,10 +104,26 @@ function PostDetailPage() {
     let pending = null;
     const flush = () => { raf = null; storeRef.current.setHoveredId(pending); };
     const onHover = (e) => {
+      // A percept chip's ids are GROUND ids — hovering lights the evidence
+      // channel, not the region channel. Regular chips behave as before.
+      if (e.detail?.perceptId?.startsWith?.('pctx_')) {
+        storeRef.current.setHoveredGroundId((e.detail.regionIds || [])[0] || null);
+        return;
+      }
+      storeRef.current.setHoveredGroundId?.(null);
       pending = (e.detail?.regionIds || [])[0] || null;
       if (raf == null) raf = requestAnimationFrame(flush);
     };
     const onFocus = (e) => {
+      // Mention focus → recall: a percept-Mention replays the noticing on the
+      // image instead of selecting a region. The pane must be visible for the
+      // performance, so expand a collapsed Field first.
+      if (e.detail?.perceptId?.startsWith?.('pctx_')) {
+        setActiveLeftTab('regions');
+        if (fieldPanelRef.current?.isCollapsed()) fieldPanelRef.current.expand();
+        storeRef.current.playRecall(e.detail.perceptId);
+        return;
+      }
       const ids = e.detail?.regionIds || [];
       if (ids.length) storeRef.current.focusRegions(ids);
     };
@@ -664,6 +680,23 @@ function PostDetailPage() {
       return;
     }
 
+    if (kind === 'percept') {
+      // A percept-Mention: the chip carries the pctx id (recall trigger) and the
+      // GROUND ids in regionIds (the chip machinery is id-agnostic). Focus/click
+      // routes to playRecall via the perceptId, never to region selection.
+      const label = (raw.expression || 'percept').length > 46
+        ? `${raw.expression.slice(0, 43)}…` : (raw.expression || 'percept');
+      const mention = regionStore.addMention({
+        perceptId: raw.id, regionId: null, blockId, inlineContentId,
+        form: 'inline', relationType: 'cites', actor: 'human',
+      });
+      handle.insertRegionChip({
+        refKind: 'percept', regionIds: (raw.ground_ids || []).join(','), label,
+        perceptId: raw.id, mentionId: mention?.id || '', blockId,
+      });
+      return;
+    }
+
     // /part — inserting a reference IS attention: ensure the Percept, write the Mention.
     const percept = regionStore.ensurePercept(raw);
     const mention = regionStore.addMention({
@@ -738,6 +771,21 @@ function PostDetailPage() {
   chipClickRef.current = (e) => {
     const chip = e.target.closest?.('[data-region-ref]');
     if (!chip) return;
+
+    // A percept chip replays its noticing (recall), it does not select a region —
+    // its data-region-ids carry GROUND ids. Read view + editor alike land here.
+    const perceptId = chip.getAttribute('data-percept-id') || '';
+    if (perceptId.startsWith('pctx_')) {
+      setActiveLeftTab('regions');
+      if (fieldPanelRef.current?.isCollapsed()) fieldPanelRef.current.expand();
+      regionStore.playRecall(perceptId);
+      setTimeout(() => {
+        document.querySelector('.post-detail-left .rs-stage')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      }, 60);
+      return;
+    }
+
     const ids = (chip.getAttribute('data-region-ids') || '').split(',').filter(Boolean);
     if (!ids.length) return;
 
@@ -787,6 +835,15 @@ function PostDetailPage() {
     setAiPrompt('');
     runAiGenerate('write', '', instruction);
   };
+
+  // Esc puts a playing recall down and restores calm (matches Differential).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape' && storeRef.current?.recall) storeRef.current.clearRecall();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // --- Keyboard save (Cmd/Ctrl+S) + unsaved-changes guard ---
   useEffect(() => {
@@ -885,6 +942,8 @@ function PostDetailPage() {
           y={refPicker.y}
           regions={regionStore.regions}
           lenses={regionStore.aletheia?.lenses || []}
+          percepts={(regionStore.percepts || []).filter((p) => String(p.id || '').startsWith('pctx_'))}
+          grounds={regionStore.grounds || []}
           onPick={insertRef}
           onClose={closeRefPicker}
         />

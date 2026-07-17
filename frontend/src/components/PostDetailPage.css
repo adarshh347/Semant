@@ -2058,6 +2058,15 @@
 }
 .ref-chip--lens:hover { background: color-mix(in srgb, var(--accent-soft) 50%, transparent); }
 
+/* A percept chip is a noticing, not a part: italic like speech, same single
+   accent. Focus/click replays the noticing on the image (recall). */
+.ref-chip--percept {
+    font-style: italic;
+    background: transparent;
+}
+.ref-chip--percept::before { content: '✦ '; font-style: normal; font-size: 0.82em; }
+.ref-chip--percept:hover { background: color-mix(in srgb, var(--accent-soft) 60%, transparent); }
+
 /* The region→block direction: hovering a part in the Visual pane lights the blocks
    that point at it. A left rule, not a wash — a wash would fight the block colours the
    curator already chose. */
