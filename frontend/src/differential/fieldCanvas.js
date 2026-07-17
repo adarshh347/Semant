@@ -12,7 +12,7 @@
  * `progress` ramping radius and alpha from 0→1.
  */
 
-const WASH_ALPHA = 0.32;          // ≤ the 0.35 wash ceiling
+const WASH_ALPHA = 0.35;          // the wash ceiling — legible on dark pixels, still calm
 const STAMP_SPACING = 0.35;       // stamps every radius×this along a stroke
 
 export function readAccent() {

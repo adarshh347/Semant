@@ -182,12 +182,19 @@
     border-radius: var(--radius-lg);
     overflow: hidden;
     background: var(--surface-2);
+    /* No native text-selection or image drag while working the stage — a press-drag
+       is always a tool gesture, never a browser drag. */
+    user-select: none;
+    -webkit-user-select: none;
 }
 .diff-stage img {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: contain;
+    -webkit-user-drag: none;
+    user-select: none;
+    -webkit-user-select: none;
     transition: opacity 160ms ease, filter 160ms ease;
 }
 

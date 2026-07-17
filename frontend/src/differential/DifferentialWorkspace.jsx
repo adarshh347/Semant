@@ -156,6 +156,10 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
         if (untouched) return;
         const p = pointerToNormalized(e, stageRef.current, content);
         if (!p) return;
+        // Drawing tools own the gesture — stop the browser's native image-drag /
+        // text-selection from hijacking the press-drag (the "brush moves the image"
+        // bug). draggable=false + user-drag CSS below are the belt; this is the braces.
+        if (tool === 'brush' || tool === 'trace') e.preventDefault();
         if (tool === 'brush') {
             e.currentTarget.setPointerCapture?.(e.pointerId);
             drawingRef.current = true;
@@ -410,8 +414,11 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                         onPointerDown={onStagePointerDown}
                         onPointerMove={onStagePointerMove}
                         onPointerUp={endStroke}
-                        onPointerLeave={() => { endStroke(); setBrushCursor(null); }}>
-                        <img src={post.photo_url} alt="" referrerPolicy="no-referrer" onLoad={onImgLoad} />
+                        onPointerLeave={() => { endStroke(); setBrushCursor(null); }}
+                        // Belt-and-braces against the native image drag stealing the gesture.
+                        onDragStart={(e) => e.preventDefault()}>
+                        <img src={post.photo_url} alt="" referrerPolicy="no-referrer" onLoad={onImgLoad}
+                            draggable={false} />
                         {!untouched && (
                             <>
                                 <RegionOverlay
