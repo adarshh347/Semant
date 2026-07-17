@@ -40,4 +40,25 @@ describe('buildRecallScript — recede → primary → supporting (stagger) → 
     const { steps } = buildRecallScript(p, () => null);
     expect(steps.map((s) => s.kind)).toEqual(['recede', 'expression']);
   });
+
+  it('a composition expands into itself, then its members (sequenced)', () => {
+    const a = field(); const b = field();
+    const c = makeGround('constellation', { member_ids: [a.id, b.id] });
+    const byId = Object.fromEntries([a, b, c].map((g) => [g.id, g]));
+    const p = makeExpressionPercept({ expression: 'a cluster', ground_ids: [c.id] });
+    const { steps } = buildRecallScript(p, (id) => byId[id] || null);
+    const gs = steps.filter((s) => s.kind === 'ground');
+    expect(gs.map((s) => s.groundId)).toEqual([c.id, a.id, b.id]); // composition first
+    expect(gs[0].role).toBe('primary');
+  });
+
+  it('does not double-stage a member also named directly in the percept', () => {
+    const a = field();
+    const c = makeGround('relation', { member_ids: [a.id], relation_label: 'x' });
+    const byId = Object.fromEntries([a, c].map((g) => [g.id, g]));
+    const p = makeExpressionPercept({ expression: 'x', ground_ids: [c.id, a.id] });
+    const { steps } = buildRecallScript(p, (id) => byId[id] || null);
+    const ids = steps.filter((s) => s.kind === 'ground').map((s) => s.groundId);
+    expect(ids).toEqual([c.id, a.id]); // a appears once
+  });
 });

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   GROUND_TYPES, makeGround, groundFromRegion,
   isSpatialGround, isCompositeGround,
-  resolveGround, groundBBox, hydrateGrounds,
+  resolveGround, groundBBox, groundCenter, hydrateGrounds,
 } from './grounds.js';
 
 const region = (id, box = { x: 0.2, y: 0.2, w: 0.3, h: 0.4 }) => ({ id, box, label: 'part' });
@@ -123,5 +123,12 @@ describe('groundBBox — normalized union of the evidence', () => {
     const c = makeGround('constellation', { member_ids: [p.id], points: [{ x: 0.9, y: 0.9 }] });
     const b = groundBBox(c, { grounds: [p], regions: [] });
     expect(b).toEqual({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
+  });
+
+  it('groundCenter is the bbox centre, null when unresolvable', () => {
+    const g = groundFromRegion('reg_1');
+    expect(groundCenter(g, { regions: [region('reg_1', { x: 0.2, y: 0.2, w: 0.4, h: 0.4 }) ] }))
+      .toEqual({ x: 0.4, y: 0.4 });
+    expect(groundCenter(groundFromRegion('gone'), { regions: [] })).toBeNull();
   });
 });

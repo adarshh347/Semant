@@ -25,9 +25,23 @@ export const RECALL_TIMING = {
 // Per-type performance signatures land with their types (C/D); every type
 // blooms/illuminates through the same progress ramp in B.
 export function buildRecallScript(percept, resolveGround) {
-    const grounds = (percept?.ground_ids || [])
-        .map((id) => resolveGround(id))
-        .filter(Boolean);
+    // Expand compositions: a Constellation/Relation performs itself and then its
+    // members, in order — which is exactly the spec's "pulse sequential" /
+    // "A, then B, then unite" via the existing stagger machinery.
+    const seen = new Set();
+    const grounds = [];
+    for (const id of percept?.ground_ids || []) {
+        const g = resolveGround(id);
+        if (!g || seen.has(g.id)) continue;
+        seen.add(g.id);
+        grounds.push(g);
+        if ((g.ground_type === 'constellation' || g.ground_type === 'relation') && g.member_ids) {
+            for (const mid of g.member_ids) {
+                const m = resolveGround(mid);
+                if (m && !seen.has(m.id)) { seen.add(m.id); grounds.push(m); }
+            }
+        }
+    }
 
     const steps = [{ kind: 'recede', at: 0, dur: RECALL_TIMING.recede }];
     let t = RECALL_TIMING.recede;

@@ -113,6 +113,12 @@ const clamp01Box = (b) => {
   return { x, y, w: Math.min(1 - x, b.w), h: Math.min(1 - y, b.h) };
 };
 
+/** Normalized centre of a Ground's evidence — where a composition mark sits. */
+export function groundCenter(ground, ctx = {}) {
+  const b = groundBBox(ground, ctx);
+  return b ? { x: b.x + b.w / 2, y: b.y + b.h / 2 } : null;
+}
+
 /** Normalized bounding box of a Ground's evidence, or null when unresolvable. */
 export function groundBBox(ground, ctx = {}) {
   const res = resolveGround(ground, ctx);

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { paintFields } from './fieldCanvas';
-import { resolveGround } from './grounds';
+import { resolveGround, groundCenter } from './grounds';
 import { taperedRibbon, centerlinePath, endChevron } from './freehandTaper';
 
 /**
@@ -24,14 +24,15 @@ const BOUNDARY_VEIL = 0.2;
 const REGION_FILL = 0.12;
 
 function groundAlpha(g, { focusGroundIds, recall, recallOnly }) {
+    const focused = !!focusGroundIds && focusGroundIds.has(g.id);
     if (recall?.active) {
         const p = recall.progressFor(g.id);
-        if (p > 0) return { on: true, progress: p };
+        if (p > 0) return { on: true, progress: p, recalling: true };
         return recallOnly ? { on: false, progress: 0 } : { on: true, progress: 1, dim: 0.25 };
     }
     if (recallOnly) return { on: false, progress: 0 };
     const dim = focusGroundIds && !focusGroundIds.has(g.id) ? 0.3 : 1;
-    return { on: true, progress: 1, dim };
+    return { on: true, progress: 1, dim, focused };
 }
 
 // Normalized points → natural-pixel points, so the taper math and stroke widths
@@ -87,6 +88,63 @@ function FrameGround({ natural, state }) {
             <rect x={inset} y={inset} width={natural.w - inset * 2} height={natural.h - inset * 2} {...common} />
             <rect x={inset + gap} y={inset + gap}
                 width={natural.w - (inset + gap) * 2} height={natural.h - (inset + gap) * 2} {...common} />
+        </g>
+    );
+}
+
+// Member + raw-point centres for a composition, in natural pixels.
+function compositionNodes(g, natural, ctx) {
+    const nodes = [];
+    for (const mid of g.member_ids || []) {
+        const m = (ctx.grounds || []).find((x) => x.id === mid);
+        const c = m ? groundCenter(m, ctx) : null;
+        if (c) nodes.push([c.x * natural.w, c.y * natural.h]);
+    }
+    for (const p of g.points || []) {
+        const [x, y] = Array.isArray(p) ? p : [p.x, p.y];
+        nodes.push([x * natural.w, y * natural.h]);
+    }
+    return nodes;
+}
+
+function ConstellationGround({ g, natural, ctx, state }) {
+    const { progress, dim = 1 } = state;
+    const nodes = compositionNodes(g, natural, ctx);
+    if (!nodes.length) return null;
+    const r = Math.max(6, natural.w * 0.012);
+    return (
+        <g className="gl-constellation" style={{ opacity: dim }}>
+            {nodes.map(([x, y], i) => {
+                // sequential pulse: each node blooms in turn, then holds
+                const local = Math.max(0, Math.min(1, progress * nodes.length - i));
+                const pulse = 1 + 0.25 * Math.sin(local * Math.PI);
+                return (
+                    <circle key={i} cx={x} cy={y} r={r * pulse} className="gl-constellation-halo"
+                        style={{ opacity: 0.55 * local }} vectorEffect="non-scaling-stroke" />
+                );
+            })}
+        </g>
+    );
+}
+
+function RelationGround({ g, natural, ctx, state }) {
+    const { progress, dim = 1, recalling, focused } = state;
+    const nodes = compositionNodes(g, natural, ctx);
+    if (nodes.length < 2) return null;
+    // members co-illuminate early; the connector "unites" them late during
+    // recall, and at rest it stays hidden until the relation is focused.
+    const memberLight = Math.min(1, progress * 1.6);
+    const unite = recalling ? Math.max(0, (progress - 0.55) / 0.45) : (focused ? 1 : 0);
+    const connector = nodes.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+    const r = Math.max(6, natural.w * 0.012);
+    return (
+        <g className="gl-relation" style={{ opacity: dim }}>
+            <path d={connector} className="gl-relation-connector" pathLength={1} vectorEffect="non-scaling-stroke"
+                style={{ strokeDasharray: 1, strokeDashoffset: 1 - unite, opacity: 0.5 * unite }} />
+            {nodes.map(([x, y], i) => (
+                <circle key={i} cx={x} cy={y} r={r} className="gl-relation-node"
+                    style={{ opacity: 0.6 * memberLight }} vectorEffect="non-scaling-stroke" />
+            ))}
         </g>
     );
 }
@@ -173,6 +231,12 @@ export default function GroundLayers({
                     if (g.ground_type === 'region') {
                         const region = resolveGround(g, { regions, grounds })?.region;
                         return <RegionGround key={g.id} region={region} natural={natural} state={state} />;
+                    }
+                    if (g.ground_type === 'constellation') {
+                        return <ConstellationGround key={g.id} g={g} natural={natural} ctx={{ regions, grounds }} state={state} />;
+                    }
+                    if (g.ground_type === 'relation') {
+                        return <RelationGround key={g.id} g={g} natural={natural} ctx={{ regions, grounds }} state={state} />;
                     }
                     return null;
                 })}
