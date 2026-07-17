@@ -1,0 +1,289 @@
+/* Differential v1 — the percept-construction workspace (increment A shell).
+ *
+ * Token grammar only: --line hairlines, ONE --accent, --surface layers. Borders
+ * only where earned (the inspector's seam, the stage). The tool rail is L5 —
+ * inline tools, no box. Image-dominant: the stage takes everything the top bar
+ * and rails don't.
+ *
+ * Opacity discipline (spec): fills ≤ 0.12, washes ≤ 0.35, veil ≤ 0.2 — encoded
+ * as tokens here so every later layer (field/path/boundary) inherits the ceiling.
+ */
+
+.diff-root {
+    --diff-fill-max: 0.12;
+    --diff-wash-max: 0.35;
+    --diff-veil-max: 0.2;
+
+    position: absolute;
+    inset: 0;
+    z-index: 30;                     /* over the parked Chiasm shell */
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary, var(--surface-2));
+    container-type: inline-size;
+    container-name: diff;
+}
+
+/* index.css puts big padding on every <button>; neutralise locally (same gotcha
+   RegionSurface documents). */
+.diff-root button { box-sizing: border-box; }
+.diff-root button svg { flex: none; }
+
+/* ── top bar ─────────────────────────────────────────────────────────────── */
+.diff-topbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.45rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    min-height: 44px;
+}
+
+.diff-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink, var(--text-primary));
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+.diff-back:hover { background: var(--surface-hover); }
+
+.diff-identity {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    min-width: 0;
+}
+
+.diff-eyebrow {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.diff-handle {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.diff-topbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.diff-untouched {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.65rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;   /* earns its border only when ON */
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+.diff-untouched:hover { background: var(--surface-hover); }
+.diff-untouched.on {
+    color: var(--ink, var(--text-primary));
+    border-color: var(--line-strong);
+}
+
+.diff-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    min-width: 4.2rem;
+    justify-content: flex-end;
+    color: var(--text-tertiary);
+}
+.diff-save--saved { color: var(--accent); }
+
+/* ── body: rail | stage | inspector ─────────────────────────────────────── */
+.diff-body {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) clamp(200px, 24cqi, 300px);
+}
+
+/* tool rail — L5: inline tools, no box; the active tool carries the weight */
+.diff-tools {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.7rem 0.35rem;
+    align-items: stretch;
+}
+
+.diff-tool {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.5rem 0.55rem;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.58rem;
+    letter-spacing: 0.02em;
+}
+.diff-tool:hover:not(:disabled) { background: var(--surface-hover); color: var(--text-primary); }
+.diff-tool.on {
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+.diff-tool:disabled {
+    opacity: 0.38;
+    cursor: default;
+}
+.diff-tool-label { font-weight: 600; }
+
+/* ── stage ───────────────────────────────────────────────────────────────── */
+.diff-stage-col {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0.9rem;
+}
+
+.diff-stage {
+    position: relative;
+    /* Image-dominant: fill the column, keep the image's own aspect; overlay and
+       image letterbox inside the SAME box (the shared geometry contract). */
+    flex: 1;
+    min-height: 0;
+    aspect-ratio: var(--diff-ar, 3 / 4);
+    max-width: 100%;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface-2);
+}
+.diff-stage img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: opacity 160ms ease, filter 160ms ease;
+}
+
+.diff-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.diff-stage-hint {
+    margin: 0;
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+
+/* ── inspector ───────────────────────────────────────────────────────────── */
+.diff-inspector {
+    border-left: 1px solid var(--line);
+    background: var(--surface);
+    padding: 1rem 0.95rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.diff-insp-name {
+    margin: 0.3rem 0 0.55rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.diff-insp-meta { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+.diff-chip {
+    font-size: 0.66rem;
+    font-weight: 600;
+    padding: 0.14rem 0.5rem;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    color: var(--text-secondary);
+}
+.diff-chip--dim { background: transparent; color: var(--text-tertiary); }
+
+.diff-insp-note {
+    margin: 0.65rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.diff-insp-hint, .diff-insp-empty p {
+    font-size: 0.74rem;
+    line-height: 1.5;
+    color: var(--text-tertiary);
+}
+.diff-insp-hint { margin: 0.8rem 0 0; }
+.diff-insp-empty p { margin: 0.45rem 0 0; }
+.diff-insp-empty kbd {
+    font-size: 0.68rem;
+    padding: 0.05rem 0.3rem;
+    margin-left: 0.25rem;
+    border: 1px solid var(--line-strong);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--surface);
+}
+
+.diff-insp-detached .diff-detached-row {
+    margin: 0.4rem 0 0;
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+
+.diff-insp-counts {
+    margin-top: auto;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+}
+
+/* ── responsive (to the component, not the viewport) ────────────────────── */
+@container diff (max-width: 720px) {
+    .diff-body { grid-template-columns: auto minmax(0, 1fr); }
+    .diff-inspector {
+        display: none; /* increment E revisits with a sheet; A keeps the stage whole */
+    }
+}
+@container diff (max-width: 480px) {
+    .diff-tool-label { display: none; }
+    .diff-untouched span { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .diff-stage img { transition: none; }
+}

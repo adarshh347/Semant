@@ -50,6 +50,44 @@ export function perceptForRegion(percepts, regionId, actor = 'creator') {
   return percepts.find((p) => p.regionId === regionId && p.actor === actor) || null;
 }
 
+// ── Expression Percept (Differential v1) ────────────────────────────────────
+// A durable act of noticing, grounded in one or more Grounds. A NEW kind beside
+// the attention percepts above: `pctx_` ids, no per-ground uniqueness — the
+// cardinality is many-to-many-to-many (Percept↔Ground↔Mention). The old
+// one-creator-percept-per-region rule stays untouched for back-compat.
+
+let pctxSeq = 0;
+
+export function makeExpressionPercept({
+  id = null,
+  expression = '',
+  ground_ids = [],
+  properties = [],
+  actor = 'creator',
+  created_at = null,
+} = {}) {
+  return {
+    id: id || `pctx_${Date.now().toString(36)}_${(pctxSeq++).toString(36)}`,
+    kind: 'expression',
+    expression,
+    ground_ids: [...ground_ids],
+    properties: [...properties],
+    actor,
+    created_at: created_at || new Date().toISOString(),
+  };
+}
+
+export function isExpressionPercept(p) {
+  return !!p && (p.kind === 'expression' || String(p.id || '').startsWith('pctx_'));
+}
+
+/** Every expression Percept grounded (in part) in this Ground. Many-per-ground. */
+export function perceptsForGround(percepts, groundId) {
+  return (percepts || []).filter(
+    (p) => isExpressionPercept(p) && (p.ground_ids || []).includes(groundId),
+  );
+}
+
 // ── Mention ──────────────────────────────────────────────────────────────────
 // Deterministic id from the edge it records → addMention is naturally idempotent
 // (re-inserting the same chip doesn't duplicate the link).

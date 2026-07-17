@@ -7,6 +7,7 @@ import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import axios from 'axios';
 import { ArrowLeft, Sparkles, Plus, X, ChevronRight, ChevronLeft, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, MoreHorizontal } from 'lucide-react';
 import RegionSurface from './RegionSurface';
+import DifferentialWorkspace from '../differential/DifferentialWorkspace';
 import Manuscript from './blocknote/Manuscript';
 import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
@@ -52,6 +53,11 @@ function PostDetailPage() {
   // 'regions' by default: the unified pane IS the working surface; 'image' hides the
   // overlay for a clean look at the photograph.
   const [activeLeftTab, setActiveLeftTab] = useState('regions');
+  // Differential (v1) is a full-workspace MODE, not a route: unsaved Manuscript
+  // content lives in this component's state (editedBlocks), and a route change
+  // would unmount and silently lose it. The Chiasm shell stays mounted (hidden
+  // via CSS) while Differential is open, so enter/leave loses nothing.
+  const [workspaceMode, setWorkspaceMode] = useState('chiasm'); // 'chiasm' | 'differential'
   const [activeRightTab, setActiveRightTab] = useState('content');
   const [isChatOpen, setIsChatOpen] = useState(false); // AI Sidebar toggle
   const [clickedNode, setClickedNode] = useState(null); // For node expansion in chatbot
@@ -821,7 +827,15 @@ function PostDetailPage() {
 
   return (
     <RegionStoreContext.Provider value={regionStore}>
-    <div className={`post-detail-page${isEditing ? ' editing-mode' : ''}`}>
+    <div className={`post-detail-page${isEditing ? ' editing-mode' : ''}${workspaceMode === 'differential' ? ' differential-open' : ''}`}>
+      {/* Differential — swaps in over the parked (still-mounted) Chiasm shell. */}
+      {workspaceMode === 'differential' && (
+        <DifferentialWorkspace
+          post={post}
+          store={regionStore}
+          onExit={() => setWorkspaceMode('chiasm')}
+        />
+      )}
       {/* Underline Tooltip */}
       {showUnderlineTooltip && (
         <div
@@ -965,7 +979,18 @@ function PostDetailPage() {
               </button>
             </div>
             {/* Right-aligned per-pane actions slot (kept for Lane 3 verbs). */}
-            <div className="panel-actions" />
+            <div className="panel-actions">
+              {/* The one quiet entry into the Differential workspace — Chiasm's
+                  resting state stays calm; no permanent tool rail here. */}
+              <button
+                type="button"
+                className="panel-diff-btn"
+                title="Open Differential — construct Percepts from this image"
+                onClick={() => setWorkspaceMode('differential')}
+              >
+                ◈ Differential
+              </button>
+            </div>
           </div>
 
           <div className="image-display">

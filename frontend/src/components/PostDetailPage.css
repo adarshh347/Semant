@@ -237,6 +237,34 @@
     margin-left: auto;
 }
 
+/* ── Differential (v1) ──────────────────────────────────────────────────────
+   The workspace mode swaps in OVER the Chiasm shell; the shell stays mounted
+   (display:none) so Manuscript/editor/split state survives enter/leave intact. */
+.post-detail-page.differential-open > .post-detail-topbar,
+.post-detail-page.differential-open > .post-detail-split {
+    display: none;
+}
+
+/* The quiet entry — a hairline pill in the Field pane header, no accent fill. */
+.panel-diff-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.22rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+.panel-diff-btn:hover {
+    color: var(--accent);
+    border-color: var(--line-strong);
+    background: var(--surface-hover);
+}
+
 .panel-tabs {
     display: flex;
     align-items: center;

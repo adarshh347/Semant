@@ -3,6 +3,7 @@ import { Sparkles, Star, Scan, Plus, Eye, Check, MoreHorizontal, AlertCircle, Ex
 import { API_URL } from '../config/api';
 import RegionOverlay from './RegionOverlay';
 import RegionLightbox from './RegionLightbox';
+import useStageGeometry, { useNaturalSize, pointerToNormalized } from '../differential/useStageGeometry';
 import './RegionSurface.css';
 
 const BASE = `${API_URL}/api/v1/posts`;
@@ -75,8 +76,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
     const [error, setError] = useState('');
     const [saveState, setSaveState] = useState('idle');  // idle | saving | saved
 
-    const [natural, setNatural] = useState(null);        // {w,h} — the image's own pixels
-    const [content, setContent] = useState(null);        // the rendered, letterboxed box
+    const [natural, onImgLoad] = useNaturalSize();       // {w,h} — the image's own pixels
     const [fullscreen, setFullscreen] = useState(false); // Phase 2 — the lightbox
 
     const stageRef = useRef(null);
@@ -108,30 +108,9 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
     // --- geometry: where the image ACTUALLY is inside the stage ---------------------
     // `object-fit: contain` letterboxes. Labels and the freehand tool live in HTML, so
     // they need that rendered box in CSS pixels; the SVG gets it for free from the
-    // matching viewBox + preserveAspectRatio.
-    const measure = useCallback(() => {
-        const stage = stageRef.current;
-        if (!stage || !natural) return;
-        const { width: sw, height: sh } = stage.getBoundingClientRect();
-        if (!sw || !sh) return;
-        const scale = Math.min(sw / natural.w, sh / natural.h);
-        const dw = natural.w * scale;
-        const dh = natural.h * scale;
-        setContent({ x: (sw - dw) / 2, y: (sh - dh) / 2, w: dw, h: dh });
-    }, [natural]);
-
-    useEffect(() => {
-        measure();
-        const stage = stageRef.current;
-        if (!stage) return;
-        const ro = new ResizeObserver(measure);
-        ro.observe(stage);
-        return () => ro.disconnect();
-    }, [measure]);
-
-    const onImgLoad = (e) => {
-        setNatural({ w: e.target.naturalWidth, h: e.target.naturalHeight });
-    };
+    // matching viewBox + preserveAspectRatio. The contract itself is shared with the
+    // Differential stage (differential/useStageGeometry) — one letterbox math, everywhere.
+    const { content } = useStageGeometry(stageRef, natural);
 
     // --- persistence: autosave on blur, debounced -----------------------------------
     const persistInt = useCallback(async (next) => {
@@ -203,14 +182,8 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
     }, [post.id, mode, lens]);
 
     // --- freehand creator marks (normalized from the outset) -------------------------
-    const pointAt = (e) => {
-        if (!content) return null;
-        const box = stageRef.current.getBoundingClientRect();
-        // Map the pointer into the IMAGE's box, not the stage's — outside it, no mark.
-        const x = (e.clientX - box.left - content.x) / content.w;
-        const y = (e.clientY - box.top - content.y) / content.h;
-        return { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) };
-    };
+    // Map the pointer into the IMAGE's box, not the stage's — outside it, no mark.
+    const pointAt = (e) => pointerToNormalized(e, stageRef.current, content);
 
     const onStageDown = (e) => {
         if (!drawing) return;
