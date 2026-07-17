@@ -80,14 +80,25 @@ function BoundaryGround({ g, natural, state }) {
 
 function FrameGround({ natural, state }) {
     const { progress, dim = 1 } = state;
-    const inset = Math.round(Math.min(natural.w, natural.h) * 0.03);
-    const gap = Math.max(3, Math.round(inset * 0.35));
-    const common = { fill: 'none', className: 'gl-frame-line' };
+    const inset = Math.round(Math.min(natural.w, natural.h) * 0.035);
+    const gap = Math.max(4, Math.round(inset * 0.4));
+    // corner brackets — a viewfinder read: "the whole composition is the evidence"
+    const arm = Math.round(Math.min(natural.w, natural.h) * 0.09);
+    const x0 = inset, y0 = inset, x1 = natural.w - inset, y1 = natural.h - inset;
+    const bracket = (cx, cy, sx, sy) =>
+        `M${cx + sx * arm},${cy} L${cx},${cy} L${cx},${cy + sy * arm}`;
+    const corners = [
+        bracket(x0, y0, 1, 1), bracket(x1, y0, -1, 1),
+        bracket(x0, y1, 1, -1), bracket(x1, y1, -1, -1),
+    ];
     return (
         <g className="gl-frame" style={{ opacity: dim * progress }}>
-            <rect x={inset} y={inset} width={natural.w - inset * 2} height={natural.h - inset * 2} {...common} />
-            <rect x={inset + gap} y={inset + gap}
-                width={natural.w - (inset + gap) * 2} height={natural.h - (inset + gap) * 2} {...common} />
+            {/* the double inset hairline */}
+            <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} className="gl-frame-line" fill="none" />
+            <rect x={x0 + gap} y={y0 + gap} width={x1 - x0 - gap * 2} height={y1 - y0 - gap * 2}
+                className="gl-frame-line gl-frame-line--inner" fill="none" />
+            {/* bold corner brackets — the part the eye actually catches */}
+            {corners.map((d, i) => <path key={i} d={d} className="gl-frame-bracket" fill="none" />)}
         </g>
     );
 }

@@ -257,10 +257,16 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
     const commitFrame = useCallback(() => {
         const evidence = [...tray];
         if (selectedGroundId && !evidence.includes(selectedGroundId)) evidence.push(selectedGroundId);
-        const ground = addGround(makeGround('frame', { whole: true, evidence_ids: evidence }));
+        // Don't multiply whole-image frames: reuse one already holding this same
+        // evidence set, so repeated clicks re-open its composer rather than pile up.
+        const key = [...evidence].sort().join(',');
+        const existing = grounds.find(
+            (g) => g.ground_type === 'frame' && [...(g.evidence_ids || [])].sort().join(',') === key,
+        );
+        const ground = existing || addGround(makeGround('frame', { whole: true, evidence_ids: evidence }));
         selectGround(ground.id);
         openComposer(ground.id);
-    }, [tray, selectedGroundId, addGround, selectGround, openComposer]);
+    }, [tray, selectedGroundId, grounds, addGround, selectGround, openComposer]);
 
     const composeFromRegions = useCallback(() => {
         const ids = picked.size ? [...picked] : (selectedId ? [selectedId] : []);
@@ -583,6 +589,12 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                     <span className="diff-chip diff-chip--dim">{selectedGround.evidence_ids.length} inside</span>
                                 )}
                             </div>
+                            {selectedGround.ground_type === 'frame' && (
+                                <p className="diff-insp-hint">
+                                    The whole image as one piece of evidence — for a percept about the
+                                    whole composition, not a single part. The brackets mark its edge.
+                                </p>
+                            )}
                             <div className="diff-insp-row-actions">
                                 <button type="button" className="diff-primary" onClick={() => openComposer(selectedGround.id)}>Compose a percept</button>
                                 <button type="button" className="diff-quiet" onClick={() => addToTray(selectedGround.id)}>
