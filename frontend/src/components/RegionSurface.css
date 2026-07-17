@@ -59,6 +59,42 @@
 .rs-stage.is-drawing { cursor: crosshair; }
 .rs-stage.is-drawing .rs-svg { pointer-events: none; }
 
+/* Recall (Differential v1) — while a percept-Mention performs, the photograph
+   steps back and the region shapes hush; the Grounds carry the attention. */
+.rs-stage.is-recalling img {
+    opacity: 0.55;
+    filter: saturate(0.55);
+    transition: opacity 200ms ease, filter 200ms ease;
+}
+.rs-stage.is-recalling .rs-svg { opacity: 0.22; }
+
+.rs-recall-caption {
+    position: absolute;
+    left: 50%;
+    bottom: 0.9rem;
+    transform: translateX(-50%);
+    max-width: min(84%, 30rem);
+    margin: 0;
+    padding: 0.35rem 0.85rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 0.88rem;
+    font-style: italic;
+    text-align: center;
+    color: #FAF7F5;
+    background: rgba(23, 18, 26, 0.78);
+    border-radius: var(--radius-pill);
+    pointer-events: none;
+    animation: rs-caption-in 480ms ease both;
+}
+@keyframes rs-caption-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rs-stage.is-recalling img { transition: none; }
+    .rs-recall-caption { animation: none; }
+}
+
 .rs-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
 /* Shapes carry three weights — the "maps". Fill is never heavy: an outline reads as a

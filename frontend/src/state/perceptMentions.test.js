@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   makePercept, upsertPercept, perceptForRegion, perceptId,
+  makeExpressionPercept, isExpressionPercept, perceptsForGround,
   makeMention, addMention, removeMentionsForBlock,
-  mentionsForBlock, mentionsForRegion,
+  mentionsForBlock, mentionsForRegion, mentionsForPercept,
   blockIdsForRegion, mentionsFromBlocks,
 } from './perceptMentions.js';
 
@@ -91,5 +92,48 @@ describe('mentionsFromBlocks — reconstruct edges from stored chip markup (no d
   it('handles empty / chip-less stories', () => {
     expect(mentionsFromBlocks([])).toEqual([]);
     expect(mentionsFromBlocks([{ id: 'b', content: '<p>plain</p>' }])).toEqual([]);
+  });
+});
+
+describe('Expression Percept (Differential v1) — many-to-many-to-many', () => {
+  it('builds a pctx percept over ground ids, provenance stamped', () => {
+    const p = makeExpressionPercept({ expression: 'the light pools here', ground_ids: ['gnd_1', 'gnd_2'], properties: ['light'] });
+    expect(p.id).toMatch(/^pctx_/);
+    expect(p).toMatchObject({ kind: 'expression', expression: 'the light pools here', ground_ids: ['gnd_1', 'gnd_2'], properties: ['light'], actor: 'creator' });
+    expect(typeof p.created_at).toBe('string');
+  });
+
+  it('is a NEW kind: attention percepts are not expression percepts, and vice versa', () => {
+    expect(isExpressionPercept(makePercept({ id: 'reg_1', label: 'drape' }))).toBe(false);
+    expect(isExpressionPercept(makeExpressionPercept({ expression: 'x' }))).toBe(true);
+    // A stored record hydrates by id prefix even if `kind` was stripped.
+    expect(isExpressionPercept({ id: 'pctx_abc', expression: 'x' })).toBe(true);
+  });
+
+  it('many percepts per ground — NO per-ground uniqueness', () => {
+    const a = makeExpressionPercept({ expression: 'first noticing', ground_ids: ['gnd_1'] });
+    const b = makeExpressionPercept({ expression: 'second noticing', ground_ids: ['gnd_1'] });
+    expect(a.id).not.toBe(b.id);
+    expect(perceptsForGround([a, b], 'gnd_1')).toHaveLength(2);
+  });
+
+  it('many grounds per percept, and ground queries skip attention percepts', () => {
+    const p = makeExpressionPercept({ expression: 'x', ground_ids: ['gnd_1', 'gnd_2', 'gnd_3'] });
+    const attention = makePercept({ id: 'gnd_1', label: 'not really a ground' }); // pct_, ignored
+    expect(perceptsForGround([p, attention], 'gnd_2')).toEqual([p]);
+    expect(perceptsForGround([p], 'gnd_9')).toEqual([]);
+  });
+
+  it('many mentions per percept — the existing Mention machinery carries pctx ids as-is', () => {
+    const p = makeExpressionPercept({ expression: 'x', ground_ids: ['gnd_1'] });
+    let ms = [];
+    ms = addMention(ms, makeMention({ perceptId: p.id, blockId: 'block_a', inlineContentId: 'ic_1', form: 'inline' }));
+    ms = addMention(ms, makeMention({ perceptId: p.id, blockId: 'block_b', inlineContentId: 'ic_2', form: 'inline' }));
+    expect(mentionsForPercept(ms, p.id)).toHaveLength(2);
+  });
+
+  it('survives the storage round-trip (plain JSON, nothing lost)', () => {
+    const p = makeExpressionPercept({ expression: 'x', ground_ids: ['gnd_1'], properties: ['colour', 'repetition'] });
+    expect(JSON.parse(JSON.stringify(p))).toEqual(p);
   });
 });

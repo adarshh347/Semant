@@ -215,6 +215,22 @@ describe('region-ref chips (Phase 3 — no data loss on edit)', () => {
     expect(out[0].origin).toBe('sutradhar');
   });
 
+  it('preserves a /percept chip (Differential v1 — pctx id survives for recall)', async () => {
+    // A percept-Mention chip: refKind 'percept', data-percept-id carries the
+    // pctx_ id (the recall trigger), regionIds carry the GROUND ids.
+    const story = [
+      { id: 'block_p', type: 'paragraph', origin: 'human', color: null,
+        content: '<p>Notice how <span data-region-ref data-inline-type="percept" data-ref-kind="percept" '
+          + 'data-region-ids="gnd_a,gnd_b" data-percept-id="pctx_abc_0" data-mention-id="men_pctx_block_p_ic1" '
+          + 'data-label="the light gathers" class="ref-chip ref-chip--percept">the light gathers</span> here.</p>' },
+    ];
+    const out = await chipRoundTrip(story);
+    const html = out[0].content;
+    expect(html).toContain('data-percept-id="pctx_abc_0"'); // the recall trigger survives
+    expect(html).toContain('data-region-ids="gnd_a,gnd_b"'); // the ground ids survive
+    expect(html).toContain('percept'); // refKind class/attr present
+  });
+
   it('under the DEFAULT (chip-less) schema the span would flatten — proves the spec is load-bearing', async () => {
     const story = [
       { id: 'block_x', type: 'paragraph', origin: 'human', color: null,
