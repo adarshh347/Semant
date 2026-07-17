@@ -13,3 +13,12 @@ think and work on it
 ![[Pasted image 20260716195441.png]]
 see the whole image is not coming
 and it is just at best image expanded we should have whole field in deeper form first plan and research for it(as if a whole photoshop level layer emerges, not copying, and not aesthetics but the possibilities to play with image but with semant oriented intentions)
+
+
+
+
+
+
+› okay this project is quite much in spirit similar to the semant project(documents/projects/semant) especially the md folders can give you details of the context6. i mean not to replicate
+  that but it will give spirit to speedrun what to image 5 leaps ahead, they are compliemntary so it will give ideas and also we can adopt frontend ui and a lot of things you better study and
+  plan
