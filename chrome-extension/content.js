@@ -19,6 +19,17 @@
     const DASHBOARD_URL = 'http://localhost:5173/personas';
     const MIN_IMAGE_SIZE = 100;
 
+    // Presence ladder (UX-ALEXIA-PRESENCE-001): Alexia is summonable, not permanent
+    // furniture. Eligibility decides which images earn ANY presence; a single quiet
+    // glyph "whispers" only after an intentional dwell (not during pointer transit);
+    // the full Read/Save/Split/Save-all toolbar is summoned FROM the whisper (click)
+    // or by the shortcut. Absent → Whisper → Ready → (Pinned) → Hushed.
+    const MIN_RENDER = 128;           // rendered px on each side to earn a whisper
+    const MIN_RENDER_AREA = 128 * 128;
+    const LOOSE_RENDER = 200;         // outside a content container, demand more
+    const DWELL_MS = 420;             // intentional-hover threshold before the whisper
+    const WHISPER_GRACE_MS = 260;     // leaving grace so the glyph stays reachable
+
     // Recompute the endpoint URLs whenever the configured base changes.
     function applyBackendBase(base) {
         if (!base) return;
@@ -115,10 +126,31 @@
     muteToast.className = 'ss-mute-toast';
     document.body.appendChild(muteToast);
 
+    // The whisper — a single quiet Alexia glyph, the ONLY thing an eligible image
+    // earns on hover. The full toolbar is summoned from it (click) or by shortcut.
+    // This is level 2 of the presence ladder (Absent → Whisper → Ready).
+    const whisper = document.createElement('button');
+    whisper.type = 'button';
+    whisper.className = 'ss-whisper';
+    whisper.setAttribute('aria-label', 'Read this image with Alexia');
+    whisper.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2z"></path>
+        <line x1="9" y1="22" x2="15" y2="22"></line>
+      </svg>`;
+    document.body.appendChild(whisper);
+
     let currentImage = null;
     let currentVideo = null;
     let hideTimeout = null;
     let rafScheduled = false;
+
+    // Presence state, kept separate from the ready-toolbar target. `hoverEl` is the
+    // image/video under intentional consideration; `dwellTimer` promotes it to a
+    // whisper; `presence` tracks how far up the ladder this target has climbed.
+    let hoverEl = null, hoverType = null;
+    let dwellTimer = null, whisperHideTimer = null;
+    let presence = 'none'; // 'none' | 'whisper' | 'ready'
 
     // Brainstorm dialogue state
     let bsImageUrl = null;   // image being interpreted
@@ -140,6 +172,9 @@
         overlayMuted = !!muted;
         document.documentElement.classList.toggle('ss-muted', overlayMuted);
         if (overlayMuted) {
+            clearTimeout(dwellTimer);
+            whisper.classList.remove('visible');
+            presence = 'none'; hoverEl = null; hoverType = null;
             hideToolbar();
             closeTray();
         } else {
@@ -195,6 +230,33 @@
         return true;
     }
 
+    // Presence eligibility (ladder level 1: Absent). Cheap DOM facts only — no ML.
+    // Ineligible images (icons, avatars, logos, decorative strips, hidden/tiny
+    // assets, images outside content containers) earn NO presence at all. Manual
+    // invocation on an excluded image still works via the shortcut on the last hover.
+    function isEligibleImage(img) {
+        if (!isValidImage(img)) return false;
+        const cs = getComputedStyle(img);
+        if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) === 0) return false;
+        if (img.offsetParent === null && cs.position !== 'fixed') return false;  // hidden/detached
+        const r = img.getBoundingClientRect();
+        const w = r.width, h = r.height;
+        if (w < MIN_RENDER || h < MIN_RENDER) return false;         // rendered too small
+        if (w * h < MIN_RENDER_AREA) return false;
+        const ar = w / h;
+        if (ar > 7 || ar < 1 / 7) return false;                     // banner / thin strip
+        // icon / avatar / logo / sprite / emoji by keyword on the image or its wrapper
+        const cls = typeof img.className === 'string' ? img.className : '';
+        const wrap = img.closest('[class]');
+        const wrapCls = wrap && typeof wrap.className === 'string' ? wrap.className : '';
+        const hint = `${img.alt || ''} ${cls} ${img.id || ''} ${img.getAttribute('role') || ''} ${wrapCls}`.toLowerCase();
+        if (/(^|[^a-z])(icon|avatar|logo|sprite|emoji|badge|favicon)([^a-z]|$)/.test(hint)) return false;
+        // Prefer content containers; outside them, demand a larger image.
+        const inContent = !!img.closest('article, figure, main, [role="article"], [class*="gallery"], [class*="product"], [class*="post"], [class*="media"], [class*="photo"], [class*="feed"], [class*="grid"]');
+        if (!inContent && Math.min(w, h) < LOOSE_RENDER) return false;
+        return true;
+    }
+
     function imageAtPoint(x, y) {
         const stack = document.elementsFromPoint(x, y);
         for (const node of stack) {
@@ -219,6 +281,14 @@
         const left = window.pageXOffset || document.documentElement.scrollLeft;
         toolbar.style.top = `${rect.top + top + 10}px`;
         toolbar.style.left = `${rect.right + left - toolbar.offsetWidth - 10}px`;
+    }
+
+    function positionWhisper(el) {
+        const rect = el.getBoundingClientRect();
+        const top = window.pageYOffset || document.documentElement.scrollTop;
+        const left = window.pageXOffset || document.documentElement.scrollLeft;
+        whisper.style.top = `${rect.top + top + 8}px`;
+        whisper.style.left = `${rect.right + left - whisper.offsetWidth - 8}px`;
     }
 
     function isValidVideo(v) {
@@ -424,14 +494,66 @@
             if (cur) cur.classList.remove('sharirasutra-hover-highlight');
             toolbar.classList.remove('visible');
             currentImage = null; currentVideo = null;
+            presence = 'none'; hoverEl = null; hoverType = null;
         }, 300);
     }
 
-    // Show/keep the toolbar for a target without re-rendering if it's unchanged.
-    function selectTarget(el, type) {
-        const cur = type === 'video' ? currentVideo : currentImage;
-        if (el !== cur) showTarget(el, type);
-        else if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+    // ---- Presence ladder ------------------------------------------------------
+    // Level 2: the whisper. A single glyph, shown only after an intentional dwell.
+    function showWhisper(el, type) {
+        if (overlayMuted) return;
+        hoverEl = el; hoverType = type;
+        positionWhisper(el);
+        whisper.classList.add('visible');
+        presence = 'whisper';
+        if (whisperHideTimer) { clearTimeout(whisperHideTimer); whisperHideTimer = null; }
+    }
+
+    function scheduleWhisperHide() {
+        if (whisperHideTimer) clearTimeout(whisperHideTimer);
+        whisperHideTimer = setTimeout(() => {
+            whisper.classList.remove('visible');
+            if (presence === 'whisper') { presence = 'none'; hoverEl = null; hoverType = null; }
+        }, WHISPER_GRACE_MS);
+    }
+
+    // Level 3: ready. Expand the full toolbar for the current whisper target.
+    function promoteToReady() {
+        if (!hoverEl) return;
+        clearTimeout(dwellTimer);
+        whisper.classList.remove('visible');
+        presence = 'ready';
+        showTarget(hoverEl, hoverType);
+    }
+
+    // Consider a target under the pointer: keep it if already open/whispering,
+    // otherwise (re)start the dwell that will raise a whisper. Images must pass
+    // eligibility; ineligible ones stay Absent.
+    function considerTarget(el, type) {
+        if (type === 'image' && !isEligibleImage(el)) { leaveCandidate(); return; }
+
+        if (presence === 'ready' && el === (currentImage || currentVideo)) {
+            if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+            return;
+        }
+        if (presence === 'whisper' && el === hoverEl) {
+            if (whisperHideTimer) { clearTimeout(whisperHideTimer); whisperHideTimer = null; }
+            return;
+        }
+        if (el !== hoverEl) {
+            clearTimeout(dwellTimer);
+            hoverEl = el; hoverType = type;
+            dwellTimer = setTimeout(() => { if (hoverEl === el) showWhisper(el, type); }, DWELL_MS);
+        }
+    }
+
+    // Pointer left every eligible target: cancel a pending dwell and retreat one
+    // rung — ready → hide toolbar, whisper → grace-then-hide, none → clear.
+    function leaveCandidate() {
+        clearTimeout(dwellTimer);
+        if (presence === 'ready') hideToolbar();
+        else if (presence === 'whisper') scheduleWhisperHide();
+        else { hoverEl = null; hoverType = null; }
     }
 
     function onPointerMove(e) {
@@ -443,32 +565,40 @@
             rafScheduled = false;
             const top = document.elementFromPoint(x, y);
             if (top && (top === toolbar || toolbar.contains(top) || top === panel || panel.contains(top)
+                        || top === whisper || whisper.contains(top)
                         || top === tray || tray.contains(top)
                         || top === queueChip || top === personaFab || personaFab.contains(top))) {
                 if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+                if (whisperHideTimer) { clearTimeout(whisperHideTimer); whisperHideTimer = null; }
                 return;
             }
 
             // 1) A real <video> directly under the cursor → video mode.
             const stackVideo = videoAtPointStack(x, y);
-            if (stackVideo) { selectTarget(stackVideo, 'video'); return; }
+            if (stackVideo) { considerTarget(stackVideo, 'video'); return; }
 
             // 2) Resolve photo vs reel. A photo under the cursor wins UNLESS a
             //    pointer-events:none video actually covers it (the reel case).
             const img = imageAtPoint(x, y);
             const geoVideo = videoAtPointGeometric(x, y);
-            if (img && geoVideo && videoCoversImage(geoVideo, img)) { selectTarget(geoVideo, 'video'); return; }
-            if (img) { selectTarget(img, 'image'); return; }       // <-- static photos work again
-            if (geoVideo) { selectTarget(geoVideo, 'video'); return; }  // reel with no poster img
+            if (img && geoVideo && videoCoversImage(geoVideo, img)) { considerTarget(geoVideo, 'video'); return; }
+            if (img) { considerTarget(img, 'image'); return; }
+            if (geoVideo) { considerTarget(geoVideo, 'video'); return; }
 
-            if (currentImage || currentVideo) hideToolbar();
+            leaveCandidate();
         });
     }
 
     document.addEventListener('mousemove', onPointerMove, { passive: true });
-    window.addEventListener('scroll', () => { if (currentImage) positionToolbar(currentImage); }, { passive: true });
+    window.addEventListener('scroll', () => {
+        if (presence === 'ready' && currentImage) positionToolbar(currentImage);
+        else if (presence === 'whisper' && hoverEl) positionWhisper(hoverEl);
+    }, { passive: true });
     toolbar.addEventListener('mouseenter', () => { if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; } });
     toolbar.addEventListener('mouseleave', hideToolbar);
+    whisper.addEventListener('mouseenter', () => { if (whisperHideTimer) { clearTimeout(whisperHideTimer); whisperHideTimer = null; } });
+    whisper.addEventListener('mouseleave', scheduleWhisperHide);
+    whisper.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); promoteToReady(); });
 
     // ---- Save ------------------------------------------------------------------
     async function saveImage() {
