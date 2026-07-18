@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form, BackgroundTasks
 from typing import Dict, Optional, List
+from pydantic import BaseModel
 import uuid
 import os
 import math
@@ -16,6 +17,7 @@ from backend.services import fashion_segmentation_service
 from backend.services import region_embedding_service
 from backend.services import region_geometry
 from backend.services import mask_geometry
+from backend.services.vision_orchestrator.refine_session import refine_session
 from backend.services import anuranana_service
 from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
 from datetime import datetime, timezone
@@ -933,6 +935,97 @@ async def enrich_regions(post_id: str):
         "labeled": result["labeled"],
         "skipped_cached": result["skipped"],
     }
+
+
+# ── VISION-BUILD-001 B4 · interactive exact-mask refinement ──────────────────
+class RefineRequest(BaseModel):
+    points: Optional[List[List[float]]] = None   # normalized [ [x,y], ... ]
+    labels: Optional[List[int]] = None           # 1 = positive, 0 = negative
+    box: Optional[List[float]] = None            # normalized [x0,y0,x1,y1]
+    base_id: Optional[str] = None                # refine an existing region in place
+    base_geometry_rev: int = 0
+
+
+async def _fetch_post_image(post: dict) -> bytes:
+    photo_url = post.get("photo_url")
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        resp = await client.get(photo_url, headers=_image_fetch_headers(photo_url))
+        resp.raise_for_status()
+        return resp.content
+
+
+# Small last-image cache so warm refine clicks skip the Cloudinary re-fetch — the network
+# round-trip, not SAM2, was the interactive-latency bottleneck. Keyed by post id, holds one.
+_refine_image_cache: dict = {}
+
+
+async def _fetch_post_image_cached(post_id: str, post: dict) -> bytes:
+    cached = _refine_image_cache.get(post_id)
+    if cached is not None:
+        return cached
+    data = await _fetch_post_image(post)
+    _refine_image_cache.clear()           # keep only the active image
+    _refine_image_cache[post_id] = data
+    return data
+
+
+async def _propose_refined_region(post_id: str, req: "RefineRequest"):
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    if not refine_session.available():
+        raise HTTPException(status_code=503, detail="Mask refiner (SAM2) unavailable on this server")
+    if not (req.points or req.box):
+        raise HTTPException(status_code=422, detail="A point or box prompt is required")
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    prompt = {"points": req.points, "labels": req.labels, "box": req.box}
+    region = await refine_session.preview(img_bytes, prompt, req.base_id, req.base_geometry_rev)
+    return obj_id, post, region
+
+
+@router.post("/{post_id}/refine-region/preview")
+async def refine_region_preview(post_id: str, req: RefineRequest):
+    """Propose an exact mask from a point/box prompt WITHOUT persisting. The returned
+    region carries the next geometry_rev and `proposed: true`; nothing is saved."""
+    _obj_id, _post, region = await _propose_refined_region(post_id, req)
+    return {"region": region, "available": True}
+
+
+@router.post("/{post_id}/refine-region/confirm")
+async def refine_region_confirm(post_id: str, req: RefineRequest):
+    """Confirm the refinement: recompute (image embedding is cached → fast) and persist.
+    Non-destructive — upgrades the base region's identity in place (or appends a new one),
+    preserves curator fields, and never touches other regions, Grounds, Percepts or
+    Mentions. The saved region is authoritative (`proposed: false`)."""
+    obj_id, post, region = await _propose_refined_region(post_id, req)
+    region["proposed"] = False                                   # confirmed → authoritative
+    regions = list(post.get("region_annotations") or [])
+    idx = next((i for i, r in enumerate(regions) if r.get("id") == region["id"]), None)
+    if idx is not None:
+        prev = regions[idx]
+        for k in ("prioritised", "weight", "user_note"):         # keep curator meaning
+            region[k] = prev.get(k, region.get(k))
+        region["depth"] = prev.get("depth", region.get("depth", 0))
+        region["parent_id"] = prev.get("parent_id")
+        regions[idx] = region                                    # upgrade in place
+    else:
+        regions.append(region)
+    await post_collection.update_one(
+        {"_id": obj_id}, {"$set": {"region_annotations": regions,
+                                   "updated_at": datetime.now(timezone.utc)}})
+    updated = await post_collection.find_one({"_id": obj_id})
+    return {"post": post_helper(updated), "region": region}
+
+
+@router.post("/refine-region/unload")
+async def refine_region_unload():
+    """Release the SAM2 predictor (frees VRAM/RAM). Idempotent."""
+    await refine_session.unload()
+    return {"unloaded": True}
 
 # More general route comes after
 @router.get("/", response_model=PaginatedPosts)

@@ -1,0 +1,27 @@
+.refine-page {
+  height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  box-sizing: border-box;
+}
+.refine-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.refine-head h1 { font-size: 18px; margin: 0; }
+.rf-sub { margin: 2px 0 0; font-size: 12px; opacity: 0.6; }
+.refine-head-actions { display: flex; align-items: center; gap: 12px; }
+.rf-saved { font-size: 12px; opacity: 0.85; }
+.rf-saved code { font-size: 11px; opacity: 0.9; }
+.rf-reload {
+  font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent, #5E2B50) 30%, transparent);
+  background: transparent; color: inherit; cursor: pointer;
+}
+.rf-reload:hover { background: color-mix(in srgb, var(--accent, #5E2B50) 10%, transparent); }
+.rf-page-err { color: #d0432b; }
