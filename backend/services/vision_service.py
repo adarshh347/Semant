@@ -559,10 +559,16 @@ Generate ONLY the subtitle, no additional text or explanation:"""
                     continue
             if lines:
                 anchor_hint = (
-                    "\n\nThe coarse pass already located these whole objects (normalized "
-                    "boxes). Subdivide INSIDE these — your sub-parts' boxes must sit within "
-                    "the relevant parent box, and name the parent in \"parent\":\n"
+                    "\n\nThe coarse pass located these whole objects (normalized boxes). "
+                    "Treat them as HINTS for what is present, NOT as bounds you must stay "
+                    "inside — the coarse pass can MISS objects entirely. Place every part's "
+                    "box in the FULL IMAGE frame (normalized to the whole image), wherever "
+                    "the part actually is, even if that falls outside every box below. Name "
+                    "the object each part belongs to in \"parent\":\n"
                     + "\n".join(lines)
+                    + "\nIf several distinct subjects are present (e.g. several figures side "
+                    "by side), give EACH its own parts at its own location across the frame — "
+                    "do not cluster every part onto one subject."
                 )
 
         focus = MODE_FOCUS.get((mode or "general").lower(), MODE_FOCUS["general"])
@@ -788,9 +794,10 @@ For EACH fine part return:
   texture | material | edge | light | plane | object | other.
 - "material": the likely material if recognizable (cotton, silk, denim, skin, metal…),
   else "".
-- "box": a TIGHT bounding box {"x","y","w","h"} in NORMALIZED 0..1 coords, ORIGIN
-  TOP-LEFT (x/y = top-left corner, w/h = size). The box must hug just THIS part and lie
-  inside its parent's box. Small parts have small boxes — a cuff is not the whole arm.
+- "box": a TIGHT bounding box {"x","y","w","h"} in NORMALIZED 0..1 coords against the
+  WHOLE IMAGE, ORIGIN TOP-LEFT (x/y = top-left corner, w/h = size). Place it where the
+  part actually is in the full frame — near its parent, but you are NOT confined to the
+  parent's box. Small parts have small boxes — a cuff is not the whole arm.
 - "description": one vivid, specific phrase — what it is and how it reads/feels/affects.
 
 Return 6 to 14 fine parts, the ones that genuinely carry the image. Make the boxes

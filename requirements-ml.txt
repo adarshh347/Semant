@@ -5,16 +5,21 @@
 # Install on a box that actually runs the vision pipeline:
 #     pip install -r requirements-ml.txt
 #
-# Everything here runs on CPU. Phase 2a's garment segmenter (SegFormer-B2, 27.4M params)
-# needs no GPU — ~2s per image on CPU. For a GPU box, install the CUDA build of torch
-# instead (see pytorch.org); B1 is settled serverless-first for the heavy Phase 2b models.
+# GPU build (VISION-BUILD-001 B0, 2026-07-19): this box has a CUDA-capable GTX 1650
+# (sm_75, driver 595.58.03 / CUDA 13.2). We install the CUDA wheels of torch — the
+# linux wheel bundles the CUDA runtime, so NO system CUDA toolkit is required. The
+# versions are PINNED and the index is the cu130 channel so a future `pip install -r`
+# cannot silently reinstall the CPU wheel (which is what left the box GPU-idle before).
+# To roll back to CPU: restore architecture-lab/vision-build-001/B0-pre-cuda-freeze.txt,
+# or switch the index below to .../whl/cpu and reinstall. Serverless is still the plan
+# for the heavy Phase 2b models (Fashionpedia/SAM2 base+) that a 4GB card can't serve.
 
---extra-index-url https://download.pytorch.org/whl/cpu
-torch
-# torchvision must come from the SAME index as torch. ultralytics depends on it and pip
-# will otherwise pull the default-index wheel, which is built against a different torch
-# and dies at import with "operator torchvision::nms does not exist".
-torchvision
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch==2.13.0
+# torchvision must come from the SAME index/build as torch. ultralytics depends on it and
+# pip will otherwise pull a mismatched wheel that dies at import with
+# "operator torchvision::nms does not exist".
+torchvision==0.28.0
 transformers
 pillow
 numpy
@@ -27,6 +32,13 @@ numpy
 ultralytics
 opencv-python-headless
 
+# Exact-mask refiner (VISION-BUILD-001 B3): SAM 2.1 Hiera Tiny — benchmarked local-viable
+# on the GTX 1650 (peak ~597 MiB VRAM, warm prompts 11-166 ms, clean unload).
+# The CHECKPOINT is NOT vendored (147 MB, gitignored under models/). Download once:
+#   mkdir -p models && curl -L -o models/sam2.1_hiera_tiny.pt \
+#     https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt
+sam2==1.1.0
+
 # Phase 2b+ (gated — not installed): the real Fashionpedia stack (Attribute-Mask-RCNN /
-# Fashionformer) for the 19 fine apparel parts + 294 attributes, and SAM2. Both want a
-# GPU — they wait for the M4 or a serverless endpoint, per B1/B2.
+# Fashionformer) for the 19 fine apparel parts + 294 attributes. Wants a bigger GPU —
+# waits for the M4 or a serverless endpoint, per B1/B2 and VISION-MODEL-MATRIX-001.

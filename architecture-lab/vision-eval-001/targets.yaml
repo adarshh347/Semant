@@ -1,0 +1,291 @@
+# VISION-EVALSET-001 — critical evidence targets
+#
+# Not exhaustive pixel annotation. Per image, 3–8 targets that matter to Semant's
+# circulation (image → Region → Ground → Percept → Mention → recall).
+#
+# schema per target:
+#   name:                 short human name for the evidence
+#   expected_kind:        instance | part | material | texture | luminous | spatial | repetition
+#   acceptable_geometry:  mask | analysis_layer | creator_ground_only
+#                         (mask = a real region outline is the right home;
+#                          analysis_layer = a field/luminous/depth map, NOT a boxed region;
+#                          creator_ground_only = no auto model should assert this — a human
+#                          Differential gesture is the only honest source)
+#   must_separate_from:   evidence it must NOT be merged with / parented into
+#   expected_failure_risk: how the current or a candidate stack is likely to fail it
+#   why_product_critical: what breaks in Semant's UX if this target is wrong
+#
+# STATUS: targets for CONF-* are authored from direct viewing. Proposed slots carry a
+# template to fill once the fixture is chosen (see gaps.md).
+
+# ============================================================ CONFIRMED ============
+
+CONF-a_5sculpt_695be6c9:      # GEN-03 five-sculpture regression — 680×286
+  domain: artwork/heritage-sculpture   # NB stored guess "product" is WRONG
+  critical_targets:
+    - name: Solanki head (far left)
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [Gupta head, black background, Solanki text label]
+      expected_failure_risk: under-segmentation folds it into background; or it is
+        never anchored (only the centre head got a person anchor) and is dropped.
+      why_product_critical: each head is a distinct Percept the writer cites by name;
+        losing one silently removes an evidence target from recall.
+    - name: Gupta head (centre-left)
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [Pala head, Solanki head]
+      expected_failure_risk: this is the ONE head YOLO anchored — historically every
+        other part was parented into it (anchor imprisonment).
+      why_product_critical: the imprisonment bug put all evidence on this head; the
+        regression exists to prove that never recurs.
+    - name: Amaravati head (centre-right)
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [Pala head, Gandhara head]
+      expected_failure_risk: crushed to a w=0.01 sliver at the anchor's right edge in
+        the corrupted post (still stored today).
+      why_product_critical: HARD-FAIL sentinel — a sliver here is evidence corruption.
+    - name: Gandhara head (far right)
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [Amaravati head, right black margin]
+      expected_failure_risk: same slivering; or box overruns into black.
+      why_product_critical: right-most instance separation + no-crush.
+    - name: white name labels (Solanki/Gupta/…)
+      expected_kind: instance
+      acceptable_geometry: creator_ground_only
+      must_separate_from: [the head above each label]
+      expected_failure_risk: a detector boxes the text as an object and a VLM narrates
+        it as material.
+      why_product_critical: text is not evidence about the sculpture; asserting it
+        pollutes the catalog and the reading.
+
+CONF-b_sculpt_695be786:       # GEN-01 single clear subject — 452×679
+  domain: artwork/heritage-sculpture   # stored guess "product" WRONG
+  critical_targets:
+    - name: carved figure (torso + head)
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [grey gradient ground, background relief at left]
+      expected_failure_risk: box over-claims the soft grey ground; boundary bleeds into
+        the shadow side under raking light.
+      why_product_critical: the primary hover target; a loose box makes the alpha crop
+        include background and the Field wash misregister.
+    - name: jewelled hair ornament
+      expected_kind: part
+      acceptable_geometry: mask
+      must_separate_from: [face, background relief]
+      expected_failure_risk: thin/small ornament dropped by the area floor or merged
+        into "hair".
+      why_product_critical: small-part preservation — the ornament is exactly the kind
+        of fine evidence a close-reading tool exists to surface.
+    - name: raking side-light on the shoulder/breast
+      expected_kind: luminous
+      acceptable_geometry: analysis_layer
+      must_separate_from: [the figure mask itself]
+      expected_failure_risk: a box is drawn around "the light", or light is ignored.
+      why_product_critical: light is a measured field, not a region; forcing it into a
+        box is a category error the perceptual layer must avoid.
+    - name: carved ornament texture (repeated motifs)
+      expected_kind: repetition
+      acceptable_geometry: analysis_layer
+      must_separate_from: [smooth skin planes]
+      expected_failure_risk: repetition detector fires on noise, or misses the motif.
+      why_product_critical: texture/repetition is a first-class Semant reading.
+
+CONF-g_people_dataset001:     # GEN-02 multiple overlapping subjects — 998×1192
+  domain: photography/fashion
+  critical_targets:
+    - name: woman in orange sari (left)
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [woman in maroon sari, man in white shirt]
+      expected_failure_risk: overlapping arms merge two people into one instance.
+      why_product_critical: person separation underpins per-person garment evidence.
+    - name: orange checked sari (garment)
+      expected_kind: part
+      acceptable_geometry: mask
+      must_separate_from: [wearer's skin, maroon blouse, neighbouring people]
+      expected_failure_risk: YOLO returns only "person"; garment never isolated (the
+        exact gap the SegFormer-clothes path exists to close).
+      why_product_critical: the garment IS the fashion evidence; a person box is useless.
+    - name: gold jewellery (necklaces, bangles)
+      expected_kind: part
+      acceptable_geometry: mask
+      must_separate_from: [skin, sari]
+      expected_failure_risk: small shiny parts dropped or merged into skin.
+      why_product_critical: accessories are prized fine evidence; small-part recall.
+    - name: patterned border of the sari
+      expected_kind: repetition
+      acceptable_geometry: analysis_layer
+      must_separate_from: [plain sari field]
+      expected_failure_risk: pattern read as flat colour.
+      why_product_critical: pattern/repetition reading distinguishes garments.
+    - name: fifth face, half-cut at right edge
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [man in striped shirt (right)]
+      expected_failure_risk: tiny + edge-truncated + occluded → dropped entirely.
+      why_product_critical: tiny/edge recall; silent omission = missing evidence.
+
+CONF-d_painting_695be8ba:     # ART-01 figurative painting, dissolving boundaries — 643×680
+  domain: artwork/painting
+  critical_targets:
+    - name: black lace/tulle bow at the throat
+      expected_kind: material
+      acceptable_geometry: mask
+      must_separate_from: [dark jacket, skin, ochre ground]
+      expected_failure_risk: translucent lace boundary either over-tightened to a hard
+        edge or bled into the dark jacket.
+      why_product_critical: translucency is the reading; a hard mask lies about the
+        material.
+    - name: painterly face/neck (no hard contour)
+      expected_kind: instance
+      acceptable_geometry: analysis_layer
+      must_separate_from: [ochre ground]
+      expected_failure_risk: a candidate asserts a crisp person mask over dissolving
+        brushwork — false precision.
+      why_product_critical: honesty gate — the tool must NOT fabricate a boundary the
+        painting does not have.
+    - name: warm ochre luminous ground
+      expected_kind: luminous
+      acceptable_geometry: analysis_layer
+      must_separate_from: [figure]
+      expected_failure_risk: boxed as an object; or warm/cool distribution unread.
+      why_product_critical: atmosphere is a global field reading, not a region.
+    - name: artist signature (lower-left)
+      expected_kind: instance
+      acceptable_geometry: creator_ground_only
+      must_separate_from: [the painted figure]
+      expected_failure_risk: narrated as image content.
+      why_product_critical: provenance mark, not depicted evidence.
+
+CONF-f_vishnu_695be7fa:       # ART-02 dense multi-figure / non-Western print — 445×680
+  domain: artwork/devotional-print   # stored guess "product" WRONG
+  critical_targets:
+    - name: Vishnu figure (central)
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [serpent coils, nāga hoods, radiating ground]
+      expected_failure_risk: merged with the serpent throne; or engraved line-work
+        gives no stable contour.
+      why_product_critical: the icon is the subject; must be citable distinctly.
+    - name: seven-hooded nāga canopy
+      expected_kind: repetition
+      acceptable_geometry: mask
+      must_separate_from: [Vishnu's crown, radiating background lines]
+      expected_failure_risk: seven near-identical hoods collapsed to one region, or
+        counted wrong.
+      why_product_critical: dense repeated-instance separation on line art.
+    - name: attributes in the hands (discus, lotus, mace)
+      expected_kind: part
+      acceptable_geometry: mask
+      must_separate_from: [hands/arms, background]
+      expected_failure_risk: tiny iconographic parts dropped.
+      why_product_critical: iconographic attributes are the scholarly evidence here.
+    - name: radiating light ground
+      expected_kind: luminous
+      acceptable_geometry: analysis_layer
+      must_separate_from: [figure, serpent]
+      expected_failure_risk: semi-abstract rays boxed as an object.
+      why_product_critical: distinguishing measured light-field from depicted object.
+    - name: Thai caption + ruled border
+      expected_kind: instance
+      acceptable_geometry: creator_ground_only
+      must_separate_from: [the image field]
+      expected_failure_risk: caption narrated as content; border boxed.
+      why_product_critical: paratext, not evidence.
+
+CONF-e_pieta_695be77e:        # ARC-03 interior with openings — 544×680
+  domain: architecture (+ sculpture)   # stored guess "architecture" 0.93 correct
+  critical_targets:
+    - name: Pietà marble group
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [altar base, niche wall behind]
+      expected_failure_risk: white marble blown out by the light shaft and lost into
+        bright wall; or box swallows the altar.
+      why_product_critical: nested subject must be citable within its setting.
+    - name: architectural niche / arch behind
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [Pietà group, side pilasters]
+      expected_failure_risk: no COCO class exists → never detected; whole frame called
+        "person" off the marble figures.
+      why_product_critical: architecture vocabulary gap — the domain the router got
+        right but no segmenter serves.
+    - name: pilasters / ornament flanking the niche
+      expected_kind: repetition
+      acceptable_geometry: analysis_layer
+      must_separate_from: [central niche]
+      expected_failure_risk: ornament read as flat wall.
+      why_product_critical: architectural ornament is the reading.
+    - name: light shaft onto the group
+      expected_kind: luminous
+      acceptable_geometry: analysis_layer
+      must_separate_from: [the marble mask]
+      expected_failure_risk: boxed; or missed.
+      why_product_critical: luminous-map correspondence; the shaft is the drama.
+    - name: nesting (Pietà ⊂ altar ⊂ niche ⊂ wall)
+      expected_kind: spatial
+      acceptable_geometry: analysis_layer
+      must_separate_from: []
+      expected_failure_risk: flat sibling regions with no depth/containment order.
+      why_product_critical: spatial ordering drives how recall stages evidence.
+
+CONF-c_statue_695be794:       # PER-03 foreground/background depth — 454×679
+  domain: photography (of sculpture)
+  critical_targets:
+    - name: statue of the woman (foreground)
+      expected_kind: instance
+      acceptable_geometry: mask
+      must_separate_from: [bare trees, sky]
+      expected_failure_risk: low-contrast B&W boundary bleeds into the branch clutter.
+      why_product_critical: the crisp subject must lift cleanly from a soft ground.
+    - name: figure/ground depth order
+      expected_kind: spatial
+      acceptable_geometry: analysis_layer
+      must_separate_from: []
+      expected_failure_risk: trees placed in front of / level with the statue.
+      why_product_critical: depth ordering is the perceptual reading this image anchors.
+    - name: eroded / lichened surface
+      expected_kind: material
+      acceptable_geometry: analysis_layer
+      must_separate_from: [smooth original stone]
+      expected_failure_risk: weathering read as shadow, or ignored.
+      why_product_critical: material/texture usefulness on aged stone.
+    - name: cool atmospheric distribution
+      expected_kind: luminous
+      acceptable_geometry: analysis_layer
+      must_separate_from: [foreground subject]
+      expected_failure_risk: atmosphere unmeasured.
+      why_product_critical: warm/cool field reading.
+
+# ============================================================ PROPOSED =============
+# Fill each once the fixture is chosen (gaps.md). Template repeated per open slot.
+
+_proposed_template: &tmpl
+  domain: TBD
+  critical_targets:
+    - name: TBD
+      expected_kind: instance   # instance|part|material|texture|luminous|spatial|repetition
+      acceptable_geometry: mask # mask|analysis_layer|creator_ground_only
+      must_separate_from: []
+      expected_failure_risk: TBD
+      why_product_critical: TBD
+
+GEN-04_tiny_irregular:  { <<: *tmpl }   # tiny scattered objects + irregular boundaries
+FSH-01_full_body_outfit: { <<: *tmpl }
+FSH-05_flat_lay_product: { <<: *tmpl }
+ARC-01_facade_openings:  { <<: *tmpl }  # windows/doors/balconies grid
+ARC-02_columns_arches:   { <<: *tmpl }  # exterior colonnade/arcade
+ARC-04_occluded_foliage: { <<: *tmpl }
+ARC-05_non_western_arch: { <<: *tmpl }  # e.g. temple gopuram / stupa / pagoda
+ART-03_landscape_light:  { <<: *tmpl }
+ART-04_abstract:         { <<: *tmpl }
+PER-04_implied_movement: { <<: *tmpl }
+# Optional dedicated (if distinct from confirmed coverage):
+FSH-02_two_people_garments: { <<: *tmpl }
+FSH-03_lace_garment_photo:  { <<: *tmpl }
+FSH-04_pattern_flat:        { <<: *tmpl }

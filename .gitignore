@@ -32,3 +32,6 @@ android/.idea/
 
 # Personal career/showcase materials (private — keep out of the public repo)
 showcase/
+
+# Vision model checkpoints (large; download via requirements-ml.txt notes)
+models/*.pt

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { paintFields } from './fieldCanvas';
 import { resolveGround, groundCenter } from './grounds';
 import { taperedRibbon, centerlinePath, endChevron } from './freehandTaper';
+import { hasMaskPolygons, ringsToPath } from '../lib/maskGeometry';
 
 /**
  * GroundLayers — the shared Ground renderer (Differential v1).
@@ -165,6 +166,11 @@ function RegionGround({ region, natural, state }) {
     if (!region) return null;
     const lit = progress > 0;
     const cls = `gl-region${lit ? ' is-lit' : ''}`;
+    if (hasMaskPolygons(region)) {
+        return <path d={ringsToPath(region.polygons, natural.w, natural.h)} fillRule="evenodd"
+            className={cls} vectorEffect="non-scaling-stroke"
+            style={{ opacity: dim, fillOpacity: REGION_FILL * progress }} />;
+    }
     if (Array.isArray(region.polygon) && region.polygon.length > 2) {
         const pts = region.polygon.map(([x, y]) => `${x * natural.w},${y * natural.h}`).join(' ');
         return <polygon points={pts} className={cls} vectorEffect="non-scaling-stroke"

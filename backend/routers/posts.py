@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form, BackgroundTasks
 from typing import Dict, Optional, List
+from pydantic import BaseModel
 import uuid
 import os
 import math
@@ -14,6 +15,9 @@ from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
 from backend.services import fashion_segmentation_service
 from backend.services import region_embedding_service
+from backend.services import region_geometry
+from backend.services import mask_geometry
+from backend.services.vision_orchestrator.refine_session import refine_session
 from backend.services import anuranana_service
 from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
 from datetime import datetime, timezone
@@ -543,42 +547,21 @@ async def aletheia_read(post_id: str, request: AletheiaReadRequest):
     return {"aletheia": reading, "depth": depth, "cached": False}
 
 
+# Region geometry is one canonical contract (REGION-GEOMETRY-001): normalized
+# [0,1] boxes, parenting decided by GEOMETRY not label. Parenting a fine part into
+# an anchor it doesn't actually sit inside is what relocated Solanki/Amaravati/
+# Gandhara parts onto the single detected figure and crushed off-anchor parts to
+# slivers — so both helpers now defer to region_geometry.
 def _clip_box_to_parent(box: dict, parent: dict) -> dict:
-    """Pull a fine sub-box inside its parent anchor's box so it can't float off the
-    object it belongs to (the vision model's boxes are estimates)."""
-    px, py = parent.get("x", 0.0), parent.get("y", 0.0)
-    pw, ph = parent.get("w", 1.0), parent.get("h", 1.0)
-    # pad the parent a touch so tight collars/cuffs at the edge aren't crushed
-    pad = 0.04
-    x0, y0 = max(0.0, px - pad), max(0.0, py - pad)
-    x1, y1 = min(1.0, px + pw + pad), min(1.0, py + ph + pad)
-    bx = min(max(box["x"], x0), x1)
-    by = min(max(box["y"], y0), y1)
-    bw = min(box["w"], x1 - bx)
-    bh = min(box["h"], y1 - by)
-    return {"x": round(bx, 4), "y": round(by, 4),
-            "w": round(max(bw, 0.01), 4), "h": round(max(bh, 0.01), 4)}
+    return region_geometry.clip_box_to_parent(box, parent)
 
 
 def _match_parent(fine: dict, anchors: list) -> Optional[dict]:
-    """Link a fine part to a coarse anchor: prefer label match, else the anchor whose
-    box most contains the fine part's centre."""
-    plabel = (fine.get("parent_label") or "").lower()
-    if plabel:
-        for a in anchors:
-            if plabel in (a.get("label") or "").lower() or (a.get("label") or "").lower() in plabel:
-                return a
-    cx = fine["box"]["x"] + fine["box"]["w"] / 2
-    cy = fine["box"]["y"] + fine["box"]["h"] / 2
-    best, best_area = None, 1e9
-    for a in anchors:
-        b = a.get("box") or {}
-        if b.get("x", 0) <= cx <= b.get("x", 0) + b.get("w", 0) and \
-           b.get("y", 0) <= cy <= b.get("y", 0) + b.get("h", 0):
-            area = b.get("w", 1) * b.get("h", 1)
-            if area < best_area:  # smallest containing anchor wins
-                best, best_area = a, area
-    return best
+    """The coarse anchor a fine part genuinely belongs to (≥ half inside), or None.
+    None means the part is a top-level fine region living in the full image frame —
+    the correct outcome when the coarse stage under-segmented the scene."""
+    return region_geometry.match_parent(
+        fine.get("box") or {}, anchors, parent_label=fine.get("parent_label") or "")
 
 
 async def _resolve_is_fashion(post: dict, obj_id, img_bytes: bytes) -> bool:
@@ -678,12 +661,16 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
         except Exception as e:
             print(f"Fine decomposition failed (non-fatal): {e}")
             fine = []
-        # Link each fine part to its anchor and pull it inside that anchor's box.
+        # Link each fine part to its anchor. Geometry guard (VISION-BUILD-001 B2):
+        # a mask-bearing region's exact mask is authoritative and is NEVER clipped or
+        # collapsed by semantic parenting; only a box-only fine part may be nudged into
+        # its parent's box. Parenting sets lineage, never mutates a mask.
         for f in fine:
             parent = _match_parent(f, anchors)
             if parent:
                 f["parent_id"] = parent.get("id")
-                f["box"] = _clip_box_to_parent(f["box"], parent.get("box") or {})
+                if not f.get("mask_rle"):
+                    f["box"] = _clip_box_to_parent(f["box"], parent.get("box") or {})
             f.setdefault("depth", 1)
             # parent_label was only a transient matching key — drop it (Track A:
             # canonicalize on parent_id; parent_label is not a Region field).
@@ -711,6 +698,10 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             r.setdefault("prioritised", False)
             r.setdefault("weight", 0)
             r.setdefault("user_note", "")
+        # Canonicalise geometry lineage (B2): mask-bearing regions already carry it from
+        # the segmenter; stamp the rest (box-only/legacy) without fabricating a mask.
+        if not r.get("geometry_provenance"):
+            mask_geometry.canonicalize_geometry(r, provenance={"via": "detect-regions"})
 
     await post_collection.update_one({"_id": obj_id}, {"$set": {"region_annotations": regions}})
     return {"regions": regions, "source": source, "anchor_count": len(anchors or []), "fine_count": len(fine)}
@@ -809,6 +800,12 @@ async def save_region_annotations(post_id: str, request: RegionAnnotationsReques
 
     # request.regions is validated against the unified Region model; persist as dicts.
     regions_data = [r.model_dump() for r in request.regions]
+    # Canonicalise geometry (VISION-BUILD-001 Increment A): a region carrying a mask_rle
+    # gets its polygons/legacy-polygon/box re-derived from that authoritative mask; a
+    # box-only/legacy region is retained untouched (only stamped with lineage). Pure,
+    # model-free — no detector runs here.
+    for _r in regions_data:
+        mask_geometry.canonicalize_geometry(_r, provenance={"via": "save-region-annotations"})
     await post_collection.update_one(
         {"_id": obj_id}, {"$set": {"region_annotations": regions_data,
                                    "updated_at": datetime.now(timezone.utc)}}
@@ -938,6 +935,97 @@ async def enrich_regions(post_id: str):
         "labeled": result["labeled"],
         "skipped_cached": result["skipped"],
     }
+
+
+# ── VISION-BUILD-001 B4 · interactive exact-mask refinement ──────────────────
+class RefineRequest(BaseModel):
+    points: Optional[List[List[float]]] = None   # normalized [ [x,y], ... ]
+    labels: Optional[List[int]] = None           # 1 = positive, 0 = negative
+    box: Optional[List[float]] = None            # normalized [x0,y0,x1,y1]
+    base_id: Optional[str] = None                # refine an existing region in place
+    base_geometry_rev: int = 0
+
+
+async def _fetch_post_image(post: dict) -> bytes:
+    photo_url = post.get("photo_url")
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        resp = await client.get(photo_url, headers=_image_fetch_headers(photo_url))
+        resp.raise_for_status()
+        return resp.content
+
+
+# Small last-image cache so warm refine clicks skip the Cloudinary re-fetch — the network
+# round-trip, not SAM2, was the interactive-latency bottleneck. Keyed by post id, holds one.
+_refine_image_cache: dict = {}
+
+
+async def _fetch_post_image_cached(post_id: str, post: dict) -> bytes:
+    cached = _refine_image_cache.get(post_id)
+    if cached is not None:
+        return cached
+    data = await _fetch_post_image(post)
+    _refine_image_cache.clear()           # keep only the active image
+    _refine_image_cache[post_id] = data
+    return data
+
+
+async def _propose_refined_region(post_id: str, req: "RefineRequest"):
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    if not refine_session.available():
+        raise HTTPException(status_code=503, detail="Mask refiner (SAM2) unavailable on this server")
+    if not (req.points or req.box):
+        raise HTTPException(status_code=422, detail="A point or box prompt is required")
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    prompt = {"points": req.points, "labels": req.labels, "box": req.box}
+    region = await refine_session.preview(img_bytes, prompt, req.base_id, req.base_geometry_rev)
+    return obj_id, post, region
+
+
+@router.post("/{post_id}/refine-region/preview")
+async def refine_region_preview(post_id: str, req: RefineRequest):
+    """Propose an exact mask from a point/box prompt WITHOUT persisting. The returned
+    region carries the next geometry_rev and `proposed: true`; nothing is saved."""
+    _obj_id, _post, region = await _propose_refined_region(post_id, req)
+    return {"region": region, "available": True}
+
+
+@router.post("/{post_id}/refine-region/confirm")
+async def refine_region_confirm(post_id: str, req: RefineRequest):
+    """Confirm the refinement: recompute (image embedding is cached → fast) and persist.
+    Non-destructive — upgrades the base region's identity in place (or appends a new one),
+    preserves curator fields, and never touches other regions, Grounds, Percepts or
+    Mentions. The saved region is authoritative (`proposed: false`)."""
+    obj_id, post, region = await _propose_refined_region(post_id, req)
+    region["proposed"] = False                                   # confirmed → authoritative
+    regions = list(post.get("region_annotations") or [])
+    idx = next((i for i, r in enumerate(regions) if r.get("id") == region["id"]), None)
+    if idx is not None:
+        prev = regions[idx]
+        for k in ("prioritised", "weight", "user_note"):         # keep curator meaning
+            region[k] = prev.get(k, region.get(k))
+        region["depth"] = prev.get("depth", region.get("depth", 0))
+        region["parent_id"] = prev.get("parent_id")
+        regions[idx] = region                                    # upgrade in place
+    else:
+        regions.append(region)
+    await post_collection.update_one(
+        {"_id": obj_id}, {"$set": {"region_annotations": regions,
+                                   "updated_at": datetime.now(timezone.utc)}})
+    updated = await post_collection.find_one({"_id": obj_id})
+    return {"post": post_helper(updated), "region": region}
+
+
+@router.post("/refine-region/unload")
+async def refine_region_unload():
+    """Release the SAM2 predictor (frees VRAM/RAM). Idempotent."""
+    await refine_session.unload()
+    return {"unloaded": True}
 
 # More general route comes after
 @router.get("/", response_model=PaginatedPosts)
