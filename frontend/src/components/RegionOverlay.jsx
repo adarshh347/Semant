@@ -15,21 +15,27 @@ import React from 'react';
  * the stage instead, which drifts by ~129px on a contain-fitted stage.
  */
 
-const shapeClassFor = (r, { viewMap, selectedId, activeId, focusId }) => {
+const shapeClassFor = (r, { viewMap, selectedId, activeId, focusId, litIds }) => {
     const cls = ['rs-shape', `rs-shape--${viewMap}`];
     if (r.actor === 'creator') cls.push('rs-shape--creator');
     if (r.prioritised) cls.push('is-pri');
     if (selectedId === r.id) cls.push('is-sel');
     if (activeId === r.id) cls.push('is-active');
-    // Attention narrows: when a region is focused (row/chip hover, selection),
-    // the unrelated ones recede in every map — not only in the 'focus' map.
-    if (focusId && focusId !== r.id) cls.push('is-dim');
-    if (focusId === r.id) cls.push('is-lit');
+    // A multi-select set (Differential region-pick) lights several at once and
+    // dims the rest; otherwise the single focusId drives the narrowing.
+    if (litIds) {
+        if (litIds.has(r.id)) cls.push('is-lit'); else cls.push('is-dim');
+    } else {
+        // Attention narrows: when a region is focused (row/chip hover, selection),
+        // the unrelated ones recede in every map — not only in the 'focus' map.
+        if (focusId && focusId !== r.id) cls.push('is-dim');
+        if (focusId === r.id) cls.push('is-lit');
+    }
     return cls.join(' ');
 };
 
 export default function RegionOverlay({
-    natural, regions, viewMap, selectedId, activeId, focusId,
+    natural, regions, viewMap, selectedId, activeId, focusId, litIds = null,
     onSelect, onActivate, draft = null, className = 'rs-svg',
 }) {
     if (!natural) return null;
@@ -43,9 +49,10 @@ export default function RegionOverlay({
         >
             {regions.map(r => {
                 const common = {
-                    className: shapeClassFor(r, { viewMap, selectedId, activeId, focusId }),
+                    className: shapeClassFor(r, { viewMap, selectedId, activeId, focusId, litIds }),
                     vectorEffect: 'non-scaling-stroke',
-                    onClick: (e) => { e.stopPropagation(); onSelect?.(r.id); },
+                    // The event rides along so a caller can read shiftKey for multi-select.
+                    onClick: (e) => { e.stopPropagation(); onSelect?.(r.id, e); },
                     onMouseEnter: () => onActivate?.(r.id),
                     onMouseLeave: () => onActivate?.(null),
                 };

@@ -103,12 +103,19 @@ class Post(BaseModel):
     region_annotations: Optional[List[Region]] = None  # unified regions: auto segments + curator/audience marks
     domain: Optional[dict] = None  # FashionCLIP domain router first-cut {label, score, is_fashion} (Track B/C)
     aletheia_cache: Optional[dict] = None  # cached feed-hook reading, computed once per image (Track C §5)
+    # Differential v1 — Grounds (visual evidence) + expression Percepts. Deliberately
+    # OUTSIDE region_annotations: detect-regions wholesale-replaces that array, and the
+    # region machinery (persona rollup, embeddings, catalog) iterates it.
+    grounds: Optional[List[dict]] = None
+    percepts: Optional[List[dict]] = None
 
 class PostUpdate(BaseModel):
     # bounding_box_tags removed (Track A): the manual pixel-rect write path is retired.
     text_blocks: Optional[List[TextBlock]] = None
     general_tags: Optional[List[str]] = None
     highlights: Optional[List[Highlight]] = None  # NEW: Can update highlights
+    grounds: Optional[List[dict]] = None   # Differential v1
+    percepts: Optional[List[dict]] = None  # Differential v1
 
 class PaginatedPosts(BaseModel):
     posts: List[Post]

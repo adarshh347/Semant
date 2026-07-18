@@ -84,6 +84,8 @@ def post_helper(post) -> dict:
         "region_annotations": post.get("region_annotations"),
         "domain": post.get("domain"),
         "aletheia_cache": post.get("aletheia_cache"),
+        "grounds": post.get("grounds"),
+        "percepts": post.get("percepts"),
     }
 
 

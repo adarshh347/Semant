@@ -61,6 +61,15 @@
     position: relative;
     overflow: hidden;
     display: grid;
+    /* Make the single cell definite in BOTH axes. Without this the implicit grid
+       row is `auto` (content-sized), so the canvas's `height: 100%` has no definite
+       containing block to resolve against and collapses to auto — the canvas then
+       takes its intrinsic height (stage width × the image's aspect), e.g. 1536 ×
+       680/453 ≈ 2306px for a portrait. That overflows the 596px stage, `overflow`
+       clips it to a middle slice, and `object-fit: contain` never engages. A
+       `minmax(0, 1fr)` track is definite, so `height: 100%` resolves to the stage
+       and the image finally fits. */
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     place-items: center;
     min-height: 0;
     touch-action: none;      /* we own the gestures */
