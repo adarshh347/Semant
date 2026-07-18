@@ -13,7 +13,9 @@ through the orchestrator. This module import stays torch-free.
 """
 from __future__ import annotations
 
+import os
 import time
+import uuid
 from typing import Any, Dict, List, Optional, Sequence
 
 from backend.services import mask_geometry
@@ -170,3 +172,125 @@ class YoloSegmenterAdapter:
                           latency_ms=latency)
         return JobResult(JobStatus.SUCCEEDED,
                          artifact=VisionArtifact("segment", regions, prov), provenance=prov)
+
+
+# ── B3: exact-mask refiner (SAM 2.1 Hiera Tiny) ──────────────────────────────
+_SAM2_CFG = "configs/sam2.1/sam2.1_hiera_t.yaml"
+_SAM2_CKPT = os.path.join(os.getcwd(), "models", "sam2.1_hiera_tiny.pt")
+
+
+def refined_mask_to_region(mask2d, *, base_id: Optional[str] = None,
+                           base_geometry_rev: int = 0, score: Optional[float] = None,
+                           prompt: str = "point", device: str = "cuda",
+                           model_id: str = "sam2.1_hiera_tiny",
+                           checkpoint: Optional[str] = None) -> Dict[str, Any]:
+    """A refiner's 0/1 mask → a PROPOSED region revision. Non-destructive: it carries the
+    NEXT geometry_rev and `proposed=True`; the base evidence is not overwritten until the
+    curator confirms (B4). When `base_id` is given the same Region identity is upgraded."""
+    region: Dict[str, Any] = {
+        "id": base_id or f"refine_{uuid.uuid4().hex[:10]}",
+        "actor": "creator",                       # a refinement is user-directed
+        "detector": "sam2",
+        "mask_rle": mask_geometry.rle_encode_mask(mask2d),
+        "confidence": round(float(score), 3) if score is not None else None,
+        "refined_from": base_id,
+        "proposed": True,
+        "geometry_rev": int(base_geometry_rev),   # canonicalize bumps to +1
+    }
+    mask_geometry.canonicalize_geometry(region, provenance={
+        "adapter": "sam21_hiera_tiny", "model": model_id, "checkpoint": checkpoint,
+        "device": device, "method": "sam2-refine", "prompt": prompt,
+    })
+    return region
+
+
+class Sam2RefinerAdapter:
+    """The `MaskRefiner` — SAM 2.1 Hiera Tiny, point/box/existing-mask prompts, on the GPU
+    pool. Benchmarked local-viable on this box (peak ~597 MiB VRAM, warm prompts 11–166 ms,
+    clean unload). Returns a PROPOSED region revision; never overwrites saved evidence."""
+
+    def __init__(self, *, config: str = _SAM2_CFG, checkpoint: str = _SAM2_CKPT,
+                 device: int = 0) -> None:
+        self.config = config
+        self.checkpoint = checkpoint
+        self.device = device
+        self._predictor = None
+        self.spec = AdapterSpec(
+            name="sam21_hiera_tiny", capability=Capability.MASK_REFINE,
+            resource=ResourceKind.GPU, model_id="sam2.1_hiera_tiny", checkpoint=checkpoint,
+            preprocessing_version="sam2.1", available=self._deps_ok(),
+            deferred=not self._deps_ok())
+
+    def _deps_ok(self) -> bool:
+        try:
+            import sam2  # noqa: F401
+            import torch  # noqa: F401
+            return os.path.exists(self.checkpoint)
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        if self._predictor is not None:
+            return 0.0
+        t0 = time.perf_counter()
+        import torch
+        from sam2.build_sam import build_sam2
+        from sam2.sam2_image_predictor import SAM2ImagePredictor
+        dev = f"cuda:{self.device}" if torch.cuda.is_available() else "cpu"
+        model = build_sam2(self.config, self.checkpoint, device=dev)
+        self._predictor = SAM2ImagePredictor(model)
+        return (time.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._predictor = None
+        try:
+            import torch, gc
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import numpy as np
+        if self._predictor is None:
+            await self.load()
+        image = payload.get("image")               # HxWx3 RGB ndarray (or PIL)
+        if image is None:
+            path = payload.get("path")
+            from PIL import Image
+            image = np.array(Image.open(path).convert("RGB"))
+        image = np.asarray(image)
+        prompt = payload.get("prompt") or {}
+        base_id = payload.get("base_id")
+        base_rev = int(payload.get("base_geometry_rev", 0))
+
+        t0 = time.perf_counter()
+        self._predictor.set_image(image)
+        kwargs: Dict[str, Any] = {"multimask_output": bool(prompt.get("multimask", True))}
+        kind = "point"
+        if prompt.get("points"):
+            kwargs["point_coords"] = np.asarray(prompt["points"], dtype=float)
+            kwargs["point_labels"] = np.asarray(prompt.get("labels", [1] * len(prompt["points"])))
+        if prompt.get("box") is not None:
+            kwargs["box"] = np.asarray(prompt["box"], dtype=float); kind = "box"
+        if prompt.get("mask_input") is not None:
+            kwargs["mask_input"] = np.asarray(prompt["mask_input"]); kind = "existing-mask"
+        masks, scores, _ = self._predictor.predict(**kwargs)
+        latency = (time.perf_counter() - t0) * 1000.0
+        best = int(np.argmax(scores))
+        region = refined_mask_to_region(
+            (masks[best] > 0).astype("uint8"), base_id=base_id, base_geometry_rev=base_rev,
+            score=float(scores[best]), prompt=kind, checkpoint=self.checkpoint)
+        prov = Provenance(adapter=self.spec.name, model="sam2.1_hiera_tiny",
+                          checkpoint=self.checkpoint, device=str(self.device),
+                          preprocessing_version="sam2.1", latency_ms=latency,
+                          confidence=round(float(scores[best]), 3),
+                          geometry_rev=region["geometry_rev"])
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("mask_refine", region, prov), provenance=prov)

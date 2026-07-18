@@ -32,6 +32,13 @@ numpy
 ultralytics
 opencv-python-headless
 
+# Exact-mask refiner (VISION-BUILD-001 B3): SAM 2.1 Hiera Tiny — benchmarked local-viable
+# on the GTX 1650 (peak ~597 MiB VRAM, warm prompts 11-166 ms, clean unload).
+# The CHECKPOINT is NOT vendored (147 MB, gitignored under models/). Download once:
+#   mkdir -p models && curl -L -o models/sam2.1_hiera_tiny.pt \
+#     https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt
+sam2==1.1.0
+
 # Phase 2b+ (gated — not installed): the real Fashionpedia stack (Attribute-Mask-RCNN /
-# Fashionformer) for the 19 fine apparel parts + 294 attributes, and SAM2. Both want a
-# GPU — they wait for the M4 or a serverless endpoint, per B1/B2.
+# Fashionformer) for the 19 fine apparel parts + 294 attributes. Wants a bigger GPU —
+# waits for the M4 or a serverless endpoint, per B1/B2 and VISION-MODEL-MATRIX-001.
