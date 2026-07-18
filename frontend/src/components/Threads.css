@@ -1,0 +1,80 @@
+/* Threads — an L5 inline filter rail: no box, no fill, no shadow. The row is
+   held by whitespace and a single hairline under it; only the active thread
+   earns ink. */
+.threads {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-5);
+  padding: 0 0 var(--space-4);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-6);
+  min-width: 0;
+}
+
+.threads-label {
+  flex: none;
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+
+/* One quiet row; it scrolls rather than growing into a slab. */
+.threads-rail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  min-width: 0;
+}
+.threads-rail::-webkit-scrollbar { display: none; }
+
+.thread {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.18s var(--ease);
+}
+.thread:hover {
+  color: var(--ink);
+  background: none;
+  border: none;
+  box-shadow: none;
+  transform: none;
+}
+.thread:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+/* The active thread is the one accent: ink weight + a plum region-mark tick. */
+.thread.is-active {
+  color: var(--ink);
+  font-weight: 600;
+  position: relative;
+}
+.thread.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.42rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+@media (max-width: 620px) {
+  .threads { flex-direction: column; align-items: stretch; gap: var(--space-2); }
+}
