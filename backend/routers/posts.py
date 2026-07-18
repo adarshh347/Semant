@@ -15,6 +15,7 @@ from backend.services import segmentation_service
 from backend.services import fashion_segmentation_service
 from backend.services import region_embedding_service
 from backend.services import region_geometry
+from backend.services import mask_geometry
 from backend.services import anuranana_service
 from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
 from datetime import datetime, timezone
@@ -789,6 +790,12 @@ async def save_region_annotations(post_id: str, request: RegionAnnotationsReques
 
     # request.regions is validated against the unified Region model; persist as dicts.
     regions_data = [r.model_dump() for r in request.regions]
+    # Canonicalise geometry (VISION-BUILD-001 Increment A): a region carrying a mask_rle
+    # gets its polygons/legacy-polygon/box re-derived from that authoritative mask; a
+    # box-only/legacy region is retained untouched (only stamped with lineage). Pure,
+    # model-free — no detector runs here.
+    for _r in regions_data:
+        mask_geometry.canonicalize_geometry(_r, provenance={"via": "save-region-annotations"})
     await post_collection.update_one(
         {"_id": obj_id}, {"$set": {"region_annotations": regions_data,
                                    "updated_at": datetime.now(timezone.utc)}}

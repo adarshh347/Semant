@@ -1,4 +1,5 @@
 import React from 'react';
+import { hasMaskPolygons, ringsToPath } from '../lib/maskGeometry';
 
 /**
  * The region overlay (Darshan Track D) — the one place shapes are drawn.
@@ -56,8 +57,14 @@ export default function RegionOverlay({
                     onMouseEnter: () => onActivate?.(r.id),
                     onMouseLeave: () => onActivate?.(null),
                 };
-                // Polygons by default — the true segment outline. A rect only where the
-                // detector gave us no polygon (a creator's freehand mark, or legacy data).
+                // Canonical mask (multi-ring: outer + holes, all components) → one
+                // evenodd <path>. This is the exact segment identity when present.
+                if (hasMaskPolygons(r)) {
+                    return <path key={r.id} {...common} fillRule="evenodd"
+                        d={ringsToPath(r.polygons, natural.w, natural.h)} />;
+                }
+                // Legacy single-ring polygon — the true segment outline for older data.
+                // A rect only where there is no polygon (freehand draft, or box-only data).
                 if (Array.isArray(r.polygon) && r.polygon.length > 2) {
                     const pts = r.polygon
                         .map(([x, y]) => `${x * natural.w},${y * natural.h}`).join(' ');

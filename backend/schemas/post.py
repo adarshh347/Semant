@@ -40,8 +40,16 @@ class Region(BaseModel):
     # actually produced the region — precedence and dedup depend on telling them apart.
     detector: Optional[str] = None
     # geometry (normalized 0..1, top-left origin) — unifies manual + auto, survives resize.
-    box: RegionBox
-    polygon: Optional[List[List[float]]] = None      # normalized, seg only
+    # When `mask_rle` is present it is the AUTHORITATIVE identity; `box`, `polygons` and
+    # the legacy `polygon` are DERIVED from it by mask_geometry. Box-only/legacy regions
+    # (no mask_rle) keep `box` (+ optional single `polygon`) as their own geometry.
+    box: RegionBox                                   # derived bbox when mask_rle present
+    polygon: Optional[List[List[float]]] = None      # legacy single ring (largest), normalized
+    # ── canonical mask evidence (VISION-BUILD-001 Increment A) ──────────────────
+    mask_rle: Optional[Dict] = None                  # COCO uncompressed RLE {"size":[h,w],"counts":[...]}
+    polygons: Optional[List[List[List[float]]]] = None  # derived rings (outer + holes), normalized
+    geometry_rev: int = 0                            # bumps on every mask-identity (re)derivation
+    geometry_provenance: Optional[Dict] = None       # {kind, method, size, ...} lineage
     confidence: Optional[float] = None               # auto only
     # semantics (catalog-critical keys kept verbatim).
     label: str = ""                                  # catalog key
