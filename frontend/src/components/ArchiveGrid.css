@@ -1,6 +1,43 @@
 /* The Archive grid — plum v1.3. react-photo-album owns layout geometry; we only
    style the image tiles and the blur-up. */
 
+/* ---- Sequences ---------------------------------------------------------- */
+/* Each sequence is its own containment scope: the browser skips layout + paint
+   for the ones you can't see. This is what replaces react-photo-album's
+   InfiniteScroll virtualization now that we own the paging. The intrinsic size
+   is a rough stand-in for a skipped sequence so the scrollbar stays sane. */
+.arch-seq {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 420px;
+}
+.arch-seq + .arch-seq { margin-top: var(--space-8); }
+
+/* The divider — L5: no box. A plum region-mark, a quiet label, a hairline. */
+.arch-seq-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.arch-seq-mark { color: var(--accent); font-size: 0.7rem; line-height: 1; }
+.arch-seq-label {
+  flex: none;
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+.arch-seq-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.arch-sentinel { height: 1px; }
+
 .arch-img {
   display: block;
   width: 100%;
