@@ -14,6 +14,7 @@ from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
 from backend.services import fashion_segmentation_service
 from backend.services import region_embedding_service
+from backend.services import region_geometry
 from backend.services import anuranana_service
 from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
 from datetime import datetime, timezone
@@ -543,42 +544,21 @@ async def aletheia_read(post_id: str, request: AletheiaReadRequest):
     return {"aletheia": reading, "depth": depth, "cached": False}
 
 
+# Region geometry is one canonical contract (REGION-GEOMETRY-001): normalized
+# [0,1] boxes, parenting decided by GEOMETRY not label. Parenting a fine part into
+# an anchor it doesn't actually sit inside is what relocated Solanki/Amaravati/
+# Gandhara parts onto the single detected figure and crushed off-anchor parts to
+# slivers — so both helpers now defer to region_geometry.
 def _clip_box_to_parent(box: dict, parent: dict) -> dict:
-    """Pull a fine sub-box inside its parent anchor's box so it can't float off the
-    object it belongs to (the vision model's boxes are estimates)."""
-    px, py = parent.get("x", 0.0), parent.get("y", 0.0)
-    pw, ph = parent.get("w", 1.0), parent.get("h", 1.0)
-    # pad the parent a touch so tight collars/cuffs at the edge aren't crushed
-    pad = 0.04
-    x0, y0 = max(0.0, px - pad), max(0.0, py - pad)
-    x1, y1 = min(1.0, px + pw + pad), min(1.0, py + ph + pad)
-    bx = min(max(box["x"], x0), x1)
-    by = min(max(box["y"], y0), y1)
-    bw = min(box["w"], x1 - bx)
-    bh = min(box["h"], y1 - by)
-    return {"x": round(bx, 4), "y": round(by, 4),
-            "w": round(max(bw, 0.01), 4), "h": round(max(bh, 0.01), 4)}
+    return region_geometry.clip_box_to_parent(box, parent)
 
 
 def _match_parent(fine: dict, anchors: list) -> Optional[dict]:
-    """Link a fine part to a coarse anchor: prefer label match, else the anchor whose
-    box most contains the fine part's centre."""
-    plabel = (fine.get("parent_label") or "").lower()
-    if plabel:
-        for a in anchors:
-            if plabel in (a.get("label") or "").lower() or (a.get("label") or "").lower() in plabel:
-                return a
-    cx = fine["box"]["x"] + fine["box"]["w"] / 2
-    cy = fine["box"]["y"] + fine["box"]["h"] / 2
-    best, best_area = None, 1e9
-    for a in anchors:
-        b = a.get("box") or {}
-        if b.get("x", 0) <= cx <= b.get("x", 0) + b.get("w", 0) and \
-           b.get("y", 0) <= cy <= b.get("y", 0) + b.get("h", 0):
-            area = b.get("w", 1) * b.get("h", 1)
-            if area < best_area:  # smallest containing anchor wins
-                best, best_area = a, area
-    return best
+    """The coarse anchor a fine part genuinely belongs to (≥ half inside), or None.
+    None means the part is a top-level fine region living in the full image frame —
+    the correct outcome when the coarse stage under-segmented the scene."""
+    return region_geometry.match_parent(
+        fine.get("box") or {}, anchors, parent_label=fine.get("parent_label") or "")
 
 
 async def _resolve_is_fashion(post: dict, obj_id, img_bytes: bytes) -> bool:
