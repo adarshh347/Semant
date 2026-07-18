@@ -61,7 +61,54 @@
   color: var(--ink);
 }
 
-/* ── Field → Manuscript highlight (store-driven, Phase 4a-ii) ─────────────── */
+/* ── Slash / @ suggestion menu (portaled to <body>) ──────────────────────────
+   The menu is portaled out of `.manuscript .bn-container` (to escape the pane's
+   overflow:hidden and get correct fixed-strategy positioning), so it no longer
+   inherits the scoped BlockNote remap above. Re-theme it here at the GLOBAL
+   scope — our tokens are already themable at :root/[data-theme], so light/dark
+   follow automatically — and give it the restrained plum surface. */
+.bn-suggestion-menu {
+  --bn-colors-menu-text: var(--ink);
+  --bn-colors-menu-background: var(--surface);
+  --bn-colors-hovered-text: var(--ink);
+  --bn-colors-hovered-background: var(--surface-hover);
+  --bn-colors-selected-text: var(--accent-ink);
+  --bn-colors-selected-background: var(--accent);
+  --bn-colors-disabled-text: var(--ink-subtle);
+  --bn-colors-shadow: var(--line-strong);
+  --bn-font-family: var(--font-sans);
+  --bn-border-radius: var(--radius-md);
+
+  /* Translucent surface kept high-opacity so contrast stays strong (per spec). */
+  background: color-mix(in srgb, var(--surface) 92%, transparent) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 34px rgba(23, 18, 26, 0.18);
+  padding: 4px !important;
+  max-height: min(60vh, 380px);
+  overflow-y: auto;
+  z-index: 2147483000; /* above the fixed navbar; it lives on <body> */
+}
+
+/* Group labels: quiet, uppercase, tracked — the "grouped commands" read. */
+.bn-suggestion-menu [class*='label'] {
+  font-size: 0.62rem !important;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-subtle) !important;
+  padding: 8px 10px 4px !important;
+}
+
+/* Rows: compact, short hover movement, clear focus ring. */
+.bn-suggestion-menu [class*='item'] {
+  border-radius: var(--radius-sm) !important;
+  transition: background 0.12s ease, color 0.12s ease !important;
+}
+
+/* Field → Manuscript highlight (store-driven, Phase 4a-ii) ─────────────── */
 /* The chip whose region is focused in the Field lifts in plum; others stay quiet.
    Driven by RegionRefChip reading the store via context (React owns the class). */
 .manuscript .ref-chip.is-focus {
