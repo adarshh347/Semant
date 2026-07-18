@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import RegionOverlay from './RegionOverlay';
 import './RegionLightbox.css';
@@ -170,7 +171,15 @@ export default function RegionLightbox({
         try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch { /* never captured */ }
     };
 
-    return (
+    // Portal to <body>. `.rl` is `position: fixed; inset: 0`, but it mounts inside
+    // `.rs-root`, which sets `container-type: inline-size` — that applies `layout`
+    // containment, which makes `.rs-root` the containing block for fixed-positioned
+    // descendants. Left inline, `inset: 0` resolves against the Field pane (offset from
+    // and often taller than the viewport), so the "full-screen" stage is not the screen:
+    // a portrait image contains into an over-tall stage and only its middle slice sits in
+    // view, with body-scroll locked and pan gated off at fit — the reported crop. Escaping
+    // to <body> removes every containment ancestor, so fixed means the viewport again.
+    return createPortal(
         <div className="rl" role="dialog" aria-modal="true" aria-label="Full-screen image with regions"
             ref={dialogRef} tabIndex={-1}
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -258,6 +267,7 @@ export default function RegionLightbox({
                     </p>
                 )}
             </footer>
-        </div>
+        </div>,
+        document.body,
     );
 }

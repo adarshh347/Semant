@@ -7,6 +7,7 @@ import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import axios from 'axios';
 import { ArrowLeft, Sparkles, Plus, X, ChevronRight, ChevronLeft, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, MoreHorizontal } from 'lucide-react';
 import RegionSurface from './RegionSurface';
+import DifferentialWorkspace from '../differential/DifferentialWorkspace';
 import Manuscript from './blocknote/Manuscript';
 import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
@@ -52,6 +53,11 @@ function PostDetailPage() {
   // 'regions' by default: the unified pane IS the working surface; 'image' hides the
   // overlay for a clean look at the photograph.
   const [activeLeftTab, setActiveLeftTab] = useState('regions');
+  // Differential (v1) is a full-workspace MODE, not a route: unsaved Manuscript
+  // content lives in this component's state (editedBlocks), and a route change
+  // would unmount and silently lose it. The Chiasm shell stays mounted (hidden
+  // via CSS) while Differential is open, so enter/leave loses nothing.
+  const [workspaceMode, setWorkspaceMode] = useState('chiasm'); // 'chiasm' | 'differential'
   const [activeRightTab, setActiveRightTab] = useState('content');
   const [isChatOpen, setIsChatOpen] = useState(false); // AI Sidebar toggle
   const [clickedNode, setClickedNode] = useState(null); // For node expansion in chatbot
@@ -98,10 +104,26 @@ function PostDetailPage() {
     let pending = null;
     const flush = () => { raf = null; storeRef.current.setHoveredId(pending); };
     const onHover = (e) => {
+      // A percept chip's ids are GROUND ids — hovering lights the evidence
+      // channel, not the region channel. Regular chips behave as before.
+      if (e.detail?.perceptId?.startsWith?.('pctx_')) {
+        storeRef.current.setHoveredGroundId((e.detail.regionIds || [])[0] || null);
+        return;
+      }
+      storeRef.current.setHoveredGroundId?.(null);
       pending = (e.detail?.regionIds || [])[0] || null;
       if (raf == null) raf = requestAnimationFrame(flush);
     };
     const onFocus = (e) => {
+      // Mention focus → recall: a percept-Mention replays the noticing on the
+      // image instead of selecting a region. The pane must be visible for the
+      // performance, so expand a collapsed Field first.
+      if (e.detail?.perceptId?.startsWith?.('pctx_')) {
+        setActiveLeftTab('regions');
+        if (fieldPanelRef.current?.isCollapsed()) fieldPanelRef.current.expand();
+        storeRef.current.playRecall(e.detail.perceptId);
+        return;
+      }
       const ids = e.detail?.regionIds || [];
       if (ids.length) storeRef.current.focusRegions(ids);
     };
@@ -658,6 +680,23 @@ function PostDetailPage() {
       return;
     }
 
+    if (kind === 'percept') {
+      // A percept-Mention: the chip carries the pctx id (recall trigger) and the
+      // GROUND ids in regionIds (the chip machinery is id-agnostic). Focus/click
+      // routes to playRecall via the perceptId, never to region selection.
+      const label = (raw.expression || 'percept').length > 46
+        ? `${raw.expression.slice(0, 43)}…` : (raw.expression || 'percept');
+      const mention = regionStore.addMention({
+        perceptId: raw.id, regionId: null, blockId, inlineContentId,
+        form: 'inline', relationType: 'cites', actor: 'human',
+      });
+      handle.insertRegionChip({
+        refKind: 'percept', regionIds: (raw.ground_ids || []).join(','), label,
+        perceptId: raw.id, mentionId: mention?.id || '', blockId,
+      });
+      return;
+    }
+
     // /part — inserting a reference IS attention: ensure the Percept, write the Mention.
     const percept = regionStore.ensurePercept(raw);
     const mention = regionStore.addMention({
@@ -732,6 +771,21 @@ function PostDetailPage() {
   chipClickRef.current = (e) => {
     const chip = e.target.closest?.('[data-region-ref]');
     if (!chip) return;
+
+    // A percept chip replays its noticing (recall), it does not select a region —
+    // its data-region-ids carry GROUND ids. Read view + editor alike land here.
+    const perceptId = chip.getAttribute('data-percept-id') || '';
+    if (perceptId.startsWith('pctx_')) {
+      setActiveLeftTab('regions');
+      if (fieldPanelRef.current?.isCollapsed()) fieldPanelRef.current.expand();
+      regionStore.playRecall(perceptId);
+      setTimeout(() => {
+        document.querySelector('.post-detail-left .rs-stage')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      }, 60);
+      return;
+    }
+
     const ids = (chip.getAttribute('data-region-ids') || '').split(',').filter(Boolean);
     if (!ids.length) return;
 
@@ -782,6 +836,15 @@ function PostDetailPage() {
     runAiGenerate('write', '', instruction);
   };
 
+  // Esc puts a playing recall down and restores calm (matches Differential).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape' && storeRef.current?.recall) storeRef.current.clearRecall();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   // --- Keyboard save (Cmd/Ctrl+S) + unsaved-changes guard ---
   useEffect(() => {
     const onKey = (e) => {
@@ -821,7 +884,15 @@ function PostDetailPage() {
 
   return (
     <RegionStoreContext.Provider value={regionStore}>
-    <div className={`post-detail-page${isEditing ? ' editing-mode' : ''}`}>
+    <div className={`post-detail-page${isEditing ? ' editing-mode' : ''}${workspaceMode === 'differential' ? ' differential-open' : ''}`}>
+      {/* Differential — swaps in over the parked (still-mounted) Chiasm shell. */}
+      {workspaceMode === 'differential' && (
+        <DifferentialWorkspace
+          post={post}
+          store={regionStore}
+          onExit={() => setWorkspaceMode('chiasm')}
+        />
+      )}
       {/* Underline Tooltip */}
       {showUnderlineTooltip && (
         <div
@@ -871,6 +942,8 @@ function PostDetailPage() {
           y={refPicker.y}
           regions={regionStore.regions}
           lenses={regionStore.aletheia?.lenses || []}
+          percepts={(regionStore.percepts || []).filter((p) => String(p.id || '').startsWith('pctx_'))}
+          grounds={regionStore.grounds || []}
           onPick={insertRef}
           onClose={closeRefPicker}
         />
@@ -965,7 +1038,18 @@ function PostDetailPage() {
               </button>
             </div>
             {/* Right-aligned per-pane actions slot (kept for Lane 3 verbs). */}
-            <div className="panel-actions" />
+            <div className="panel-actions">
+              {/* The one quiet entry into the Differential workspace — Chiasm's
+                  resting state stays calm; no permanent tool rail here. */}
+              <button
+                type="button"
+                className="panel-diff-btn"
+                title="Open Differential — construct Percepts from this image"
+                onClick={() => setWorkspaceMode('differential')}
+              >
+                ◈ Differential
+              </button>
+            </div>
           </div>
 
           <div className="image-display">
