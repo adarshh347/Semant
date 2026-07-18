@@ -250,6 +250,15 @@ const Manuscript = forwardRef(function Manuscript(
       >
         <SuggestionMenuController
           triggerCharacter="/"
+          // Positioning contract: portal to <body> and use floating-ui's `fixed`
+          // strategy so the menu anchors to the caret's VIEWPORT rect directly.
+          // BlockNote's default portals the menu inside `.bn-container` and positions
+          // with `strategy: 'absolute'`; the viewport→offsetParent conversion breaks
+          // vertically (offsetParent left≈0 keeps X correct, but its top≈editor-top so
+          // the caret's Y is lost) and the menu pins under the navbar. `fixed` needs no
+          // conversion, and <body> keeps it clear of any containing-block trap.
+          floatingUIOptions={{ useFloatingOptions: { strategy: 'fixed' } }}
+          portalElement={document.body}
           getItems={async (query) => {
             const structure = getDefaultReactSlashMenuItems(editor);
             const refs = refSlashItems(onRefTrigger);
@@ -265,6 +274,8 @@ const Manuscript = forwardRef(function Manuscript(
         {/* @ — the light inline-mention path (same Mention machinery as /part-inline). */}
         <SuggestionMenuController
           triggerCharacter="@"
+          floatingUIOptions={{ useFloatingOptions: { strategy: 'fixed' } }}
+          portalElement={document.body}
           getItems={async (query) => filterSuggestionItems(atMentionItems(editor, store, icSeqRef), query)}
         />
       </BlockNoteView>
