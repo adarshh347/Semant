@@ -4,10 +4,40 @@
 
 /* ---- Mute: one class on <html> silences every surface ---- */
 html.ss-muted .sharirasutra-toolbar,
+html.ss-muted .ss-whisper,
 html.ss-muted .ss-tray,
 html.ss-muted .ss-queue-chip,
 html.ss-muted .ss-persona-fab { display: none !important; }
 html.ss-muted .sharirasutra-hover-highlight { outline: none !important; }
+
+/* ---- The whisper: one quiet glyph, the summonable presence of Alexia ---- */
+.ss-whisper {
+    position: absolute !important;
+    z-index: 2147483646 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: rgba(23, 18, 26, 0.92) !important;   /* ink, slightly translucent */
+    color: #FAF7F5 !important;
+    border: 1px solid rgba(250, 247, 245, 0.14) !important;
+    border-radius: 999px !important;
+    box-shadow: 0 4px 14px rgba(23, 18, 26, 0.35) !important;
+    backdrop-filter: blur(6px);
+    cursor: pointer !important;
+    opacity: 0;
+    transform: scale(0.82);
+    transition: opacity 0.16s ease, transform 0.16s ease, background 0.15s ease !important;
+    pointer-events: none;
+}
+.ss-whisper.visible { opacity: 1; transform: scale(1); pointer-events: auto; }
+.ss-whisper svg { width: 15px !important; height: 15px !important; opacity: 0.92; }
+.ss-whisper:hover { background: rgba(94, 43, 80, 0.96) !important; }   /* plum on intent */
+.ss-whisper:focus-visible { outline: 2px solid #C08BB4 !important; outline-offset: 1px !important; }
+.ss-whisper:active { transform: scale(0.94); }
 
 /* ---- Floating toolbar: ONE quiet ink bar, uniform buttons ---- */
 .sharirasutra-toolbar {
