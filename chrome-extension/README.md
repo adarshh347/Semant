@@ -29,15 +29,15 @@ A Chrome extension that lets you save images from any website to your Sharirasut
 
 ## Requirements
 
-- The Sharirasutra backend must be running (`uvicorn backend.main:app --reload --host 0.0.0.0 --port 5007`)
-- The extension connects to `localhost:5007`
+- The Sharirasutra backend must be running (`uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000`)
+- The extension connects to `localhost:8000` by default. If your backend runs on a different port, set it in the popup's **Backend URL** field (stored per-browser, no reload needed).
 
 ## Features
 
-- ✨ One-click image saving
-- 🖼️ Works on any website
-- 🔍 Only shows button on images larger than 100x100px
-- 📱 Instant feedback (Saving... → ✓ Saved!)
+- **One quiet hover toolbar** (Read · Save · Split · Save all) — a single ink bar, context-aware: Split appears on videos, Save all on carousels.
+- **The Collection tray** — ONE unified, minimizable queue for everything collected: single saves, carousel sweeps, and video splits, each tagged by origin. Review frames/slides (tap to deselect), then mass-save. The Aletheia reading panel is a separate surface, so a reading can never clobber the queue (and vice versa).
+- **Mute** — silence the whole overlay while just browsing: the popup toggle or **Alt+Shift+S** (persisted in `chrome.storage.sync`; in-flight captures keep running).
+- Only reacts to images larger than 100×100px; works on any website.
 
 ## Icon Generation
 
@@ -54,8 +54,9 @@ Or create simple colored squares as placeholders.
 
 ## Troubleshooting
 
-**"Backend not running" error:**
-- Make sure uvicorn is running on port 5007
+**"No backend at ..." error:**
+- Make sure uvicorn is running (default expected port: 8000)
+- Confirm the popup's **Backend URL** matches the port uvicorn is bound to
 - Check the terminal for any errors
 
 **Button doesn't appear:**

@@ -26,10 +26,7 @@
     .logo {
       font-size: 24px;
       font-weight: 700;
-      background: linear-gradient(135deg, #5b9ab9 0%, #7ab8d4 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #5E2B50; /* plum v1.3 */
     }
     
     .tagline {
@@ -151,14 +148,29 @@
       width: 100%;
       margin-top: 8px;
       padding: 9px;
-      background: linear-gradient(135deg, #5b9ab9 0%, #7ab8d4 100%);
-      color: white;
+      background: #17121A; /* ink pill — the design language's primary */
+      color: #FAF7F5;
       border: none;
-      border-radius: 8px;
+      border-radius: 999px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
     }
+
+    .mute-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding: 11px 13px;
+      background: #FFFFFF;
+      border: 1px solid #E7E0E4;
+      border-radius: 10px;
+    }
+    .mute-row .mute-label { font-size: 13px; font-weight: 600; color: #17121A; }
+    .mute-row .mute-hint { font-size: 10.5px; color: #6C6470; margin-top: 2px; }
+    .mute-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #5E2B50; cursor: pointer; }
 
     .key-status {
       margin-top: 8px;
@@ -190,6 +202,20 @@
     </div>
   </div>
   
+  <label class="mute-row" for="muteToggle">
+    <span>
+      <span class="mute-label">Mute the overlay</span>
+      <div class="mute-hint">No hover toolbar while just browsing · Alt+Shift+S</div>
+    </span>
+    <input id="muteToggle" type="checkbox" />
+  </label>
+
+  <div class="api-key">
+    <label for="backendUrlInput">Backend URL</label>
+    <input id="backendUrlInput" type="text" placeholder="http://localhost:8000" autocomplete="off" spellcheck="false" />
+    <button id="saveUrlBtn" type="button">Save URL</button>
+  </div>
+
   <div class="api-key">
     <label for="apiKeyInput">API key (optional)</label>
     <input id="apiKeyInput" type="password" placeholder="X-API-Key for the backend" autocomplete="off" />

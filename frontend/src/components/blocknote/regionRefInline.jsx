@@ -25,9 +25,17 @@ import { RegionStoreContext } from '../../state/regionStore';
  * CustomEvents so the chip stays decoupled from the store — PostDetailPage listens.
  */
 
-const emit = (name, regionIds) =>
+// `perceptId` rides along so a focused percept-Mention can trigger recall —
+// the listener (PostDetailPage) routes pctx_ ids to the recall player instead
+// of region focus. Back-compat: consumers that only read regionIds see no change.
+const emit = (name, regionIds, perceptId = '') =>
   window.dispatchEvent(
-    new CustomEvent(name, { detail: { regionIds: (regionIds || '').split(',').filter(Boolean) } }),
+    new CustomEvent(name, {
+      detail: {
+        regionIds: (regionIds || '').split(',').filter(Boolean),
+        perceptId: perceptId || null,
+      },
+    }),
   );
 
 // The full reference markup — one place, so render and toExternalHTML can't drift.
@@ -54,7 +62,9 @@ function chipAttrs({ refKind, regionIds, perceptId, mentionId, label }) {
 function RegionRefChip({ p }) {
   const store = useContext(RegionStoreContext);
   const ids = (p.regionIds || '').split(',').filter(Boolean);
-  const focused = !!store?.focusIds && ids.some((id) => store.focusIds.has(id));
+  const focused = (!!store?.focusIds && ids.some((id) => store.focusIds.has(id)))
+    // a percept chip is lit while its noticing is being replayed
+    || (!!p.perceptId && store?.recall?.perceptId === p.perceptId);
   const attrs = chipAttrs(p);
   return (
     <span
@@ -64,13 +74,13 @@ function RegionRefChip({ p }) {
       role="button"
       tabIndex={0}
       aria-label={`Region reference: ${p.label}`}
-      onMouseEnter={() => emit('semant:region-hover', p.regionIds)}
+      onMouseEnter={() => emit('semant:region-hover', p.regionIds, p.perceptId)}
       onMouseLeave={() => emit('semant:region-hover', '')}
       // a11y: keyboard focus illuminates the region the same as hover.
-      onFocus={() => emit('semant:region-hover', p.regionIds)}
+      onFocus={() => emit('semant:region-hover', p.regionIds, p.perceptId)}
       onBlur={() => emit('semant:region-hover', '')}
-      onClick={() => emit('semant:region-focus', p.regionIds)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emit('semant:region-focus', p.regionIds); } }}
+      onClick={() => emit('semant:region-focus', p.regionIds, p.perceptId)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emit('semant:region-focus', p.regionIds, p.perceptId); } }}
     >
       {p.label}
     </span>

@@ -8,11 +8,44 @@
 (function () {
     'use strict';
 
-    const SAVE_URL = 'http://localhost:5007/api/v1/posts/upload-from-url';
-    const BRAINSTORM_URL = 'http://localhost:5007/api/v1/posts/brainstorm';
-    const PERSONA_INGEST_URL = 'http://localhost:5007/api/v1/personas/ingest';
+    // Backend base URL. Defaults to the local dev backend (keep in sync with
+    // frontend/.env VITE_API_URL). Overridable at runtime from the popup, which
+    // stores 'backendUrl' in chrome.storage.sync — so the port can't silently
+    // drift again the way 5007 → 8000 did.
+    let API_BASE = 'http://localhost:8000';
+    let SAVE_URL = `${API_BASE}/api/v1/posts/upload-from-url`;
+    let BRAINSTORM_URL = `${API_BASE}/api/v1/posts/brainstorm`;
+    let PERSONA_INGEST_URL = `${API_BASE}/api/v1/personas/ingest`;
     const DASHBOARD_URL = 'http://localhost:5173/personas';
     const MIN_IMAGE_SIZE = 100;
+
+    // Presence ladder (UX-ALEXIA-PRESENCE-001): Alexia is summonable, not permanent
+    // furniture. Eligibility decides which images earn ANY presence; a single quiet
+    // glyph "whispers" only after an intentional dwell (not during pointer transit);
+    // the full Read/Save/Split/Save-all toolbar is summoned FROM the whisper (click)
+    // or by the shortcut. Absent → Whisper → Ready → (Pinned) → Hushed.
+    const MIN_RENDER = 128;           // rendered px on each side to earn a whisper
+    const MIN_RENDER_AREA = 128 * 128;
+    const LOOSE_RENDER = 200;         // outside a content container, demand more
+    const DWELL_MS = 420;             // intentional-hover threshold before the whisper
+    const WHISPER_GRACE_MS = 260;     // leaving grace so the glyph stays reachable
+
+    // Recompute the endpoint URLs whenever the configured base changes.
+    function applyBackendBase(base) {
+        if (!base) return;
+        API_BASE = String(base).replace(/\/+$/, '');
+        SAVE_URL = `${API_BASE}/api/v1/posts/upload-from-url`;
+        BRAINSTORM_URL = `${API_BASE}/api/v1/posts/brainstorm`;
+        PERSONA_INGEST_URL = `${API_BASE}/api/v1/personas/ingest`;
+    }
+
+    try {
+        chrome.storage.sync.get('backendUrl', ({ backendUrl }) => applyBackendBase(backendUrl));
+        // Keep in sync if the user changes it in the popup while a tab is open.
+        chrome.storage.onChanged?.addListener((changes, area) => {
+            if (area === 'sync' && changes.backendUrl) applyBackendBase(changes.backendUrl.newValue);
+        });
+    } catch (_) { /* storage unavailable — fall back to the default base */ }
 
     // Wraps fetch to attach the saved X-API-Key header (set in the popup) on
     // every request to the Sharirasutra backend. When no key is saved, requests
@@ -30,43 +63,36 @@
     }
 
     // ---- Floating toolbar (Save + Brainstorm) ----------------------------------
+    // One quiet hover toolbar — a single ink bar of uniform icon+label buttons.
+    // No coloured pills: every action shares one visual language, state is shown
+    // in the label (and a thin plum tick), never by swapping the button's fill.
     const toolbar = document.createElement('div');
     toolbar.className = 'sharirasutra-toolbar';
 
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'sharirasutra-btn sharirasutra-save-btn';
-    saveBtn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    function toolbarButton(name, label, svgPaths) {
+        const b = document.createElement('button');
+        b.className = `ss-tb-btn ss-tb-${name}`;
+        b.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${svgPaths}</svg>
+          <span>${label}</span>`;
+        return b;
+    }
+
+    const saveBtn = toolbarButton('save', 'Save', `
         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
         <polyline points="17 21 17 13 7 13 7 21"></polyline>
-        <polyline points="7 3 7 8 15 8"></polyline>
-      </svg><span>Save</span>`;
-
-    const brainstormBtn = document.createElement('button');
-    brainstormBtn.className = 'sharirasutra-btn sharirasutra-brainstorm-btn';
-    brainstormBtn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="7 3 7 8 15 8"></polyline>`);
+    const brainstormBtn = toolbarButton('brainstorm', 'Read', `
         <path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2z"></path>
-        <line x1="9" y1="22" x2="15" y2="22"></line>
-      </svg><span>Brainstorm</span>`;
-
-    // Video → frames button (Alexia), shown only when hovering a <video>
-    const splitBtn = document.createElement('button');
-    splitBtn.className = 'sharirasutra-btn sharirasutra-split-btn';
-    splitBtn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="9" y1="22" x2="15" y2="22"></line>`);
+    // Video → frames (Alexia), shown only when hovering a <video>
+    const splitBtn = toolbarButton('split', 'Split', `
         <rect x="2" y="2" width="20" height="20" rx="2.5"></rect>
-        <line x1="8" y1="2" x2="8" y2="22"></line><line x1="16" y1="2" x2="16" y2="22"></line>
-      </svg><span>Split → Save</span>`;
-
-    // Carousel → all photos button (Alexia), shown only when hovering a carousel image
-    const sweepBtn = document.createElement('button');
-    sweepBtn.className = 'sharirasutra-btn sharirasutra-sweep-btn';
-    sweepBtn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="2" x2="8" y2="22"></line><line x1="16" y1="2" x2="16" y2="22"></line>`);
+    // Carousel → all slides (Alexia), shown only when hovering a carousel image
+    const sweepBtn = toolbarButton('sweep', 'Save all', `
         <rect x="3" y="3" width="13" height="13" rx="2"></rect>
-        <path d="M19 8v11a2 2 0 0 1-2 2H8"></path>
-      </svg><span>Save all</span>`;
+        <path d="M19 8v11a2 2 0 0 1-2 2H8"></path>`);
 
     toolbar.appendChild(brainstormBtn);
     toolbar.appendChild(saveBtn);
@@ -79,16 +105,52 @@
     panel.className = 'sharirasutra-panel';
     document.body.appendChild(panel);
 
-    // Floating split-queue chip (bottom-right) — visible while the queue is non-empty.
+    // ---- The Collection tray ----------------------------------------------------
+    // ONE queue for everything collected — video splits, carousel sweeps, single
+    // saves — each job tagged by origin. Its own surface (never the Aletheia
+    // panel), so interpreting an image or sweeping a carousel can no longer
+    // clobber an in-flight split queue. Minimizable to the chip below.
+    const tray = document.createElement('div');
+    tray.className = 'ss-tray';
+    document.body.appendChild(tray);
+
+    // The minimized tray — visible while the queue is non-empty and the tray is
+    // closed. Click to reopen.
     const queueChip = document.createElement('button');
     queueChip.className = 'ss-queue-chip';
     document.body.appendChild(queueChip);
-    queueChip.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); renderQueueView(); });
+    queueChip.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openTray(); });
+
+    // Transient notice for the mute shortcut.
+    const muteToast = document.createElement('div');
+    muteToast.className = 'ss-mute-toast';
+    document.body.appendChild(muteToast);
+
+    // The whisper — a single quiet Alexia glyph, the ONLY thing an eligible image
+    // earns on hover. The full toolbar is summoned from it (click) or by shortcut.
+    // This is level 2 of the presence ladder (Absent → Whisper → Ready).
+    const whisper = document.createElement('button');
+    whisper.type = 'button';
+    whisper.className = 'ss-whisper';
+    whisper.setAttribute('aria-label', 'Read this image with Alexia');
+    whisper.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2z"></path>
+        <line x1="9" y1="22" x2="15" y2="22"></line>
+      </svg>`;
+    document.body.appendChild(whisper);
 
     let currentImage = null;
     let currentVideo = null;
     let hideTimeout = null;
     let rafScheduled = false;
+
+    // Presence state, kept separate from the ready-toolbar target. `hoverEl` is the
+    // image/video under intentional consideration; `dwellTimer` promotes it to a
+    // whisper; `presence` tracks how far up the ladder this target has climbed.
+    let hoverEl = null, hoverType = null;
+    let dwellTimer = null, whisperHideTimer = null;
+    let presence = 'none'; // 'none' | 'whisper' | 'ready'
 
     // Brainstorm dialogue state
     let bsImageUrl = null;   // image being interpreted
@@ -98,6 +160,57 @@
     // Carousel sweep state — guards re-entry while the carousel is flipping under
     // the (stationary) cursor, which retriggers showTarget on each new slide.
     let sweeping = false;
+
+    // ---- Mute ---------------------------------------------------------------
+    // When you're just browsing (not collecting), the overlay should be silent:
+    // no hover toolbar, no highlight, no fab, no tray. Toggled from the popup or
+    // with Alt+Shift+S, persisted in chrome.storage.sync. In-flight captures
+    // keep running — mute hides the surfaces, it doesn't cancel work.
+    let overlayMuted = false;
+
+    function applyMuted(muted, { announce = false } = {}) {
+        overlayMuted = !!muted;
+        document.documentElement.classList.toggle('ss-muted', overlayMuted);
+        if (overlayMuted) {
+            clearTimeout(dwellTimer);
+            whisper.classList.remove('visible');
+            presence = 'none'; hoverEl = null; hoverType = null;
+            hideToolbar();
+            closeTray();
+        } else {
+            refreshQueueChip();
+            refreshPersonaFab();
+        }
+        if (announce) {
+            muteToast.textContent = overlayMuted
+                ? 'Semant overlay muted — Alt+Shift+S to bring it back'
+                : 'Semant overlay on';
+            muteToast.classList.add('visible');
+            clearTimeout(muteToast._t);
+            muteToast._t = setTimeout(() => muteToast.classList.remove('visible'), 2200);
+        }
+    }
+
+    function setMuted(muted, opts) {
+        applyMuted(muted, opts);
+        try { chrome.storage.sync.set({ overlayMuted: !!muted }); } catch (_) {}
+    }
+
+    try {
+        chrome.storage.sync.get('overlayMuted', ({ overlayMuted: m }) => { if (m) applyMuted(true); });
+        chrome.storage.onChanged?.addListener((changes, area) => {
+            if (area === 'sync' && changes.overlayMuted) applyMuted(changes.overlayMuted.newValue);
+        });
+    } catch (_) { /* storage unavailable — stay unmuted */ }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.altKey && e.shiftKey && e.code === 'KeyS' && !e.ctrlKey && !e.metaKey) {
+            const t = e.target;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+            e.preventDefault();
+            setMuted(!overlayMuted, { announce: true });
+        }
+    }, true);
 
     // ---- helpers ---------------------------------------------------------------
     function el(tag, className, text) {
@@ -114,6 +227,33 @@
         if (w < MIN_IMAGE_SIZE || h < MIN_IMAGE_SIZE) return false;
         const src = img.currentSrc || img.src;
         if (!src || src.startsWith('data:image/svg') || src.includes('blank.gif')) return false;
+        return true;
+    }
+
+    // Presence eligibility (ladder level 1: Absent). Cheap DOM facts only — no ML.
+    // Ineligible images (icons, avatars, logos, decorative strips, hidden/tiny
+    // assets, images outside content containers) earn NO presence at all. Manual
+    // invocation on an excluded image still works via the shortcut on the last hover.
+    function isEligibleImage(img) {
+        if (!isValidImage(img)) return false;
+        const cs = getComputedStyle(img);
+        if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) === 0) return false;
+        if (img.offsetParent === null && cs.position !== 'fixed') return false;  // hidden/detached
+        const r = img.getBoundingClientRect();
+        const w = r.width, h = r.height;
+        if (w < MIN_RENDER || h < MIN_RENDER) return false;         // rendered too small
+        if (w * h < MIN_RENDER_AREA) return false;
+        const ar = w / h;
+        if (ar > 7 || ar < 1 / 7) return false;                     // banner / thin strip
+        // icon / avatar / logo / sprite / emoji by keyword on the image or its wrapper
+        const cls = typeof img.className === 'string' ? img.className : '';
+        const wrap = img.closest('[class]');
+        const wrapCls = wrap && typeof wrap.className === 'string' ? wrap.className : '';
+        const hint = `${img.alt || ''} ${cls} ${img.id || ''} ${img.getAttribute('role') || ''} ${wrapCls}`.toLowerCase();
+        if (/(^|[^a-z])(icon|avatar|logo|sprite|emoji|badge|favicon)([^a-z]|$)/.test(hint)) return false;
+        // Prefer content containers; outside them, demand a larger image.
+        const inContent = !!img.closest('article, figure, main, [role="article"], [class*="gallery"], [class*="product"], [class*="post"], [class*="media"], [class*="photo"], [class*="feed"], [class*="grid"]');
+        if (!inContent && Math.min(w, h) < LOOSE_RENDER) return false;
         return true;
     }
 
@@ -143,6 +283,14 @@
         toolbar.style.left = `${rect.right + left - toolbar.offsetWidth - 10}px`;
     }
 
+    function positionWhisper(el) {
+        const rect = el.getBoundingClientRect();
+        const top = window.pageYOffset || document.documentElement.scrollTop;
+        const left = window.pageXOffset || document.documentElement.scrollLeft;
+        whisper.style.top = `${rect.top + top + 8}px`;
+        whisper.style.left = `${rect.right + left - whisper.offsetWidth - 8}px`;
+    }
+
     function isValidVideo(v) {
         if (!v || v.tagName !== 'VIDEO') return false;
         const w = v.videoWidth || v.offsetWidth;
@@ -156,8 +304,16 @@
         for (const node of stack) {
             if (node === toolbar || toolbar.contains(node) || node === panel || panel.contains(node)) continue;
             if (node.tagName === 'VIDEO' && isValidVideo(node)) return node;
+            // A wrapper in the stack may hit-test on behalf of its video — but the
+            // stack ends at <body>/<html>, whose querySelector finds a video ANYWHERE
+            // on the page (every IG feed has one), flipping photo hovers into video
+            // mode. Only accept a queried video whose own rect contains the cursor.
+            if (node === document.body || node === document.documentElement) continue;
             const v = node.querySelector && node.querySelector('video');
-            if (v && isValidVideo(v)) return v;
+            if (v && isValidVideo(v)) {
+                const r = v.getBoundingClientRect();
+                if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return v;
+            }
         }
         return null;
     }
@@ -325,7 +481,7 @@
             }
         } else {
             splitBtn.classList.remove('success', 'error', 'saving');
-            splitBtn.querySelector('span').textContent = 'Split → Save';
+            splitBtn.querySelector('span').textContent = 'Split';
         }
         positionToolbar(el);
         toolbar.classList.add('visible');
@@ -338,17 +494,70 @@
             if (cur) cur.classList.remove('sharirasutra-hover-highlight');
             toolbar.classList.remove('visible');
             currentImage = null; currentVideo = null;
+            presence = 'none'; hoverEl = null; hoverType = null;
         }, 300);
     }
 
-    // Show/keep the toolbar for a target without re-rendering if it's unchanged.
-    function selectTarget(el, type) {
-        const cur = type === 'video' ? currentVideo : currentImage;
-        if (el !== cur) showTarget(el, type);
-        else if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+    // ---- Presence ladder ------------------------------------------------------
+    // Level 2: the whisper. A single glyph, shown only after an intentional dwell.
+    function showWhisper(el, type) {
+        if (overlayMuted) return;
+        hoverEl = el; hoverType = type;
+        positionWhisper(el);
+        whisper.classList.add('visible');
+        presence = 'whisper';
+        if (whisperHideTimer) { clearTimeout(whisperHideTimer); whisperHideTimer = null; }
+    }
+
+    function scheduleWhisperHide() {
+        if (whisperHideTimer) clearTimeout(whisperHideTimer);
+        whisperHideTimer = setTimeout(() => {
+            whisper.classList.remove('visible');
+            if (presence === 'whisper') { presence = 'none'; hoverEl = null; hoverType = null; }
+        }, WHISPER_GRACE_MS);
+    }
+
+    // Level 3: ready. Expand the full toolbar for the current whisper target.
+    function promoteToReady() {
+        if (!hoverEl) return;
+        clearTimeout(dwellTimer);
+        whisper.classList.remove('visible');
+        presence = 'ready';
+        showTarget(hoverEl, hoverType);
+    }
+
+    // Consider a target under the pointer: keep it if already open/whispering,
+    // otherwise (re)start the dwell that will raise a whisper. Images must pass
+    // eligibility; ineligible ones stay Absent.
+    function considerTarget(el, type) {
+        if (type === 'image' && !isEligibleImage(el)) { leaveCandidate(); return; }
+
+        if (presence === 'ready' && el === (currentImage || currentVideo)) {
+            if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+            return;
+        }
+        if (presence === 'whisper' && el === hoverEl) {
+            if (whisperHideTimer) { clearTimeout(whisperHideTimer); whisperHideTimer = null; }
+            return;
+        }
+        if (el !== hoverEl) {
+            clearTimeout(dwellTimer);
+            hoverEl = el; hoverType = type;
+            dwellTimer = setTimeout(() => { if (hoverEl === el) showWhisper(el, type); }, DWELL_MS);
+        }
+    }
+
+    // Pointer left every eligible target: cancel a pending dwell and retreat one
+    // rung — ready → hide toolbar, whisper → grace-then-hide, none → clear.
+    function leaveCandidate() {
+        clearTimeout(dwellTimer);
+        if (presence === 'ready') hideToolbar();
+        else if (presence === 'whisper') scheduleWhisperHide();
+        else { hoverEl = null; hoverType = null; }
     }
 
     function onPointerMove(e) {
+        if (overlayMuted) return;
         if (rafScheduled) return;
         rafScheduled = true;
         const x = e.clientX, y = e.clientY;
@@ -356,59 +565,78 @@
             rafScheduled = false;
             const top = document.elementFromPoint(x, y);
             if (top && (top === toolbar || toolbar.contains(top) || top === panel || panel.contains(top)
+                        || top === whisper || whisper.contains(top)
+                        || top === tray || tray.contains(top)
                         || top === queueChip || top === personaFab || personaFab.contains(top))) {
                 if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+                if (whisperHideTimer) { clearTimeout(whisperHideTimer); whisperHideTimer = null; }
                 return;
             }
 
             // 1) A real <video> directly under the cursor → video mode.
             const stackVideo = videoAtPointStack(x, y);
-            if (stackVideo) { selectTarget(stackVideo, 'video'); return; }
+            if (stackVideo) { considerTarget(stackVideo, 'video'); return; }
 
             // 2) Resolve photo vs reel. A photo under the cursor wins UNLESS a
             //    pointer-events:none video actually covers it (the reel case).
             const img = imageAtPoint(x, y);
             const geoVideo = videoAtPointGeometric(x, y);
-            if (img && geoVideo && videoCoversImage(geoVideo, img)) { selectTarget(geoVideo, 'video'); return; }
-            if (img) { selectTarget(img, 'image'); return; }       // <-- static photos work again
-            if (geoVideo) { selectTarget(geoVideo, 'video'); return; }  // reel with no poster img
+            if (img && geoVideo && videoCoversImage(geoVideo, img)) { considerTarget(geoVideo, 'video'); return; }
+            if (img) { considerTarget(img, 'image'); return; }
+            if (geoVideo) { considerTarget(geoVideo, 'video'); return; }
 
-            if (currentImage || currentVideo) hideToolbar();
+            leaveCandidate();
         });
     }
 
     document.addEventListener('mousemove', onPointerMove, { passive: true });
-    window.addEventListener('scroll', () => { if (currentImage) positionToolbar(currentImage); }, { passive: true });
+    window.addEventListener('scroll', () => {
+        if (presence === 'ready' && currentImage) positionToolbar(currentImage);
+        else if (presence === 'whisper' && hoverEl) positionWhisper(hoverEl);
+    }, { passive: true });
     toolbar.addEventListener('mouseenter', () => { if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; } });
     toolbar.addEventListener('mouseleave', hideToolbar);
+    whisper.addEventListener('mouseenter', () => { if (whisperHideTimer) { clearTimeout(whisperHideTimer); whisperHideTimer = null; } });
+    whisper.addEventListener('mouseleave', scheduleWhisperHide);
+    whisper.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); promoteToReady(); });
 
     // ---- Save ------------------------------------------------------------------
     async function saveImage() {
         if (!currentImage) return;
         const imageUrl = getImageUrl(currentImage);
         if (!imageUrl) return;
+        const igContext = instagramContextForSave(currentImage);
+        // A single save is immediate, but it also enters the unified queue as a
+        // ledger row (kind 'single'), so the tray shows everything collected.
+        const job = recordSingle(imageUrl, igContext, location.href);
         saveBtn.classList.add('saving');
         saveBtn.querySelector('span').textContent = 'Saving…';
         try {
             const r = await apiFetch(SAVE_URL, {
                 method: 'POST', mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [], ...instagramContextForSave(currentImage) })
+                body: JSON.stringify({ image_url: imageUrl, source_url: location.href, general_tags: [], ...igContext })
             });
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             await r.json();
+            job.state = 'saved';
             saveBtn.classList.remove('saving'); saveBtn.classList.add('success');
             saveBtn.querySelector('span').textContent = '✓ Saved';
         } catch (err) {
             console.error('Sharirasutra save error:', err);
+            job.state = 'failed'; job.error = 'save failed';
             saveBtn.classList.remove('saving'); saveBtn.classList.add('error');
             saveBtn.querySelector('span').textContent = '✗ Failed';
+        } finally {
+            refreshQueueChip();
+            if (trayOpen) syncQueueJob(job);
         }
     }
 
     // ---- Brainstorm panel ------------------------------------------------------
+    // The panel belongs to Aletheia alone now — the queue lives in its own tray,
+    // so a reading can never clobber collected frames (and vice versa).
     function clearPanel() {
-        queueViewOpen = false;   // any other render replaces the queue view
         while (panel.firstChild) panel.removeChild(panel.firstChild);
     }
 
@@ -585,21 +813,38 @@
     }
 
     // ---- Alexia: split queue — background captures + mass save -------------------
-    // A queued job captures from its LIVE element immediately (it's on screen at
-    // click time); jobs run in parallel; the user scrolls on and queues more. Frames
-    // accumulate on the job and are mass-saved from the queue view.
-    const splitQueue = new Map();        // jobId -> job
+    // THE unified queue. Every collected thing — a video split, a carousel
+    // sweep, a single save — is a job here, tagged by its origin (`kind`), and
+    // rendered only in the tray. Jobs run in parallel; the user scrolls on and
+    // queues more; nothing renders over anything else.
+    const queue = new Map();             // jobId -> job
     let nextJobId = 1;
-    let queueViewOpen = false;
+    let trayOpen = false;
     const capturingVideos = new Set();   // elements with an in-flight capture loop
+
+    function enqueue(fields) {
+        const job = {
+            id: nextJobId++,
+            kind: 'video',                 // video | carousel | single
+            state: 'capturing',            // capturing | captured | partial | failed | saving | saved
+            frames: [],                    // dataURLs / slide URLs, grows during capture
+            dropped: new Set(),            // frame indexes deselected in the tray
+            error: null,
+            ...fields,
+        };
+        queue.set(job.id, job);
+        refreshQueueChip();
+        if (trayOpen) renderTray();
+        return job;
+    }
 
     function queueSplit(video) {
         if (!video) return;
         splitBtn.classList.remove('success', 'error', 'saving');
-        for (const j of splitQueue.values()) {
+        for (const j of queue.values()) {
             if (j.video === video) {
                 splitBtn.classList.add('success');
-                splitBtn.querySelector('span').textContent = '✓ Already queued';
+                splitBtn.querySelector('span').textContent = '✓ Queued';
                 return;
             }
         }
@@ -607,7 +852,7 @@
         // loops on one video fight over currentTime and each other's 'seeked' events.
         if (capturingVideos.has(video)) {
             splitBtn.classList.add('error');
-            splitBtn.querySelector('span').textContent = '✗ Busy — retry in a sec';
+            splitBtn.querySelector('span').textContent = '✗ Busy';
             return;
         }
         const duration = video.duration;
@@ -616,28 +861,45 @@
             splitBtn.querySelector('span').textContent = '✗ No duration';
             return;
         }
-        const job = {
-            id: nextJobId++,
+        const job = enqueue({
+            kind: 'video',
             video,
-            state: 'capturing',            // capturing | captured | partial | failed
-            frames: [],                    // dataURLs, grows during capture
-            dropped: new Set(),            // frame indexes deselected in the queue view
             // Rate: ~3 frames/sec, clamped to 8–60 evenly-spaced frames.
             total: Math.max(8, Math.min(60, Math.round(duration * 3))),
             // Snapshot author context NOW — by save time the user has scrolled
             // to a different post and live page context would be wrong.
             igContext: instagramContextForSave(video),
             sourceUrl: location.href,
-            error: null,
-        };
-        splitQueue.set(job.id, job);
+        });
         splitBtn.classList.add('success');
         splitBtn.querySelector('span').textContent = `✓ Queued #${job.id}`;
         captureFrames(job).finally(() => {
             refreshQueueChip();
-            if (queueViewOpen) syncQueueJob(job);
+            if (trayOpen) syncQueueJob(job);
         });
-        refreshQueueChip();
+    }
+
+    // A swept carousel enters the same queue, already captured, tagged by origin.
+    function enqueueCarousel(urls, igContext, sourceUrl) {
+        return enqueue({
+            kind: 'carousel',
+            state: 'captured',
+            frames: urls,
+            total: urls.length,
+            igContext, sourceUrl,
+        });
+    }
+
+    // A single save is a queue entry too — the tray is the one ledger of the
+    // session's collecting. No review grid; it saves immediately and shows state.
+    function recordSingle(url, igContext, sourceUrl) {
+        return enqueue({
+            kind: 'single',
+            state: 'saving',
+            frames: [url],
+            total: 1,
+            igContext, sourceUrl,
+        });
     }
 
     async function captureFrames(job) {
@@ -674,7 +936,7 @@
                     break;
                 }
                 refreshQueueChip();
-                if (queueViewOpen) syncQueueJob(job);
+                if (trayOpen) syncQueueJob(job);
             }
 
         } finally {
@@ -696,26 +958,34 @@
     }
 
     function queueStats() {
-        let capturing = 0, frames = 0;
-        for (const j of splitQueue.values()) { if (j.state === 'capturing') capturing++; frames += j.frames.length; }
-        return { jobs: splitQueue.size, capturing, frames };
+        let capturing = 0, pending = 0, saving = 0;
+        for (const j of queue.values()) {
+            if (j.state === 'capturing') { capturing++; pending += j.frames.length; continue; }
+            if (j.kind === 'single') { if (j.state === 'saving') saving++; continue; }
+            if (j.state === 'captured' || j.state === 'partial') pending += j.frames.length - j.dropped.size;
+        }
+        return { jobs: queue.size, capturing, pending, saving };
     }
 
     function refreshQueueChip() {
         const s = queueStats();
-        if (!s.jobs) { queueChip.classList.remove('visible'); return; }
+        if (!s.jobs || trayOpen || overlayMuted) { queueChip.classList.remove('visible'); return; }
         queueChip.textContent = s.capturing
-            ? `⏳ ${s.capturing} splitting · ${s.frames} frames`
-            : `🎞 ${s.jobs} split${s.jobs > 1 ? 's' : ''} · ${s.frames} frames`;
+            ? `◈ collecting… · ${s.pending}`
+            : `◈ ${s.pending} to save`;
         queueChip.classList.add('visible');
     }
 
-    // ---- Split-queue view ---------------------------------------------------------
+    // ---- The tray -------------------------------------------------------------
+    const KIND_LABEL = { video: 'Video', carousel: 'Carousel', single: 'Single' };
+
     function statusLabel(job) {
         switch (job.state) {
             case 'capturing': return `capturing ${job.frames.length}/${job.total}…`;
-            case 'captured':  return `${job.frames.length} frames`;
+            case 'captured':  return job.kind === 'carousel' ? `${job.frames.length} slides` : `${job.frames.length} frames`;
             case 'partial':   return `partial · ${job.frames.length}/${job.total}`;
+            case 'saving':    return 'saving…';
+            case 'saved':     return '✓ saved';
             default:          return `✗ ${job.error || 'failed'}`;
         }
     }
@@ -733,12 +1003,12 @@
         return cell;
     }
 
-    // Append new frames / refresh the status of one job while the view is open —
-    // append-only so live capture doesn't flicker the grid or reset panel scroll.
+    // Append new frames / refresh the status of one job while the tray is open —
+    // append-only so live capture doesn't flicker the grid or reset tray scroll.
     function syncQueueJob(job) {
         if (job._status && job._status.isConnected) {
             job._status.textContent = statusLabel(job);
-            job._status.className = `al-queue-status st-${job.state}`;
+            job._status.className = `ss-job-status st-${job.state}`;
         }
         if (job._grid && job._grid.isConnected) {
             for (let i = job._grid.children.length; i < job.frames.length; i++) {
@@ -753,55 +1023,81 @@
     function updateQueueBar() {
         if (massSaving) return;
         if (!queueSaveBtn || !queueSaveBtn.isConnected) return;
-        let n = 0, capturing = false;
-        for (const j of splitQueue.values()) {
-            if (j.state === 'capturing') { capturing = true; continue; }
-            n += j.frames.length - j.dropped.size;
-        }
-        queueSaveBtn.textContent = n
-            ? `Save all (${n} frame${n > 1 ? 's' : ''})${capturing ? ' · still splitting…' : ''}`
-            : (capturing ? 'Splitting…' : 'Save (none)');
-        queueSaveBtn.disabled = n === 0;
+        const s = queueStats();
+        queueSaveBtn.textContent = s.pending
+            ? `Save ${s.pending}${s.capturing ? ' · still collecting…' : ''}`
+            : (s.capturing ? 'Collecting…' : 'Save (none)');
+        queueSaveBtn.disabled = s.pending === 0;
     }
 
-    function renderQueueView() {
-        clearPanel();
-        queueViewOpen = true;
-        panel.appendChild(frameHeader('Split queue'));
-        const body = el('div', 'al-body al-frames-body');
+    function openTray() { renderTray(); }
+    function closeTray() {
+        trayOpen = false;
+        tray.classList.remove('open');
+        refreshQueueChip();
+    }
 
-        if (!splitQueue.size) {
-            body.appendChild(el('div', 'al-frames-hint', 'Queue is empty — hover a video and press Split.'));
+    function renderTray() {
+        trayOpen = true;
+        while (tray.firstChild) tray.removeChild(tray.firstChild);
+
+        // Header: kicker + count, and a minimize control (back to the chip).
+        const head = el('div', 'ss-tray-head');
+        const wrap = el('div', 'ss-tray-titles');
+        wrap.appendChild(el('div', 'ss-tray-kicker', 'Alexia'));
+        wrap.appendChild(el('div', 'ss-tray-title', 'Collection'));
+        head.appendChild(wrap);
+        const minBtn = el('button', 'ss-tray-min', '–');
+        minBtn.title = 'Minimize';
+        minBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); closeTray(); });
+        head.appendChild(minBtn);
+        tray.appendChild(head);
+
+        const body = el('div', 'ss-tray-body');
+        if (!queue.size) {
+            body.appendChild(el('div', 'al-frames-hint', 'Nothing collected yet — hover an image or video.'));
         }
-        for (const job of splitQueue.values()) {
-            const sec = el('div', 'al-queue-job');
-            const head = el('div', 'al-queue-head');
-            const who = job.igContext.instagram_handle ? ` · @${job.igContext.instagram_handle}` : '';
-            head.appendChild(el('span', 'al-queue-title', `Video #${job.id}${who}`));
-            const status = el('span', `al-queue-status st-${job.state}`, statusLabel(job));
-            head.appendChild(status);
+        for (const job of queue.values()) {
+            const sec = el('div', 'ss-job');
+            const jhead = el('div', 'ss-job-head');
+            // The origin tag — the one thing every job carries.
+            jhead.appendChild(el('span', `ss-job-kind k-${job.kind}`, KIND_LABEL[job.kind]));
+            const who = job.igContext?.instagram_handle ? `@${job.igContext.instagram_handle}` : `#${job.id}`;
+            jhead.appendChild(el('span', 'ss-job-title', who));
+            const status = el('span', `ss-job-status st-${job.state}`, statusLabel(job));
+            jhead.appendChild(status);
             const drop = el('button', 'al-queue-drop', '✕');
+            drop.title = 'Discard';
             drop.addEventListener('click', (e) => {
                 e.preventDefault(); e.stopPropagation();
                 job.cancelled = true;          // stops an in-flight capture loop
-                splitQueue.delete(job.id);
-                refreshQueueChip(); renderQueueView();
+                queue.delete(job.id);
+                refreshQueueChip(); renderTray();
             });
-            head.appendChild(drop);
-            sec.appendChild(head);
+            jhead.appendChild(drop);
+            sec.appendChild(jhead);
 
-            const grid = el('div', 'al-frames-grid');
-            job.frames.forEach((_, idx) => grid.appendChild(queueFrameCell(job, idx)));
-            sec.appendChild(grid);
-            job._status = status; job._grid = grid;
+            if (job.kind === 'single') {
+                // A single is a ledger row, not a review task: one thumb, no grid.
+                const strip = el('div', 'ss-job-thumb');
+                const im = document.createElement('img'); im.src = job.frames[0]; strip.appendChild(im);
+                sec.appendChild(strip);
+                job._grid = null;
+            } else {
+                const grid = el('div', 'al-frames-grid');
+                job.frames.forEach((_, idx) => grid.appendChild(queueFrameCell(job, idx)));
+                sec.appendChild(grid);
+                job._grid = grid;
+            }
+            job._status = status;
             body.appendChild(sec);
         }
-        panel.appendChild(body);
+        tray.appendChild(body);
 
         const bar = el('div', 'al-frames-bar');
         queueSaveBtn = el('button', 'al-frames-save', '');
         bar.appendChild(queueSaveBtn);
-        panel.appendChild(bar);
+        tray.appendChild(bar);
         queueSaveBtn.addEventListener('click', (e) => {
             e.preventDefault(); e.stopPropagation();
             massSaveQueue(queueSaveBtn);
@@ -814,15 +1110,21 @@
         } else {
             updateQueueBar();
         }
-        openPanel();
+        tray.classList.add('open');
+        refreshQueueChip();   // the chip hides while the tray is open
     }
 
     async function massSaveQueue(btn) {
         if (massSaving) return;
-        const settled = [...splitQueue.values()].filter(j => j.state !== 'capturing');
+        // Reviewable jobs only: singles saved themselves on click, capturing jobs
+        // aren't settled yet. Each frame carries its job's origin tag.
+        const settled = [...queue.values()].filter(j =>
+            j.kind !== 'single' && (j.state === 'captured' || j.state === 'partial'));
         const work = [];
         settled.forEach(j => j.frames.forEach((url, idx) => {
-            if (!j.dropped.has(idx)) work.push({ url, job: j });
+            if (!j.dropped.has(idx)) {
+                work.push({ url, job: j, tags: [j.kind === 'carousel' ? 'carousel' : 'video-frame'] });
+            }
         }));
         if (!work.length) return;
         massSaving = true;
@@ -830,87 +1132,16 @@
         let saved = 0;
         for (let i = 0; i < work.length; i++) {
             btn.textContent = `Saving ${i + 1}/${work.length}…`;
-            if (await postFrame(work[i].url, ['video-frame'], work[i].job.igContext, work[i].job.sourceUrl)) saved++;
+            if (await postFrame(work[i].url, work[i].tags, work[i].job.igContext, work[i].job.sourceUrl)) saved++;
         }
         btn.classList.add(saved ? 'al-done' : 'al-fail');
         btn.textContent = saved ? `✓ Saved ${saved}` : '✗ Failed';
-        if (saved) { settled.forEach(j => splitQueue.delete(j.id)); refreshQueueChip(); }
+        if (saved) { settled.forEach(j => queue.delete(j.id)); refreshQueueChip(); }
         setTimeout(() => {
             massSaving = false;
-            // Rebuild only if the queue view is still up — never pop a closed panel open.
-            if (queueViewOpen && panel.classList.contains('open')) renderQueueView();
+            // Rebuild only if the tray is still up — never pop a closed tray open.
+            if (trayOpen && tray.classList.contains('open')) renderTray();
         }, 1200);
-    }
-
-    // Header for the Alexia frame-review view
-    function frameHeader(title) {
-        const head = el('div', 'al-head');
-        const wrap = el('div', 'al-title-wrap');
-        wrap.appendChild(el('div', 'al-kicker', 'Alexia'));
-        wrap.appendChild(el('div', 'al-title', title));
-        const close = el('button', 'al-close', '×');
-        close.addEventListener('click', () => panel.classList.remove('open'));
-        head.appendChild(wrap);
-        head.appendChild(close);
-        return head;
-    }
-
-    // Review grid: all items selected by default; tap to deselect; then save kept ones.
-    // Used by both the video-frame flow and the carousel sweep. `igContext`/`sourceUrl`
-    // are captured by the caller at collection time — the user may scroll to another
-    // post before saving, so live page context would attribute the wrong author.
-    function renderPickGrid(urls, opts) {
-        const { title, hint, tags, noun = 'frame', igContext, sourceUrl } = opts;
-        const items = urls.map(url => ({ url, selected: true }));
-        clearPanel();
-        panel.appendChild(frameHeader(title));
-
-        const body = el('div', 'al-body al-frames-body');
-        body.appendChild(el('div', 'al-frames-hint', hint));
-        const grid = el('div', 'al-frames-grid');
-        items.forEach((it, idx) => {
-            const cell = el('div', 'al-frame selected');
-            const img = document.createElement('img'); img.src = it.url; cell.appendChild(img);
-            cell.appendChild(el('span', 'al-frame-tick', '✓'));
-            cell.addEventListener('click', (e) => {
-                e.preventDefault(); e.stopPropagation();
-                it.selected = !it.selected;
-                cell.classList.toggle('selected', it.selected);
-                updateBar();
-            });
-            grid.appendChild(cell);
-        });
-        body.appendChild(grid);
-        panel.appendChild(body);
-
-        const bar = el('div', 'al-frames-bar');
-        const toggle = el('button', 'al-frames-toggle', 'Clear all');
-        const save = el('button', 'al-frames-save', '');
-        bar.appendChild(toggle);
-        bar.appendChild(save);
-        panel.appendChild(bar);
-
-        const count = () => items.filter(i => i.selected).length;
-        function updateBar() {
-            const c = count();
-            save.textContent = c ? `Save ${c} ${noun}${c > 1 ? 's' : ''}` : 'Save (none)';
-            save.disabled = c === 0;
-            toggle.textContent = (c === items.length) ? 'Clear all' : 'Select all';
-        }
-        toggle.addEventListener('click', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            const selectAll = count() !== items.length;
-            items.forEach(it => { it.selected = selectAll; });
-            grid.querySelectorAll('.al-frame').forEach((cell, idx) => cell.classList.toggle('selected', items[idx].selected));
-            updateBar();
-        });
-        save.addEventListener('click', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            saveFrames(items.filter(i => i.selected).map(i => i.url), save, tags, igContext, sourceUrl);
-        });
-
-        updateBar();
-        openPanel();
     }
 
     // One frame → backend. igContext/sourceUrl default to the live page when absent.
@@ -923,19 +1154,6 @@
             });
             return r.ok;
         } catch (e) { return false; }
-    }
-
-    async function saveFrames(urls, btn, tags, igContext, sourceUrl) {
-        if (!urls.length) return 0;
-        btn.disabled = true;
-        let saved = 0;
-        for (let i = 0; i < urls.length; i++) {
-            btn.textContent = `Saving ${i + 1}/${urls.length}…`;
-            if (await postFrame(urls[i], tags, igContext, sourceUrl)) saved++;
-        }
-        btn.classList.add(saved ? 'al-done' : 'al-fail');
-        btn.textContent = saved ? `✓ Saved ${saved}` : '✗ Failed';
-        return saved;
     }
 
     // ---- Alexia: sweep a carousel post — collect every photo slide ---------------
@@ -981,13 +1199,9 @@
             const urls = [...found.values()];
             if (urls.length) {
                 sweepBtn.querySelector('span').textContent = 'Save all';
-                renderPickGrid(urls, {
-                    title: 'Choose photos',
-                    hint: `${urls.length} photo${urls.length > 1 ? 's' : ''} · tap to deselect`,
-                    tags: ['carousel'],
-                    noun: 'photo',
-                    igContext, sourceUrl,
-                });
+                // Into the unified queue, tagged carousel — review in the tray.
+                enqueueCarousel(urls, igContext, sourceUrl);
+                openTray();
             } else {
                 sweepBtn.classList.add('error');
                 sweepBtn.querySelector('span').textContent = '✗ No images';
