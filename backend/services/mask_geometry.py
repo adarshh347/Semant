@@ -55,6 +55,36 @@ def rle_encode(bits: Sequence[int], h: int, w: int) -> dict:
     return {"size": [int(h), int(w)], "counts": counts}
 
 
+def rle_encode_mask(mask2d) -> dict:
+    """numpy fast path: a 2-D (h,w) 0/1 array → COCO uncompressed RLE (column-major).
+    Produces byte-identical output to `rle_encode` but O(runs) instead of O(h*w) Python
+    iterations — the encoder for real image-resolution instance masks (YOLO/SAM). Falls
+    back to the pure encoder if numpy is unavailable."""
+    try:
+        import numpy as np
+    except Exception:
+        h, w = len(mask2d), len(mask2d[0]) if mask2d else 0
+        bits = bytearray(h * w)
+        for r in range(h):
+            for c in range(w):
+                if mask2d[r][c]:
+                    bits[r * w + c] = 1
+        return rle_encode(bits, h, w)
+    arr = np.asarray(mask2d)
+    h, w = int(arr.shape[0]), int(arr.shape[1])
+    flat = (arr != 0).astype(np.uint8).ravel(order="F")   # column-major (COCO)
+    if flat.size == 0:
+        return {"size": [h, w], "counts": [0]}
+    change = np.flatnonzero(np.diff(flat)) + 1
+    bounds = np.concatenate(([0], change, [flat.size]))
+    runs = np.diff(bounds)
+    first_val = int(flat[0])
+    counts = [int(c) for c in runs]
+    if first_val == 1:                                     # COCO starts with a 0-run
+        counts = [0] + counts
+    return {"size": [h, w], "counts": counts}
+
+
 def rle_decode(rle: dict) -> Tuple[bytearray, int, int]:
     """COCO RLE → (row-major bit buffer, h, w). Exact inverse of `rle_encode`."""
     h, w = int(rle["size"][0]), int(rle["size"][1])

@@ -54,13 +54,14 @@ def _simplify(points: list, max_pts: int = _MAX_POLY_POINTS) -> list:
 
 def segment_image_bytes(data: bytes, conf: float = 0.30, max_regions: int = 12) -> Optional[List[dict]]:
     """
-    Segment an image (raw bytes) into labeled regions with polygon masks.
-    Returns a list of region dicts, or None if segmentation is unavailable / errored.
-    Each region: {id, label, category, box{x,y,w,h}, polygon[[x,y]...], confidence, description}
-    (all coordinates normalized 0..1, top-left origin).
+    Segment an image (raw bytes) into labeled regions whose AUTHORITATIVE geometry is the
+    native instance mask (VISION-BUILD-001 B2): each region carries `mask_rle` (COCO RLE)
+    plus the derived `polygons`/legacy `polygon`/`box` from `mask_geometry`. Returns a
+    list of region dicts, `[]` when nothing is found, or None if unavailable/errored.
     """
     try:
         from PIL import Image
+        from backend.services.vision_orchestrator.adapters import masks_to_regions
         model = _load_model()
         img = Image.open(io.BytesIO(data)).convert("RGB")
         # CPU is plenty fast for the nano model and avoids occasional MPS instabilities.
@@ -68,42 +69,19 @@ def segment_image_bytes(data: bytes, conf: float = 0.30, max_regions: int = 12) 
         if not results:
             return []
         r = results[0]
-        names = r.names if isinstance(r.names, dict) else {i: n for i, n in enumerate(r.names)}
         boxes = r.boxes
-        if boxes is None or len(boxes) == 0:
+        if boxes is None or len(boxes) == 0 or r.masks is None:
             return []
-        polys = r.masks.xyn if r.masks is not None else []
-
-        regions = []
-        for i in range(len(boxes)):
-            cls = int(boxes.cls[i].item())
-            conf_i = float(boxes.conf[i].item())
-            label = str(names.get(cls, cls))
-            x1, y1, x2, y2 = (float(v) for v in boxes.xyxyn[i].tolist())
-            box = {
-                "x": round(max(0.0, x1), 4), "y": round(max(0.0, y1), 4),
-                "w": round(max(0.0, min(1.0, x2) - max(0.0, x1)), 4),
-                "h": round(max(0.0, min(1.0, y2) - max(0.0, y1)), 4),
-            }
-            polygon = []
-            if i < len(polys) and polys[i] is not None and len(polys[i]):
-                pts = [[round(float(px), 4), round(float(py), 4)] for px, py in polys[i]]
-                polygon = _simplify(pts)
-            regions.append({
-                "id": f"seg_{i}",
-                "actor": "auto",
-                "detector": "yolo",
-                "label": label,
-                "category": _category(label),
-                "box": box,
-                "polygon": polygon,
-                "confidence": round(conf_i, 3),
-                "description": f"{label} · {int(conf_i * 100)}% match",
-            })
-
-        # Largest / most prominent first, capped.
-        regions.sort(key=lambda rg: rg["box"]["w"] * rg["box"]["h"], reverse=True)
-        return regions[:max_regions]
+        names = r.names if isinstance(r.names, dict) else {i: n for i, n in enumerate(r.names)}
+        # Native per-instance masks (retina = full image resolution) are the identity;
+        # we never reduce them to a bbox before persistence.
+        md = (r.masks.data.detach().to("cpu").numpy() > 0.5).astype("uint8")
+        cls = boxes.cls.detach().to("cpu").tolist()
+        confs = boxes.conf.detach().to("cpu").tolist()
+        return masks_to_regions([md[i] for i in range(md.shape[0])], cls, confs, names,
+                                detector="yolo", model_id=_MODEL_NAME, device="cpu",
+                                preprocessing_version="ultralytics-retina",
+                                max_regions=max_regions)
     except Exception as e:
         print(f"❌ Segmentation error: {e}")
         return None

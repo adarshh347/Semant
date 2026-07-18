@@ -659,12 +659,16 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
         except Exception as e:
             print(f"Fine decomposition failed (non-fatal): {e}")
             fine = []
-        # Link each fine part to its anchor and pull it inside that anchor's box.
+        # Link each fine part to its anchor. Geometry guard (VISION-BUILD-001 B2):
+        # a mask-bearing region's exact mask is authoritative and is NEVER clipped or
+        # collapsed by semantic parenting; only a box-only fine part may be nudged into
+        # its parent's box. Parenting sets lineage, never mutates a mask.
         for f in fine:
             parent = _match_parent(f, anchors)
             if parent:
                 f["parent_id"] = parent.get("id")
-                f["box"] = _clip_box_to_parent(f["box"], parent.get("box") or {})
+                if not f.get("mask_rle"):
+                    f["box"] = _clip_box_to_parent(f["box"], parent.get("box") or {})
             f.setdefault("depth", 1)
             # parent_label was only a transient matching key — drop it (Track A:
             # canonicalize on parent_id; parent_label is not a Region field).
@@ -692,6 +696,10 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             r.setdefault("prioritised", False)
             r.setdefault("weight", 0)
             r.setdefault("user_note", "")
+        # Canonicalise geometry lineage (B2): mask-bearing regions already carry it from
+        # the segmenter; stamp the rest (box-only/legacy) without fabricating a mask.
+        if not r.get("geometry_provenance"):
+            mask_geometry.canonicalize_geometry(r, provenance={"via": "detect-regions"})
 
     await post_collection.update_one({"_id": obj_id}, {"$set": {"region_annotations": regions}})
     return {"regions": regions, "source": source, "anchor_count": len(anchors or []), "fine_count": len(fine)}
