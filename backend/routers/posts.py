@@ -14,6 +14,7 @@ from io import BytesIO
 from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
 from backend.services import fashion_segmentation_service
+from backend.services import architecture_segmentation_service
 from backend.services import region_embedding_service
 from backend.services import region_geometry
 from backend.services import mask_geometry
@@ -87,6 +88,7 @@ def post_helper(post) -> dict:
         "local_context": post.get("local_context"),
         "region_annotations": post.get("region_annotations"),
         "domain": post.get("domain"),
+        "domain_profile": post.get("domain_profile"),
         "aletheia_cache": post.get("aletheia_cache"),
         "grounds": post.get("grounds"),
         "percepts": post.get("percepts"),
@@ -564,6 +566,40 @@ def _match_parent(fine: dict, anchors: list) -> Optional[dict]:
         fine.get("box") or {}, anchors, parent_label=fine.get("parent_label") or "")
 
 
+def _region_box_iou(a: dict, b: dict) -> float:
+    ba, bb = a.get("box") or {}, b.get("box") or {}
+    ax, ay, aw, ah = ba.get("x", 0), ba.get("y", 0), ba.get("w", 0), ba.get("h", 0)
+    bx, by, bw, bh = bb.get("x", 0), bb.get("y", 0), bb.get("w", 0), bb.get("h", 0)
+    ix = max(0.0, min(ax + aw, bx + bw) - max(ax, bx))
+    iy = max(0.0, min(ay + ah, by + bh) - max(ay, by))
+    inter = ix * iy
+    union = aw * ah + bw * bh - inter
+    return inter / union if union > 0 else 0.0
+
+
+def _is_duplicate_geometry(r: dict, others: list, iou_thresh: float,
+                           *, require_same_kind: bool) -> bool:
+    """A candidate is a duplicate of one already kept when their boxes overlap heavily.
+    `require_same_kind` (auto-vs-auto) keeps a wall and a person at the same spot as
+    SEPARATE evidence; against creator regions we drop the auto regardless of kind."""
+    for o in others:
+        if _region_box_iou(r, o) < iou_thresh:
+            continue
+        if not require_same_kind:
+            return True
+        if r.get("detector") == o.get("detector") or r.get("category") == o.get("category"):
+            return True
+    return False
+
+
+def _profile_chosen(post: dict) -> list:
+    """The active domain profiles (VISION-C) persisted on the post, or [] if none yet.
+    Drives which specialist passes detect-regions schedules — general/YOLO always runs."""
+    prof = post.get("domain_profile") or {}
+    chosen = prof.get("chosen") or []
+    return [c for c in chosen if isinstance(c, str)]
+
+
 async def _resolve_is_fashion(post: dict, obj_id, img_bytes: bytes) -> bool:
     """Is this a fashion image? Decides whether the garment segmenter runs (Phase 2a).
 
@@ -624,23 +660,29 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             img_bytes = resp.content
 
         is_fashion = await _resolve_is_fashion(post, obj_id, img_bytes)
+        chosen = _profile_chosen(post)                # VISION-C domain profile (may be empty)
         garments = None
-        if is_fashion:
+        if is_fashion or "fashion" in chosen:
             garments = await asyncio.to_thread(
                 fashion_segmentation_service.segment_image_bytes, img_bytes)
+        arch = None
+        if "architecture" in chosen:                  # C2: the architecture profile's pass
+            arch = await asyncio.to_thread(
+                architecture_segmentation_service.segment_image_bytes, img_bytes)
 
         yolo_regions = await asyncio.to_thread(segmentation_service.segment_image_bytes, img_bytes)
 
+        # Layer specialists over YOLO by GEOMETRY/precedence (never label-parenting). Each
+        # specialist keeps its own masks; YOLO objects the specialist can't see survive.
+        anchors = list(yolo_regions or [])
+        src_bits = ["yolo"] if yolo_regions else []
         if garments:
-            # Locked precedence: the garment segmenter outranks YOLO for garments and the
-            # figure that contains them. YOLO's non-garment objects (a couch, a chair)
-            # survive — the garment model literally cannot see them.
-            anchors = fashion_segmentation_service.merge_with_precedence(
-                garments, yolo_regions or [])
-            source = "segformer_clothes" + ("+yolo" if yolo_regions else "")
-        else:
-            anchors = yolo_regions
-            source = "yolo" if yolo_regions else "segmentation"
+            anchors = fashion_segmentation_service.merge_with_precedence(garments, anchors)
+            src_bits.insert(0, "segformer_clothes")
+        if arch:
+            anchors = fashion_segmentation_service.merge_with_precedence(arch, anchors)
+            src_bits.insert(0, "segformer_ade")
+        source = "+".join(src_bits) if src_bits else "segmentation"
     except Exception as e:
         print(f"Segmentation fetch/run failed, will fall back: {e}")
         anchors = None
@@ -676,13 +718,24 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             # canonicalize on parent_id; parent_label is not a Region field).
             f.pop("parent_label", None)
 
-    regions = (anchors or []) + fine
+    candidates = (anchors or []) + fine
     if fine:
         source = f"{source}+sukshma"
 
-    # Preserve any prioritisation/notes the curator already set (match by id).
-    existing = {r.get("id"): r for r in (post.get("region_annotations") or [])}
-    for r in regions:
+    # ── candidate merge + curator-safety (VISION-C · C5) ─────────────────────
+    existing_list = post.get("region_annotations") or []
+    existing = {r.get("id"): r for r in existing_list}
+    # 1. Creator-authored regions SURVIVE a re-dissect intact — geometry and all. A
+    #    curator's refined mask (Refine → confirm) is never overwritten by an auto pass.
+    creator_regions = [r for r in existing_list if r.get("actor") == "creator"]
+    creator_ids = {r.get("id") for r in creator_regions}
+    # 2. Auto candidates: carry curator fields by id, stamp lineage, then dedup by GEOMETRY
+    #    (never by label) against creator regions and each other, so no two near-identical
+    #    masks masquerade as separate evidence.
+    kept_auto = []
+    for r in candidates:
+        if r.get("id") in creator_ids:
+            continue                                       # the creator's region wins
         # Provenance defaults (Track A): every detected region is auto-authored.
         r.setdefault("actor", "auto")
         r.setdefault("detector", "vision")
@@ -691,7 +744,6 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             r["prioritised"] = prev.get("prioritised", False)
             r["weight"] = prev.get("weight", 0)
             r["user_note"] = prev.get("user_note", "")
-            # a creator who edited an auto region keeps their authorship.
             if prev.get("actor") == "creator":
                 r["actor"] = "creator"
         else:
@@ -702,9 +754,18 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
         # the segmenter; stamp the rest (box-only/legacy) without fabricating a mask.
         if not r.get("geometry_provenance"):
             mask_geometry.canonicalize_geometry(r, provenance={"via": "detect-regions"})
+        # geometry-only dedup — a candidate that is a near-duplicate (box IoU) of a
+        # creator region or an already-kept auto is dropped; the more-specific /
+        # higher-confidence one is kept. Never merges by label.
+        if _is_duplicate_geometry(r, creator_regions, 0.7, require_same_kind=False) \
+                or _is_duplicate_geometry(r, kept_auto, 0.85, require_same_kind=True):
+            continue
+        kept_auto.append(r)
 
+    regions = creator_regions + kept_auto
     await post_collection.update_one({"_id": obj_id}, {"$set": {"region_annotations": regions}})
-    return {"regions": regions, "source": source, "anchor_count": len(anchors or []), "fine_count": len(fine)}
+    return {"regions": regions, "source": source, "anchor_count": len(anchors or []),
+            "fine_count": len(fine), "creator_preserved": len(creator_regions)}
 
 
 async def _embed_marked_regions(post_id: str) -> int:
@@ -1028,6 +1089,87 @@ async def refine_region_unload():
     """Release the SAM2 predictor (frees VRAM/RAM). Idempotent."""
     await refine_session.unload()
     return {"unloaded": True}
+
+
+# ── VISION-C · domain profiles (multi-label, user-overridable) ───────────────
+class DomainOverrideRequest(BaseModel):
+    mode: Optional[str] = None            # auto | general | fashion | architecture | painting
+    chosen: Optional[List[str]] = None    # explicit multi-label set
+
+
+@router.post("/{post_id}/domain-profile/propose")
+async def domain_profile_propose(post_id: str):
+    """Auto-classify the image's domains (multi-label, confidence-bearing) and persist the
+    proposal — UNLESS the curator has already overridden it (their choice wins)."""
+    from backend.services import domain_profiles
+    from backend.services import fashion_clip_service as fc
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    existing = post.get("domain_profile") or {}
+    if existing.get("user_overridden"):
+        return {"domain_profile": existing, "reused": True}   # never clobber the curator
+
+    if not fc.is_available():
+        profile = domain_profiles.default_profile()
+        profile["reason"] = "FashionCLIP unavailable — general only"
+    else:
+        img_bytes = await _fetch_post_image_cached(post_id, post)
+        result = await asyncio.to_thread(lambda: fc.classify_domains(fc._open_image(img_bytes)))
+        profile = domain_profiles.propose_profile(result.get("scores") or {},
+                                                  reason_detail=result.get("reason") or "")
+    await post_collection.update_one({"_id": obj_id}, {"$set": {"domain_profile": profile}})
+    return {"domain_profile": profile, "reused": False}
+
+
+@router.get("/vision/capabilities")
+async def vision_capabilities():
+    """Per-adapter runtime state (VISION-C · C5) so the profile control can show
+    running/ready/unavailable without a model-control dashboard."""
+    from backend.services.vision_orchestrator.adapters import (
+        YoloSegmenterAdapter, Sam2RefinerAdapter, SegFormerAdeAdapter, FashionpediaAdapter)
+    from backend.services import fashion_segmentation_service as fseg
+    caps = []
+    for adapter in (YoloSegmenterAdapter(), SegFormerAdeAdapter(), Sam2RefinerAdapter(),
+                    FashionpediaAdapter()):
+        avail = adapter.is_available()
+        # Fashionpedia is unavailable-but-serverless-deferred (contract preserved); the
+        # rest are simply ready or unavailable by their deps/checkpoint.
+        if adapter.spec.name == "fashionpedia_r50fpn":
+            state = "ready" if avail else "deferred"
+            reason = "" if avail else "local unavailable — serverless (set FASHIONPEDIA_ENDPOINT)"
+        else:
+            state, reason = ("ready", "") if avail else ("unavailable", "deps/checkpoint missing")
+        caps.append({"name": adapter.spec.name, "capability": adapter.spec.capability.value,
+                     "resource": adapter.spec.resource.value, "state": state, "reason": reason})
+    caps.append({"name": "segformer_clothes", "capability": "fashion_parse", "resource": "cpu",
+                 "state": "ready" if fseg.is_available() else "unavailable", "reason": ""})
+    return {"capabilities": caps}
+
+
+@router.patch("/{post_id}/domain-profile")
+async def domain_profile_override(post_id: str, req: DomainOverrideRequest):
+    """The curator's explicit profile choice — wins over Auto and persists."""
+    from backend.services import domain_profiles
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    try:
+        profile = domain_profiles.apply_override(post.get("domain_profile"),
+                                                 mode=req.mode, chosen=req.chosen)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    await post_collection.update_one({"_id": obj_id}, {"$set": {"domain_profile": profile}})
+    return {"domain_profile": profile}
 
 # More general route comes after
 @router.get("/", response_model=PaginatedPosts)

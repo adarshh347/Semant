@@ -110,6 +110,10 @@ class Post(BaseModel):
     local_context: Optional[dict] = None  # microscopic per-image context (Aletheia + commentary)
     region_annotations: Optional[List[Region]] = None  # unified regions: auto segments + curator/audience marks
     domain: Optional[dict] = None  # FashionCLIP domain router first-cut {label, score, is_fashion} (Track B/C)
+    # VISION-C: the persisted multi-label, user-overridable domain profile
+    # {mode, proposed{fashion,architecture,painting}, chosen[], user_overridden, reason,
+    #  scheduled_passes[], router_version}. See services/domain_profiles.py.
+    domain_profile: Optional[dict] = None
     aletheia_cache: Optional[dict] = None  # cached feed-hook reading, computed once per image (Track C §5)
     # Differential v1 — Grounds (visual evidence) + expression Percepts. Deliberately
     # OUTSIDE region_annotations: detect-regions wholesale-replaces that array, and the
@@ -124,6 +128,7 @@ class PostUpdate(BaseModel):
     highlights: Optional[List[Highlight]] = None  # NEW: Can update highlights
     grounds: Optional[List[dict]] = None   # Differential v1
     percepts: Optional[List[dict]] = None  # Differential v1
+    domain_profile: Optional[dict] = None  # VISION-C domain profile
 
 class PaginatedPosts(BaseModel):
     posts: List[Post]

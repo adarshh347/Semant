@@ -3,6 +3,7 @@ import { Sparkles, Star, Scan, Plus, Eye, Check, MoreHorizontal, AlertCircle, Ex
 import { API_URL } from '../config/api';
 import RegionOverlay from './RegionOverlay';
 import RegionLightbox from './RegionLightbox';
+import ProfileControl from './ProfileControl';
 import GroundLayers from '../differential/GroundLayers';
 import { useRecallPlayer } from '../differential/recall';
 import useStageGeometry, { useNaturalSize, pointerToNormalized } from '../differential/useStageGeometry';
@@ -384,6 +385,10 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
 
                 {/* ── panel ─────────────────────────────────────────────────────────── */}
                 <aside className="rs-panel">
+                    {/* VISION-C · C5 — the domain-profile control drives which specialist
+                        passes the next Dissect schedules (selective scheduling). */}
+                    <ProfileControl postId={post.id} profile={post.domain_profile}
+                        onProfile={(p) => onPostChange?.({ ...post, domain_profile: p })} />
                     {/* the taxonomy, demoted: a quiet menu, not a wall */}
                     <div className="rs-verbs">
                         <label className="rs-sr" htmlFor="rs-mode">Dissection vocabulary</label>

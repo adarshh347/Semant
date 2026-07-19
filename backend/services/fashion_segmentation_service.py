@@ -24,6 +24,8 @@ falls back to YOLO, then to the vision-LLM. The backend never hard-depends on th
 """
 
 import io
+
+from backend.services import mask_geometry
 from typing import List, Optional
 
 _MODEL_NAME = "mattmdjaga/segformer_b2_clothes"
@@ -205,27 +207,34 @@ def _regions_from_mask(pred, probs, width: int, height: int) -> List[dict]:
                     "w": round(w / width, 4), "h": round(h / height, 4),
                 },
                 "polygon": _simplify(pts),
+                "blob": blob,                          # the exact instance mask (VISION-C · C3)
                 "confidence": confidence,
             })
 
         for cand in _keep_instances(candidates):
-            regions.append({
+            region = {
                 "id": f"fseg_{len(regions)}",
                 "actor": "auto",
                 "detector": DETECTOR,
                 "label": label,
                 "category": category,
-                "part": part,
+                "part": part,                          # garment part, kept SEPARATE from category
                 # attributes[] intentionally empty: ATR has no attribute vocabulary.
                 # Phase 2b's Fashionpedia fills this; FashionCLIP's zero-shot pass
                 # (Track B Phase 1) still supplies a first cut in the meantime.
                 "attributes": [],
-                "box": cand["box"],
-                "polygon": cand["polygon"],
                 "confidence": round(cand["confidence"], 3),
                 "description": f"{label} · {int(cand['confidence'] * 100)}% match",
+                # authoritative garment mask (C3) — derived polygons/box come from it.
+                "mask_rle": mask_geometry.rle_encode_mask(cand["blob"]),
                 "area_frac": round(cand["area"] / frame_area, 5),  # transient; caller drops it
+            }
+            mask_geometry.canonicalize_geometry(region, provenance={
+                "adapter": "segformer_clothes", "model": _MODEL_NAME, "device": "cpu",
+                "preprocessing_version": "segformer-clothes", "method": "segformer-clothes",
+                "part": part, "confidence": round(cand["confidence"], 3),
             })
+            regions.append(region)
 
     regions.sort(key=lambda r: r["area_frac"], reverse=True)
     return regions[:_MAX_REGIONS]

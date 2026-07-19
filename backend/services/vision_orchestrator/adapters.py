@@ -299,3 +299,97 @@ class Sam2RefinerAdapter:
                           geometry_rev=region["geometry_rev"])
         return JobResult(JobStatus.SUCCEEDED,
                          artifact=VisionArtifact("mask_refine", region, prov), provenance=prov)
+
+
+# ── C2: architecture surface segmenter (SegFormer-B0 ADE20K) ─────────────────
+class SegFormerAdeAdapter:
+    """The architecture `ArchParse` adapter — SegFormer-B0 fine-tuned on ADE20K, on the CPU
+    pool (measured ~0.5s warm, no GPU needed). Returns scene-surface masks as authoritative
+    RLE via architecture_segmentation_service; labels never touch geometry."""
+
+    def __init__(self, *, device: str = "cpu") -> None:
+        self.device = device
+        self.spec = AdapterSpec(
+            name="segformer_b0_ade", capability=Capability.ARCH_PARSE, resource=ResourceKind.CPU,
+            model_id="nvidia/segformer-b0-finetuned-ade-512-512", license="NVIDIA/HF (non-commercial research; verify before commercial use)",
+            preprocessing_version="segformer-ade", available=self._deps_ok(), deferred=not self._deps_ok())
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import architecture_segmentation_service as a
+            return a.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        t0 = time.perf_counter()
+        from backend.services import architecture_segmentation_service as a
+        await __import__("asyncio").to_thread(a._load)
+        return (time.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        from backend.services import architecture_segmentation_service as a
+        a._model = None
+        a._processor = None
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        from backend.services import architecture_segmentation_service as a
+        data = payload.get("image_bytes")
+        t0 = time.perf_counter()
+        regions = await asyncio.to_thread(a.segment_image_bytes, data)
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id, device=self.device,
+                          preprocessing_version="segformer-ade",
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        status = JobStatus.UNAVAILABLE if regions is None else JobStatus.SUCCEEDED
+        return JobResult(status, artifact=VisionArtifact("arch_parse", regions or [], prov), provenance=prov)
+
+
+# ── C3: Fashionpedia — the fashion-primary adapter (LOCAL-UNAVAILABLE → serverless) ──
+class FashionpediaAdapter:
+    """Fashionpedia Attribute Mask R-CNN R50-FPN — the roster's fashion-primary.
+
+    Benchmark on this box (VISION-C · C3): **not locally viable.** It requires detectron2,
+    which has no prebuilt wheel for torch 2.13.0+cu130 and cannot build from source without
+    the CUDA toolkit (no nvcc); 4 GB VRAM + ~1 GB free RAM is marginal besides. Per the
+    build contract we therefore keep this exact adapter/capability identity and mark local
+    capability UNAVAILABLE with an explicit serverless execution path — we do NOT silently
+    substitute a different model. The working fashion garment masks (parts) come, honestly
+    labeled `detector=segformer_clothes`, from the Phase-2a garment segmenter; this adapter
+    adds the 294-attribute fine parts once a serverless endpoint is wired.
+    """
+
+    def __init__(self, *, endpoint: Optional[str] = None) -> None:
+        self.endpoint = endpoint or os.environ.get("FASHIONPEDIA_ENDPOINT")
+        self.spec = AdapterSpec(
+            name="fashionpedia_r50fpn", capability=Capability.FASHION_PARSE,
+            resource=ResourceKind.REMOTE,
+            model_id="fashionpedia-attribute-mask-rcnn-r50-fpn",
+            preprocessing_version="fashionpedia-v1",
+            # local unavailable; becomes available only when a serverless endpoint is set.
+            available=bool(self.endpoint), deferred=not bool(self.endpoint))
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        return 0.0
+
+    async def unload(self) -> None:
+        pass
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if not self.endpoint:
+            return JobResult(JobStatus.UNAVAILABLE, provenance=Provenance(
+                adapter=self.spec.name,
+                error="local unavailable (detectron2 incompatible with torch 2.13/cu130, "
+                      "no CUDA toolkit); set FASHIONPEDIA_ENDPOINT for serverless"))
+        # serverless path (wired when an endpoint exists) — never a silent local substitute.
+        return JobResult(JobStatus.UNAVAILABLE, provenance=Provenance(
+            adapter=self.spec.name, error="serverless call not implemented in C3"))
