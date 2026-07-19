@@ -147,3 +147,40 @@ async def embed_post_regions(
 
     return {"status": "ready", "model": model, "checkpoint": ckpt,
             "whole_image_encodes": whole_image_encodes, "records": records}
+
+
+# ── E3: FashionCLIP evidence vectors for fashion Regions (its OWN space) ──────
+FASHION_MODEL = "fashion-clip"
+FASHION_VERSION = "vitb32"
+
+
+async def embed_fashion_region(post: dict, region: dict, image_bytes: bytes, *,
+                               fashion=None, persist: bool = True) -> Dict[str, Any]:
+    """Represent one fashion Region with the existing FashionCLIP service, stored in the
+    `fashion-clip|fashion|vitb32|512` space — never mixed with the DINOv2 visual spaces.
+    FashionCLIP *represents* the garment; Fashionpedia (a different model) *segments* it."""
+    if fashion is None:
+        from backend.services import fashion_clip_service as fashion
+    if not fashion.is_available():
+        return {"status": "unavailable", "reason": "FashionCLIP not installed"}
+    image = _pil(image_bytes)
+    src = res.content_hash(image_bytes)
+    proj = ep.project_region(region, image, source_content_hash=src)
+    if proj is None:
+        return {"status": "skipped", "reason": "no geometry"}
+    vec = fashion.embed_image(proj["identity"]["image"])   # mask-isolated garment evidence
+    if not vec:
+        return {"status": "error", "reason": "empty vector"}
+    post_id = str(post.get("_id") or post.get("id") or "")
+    rid = str(region.get("id") or "")
+    rle = region.get("mask_rle")
+    mask_h = res.mask_hash(rle) if mg.rle_is_valid(rle) else ""
+    eid = res.make_embedding_id(post_id, rid, model=FASHION_MODEL, role="fashion")
+    if persist:
+        await res.upsert_embedding(eid, vec, model=FASHION_MODEL, post_id=post_id, region_id=rid,
+                                   role="fashion", geometry_rev=region.get("geometry_rev"),
+                                   checkpoint="patrickjohncyh/fashion-clip",
+                                   preprocessing_version=FASHION_VERSION, crop_version=ep.CROP_VERSION,
+                                   source_content_hash=src, mask_hash=mask_h, route="crop_cls")
+    return {"status": "ready", "embedding_id": eid, "dim": len(vec),
+            "space": res.space_key(FASHION_MODEL, "fashion", FASHION_VERSION, len(vec))}
