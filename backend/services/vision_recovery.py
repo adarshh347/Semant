@@ -79,9 +79,13 @@ def curator_only_hash(post: dict) -> str:
     sem_curated = [{"candidate_id": a.get("candidate_id"), "status": a.get("status"),
                     "curator_label": a.get("curator_label")}
                    for a in (sem.get("assertions") or [])]
+    # `detached`/`detached_reason` are F-added recovery annotations, not curator content — strip
+    # them so marking a Ground detached does not read as a curator-data change.
+    grounds = [{k: v for k, v in g.items() if k not in ("detached", "detached_reason")}
+               for g in (post.get("grounds") or [])]
     payload = {"regions": sorted(regs, key=lambda x: str(x["id"])),
                "semantics": sorted(sem_curated, key=lambda x: str(x["candidate_id"])),
-               "grounds": post.get("grounds") or [], "percepts": post.get("percepts") or []}
+               "grounds": grounds, "percepts": post.get("percepts") or []}
     return _sha(payload)
 
 
