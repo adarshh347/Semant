@@ -14,6 +14,7 @@ from io import BytesIO
 from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
 from backend.services import fashion_segmentation_service
+from backend.services import architecture_segmentation_service
 from backend.services import region_embedding_service
 from backend.services import region_geometry
 from backend.services import mask_geometry
@@ -565,6 +566,14 @@ def _match_parent(fine: dict, anchors: list) -> Optional[dict]:
         fine.get("box") or {}, anchors, parent_label=fine.get("parent_label") or "")
 
 
+def _profile_chosen(post: dict) -> list:
+    """The active domain profiles (VISION-C) persisted on the post, or [] if none yet.
+    Drives which specialist passes detect-regions schedules — general/YOLO always runs."""
+    prof = post.get("domain_profile") or {}
+    chosen = prof.get("chosen") or []
+    return [c for c in chosen if isinstance(c, str)]
+
+
 async def _resolve_is_fashion(post: dict, obj_id, img_bytes: bytes) -> bool:
     """Is this a fashion image? Decides whether the garment segmenter runs (Phase 2a).
 
@@ -625,23 +634,29 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             img_bytes = resp.content
 
         is_fashion = await _resolve_is_fashion(post, obj_id, img_bytes)
+        chosen = _profile_chosen(post)                # VISION-C domain profile (may be empty)
         garments = None
-        if is_fashion:
+        if is_fashion or "fashion" in chosen:
             garments = await asyncio.to_thread(
                 fashion_segmentation_service.segment_image_bytes, img_bytes)
+        arch = None
+        if "architecture" in chosen:                  # C2: the architecture profile's pass
+            arch = await asyncio.to_thread(
+                architecture_segmentation_service.segment_image_bytes, img_bytes)
 
         yolo_regions = await asyncio.to_thread(segmentation_service.segment_image_bytes, img_bytes)
 
+        # Layer specialists over YOLO by GEOMETRY/precedence (never label-parenting). Each
+        # specialist keeps its own masks; YOLO objects the specialist can't see survive.
+        anchors = list(yolo_regions or [])
+        src_bits = ["yolo"] if yolo_regions else []
         if garments:
-            # Locked precedence: the garment segmenter outranks YOLO for garments and the
-            # figure that contains them. YOLO's non-garment objects (a couch, a chair)
-            # survive — the garment model literally cannot see them.
-            anchors = fashion_segmentation_service.merge_with_precedence(
-                garments, yolo_regions or [])
-            source = "segformer_clothes" + ("+yolo" if yolo_regions else "")
-        else:
-            anchors = yolo_regions
-            source = "yolo" if yolo_regions else "segmentation"
+            anchors = fashion_segmentation_service.merge_with_precedence(garments, anchors)
+            src_bits.insert(0, "segformer_clothes")
+        if arch:
+            anchors = fashion_segmentation_service.merge_with_precedence(arch, anchors)
+            src_bits.insert(0, "segformer_ade")
+        source = "+".join(src_bits) if src_bits else "segmentation"
     except Exception as e:
         print(f"Segmentation fetch/run failed, will fall back: {e}")
         anchors = None
