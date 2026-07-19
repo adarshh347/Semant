@@ -436,3 +436,50 @@ class SemanticAnnotatorAdapter:
                           error=res.error or None)
         return JobResult(status_map.get(res.status, JobStatus.FAILED),
                          artifact=VisionArtifact("semantic", res, prov), provenance=prov)
+
+
+# ── E2: DINOv2 shared visual features (ViT-S/14) — the reusable backbone ──────
+class Dinov2FeatureAdapter:
+    """The `FEATURE` adapter — DINOv2 ViT-S/14 on the GPU pool. It computes the whole-image
+    patch-token grid ONCE per image (the shared artifact Region mask-pooling reuses); it never
+    emits geometry. Governed by ModelManager for single-GPU residency + unload, so requesting a
+    reading evicts YOLO/SAM and vice-versa."""
+
+    def __init__(self) -> None:
+        from backend.services import dinov2_service
+        self._svc = dinov2_service
+        self.spec = AdapterSpec(
+            name="dinov2_vits14", capability=Capability.FEATURE, resource=ResourceKind.GPU,
+            model_id=dinov2_service.MODEL_TAG, checkpoint=dinov2_service.CHECKPOINT,
+            license="Apache-2.0", preprocessing_version=dinov2_service.PREPROCESSING_VERSION,
+            available=dinov2_service.is_available(), deferred=not dinov2_service.is_available())
+
+    def is_available(self) -> bool:
+        return self._svc.is_available()
+
+    async def load(self) -> float:
+        import time
+        t0 = time.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (time.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        t0 = time.perf_counter()
+        features = await asyncio.to_thread(self._svc.get_encoder().encode_image, image)
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        # the artifact carries the shared patch grid (in-memory tensors) — fanned out to poolers.
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("feature", features, prov), provenance=prov)

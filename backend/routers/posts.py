@@ -1234,6 +1234,86 @@ async def semantic_curate(post_id: str, candidate_id: str, req: SemanticCurateRe
     await post_collection.update_one({"_id": obj_id}, {"$set": {"semantics": sem}})
     return {"semantics": sem}
 
+
+# ── VISION-E · E5 — "Find similar" circulation (research, never fact) ─────────
+class FindSimilarRequest(BaseModel):
+    mode: str = "identity"          # identity | context
+    top_k: int = 8
+    exclude_self_post: bool = False
+    reindex: bool = False
+
+
+@router.get("/vision/retrieval-spaces")
+async def retrieval_spaces():
+    """The evidence vector spaces + live availability (for the curator UX)."""
+    from backend.services import retrieval_service
+    return {"spaces": retrieval_service.list_spaces()}
+
+
+@router.get("/vision/index-plan")
+async def index_plan(model: str = "dinov2_vits14", force: bool = False):
+    """READ-ONLY dry-run: what would (re)indexing the dissected corpus cost — no images fetched,
+    nothing written, no backfill launched (that is Increment F). Sizes the F backfill."""
+    from backend.services import indexing_service
+    dissected = [p async for p in post_collection.find({"region_annotations.0": {"$exists": True}})]
+    return await indexing_service.plan_batch(dissected, model=model, force=force)
+
+
+@router.post("/{post_id}/regions/{region_id}/find-similar")
+async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = None):
+    """Find a confirmed Region's visual neighbours in its space — indexing it on demand and
+    re-indexing when its mask/source changed. Returns research (source, exact mask, distance,
+    space, provenance), never assertions. Creates no Motifs/Relations."""
+    from backend.services import find_similar_service, retrieval_service, region_embedding_service
+    req = req or FindSimilarRequest()
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    # scope: every post already indexed in the query's model space (own-corpus research), + self.
+    domain = find_similar_service._domain_of(post)
+    routed = retrieval_service.route(query_kind="evidence", domain=domain,
+                                     context_sensitive=(req.mode == "context"))
+    model = retrieval_service._SPACES[routed["space"]]["model"]
+    scope = await region_embedding_service.region_embeddings_collection.distinct("post_id", {"model": model})
+    scope = list(scope)
+    if post_id not in scope:
+        scope.append(post_id)
+    img = await _fetch_post_image_cached(post_id, post)
+    return await find_similar_service.find_similar_for_region(
+        post, region_id, img, mode=req.mode, top_k=req.top_k,
+        exclude_self_post=req.exclude_self_post, reindex=req.reindex, scope_post_ids=scope)
+
+
+@router.get("/{post_id}/regions/{region_id}/crop")
+async def region_crop(post_id: str, region_id: str, role: str = "identity"):
+    """PNG of a Region's exact-mask evidence crop (identity | context) — the thumbnail the
+    Find-similar UX shows, and the way a neighbour's evidence is inspected."""
+    from fastapi.responses import Response
+    from backend.services import find_similar_service, evidence_projection
+    from PIL import Image
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    region = find_similar_service._region(post, region_id)
+    if not region:
+        raise HTTPException(status_code=404, detail=f"No region {region_id}")
+    img = await _fetch_post_image_cached(post_id, post)
+    proj = evidence_projection.project_region(region, Image.open(BytesIO(img)).convert("RGB"))
+    if not proj:
+        raise HTTPException(status_code=404, detail="Region has no geometry to crop")
+    key = "context" if role == "context" else "identity"
+    buf = BytesIO(); proj[key]["image"].save(buf, "PNG")
+    return Response(content=buf.getvalue(), media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=3600"})
+
 # More general route comes after
 @router.get("/", response_model=PaginatedPosts)
 async def get_all_posts(page: int = 1, limit: int = 50, tag: Optional[str] = None):
