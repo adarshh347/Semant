@@ -31,7 +31,7 @@ _registry.register(_default_adapter)
 _manager = ModelManager(_registry)
 
 # curator states that must survive a semantic rerun untouched.
-_STICKY_STATES = {"accepted", "rejected", "overridden"}
+_STICKY_STATES = {"accepted", "rejected", "overridden", "tentative"}
 
 
 def _candidate_digest(candidates: List[dict]) -> str:
@@ -73,7 +73,8 @@ def _to_semantics(job_result, cand_digest: str, adapter) -> Dict[str, Any]:
         "error": getattr(sr, "error", "") or "",
     }
     if not (sr and getattr(sr, "response", None)):
-        return {"assertions": [], "relations": [], "global": None, "meta": meta}
+        return {"assertions": [], "relations": [], "global": None,
+                "needs_better_evidence": [], "meta": meta}
 
     resp = sr.response
     assertions = []
@@ -89,7 +90,11 @@ def _to_semantics(job_result, cand_digest: str, adapter) -> Dict[str, Any]:
         })
     relations = [r.model_dump() for r in resp.relations]
     global_reading = resp.global_reading.model_dump() if resp.global_reading else None
-    return {"assertions": assertions, "relations": relations, "global": global_reading, "meta": meta}
+    # candidate ids the VLM flagged as poorly-evidenced → the curator UX can launch Refine
+    # on them (they are the ids the painting/collage read says the masks don't serve).
+    needs = [cid for cid in resp.needs_better_evidence]
+    return {"assertions": assertions, "relations": relations, "global": global_reading,
+            "needs_better_evidence": needs, "meta": meta}
 
 
 def merge_curator_state(new_sem: Dict[str, Any], prior_sem: Optional[Dict[str, Any]]) -> Dict[str, Any]:

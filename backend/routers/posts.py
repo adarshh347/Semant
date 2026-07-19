@@ -1180,7 +1180,7 @@ class SemanticReadRequest(BaseModel):
 
 
 class SemanticCurateRequest(BaseModel):
-    status: Optional[str] = None          # accepted | rejected | proposed
+    status: Optional[str] = None          # accepted | rejected | tentative | proposed
     curator_label: Optional[str] = None   # an edit → status becomes 'overridden'
 
 

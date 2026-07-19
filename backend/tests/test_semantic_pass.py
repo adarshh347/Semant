@@ -105,3 +105,23 @@ def test_curator_state_survives_rerun():
     merged = spass.merge_curator_state(new, prior)
     a = merged["assertions"][0]
     assert a["status"] == "overridden" and a["curator_label"] == "Gandhara head"  # curator wins
+
+
+# ── D4 enablers ──────────────────────────────────────────────────────────────
+def test_needs_better_evidence_is_surfaced_for_the_curator_ux():
+    # the VLM flags a candidate whose mask doesn't serve → the UX must see it to launch Refine.
+    spass._manager.cache.clear()
+    resp = SemanticResponse(candidates=[{"candidate_id": "seg_0", "label": "unclear form"}],
+                            needs_better_evidence=["seg_0"])
+    sem = asyncio.run(spass.run_semantic(_post(), _img_bytes(), adapter=_fake_adapter(resp)))
+    assert sem["needs_better_evidence"] == ["seg_0"]
+
+
+def test_tentative_is_a_sticky_curator_state():
+    # a curator's "tentative" mark is a decision — it must survive a semantic rerun untouched.
+    assert "tentative" in spass._STICKY_STATES
+    resp = SemanticResponse(candidates=[{"candidate_id": "seg_0", "label": "auto-guess"}])
+    new = asyncio.run(spass.run_semantic(_post(), _img_bytes(), adapter=_fake_adapter(resp)))
+    prior = {"assertions": [{"candidate_id": "seg_0", "label": "figure", "status": "tentative"}]}
+    merged = spass.merge_curator_state(new, prior)
+    assert merged["assertions"][0]["status"] == "tentative"          # not overwritten by rerun
