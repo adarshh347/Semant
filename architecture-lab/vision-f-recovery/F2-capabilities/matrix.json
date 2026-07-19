@@ -1,0 +1,68 @@
+{
+ "available": {
+  "dinov2": true,
+  "domain_router": true,
+  "fashion_segmenter": true,
+  "fashionclip": true,
+  "geometry": true,
+  "image": true,
+  "model_manager": true,
+  "sam": true,
+  "segformer": true,
+  "semantic_provider": true,
+  "yolo": true
+ },
+ "fashionpedia": "deferred (serverless \u2014 no endpoint configured; F does not pretend otherwise)",
+ "guard_demo": {
+  "action": "skip",
+  "reason": "unavailable: sam",
+  "requested": "rerun_profile_general",
+  "runnable": false
+ },
+ "matrix": {
+  "dinov2": {
+   "available": true,
+   "detail": "load 1821ms, unloaded"
+  },
+  "domain_router": {
+   "available": true,
+   "detail": "available=True ranked=[('product', 0.852), ('photography', 0.0799), ('painting', 0.0418), ('food', 0.0215), ('fashion', "
+  },
+  "fashion_segmenter": {
+   "available": true,
+   "detail": "load 1293ms, unloaded"
+  },
+  "fashionclip": {
+   "available": true,
+   "detail": "512d ok"
+  },
+  "geometry": {
+   "available": true,
+   "detail": "rev=1 polys=1"
+  },
+  "image": {
+   "available": true,
+   "detail": "decoded (1024, 672)"
+  },
+  "model_manager": {
+   "available": true,
+   "detail": "cancel honoured (status=cancelled)"
+  },
+  "sam": {
+   "available": true,
+   "detail": "load 884ms, unloaded"
+  },
+  "segformer": {
+   "available": true,
+   "detail": "load 1293ms, unloaded"
+  },
+  "semantic_provider": {
+   "available": true,
+   "detail": "status=ready dropped=[]"
+  },
+  "yolo": {
+   "available": true,
+   "detail": "load 826ms, unloaded"
+  }
+ }
+}

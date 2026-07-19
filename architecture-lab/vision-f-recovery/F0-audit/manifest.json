@@ -1,0 +1,4033 @@
+{
+ "posts": [
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/f7bcaba9-7cb7-4f00-88cb-cb3db6fc7848",
+   "post_id": "695be724a9ea58f1b6aef5e9",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G83FtcHagAIEc2J?format=jpg&name=medium"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/56953f00-3f36-422b-a240-5a1f8631d05d",
+   "post_id": "695be7dba9ea58f1b6aef5f3",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G91S-l6W8AEgaOf?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/0b72e222-e6f9-48a0-9718-f2287200f13e",
+   "post_id": "695be7e0a9ea58f1b6aef5f4",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G91vGwwWEAEv3OW?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/4ca2c911-f86b-4bba-bfbe-20925a0fd023",
+   "post_id": "695be803a9ea58f1b6aef5f8",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G9yuP6gasAEVZv5?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/de01440d-9ac0-43dc-869f-56acc0993938",
+   "post_id": "695be82da9ea58f1b6aef5fe",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G91k0lkXAAABVKk?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/fbbc0e11-ea85-413d-8104-4dcc9a313f27",
+   "post_id": "695be70ca9ea58f1b6aef5e7",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G9JyouSbgAEuc5a?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/833d0320-1cbc-42fa-b81d-39b589fc0cfb",
+   "post_id": "695be84fa9ea58f1b6aef601",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G91Y37IbwAAJ9TQ?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/123844d2-dcff-4105-9afa-97466205211b",
+   "post_id": "695be896a9ea58f1b6aef603",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G9iz3D0XYAAt1kw?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 1,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/2050cc68-dde6-42bc-a44b-22e96273068d",
+   "post_id": "695be8bea9ea58f1b6aef60a",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G8xzA6mWoAABWCz?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/91117b38-46f6-4c53-9639-27b42c976391",
+   "post_id": "695be8b7a9ea58f1b6aef608",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G8xzH_WXwAAljsm?format=png&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/a68aac14-3b67-494a-8038-c9451bfd97c8",
+   "post_id": "695be6d3a9ea58f1b6aef5e2",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G91PluUaoAAeEtt?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {
+    "openai/gpt-4o-mini": 3
+   },
+   "assertions_by_status": {
+    "accepted": 1,
+    "overridden": 1,
+    "proposed": 1
+   },
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 2,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [
+    "general",
+    "architecture",
+    "fashion"
+   ],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 3,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 3,
+   "photo_public_id": "posts/7ab4e5c0-fc26-4b19-83b3-7a618c1bfd24",
+   "post_id": "695be77ea9ea58f1b6aef5eb",
+   "region_class": {
+    "box": 0,
+    "mask": 3,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G91O6x6WYAAH-vj?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/8371dc38-fe85-449f-90c5-11d3e85b7aa0",
+   "post_id": "695be784a9ea58f1b6aef5ec",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G91EK4MWEAAqfUd?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/cff64ca9-5deb-41ee-9a70-5af404f0da12",
+   "post_id": "695be7cda9ea58f1b6aef5f2",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G90riN6bwAAE7b3?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 3,
+   "n_mentions": 0,
+   "n_percepts": 1,
+   "n_regions": 10,
+   "photo_public_id": "posts/31d5ed4a-25d3-482d-9796-7453ea0e072e",
+   "post_id": "695be6c9a9ea58f1b6aef5e0",
+   "region_class": {
+    "box": 9,
+    "mask": 0,
+    "none": 0,
+    "polygon": 1
+   },
+   "source_url": "https://pbs.twimg.com/media/G3IN4AxXMAEaiSn?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/3d36c68c-07e9-4013-957e-1612e3e104ca",
+   "post_id": "695be822a9ea58f1b6aef5fc",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G90X5zoa4AAjAwx?format=png&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/7e5376b3-7e16-4ddd-ba41-2a6e56baa2e6",
+   "post_id": "695be843a9ea58f1b6aef5ff",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G90eLmjXwAAwI8O?format=jpg&name=large"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/2c889c10-7b53-48f1-b38a-bb9a27041ab2",
+   "post_id": "695be6d9a9ea58f1b6aef5e3",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G9zMCI7bMAAHYJ9?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/afae59d6-f9aa-4639-82c2-8a9cf5768dde",
+   "post_id": "695be78fa9ea58f1b6aef5ee",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G92ZowXWIAApuVR?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/adfb0d2a-fcdb-4ebb-a497-26591adb407b",
+   "post_id": "695be815a9ea58f1b6aef5f9",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G9xhQ2YXYAAKG0A?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 5,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/d62a78db-67d9-4fdd-8f49-00d6b7108797",
+   "post_id": "695be8b0a9ea58f1b6aef606",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G8x0f9lWsAETe1r?format=png&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/03396853-b70b-4d6e-85cd-f02d55787180",
+   "post_id": "695be790a9ea58f1b6aef5ef",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G92ZowbXsAAvKRz?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/d1c58e59-77fc-42be-9cb8-45cf2a76847f",
+   "post_id": "695be7e4a9ea58f1b6aef5f5",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G94WK-waMAAlEbE?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/f98f0b0c-7f04-4aeb-80c4-a417fed6e294",
+   "post_id": "695be8a0a9ea58f1b6aef604",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G9U_qNlWcAAGtGT?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [
+    "general"
+   ],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 1,
+   "photo_public_id": "posts/ff034e2d-1102-41fe-bbc8-2ddd4d765544",
+   "post_id": "695be7faa9ea58f1b6aef5f7",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 1
+   },
+   "source_url": "https://pbs.twimg.com/media/G93uwWIboAEmYGT?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/065e2940-8df5-4377-94d7-e11d126599e8",
+   "post_id": "695be82ba9ea58f1b6aef5fd",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G91HaPMWgAAcF1I?format=jpg&name=360x360"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/2425249c-96c2-4de0-8bfd-557cc2b13b61",
+   "post_id": "695be72ca9ea58f1b6aef5ea",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G83FtcHbQAAW5FK?format=jpg&name=360x360"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/b58bc56f-cf22-4f6d-9b0a-086a2beb3b99",
+   "post_id": "695be8b3a9ea58f1b6aef607",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G8xz4hGWgAAzjup?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/a60d29ad-bdd8-4c82-99d5-7694d825b7cc",
+   "post_id": "695be8eca9ea58f1b6aef60b",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G90pgVkbQAA6JQz?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 1,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [
+    "gnd_mrqp8tls_0",
+    "gnd_mrqp8tlt_1"
+   ],
+   "detached_percepts": [],
+   "domains": [
+    "general",
+    "architecture"
+   ],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 5,
+   "n_mentions": 0,
+   "n_percepts": 2,
+   "n_regions": 7,
+   "photo_public_id": "posts/b11f3549-aea4-4715-80db-9e8c81fb3d2a",
+   "post_id": "695be786a9ea58f1b6aef5ed",
+   "region_class": {
+    "box": 0,
+    "mask": 7,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G93p35kXwAAS1Y-?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 1,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/43b07904-fd99-40d4-a884-9ae26e11cef9",
+   "post_id": "695be793a9ea58f1b6aef5f0",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G92ZowZXsAA0iny?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [
+    "general",
+    "painting"
+   ],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 1,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 16,
+   "photo_public_id": "posts/5b3ca090-3f5d-4cdd-9287-ff33ea04ab4d",
+   "post_id": "695be8baa9ea58f1b6aef609",
+   "region_class": {
+    "box": 9,
+    "mask": 0,
+    "none": 0,
+    "polygon": 7
+   },
+   "source_url": "https://pbs.twimg.com/media/G8xx_36WcAAC_Kr?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/daddaf2b-8dde-4148-943e-936292deb04a",
+   "post_id": "695be6bca9ea58f1b6aef5df",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G96PvxibgAAgXrN?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/0f6a8d73-6163-4d44-b1fa-6a0660ec3aee",
+   "post_id": "695be720a9ea58f1b6aef5e8",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G83FtcFagAA3Xii?format=jpg&name=large"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/48693254-a18a-44ab-a16d-7bfdf42fbc1d",
+   "post_id": "695be8aba9ea58f1b6aef605",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G8x1FVRXwAASRZs?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/bc311960-b18a-4f72-8d36-ab000e1ed5c6",
+   "post_id": "695be6dfa9ea58f1b6aef5e4",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/GoFeh7UaQAAm7xG?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/c6d0cd94-7649-47df-83d5-72cd3510e72b",
+   "post_id": "695be7f5a9ea58f1b6aef5f6",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G91wQJ9XAAAc_gM?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/8995b72f-520b-4dd8-a618-7fd66bd1fb14",
+   "post_id": "695be84da9ea58f1b6aef600",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G91UQtNaEAAEdYU?format=jpg&name=900x900"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/7d724c46-a67c-420d-ab0d-ab82fd50ce92",
+   "post_id": "695be88ea9ea58f1b6aef602",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G9rIP0mXgAILWzJ?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/1ce8135c-778d-4189-af29-04f74013ce80",
+   "post_id": "695be6eaa9ea58f1b6aef5e5",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G9kh-kdb0AETHLk?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [
+    "gnd_mrphxkl1_0",
+    "gnd_mrpi0b4o_2"
+   ],
+   "detached_percepts": [],
+   "domains": [
+    "general",
+    "painting"
+   ],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 5,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 1,
+   "photo_public_id": "posts/2a3bbbce-9c75-4db8-81ab-3893cdd0b5de",
+   "post_id": "695be794a9ea58f1b6aef5f1",
+   "region_class": {
+    "box": 0,
+    "mask": 1,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G92ZowbXYAAm4pR?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/10b6e04a-e40a-43ef-a024-a600ec6011e6",
+   "post_id": "695be817a9ea58f1b6aef5fb",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G90kiVxaQAAHqt_?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/45fd517f-c6d0-4dae-9eff-f13e15597c35",
+   "post_id": "695be817a9ea58f1b6aef5fa",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G90kiVxaQAAHqt_?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/4fe71820-daa2-45c0-9c65-be9b0fee1c42",
+   "post_id": "695be6cca9ea58f1b6aef5e1",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G95gVbbacAE6t4k?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/0343eb80-3dcd-496c-a847-099be427733c",
+   "post_id": "695be6fea9ea58f1b6aef5e6",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://pbs.twimg.com/media/G9PD9sNbgAI65Nr?format=jpg&name=small"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/fb0931e5-c187-47e0-9a5a-375bdb8466f4",
+   "post_id": "6a5ac8ca1e691d9ed3927f1b",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://en.wikipedia.org/wiki/Mona_Lisa"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/7a25a4a3-36fd-44b0-9281-42678af8401c",
+   "post_id": "6a5ac9321e691d9ed3927f22",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": null
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/14a52d58-6021-47f0-ad61-932d7f521a33",
+   "post_id": "6a5b9013bf74ef485d003969",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DSp632nk1l2/"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/70e84b06-bda1-447e-8cb2-93b65102c7e0",
+   "post_id": "6a5b902cbf74ef485d00396b",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DSk5WH9kyKU/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/8b9b939d-d665-4c82-ae74-a0bcc77edc8e",
+   "post_id": "6a5b902dbf74ef485d00396c",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DSk5WH9kyKU/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/87377636-f04d-47e0-9f2b-48a9259592d4",
+   "post_id": "6a5b902fbf74ef485d00396d",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DSk5WH9kyKU/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/6f0d3174-d914-4a2f-91db-8c454d2521f8",
+   "post_id": "6a5b9031bf74ef485d00396e",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DSk5WH9kyKU/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/5a98599e-a309-44d6-9030-5b17db59e9fb",
+   "post_id": "6a5b9032bf74ef485d00396f",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DSk5WH9kyKU/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/4245c639-52e1-4744-8dfe-d23674ffb89c",
+   "post_id": "6a5b9034bf74ef485d003970",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DSk5WH9kyKU/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/867a97b4-2760-4aab-96dd-28957d9ee4b9",
+   "post_id": "6a5b9036bf74ef485d003971",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DSk5WH9kyKU/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/f9e73d20-40d1-47d1-9160-5e777bbff2b5",
+   "post_id": "6a5b9037bf74ef485d003972",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DSk5WH9kyKU/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/9386aded-510b-4cfa-a487-3a77835d6498",
+   "post_id": "6a5b9039bf74ef485d003973",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DSk5WH9kyKU/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/b7fd4b1b-47ee-46b7-9500-119c1aff8123",
+   "post_id": "6a5b9041bf74ef485d003974",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DR7p5RXk02d/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/d3c39b26-7328-4d00-897e-75750176a4b9",
+   "post_id": "6a5b9042bf74ef485d003975",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DR7p5RXk02d/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/4e2129d3-dc95-4cf9-9e83-91d862a02214",
+   "post_id": "6a5b9044bf74ef485d003976",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DR7p5RXk02d/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/d52d7a3f-97ac-401a-bb9f-c8c72b024817",
+   "post_id": "6a5b9046bf74ef485d003977",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DR7p5RXk02d/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/d9f53d2d-3136-43b8-9d6b-4c6db4d2c01e",
+   "post_id": "6a5b9048bf74ef485d003978",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DR7p5RXk02d/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/62185b8f-70b1-40cf-af9f-d627c0e8894a",
+   "post_id": "6a5b9049bf74ef485d003979",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DR7p5RXk02d/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/6d47a22f-ab1b-415a-a1b1-bb49fab64fa1",
+   "post_id": "6a5b904bbf74ef485d00397a",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DR7p5RXk02d/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/e615ad0b-b979-42b1-bd6b-bd9b374617bf",
+   "post_id": "6a5b904dbf74ef485d00397b",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DR7p5RXk02d/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/e78e2504-5946-4cc8-ab96-ae74da8fdbd5",
+   "post_id": "6a5b904fbf74ef485d00397c",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DR7p5RXk02d/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/d37552b9-94f7-4921-bc3f-69a3dba23204",
+   "post_id": "6a5b9050bf74ef485d00397d",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DR7p5RXk02d/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/4fb15461-1748-4d31-b6c3-d0526c52bc82",
+   "post_id": "6a5b9055bf74ef485d00397e",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/f0667aec-7206-486a-95d2-1e8aed6334f1",
+   "post_id": "6a5b9058bf74ef485d00397f",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/b1aa2d8b-2453-4628-8f9c-8170ebe672df",
+   "post_id": "6a5b9059bf74ef485d003980",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/adced75c-2be0-4cf4-8962-8ebba8bb0952",
+   "post_id": "6a5b905bbf74ef485d003981",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/e2979a2f-bafc-4135-a819-02a8e6cbd481",
+   "post_id": "6a5b905dbf74ef485d003982",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/533b212e-e0a3-4d2d-bd74-eb208515360d",
+   "post_id": "6a5b905fbf74ef485d003983",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/bd463600-e552-4179-a89d-233aec20712e",
+   "post_id": "6a5b9061bf74ef485d003984",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/198d1162-c19e-455e-9c79-9b894ead5315",
+   "post_id": "6a5b9063bf74ef485d003985",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/4aedbd41-d660-4bb6-b492-f8d808daa2ef",
+   "post_id": "6a5b9064bf74ef485d003986",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/78fb084b-629e-4ee1-83c8-324dd6f4e1cb",
+   "post_id": "6a5b9066bf74ef485d003987",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/c08a7d2e-c16b-466c-bde9-0798c40a69d5",
+   "post_id": "6a5b9068bf74ef485d003988",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/e98ecdd4-c361-4661-a836-e71aa6bb20d9",
+   "post_id": "6a5b9069bf74ef485d003989",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DZFdGiqmrqI/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/e6e86b48-0d03-4d6b-a1e4-8dc3c739de2f",
+   "post_id": "6a5b906dbf74ef485d00398a",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DXPWJJjGq-i/?img_index=2"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/753c03b0-ff29-40a1-82e0-71299279a0ca",
+   "post_id": "6a5b906fbf74ef485d00398b",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DXPWJJjGq-i/?img_index=2"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/b00abfb4-2fa0-478b-9c13-f0128e34eb9a",
+   "post_id": "6a5b9071bf74ef485d00398c",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DXPWJJjGq-i/?img_index=2"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/416f7f22-b1f8-4680-90c4-ec631d237f0f",
+   "post_id": "6a5b9073bf74ef485d00398d",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DXPWJJjGq-i/?img_index=2"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/da1b7a58-1b8c-4206-ac1a-5c01cc1a7b6f",
+   "post_id": "6a5b9074bf74ef485d00398e",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DXPWJJjGq-i/?img_index=2"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/9f3578c4-9a62-49fe-9b92-a9ec01147fbf",
+   "post_id": "6a5b9076bf74ef485d00398f",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DXPWJJjGq-i/?img_index=2"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/ca796865-f8a5-48b6-9b74-5e3043142f11",
+   "post_id": "6a5b9078bf74ef485d003990",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DXPWJJjGq-i/?img_index=2"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/ca083b82-4b1a-4b40-a082-84c6b669e830",
+   "post_id": "6a5b9079bf74ef485d003991",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/542d7555-eae3-4187-b54f-824530dd3140",
+   "post_id": "6a5b907bbf74ef485d003992",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/fbca08c6-dc68-42f3-a807-a321af60d743",
+   "post_id": "6a5b907dbf74ef485d003993",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/f36df3b6-5618-49e9-9dbf-09537f9a7144",
+   "post_id": "6a5b907fbf74ef485d003994",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/13c89e7f-f81d-4ab7-946b-4a1794742452",
+   "post_id": "6a5b9080bf74ef485d003995",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/b7c56e1f-4dbc-41ac-af8e-ec8d7ff90fad",
+   "post_id": "6a5b9081bf74ef485d003996",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/6b8ba1f7-4f86-41f3-968c-79a4e95e99cf",
+   "post_id": "6a5b9084bf74ef485d003997",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/e89a306e-cd41-469e-a259-c93630226d8d",
+   "post_id": "6a5b9085bf74ef485d003998",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/438257a1-e65b-4162-9d38-2cad6ce26acc",
+   "post_id": "6a5b9087bf74ef485d003999",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/2ca3031e-788e-4767-b82f-0882de7c3109",
+   "post_id": "6a5b9088bf74ef485d00399a",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/2b9e7173-c666-48a8-ae61-ebb1f27ac668",
+   "post_id": "6a5b908abf74ef485d00399b",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DWlVPdQGufS/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/31694ccf-fb73-4266-a388-51ec318c3c9c",
+   "post_id": "6a5b91e7bf74ef485d00399c",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DVB1hLCExUv/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/87c3d092-3a63-4d0e-bc8c-16846308a5f2",
+   "post_id": "6a5b91e9bf74ef485d00399d",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DVB1hLCExUv/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/9da2913b-9a51-4cba-81c2-f2b13e817358",
+   "post_id": "6a5b91ebbf74ef485d00399e",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DVB1hLCExUv/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 1,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [
+    "general",
+    "painting"
+   ],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 1,
+   "photo_public_id": "posts/c751bce4-1706-465c-b038-28488a56c0c7",
+   "post_id": "6a5b91ecbf74ef485d00399f",
+   "region_class": {
+    "box": 0,
+    "mask": 1,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DVB1hLCExUv/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/1d60d80c-5905-45a0-8292-fee262ed8e31",
+   "post_id": "6a5b91eebf74ef485d0039a0",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DVB1hLCExUv/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/870f3b34-0a46-4ffd-98ad-192fd1cab364",
+   "post_id": "6a5b91f6bf74ef485d0039a1",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DUyaSYYk1EH/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/e85d5546-4e53-4436-a86a-aec308a7447c",
+   "post_id": "6a5b91f8bf74ef485d0039a2",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DUyaSYYk1EH/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/fe7ce6fa-d94d-4d0d-afa7-708ac010d75e",
+   "post_id": "6a5b91f9bf74ef485d0039a3",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DUyaSYYk1EH/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/18fcdff1-ce0a-41bd-895e-eb13546d6c9c",
+   "post_id": "6a5b91fbbf74ef485d0039a4",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DUyaSYYk1EH/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/daba3ffc-2b2c-473f-a9de-ec3ce21acbb0",
+   "post_id": "6a5b9224bf74ef485d0039a5",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DQRj3IakzRd/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/3bfd357e-62f7-470d-a7f2-deaae4bb430a",
+   "post_id": "6a5b9225bf74ef485d0039a6",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DQRj3IakzRd/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/f6887d62-8ad3-485f-b107-524bcac6ac6a",
+   "post_id": "6a5b9227bf74ef485d0039a7",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DQRj3IakzRd/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/b817606f-5b1f-41d3-ad4a-602691027458",
+   "post_id": "6a5b9229bf74ef485d0039a8",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DQRj3IakzRd/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 1,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/dee4da61-b511-43a9-b800-b2b25bc62c18",
+   "post_id": "6a5b922bbf74ef485d0039a9",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DQRj3IakzRd/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/fe9589fd-34e2-44cc-8537-f80cc2282bf5",
+   "post_id": "6a5b922dbf74ef485d0039aa",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DQRj3IakzRd/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/5d26d64f-823a-4513-a074-c12c3c927c9d",
+   "post_id": "6a5b922fbf74ef485d0039ab",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DQRj3IakzRd/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/71b03940-5d61-40fb-9910-60e5c5b9edc1",
+   "post_id": "6a5b9231bf74ef485d0039ac",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DQRj3IakzRd/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/1a4f189b-2a74-40be-a6ee-b72262f9687d",
+   "post_id": "6a5b9233bf74ef485d0039ad",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DQRj3IakzRd/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/2e23f019-e9c3-478f-b687-e5ac865c44be",
+   "post_id": "6a5b9235bf74ef485d0039ae",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DQRj3IakzRd/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 1,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 1,
+   "n_mentions": 0,
+   "n_percepts": 1,
+   "n_regions": 1,
+   "photo_public_id": "posts/a4cc10cd-0fd1-4227-89da-8513484eee12",
+   "post_id": "6a5b923ebf74ef485d0039af",
+   "region_class": {
+    "box": 0,
+    "mask": 1,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DKYzGe3uXii/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/7c66f8f8-c472-47c7-a6b3-ae0cff9facc0",
+   "post_id": "6a5b9240bf74ef485d0039b0",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DKYzGe3uXii/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/659aec45-075f-44d8-a051-ebe54b0f74fe",
+   "post_id": "6a5b9242bf74ef485d0039b1",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DKYzGe3uXii/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/19458bff-534e-4f51-a564-09c570dac684",
+   "post_id": "6a5b9245bf74ef485d0039b2",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DKYzGe3uXii/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/9c9a9b67-24c5-4bcf-9cff-6b63fb938281",
+   "post_id": "6a5b9247bf74ef485d0039b3",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DKYzGe3uXii/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/62315e8d-a9f8-4480-a008-98ceed606bb1",
+   "post_id": "6a5b9249bf74ef485d0039b4",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DKYzGe3uXii/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/4d24d686-39cd-4ec8-b3ba-f4cfad9314bc",
+   "post_id": "6a5b924bbf74ef485d0039b5",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DKYzGe3uXii/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/ea907e90-8784-4199-ba47-884f5b53ee99",
+   "post_id": "6a5b924ebf74ef485d0039b6",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DKYzGe3uXii/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 2,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 1,
+   "n_mentions": 0,
+   "n_percepts": 1,
+   "n_regions": 2,
+   "photo_public_id": "posts/9b200cdf-18c8-4409-a4fb-6bf4e7e3d2be",
+   "post_id": "6a5b9273bf74ef485d0039b7",
+   "region_class": {
+    "box": 0,
+    "mask": 2,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DH0dk4YT42k/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/773e2d3a-34f2-4eaf-a7c8-6f713f1edcca",
+   "post_id": "6a5b9275bf74ef485d0039b8",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DH0dk4YT42k/?img_index=1"
+  },
+  {
+   "assertions_by_model": {},
+   "assertions_by_status": {},
+   "corruption": {},
+   "curator": {
+    "creator_regions": 0,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 0,
+    "weighted": 0
+   },
+   "detached_grounds": [],
+   "detached_percepts": [],
+   "domains": [],
+   "has_image": true,
+   "image": "reachable",
+   "n_assertions": 0,
+   "n_grounds": 0,
+   "n_mentions": 0,
+   "n_percepts": 0,
+   "n_regions": 0,
+   "photo_public_id": "posts/fc49a138-7972-468e-83bc-fc11d4142b02",
+   "post_id": "6a5b9277bf74ef485d0039b9",
+   "region_class": {
+    "box": 0,
+    "mask": 0,
+    "none": 0,
+    "polygon": 0
+   },
+   "source_url": "https://www.instagram.com/p/DH0dk4YT42k/?img_index=1"
+  }
+ ],
+ "report": {
+  "aggregate": {
+   "corruption": {},
+   "curator": {
+    "creator_regions": 5,
+    "prioritised": 0,
+    "region_notes": 0,
+    "semantic_curated": 2,
+    "weighted": 0
+   },
+   "detached_grounds": 4,
+   "detached_percepts": 0,
+   "dissected": 9,
+   "grounds": 24,
+   "mentions": 0,
+   "percepts": 5,
+   "posts": 127,
+   "region_class": {
+    "box": 18,
+    "mask": 15,
+    "none": 0,
+    "polygon": 9
+   },
+   "regions": 42,
+   "semantic_posts": 1,
+   "with_image": 127
+  },
+  "embeddings": {
+   "by_model": {
+    "dinov2_vits14": 93,
+    "fashion-clip": 4
+   },
+   "by_space": {
+    "dinov2_vits14|context|dino-v1|384": 42,
+    "dinov2_vits14|identity|dino-v1|384": 42,
+    "dinov2_vits14|whole_image|dino-v1|384": 9,
+    "fashion-clip|fashion|vitb32|512": 4
+   },
+   "orphaned": 0,
+   "stale": 0,
+   "stale_reasons": {},
+   "total": 97
+  },
+  "smoke": {
+   "adapter_dinov2": "available",
+   "adapter_fashionpedia": "deferred",
+   "adapter_sam2": "available",
+   "adapter_segformer": "available",
+   "adapter_semantic_vlm": "available",
+   "adapter_yolo": "available",
+   "image_fetch_decode": "ok (1024, 672)",
+   "retrieval_search": "ready (3 hits)",
+   "semantic_provider": "ready",
+   "spaces": {
+    "fashion": true,
+    "text_image": false,
+    "visual_context": true,
+    "visual_identity": true,
+    "visual_whole": true
+   }
+  }
+ }
+}
