@@ -58,10 +58,11 @@ async def run_semantic(post: dict, image_bytes: bytes, *, intent: str = "name",
         priority=int(Priority.FOREGROUND), cancel=cancel or CancelToken(),
         cache_key=ckey, timeout_s=45.0)
 
-    return _to_semantics(result, cand_digest, adapter)
+    return _to_semantics(result, cand_digest, adapter, allowed_ids=packet["allowed_ids"])
 
 
-def _to_semantics(job_result, cand_digest: str, adapter) -> Dict[str, Any]:
+def _to_semantics(job_result, cand_digest: str, adapter,
+                  allowed_ids: Optional[List[str]] = None) -> Dict[str, Any]:
     sr = job_result.artifact.data if job_result.artifact else None
     now = datetime.now(timezone.utc)
     meta = {
@@ -77,8 +78,17 @@ def _to_semantics(job_result, cand_digest: str, adapter) -> Dict[str, Any]:
                 "needs_better_evidence": [], "meta": meta}
 
     resp = sr.response
+    # Defense-in-depth: the persistence layer ITSELF drops any assertion/relation/flag that
+    # cites an id we did not supply — we never trust the provider to have filtered. `None`
+    # means "no restriction" (unit calls that don't pass a packet).
+    allowed = None if allowed_ids is None else set(allowed_ids)
+    ok = lambda cid: allowed is None or cid in allowed
     assertions = []
-    for c in resp.candidates:
+    seen = set()                        # adversarial: a duplicate candidate id keeps the FIRST
+    for c in resp.candidates:           # assertion only, so curate/merge stay deterministic.
+        if c.candidate_id in seen or not ok(c.candidate_id):
+            continue
+        seen.add(c.candidate_id)
         assertions.append({
             "candidate_id": c.candidate_id,
             "label": c.label, "ranked_alternatives": c.ranked_alternatives,
@@ -88,11 +98,13 @@ def _to_semantics(job_result, cand_digest: str, adapter) -> Dict[str, Any]:
             "prompt_schema_version": SCHEMA_VERSION, "created_at": now,
             "status": "proposed", "curator_label": None,
         })
-    relations = [r.model_dump() for r in resp.relations]
+    # a relation is kept only if BOTH endpoints are supplied ids — it can never introduce a
+    # phantom candidate, and (D3) can never become geometry parenting regardless.
+    relations = [r.model_dump() for r in resp.relations if ok(r.from_id) and ok(r.to_id)]
     global_reading = resp.global_reading.model_dump() if resp.global_reading else None
     # candidate ids the VLM flagged as poorly-evidenced → the curator UX can launch Refine
     # on them (they are the ids the painting/collage read says the masks don't serve).
-    needs = [cid for cid in resp.needs_better_evidence]
+    needs = [c for c in dict.fromkeys(resp.needs_better_evidence) if ok(c)]   # unique + supplied
     return {"assertions": assertions, "relations": relations, "global": global_reading,
             "needs_better_evidence": needs, "meta": meta}
 
