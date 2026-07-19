@@ -393,3 +393,46 @@ class FashionpediaAdapter:
         # serverless path (wired when an endpoint exists) — never a silent local substitute.
         return JobResult(JobStatus.UNAVAILABLE, provenance=Provenance(
             adapter=self.spec.name, error="serverless call not implemented in C3"))
+
+
+# ── D2: semantic annotator (cloud VLM) — interprets candidates, never geometry ──
+class SemanticAnnotatorAdapter:
+    """The `SemanticAnnotate` adapter — a cloud VLM (OpenRouter/gpt-4o-mini) run through the
+    orchestrator's REMOTE slot (concurrency 1, deduped, timeout, cancel, telemetry). It
+    references candidate ids and returns the geometry-forbidding semantic schema; it can
+    never emit or mutate pixels."""
+
+    def __init__(self, provider=None) -> None:
+        from backend.services.semantic_provider import SemanticProvider, PROVIDER, MODEL
+        self._provider = provider or SemanticProvider()
+        model_id = getattr(self._provider, "model", None) or f"{PROVIDER}/{MODEL}"
+        self.spec = AdapterSpec(
+            name="cloud_vlm", capability=Capability.SEMANTIC_ANNOTATE, resource=ResourceKind.REMOTE,
+            model_id=model_id, preprocessing_version="sem-v1",
+            available=self._provider.available(), deferred=not self._provider.available())
+
+    def is_available(self) -> bool:
+        return self._provider.available()
+
+    async def load(self) -> float:
+        return 0.0
+
+    async def unload(self) -> None:
+        pass
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        packet = payload.get("packet") or {}
+        allowed = payload.get("allowed_ids") or []
+        res = await asyncio.to_thread(
+            self._provider.interpret,
+            image_b64=packet.get("contact_sheet_b64", ""), allowed_ids=allowed,
+            prompt=packet.get("prompt", ""))
+        status_map = {"ready": JobStatus.SUCCEEDED, "unavailable": JobStatus.UNAVAILABLE,
+                      "timed_out": JobStatus.TIMED_OUT, "error": JobStatus.FAILED}
+        prov = Provenance(adapter=self.spec.name, model=res.model, latency_ms=res.latency_ms,
+                          error=res.error or None)
+        return JobResult(status_map.get(res.status, JobStatus.FAILED),
+                         artifact=VisionArtifact("semantic", res, prov), provenance=prov)

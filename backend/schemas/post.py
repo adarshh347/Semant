@@ -114,6 +114,8 @@ class Post(BaseModel):
     # {mode, proposed{fashion,architecture,painting}, chosen[], user_overridden, reason,
     #  scheduled_passes[], router_version}. See services/domain_profiles.py.
     domain_profile: Optional[dict] = None
+    # VISION-D: semantic assertions (VLM interpretation), stored SEPARATELY from geometry
+    semantics: Optional[dict] = None
     aletheia_cache: Optional[dict] = None  # cached feed-hook reading, computed once per image (Track C §5)
     # Differential v1 — Grounds (visual evidence) + expression Percepts. Deliberately
     # OUTSIDE region_annotations: detect-regions wholesale-replaces that array, and the
@@ -129,6 +131,7 @@ class PostUpdate(BaseModel):
     grounds: Optional[List[dict]] = None   # Differential v1
     percepts: Optional[List[dict]] = None  # Differential v1
     domain_profile: Optional[dict] = None  # VISION-C domain profile
+    semantics: Optional[dict] = None       # VISION-D semantic assertions
 
 class PaginatedPosts(BaseModel):
     posts: List[Post]

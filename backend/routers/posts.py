@@ -89,6 +89,7 @@ def post_helper(post) -> dict:
         "region_annotations": post.get("region_annotations"),
         "domain": post.get("domain"),
         "domain_profile": post.get("domain_profile"),
+        "semantics": post.get("semantics"),
         "aletheia_cache": post.get("aletheia_cache"),
         "grounds": post.get("grounds"),
         "percepts": post.get("percepts"),
@@ -1170,6 +1171,68 @@ async def domain_profile_override(post_id: str, req: DomainOverrideRequest):
         raise HTTPException(status_code=422, detail=str(e))
     await post_collection.update_one({"_id": obj_id}, {"$set": {"domain_profile": profile}})
     return {"domain_profile": profile}
+
+
+# ── VISION-D · semantic reading (VLM interprets candidates; never geometry) ───
+class SemanticReadRequest(BaseModel):
+    intent: str = "name"                  # name | material | relate | compose | describe
+    force: bool = False                   # bypass cache (preserves prior curator state)
+
+
+class SemanticCurateRequest(BaseModel):
+    status: Optional[str] = None          # accepted | rejected | tentative | proposed
+    curator_label: Optional[str] = None   # an edit → status becomes 'overridden'
+
+
+@router.post("/{post_id}/semantic-read")
+async def semantic_read(post_id: str, req: SemanticReadRequest = None):
+    """Interpret the post's candidate masks with the VLM and persist assertions SEPARATELY
+    from geometry. region_annotations (mask_rle/polygons/bbox/geometry_rev) are never
+    touched. Curator decisions survive the rerun."""
+    from backend.services import semantic_pass
+    req = req or SemanticReadRequest()
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    new_sem = await semantic_pass.run_semantic(post, img_bytes, intent=req.intent, force=req.force)
+    merged = semantic_pass.merge_curator_state(new_sem, post.get("semantics"))
+    # ONLY semantics is written — geometry is untouched (D2 invariant).
+    await post_collection.update_one({"_id": obj_id}, {"$set": {"semantics": merged}})
+    return {"semantics": merged, "status": (merged.get("meta") or {}).get("status")}
+
+
+@router.patch("/{post_id}/semantics/{candidate_id}")
+async def semantic_curate(post_id: str, candidate_id: str, req: SemanticCurateRequest):
+    """Curator accept / reject / edit of one semantic assertion. An edit overrides the
+    label (status → overridden); never silently replaced by a later rerun."""
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    sem = post.get("semantics") or {"assertions": []}
+    found = False
+    for a in sem.get("assertions", []):
+        if a.get("candidate_id") == candidate_id:
+            if req.curator_label is not None:
+                a["curator_label"] = req.curator_label
+                a["status"] = "overridden"
+            elif req.status:
+                a["status"] = req.status
+            found = True
+            break
+    if not found:
+        raise HTTPException(status_code=404, detail=f"No assertion for candidate {candidate_id}")
+    await post_collection.update_one({"_id": obj_id}, {"$set": {"semantics": sem}})
+    return {"semantics": sem}
 
 # More general route comes after
 @router.get("/", response_model=PaginatedPosts)

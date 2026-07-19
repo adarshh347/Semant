@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ArrowLeft, MousePointer2, Brush, PenTool, Group, Waypoints, Frame, Eye, Check,
-    Play, Undo2, X, Plus, Scan,
+    Play, Undo2, X, Plus, Scan, Sparkles,
 } from 'lucide-react';
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
 import useStageGeometry, { useNaturalSize, pointerToNormalized } from './useStageGeometry';
 import useMaskRefine from './useMaskRefine';
+import useSemanticRead from './useSemanticRead';
+import SemanticReading from './SemanticReading';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
 import './DifferentialWorkspace.css';
@@ -31,6 +33,7 @@ const TOOLS = [
     { key: 'connect', label: 'Connect', icon: Waypoints, hint: 'Relation — tie two grounds together' },
     { key: 'frame', label: 'Frame', icon: Frame, hint: 'The whole image as evidence' },
     { key: 'refine', label: 'Refine', icon: Scan, hint: 'Select a part, then click/drag to tighten it to an exact mask' },
+    { key: 'read', label: 'Read', icon: Sparkles, hint: 'Ask the model to interpret the parts — name, qualify, relate; it never moves a mask' },
 ];
 
 const PERCEPT_PROPERTIES = [
@@ -96,6 +99,14 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
     const refine = useMaskRefine(postId, tool === 'refine' ? selectedRegion : null);
     const [refineBox, setRefineBox] = useState(null);   // live box draft (normalized)
     const refineDrag = useRef(null);
+
+    // ── Read (VISION-D · D4) — the VLM interprets the candidate masks (never geometry) ──
+    const reading = useSemanticRead(postId, post?.semantics || null);
+    // "needs better evidence" hands the curator straight to Refine on that part.
+    const readingToRefine = useCallback((cid) => {
+        selectRegion(cid);
+        switchTool('refine');
+    }, [selectRegion]);   // eslint-disable-line react-hooks/exhaustive-deps -- switchTool stable
 
     const expressionPercepts = useMemo(
         () => (percepts || []).filter((p) => String(p.id || '').startsWith('pctx_')),
@@ -536,7 +547,8 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                             : tool === 'refine' ? (selectedRegion
                                                 ? 'Refine — click the part to grow the mask, ⇧-click to subtract, or drag a box. Enter confirms · Esc clears.'
                                                 : 'Refine — Select a part first, then click/drag to tighten it to an exact mask.')
-                                                : 'Select parts (⇧ to gather several), or take a tool: Brush (B), Trace (T), Collect, Connect, Frame.'}
+                                                : tool === 'read' ? 'Read — ask the model to interpret the parts in the inspector. It names, qualifies and relates them; it never moves a mask.'
+                                                    : 'Select parts (⇧ to gather several), or take a tool: Brush (B), Trace (T), Collect, Connect, Frame.'}
                     </p>
                 </main>
 
@@ -565,6 +577,17 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                 <button type="button" className="diff-mini diff-mini--primary" onClick={confirmRefine} disabled={refine.status !== 'ok'}>Confirm</button>
                             </div>
                         </div>
+                    )}
+                    {/* read (VISION-D · D4) — the VLM reading of the candidate masks */}
+                    {tool === 'read' && (
+                        <SemanticReading
+                            semantics={reading.semantics} status={reading.status}
+                            error={reading.error} busyId={reading.busyId} regions={regions}
+                            onRead={(intent, force) => reading.read({ intent, force })}
+                            onCancel={reading.cancel} onCurate={reading.curate}
+                            onFocusRegion={(id) => { selectRegion(id); selectGround(null); }}
+                            onHoverRegion={setHoveredId} onRefine={readingToRefine}
+                        />
                     )}
                     {/* draw draft (field/path/boundary) */}
                     {hasDrawDraft && !composer && (
