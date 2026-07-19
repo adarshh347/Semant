@@ -150,6 +150,33 @@ async def recover_post(post: dict, image_bytes: bytes, plan: Dict[str, Any], *,
     return {"post_id": plan["post_id"], "trace": trace, "detached_marked": marked}
 
 
+def stale_semantic_assertions(post: dict, prior_mask_hashes: Dict[str, str]) -> List[str]:
+    """Candidate ids whose semantic assertion must be marked stale because the EVIDENCE it reads
+    changed — the region's mask now differs from `prior_mask_hashes` (pre-recovery). Curator
+    decisions are never dropped here; the caller flags stale but preserves status/curator_label.
+    An assertion about unchanged evidence stays valid (a geometry recovery that did not touch a
+    region does not invalidate its reading)."""
+    from backend.services.region_embedding_service import mask_hash
+    cur = {str(r.get("id")): (mask_hash(r.get("mask_rle")) if mg.rle_is_valid(r.get("mask_rle")) else "")
+           for r in (post.get("region_annotations") or [])}
+    sem = post.get("semantics") or {}
+    stale = []
+    for a in (sem.get("assertions") or []):
+        cid = str(a.get("candidate_id"))
+        if cur.get(cid, "") != prior_mask_hashes.get(cid, ""):
+            stale.append(cid)
+    return stale
+
+
+def mark_stale_semantic_assertions(post: dict, prior_mask_hashes: Dict[str, str]) -> List[str]:
+    """Flag stale assertions in place (`evidence_stale=True`) WITHOUT dropping curator decisions —
+    status / curator_label are preserved; only a marker is added so the UX can offer a re-read."""
+    stale = set(stale_semantic_assertions(post, prior_mask_hashes))
+    for a in ((post.get("semantics") or {}).get("assertions") or []):
+        a["evidence_stale"] = str(a.get("candidate_id")) in stale
+    return sorted(stale)
+
+
 def mark_detached_grounds(post: dict) -> List[str]:
     """Flag Grounds whose Region no longer exists as detached/stale — visibly, never deleted."""
     regions = post.get("region_annotations") or []
