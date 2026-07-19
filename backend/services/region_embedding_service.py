@@ -145,6 +145,7 @@ async def upsert_embedding(
     crop_version: Optional[str] = None,
     source_content_hash: Optional[str] = None,
     mask_hash: Optional[str] = None,
+    route: Optional[str] = None,
     normalized: bool = True,
     status: str = "ready",
     error: str = "",
@@ -175,6 +176,7 @@ async def upsert_embedding(
         "crop_version": crop_version,
         "source_content_hash": source_content_hash,
         "mask_hash": mask_hash,
+        "route": route,                   # E2: how this vector was made (mask_pool | crop_cls | whole_cls)
         "normalized": normalized,
         "storage": "inline",              # vector lives in this row; location is swappable later
         "status": status,
