@@ -566,6 +566,32 @@ def _match_parent(fine: dict, anchors: list) -> Optional[dict]:
         fine.get("box") or {}, anchors, parent_label=fine.get("parent_label") or "")
 
 
+def _region_box_iou(a: dict, b: dict) -> float:
+    ba, bb = a.get("box") or {}, b.get("box") or {}
+    ax, ay, aw, ah = ba.get("x", 0), ba.get("y", 0), ba.get("w", 0), ba.get("h", 0)
+    bx, by, bw, bh = bb.get("x", 0), bb.get("y", 0), bb.get("w", 0), bb.get("h", 0)
+    ix = max(0.0, min(ax + aw, bx + bw) - max(ax, bx))
+    iy = max(0.0, min(ay + ah, by + bh) - max(ay, by))
+    inter = ix * iy
+    union = aw * ah + bw * bh - inter
+    return inter / union if union > 0 else 0.0
+
+
+def _is_duplicate_geometry(r: dict, others: list, iou_thresh: float,
+                           *, require_same_kind: bool) -> bool:
+    """A candidate is a duplicate of one already kept when their boxes overlap heavily.
+    `require_same_kind` (auto-vs-auto) keeps a wall and a person at the same spot as
+    SEPARATE evidence; against creator regions we drop the auto regardless of kind."""
+    for o in others:
+        if _region_box_iou(r, o) < iou_thresh:
+            continue
+        if not require_same_kind:
+            return True
+        if r.get("detector") == o.get("detector") or r.get("category") == o.get("category"):
+            return True
+    return False
+
+
 def _profile_chosen(post: dict) -> list:
     """The active domain profiles (VISION-C) persisted on the post, or [] if none yet.
     Drives which specialist passes detect-regions schedules — general/YOLO always runs."""
@@ -692,13 +718,24 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             # canonicalize on parent_id; parent_label is not a Region field).
             f.pop("parent_label", None)
 
-    regions = (anchors or []) + fine
+    candidates = (anchors or []) + fine
     if fine:
         source = f"{source}+sukshma"
 
-    # Preserve any prioritisation/notes the curator already set (match by id).
-    existing = {r.get("id"): r for r in (post.get("region_annotations") or [])}
-    for r in regions:
+    # ── candidate merge + curator-safety (VISION-C · C5) ─────────────────────
+    existing_list = post.get("region_annotations") or []
+    existing = {r.get("id"): r for r in existing_list}
+    # 1. Creator-authored regions SURVIVE a re-dissect intact — geometry and all. A
+    #    curator's refined mask (Refine → confirm) is never overwritten by an auto pass.
+    creator_regions = [r for r in existing_list if r.get("actor") == "creator"]
+    creator_ids = {r.get("id") for r in creator_regions}
+    # 2. Auto candidates: carry curator fields by id, stamp lineage, then dedup by GEOMETRY
+    #    (never by label) against creator regions and each other, so no two near-identical
+    #    masks masquerade as separate evidence.
+    kept_auto = []
+    for r in candidates:
+        if r.get("id") in creator_ids:
+            continue                                       # the creator's region wins
         # Provenance defaults (Track A): every detected region is auto-authored.
         r.setdefault("actor", "auto")
         r.setdefault("detector", "vision")
@@ -707,7 +744,6 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             r["prioritised"] = prev.get("prioritised", False)
             r["weight"] = prev.get("weight", 0)
             r["user_note"] = prev.get("user_note", "")
-            # a creator who edited an auto region keeps their authorship.
             if prev.get("actor") == "creator":
                 r["actor"] = "creator"
         else:
@@ -718,9 +754,18 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
         # the segmenter; stamp the rest (box-only/legacy) without fabricating a mask.
         if not r.get("geometry_provenance"):
             mask_geometry.canonicalize_geometry(r, provenance={"via": "detect-regions"})
+        # geometry-only dedup — a candidate that is a near-duplicate (box IoU) of a
+        # creator region or an already-kept auto is dropped; the more-specific /
+        # higher-confidence one is kept. Never merges by label.
+        if _is_duplicate_geometry(r, creator_regions, 0.7, require_same_kind=False) \
+                or _is_duplicate_geometry(r, kept_auto, 0.85, require_same_kind=True):
+            continue
+        kept_auto.append(r)
 
+    regions = creator_regions + kept_auto
     await post_collection.update_one({"_id": obj_id}, {"$set": {"region_annotations": regions}})
-    return {"regions": regions, "source": source, "anchor_count": len(anchors or []), "fine_count": len(fine)}
+    return {"regions": regions, "source": source, "anchor_count": len(anchors or []),
+            "fine_count": len(fine), "creator_preserved": len(creator_regions)}
 
 
 async def _embed_marked_regions(post_id: str) -> int:
@@ -1080,6 +1125,31 @@ async def domain_profile_propose(post_id: str):
                                                   reason_detail=result.get("reason") or "")
     await post_collection.update_one({"_id": obj_id}, {"$set": {"domain_profile": profile}})
     return {"domain_profile": profile, "reused": False}
+
+
+@router.get("/vision/capabilities")
+async def vision_capabilities():
+    """Per-adapter runtime state (VISION-C · C5) so the profile control can show
+    running/ready/unavailable without a model-control dashboard."""
+    from backend.services.vision_orchestrator.adapters import (
+        YoloSegmenterAdapter, Sam2RefinerAdapter, SegFormerAdeAdapter, FashionpediaAdapter)
+    from backend.services import fashion_segmentation_service as fseg
+    caps = []
+    for adapter in (YoloSegmenterAdapter(), SegFormerAdeAdapter(), Sam2RefinerAdapter(),
+                    FashionpediaAdapter()):
+        avail = adapter.is_available()
+        # Fashionpedia is unavailable-but-serverless-deferred (contract preserved); the
+        # rest are simply ready or unavailable by their deps/checkpoint.
+        if adapter.spec.name == "fashionpedia_r50fpn":
+            state = "ready" if avail else "deferred"
+            reason = "" if avail else "local unavailable — serverless (set FASHIONPEDIA_ENDPOINT)"
+        else:
+            state, reason = ("ready", "") if avail else ("unavailable", "deps/checkpoint missing")
+        caps.append({"name": adapter.spec.name, "capability": adapter.spec.capability.value,
+                     "resource": adapter.spec.resource.value, "state": state, "reason": reason})
+    caps.append({"name": "segformer_clothes", "capability": "fashion_parse", "resource": "cpu",
+                 "state": "ready" if fseg.is_available() else "unavailable", "reason": ""})
+    return {"capabilities": caps}
 
 
 @router.patch("/{post_id}/domain-profile")
