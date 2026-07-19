@@ -1008,9 +1008,11 @@ async def refine_region_confirm(post_id: str, req: RefineRequest):
     if idx is not None:
         prev = regions[idx]
         for k in ("prioritised", "weight", "user_note"):         # keep curator meaning
-            region[k] = prev.get(k, region.get(k))
-        region["depth"] = prev.get("depth", region.get("depth", 0))
-        region["parent_id"] = prev.get("parent_id")
+            if prev.get(k) is not None:                          # never overwrite the
+                region[k] = prev[k]                              # region's valid default with None
+        region["depth"] = prev.get("depth") if prev.get("depth") is not None else region.get("depth", 0)
+        if prev.get("parent_id") is not None:
+            region["parent_id"] = prev["parent_id"]
         regions[idx] = region                                    # upgrade in place
     else:
         regions.append(region)

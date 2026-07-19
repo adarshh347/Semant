@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ArrowLeft, MousePointer2, Brush, PenTool, Group, Waypoints, Frame, Eye, Check,
-    Play, Undo2, X, Plus,
+    Play, Undo2, X, Plus, Scan,
 } from 'lucide-react';
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
 import useStageGeometry, { useNaturalSize, pointerToNormalized } from './useStageGeometry';
+import useMaskRefine from './useMaskRefine';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
 import './DifferentialWorkspace.css';
@@ -29,6 +30,7 @@ const TOOLS = [
     { key: 'collect', label: 'Collect', icon: Group, hint: 'Constellation — gather grounds and points' },
     { key: 'connect', label: 'Connect', icon: Waypoints, hint: 'Relation — tie two grounds together' },
     { key: 'frame', label: 'Frame', icon: Frame, hint: 'The whole image as evidence' },
+    { key: 'refine', label: 'Refine', icon: Scan, hint: 'Select a part, then click/drag to tighten it to an exact mask' },
 ];
 
 const PERCEPT_PROPERTIES = [
@@ -81,9 +83,19 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
         addGround, removeGround, groundById, selectedGroundId, selectGround,
         setHoveredGroundId, focusGroundIds,
         addExpressionPercept, playRecall, clearRecall, recall,
+        updateRegion, addRegion,
     } = store;
 
     const recallPlayer = useRecallPlayer(store);
+
+    // ── Refine (VISION-B5) — exact-mask refinement of the selected part ────────
+    const postId = post?._id || post?.id;
+    const selectedRegion = regions.find((r) => r.id === selectedId) || null;
+    // baseRegion is only meaningful while refining; passing the selection lets
+    // Select → Refine upgrade that part's mask in place.
+    const refine = useMaskRefine(postId, tool === 'refine' ? selectedRegion : null);
+    const [refineBox, setRefineBox] = useState(null);   // live box draft (normalized)
+    const refineDrag = useRef(null);
 
     const expressionPercepts = useMemo(
         () => (percepts || []).filter((p) => String(p.id || '').startsWith('pctx_')),
@@ -156,6 +168,15 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
         if (untouched) return;
         const p = pointerToNormalized(e, stageRef.current, content);
         if (!p) return;
+        // Refine (VISION-B5): a click plants a point (⇧ = negative), a drag draws a box.
+        // Own the gesture so the image never pans while prompting.
+        if (tool === 'refine') {
+            e.preventDefault();
+            e.currentTarget.setPointerCapture?.(e.pointerId);
+            refineDrag.current = { x0: p.x, y0: p.y, moved: false };
+            setRefineBox(null);
+            return;
+        }
         // Drawing tools own the gesture — stop the browser's native image-drag /
         // text-selection from hijacking the press-drag (the "brush moves the image"
         // bug). draggable=false + user-drag CSS below are the belt; this is the braces.
@@ -181,6 +202,15 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
     const onStagePointerMove = (e) => {
         const p = pointerToNormalized(e, stageRef.current, content);
         if (tool === 'brush') setBrushCursor(p);
+        if (tool === 'refine' && refineDrag.current) {
+            if (!p) return;
+            const d = refineDrag.current;
+            if (Math.hypot(p.x - d.x0, p.y - d.y0) > 0.012) {
+                d.moved = true;
+                setRefineBox({ x0: d.x0, y0: d.y0, x1: p.x, y1: p.y });
+            }
+            return;
+        }
         if (!drawingRef.current || !p) return;
         if (tool === 'brush') {
             setDraft((d) => {
@@ -197,6 +227,18 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                 return { ...d, points: [...d.points, [p.x, p.y, e.pressure || 0]] };
             });
         }
+    };
+
+    const onStagePointerUp = (e) => {
+        if (tool === 'refine' && refineDrag.current) {
+            const d = refineDrag.current; refineDrag.current = null;
+            const p = pointerToNormalized(e, stageRef.current, content);
+            if (d.moved && p) refine.setBoxPrompt({ x0: d.x0, y0: d.y0, x1: p.x, y1: p.y });
+            else if (p) refine.addPoint(p.x, p.y, e.shiftKey ? 0 : 1);
+            setRefineBox(null);
+            return;
+        }
+        endStroke(e);
     };
 
     const endStroke = useCallback(() => {
@@ -293,6 +335,30 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
         playRecall(p.id);
     }, [composer, addExpressionPercept, playRecall]);
 
+    // ── refine commit / cancel / session release ─────────────────────────────
+    // Confirm saves the new geometry revision (the endpoint persists) and refreshes
+    // the region in the store IN PLACE — no reload, still inside Differential. Cancel
+    // changes nothing on the server.
+    const confirmRefine = useCallback(async () => {
+        const data = await refine.confirm();
+        const r = data?.region;
+        if (!r) return;
+        if (regions.some((x) => x.id === r.id)) updateRegion(r.id, r, { save: false });
+        else addRegion(r, { save: false });
+        selectRegion(r.id);
+    }, [refine, regions, updateRegion, addRegion, selectRegion]);
+
+    // Release the SAM session when refinement mode ends…
+    const wasRefine = useRef(false);
+    useEffect(() => {
+        if (wasRefine.current && tool !== 'refine') { refine.clear(); refine.release(); }
+        wasRefine.current = tool === 'refine';
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- stable refine methods only
+    }, [tool, refine.clear, refine.release]);
+    // …and when the workspace unmounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable refine.release only
+    useEffect(() => () => { refine.release(); }, [refine.release]);
+
     // ── region click (tool-aware) ───────────────────────────────────────────
     const handleRegionClick = useCallback((id, e) => {
         if (tool === 'select') {
@@ -313,6 +379,10 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
     useEffect(() => {
         const down = (e) => {
             if (e.target.closest?.('input, textarea, [contenteditable="true"]')) return;
+            if (tool === 'refine') {
+                if (e.key === 'Enter') { e.preventDefault(); confirmRefine(); return; }
+                if (e.key === 'Escape') { refine.clear(); return; }
+            }
             if (e.code === 'KeyO' && !e.repeat) setUntouched(true);
             else if (e.key === 'Escape') {
                 if (recall) clearRecall();
@@ -334,7 +404,8 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
         window.addEventListener('keydown', down);
         window.addEventListener('keyup', up);
         return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
-    }, [recall, clearRecall, composer, hasDrawDraft, hasCompDraft, picked, tray, clearDraft, undoStroke, switchTool, tool, traceSub, selectRegion, selectGround, setHoveredId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- stable refine.clear only
+    }, [recall, clearRecall, composer, hasDrawDraft, hasCompDraft, picked, tray, clearDraft, undoStroke, switchTool, tool, traceSub, selectRegion, selectGround, setHoveredId, confirmRefine, refine.clear]);
 
     const saving = saveState === 'saving' || metaSaveState === 'saving';
     const saved = saveState === 'saved' || metaSaveState === 'saved';
@@ -419,7 +490,7 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                         style={natural ? { '--diff-ar': `${natural.w} / ${natural.h}` } : undefined}
                         onPointerDown={onStagePointerDown}
                         onPointerMove={onStagePointerMove}
-                        onPointerUp={endStroke}
+                        onPointerUp={onStagePointerUp}
                         onPointerLeave={() => { endStroke(); setBrushCursor(null); }}
                         // Belt-and-braces against the native image drag stealing the gesture.
                         onDragStart={(e) => e.preventDefault()}>
@@ -433,6 +504,9 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                     onSelect={(tool === 'select' || composing) ? handleRegionClick : undefined}
                                     onActivate={tool === 'select' ? setHoveredId : undefined}
                                     className="diff-svg"
+                                    interactive={tool !== 'refine'}
+                                    proposal={tool === 'refine' ? refine.proposal : null}
+                                    prompt={tool === 'refine' ? { points: refine.points, box: refineBox || refine.box } : null}
                                 />
                                 <GroundLayers
                                     grounds={groundsForLayers} regions={regions} natural={natural} content={content}
@@ -459,12 +533,39 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                     : 'Draw a boundary — the seam where one thing becomes another. [ ] widen the band.')
                                     : tool === 'collect' ? 'Click grounds and empty points to gather a constellation.'
                                         : tool === 'connect' ? 'Click two or more grounds to tie them into a relation.'
-                                            : 'Select parts (⇧ to gather several), or take a tool: Brush (B), Trace (T), Collect, Connect, Frame.'}
+                                            : tool === 'refine' ? (selectedRegion
+                                                ? 'Refine — click the part to grow the mask, ⇧-click to subtract, or drag a box. Enter confirms · Esc clears.'
+                                                : 'Refine — Select a part first, then click/drag to tighten it to an exact mask.')
+                                                : 'Select parts (⇧ to gather several), or take a tool: Brush (B), Trace (T), Collect, Connect, Frame.'}
                     </p>
                 </main>
 
                 {/* ── inspector ── */}
                 <aside className="diff-inspector">
+                    {/* refine (VISION-B5) — exact-mask refinement of the selected part */}
+                    {tool === 'refine' && (
+                        <div className="diff-insp-refine">
+                            <span className="diff-eyebrow">Refine mask</span>
+                            <p className="diff-insp-hint">
+                                {selectedRegion
+                                    ? <>Tightening <strong>{regionName(selectedRegion)}</strong> — the exact mask replaces its box.</>
+                                    : 'No part selected — this makes a new mask. (Select a part first for Select → Refine.)'}
+                            </p>
+                            <div className="diff-refine-status" aria-live="polite">
+                                {refine.status === 'loading' && (<><span className="diff-refine-spin" /> refining…</>)}
+                                {refine.status === 'ok' && `proposed · ${Math.round((refine.proposal.confidence || 0) * 100)}% · rev ${refine.proposal.geometry_rev}`}
+                                {refine.status === 'empty' && 'no confident mask yet — add a point or drag a box'}
+                                {refine.status === 'error' && <span className="diff-refine-err">refiner error: {refine.error}</span>}
+                                {refine.status === 'confirmed' && <span className="diff-refine-ok">saved ✓</span>}
+                                {refine.status === 'idle' && (selectedRegion ? 'click the part, or drag a box' : 'select a part first')}
+                            </div>
+                            <div className="diff-refine-actions">
+                                <button type="button" className="diff-mini" onClick={() => refine.clear()} disabled={!refine.hasPrompt}>Clear</button>
+                                <button type="button" className="diff-mini" onClick={() => { refine.clear(); switchTool('select'); }}>Cancel</button>
+                                <button type="button" className="diff-mini diff-mini--primary" onClick={confirmRefine} disabled={refine.status !== 'ok'}>Confirm</button>
+                            </div>
+                        </div>
+                    )}
                     {/* draw draft (field/path/boundary) */}
                     {hasDrawDraft && !composer && (
                         <div className="diff-insp-draft">

@@ -38,8 +38,14 @@ const shapeClassFor = (r, { viewMap, selectedId, activeId, focusId, litIds }) =>
 export default function RegionOverlay({
     natural, regions, viewMap, selectedId, activeId, focusId, litIds = null,
     onSelect, onActivate, draft = null, className = 'rs-svg',
+    // VISION-B5: an exact-mask refine proposal + its point/box prompt, rendered through
+    // this same registered overlay. `interactive={false}` lets refine gestures fall
+    // through to the stage instead of being caught by the region shapes.
+    proposal = null, prompt = null, interactive = true,
 }) {
     if (!natural) return null;
+
+    const mk = Math.max(4, natural.w * 0.011);
 
     return (
         <svg
@@ -47,6 +53,7 @@ export default function RegionOverlay({
             viewBox={`0 0 ${natural.w} ${natural.h}`}
             preserveAspectRatio="xMidYMid meet"
             aria-hidden="true"
+            style={interactive ? undefined : { pointerEvents: 'none' }}
         >
             {regions.map(r => {
                 const common = {
@@ -82,6 +89,26 @@ export default function RegionOverlay({
                     width={Math.abs(draft.x1 - draft.x0) * natural.w}
                     height={Math.abs(draft.y1 - draft.y0) * natural.h} />
             )}
+            {/* refine proposal (an exact mask preview) — dashed, registered here */}
+            {proposal && hasMaskPolygons(proposal) && (
+                <path className="rs-proposal" fillRule="evenodd" vectorEffect="non-scaling-stroke"
+                    d={ringsToPath(proposal.polygons, natural.w, natural.h)} />
+            )}
+            {prompt && prompt.box && (
+                <rect className="rs-boxprompt" vectorEffect="non-scaling-stroke"
+                    x={Math.min(prompt.box.x0, prompt.box.x1) * natural.w}
+                    y={Math.min(prompt.box.y0, prompt.box.y1) * natural.h}
+                    width={Math.abs(prompt.box.x1 - prompt.box.x0) * natural.w}
+                    height={Math.abs(prompt.box.y1 - prompt.box.y0) * natural.h} />
+            )}
+            {(prompt?.points || []).map((p, i) => (
+                <g key={`pt${i}`} className={`rs-pt ${p.label ? 'is-pos' : 'is-neg'}`}
+                    transform={`translate(${p.x * natural.w},${p.y * natural.h})`}>
+                    <circle r={mk} vectorEffect="non-scaling-stroke" />
+                    <line x1={-mk} y1="0" x2={mk} y2="0" vectorEffect="non-scaling-stroke" />
+                    {p.label === 1 && <line x1="0" y1={-mk} x2="0" y2={mk} vectorEffect="non-scaling-stroke" />}
+                </g>
+            ))}
         </svg>
     );
 }
