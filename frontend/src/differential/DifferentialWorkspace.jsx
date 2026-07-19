@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ArrowLeft, MousePointer2, Brush, PenTool, Group, Waypoints, Frame, Eye, Check,
-    Play, Undo2, X, Plus, Scan, Sparkles,
+    Play, Undo2, X, Plus, Scan, Sparkles, Search,
 } from 'lucide-react';
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
@@ -9,6 +9,8 @@ import useStageGeometry, { useNaturalSize, pointerToNormalized } from './useStag
 import useMaskRefine from './useMaskRefine';
 import useSemanticRead from './useSemanticRead';
 import SemanticReading from './SemanticReading';
+import useFindSimilar from './useFindSimilar';
+import FindSimilar from './FindSimilar';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
 import './DifferentialWorkspace.css';
@@ -34,6 +36,7 @@ const TOOLS = [
     { key: 'frame', label: 'Frame', icon: Frame, hint: 'The whole image as evidence' },
     { key: 'refine', label: 'Refine', icon: Scan, hint: 'Select a part, then click/drag to tighten it to an exact mask' },
     { key: 'read', label: 'Read', icon: Sparkles, hint: 'Ask the model to interpret the parts — name, qualify, relate; it never moves a mask' },
+    { key: 'similar', label: 'Similar', icon: Search, hint: 'Find a selected part\'s visual neighbours — research to inspect, never facts' },
 ];
 
 const PERCEPT_PROPERTIES = [
@@ -99,6 +102,9 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
     const refine = useMaskRefine(postId, tool === 'refine' ? selectedRegion : null);
     const [refineBox, setRefineBox] = useState(null);   // live box draft (normalized)
     const refineDrag = useRef(null);
+
+    // ── Similar (VISION-E · E5) — a selected part's visual neighbours (research, not fact) ──
+    const similar = useFindSimilar(postId, tool === 'similar' ? selectedId : null);
 
     // ── Read (VISION-D · D4) — the VLM interprets the candidate masks (never geometry) ──
     const reading = useSemanticRead(postId, post?.semantics || null);
@@ -372,8 +378,8 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
 
     // ── region click (tool-aware) ───────────────────────────────────────────
     const handleRegionClick = useCallback((id, e) => {
-        if (tool === 'select') {
-            if (e?.shiftKey) setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+        if (tool === 'select' || tool === 'similar') {
+            if (e?.shiftKey && tool === 'select') setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
             else setPicked(new Set([id]));
             selectRegion(id);
             selectGround(null);
@@ -512,8 +518,8 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                 <RegionOverlay
                                     natural={natural} regions={regions} viewMap="quiet"
                                     selectedId={selectedId} activeId={hoveredId} focusId={focusId} litIds={litIds}
-                                    onSelect={(tool === 'select' || composing) ? handleRegionClick : undefined}
-                                    onActivate={tool === 'select' ? setHoveredId : undefined}
+                                    onSelect={(tool === 'select' || composing || tool === 'similar') ? handleRegionClick : undefined}
+                                    onActivate={(tool === 'select' || tool === 'similar') ? setHoveredId : undefined}
                                     className="diff-svg"
                                     interactive={tool !== 'refine'}
                                     proposal={tool === 'refine' ? refine.proposal : null}
@@ -548,7 +554,8 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                                 ? 'Refine — click the part to grow the mask, ⇧-click to subtract, or drag a box. Enter confirms · Esc clears.'
                                                 : 'Refine — Select a part first, then click/drag to tighten it to an exact mask.')
                                                 : tool === 'read' ? 'Read — ask the model to interpret the parts in the inspector. It names, qualifies and relates them; it never moves a mask.'
-                                                    : 'Select parts (⇧ to gather several), or take a tool: Brush (B), Trace (T), Collect, Connect, Frame.'}
+                                                    : tool === 'similar' ? 'Similar — select a part; its visual neighbours appear in the inspector as research to inspect (source, exact mask, distance, space), never as facts.'
+                                                        : 'Select parts (⇧ to gather several), or take a tool: Brush (B), Trace (T), Collect, Connect, Frame.'}
                     </p>
                 </main>
 
@@ -587,6 +594,15 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                             onCancel={reading.cancel} onCurate={reading.curate}
                             onFocusRegion={(id) => { selectRegion(id); selectGround(null); }}
                             onHoverRegion={setHoveredId} onRefine={readingToRefine}
+                        />
+                    )}
+                    {/* similar (VISION-E · E5) — visual neighbours of the selected part */}
+                    {tool === 'similar' && (
+                        <FindSimilar
+                            regionName={selectedRegion ? regionName(selectedRegion) : null}
+                            status={similar.status} error={similar.error} results={similar.results}
+                            meta={similar.meta} cropUrl={similar.cropUrl}
+                            onFind={similar.find} onReindex={similar.reindex} onCancel={similar.cancel}
                         />
                     )}
                     {/* draw draft (field/path/boundary) */}
