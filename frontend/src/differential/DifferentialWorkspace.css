@@ -595,3 +595,54 @@
     .diff-ground-add { transition: none; }
     .diff-recall-caption { animation: none; }
 }
+
+/* ── Refine tool (VISION-B5) — exact-mask refinement inside Differential ──── */
+/* proposal + prompt render through RegionOverlay (.diff-svg); all pointer-events
+   stay off so the prompt gesture reaches the stage. */
+.rs-proposal {
+    fill: color-mix(in srgb, var(--accent, #5E2B50) 26%, transparent);
+    stroke: var(--accent, #5E2B50);
+    stroke-width: 2.5;
+    stroke-dasharray: 7 5;
+    animation: rs-march 0.6s linear infinite;
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent-deep, #4A2140) 60%, transparent));
+}
+@keyframes rs-march { to { stroke-dashoffset: -24; } }
+.rs-boxprompt {
+    fill: color-mix(in srgb, var(--accent, #5E2B50) 6%, transparent);
+    stroke: var(--accent, #5E2B50);
+    stroke-width: 2;
+    stroke-dasharray: 5 4;
+}
+.rs-pt circle { stroke-width: 2; fill: #fff; }
+.rs-pt line { stroke-width: 2.5; }
+.rs-pt.is-pos circle, .rs-pt.is-pos line { stroke: #2f9e5e; }
+.rs-pt.is-neg circle, .rs-pt.is-neg line { stroke: #d0432b; }
+@media (prefers-reduced-motion: reduce) { .rs-proposal { animation: none; stroke-dasharray: none; } }
+
+/* refine inspector panel */
+.diff-insp-refine {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 12px; border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--accent, #5E2B50) 24%, transparent);
+    background: color-mix(in srgb, var(--accent, #5E2B50) 5%, transparent);
+}
+.diff-refine-status { font-size: 12px; opacity: 0.85; display: flex; align-items: center; gap: 8px; min-height: 18px; }
+.diff-refine-err { color: #d0432b; }
+.diff-refine-ok { color: #2f9e5e; font-weight: 600; }
+.diff-refine-spin {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid color-mix(in srgb, var(--accent, #5E2B50) 30%, transparent);
+    border-top-color: var(--accent, #5E2B50); display: inline-block;
+    animation: rs-spin 0.7s linear infinite;
+}
+@keyframes rs-spin { to { transform: rotate(360deg); } }
+.diff-refine-actions { display: flex; gap: 6px; }
+.diff-mini {
+    font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 7px;
+    border: 1px solid color-mix(in srgb, var(--accent, #5E2B50) 30%, transparent);
+    background: transparent; color: inherit; cursor: pointer;
+}
+.diff-mini:hover { background: color-mix(in srgb, var(--accent, #5E2B50) 10%, transparent); }
+.diff-mini--primary { background: var(--accent, #5E2B50); color: #fff; border-color: var(--accent, #5E2B50); font-weight: 600; }
+.diff-mini:disabled { opacity: 0.4; cursor: not-allowed; }

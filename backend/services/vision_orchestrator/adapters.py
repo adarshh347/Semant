@@ -196,6 +196,11 @@ def refined_mask_to_region(mask2d, *, base_id: Optional[str] = None,
         "refined_from": base_id,
         "proposed": True,
         "geometry_rev": int(base_geometry_rev),   # canonicalize bumps to +1
+        # curator fields carry Region's own defaults so the region is always schema-valid
+        # (None here would fail the Post response_model on a later GET).
+        "prioritised": False,
+        "weight": 0,
+        "user_note": "",
     }
     mask_geometry.canonicalize_geometry(region, provenance={
         "adapter": "sam21_hiera_tiny", "model": model_id, "checkpoint": checkpoint,

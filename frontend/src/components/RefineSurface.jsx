@@ -1,20 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { API_URL } from '../config/api';
 import useStageGeometry, { useNaturalSize, pointerToNormalized } from '../differential/useStageGeometry';
+import useMaskRefine from '../differential/useMaskRefine';
 import { ringsToPath } from '../lib/maskGeometry';
 import './RefineSurface.css';
 
 /**
- * RefineSurface (VISION-BUILD-001 B4) — the interactive exact-mask refinement loop.
+ * RefineSurface (VISION-BUILD-001 B4) — the lab harness for the exact-mask refinement
+ * loop. It now consumes the shared `useMaskRefine` hook (VISION-B5), so this and the
+ * in-product Differential Refine tool run identical logic. Kept as a test harness at
+ * `lab/refine/:postId`; the real curator flow lives in DifferentialWorkspace.
  *
- * Point / box prompts → a live SAM 2.1 preview mask (proposed, not saved) → Confirm
- * persists a new geometry revision; Cancel leaves evidence untouched. It rides the
- * shared stage-geometry contract (viewBox = natural, `xMidYMid meet` = object-fit
- * contain), so the mask stays registered to the image at any size or zoom.
- *
- * Critical: while a point/box gesture is active the image must NOT pan or drag. Every
- * pointer event is preventDefault'd, the <img> is undraggable, and the stage disables
- * selection/native drag — the DIFF-UX-GATE-001 lesson, applied here by construction.
+ * Stage pan / image drag is prevented while prompting (preventDefault + pointer-events +
+ * touch-action + no user-drag), on the shared viewBox=natural / xMidYMid-meet contract.
  */
 
 const reducedMotion = () =>
@@ -27,63 +24,26 @@ export default function RefineSurface({ post, postId, onConfirmed }) {
   const [natural, onImgLoad] = useNaturalSize();
   const { content } = useStageGeometry(stageRef, natural);
 
-  const [tool, setTool] = useState('point');       // 'point' | 'box'
-  const [negative, setNegative] = useState(false);
-  const [points, setPoints] = useState([]);        // [{x,y,label}] normalized
-  const [box, setBox] = useState(null);            // {x0,y0,x1,y1} normalized
-  const [draftBox, setDraftBox] = useState(null);
-  const [proposal, setProposal] = useState(null);  // proposed region
-  const [status, setStatus] = useState('idle');    // idle|loading|ok|empty|error|confirmed
-  const [error, setError] = useState('');
-  const [showBase, setShowBase] = useState(true);
-  const drawing = useRef(false);
-  const reqSeq = useRef(0);
-  const reduced = reducedMotion();
-
   const baseRegion = useMemo(
-    () => (post?.region_annotations || []).find(r => r.mask_rle || (r.polygons && r.polygons.length)) || null,
+    () => (post?.region_annotations || []).find((r) => r.mask_rle || (r.polygons && r.polygons.length)) || null,
     [post]);
 
+  const refine = useMaskRefine(id, baseRegion);
+  const { points, box, proposal, status, error } = refine;
+
+  const [tool, setTool] = useState('point');       // 'point' | 'box'
+  const [negative, setNegative] = useState(false);
+  const [draftBox, setDraftBox] = useState(null);
+  const [showBase, setShowBase] = useState(true);
+  const drawing = useRef(false);
+  const reduced = reducedMotion();
   const nb = natural || { w: 1, h: 1 };
 
-  // ── preview: call the refiner whenever the prompt changes (debounced) ──────
-  const runPreview = useCallback(async (pts, bx) => {
-    if ((!pts || !pts.length) && !bx) { setProposal(null); setStatus('idle'); return; }
-    const seq = ++reqSeq.current;
-    setStatus('loading'); setError('');
-    try {
-      const body = {};
-      if (pts && pts.length) { body.points = pts.map(p => [p.x, p.y]); body.labels = pts.map(p => p.label); }
-      if (bx) body.box = [Math.min(bx.x0, bx.x1), Math.min(bx.y0, bx.y1),
-                          Math.max(bx.x0, bx.x1), Math.max(bx.y0, bx.y1)];
-      if (baseRegion) { body.base_id = baseRegion.id; body.base_geometry_rev = baseRegion.geometry_rev || 0; }
-      const res = await fetch(`${API_URL}/api/v1/posts/${id}/refine-region/preview`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(res.status === 503 ? 'refiner unavailable' : `refiner ${res.status}`);
-      const data = await res.json();
-      if (seq !== reqSeq.current) return;                    // a newer prompt won
-      const r = data.region;
-      const weak = !r || !(r.polygons && r.polygons.length) || (r.confidence != null && r.confidence < 0.2);
-      setProposal(r || null);
-      setStatus(weak ? 'empty' : 'ok');
-    } catch (e) {
-      if (seq !== reqSeq.current) return;
-      setError(String(e.message || e)); setStatus('error'); setProposal(null);
-    }
-  }, [id, baseRegion]);
-
-  useEffect(() => {
-    const t = setTimeout(() => runPreview(points, box), 110);
-    return () => clearTimeout(t);
-  }, [points, box, runPreview]);
-
-  // ── pointer handling — prevents stage pan / image drag while refining ──────
   const toNorm = (e) => pointerToNormalized(e, stageRef.current, content, { clamp: true });
 
   const onPointerDown = (e) => {
     if (!content) return;
-    e.preventDefault();                                       // stop native drag/pan
+    e.preventDefault();
     try { stageRef.current.setPointerCapture(e.pointerId); } catch { /* */ }
     if (tool === 'box') {
       const p = toNorm(e); if (!p) return;
@@ -103,50 +63,25 @@ export default function RefineSurface({ post, postId, onConfirmed }) {
       e.preventDefault();
       drawing.current = false;
       const b = draftBox; setDraftBox(null);
-      if (b && Math.abs(b.x1 - b.x0) > 0.012 && Math.abs(b.y1 - b.y0) > 0.012) {
-        setPoints([]); setBox(b);
-      }
+      if (b && Math.abs(b.x1 - b.x0) > 0.012 && Math.abs(b.y1 - b.y0) > 0.012) refine.setBoxPrompt(b);
     }
   };
   const onClick = (e) => {
     if (tool !== 'point' || !content) return;
     e.preventDefault();
     const p = toNorm(e); if (!p) return;
-    const label = (negative || e.shiftKey || e.altKey) ? 0 : 1;
-    setBox(null);
-    setPoints((pts) => [...pts, { x: p.x, y: p.y, label }]);
+    refine.addPoint(p.x, p.y, (negative || e.shiftKey || e.altKey) ? 0 : 1);
   };
 
-  const clearPrompt = useCallback(() => {
-    setPoints([]); setBox(null); setDraftBox(null); setProposal(null);
-    setStatus('idle'); setError('');
-  }, []);
-
   const confirm = useCallback(async () => {
-    if (status !== 'ok' || !proposal) return;
-    setStatus('loading');
-    try {
-      const body = {};
-      if (points.length) { body.points = points.map(p => [p.x, p.y]); body.labels = points.map(p => p.label); }
-      if (box) body.box = [Math.min(box.x0, box.x1), Math.min(box.y0, box.y1),
-                           Math.max(box.x0, box.x1), Math.max(box.y0, box.y1)];
-      if (baseRegion) { body.base_id = baseRegion.id; body.base_geometry_rev = baseRegion.geometry_rev || 0; }
-      const res = await fetch(`${API_URL}/api/v1/posts/${id}/refine-region/confirm`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(`confirm ${res.status}`);
-      const data = await res.json();
-      clearPrompt(); setStatus('confirmed');
-      onConfirmed?.(data.region, data.post);
-    } catch (e) { setError(String(e.message || e)); setStatus('error'); }
-  }, [status, proposal, points, box, baseRegion, id, clearPrompt, onConfirmed]);
+    const data = await refine.confirm();
+    if (data?.region) onConfirmed?.(data.region, data.post);
+  }, [refine, onConfirmed]);
+  const cancel = useCallback(() => { refine.clear(); onConfirmed?.(null); }, [refine, onConfirmed]);
 
-  const cancel = useCallback(() => { clearPrompt(); onConfirmed?.(null); }, [clearPrompt, onConfirmed]);
-
-  // keyboard: Esc clear · Enter confirm · P point · B box · N negative
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') clearPrompt();
+      if (e.key === 'Escape') refine.clear();
       else if (e.key === 'Enter') confirm();
       else if (e.key === 'b' || e.key === 'B') setTool('box');
       else if (e.key === 'p' || e.key === 'P') setTool('point');
@@ -154,7 +89,11 @@ export default function RefineSurface({ post, postId, onConfirmed }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [clearPrompt, confirm]);
+  }, [refine, confirm]);
+
+  // release the SAM session when the harness unmounts.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- depend on stable refine.release, not the object
+  useEffect(() => () => { refine.release(); }, [refine.release]);
 
   const b = draftBox || box;
   const mk = Math.max(4, nb.w * 0.011);
@@ -184,7 +123,7 @@ export default function RefineSurface({ post, postId, onConfirmed }) {
           {status === 'idle' && 'Click the subject, or drag a box'}
         </div>
         <div className="refine-actions">
-          <button className="rf-btn" onClick={clearPrompt}>Clear <kbd>Esc</kbd></button>
+          <button className="rf-btn" onClick={() => refine.clear()}>Clear <kbd>Esc</kbd></button>
           <button className="rf-btn rf-cancel" onClick={cancel}>Cancel</button>
           <button className="rf-btn rf-confirm" disabled={status !== 'ok'} onClick={confirm}>Confirm <kbd>⏎</kbd></button>
         </div>

@@ -52,6 +52,17 @@ def test_box_and_existing_mask_prompt_kinds_recorded():
     assert refined_mask_to_region(m, prompt="existing-mask")["geometry_provenance"]["prompt"] == "existing-mask"
 
 
+def test_refined_region_is_schema_valid():
+    # VISION-B5 regression: a refined region must validate against the Region model —
+    # curator fields carry real defaults, never None (else the Post response_model 500s
+    # on a later GET). This was the bug browser-verification of the Differential tool found.
+    from backend.schemas.post import Region
+    region = refined_mask_to_region(disc(40, 40, 20, 20, 12), score=0.9)
+    assert region["prioritised"] is False and region["weight"] == 0 and region["user_note"] == ""
+    m = Region(**region)                                    # must not raise
+    assert m.prioritised is False and m.weight == 0 and m.user_note == ""
+
+
 def test_refiner_adapter_identity():
     a = Sam2RefinerAdapter()
     assert a.spec.name == "sam21_hiera_tiny"
