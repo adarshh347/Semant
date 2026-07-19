@@ -349,3 +349,47 @@ class SegFormerAdeAdapter:
                           latency_ms=(time.perf_counter() - t0) * 1000.0)
         status = JobStatus.UNAVAILABLE if regions is None else JobStatus.SUCCEEDED
         return JobResult(status, artifact=VisionArtifact("arch_parse", regions or [], prov), provenance=prov)
+
+
+# ── C3: Fashionpedia — the fashion-primary adapter (LOCAL-UNAVAILABLE → serverless) ──
+class FashionpediaAdapter:
+    """Fashionpedia Attribute Mask R-CNN R50-FPN — the roster's fashion-primary.
+
+    Benchmark on this box (VISION-C · C3): **not locally viable.** It requires detectron2,
+    which has no prebuilt wheel for torch 2.13.0+cu130 and cannot build from source without
+    the CUDA toolkit (no nvcc); 4 GB VRAM + ~1 GB free RAM is marginal besides. Per the
+    build contract we therefore keep this exact adapter/capability identity and mark local
+    capability UNAVAILABLE with an explicit serverless execution path — we do NOT silently
+    substitute a different model. The working fashion garment masks (parts) come, honestly
+    labeled `detector=segformer_clothes`, from the Phase-2a garment segmenter; this adapter
+    adds the 294-attribute fine parts once a serverless endpoint is wired.
+    """
+
+    def __init__(self, *, endpoint: Optional[str] = None) -> None:
+        self.endpoint = endpoint or os.environ.get("FASHIONPEDIA_ENDPOINT")
+        self.spec = AdapterSpec(
+            name="fashionpedia_r50fpn", capability=Capability.FASHION_PARSE,
+            resource=ResourceKind.REMOTE,
+            model_id="fashionpedia-attribute-mask-rcnn-r50-fpn",
+            preprocessing_version="fashionpedia-v1",
+            # local unavailable; becomes available only when a serverless endpoint is set.
+            available=bool(self.endpoint), deferred=not bool(self.endpoint))
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        return 0.0
+
+    async def unload(self) -> None:
+        pass
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if not self.endpoint:
+            return JobResult(JobStatus.UNAVAILABLE, provenance=Provenance(
+                adapter=self.spec.name,
+                error="local unavailable (detectron2 incompatible with torch 2.13/cu130, "
+                      "no CUDA toolkit); set FASHIONPEDIA_ENDPOINT for serverless"))
+        # serverless path (wired when an endpoint exists) — never a silent local substitute.
+        return JobResult(JobStatus.UNAVAILABLE, provenance=Provenance(
+            adapter=self.spec.name, error="serverless call not implemented in C3"))
