@@ -42,36 +42,37 @@ def _key() -> Optional[str]:
 
 
 def _response_schema() -> Dict[str, Any]:
-    """The json_schema the model is constrained to — geometry is unrepresentable."""
+    """The json_schema the model is constrained to — geometry is unrepresentable
+    (`additionalProperties: false` everywhere). OpenAI strict mode requires ALL properties
+    in `required`, so optionals are nullable (type: [T, "null"])."""
+    S = {"type": ["string", "null"]}
+    NUM = {"type": ["number", "null"]}
+    STRARR = {"type": "array", "items": {"type": "string"}}
+    cand = {"type": "object", "additionalProperties": False,
+            "properties": {"candidate_id": {"type": "string"}, "label": S,
+                           "ranked_alternatives": STRARR, "part": S, "material": S,
+                           "attributes": STRARR, "style": S, "confidence": NUM,
+                           "uncertainty": S},
+            "required": ["candidate_id", "label", "ranked_alternatives", "part", "material",
+                         "attributes", "style", "confidence", "uncertainty"]}
+    rel = {"type": "object", "additionalProperties": False,
+           "properties": {"from_id": {"type": "string"}, "to_id": {"type": "string"},
+                          "relation": {"type": "string"}, "confidence": NUM, "note": S},
+           "required": ["from_id", "to_id", "relation", "confidence", "note"]}
+    glob = {"type": "object", "additionalProperties": False,
+            "properties": {"composition": S, "atmosphere": S, "colour": S, "scene": S,
+                           "notes": STRARR},
+            "required": ["composition", "atmosphere", "colour", "scene", "notes"]}
     return {
         "name": "semantic", "strict": True,
         "schema": {
             "type": "object", "additionalProperties": False,
             "properties": {
-                "candidates": {"type": "array", "items": {
-                    "type": "object", "additionalProperties": False,
-                    "properties": {
-                        "candidate_id": {"type": "string"},
-                        "label": {"type": "string"},
-                        "ranked_alternatives": {"type": "array", "items": {"type": "string"}},
-                        "part": {"type": "string"}, "material": {"type": "string"},
-                        "attributes": {"type": "array", "items": {"type": "string"}},
-                        "style": {"type": "string"},
-                        "confidence": {"type": "number"}, "uncertainty": {"type": "string"},
-                    }, "required": ["candidate_id"]}},
-                "relations": {"type": "array", "items": {
-                    "type": "object", "additionalProperties": False,
-                    "properties": {
-                        "from_id": {"type": "string"}, "to_id": {"type": "string"},
-                        "relation": {"type": "string"}, "confidence": {"type": "number"},
-                        "note": {"type": "string"}},
-                    "required": ["from_id", "to_id", "relation"]}},
-                "global_reading": {"type": "object", "additionalProperties": False,
-                    "properties": {"composition": {"type": "string"}, "atmosphere": {"type": "string"},
-                                   "colour": {"type": "string"}, "scene": {"type": "string"},
-                                   "notes": {"type": "array", "items": {"type": "string"}}}},
-                "needs_better_evidence": {"type": "array", "items": {"type": "string"}},
-            }, "required": ["candidates"]},
+                "candidates": {"type": "array", "items": cand},
+                "relations": {"type": "array", "items": rel},
+                "global_reading": glob,
+                "needs_better_evidence": STRARR,
+            }, "required": ["candidates", "relations", "global_reading", "needs_better_evidence"]},
     }
 
 
