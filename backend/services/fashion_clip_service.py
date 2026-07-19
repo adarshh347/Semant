@@ -43,10 +43,14 @@ FASHION_ATTRIBUTES = [
 _DOMAIN_PROMPTS = {
     "fashion": "a fashion or clothing outfit photo",
     "architecture": "an interior design or architecture photo",
+    "painting": "a painting, drawing, or work of figurative or abstract art",
     "photography": "a landscape, nature, or portrait photograph",
     "food": "a food or drink photo",
     "product": "a product or object photo",
 }
+
+# The specialist domains VISION-C routes to (photography/food/product fall to `general`).
+_SPECIALIST_DOMAINS = ["fashion", "architecture", "painting"]
 
 
 def is_available() -> bool:
@@ -181,6 +185,27 @@ def classify_domain(img, *, gate: float = 0.35) -> dict:
     label = key if top_score >= gate else "unknown"
     return {"label": label, "score": round(float(top_score), 4),
             "is_fashion": label == "fashion"}
+
+
+def classify_domains(img) -> dict:
+    """Multi-label domain scores (VISION-C) — the confidence per specialist domain, so an
+    image can register as both fashion AND architecture. Returns
+    {available, scores: {fashion, architecture, painting}, ranked, reason}. Scores are the
+    FashionCLIP zero-shot softmax over the prompt set (relative, confidence-bearing);
+    photography/food/product mass simply leaves the specialists low → general only."""
+    if not is_available():
+        return {"available": False, "scores": {d: 0.0 for d in _SPECIALIST_DOMAINS},
+                "ranked": [], "reason": "FashionCLIP unavailable"}
+    ranked = zero_shot(img, list(_DOMAIN_PROMPTS.values()))
+    if not ranked:
+        return {"available": False, "scores": {d: 0.0 for d in _SPECIALIST_DOMAINS},
+                "ranked": [], "reason": "no scores"}
+    prompt_to_key = {v: k for k, v in _DOMAIN_PROMPTS.items()}
+    by_key = {prompt_to_key.get(p, "?"): round(float(s), 4) for p, s in ranked}
+    scores = {d: by_key.get(d, 0.0) for d in _SPECIALIST_DOMAINS}
+    ranked_all = sorted(by_key.items(), key=lambda kv: kv[1], reverse=True)
+    reason = "FashionCLIP zero-shot: " + ", ".join(f"{k} {v:.2f}" for k, v in ranked_all)
+    return {"available": True, "scores": scores, "ranked": ranked_all, "reason": reason}
 
 
 def cosine(a: List[float], b: List[float]) -> float:

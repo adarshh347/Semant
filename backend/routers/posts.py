@@ -87,6 +87,7 @@ def post_helper(post) -> dict:
         "local_context": post.get("local_context"),
         "region_annotations": post.get("region_annotations"),
         "domain": post.get("domain"),
+        "domain_profile": post.get("domain_profile"),
         "aletheia_cache": post.get("aletheia_cache"),
         "grounds": post.get("grounds"),
         "percepts": post.get("percepts"),
@@ -1028,6 +1029,62 @@ async def refine_region_unload():
     """Release the SAM2 predictor (frees VRAM/RAM). Idempotent."""
     await refine_session.unload()
     return {"unloaded": True}
+
+
+# ── VISION-C · domain profiles (multi-label, user-overridable) ───────────────
+class DomainOverrideRequest(BaseModel):
+    mode: Optional[str] = None            # auto | general | fashion | architecture | painting
+    chosen: Optional[List[str]] = None    # explicit multi-label set
+
+
+@router.post("/{post_id}/domain-profile/propose")
+async def domain_profile_propose(post_id: str):
+    """Auto-classify the image's domains (multi-label, confidence-bearing) and persist the
+    proposal — UNLESS the curator has already overridden it (their choice wins)."""
+    from backend.services import domain_profiles
+    from backend.services import fashion_clip_service as fc
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+
+    existing = post.get("domain_profile") or {}
+    if existing.get("user_overridden"):
+        return {"domain_profile": existing, "reused": True}   # never clobber the curator
+
+    if not fc.is_available():
+        profile = domain_profiles.default_profile()
+        profile["reason"] = "FashionCLIP unavailable — general only"
+    else:
+        img_bytes = await _fetch_post_image_cached(post_id, post)
+        result = await asyncio.to_thread(lambda: fc.classify_domains(fc._open_image(img_bytes)))
+        profile = domain_profiles.propose_profile(result.get("scores") or {},
+                                                  reason_detail=result.get("reason") or "")
+    await post_collection.update_one({"_id": obj_id}, {"$set": {"domain_profile": profile}})
+    return {"domain_profile": profile, "reused": False}
+
+
+@router.patch("/{post_id}/domain-profile")
+async def domain_profile_override(post_id: str, req: DomainOverrideRequest):
+    """The curator's explicit profile choice — wins over Auto and persists."""
+    from backend.services import domain_profiles
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    try:
+        profile = domain_profiles.apply_override(post.get("domain_profile"),
+                                                 mode=req.mode, chosen=req.chosen)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    await post_collection.update_one({"_id": obj_id}, {"$set": {"domain_profile": profile}})
+    return {"domain_profile": profile}
 
 # More general route comes after
 @router.get("/", response_model=PaginatedPosts)
