@@ -68,6 +68,23 @@ def curator_identity_hash(post: dict) -> str:
     return _sha(payload)
 
 
+def curator_only_hash(post: dict) -> str:
+    """The curator invariant that must survive a GEOMETRY recovery: Region ids + labels + notes +
+    priority/weight + actor, semantic curator decisions, grounds and percepts — but NOT geometry
+    (mask/polygon/box/rev). geometry recovery changes geometry on purpose; this hash must not move."""
+    regs = [{"id": r.get("id"), "label": r.get("label"), "user_note": r.get("user_note"),
+             "prioritised": r.get("prioritised"), "weight": r.get("weight"), "actor": r.get("actor")}
+            for r in (post.get("region_annotations") or [])]
+    sem = post.get("semantics") or {}
+    sem_curated = [{"candidate_id": a.get("candidate_id"), "status": a.get("status"),
+                    "curator_label": a.get("curator_label")}
+                   for a in (sem.get("assertions") or [])]
+    payload = {"regions": sorted(regs, key=lambda x: str(x["id"])),
+               "semantics": sorted(sem_curated, key=lambda x: str(x["candidate_id"])),
+               "grounds": post.get("grounds") or [], "percepts": post.get("percepts") or []}
+    return _sha(payload)
+
+
 def post_snapshot(post: dict) -> Dict[str, Any]:
     """One immutable, hashed backup record for a post — its mutable fields + identity hash."""
     pid = str(post.get("_id") or post.get("id"))
