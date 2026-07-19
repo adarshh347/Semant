@@ -1250,6 +1250,15 @@ async def retrieval_spaces():
     return {"spaces": retrieval_service.list_spaces()}
 
 
+@router.get("/vision/index-plan")
+async def index_plan(model: str = "dinov2_vits14", force: bool = False):
+    """READ-ONLY dry-run: what would (re)indexing the dissected corpus cost — no images fetched,
+    nothing written, no backfill launched (that is Increment F). Sizes the F backfill."""
+    from backend.services import indexing_service
+    dissected = [p async for p in post_collection.find({"region_annotations.0": {"$exists": True}})]
+    return await indexing_service.plan_batch(dissected, model=model, force=force)
+
+
 @router.post("/{post_id}/regions/{region_id}/find-similar")
 async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = None):
     """Find a confirmed Region's visual neighbours in its space — indexing it on demand and
