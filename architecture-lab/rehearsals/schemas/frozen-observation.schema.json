@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:rehearsal/frozen-observation.schema.json",
+  "title": "Frozen Observation",
+  "description": "RESEARCH-ONLY frozen record of a single adapter call captured during CAPTURE mode. Written to runs/<id>/observations/ on disk only. Never a production write. In REPLAY mode these are read back and NO adapter is invoked. Uncaptured telemetry MUST be null, never invented.",
+  "type": "object",
+  "required": [
+    "observation_id",
+    "adapter",
+    "request_boundary",
+    "output",
+    "provenance",
+    "content_hash"
+  ],
+  "properties": {
+    "observation_id": { "type": "string", "minLength": 1 },
+    "adapter": { "type": "string", "minLength": 1 },
+    "request_boundary": { "type": ["object", "string"] },
+    "model": { "type": ["string", "null"] },
+    "version": { "type": ["string", "null"] },
+    "device": { "type": ["string", "null"] },
+    "cost": { "type": ["object", "null"] },
+    "latency_ms": { "type": ["number", "null"] },
+    "output": {},
+    "uncertainty": { "type": ["string", "number", "null"] },
+    "provenance": { "type": ["string", "object"] },
+    "captured_at": { "type": ["string", "null"] },
+    "content_hash": { "type": "string", "minLength": 1 }
+  }
+}
