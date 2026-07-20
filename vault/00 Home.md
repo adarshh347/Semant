@@ -1,25 +1,11 @@
-# 00 Home — Drishya / Semant knowledge vault
+# 00 Home — Semant vault
 
-The durable memory. Working prompts + findings live in `architecture-lab/`; the *distilled, reusable* knowledge lives here so we can build future features without relearning or breaking what we've decided.
+Three working spaces, by mode:
 
-## Maps of content
-- Architecture
-  - [[Constraints we must not break]]
-  - [[Purpose Structure Surface]]
-  - [[Border grammar levels]]
-- Frontend analysis
-  - [[Editor model - Path A vs Path B]]
-  - [[Frontend beyond visuals - the orchestrator's lens]]
-- Slash commands
-  - [[Slash command potentialities]]
-- Brainstorming
-  - [[Purpose - niche and positioning]]
-- Project context
-  - [[Drishya and Semant]]
-  - [[Darshan - vision pipeline]]
-- Workflow
-  - [[How we work]]
-  - [[Skills and tools we integrate]]
+- **[[Writing]]** — theoretical & personal prose: stories, motives, the orchestrator's writing, rehearsals, history.
+- **[[Concepts]]** — Semant's ideas & theory: percepts / atlas / codex, the infrastructure lexicon, design language ([[Taste — the Semant design language]]), positioning, architecture theory.
+- **[[Build]]** — Claude-Code execution: the **Architecture Lab** (Findings · Build specs · Decisions · Vision pipeline · Plans), execution prompts, workflow, engineering rehearsals.
 
-## How to use
-When starting any new feature, open [[Constraints we must not break]] and [[Purpose Structure Surface]] first. When touching the editor, read [[Editor model - Path A vs Path B]] and [[Slash command potentialities]].
+Utility: `Attachments/` (images), `_Inbox/` (to triage).
+
+Key notes: [[Names — Chiasm, Field, Manuscript]] · [[Taste — the Semant design language]] · [[The Semant Infrastructure Lexicon]].
