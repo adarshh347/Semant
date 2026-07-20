@@ -1,0 +1,60 @@
+# RESEARCH-ONLY reconstructed run #0. Validates against
+# architecture-lab/rehearsals/schemas/rehearsal-manifest.schema.json.
+# This manifest creates NO production entity, route, or Mongo collection.
+rehearsal_id: "000-passage-001"
+rehearsal_type: "sensitisation-and-return"
+family: "R2 Sensitisation-and-Return"
+mode: "imaginative"
+reconstructed: true
+conducted_by: "human+prose"
+source_condition: "present"
+dates:
+  date_original: "2026-07-20"      # date the vault passage was authored
+  date_imported: "2026-07-20"      # date imported as run #0
+seed_constellation:
+  # Images were DESCRIBED in prose, not connected as real fixtures — see
+  # missing-telemetry.md. No real post/region ids exist. Ids below are
+  # reconstruction placeholders, marked as such.
+  images:
+    - id: "recon-img-relief-A"
+      note: "crowded narrative relief, small gathering enclosed by a large quatrefoil"
+      real_id: null
+    - id: "recon-img-relief-B"
+      note: "second relief; reclining body, pointing arm, vessels, faint ship"
+      real_id: null
+    - id: "recon-img-threeview"
+      note: "three-view study (front/profile/back) of a freestanding South Asian figure"
+      real_id: null
+    - id: "recon-img-dancers"
+      note: "divine dancing pair sharing a base"
+      real_id: null
+    - id: "recon-img-hand-1"
+      note: "close-up of a raised hand, ornamented body"
+      real_id: null
+    - id: "recon-img-hand-2"
+      note: "second hand close-up; fingers poised, wrist bent, forearm weighted by rings"
+      real_id: null
+  texts:
+    - id: "recon-text-seed"
+      note: "Merleau-Ponty / Benjamin / Proust distillation; ends 'The true hawthorns are the hawthorns of the past.'"
+      real_id: null
+  existing_percepts: []            # none — no pct_/pctx_ percepts were connected
+image_order:
+  # Sequence is CLAIMED by the Passage Score's attention path but was never
+  # logged; recorded here as reconstruction, real order unknown.
+  - "recon-img-hand-1"
+  - "recon-img-relief-A"
+  - "recon-img-relief-B"
+  - "recon-img-threeview"
+  - "recon-img-dancers"
+initiating_act:
+  actor: "human"
+  kind: "attention"
+  payload: "held the isolated hand close-up; noticed the poised bent finger as ignition point"
+source_notes:
+  why_selected: "attraction"
+  known_context: "philosophical seed on embodiment, involuntary memory, figure/ground, aura"
+constraints:
+  technical_silence: true          # no model/organ was actually called
+  time_budget: null
+  model_budget: null

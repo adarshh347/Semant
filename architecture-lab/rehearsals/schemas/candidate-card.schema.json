@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:rehearsal/candidate-card.schema.json",
+  "title": "Candidate Embodied Construct (CEC) card",
+  "description": "RESEARCH-ONLY memory of a rehearsal-born hypothesis. A card names a construct; it IMPLIES NO PRODUCTION ENTITY, Mongo document, Pydantic model, route, or schema. `research_only` MUST be true. A construct persists as product only after the Candidate Foundry graduates it in a separate, later decision.",
+  "type": "object",
+  "required": [
+    "candidate_id",
+    "working_name",
+    "kind",
+    "epistemic_status",
+    "research_only",
+    "provenance"
+  ],
+  "properties": {
+    "candidate_id": { "type": "string", "pattern": "^cec-" },
+    "working_name": { "type": "string", "minLength": 1 },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "evidence_form",
+        "relational_field",
+        "perceptual_operator",
+        "circulation_pattern",
+        "agent_skill",
+        "narrative_instrument",
+        "context_memory_behavior",
+        "interface_habitat",
+        "contract_service_implication"
+      ]
+    },
+    "epistemic_status": {
+      "type": "string",
+      "enum": [
+        "SPARK",
+        "CANDIDATE",
+        "TRIAL",
+        "SUPPORTED",
+        "GRADUATED",
+        "DEMOTED",
+        "RETIRED"
+      ]
+    },
+    "research_only": {
+      "const": true,
+      "description": "MUST be true. Asserts this card creates no production entity or schema."
+    },
+    "percept_kind": {
+      "type": "string",
+      "enum": ["attention_percept", "expression_percept", "n/a"],
+      "description": "Disambiguates pct_ (attention_percept) vs pctx_ (expression_percept) when the construct attaches to a Percept; n/a otherwise."
+    },
+    "origin_rehearsals": { "type": "array" },
+    "source_pressure": { "type": "array" },
+    "evidence_examples": { "type": "array" },
+    "claim": { "type": "string" },
+    "what_it_enables": { "type": "string" },
+    "counterexamples": { "type": "array" },
+    "nearest_existing_construct": {
+      "type": "string",
+      "enum": ["Ground", "Percept", "Mention", "relation", "none"]
+    },
+    "interaction_hypotheses": { "type": "array" },
+    "backend_hypotheses": { "type": "array" },
+    "context_hypotheses": { "type": "array" },
+    "provenance": { "type": ["string", "object"] }
+  }
+}

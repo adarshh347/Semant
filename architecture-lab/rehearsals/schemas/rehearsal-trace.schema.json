@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:rehearsal/rehearsal-trace.schema.json",
+  "title": "Rehearsal Trace",
+  "description": "RESEARCH-ONLY append-only event trace for a rehearsal run. Resolves to real ids by reference only; copies no geometry; implies NO production entity or collection. The `events` array is append-only during a run.",
+  "type": "object",
+  "required": ["rehearsal_id", "status", "events"],
+  "properties": {
+    "rehearsal_id": { "type": "string", "minLength": 1 },
+    "reconstructed": { "type": "boolean" },
+    "status": {
+      "type": "string",
+      "enum": ["in_progress", "completed", "refused", "stalled"]
+    },
+    "score_ref": { "type": ["string", "null"] },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" }
+    }
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "actor",
+        "kind",
+        "parent_event",
+        "source_refs",
+        "target_refs",
+        "register",
+        "uncertainty",
+        "reconstructed",
+        "observation_ref",
+        "reversibility",
+        "cost",
+        "provenance",
+        "timestamp"
+      ],
+      "properties": {
+        "event_id": { "type": "string", "minLength": 1 },
+        "actor": {
+          "type": "string",
+          "enum": ["human", "fable", "opus", "system"]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "RECEIVE", "ATTEND", "ASK", "CALL_ORGAN", "OBSERVE", "DISAGREE",
+            "REDIRECT", "PROPOSE", "HUMAN_TURN", "CROSS", "RETURN",
+            "REVISE", "SEDIMENT", "HARVEST"
+          ]
+        },
+        "parent_event": { "type": ["string", "null"] },
+        "source_refs": { "type": "array" },
+        "target_refs": { "type": "array" },
+        "register": {
+          "type": "string",
+          "enum": ["evidence", "reading", "opening"]
+        },
+        "uncertainty": { "type": ["string", "number", "null"] },
+        "reconstructed": { "type": "boolean" },
+        "observation_ref": { "type": ["string", "null"] },
+        "reversibility": { "type": ["string", "null"] },
+        "cost": { "type": ["object", "null"] },
+        "provenance": { "type": ["string", "object"] },
+        "timestamp": { "type": ["string", "null"] },
+        "timestamp_null_reason": { "type": "string" },
+        "terminal": { "type": "boolean" },
+        "outcome": {
+          "type": "string",
+          "enum": ["completed", "refused", "stalled"]
+        },
+        "note": { "type": "string" }
+      },
+      "if": {
+        "properties": { "timestamp": { "const": null } }
+      },
+      "then": {
+        "required": ["timestamp_null_reason"]
+      }
+    }
+  }
+}

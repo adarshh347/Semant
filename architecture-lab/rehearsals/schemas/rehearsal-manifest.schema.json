@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:rehearsal/rehearsal-manifest.schema.json",
+  "title": "Rehearsal Manifest",
+  "description": "RESEARCH-ONLY input packet for a rehearsal run. Implies NO production entity, route, or Mongo collection. Lives only under architecture-lab/rehearsals/.",
+  "type": "object",
+  "required": [
+    "rehearsal_id",
+    "family",
+    "mode",
+    "reconstructed",
+    "conducted_by",
+    "dates",
+    "seed_constellation",
+    "initiating_act",
+    "source_condition"
+  ],
+  "properties": {
+    "rehearsal_id": { "type": "string", "minLength": 1 },
+    "rehearsal_type": { "type": "string" },
+    "family": { "type": "string", "minLength": 1 },
+    "mode": {
+      "type": "string",
+      "enum": ["imaginative", "instrumented", "prototype", "product"]
+    },
+    "reconstructed": { "type": "boolean" },
+    "conducted_by": { "type": "string", "minLength": 1 },
+    "dates": {
+      "type": "object",
+      "properties": {
+        "date_original": { "type": ["string", "null"] },
+        "date_imported": { "type": ["string", "null"] }
+      }
+    },
+    "seed_constellation": {
+      "type": "object",
+      "required": ["images", "texts", "existing_percepts"],
+      "properties": {
+        "images": { "type": "array" },
+        "texts": { "type": "array" },
+        "existing_percepts": { "type": "array" }
+      }
+    },
+    "initiating_act": {
+      "type": "object",
+      "required": ["actor", "kind", "payload"],
+      "properties": {
+        "actor": {
+          "type": "string",
+          "enum": ["human", "fable", "opus", "system"]
+        },
+        "kind": { "type": "string" },
+        "payload": {}
+      }
+    },
+    "source_notes": { "type": "object" },
+    "constraints": { "type": "object" },
+    "image_order": { "type": "array" },
+    "source_condition": {
+      "type": "string",
+      "enum": ["present", "absent", "replaced", "misleading"]
+    }
+  }
+}
