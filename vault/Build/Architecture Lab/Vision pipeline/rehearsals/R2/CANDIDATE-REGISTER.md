@@ -13,7 +13,8 @@ Nothing below meets it. Speculative locations are marked **[SPEC]** and are gues
 | spark-03 | **evidence loss should be announced, not merely survived** | A2, A2S | **strongest** |
 | spark-04 | out-of-domain collapse ≠ channel disagreement | A2 | moderate |
 | spark-05 | address as a viewer-facing stance, maybe without a figure | A3 | new, n=1 |
-| spark-06 | spontaneous anthropomorphism is a hazard for A6 | A3 | method warning |
+| spark-06 | ~~spontaneous~~ **question-conditional** anthropomorphism | A3, **corrected by A4** | narrowed |
+| spark-07 | a claim can be general and its own counterexample at once | A4 | new, n=1 |
 
 ---
 
@@ -153,24 +154,63 @@ entity — is exactly what one pair of images does not justify.
 
 ---
 
-## spark-06 — spontaneous anthropomorphism is a hazard for A6
+## spark-07 — a claim can be general and its own counterexample at once
 
-**Status: SPARK / method warning. Not a product claim.**
+**Status: SPARK, new, n=1.**
 
-**Evidence.** `004-gesture-and-address/score.md` — the model supplied a face, eyes, and a gaze for a
-photograph of a metal structure, entirely unprompted.
+**Evidence.** `005-surface-becoming-structure/score.md` + `sparks.md`.
 
-**Why it matters now.** A6 (R12 Adversarial Projection) *expects a refusal* when offered a seductive
-false analogy between culturally unrelated motifs. A model that anthropomorphises architecture
-unprompted will very likely accept an offered analogy.
+Asked in the abstract, the model answered *"structure organises, pattern merely fills — the
+hierarchy is clear."* Asked minutes later to point at one line, it named a division made by pattern
+alone and said the two *"disagree"* there. Measurement confirms the location it chose is the single
+largest pattern-fineness change in the image (a **149 % edge-density jump at y ≈ 0.765**).
 
-**Consequence for A6's design:** the false analogy **must not be stated in the prompt**, or the
-refusal being measured is a refusal of a suggestion rather than a judgement about the images. This
-compounds the existing amendment against naming refusal tokens.
+**Enablement claim.** A percept stated generally and a percept stated locally can contradict each
+other while both are sincerely held and separately defensible. Semant records percepts as
+independent statements with **no notion of scope**: nothing distinguishes a claim about the whole
+composition from a claim about one line in it, and nothing would ever bring two such claims into
+contact. Note which is better evidenced — the *local* one — and which is more confident — the
+*general* one.
 
-**What would strengthen or kill it.** A6 itself, designed as above.
+**Why it is not production-ready.** One image, one model, two calls. And the "contradiction" may
+be partly an artifact of asking two differently-shaped questions of a model with no memory between
+calls; `critique.md` argues this against itself.
+
+**Nearest existing construct:** `Percept` + `Ground`. A general claim tends to cite a `frame`
+ground; a local one cites a region or field. **Scope may already be encoded in the ground type** —
+which would make this cheap to explore and require no new entity.
+
+**Deliberately NOT concluded:** that Semant should detect contradictions between percepts. Large,
+error-prone, and not licensed by one run.
+
+**Next test.** Ask the same question at two scopes deliberately and check whether ground types
+differ as predicted. If they do, scope is already encoded and merely unused.
 
 ---
+
+## spark-06 — CORRECTED by A4: question-conditional, not spontaneous
+
+**Status: SPARK, narrowed. A3 overstated it.**
+
+A3 claimed the model *spontaneously* anthropomorphises, having described "windows that function as
+eyes… a confrontational gaze" for a figureless metal structure.
+
+**A4 tested this properly and it did not hold.** Given the most face-suggestive aniconic image in
+the corpus — a frontal, three-arched wall with a single lit opening on the centre axis — and two
+prompts that never mentioned faces, eyes, gaze or bodies, **no face reading appeared at all**.
+
+**The correction:** A3's probe asked where an image's *address* goes and whether another image
+"makes the same kind of address." That primes a viewer-facing reading. The behaviour is elicited by
+**address-framed questions**, not by architecture as such.
+
+**Consequence for A6:** the hazard is narrower and better understood than A3 implied. A
+false-analogy test that avoids address language is materially less exposed. The guard against
+*stating* the analogy still stands on its own reasoning.
+
+**Caveat, stated plainly:** this correction rests on a **negative** result — "no face appeared" is
+weaker than "a face appeared." The honest settlement is an A/B on one image (address-framed vs
+structure-framed prompt), which has not been run.
+
 
 ## Withheld across the program
 

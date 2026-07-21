@@ -1,0 +1,86 @@
+# RESEARCH-ONLY instrumented rehearsal. A4 of the R2 breadth batch.
+# Creates no production entity, route, schema, collection, or corpus write.
+# Reads one production post read-only; mutates nothing.
+rehearsal_id: "005-surface-becoming-structure"
+rehearsal_type: "surface-becoming-structure-aniconic"
+family: "R8 Surface Becoming Structure"
+mode: "instrumented"
+reconstructed: false
+conducted_by: "opus (execution); interpretive framing and probe design marked Fable-pass in score.md"
+source_condition: "present"
+reproduction_vs_depiction: "depiction"
+
+dates:
+  date_original: "2026-07-21"
+  date_imported: "2026-07-21"
+
+seed_constellation:
+  images:
+    - id: "img-01"
+      role: "subject"
+      path: "../../fixtures/005-surface-becoming-structure/turquoise-tile-revetment.jpg"
+      dimensions: "453x680"
+      bytes: 150535
+      sha256: "b3d660ce9bdcae48c50c64410423ace3f8fa9887aebdd65e13fe91da52716f16"
+      reproduction_vs_depiction: "depiction"
+      reproduction_notes: >
+        A photograph of an actual tiled interior - a Timurid/Persianate revetted niche or iwan.
+        Not a plate, scan, collage, or reproduction of another artwork. Untreated: no grain or
+        texture overlay detected, unlike the post-processed Pieta used by run 002F.
+      metadata_status: "no title, no description, no catalogue data; culture/period inferred from the tilework alone and load-bearing on nothing"
+      source_post_id: "695be784a9ea58f1b6aef5ec"
+  texts: []
+  existing_percepts: []
+image_order: ["img-01"]
+
+initiating_act:
+  actor: "human"
+  kind: "surface_becoming_structure"
+  payload: "does the surface pattern organise the composition?"
+
+source_notes:
+  why_selected: >
+    Portfolio row A4 required a NON-FIGURATIVE subject and the original nominee (6a5b91ec) turned
+    out to be a photographed pencil DRAWING of figures - the fourth portfolio description found to
+    be inherited detector output. This substitute restores the batch's only aniconic slot: runs
+    002, 002F, 003 and 004 were all figurative.
+  runs_at_native_resolution: >
+    453x680 sits under the 768px probe cap, so A4 runs UNSCALED. This deliberately repairs A3's
+    confound, where a 3-image call forced a 256px downscale and the model then mis-described the
+    subject. One image costs ~2400 tokens, leaving ample room for max_tokens 1200.
+  clean_slate: "0 regions, 0 grounds, 0 percepts, 0 embeddings - nothing pre-annotated to bias the reading"
+  spark_06_test: >
+    A4 doubles as the sharpest available test of spark-06 (spontaneous anthropomorphism). The
+    subject is an aniconic, frontal, three-arched wall with a single lit opening on the centre
+    axis - the configuration a face-inventing model would most readily seize on. Neither prompt
+    mentions faces, eyes, gaze, or bodies. If a face reading appears it is unprompted, spark-06
+    reaches n=2, and A6 must be redesigned. If none appears, spark-06 is bounded and A6's refusal
+    test becomes more credible.
+  competing_organisers_noted_before_probing: >
+    Recorded in advance so the reading cannot be retrofitted: (a) a warm-lit lattice window on the
+    centre axis is the only chromatic break and competes with the tiling as an organiser;
+    (b) a dado band along the bottom changes to a different, finer star-and-cross pattern system;
+    (c) the tilework is visibly damaged and patched in places.
+
+provider: "groq"
+model: "qwen/qwen3.6-27b"
+reasoning_effort: "none"
+
+constraints:
+  technical_silence: false
+  no_model_calls: false
+  model_budget: 2
+  retry_policy: "no retries except a provider-level failure"
+  image_call_throttle_s: 30
+  no_named_refusal_token: true
+  no_anthropomorphic_priming: true
+  no_iconographic_identification: true
+  no_production_mutation: true
+  time_budget: null
+
+expected_outcome_policy: >
+  Valid outcomes: (a) a SPARK about surface/structure precedence, (b) evidence that an existing
+  construct suffices, (c) an honest STALL - plausible here, because pattern and built form
+  announce the SAME divisions, so which organises which may be undecidable from a single
+  photograph, or (d) a natural unprompted refusal. A stall is a result and must not be
+  re-prompted into an answer. SPARK only; no graduation.

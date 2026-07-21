@@ -735,3 +735,46 @@ def test_reuse_frozen_refuses_to_invent_a_missing_observation(tmp_path):
     with pytest.raises(FileNotFoundError):
         rr.run(MANIFEST000, mode="capture", runs_root=runs_root,
                probes=[{"adapter": "local_file_digest", "reuse_frozen": True}])
+
+
+RUN005 = os.path.join(REHEARSALS, "runs", "005-surface-becoming-structure")
+
+
+def test_005_a4_score_validates_and_replays_clean(monkeypatch):
+    assert rr.validate(
+        json.load(open(os.path.join(RUN005, "instrumented-score.json"))),
+        rr.load_schema("instrumented_score")) == []
+
+    def boom(*a, **k):
+        raise AssertionError("replay invoked an adapter")
+
+    for name in list(rehearsal_adapters.ALLOWLIST):
+        monkeypatch.setitem(rehearsal_adapters.ALLOWLIST, name, boom)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    res = rr.run(os.path.join(RUN005, "manifest.yaml"), mode="replay")
+    assert res.adapter_calls == 0 and len(res.observations) == 3
+
+
+def test_005_ran_at_native_resolution_without_anthropomorphic_priming():
+    # A4's value as a spark-06 test depends on BOTH: the image was not degraded,
+    # and neither prompt mentioned faces/eyes/gaze/bodies.
+    man = rr.load_manifest(os.path.join(RUN005, "manifest.yaml"))
+    assert man["constraints"]["no_anthropomorphic_priming"] is True
+    assert man["reproduction_vs_depiction"] == "depiction"
+    img = man["seed_constellation"]["images"][0]
+    assert img["dimensions"] == "453x680"  # under the 768 probe cap => unscaled
+
+    # Whole words only: R8 cannot avoid the word "surface", which contains "face".
+    primes = ("face", "faces", "eye", "eyes", "gaze", "gazing", "body", "bodies",
+              "head", "heads", "watching", "looking at us")
+    obs_dir = os.path.join(RUN005, "observations")
+    prompts = []
+    for fn in sorted(os.listdir(obs_dir)):
+        obs = json.load(open(os.path.join(obs_dir, fn)))
+        if obs["adapter"] == "groq_vlm_probe":
+            prompts.append(obs["output"]["prompt"].lower())
+    assert len(prompts) == 2
+    for prompt in prompts:
+        for word in primes:
+            assert re.search(rf"\b{re.escape(word)}\b", prompt) is None, \
+                f"prompt primed anthropomorphism with {word!r}"
