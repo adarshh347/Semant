@@ -16,7 +16,34 @@ Nothing below meets it. Speculative locations are marked **[SPEC]** and are gues
 | spark-06 | anthropomorphism is **question-conditional** (address vocabulary) | A3, A4, **resolved by 007 A/B** | **RESOLVED** |
 | spark-07 | a claim can be its own counterexample — **within one response** | A4, **strengthened by A5** | moderate |
 | spark-08 | **the evidence base grows silently to meet the claim** | A5, 008, **replicated on identical bytes by 009** | n=1 pair, high value |
-| spark-09 | **the noun licenses the register; the relational demand licenses the joint predication** | 008 + **009 (dissociated)** | n=1 pair, 4 calls |
+| spark-09 | **the noun licenses the register; the relational demand licenses the joint predication** | 008 + 009 + **010 (ladder complete)** | n=1 pair, 5 calls, **no cell repeated** |
+| spark-10 | **abstraction as immunisation — the claim is pitched above its own counter-evidence** | 010 | new, n=1 call |
+
+---
+
+## spark-10 — abstraction as immunisation
+
+**From:** `runs/010-sameness-assertion-arm-e/`. **Strength:** SPARK at n=1 call.
+
+Handed the premise *"These two images share a motif"*, the model restated it as *"a **powerful and
+unifying** motif: the use of intricate, colorful patterns to create a sense of divine order"* — then
+supplied three **real** contrasts (opaque tile vs translucent glass; aniconic vs figurative; abstract
+vs narrative), **every one compatible with the claim as reformulated.** The symmetric
+supports/contradicts demand was satisfied procedurally and defeated substantively.
+
+**This is the inverse of spark-07.** spark-07 is a claim that contradicts itself unnoticed; spark-10
+is a claim **arranged so it cannot be contradicted**, with the contradictions then produced
+harmlessly.
+
+**Why it reaches beyond the rehearsal:** Semant's method asks a reader to say what in the image
+supports what they say. A model that answers by **choosing an altitude at which support is
+unfalsifiable** satisfies the letter of that demand and empties it. If it replicates, *"cite your
+evidence"* is not on its own a sufficient discipline — **the claim's grain must be constrained too.**
+
+**Weakened by:** the premise handed over was arguably *true*, the condition most likely to invite an
+abstract restatement. **What would strengthen it:** a strained or false premise; a prompt demanding
+the claim be stated at a specified grain. **Nearest existing construct: none, and [SPEC] none is
+proposed** — this is a fact about a model's rhetoric, not about Semant's ontology.
 
 ---
 
