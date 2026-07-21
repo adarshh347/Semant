@@ -83,6 +83,9 @@
 .va-status--warn { color: var(--va-warn); }
 .va-status--active { color: var(--accent); }
 .va-status--muted { color: var(--ink-subtle); }
+/* unreadable ≠ absent: a calm "couldn't read" notice, not a red alarm (P2.2R-B1) */
+.va-status--unreadable { color: var(--va-warn); }
+.va-summary--unreadable { color: var(--va-warn); }
 .va-affects {
   font-size: 0.58rem;
   letter-spacing: 0.06em;
@@ -107,6 +110,7 @@
 .va-mark--err { background: var(--va-err); }
 .va-mark--warn { background: var(--va-warn); }
 .va-mark--muted { background: var(--line-strong, #d6cdd3); }
+.va-mark--unreadable { background: var(--va-warn); }
 .va-mark--active {
   background: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);

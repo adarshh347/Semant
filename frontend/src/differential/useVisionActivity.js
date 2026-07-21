@@ -11,9 +11,10 @@ import { fetchAllRuns, isTerminalActionStatus } from './visionActivity';
 const ACTIVE_POLL_MS = 3500; // bounded; scheduled only while some run is RUNNING (not stale)
 
 export function useVisionActivity(postId, { actionStatus } = {}) {
-  const [runs, setRuns] = useState({}); // { operation: run|null }
+  // results: { operation: { run: <run|null>, unreadable: bool } } — absence vs unreadability
+  // are both represented per-operation (P2.2R-B1); there is no separate rail-level error.
+  const [results, setResults] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const abortRef = useRef(null);
   const seqRef = useRef(0);
   const pollRef = useRef(null);
@@ -28,10 +29,11 @@ export function useVisionActivity(postId, { actionStatus } = {}) {
     try {
       const map = await fetchAllRuns(API_URL, postId, { signal: controller.signal });
       if (seq !== seqRef.current) return; // a newer fetch (or unmount) won
-      setRuns(map);
-      setError(null);
+      setResults(map);
     } catch (e) {
-      if (e.name !== 'AbortError' && seq === seqRef.current) setError('unavailable');
+      // Only AbortError reaches here (per-op failures are captured as {unreadable:true} in the
+      // map); a superseded/aborted fetch is silently dropped, not shown as an error.
+      if (e.name !== 'AbortError') throw e;
     } finally {
       if (seq === seqRef.current) setLoading(false);
     }
@@ -39,8 +41,7 @@ export function useVisionActivity(postId, { actionStatus } = {}) {
 
   // Mount / post change: reset state, fetch once, and abort any in-flight on cleanup.
   useEffect(() => {
-    setRuns({});
-    setError(null);
+    setResults({});
     if (postId) fetchAll();
     return () => {
       abortRef.current?.abort();
@@ -49,15 +50,15 @@ export function useVisionActivity(postId, { actionStatus } = {}) {
   }, [postId, fetchAll]);
 
   // Bounded poll: schedule ONE delayed refresh while a run is actively running; it re-arms
-  // itself through `runs` updates and stops the moment nothing is active. Cleared on unmount.
+  // itself through `results` updates and stops the moment nothing is active. Cleared on unmount.
   useEffect(() => {
-    const active = Object.values(runs).some(
-      (r) => r && (r.status === 'running' || r.status === 'pending') && !r.stale,
+    const active = Object.values(results).some(
+      (r) => r && r.run && (r.run.status === 'running' || r.run.status === 'pending') && !r.run.stale,
     );
     clearTimeout(pollRef.current);
     if (active) pollRef.current = setTimeout(fetchAll, ACTIVE_POLL_MS);
     return () => clearTimeout(pollRef.current);
-  }, [runs, fetchAll]);
+  }, [results, fetchAll]);
 
   // Refresh promptly when a Differential action (refine/read/similar) transitions to a
   // terminal hook status — immediate, without a permanent poll.
@@ -72,5 +73,5 @@ export function useVisionActivity(postId, { actionStatus } = {}) {
     if (justFinished && postId) fetchAll();
   }, [actionStatus, postId, fetchAll]);
 
-  return { runs, loading, error, refresh: fetchAll };
+  return { results, loading, refresh: fetchAll };
 }

@@ -36,25 +36,30 @@ export function latestUrl(apiUrl, postId, operation) {
   return `${apiUrl}/api/v1/posts/${postId}/vision-runs/latest?operation=${operation}`;
 }
 
-// Fetch the four latest-operation runs in parallel. A per-operation read miss becomes
-// `null` ("no record"), never a rail-level error; an abort propagates so the caller can drop
-// a superseded fetch. Pure/injectable (`fetchImpl`) so it is unit-testable without a DOM.
+// Fetch the four latest-operation runs in parallel. Each operation resolves to a discriminated
+// result so the rail can tell ABSENCE from UNREADABILITY (P2.2R-B1):
+//   { run: <run|null>, unreadable: false }  — a successful read; `run:null` means no activity.
+//   { run: null,       unreadable: true  }  — the read FAILED (HTTP error / network / bad JSON);
+//                                             the real state is "could not read", not "no activity".
+// An abort still PROPAGATES (re-thrown) so the caller can drop a superseded fetch — abort is
+// neither absence nor unreadability. A single operation's failure never blanks the other three.
+// Pure/injectable (`fetchImpl`) so it is unit-testable without a DOM.
 export async function fetchAllRuns(apiUrl, postId, { signal, fetchImpl } = {}) {
   const doFetch = fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   const pairs = await Promise.all(
     OPERATIONS.map(async (op) => {
       try {
         const res = await doFetch(latestUrl(apiUrl, postId, op), { signal });
-        if (!res || !res.ok) return [op, null];
-        const data = await res.json();
-        return [op, data && 'run' in data ? data.run : null];
+        if (!res || !res.ok) return [op, { run: null, unreadable: true }]; // 401/403/404/500/no-response
+        const data = await res.json();                                     // may throw on bad JSON
+        return [op, { run: data && 'run' in data ? data.run : null, unreadable: false }];
       } catch (e) {
-        if (e && e.name === 'AbortError') throw e;
-        return [op, null];
+        if (e && e.name === 'AbortError') throw e;                         // superseded → caller drops
+        return [op, { run: null, unreadable: true }];                      // network failure / bad JSON
       }
     }),
   );
-  return Object.fromEntries(pairs);
+  return Object.fromEntries(pairs); // { op: { run, unreadable } }
 }
 
 // ── status → quiet presentation ───────────────────────────────────────────────
@@ -204,7 +209,35 @@ function totalLatency(stages) {
 }
 
 // ── the one derivation the component renders ──────────────────────────────────
-export function deriveEntry(operation, run, { regionsById, now = Date.now() } = {}) {
+export function deriveEntry(operation, run, { regionsById, now = Date.now(), unreadable = false } = {}) {
+  // UNREADABLE (P2.2R-B1): the read failed — this is NOT "no recorded activity". Render a quiet,
+  // distinct "Couldn’t read activity" state (never an alarm), carrying no run detail.
+  if (unreadable) {
+    return {
+      operation,
+      label: OPERATION_LABEL[operation] || operation,
+      epistemic: EPISTEMIC[operation] || '',
+      affects: AFFECTS[operation] || null,
+      isEmpty: false,
+      isUnreadable: true,
+      present: { key: 'unreadable', label: 'Couldn’t read activity', tone: 'unreadable' },
+      isActive: false,
+      isStale: false,
+      status: null,
+      terminalReason: null,
+      adapter: null,
+      latencyMs: null,
+      ageText: null,
+      stages: [],
+      fallbacks: [],
+      friendly: null,
+      regionRef: null,
+      diagnostics: null,
+      telemetryDegraded: false,
+      neighbours: undefined,
+      space: null,
+    };
+  }
   const present = statusPresentation(run);
   const stages = (run && run.events ? run.events : []).map((e) => ({
     id: e.stage_id,
@@ -223,6 +256,7 @@ export function deriveEntry(operation, run, { regionsById, now = Date.now() } = 
     epistemic: EPISTEMIC[operation] || '',
     affects: AFFECTS[operation] || null,
     isEmpty: !run,
+    isUnreadable: false,
     present,
     isActive: present.key === 'running',
     isStale: present.key === 'stale',

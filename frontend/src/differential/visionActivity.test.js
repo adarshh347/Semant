@@ -44,17 +44,63 @@ describe('data boundary', () => {
     const map = await fetchAllRuns('http://x', 'P1', { fetchImpl });
     expect(fetchImpl).toHaveBeenCalledTimes(4);
     expect(seen.filter((u) => u.includes('/vision-runs/latest?operation='))).toHaveLength(4);
-    expect(map.refine).toBeNull();
-    expect(map.dissect.operation).toBe('dissect');
-  });
-  it('a per-operation read miss becomes null, not a thrown error', async () => {
-    const fetchImpl = vi.fn(async () => ({ ok: false, json: async () => ({}) }));
-    const map = await fetchAllRuns('http://x', 'P1', { fetchImpl });
-    expect(Object.values(map)).toEqual([null, null, null, null]);
+    // a successful read with no run → absence (readable), not unreadable
+    expect(map.refine).toEqual({ run: null, unreadable: false });
+    expect(map.dissect.run.operation).toBe('dissect');
+    expect(map.dissect.unreadable).toBe(false);
   });
   it('propagates AbortError so a superseded fetch can be dropped', async () => {
     const fetchImpl = vi.fn(async () => { const e = new Error('aborted'); e.name = 'AbortError'; throw e; });
     await expect(fetchAllRuns('http://x', 'P1', { fetchImpl })).rejects.toMatchObject({ name: 'AbortError' });
+  });
+});
+
+// P2.2R-B1 — absence vs unreadability must be distinguishable
+describe('absence vs unreadability (B1)', () => {
+  it('a successful {run:null} read is ABSENCE (readable), not unreadable', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => ({ run: null }) }));
+    const map = await fetchAllRuns('http://x', 'P1', { fetchImpl });
+    Object.values(map).forEach((r) => expect(r).toEqual({ run: null, unreadable: false }));
+  });
+  it('HTTP failure (401/404/500) is UNREADABLE, not absence', async () => {
+    for (const status of [401, 403, 404, 500]) {
+      const fetchImpl = vi.fn(async () => ({ ok: false, status, json: async () => ({}) }));
+      const map = await fetchAllRuns('http://x', 'P1', { fetchImpl });
+      Object.values(map).forEach((r) => expect(r).toEqual({ run: null, unreadable: true }));
+    }
+  });
+  it('network failure and malformed JSON are UNREADABLE', async () => {
+    const netFail = vi.fn(async () => { throw new TypeError('Failed to fetch'); });
+    const badJson = vi.fn(async () => ({ ok: true, json: async () => { throw new SyntaxError('bad json'); } }));
+    for (const impl of [netFail, badJson]) {
+      const map = await fetchAllRuns('http://x', 'P1', { fetchImpl: impl });
+      Object.values(map).forEach((r) => expect(r.unreadable).toBe(true));
+    }
+  });
+  it('one failed operation does not blank the other three', async () => {
+    const fetchImpl = vi.fn(async (url) => {
+      const op = url.split('operation=')[1];
+      if (op === 'find_similar') return { ok: false, status: 500, json: async () => ({}) };
+      return { ok: true, json: async () => ({ run: run(op) }) };
+    });
+    const map = await fetchAllRuns('http://x', 'P1', { fetchImpl });
+    expect(map.find_similar).toEqual({ run: null, unreadable: true });   // failed op
+    expect(map.dissect.run.operation).toBe('dissect');                    // others preserved
+    expect(map.dissect.unreadable).toBe(false);
+    expect(map.semantic_read.unreadable).toBe(false);
+  });
+  it('deriveEntry renders unreadable distinctly from absence', () => {
+    const unread = deriveEntry('semantic_read', null, { now: NOW, unreadable: true });
+    expect(unread.isUnreadable).toBe(true);
+    expect(unread.isEmpty).toBe(false);
+    expect(unread.present).toEqual({ key: 'unreadable', label: 'Couldn’t read activity', tone: 'unreadable' });
+
+    const absent = deriveEntry('semantic_read', null, { now: NOW });
+    expect(absent.isUnreadable).toBe(false);
+    expect(absent.isEmpty).toBe(true);
+    expect(absent.present.label).toBe('No recorded activity');
+    // the two states must never share the same label
+    expect(unread.present.label).not.toBe(absent.present.label);
   });
 });
 

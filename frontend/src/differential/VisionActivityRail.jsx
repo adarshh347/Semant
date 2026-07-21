@@ -19,6 +19,18 @@ function StatusMark({ present }) {
 
 function Entry({ entry }) {
   const { present } = entry;
+  // Unreadable ≠ absent (P2.2R-B1): the read failed, so we must NOT say "No recorded activity".
+  if (entry.isUnreadable) {
+    return (
+      <div className="va-entry va-entry--unreadable">
+        <div className="va-entry-head">
+          <StatusMark present={present} />
+          <span className="va-op">{entry.label}</span>
+          <span className="va-status va-status--unreadable">Couldn’t read activity</span>
+        </div>
+      </div>
+    );
+  }
   if (entry.isEmpty) {
     return (
       <div className="va-entry va-entry--empty">
@@ -88,7 +100,7 @@ function Entry({ entry }) {
 
 export default function VisionActivityRail({ postId, regions, actionStatus }) {
   const [open, setOpen] = useState(false);
-  const { runs, loading, refresh } = useVisionActivity(postId, { actionStatus });
+  const { results, loading, refresh } = useVisionActivity(postId, { actionStatus });
 
   const regionsById = useMemo(() => {
     const m = {};
@@ -100,12 +112,25 @@ export default function VisionActivityRail({ postId, regions, actionStatus }) {
 
   const now = Date.now();
   const entries = useMemo(
-    () => OPERATIONS.map((op) => deriveEntry(op, runs[op] ?? null, { regionsById, now })),
-    [runs, regionsById, now],
+    () => OPERATIONS.map((op) => {
+      const r = results[op];
+      return deriveEntry(op, r ? r.run : null, {
+        regionsById, now, unreadable: !!(r && r.unreadable),
+      });
+    }),
+    [results, regionsById, now],
   );
 
-  const recordedCount = entries.filter((e) => !e.isEmpty).length;
+  const recordedCount = entries.filter((e) => !e.isEmpty && !e.isUnreadable).length;
+  const unreadableCount = entries.filter((e) => e.isUnreadable).length;
   const anyActive = entries.some((e) => e.isActive);
+  const summary = anyActive
+    ? 'observing…'
+    : recordedCount > 0
+      ? `${recordedCount} recorded${unreadableCount ? ' · some unreadable' : ''}`
+      : unreadableCount > 0
+        ? 'couldn’t read activity'
+        : 'nothing recorded yet';
 
   return (
     <section className={`va-rail${open ? ' is-open' : ''}`} aria-label="Vision activity">
@@ -116,8 +141,8 @@ export default function VisionActivityRail({ postId, regions, actionStatus }) {
         onClick={() => setOpen((o) => !o)}
       >
         <span className="va-eyebrow">Vision activity</span>
-        <span className="va-summary">
-          {anyActive ? 'observing…' : recordedCount === 0 ? 'nothing recorded yet' : `${recordedCount} recorded`}
+        <span className={`va-summary${unreadableCount && recordedCount === 0 ? ' va-summary--unreadable' : ''}`}>
+          {summary}
         </span>
         <span className="va-caret" aria-hidden="true">{open ? '▾' : '▸'}</span>
       </button>
