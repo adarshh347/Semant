@@ -1,0 +1,82 @@
+{
+  "events": [
+    {
+      "actor": "human",
+      "cost": null,
+      "event_id": "002-figure-ground-reversal-e0",
+      "kind": "RECEIVE",
+      "observation_ref": null,
+      "parent_event": null,
+      "provenance": "runner:capture:receive",
+      "reconstructed": false,
+      "register": "opening",
+      "reversibility": "reversible",
+      "source_refs": [],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "002-figure-ground-reversal-e1",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "002-figure-ground-reversal-obs0",
+      "parent_event": "002-figure-ground-reversal-e0",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/002-figure-ground-reversal/five-sculpture-collage.jpg"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "002-figure-ground-reversal-e2",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "002-figure-ground-reversal-obs1",
+      "parent_event": "002-figure-ground-reversal-e1",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "img-01"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "002-figure-ground-reversal-e3",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "002-figure-ground-reversal-obs2",
+      "parent_event": "002-figure-ground-reversal-e2",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "img-01"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    }
+  ],
+  "reconstructed": false,
+  "rehearsal_id": "002-figure-ground-reversal",
+  "score_ref": null,
+  "status": "completed"
+}

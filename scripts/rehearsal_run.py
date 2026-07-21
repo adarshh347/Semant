@@ -27,6 +27,7 @@ import hashlib
 import json
 import os
 import re
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 try:  # yaml is available in this venv; keep import local-safe regardless
@@ -294,15 +295,21 @@ def capture_observation(adapter_name: str, observation_id: str,
     adapter = get_adapter(adapter_name)  # raises if not allowlisted
     meta = adapter_meta(adapter_name)
     output = adapter(**kwargs)
+    # Telemetry is recorded ONLY when the adapter actually measured it. A pure
+    # local digest measures neither latency nor cost, and those stay null rather
+    # than being invented; a remote model call reports both, and the observation
+    # carries the real numbers through.
+    measured = output if isinstance(output, dict) else {}
+    usage = measured.get("usage")
     body = {
         "observation_id": observation_id,
         "adapter": adapter_name,
         "request_boundary": meta.get("request_boundary", "unknown"),
-        "model": meta.get("model"),
+        "model": measured.get("model") or meta.get("model"),
         "version": meta.get("version"),
         "device": meta.get("device"),
-        "cost": None,          # model-free adapter: no cost telemetry to invent
-        "latency_ms": None,    # not measured for a pure local digest
+        "cost": {"token_usage": usage} if isinstance(usage, dict) else None,
+        "latency_ms": measured.get("latency_ms"),
         "output": output,
         "uncertainty": None,
         "provenance": provenance,
@@ -363,8 +370,8 @@ def make_terminal_event(event_id: str, actor: str, outcome: str,
 
 def run(manifest_path: str, mode: str, runs_root: str = DEFAULT_RUNS_ROOT,
         force_new_id: bool = False, capture_targets: Optional[List[str]] = None,
-        refuse_reason: Optional[str] = None, schema_dir: str = SCHEMA_DIR
-        ) -> RunResult:
+        refuse_reason: Optional[str] = None, schema_dir: str = SCHEMA_DIR,
+        probes: Optional[List[Dict[str, Any]]] = None) -> RunResult:
     """Execute a rehearsal run in ``capture`` or ``replay`` mode.
 
     * Validates the manifest against the manifest schema.
@@ -373,6 +380,11 @@ def run(manifest_path: str, mode: str, runs_root: str = DEFAULT_RUNS_ROOT,
     * CAPTURE: may invoke the allowlisted adapter on ``capture_targets`` and
       freezes each observation; refuses to overwrite a frozen run dir unless
       ``force_new_id`` is set.
+    * ``probes`` (R2) is the general form of ``capture_targets``: a list of
+      ``{"adapter": name, "kwargs": {...}}`` dicts naming ANY allowlisted
+      adapter. ``capture_targets`` remains the R1 shorthand for
+      ``local_file_digest``. Probes run after targets and continue the same
+      event/observation numbering.
     * A ``refuse_reason`` ends the run in status ``refused`` WITHOUT raising.
 
     Never writes to Mongo / posts / region_embeddings / any production schema.
@@ -396,7 +408,7 @@ def run(manifest_path: str, mode: str, runs_root: str = DEFAULT_RUNS_ROOT,
     return _run_capture(
         manifest, rehearsal_id, run_dir, runs_root, schemas, score_ref,
         force_new_id=force_new_id, capture_targets=capture_targets or [],
-        refuse_reason=refuse_reason,
+        refuse_reason=refuse_reason, probes=probes or [],
     )
 
 
@@ -445,7 +457,8 @@ def _run_capture(manifest: Dict[str, Any], rehearsal_id: str, run_dir: str,
                  runs_root: str, schemas: Dict[str, Any],
                  score_ref: Optional[str], force_new_id: bool,
                  capture_targets: List[str],
-                 refuse_reason: Optional[str]) -> RunResult:
+                 refuse_reason: Optional[str],
+                 probes: Optional[List[Dict[str, Any]]] = None) -> RunResult:
     if _is_frozen(run_dir) and not force_new_id:
         raise FileExistsError(
             f"run dir {run_dir} already holds a frozen trace.json; "
@@ -489,11 +502,28 @@ def _run_capture(manifest: Dict[str, Any], rehearsal_id: str, run_dir: str,
     append_event(trace, **recv)
     parent = recv["event_id"]
 
-    for i, target in enumerate(capture_targets):
+    # R1 shorthand targets first, then R2 general probes — one shared code path so
+    # both produce identical observation/event structure.
+    steps: List[Tuple[str, Dict[str, Any], List[str]]] = [
+        ("local_file_digest", {"path": t}, [t]) for t in capture_targets
+    ]
+    for probe in (probes or []):
+        name = probe["adapter"]
+        kwargs = dict(probe.get("kwargs", {}))
+        steps.append((name, kwargs, list(probe.get("source_refs", []))))
+    throttles = [0.0] * len(capture_targets) + [
+        float(p.get("sleep_before_s") or 0.0) for p in (probes or [])
+    ]
+
+    for i, (adapter_name, kwargs, source_refs) in enumerate(steps):
+        # Rate-limit throttle. CAPTURE-only: replay never reaches this code, so the
+        # frozen run stays instantaneous and deterministic.
+        if throttles[i] > 0:
+            time.sleep(throttles[i])
         obs_id = f"{rehearsal_id}-obs{i}"
         obs = capture_observation(
-            "local_file_digest", obs_id,
-            provenance=f"capture:{rehearsal_id}:local_file_digest", path=target,
+            adapter_name, obs_id,
+            provenance=f"capture:{rehearsal_id}:{adapter_name}", **kwargs,
         )
         oerrs = validate(obs, schemas["observation"])
         if oerrs:
@@ -506,7 +536,7 @@ def _run_capture(manifest: Dict[str, Any], rehearsal_id: str, run_dir: str,
 
         ev = {
             "event_id": f"{rehearsal_id}-e{i + 1}", "actor": "system",
-            "kind": "CALL_ORGAN", "parent_event": parent, "source_refs": [target],
+            "kind": "CALL_ORGAN", "parent_event": parent, "source_refs": source_refs,
             "target_refs": [], "register": "evidence", "uncertainty": None,
             "reconstructed": False, "observation_ref": obs_id,
             "reversibility": "reversible", "cost": None,

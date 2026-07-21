@@ -1,0 +1,44 @@
+# RESEARCH-ONLY instrumented rehearsal. Creates no production entity, route, schema,
+# collection, or corpus write. Reads one production post read-only; mutates nothing.
+rehearsal_id: "002-figure-ground-reversal"
+rehearsal_type: "figure-ground-reversal-on-determinate-interval"
+family: "R4 Figure/Ground Reversal"
+mode: "instrumented"
+reconstructed: false
+conducted_by: "opus (conductor); evidence gathered by local measurement + one bounded VLM probe"
+source_condition: "present"
+dates:
+  date_original: "2026-07-21"
+  date_imported: "2026-07-21"
+seed_constellation:
+  images:
+    - id: "img-01"
+      path: "../../fixtures/002-figure-ground-reversal/five-sculpture-collage.jpg"
+      dimensions: "680x286"
+      sha256: "c6c9fc86673ba3e7e0c25174c4f422843e644642d2037c9b169a45b9ac6e225f"
+      metadata_status: "downloaded read-only from the live post's photo_url; five labelled heads (Solanki, Gupta, Pala, Amaravati, Gandhara); exact catalogue data absent"
+      source_post_id: "695be6c9a9ea58f1b6aef5e0"
+  texts: []
+  existing_percepts:
+    - id: "pctx_mrpi3rjk_0"
+      kind: "expression_percept"
+      cites_grounds: ["gnd_mrpi1jbv_3", "gnd_mrpi1jbv_4", "gnd_mrpi1jbv_5"]
+      note: "pre-existing curator percept on gupta/pala facial geometry; read-only context, NOT the subject of this rehearsal"
+image_order: ["img-01"]
+initiating_act:
+  actor: "human"
+  kind: "figure_ground_reversal"
+  payload: "what is the space between the Gupta and Pala faces doing?"
+source_notes:
+  why_selected: "portfolio row A1: a figurative, crowded plate where the seed gesture promotes the interval between heads rather than the heads themselves"
+  known_context: "the post already carries 10 region_annotations (all objects) and 3 grounds (all ground_type 'region')"
+  predicted_risk: "the portfolio predicted this rehearsal may STALL if no evidence supports the void — a valid refusal"
+constraints:
+  technical_silence: false
+  no_model_calls: false
+  model_budget: 2          # hard ceiling for this rehearsal; see R2-batch-operating-plan.md
+  image_call_throttle_s: 20  # Groq on-demand tier caps at 8000 TPM
+  no_iconographic_identification: true
+  cross_cultural_analogy_requires_refusal_check: true
+  no_production_mutation: true
+  time_budget: null

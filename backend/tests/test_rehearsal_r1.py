@@ -33,6 +33,8 @@ REHEARSALS = os.path.join(
 )
 RUN000 = os.path.join(REHEARSALS, "runs", "000-passage-001")
 MANIFEST000 = os.path.join(RUN000, "manifest.yaml")
+RUN002 = os.path.join(REHEARSALS, "runs", "002-figure-ground-reversal")
+MANIFEST002 = os.path.join(RUN002, "manifest.yaml")
 
 
 # --------------------------------------------------------------------------- #
@@ -247,11 +249,71 @@ def test_non_allowlisted_adapter_raises():
         rr.capture_observation("dinov2_encode", "o", "prov", path=MANIFEST000)
 
 
-def test_only_local_file_digest_is_allowlisted():
-    assert set(rehearsal_adapters.ALLOWLIST) == {"local_file_digest"}
+def test_allowlist_is_exactly_the_approved_adapters():
+    # R1 allowed ONLY the pure local digest. R2 deliberately adds ONE bounded
+    # sensory adapter (a single Groq VLM call, frozen on capture). The set stays
+    # pinned so a third adapter cannot be added silently.
+    assert set(rehearsal_adapters.ALLOWLIST) == {"local_file_digest", "groq_vlm_probe"}
     forbidden = {"sam", "sam2", "yolo", "segformer", "dinov2",
                  "fashionclip", "fashion_clip", "semantic", "llm"}
     assert forbidden.isdisjoint(set(rehearsal_adapters.ALLOWLIST))
+
+
+def test_r2_run_002_replays_without_touching_any_adapter(monkeypatch):
+    # The frozen A1 run is the first rehearsal holding REAL model output. Its whole
+    # value depends on replay being reproducible from disk: if replay could re-call
+    # the VLM, the "observations" would not be frozen evidence at all.
+    def boom(*a, **k):
+        raise AssertionError("replay invoked an adapter")
+
+    for name in list(rehearsal_adapters.ALLOWLIST):
+        monkeypatch.setitem(rehearsal_adapters.ALLOWLIST, name, boom)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+
+    res = rr.run(MANIFEST002, mode="replay")
+    assert res.adapter_calls == 0
+    assert res.status == "completed"
+    # 1 local digest + 2 frozen VLM probes, and an event per observation plus RECEIVE.
+    assert len(res.observations) == 3
+    assert len(res.trace["events"]) == 4
+
+
+def test_r2_frozen_vlm_observations_carry_real_telemetry():
+    # Guards against the observation writer silently recording null latency/model
+    # for a real remote call, which would make the run unauditable.
+    obs_dir = os.path.join(RUN002, "observations")
+    vlm = []
+    for fn in sorted(os.listdir(obs_dir)):
+        obs = json.load(open(os.path.join(obs_dir, fn)))
+        if obs["adapter"] == "groq_vlm_probe":
+            vlm.append(obs)
+    assert len(vlm) == 2, "A1 declared a 2-call budget"
+    for obs in vlm:
+        assert obs["model"] == "qwen/qwen3.6-27b"
+        assert isinstance(obs["latency_ms"], (int, float)) and obs["latency_ms"] > 0
+        assert obs["cost"]["token_usage"]["total_tokens"] > 0
+        assert obs["output"]["reasoning_effort"] == "none"
+        assert obs["output"]["finish_reason"] == "stop"
+        # A truncated reasoning block would mean the captured answer is unusable.
+        assert obs["output"]["emitted_think_block"] is False
+        assert obs["output"]["answer_text"].strip()
+
+
+def test_every_allowlisted_adapter_declares_provenance_meta():
+    # An adapter with no ADAPTER_META entry would silently write null model /
+    # "unknown" boundary into a frozen observation.
+    for name in rehearsal_adapters.ALLOWLIST:
+        meta = rehearsal_adapters.adapter_meta(name)
+        assert meta.get("request_boundary"), name
+        assert meta.get("version"), name
+
+
+def test_vlm_adapter_requires_a_key_and_makes_no_call_without_one(monkeypatch):
+    # Guards the REPLAY invariant's weak point: the sensory adapter must fail
+    # loudly on a missing key rather than silently returning empty output.
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="GROQ_API_KEY"):
+        rehearsal_adapters.groq_vlm_probe(MANIFEST000, "probe")
 
 
 # --------------------------------------------------------------------------- #

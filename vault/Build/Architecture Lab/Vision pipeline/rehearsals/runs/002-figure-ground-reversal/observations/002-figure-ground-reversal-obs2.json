@@ -1,0 +1,47 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "dc700e56aa126cffd9e0a7ce4a4028c90f35d6e9819c74a514a8998c1b8cde4f",
+  "cost": {
+    "token_usage": {
+      "completion_time": 0.068706879,
+      "completion_tokens": 31,
+      "prompt_time": 0.062231582,
+      "prompt_tokens": 872,
+      "queue_time": 1.69701933,
+      "total_time": 0.130938461,
+      "total_tokens": 903
+    }
+  },
+  "device": "remote",
+  "latency_ms": 2090.5,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "002-figure-ground-reversal-obs2",
+  "output": {
+    "answer_sha256": "73d4040a261040fb88a94f0d77cd4829bff0d028563b25cb2e012b7d9025e0ef",
+    "answer_text": "NO_GROUND\nThe narrow vertical strip between the Gupta head and the Pala head contains only the black background of the image, with no depicted content.",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/002-figure-ground-reversal/five-sculpture-collage.jpg",
+    "image_sha256": "c6c9fc86673ba3e7e0c25174c4f422843e644642d2037c9b169a45b9ac6e225f",
+    "latency_ms": 2090.5,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "In this image, consider ONLY the narrow vertical strip between the Gupta head and the Pala head. Question: does that strip contain any DEPICTED content -- something actually pictured that you could point at? If yes, reply with a normalized bounding box [x0,y0,x1,y1] and name what is depicted there. If nothing is depicted there, reply with exactly NO_GROUND on the first line and then one sentence saying why.",
+    "prompt_sha256": "72f6f7478127bfc84b434b5a9816442156003e640e043bf1f7c47042b880de61",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 0.068706879,
+      "completion_tokens": 31,
+      "prompt_time": 0.062231582,
+      "prompt_tokens": 872,
+      "queue_time": 1.69701933,
+      "total_time": 0.130938461,
+      "total_tokens": 903
+    }
+  },
+  "provenance": "capture:002-figure-ground-reversal:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}
