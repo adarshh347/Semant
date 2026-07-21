@@ -28,7 +28,9 @@ if SCRIPTS_DIR not in sys.path:
 import rehearsal_adapters  # noqa: E402
 import rehearsal_run as rr  # noqa: E402
 
-REHEARSALS = os.path.join(REPO_ROOT, "architecture-lab", "rehearsals")
+REHEARSALS = os.path.join(
+    REPO_ROOT, "vault", "Build", "Architecture Lab", "Vision pipeline", "rehearsals"
+)
 RUN000 = os.path.join(REHEARSALS, "runs", "000-passage-001")
 MANIFEST000 = os.path.join(RUN000, "manifest.yaml")
 

@@ -46,12 +46,13 @@ from rehearsal_adapters import (  # noqa: E402
 # --------------------------------------------------------------------------- #
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCHEMA_DIR = os.path.join(
-    REPO_ROOT, "architecture-lab", "rehearsals", "schemas"
+# The rehearsal research home moved into the vault Build space (AGENTS.md: docs live in
+# vault/Build/Architecture Lab; top-level architecture-lab is retired and must not be recreated).
+REHEARSALS_ROOT = os.path.join(
+    REPO_ROOT, "vault", "Build", "Architecture Lab", "Vision pipeline", "rehearsals"
 )
-DEFAULT_RUNS_ROOT = os.path.join(
-    REPO_ROOT, "architecture-lab", "rehearsals", "runs"
-)
+SCHEMA_DIR = os.path.join(REHEARSALS_ROOT, "schemas")
+DEFAULT_RUNS_ROOT = os.path.join(REHEARSALS_ROOT, "runs")
 
 SCHEMA_FILES = {
     "manifest": "rehearsal-manifest.schema.json",
