@@ -31,7 +31,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.services.vision_orchestrator.contracts import JobStatus  # import-safe
 
@@ -82,9 +82,30 @@ _FORBIDDEN_EVENT_KEYS = frozenset({
     "region_annotations", "regions", "segmentation", "contours", "points",
 })
 
+# ── bounded-telemetry limits (P1.1) ──────────────────────────────────────────
+# A Dissect run emits 8–13 events, each carrying a handful of counts/ids/short strings.
+# These caps sit far above that (so every normal route value is valid) yet cap a
+# pathological/adversarial payload long before it could bloat a Mongo doc or an HTTP body.
+# They are NOT a serialization framework — just a recursive shape+size gate.
+MAX_PAYLOAD_DEPTH = 6        # detail/provenance nest ≤2 in practice; 6 is generous headroom
+MAX_PAYLOAD_ITEMS = 64      # any single dict/list; Provenance has ~13 fields, detail ≤6
+MAX_STRING_LEN = 2048       # any string value inside a payload (source strings are ~40 chars)
+MAX_ERROR_LEN = 1000        # stored/projected error text (provider errors get truncated, not dropped)
+# Only these scalar types may appear in a telemetry payload (bool is an int subclass).
+_ALLOWED_SCALARS = (bool, int, float, str)
+
 
 class GeometryInEventError(ValueError):
-    """Raised when an event payload would smuggle geometry into a telemetry record."""
+    """Raised when a payload would smuggle geometry into a telemetry record."""
+
+
+class BoundedPayloadError(ValueError):
+    """Raised when a telemetry payload violates the bounded-shape contract (binary,
+    unsupported type, over-nested, or over-large)."""
+
+
+class EventRunMismatch(ValueError):
+    """Raised when an event claims a run_id different from the run it is appended to."""
 
 
 class IllegalRunTransition(ValueError):
@@ -100,17 +121,57 @@ def as_status(status: Any) -> JobStatus:
     return status if isinstance(status, JobStatus) else JobStatus(status)
 
 
-def _assert_geometry_free(payload: Any, where: str) -> None:
-    """Recursively refuse geometry keys anywhere in an event's free-form payload."""
+def assert_bounded_payload(payload: Any, where: str, _depth: int = 0) -> None:
+    """Recursively enforce the bounded-telemetry contract on a free-form payload.
+
+    Rejects, in one pass: geometry keys (``GeometryInEventError``); and — as
+    ``BoundedPayloadError`` — binary/bytes, unsupported non-serializable types (custom
+    objects, sets, datetimes, ndarrays, whole Region dicts-as-objects), over-nesting, and
+    over-large collections/strings. This is the single gate every telemetry payload passes
+    through, so masks, boxes, image bytes and complete Region objects can never enter Mongo
+    or an HTTP response. Import-safe: pure Python, no I/O.
+    """
+    if _depth > MAX_PAYLOAD_DEPTH:
+        raise BoundedPayloadError(
+            f"telemetry payload {where!r} exceeds max nesting depth {MAX_PAYLOAD_DEPTH}")
+    if payload is None or isinstance(payload, _ALLOWED_SCALARS):
+        if isinstance(payload, str) and len(payload) > MAX_STRING_LEN:
+            raise BoundedPayloadError(
+                f"telemetry string in {where!r} exceeds {MAX_STRING_LEN} chars")
+        return
+    if isinstance(payload, (bytes, bytearray, memoryview)):
+        raise BoundedPayloadError(f"binary payload forbidden in telemetry field {where!r}")
     if isinstance(payload, dict):
+        if len(payload) > MAX_PAYLOAD_ITEMS:
+            raise BoundedPayloadError(
+                f"telemetry dict {where!r} exceeds {MAX_PAYLOAD_ITEMS} keys")
         for k, v in payload.items():
             if str(k).lower() in _FORBIDDEN_EVENT_KEYS:
                 raise GeometryInEventError(
-                    f"geometry key {k!r} is forbidden inside event field {where!r}")
-            _assert_geometry_free(v, where)
-    elif isinstance(payload, (list, tuple)):
+                    f"geometry key {k!r} is forbidden inside telemetry field {where!r}")
+            assert_bounded_payload(v, where, _depth + 1)
+        return
+    if isinstance(payload, (list, tuple)):
+        if len(payload) > MAX_PAYLOAD_ITEMS:
+            raise BoundedPayloadError(
+                f"telemetry list {where!r} exceeds {MAX_PAYLOAD_ITEMS} items")
         for v in payload:
-            _assert_geometry_free(v, where)
+            assert_bounded_payload(v, where, _depth + 1)
+        return
+    raise BoundedPayloadError(
+        f"unsupported telemetry type {type(payload).__name__!r} in field {where!r}")
+
+
+def bound_error(msg: Optional[Any]) -> Optional[str]:
+    """Bound stored/projected error text: keep the leading technical detail, truncate the
+    tail so unbounded provider output can never reach Mongo or HTTP. Never dropped — a
+    truncated error is more useful than a lost one. (P1.1 correction 6.)"""
+    if msg is None:
+        return None
+    msg = str(msg)
+    if len(msg) > MAX_ERROR_LEN:
+        return msg[:MAX_ERROR_LEN] + "…[truncated]"
+    return msg
 
 
 def make_event(
@@ -137,14 +198,17 @@ def make_event(
 
     ``latency_ms`` is present only when actually measured; device/dtype/vram live inside
     ``provenance`` and appear only when a path really knows them — never fabricated
-    (Invariant 8). Geometry is refused outright (Invariant 6). ``dependencies`` express
-    causal prerequisites independently of array position (Invariant 15).
+    (Invariant 8). Every free-form payload passes the bounded+geometry gate
+    (``assert_bounded_payload``); ``error`` is truncated, not rejected. ``dependencies``
+    are **stage_id strings** (causal prerequisites), represented independently of array
+    position (Invariant 15).
     """
     status = as_status(status)
     for name, payload in (("detail", detail), ("input_refs", input_refs),
-                          ("output_refs", output_refs), ("provenance", provenance)):
+                          ("output_refs", output_refs), ("provenance", provenance),
+                          ("fallbacks", fallbacks), ("dependencies", dependencies)):
         if payload is not None:
-            _assert_geometry_free(payload, name)
+            assert_bounded_payload(payload, name)
     return {
         "event_id": event_id or uuid.uuid4().hex,
         "run_id": run_id,
@@ -156,13 +220,14 @@ def make_event(
         "started_at": started_at,
         "completed_at": completed_at,
         "latency_ms": latency_ms,
+        # dependencies are stage_id strings, NOT event_ids (see module + schema docs).
         "dependencies": list(dependencies) if dependencies else [],
         "adapter": adapter,
         "provenance": provenance,                       # Provenance.as_dict() or None
         "fallbacks": list(fallbacks) if fallbacks else [],
         "input_refs": list(input_refs) if input_refs else [],
         "output_refs": list(output_refs) if output_refs else [],
-        "error": error,
+        "error": bound_error(error),
         "detail": detail,
     }
 
@@ -181,7 +246,7 @@ def new_run_doc(
     projection, matching the ``agent_runs`` / ``run_helper`` idiom.
     """
     if requested_profile is not None:
-        _assert_geometry_free(requested_profile, "requested_profile")
+        assert_bounded_payload(requested_profile, "requested_profile")
     now = _now()
     return {
         "contract_version": CONTRACT_VERSION,
@@ -205,6 +270,8 @@ def new_run_doc(
 
 class VisionStageEventOut(BaseModel):
     event_id: str
+    run_id: Optional[str] = None            # P1.1: was stripped by the response model
+    contract_version: Optional[str] = None  # P1.1: one event contract across store/HTTP/examples
     stage_id: str
     capability: Optional[str] = None
     status: str
@@ -212,12 +279,12 @@ class VisionStageEventOut(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     latency_ms: Optional[float] = None
-    dependencies: List[str] = []
+    dependencies: List[str] = Field(default_factory=list)   # stage_id strings, not event_ids
     adapter: Optional[str] = None
     provenance: Optional[Dict[str, Any]] = None
-    fallbacks: List[str] = []
-    input_refs: List[Any] = []
-    output_refs: List[Any] = []
+    fallbacks: List[str] = Field(default_factory=list)
+    input_refs: List[Any] = Field(default_factory=list)
+    output_refs: List[Any] = Field(default_factory=list)
     error: Optional[str] = None
     detail: Optional[Dict[str, Any]] = None
 
@@ -242,7 +309,7 @@ class VisionRunOut(BaseModel):
     error: Optional[str] = None
     telemetry_degraded: bool = False
     result_summary: Optional[Dict[str, Any]] = None
-    events: List[VisionStageEventOut] = []
+    events: List[VisionStageEventOut] = Field(default_factory=list)
 
 
 def project_run(doc: Dict[str, Any], *, now: Optional[datetime] = None) -> Dict[str, Any]:

@@ -836,17 +836,35 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
         await rec.event(vrc.STAGE_CANONICALIZE, JobStatus.SUCCEEDED,
                         detail={"region_count": len(regions)})
 
-        await post_collection.update_one({"_id": obj_id}, {"$set": {"region_annotations": regions}})
-        await rec.event(vrc.STAGE_PERSIST, JobStatus.SUCCEEDED,
-                        detail={"region_count": len(regions)})
+        # Persist exactly as pre-P1 (same payload, same single $set), but RECORD the real
+        # outcome. matched_count==0 (e.g. the post was deleted mid-run) means the write
+        # touched nothing — telemetry must not claim a false SUCCEEDED. The route response
+        # and control flow are unchanged: pre-P1 ignored this result and returned the
+        # computed regions, and so do we.
+        persist_res = await post_collection.update_one(
+            {"_id": obj_id}, {"$set": {"region_annotations": regions}})
+        persist_ok = getattr(persist_res, "matched_count", 1) > 0
+        await rec.event(
+            vrc.STAGE_PERSIST, JobStatus.SUCCEEDED if persist_ok else JobStatus.FAILED,
+            detail={"region_count": len(regions),
+                    "matched_count": getattr(persist_res, "matched_count", None)},
+            error=None if persist_ok else "region_annotations update matched 0 documents")
 
-        # A non-fatal fine-decomposition failure is a PARTIAL run (route still succeeded).
-        final_status = JobStatus.PARTIAL if fine_degraded else JobStatus.SUCCEEDED
+        # Truthful terminal status: SUCCEEDED only when nothing degraded. A non-fatal
+        # fine-decomposition failure OR a zero-match persist makes the run PARTIAL (the
+        # route still returns its regions, exactly as before).
+        degraded = fine_degraded or (not persist_ok)
+        final_status = JobStatus.PARTIAL if degraded else JobStatus.SUCCEEDED
+        if not persist_ok:
+            terminal_reason = "persist_no_match"
+        elif fine_degraded:
+            terminal_reason = "fine_decomposition_degraded"
+        else:
+            terminal_reason = "ok"
         await rec.event(vrc.STAGE_COMPLETE, final_status,
                         detail={"anchor_count": len(anchors or []), "fine_count": len(fine)})
         await rec.finish(
-            final_status, actual_source=source,
-            terminal_reason="fine_decomposition_degraded" if fine_degraded else "ok",
+            final_status, actual_source=source, terminal_reason=terminal_reason,
             result_summary={"anchor_count": len(anchors or []), "fine_count": len(fine),
                             "creator_preserved": len(creator_regions),
                             "region_count": len(regions)})

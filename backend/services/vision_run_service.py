@@ -29,8 +29,11 @@ from backend.services.vision_orchestrator.vision_run_contracts import (
     ACTIVE_STATUSES,
     OPERATION_DISSECT,
     TERMINAL_STATUSES,
+    EventRunMismatch,
     IllegalRunTransition,
     as_status,
+    assert_bounded_payload,
+    bound_error,
     make_event,       # re-exported for callers/tests
     new_run_doc,
     project_run,
@@ -71,13 +74,25 @@ async def create_run(
 
 
 async def append_event(run_id: str, event: Dict[str, Any], *, collection=None) -> bool:
-    """Atomic, idempotent append. ``event_id`` uniqueness is enforced here: a duplicate
-    event_id is a deterministic no-op returning ``False`` (never a second copy in the
-    array). Array position is observation order only (Invariant 14)."""
+    """Atomic, idempotent append with run-ownership enforcement.
+
+    Ownership (P1.1): if ``event['run_id']`` is absent/None it is set to ``run_id``; if it
+    is present and differs, the append is rejected with ``EventRunMismatch`` — an event is
+    never persisted inside run A while claiming ``run_id == B``.
+
+    ``event_id`` uniqueness is enforced here too: a duplicate event_id is a deterministic
+    no-op returning ``False`` (never a second copy). Array position is observation order
+    only (Invariant 14); immutability is service-enforced (append-only ``$push`` — existing
+    events are never updated), not a Mongo-level prohibition."""
     coll = _coll(collection)
     oid = ObjectId(run_id)
     event = dict(event)
-    event.setdefault("run_id", run_id)
+    ev_run_id = event.get("run_id")
+    if ev_run_id is None:
+        event["run_id"] = run_id
+    elif ev_run_id != run_id:
+        raise EventRunMismatch(
+            f"event claims run_id {ev_run_id!r} but is being appended to run {run_id!r}")
     res = await coll.update_one(
         {"_id": oid, "events.event_id": {"$ne": event["event_id"]}},
         {"$push": {"events": event}, "$set": {"updated_at": _now()}},
@@ -106,12 +121,14 @@ async def transition(
     if new_status in TERMINAL_STATUSES:
         set_fields["completed_at"] = _now()
     if terminal_reason is not None:
-        set_fields["terminal_reason"] = terminal_reason
+        set_fields["terminal_reason"] = bound_error(terminal_reason)
     if error is not None:
-        set_fields["error"] = error
+        set_fields["error"] = bound_error(error)          # bound provider output (P1.1)
     if result_summary is not None:
+        assert_bounded_payload(result_summary, "result_summary")   # geometry-free + bounded
         set_fields["result_summary"] = result_summary
     if actual_source is not None:
+        assert_bounded_payload(actual_source, "actual_source")
         set_fields["actual_source"] = actual_source
 
     res = await coll.update_one(
@@ -174,12 +191,19 @@ async def get_latest_run(
 
 
 async def ensure_indexes(collection=None) -> None:
-    """Idempotent index creation (wired into app startup, mirroring the other services)."""
+    """Idempotent index creation (wired into app startup, mirroring the other services).
+
+    P1.1: keep only indexes backed by a real query. The single non-``_id`` read is
+    ``get_latest_run`` — ``find({post_id, operation}).sort(created_at, -1)`` — served by the
+    compound below. Single-run reads/appends/transitions all key on ``_id`` (auto-indexed).
+    The earlier speculative indexes (``post_id+created_at``, ``status+updated_at``, bare
+    ``operation``) matched no real query and were removed; a future P2 "list runs for a
+    post" endpoint would add its own."""
     coll = _coll(collection)
     try:
-        await coll.create_index([("post_id", 1), ("created_at", -1)], name="post_created_idx")
-        await coll.create_index([("status", 1), ("updated_at", -1)], name="status_updated_idx")
-        await coll.create_index("operation", name="operation_idx")
+        await coll.create_index(
+            [("post_id", 1), ("operation", 1), ("created_at", -1)],
+            name="post_operation_created_idx")
     except Exception as e:                              # never block startup on an index
         log.warning("vision_run ensure_indexes skipped: %s", e)
 

@@ -5,11 +5,14 @@ driving async code via `asyncio.run` with injected fake collections (cf. `test_v
 
 ## Counts
 
-- **New P1 suite** `test_circulation_spine_p1.py`: **27 passed** (0.74s).
+*Final P1 figures (post the two P1 review fixes). **P1.1 hardening supersedes these — see
+`P1.1-test-evidence.md`: 40 suite / 265 full.***
+
+- **New P1 suite** `test_circulation_spine_p1.py`: **28 passed** (P1.1 → **40**).
 - **Targeted regression** (geometry / segmenter / merge / domain / orchestrator / semantic /
-  recovery): **122 passed** (2.05s).
-- **Full backend suite** `backend/tests/`: **252 passed** (4.57s) — 225 pre-existing on
-  `main` + 27 new. Zero failures, zero unrelated pre-existing failures observed.
+  recovery): **122 passed**.
+- **Full backend suite** `backend/tests/`: **253 passed** — 225 pre-existing on `main` + 28
+  new (P1.1 → **265**, +12). Zero failures, zero unrelated pre-existing failures observed.
 
 ## New-suite breakdown
 
@@ -42,7 +45,7 @@ re-raised + run finalized FAILED.
 | 4 | telemetry failure cannot break Dissect | 3 degradation tests + failing-store equivalence run | logic-tested |
 | 5 | contract represents current sequential route AND a future DAG | free-form `stage_id`, unordered events, `dependencies[]`; `test_observation_order…`, `test_dependencies…` | logic-tested |
 | 6 | no frontend/Scheduler/Atlas/Codex/Percept/rehearsal in the diff | `git status` scope guard (see file-boundary report) | implemented |
-| 7 | relevant + full backend tests green | 252 passed | logic-tested |
+| 7 | relevant + full backend tests green | 253 passed (P1.1 → 265) | logic-tested |
 | 8 | branch committed cleanly | see commit (implementation report) | implemented |
 
 ## Not claimed

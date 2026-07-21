@@ -537,3 +537,146 @@ def test_route_reraises_primary_exception_and_marks_run_failed(monkeypatch):
     docs = list(runs.docs.values())
     assert len(docs) == 1 and docs[0]["status"] == "failed"
     assert docs[0]["terminal_reason"] == "route_exception"
+
+
+# ══════════════════ P1.1 — external-review hardening ══════════════════════════
+
+# --- correction 1: response model retains the full event contract ------------
+
+def test_response_model_retains_run_id_and_contract_version():
+    c = FakeCollection(); rid = _mk_run(c)
+    run(svc.append_event(rid, vrc.make_event(stage_id="dissect.receive",
+        status="succeeded", event_id="e1"), collection=c))
+    proj = run(svc.get_run(rid, collection=c))
+    dumped = vrc.VisionRunOut(**proj).model_dump()      # the actual response_model
+    ev = dumped["events"][0]
+    assert ev["run_id"] == rid                           # was stripped pre-P1.1
+    assert ev["contract_version"] == vrc.CONTRACT_VERSION
+    assert dumped["contract_version"] == vrc.CONTRACT_VERSION and dumped["run_id"] == rid
+
+
+# --- correction 2: cross-run event ownership ---------------------------------
+
+def test_append_event_sets_absent_run_id():
+    c = FakeCollection(); rid = _mk_run(c)
+    ev = vrc.make_event(stage_id="dissect.receive", status="succeeded", event_id="e1")
+    ev["run_id"] = None
+    assert run(svc.append_event(rid, ev, collection=c)) is True
+    assert run(svc.get_run(rid, collection=c))["events"][0]["run_id"] == rid
+
+
+def test_append_event_accepts_matching_run_id():
+    c = FakeCollection(); rid = _mk_run(c)
+    ev = vrc.make_event(stage_id="dissect.receive", status="succeeded", run_id=rid, event_id="e1")
+    assert run(svc.append_event(rid, ev, collection=c)) is True
+
+
+def test_append_event_rejects_conflicting_run_id():
+    c = FakeCollection(); rid = _mk_run(c)
+    ev = vrc.make_event(stage_id="dissect.receive", status="succeeded",
+                        run_id="deadbeef", event_id="e1")
+    with pytest.raises(vrc.EventRunMismatch):
+        run(svc.append_event(rid, ev, collection=c))
+    assert run(svc.get_run(rid, collection=c))["events"] == []      # nothing persisted
+
+
+# --- correction 3: index matches the real query ------------------------------
+
+def test_ensure_indexes_declares_only_the_supported_compound():
+    calls = []
+    class IdxColl:
+        async def create_index(self, keys, name=None):
+            calls.append((keys, name)); return name
+    run(svc.ensure_indexes(collection=IdxColl()))
+    assert len(calls) == 1                               # only real-query-backed index
+    keys, name = calls[0]
+    assert keys == [("post_id", 1), ("operation", 1), ("created_at", -1)]
+    assert name == "post_operation_created_idx"
+
+
+# --- correction 4: zero-match persistence is not a false success -------------
+
+def test_zero_match_persistence_records_failed_not_success(monkeypatch):
+    runs = FakeCollection()
+    posts_coll = _FakePosts(_fresh_post())
+    _install_route_mocks(monkeypatch, posts_coll, runs)
+
+    async def _no_match(q, update):
+        return _UpdateResult(0, 0)                       # the write touched nothing
+    monkeypatch.setattr(posts_coll, "update_one", _no_match)
+
+    from backend.schemas.post import RegionDetectRequest
+    pid = str(posts_coll.post["_id"])
+    resp = run(R.detect_regions(pid, RegionDetectRequest(coarse_only=True)))
+
+    # response + control flow unchanged: still returns the computed regions
+    assert resp["anchor_count"] == 2 and "regions" in resp
+    proj = run(svc.get_run(resp["run_id"], collection=runs))
+    persist_ev = next(e for e in proj["events"] if e["stage_id"] == "dissect.persist_regions")
+    assert persist_ev["status"] == "failed"              # not a false SUCCEEDED
+    assert proj["status"] == "partial" and proj["terminal_reason"] == "persist_no_match"
+
+
+# --- correction 5: bounded telemetry payloads --------------------------------
+
+def test_bounded_payload_rejects_binary_and_unsupported():
+    with pytest.raises(vrc.BoundedPayloadError):
+        vrc.make_event(stage_id="x", status="succeeded", detail={"blob": b"\x00\x01"})
+    with pytest.raises(vrc.BoundedPayloadError):
+        vrc.make_event(stage_id="x", status="succeeded", detail={"obj": object()})
+
+
+def test_bounded_payload_rejects_excess_nesting_cardinality_and_length():
+    deep = cur = {}
+    for _ in range(vrc.MAX_PAYLOAD_DEPTH + 2):
+        cur["n"] = {}; cur = cur["n"]
+    with pytest.raises(vrc.BoundedPayloadError):
+        vrc.make_event(stage_id="x", status="succeeded", detail={"d": deep})
+    with pytest.raises(vrc.BoundedPayloadError):
+        vrc.make_event(stage_id="x", status="succeeded",
+                       detail={"many": list(range(vrc.MAX_PAYLOAD_ITEMS + 1))})
+    with pytest.raises(vrc.BoundedPayloadError):
+        vrc.make_event(stage_id="x", status="succeeded",
+                       detail={"s": "z" * (vrc.MAX_STRING_LEN + 1)})
+
+
+def test_bounded_payload_applies_to_run_fields():
+    with pytest.raises(vrc.BoundedPayloadError):
+        vrc.new_run_doc(post_id="p", requested_profile={"blob": b"x"})
+    c = FakeCollection(); rid = _mk_run(c)
+    with pytest.raises(vrc.BoundedPayloadError):
+        run(svc.transition(rid, JobStatus.SUCCEEDED, result_summary={"blob": b"x"}, collection=c))
+
+
+def test_normal_route_payloads_stay_valid():
+    vrc.make_event(stage_id="dissect.merge_anchors", status="succeeded",
+                   detail={"anchor_count": 5, "source": "segformer_clothes+yolo"},
+                   provenance={"adapter": "yolo11_seg", "latency_ms": 88.2},
+                   fallbacks=["vision"], dependencies=["dissect.segment.general"])
+    vrc.new_run_doc(post_id="p", requested_profile={"mode": "general",
+                    "lens": "the fabric folds", "coarse_only": False, "chosen": ["fashion"]})
+
+
+# --- correction 6: error transport bounding ----------------------------------
+
+def test_error_text_is_truncated_not_dropped():
+    long = "E" * (vrc.MAX_ERROR_LEN + 500)
+    ev = vrc.make_event(stage_id="dissect.decompose_fine", status="failed", error=long)
+    assert ev["error"].endswith("…[truncated]")
+    assert len(ev["error"]) <= vrc.MAX_ERROR_LEN + len("…[truncated]")
+    c = FakeCollection(); rid = _mk_run(c)
+    run(svc.finalize(rid, JobStatus.FAILED, error=long, collection=c))
+    assert run(svc.get_run(rid, collection=c))["error"].endswith("…[truncated]")
+
+
+# --- write-behind preserved for the new guards -------------------------------
+
+def test_recorder_swallows_bounded_and_mismatch_errors():
+    c = FakeCollection()
+    rec = svc.DissectRunRecorder(post_id="p", collection=c)
+    run(rec.start())
+    run(rec.event("dissect.receive", JobStatus.SUCCEEDED, detail={"blob": b"\x00"}))  # bounded → swallowed
+    assert rec.telemetry_degraded is True
+    run(rec.finish(JobStatus.SUCCEEDED))                 # still finalizes cleanly
+    proj = run(svc.get_run(rec.run_id, collection=c))
+    assert all("blob" not in (e.get("detail") or {}) for e in proj["events"])

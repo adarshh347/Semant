@@ -23,7 +23,7 @@ strategy comparison concluded. `adopted`
 | `backend/database.py` | +9 — one collection handle `vision_run_collection = get_collection("vision_runs")` | `implemented` |
 | `backend/main.py` | +3 — wire `ensure_vision_run_indexes()` into startup, next to the taste/embedding index hooks | `implemented` |
 | `backend/routers/posts.py` | instrument `detect_regions` at existing `await` seams; add `GET /{id}/vision-runs/latest` and `GET /{id}/vision-runs/{run_id}` | `implemented` |
-| `backend/tests/test_circulation_spine_p1.py` | **new** — 27 tests (contract / lifecycle / degradation / route-equivalence) | `logic-tested` |
+| `backend/tests/test_circulation_spine_p1.py` | **new** — 28 tests (contract / lifecycle / degradation / route-equivalence); P1.1 adds 12 → 40 | `logic-tested` |
 | `architecture-lab/circulation-spine/P1/*` | these eight reports | — |
 
 ## Contract at a glance
