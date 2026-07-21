@@ -1,0 +1,82 @@
+{
+  "events": [
+    {
+      "actor": "human",
+      "cost": null,
+      "event_id": "008-kinship-pull-ab-e0",
+      "kind": "RECEIVE",
+      "observation_ref": null,
+      "parent_event": null,
+      "provenance": "runner:capture:receive",
+      "reconstructed": false,
+      "register": "opening",
+      "reversibility": "reversible",
+      "source_refs": [],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "008-kinship-pull-ab-e1",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "008-kinship-pull-ab-obs0",
+      "parent_event": "008-kinship-pull-ab-e0",
+      "provenance": "capture:008-kinship-pull-ab:groq_vlm_probe:reused_frozen",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "arm-B"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "008-kinship-pull-ab-e2",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "008-kinship-pull-ab-obs1",
+      "parent_event": "008-kinship-pull-ab-e1",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "arm-C"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "008-kinship-pull-ab-e3",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "008-kinship-pull-ab-obs2",
+      "parent_event": "008-kinship-pull-ab-e2",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "arm-A"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    }
+  ],
+  "reconstructed": false,
+  "rehearsal_id": "008-kinship-pull-ab",
+  "score_ref": null,
+  "status": "completed"
+}

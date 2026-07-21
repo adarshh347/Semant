@@ -15,7 +15,32 @@ Nothing below meets it. Speculative locations are marked **[SPEC]** and are gues
 | spark-05 | address as a viewer-facing stance, maybe without a figure | A3 | new, n=1 |
 | spark-06 | anthropomorphism is **question-conditional** (address vocabulary) | A3, A4, **resolved by 007 A/B** | **RESOLVED** |
 | spark-07 | a claim can be its own counterexample — **within one response** | A4, **strengthened by A5** | moderate |
-| spark-08 | **the evidence base grows silently to meet the claim** | A5 | new, n=1, high value |
+| spark-08 | **the evidence base grows silently to meet the claim** | A5, **corroborated by 008** | n=1, high value |
+| spark-09 | **relational vocabulary is an attractor — the noun is the variable** | 008 (sibling to spark-06) | new, n=1 pair |
+
+---
+
+## spark-09 — relational vocabulary is an attractor; the noun is the variable
+
+**From:** `runs/008-kinship-pull-ab/` (cell 1). **Strength:** SPARK at n=1 pair, 1 model, 3 calls.
+
+On one image pair, held constant in bytes, order and co-presence, asking what **motif** each carries
+elicited a shared-motif assertion (`KIN-HEDGED`); asking how each is **put together** elicited shared
+properties **plus an explicit denial of sameness** (`KIN-SPECIFIC-ONLY`); asking to compare nothing
+elicited no cross-image claim at all (`KIN-ABSENT`). Since arms A and C differ in exactly one respect
+— the noun — the noun is the only surviving explanation. **The kinship is in the question.**
+
+Sibling to spark-06, which resolved the same shape for *address* vocabulary. **Two relational
+vocabularies now show the effect**; that is a pattern to name, not a disposition to assert.
+
+**What would strengthen it:** the fourth arm (*"say what motif each image carries"*, no relational
+clause) separates the **noun** from the **identity presupposition** — one call, now the highest-value
+single call the program has. Then a second pair; then other vocabularies (*influence*, *lineage*,
+*belongs to the same tradition*).
+
+**What would kill it:** arm A's hedge reproducing under arm C's wording on a different pair — that
+would make it a register effect (abstraction, not kinship). **Nearest existing construct: none, and
+[SPEC] none is proposed** — this is a fact about prompting a VLM, not about Semant's ontology.
 
 ---
 

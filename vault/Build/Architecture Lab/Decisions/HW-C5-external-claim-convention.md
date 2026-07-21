@@ -11,7 +11,7 @@ rehearsal schemas were **read only**.
 |---|---|
 | **id** | HW-C5 · arises from **spark-08** (`R2/CANDIDATE-REGISTER.md` §spark-08) |
 | **date** | 2026-07-21 |
-| **status** | **Proposed** — awaiting the orchestrator's acceptance. Until accepted, A6 and the `695be843` A/B are not blocked by it and may proceed without it. |
+| **status** | **Adopted** (cycle 5) · **Amended cycle 7** — see §9. Run 007 was the first voluntary adopter; run 008 is the first to run under the amended shape. |
 | **decision, in one line** | **Adopt now, in reduced form: a markdown-only `## External claims` ledger in `score.md`, recording frame-settleability and never truth. No schema change to either score schema.** |
 | **scope** | rehearsal trace/report practice only — how a run's own markdown records what a model said |
 | **supersedes** | nothing |
@@ -137,12 +137,12 @@ model made no claim the frame does not settle.`** The empty case is the whole po
 | column | values | rule |
 |---|---|---|
 | **verbatim** | quoted model text, unedited | Never paraphrased. Elide with `…` only; never rewrite. |
-| **kind** | `name` · `attribution` · `date` · `place` · `quotation` · `other` | Descriptive only; a bucket for scanning, carrying no claim. |
-| **frame status** | `frame-silent` · `frame-contradicts` | Two values, not four. See below. |
+| **kind** | `name` · `attribution` · `date` · `place` · `quotation` · `material` · `period` · `other` | Descriptive only; a bucket for scanning, carrying no claim. **Amended cycle 7 (§9.1):** `material` and `period` were added, and the column is now **load-bearing** — the overturn test in §6.1 keys on it. The first five values are the **identity-reaching** kinds; `material`, `period` and `other` are the **low-grade band**. |
+| **frame status** | `frame-silent` · `frame-contradicts` · `stimulus-contradicts` | Three values, not four and not two. **Amended cycle 7 (§9.2).** See below. |
 | **evidence** | a file/crop ref, or `—` | **Required** when status is `frame-contradicts`. An unevidenced "the frame refutes this" is an assertion, not a check — the same rule `instrumented-score.schema.json` already applies to `production_mutation.evidence_ref`. |
 | **speaker-flagged** | `yes` / `no` / `contradicted` | Did the model itself mark this as something the image cannot settle? `contradicted` = it flagged the limit *and* asserted the claim anyway (spark-07). |
 
-**`frame status` has two values, deliberately.** The brief's categories 2 (*external-documentary,
+**`frame status` refuses the true/false split, deliberately.** The brief's categories 2 (*external-documentary,
 true and sourced*) and 3 (*invented/unverified*) **cannot be told apart by a rehearsal** — separating
 them requires the external lookup A5 correctly refused, and §4.3 forbids making that lookup a
 precondition. Collapsing them into `frame-silent` is not a simplification; it is the honest record.
@@ -270,11 +270,23 @@ lives here, in this decision, precisely so that the run's own artifacts stay as 
 
 **What would overturn it:**
 
-1. **Three consecutive runs with empty ledgers** on subjects of recognisable type. That would make
+1. **Three consecutive runs with no identity-reaching row** — i.e. no row whose `kind` is `name`,
+   `attribution`, `date`, `place` or `quotation` — on subjects of recognisable type. That would make
    A5 an accident of one famous pose — `critique.md` §3 already flags this as live — and the
    convention becomes ceremony. Response: drop it, and record in the register that spark-08 did not
-   replicate. *(Note: the three empty ledgers would themselves be the evidence that killed it. This
+   replicate. *(Note: the three such ledgers would themselves be the evidence that killed it. This
    is the self-correcting property claimed in §2.)*
+
+   > **Amended cycle 7 (§9.1).** This condition previously read *"three consecutive runs with empty
+   > ledgers"* and was **untriggerable as written.** The cycle-6 audit of runs 001–006
+   > (`R2/HW-C6-external-claim-audit-001-006.md` §C2) found that every instrumented run in the corpus
+   > carries a low-grade band of unrequested, unflagged, frame-unsettleable claims — *"basalt or
+   > granite"*, *"marble panels"*, *"historical patina"*, *"white marble"*. Under a strict reading of
+   > §3.2 these are external claims by the letter of the definition, so **no ledger is ever empty**,
+   > so the overturn condition could never fire. The test now keys on the `kind` column, which
+   > already existed and already separates the two bands. **A ledger carrying only `material` /
+   > `period` / `other` rows counts as a NEGATIVE for this test**, and the run must say so in those
+   > words, because that is the case the test exists to count.
 2. **Any run where filling the ledger required an external lookup to proceed.** That would mean §4.3
    is unenforceable in practice, and the convention should be withdrawn rather than patched.
 3. **Ambiguity in `frame-contradicts` in practice** — i.e. a run where whether the frame refutes a
@@ -320,3 +332,72 @@ maximally projection-friendly. It would be indefensible as a data model. It is d
 recording convention because a recording convention that turns out to be unnecessary costs one
 heading per run, while the evidence that would show it unnecessary can only be gathered by having
 adopted it.
+
+---
+
+## 9. Amendment — cycle 7
+
+**Doc-only. No schema change, no code change, no production entity.** Both amendments were required
+by `R2/HW-C6-external-claim-audit-001-006.md` §C2 and §C4 and are made **before** run 008 applies the
+convention, so that 008, A6 and every later run share one ledger shape. §4.5's "it must not grow"
+still binds: the column count is unchanged at six, and one status value was added.
+
+### 9.1 The overturn test now keys on `kind` (audit §C2, resolution (a))
+
+Applied in **§6.1** above and in the `kind` row of **§3.2**. The audit offered two honest
+resolutions — **(a) strict**: record the low-grade band and key the overturn test on `kind`;
+**(b) narrow**: scope the ledger to identity-reaching claims only and let material and period hedges
+stay in prose. **(a) is adopted**, for the reason the audit gave: it is the smaller change and needs
+no new column.
+
+The argument for (a) over (b) is worth keeping, because (b) is the more tempting option. (b) would
+discard exactly the row the audit showed was **most invisible to contemporaneous reading** — A2's
+*"basalt or granite"*, which that run's own `score.md` quoted **approvingly, as evidence**. A
+convention whose scope rule deletes the claims nobody noticed they were accepting is optimising for
+a tidy ledger over a truthful one. Under (a) the row is still recorded; it simply does not count
+toward the test that asks whether the *spark-08* phenomenon is replicating.
+
+**Consequence for a run's prose.** A run whose ledger is non-empty but identity-free must state that
+in the convention's own terms — *"N claims, 0 identity-reaching; this run counts as a negative under
+§6.1"* — rather than reporting a non-empty ledger and leaving the reader to score it.
+
+### 9.2 `stimulus-contradicts` added as a third frame-status value (audit §C4)
+
+| value | meaning | settled by | evidence required |
+|---|---|---|---|
+| `frame-silent` | the picture does not settle this | — | no |
+| `frame-contradicts` | the claim is **about what the frame contains**, and the pixels falsify it | looking at the image | **yes** |
+| **`stimulus-contradicts`** | the claim is **about what the model was shown**, and the frozen request record falsifies it | the run's own manifest / trace / `image_sha256` list | **yes** — cite the trace or manifest field |
+
+**Why it is a distinct value and not a stretch of `frame-contradicts`.** A5 stage 2 described
+*"multiple cropped views"* and *"the top crop"* when **one** image was sent. That is not the model
+misreading the picture; it is the model **hallucinating its own stimulus** — inventing the conditions
+of its own observation. `006/critique.md` already flagged it as *"a new failure mode for the
+corpus"*, and the ledger as originally specified had nowhere to put it. Folding it into
+`frame-contradicts` would merge two failures that differ in what they impugn: one says the model
+misread the world, the other says the model misreported the encounter.
+
+It is also, like `frame-contradicts`, a cell **a rehearsal can settle on its own authority** — and
+more cheaply, because the request record is already frozen by the runner and needs no crop, no
+upscale and no judgement. That is the whole reason it is worth naming: it is the one settling
+authority the program already possesses for free and was not using.
+
+**Rule.** `stimulus-contradicts` requires citing the frozen record that settles it (a trace field, a
+manifest field, or the `image_sha256` list), exactly as `frame-contradicts` requires a crop.
+
+### 9.3 What this amendment does NOT do
+
+- **No backfill.** Runs 001–006 are still not amended; the cycle-6 audit recommended against it
+  (hindsight contamination is asymmetric — it inflates positives and does nothing for the negatives,
+  which were the point) and that recommendation stands. The audit's reconstructed ledgers live in
+  the audit doc, not in the runs' own `score.md` files.
+- **No change to §4.** The ledger still adjudicates no truth, still accuses no model of lying, still
+  requires no external lookup, and still is not a design proposal. `stimulus-contradicts` does not
+  breach §4.1: it settles what was *sent*, never what is *true*.
+- **No schema field.** §3.4 stands unchanged. `additionalProperties: false` still makes a field a
+  real change, and the amended `kind` values live in markdown only.
+- **§C3 is left OPEN.** The audit also proposed a clarifying rule — that `frame-contradicts` require
+  the falsification be statable *using only the picture and no external premise*. It is not adopted
+  here, because cycle 7's gate authorised two amendments and this is a third. It remains the live
+  open item: under the corpus as audited it would give 2 clean `frame-contradicts` and 0 arguable
+  ones, and would keep §6.3 untriggered. A later cycle should decide it.

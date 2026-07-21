@@ -1,0 +1,86 @@
+{
+  "rehearsal_id": "008-kinship-pull-ab",
+  "research_only": true,
+  "mode": "instrumented",
+  "family": "Instrument check (serves R12 Adversarial Projection; closes A6's residual exposure)",
+  "status": "completed",
+  "stall_or_refusal": null,
+  "score_ref": "score.md",
+  "trace_ref": "trace.json",
+  "manifest_ref": "manifest.yaml",
+  "artifacts": [
+    "manifest.yaml",
+    "trace.json",
+    "score.md",
+    "critique.md",
+    "sparks.md",
+    "source-notes.md",
+    "pre-state.json",
+    "post-state.json",
+    "instrumented-score.json",
+    "observations/008-kinship-pull-ab-obs0.json",
+    "observations/008-kinship-pull-ab-obs1.json",
+    "observations/008-kinship-pull-ab-obs2.json"
+  ],
+  "candidate_count": 0,
+  "spark_count": 1,
+  "observation_count": 3,
+  "live_model_call_count": 3,
+  "model_call_budget": 4,
+  "model_calls": [
+    {
+      "observation_ref": "008-kinship-pull-ab-obs0",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 3045.2,
+      "total_tokens": 4272,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    },
+    {
+      "observation_ref": "008-kinship-pull-ab-obs1",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 3974.7,
+      "total_tokens": 4680,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    },
+    {
+      "observation_ref": "008-kinship-pull-ab-obs2",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 4666.7,
+      "total_tokens": 4563,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    }
+  ],
+  "latency_summary": {
+    "count": 3,
+    "min_ms": 3045.2,
+    "max_ms": 4666.7
+  },
+  "replay_live_call_count": 0,
+  "replay_proof": {
+    "verified": true,
+    "method": "Replay with every ALLOWLIST entry monkeypatched to raise and GROQ_API_KEY absent from the environment; 3 observations replayed, status completed, 0 adapter invocations and 0 spy invocations."
+  },
+  "production_mutation": {
+    "mutated": false,
+    "evidence_ref": "post-state.json",
+    "subject_ref": "posts 695be8eca9ea58f1b6aef60b and 695be815a9ea58f1b6aef5f9; four comparisons each (full key set, array lengths, updated_at to the millisecond, region_embeddings/vision_runs counts); pre-state.json and post-state.json are byte-identical"
+  },
+  "unresolved_questions": [
+    "Is it the noun (motif) or the identity presupposition (sharing) that pulls? Arm A moves both together; the fourth arm separates them and is one call.",
+    "Is arm A's hedge a kinship effect or an abstraction effect that had nowhere to land but sameness?",
+    "Would a counterbalanced order (A then C then B) reproduce the asymmetry? All calls are stateless, but no mechanism I can think of is weaker than counterbalanced and measured.",
+    "Does A6's stage-2 device - a proposition attributed to a third party - behave like a question frame at all? Untested here and untested by A5, whose sycophancy control was never exercised.",
+    "Do other relational vocabularies pull (influence, lineage, derived from, belongs to the same tradition)?",
+    "Is KIN-ASSERTED or KIN-HEDGED the right score for arm A? Immaterial to the grid cell, material to how badly A6 is exposed."
+  ],
+  "notes": "Three-arm A/B on one fixed image pair, identical bytes and identical order in every arm by sha256, co-presence held constant across all arms so the pairing prime is a controlled constant. Only the noun varied. ARM B (no relational clause) made no cross-image statement at all: KIN-ABSENT. ARM C (construction frame) named three shared properties and then explicitly denied sameness - 'a distinct construction method not seen in the second image', 'a different engineering principle': KIN-SPECIFIC-ONLY. ARM A (motif frame) asserted 'Both images share a fundamental motif of creating a sense of the divine or celestial': KIN-HEDGED, almost word for word the hedge HW-L4 section 4.5 pre-registered. Pre-registered cell 1 obtained: THE VOCABULARY DRIVES IT. A6's residual exposure is REAL and A6's delta must be re-derived before it runs. Anthropomorphism watch ABSENT in all three arms for both images; HW-L4's four pre-registered face predictions did not occur; contamination rule not triggered. External claims: 13 rows, 0 frame-contradicts, 0 stimulus-contradicts, 6 identity-reaching - and the declared confound was REFUTED in the informative direction, since the FLOOR arm produced the most attribution and the only two monument names while arm A named none, prospectively corroborating the cycle-6 audit's question-type clustering. Budget question settled: arm B prompt_tokens 3649 for two images, about 1794 tokens per image - BOTH prior estimates were wrong, the 2400 rule over-cautious and the 1000 figure extrapolated from 007 an underestimate; use ~1800/image for the rest of the program. The section 6 stop condition was honoured mechanically: arm B was captured and inspected before C and A were sent, so a reading over 6900 would have halted with two calls unspent."
+}
