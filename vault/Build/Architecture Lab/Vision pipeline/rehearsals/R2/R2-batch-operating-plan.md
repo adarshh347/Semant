@@ -53,6 +53,19 @@ unrelated without evidence.
   the **raw text** and record parse success/failure as an observation, never silently coercing.
 - Record for every live call: provider, model, latency, token usage, finish reason.
 
+## Amendments carried from A1 + the 002F followup (binding on A2–A6)
+
+1. **Never offer a refusal token as a named reply option.** A1's probe 2 offered `NO_GROUND`; 002F
+   proved it is an attractor — the model emitted `NO_GROUND` while simultaneously naming the
+   depicted content it had just found. Ask for the bounding box and let any refusal be
+   *unprompted*, as A1's probe 1 was. Refusals produced this way remain fully valid results.
+2. **Record reproduction-vs-depiction in every manifest.** Whether a fixture is a composite
+   plate / scan / collage or a single photograph *completely determined* A1's outcome, and the
+   manifest schema currently cannot express it. State it in `source_notes` at minimum.
+3. **Score indexes are mode-specific.** Instrumented runs use `instrumented-score.json`
+   (`schemas/instrumented-score.schema.json`); the imaginative `virtual-score.json` protocol is
+   untouched and does not apply to them.
+
 ## Evidence artifacts (per run, mirroring `001-eyes-of-stone`)
 
 `manifest.yaml` · `trace.json` (append-only, observation order) · `observations/` (frozen) ·

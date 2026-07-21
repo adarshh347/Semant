@@ -1,0 +1,67 @@
+{
+  "rehearsal_id": "002F-single-object-followup",
+  "research_only": true,
+  "mode": "instrumented",
+  "family": "R4 Figure/Ground Reversal (followup control for 002)",
+  "status": "completed",
+  "stall_or_refusal": null,
+  "score_ref": "score.md",
+  "trace_ref": "trace.json",
+  "manifest_ref": "manifest.yaml",
+  "artifacts": [
+    "manifest.yaml",
+    "trace.json",
+    "score.md",
+    "instrumented-score.json",
+    "observations/002F-single-object-followup-obs0.json",
+    "observations/002F-single-object-followup-obs1.json",
+    "observations/002F-single-object-followup-obs2.json"
+  ],
+  "candidate_count": 0,
+  "spark_count": 0,
+  "observation_count": 3,
+  "live_model_call_count": 2,
+  "model_call_budget": 2,
+  "model_calls": [
+    {
+      "observation_ref": "002F-single-object-followup-obs1",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 1052.8,
+      "total_tokens": 1947,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    },
+    {
+      "observation_ref": "002F-single-object-followup-obs2",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 858.4,
+      "total_tokens": 1934,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    }
+  ],
+  "latency_summary": {
+    "count": 2,
+    "min_ms": 858.4,
+    "max_ms": 1052.8
+  },
+  "replay_live_call_count": 0,
+  "replay_proof": {
+    "verified": true,
+    "method": "Replay with every ALLOWLIST entry monkeypatched to raise, socket.connect patched to raise, and GROQ_API_KEY absent; 3 observations replayed, 4 events reproduced, 0 adapter calls."
+  },
+  "production_mutation": {
+    "mutated": false,
+    "evidence_ref": "score.md#provenance",
+    "subject_ref": "post 695be77ea9ea58f1b6aef5eb"
+  },
+  "unresolved_questions": [
+    "Does the interval-as-interval (as opposed to a surface region like 'wall') ever need to be groundable, or is a surface region always sufficient on real photographs?",
+    "Should the manifest record reproduction-vs-depiction as a first-class field, given it fully determined the outcome here?"
+  ],
+  "notes": "Followup control for 002, not A2. Changes one variable (subject) against an identical instrument. Corrects 002's spark-02 (detection DOES propose non-figure regions: arch_0 'wall', arch_1 'floor') and discredits 002's probe-2 design (the offered NO_GROUND token is an attractor: the model emitted it while simultaneously naming depicted content). 002's stall itself is unaffected -- it rested on measurement plus an unprompted probe-1 answer."
+}

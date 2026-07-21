@@ -1,0 +1,19 @@
+{
+  "adapter": "local_file_digest",
+  "captured_at": null,
+  "content_hash": "f6d5e729135c414997f619836f91463d5031317ff150d88746e80cce6bf7d6e7",
+  "cost": null,
+  "device": "cpu",
+  "latency_ms": null,
+  "model": null,
+  "observation_id": "002F-single-object-followup-obs0",
+  "output": {
+    "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg",
+    "sha256": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "size_bytes": 90000
+  },
+  "provenance": "capture:002F-single-object-followup:local_file_digest",
+  "request_boundary": "local_filesystem_read",
+  "uncertainty": null,
+  "version": "r1.local-pure.1"
+}

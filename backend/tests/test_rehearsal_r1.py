@@ -299,6 +299,129 @@ def test_r2_frozen_vlm_observations_carry_real_telemetry():
         assert obs["output"]["answer_text"].strip()
 
 
+# --------------------------------------------------------------------------- #
+# 5b. mode-specific score indexes (R2-A1R)                                     #
+# --------------------------------------------------------------------------- #
+
+SCORE002 = os.path.join(RUN002, "instrumented-score.json")
+VSCORE001 = os.path.join(
+    REHEARSALS, "runs", "001-eyes-of-stone", "virtual-score.json")
+
+
+def _instrumented_schema():
+    return rr.load_schema("instrumented_score")
+
+
+def _virtual_schema_or_skip():
+    try:
+        return rr.load_schema("virtual_score")
+    except FileNotFoundError:  # protocol file is authored outside this branch
+        pytest.skip("virtual-rehearsal-score.schema.json not present")
+
+
+RUN002F = os.path.join(REHEARSALS, "runs", "002F-single-object-followup")
+
+
+def test_002f_followup_score_validates_and_replays_clean(monkeypatch):
+    assert rr.validate(
+        json.load(open(os.path.join(RUN002F, "instrumented-score.json"))),
+        rr.load_schema("instrumented_score")) == []
+
+    def boom(*a, **k):
+        raise AssertionError("replay invoked an adapter")
+
+    for name in list(rehearsal_adapters.ALLOWLIST):
+        monkeypatch.setitem(rehearsal_adapters.ALLOWLIST, name, boom)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    res = rr.run(os.path.join(RUN002F, "manifest.yaml"), mode="replay")
+    assert res.adapter_calls == 0 and len(res.observations) == 3
+
+
+def test_completed_run_needs_no_stall_reason():
+    # The stall/refusal requirement must not fire on runs that reached a result.
+    score = json.load(open(os.path.join(RUN002F, "instrumented-score.json")))
+    assert score["status"] == "completed"
+    assert score["stall_or_refusal"] is None
+    assert rr.validate(score, rr.load_schema("instrumented_score")) == []
+
+
+def test_core_schema_loading_does_not_require_score_schemas():
+    # Score indexes are optional; a run must still execute without them.
+    assert "virtual_score" not in rr.load_all_schemas()
+    assert "instrumented_score" not in rr.load_all_schemas()
+
+
+def test_a1_instrumented_score_validates():
+    assert rr.validate(json.load(open(SCORE002)), _instrumented_schema()) == []
+
+
+def test_imaginative_virtual_score_still_validates_unchanged():
+    # The instrumented schema was added ALONGSIDE the virtual one; adding it must
+    # not have perturbed imaginative indexing.
+    schema = _virtual_schema_or_skip()
+    if not os.path.exists(VSCORE001):
+        pytest.skip("001-eyes-of-stone virtual-score.json not present")
+    assert rr.validate(json.load(open(VSCORE001)), schema) == []
+
+
+def test_instrumented_run_cannot_be_mislabeled_as_imaginative():
+    score = json.load(open(SCORE002))
+    # a) mode is pinned within the instrumented schema
+    score["mode"] = "imaginative"
+    assert rr.validate(score, _instrumented_schema()), "mode must be pinned"
+    # b) and an instrumented score cannot masquerade as a virtual one
+    schema = _virtual_schema_or_skip()
+    assert rr.validate(json.load(open(SCORE002)), schema), \
+        "instrumented score must not validate against the imaginative schema"
+
+
+def test_imaginative_score_cannot_validate_as_instrumented():
+    _virtual_schema_or_skip()
+    if not os.path.exists(VSCORE001):
+        pytest.skip("001-eyes-of-stone virtual-score.json not present")
+    assert rr.validate(json.load(open(VSCORE001)), _instrumented_schema()), \
+        "an imaginative score must not validate as instrumented"
+
+
+def test_verified_replay_proof_requires_zero_live_calls():
+    schema = _instrumented_schema()
+    score = json.load(open(SCORE002))
+    assert score["replay_proof"]["verified"] is True
+    assert score["replay_live_call_count"] == 0
+    # Claiming a verified replay while recording live calls is incoherent.
+    score["replay_live_call_count"] = 1
+    assert rr.validate(score, schema)
+    # But an UNVERIFIED replay may honestly record a nonzero count — the schema
+    # must not make a violation unrecordable.
+    score["replay_proof"] = {"verified": False, "method": "spy detected a live call"}
+    assert rr.validate(score, schema) == []
+
+
+def test_stall_must_state_a_reason_and_cite_evidence():
+    schema = _instrumented_schema()
+    score = json.load(open(SCORE002))
+    assert score["status"] == "stalled"
+    del score["stall_or_refusal"]
+    assert rr.validate(score, schema), "a stall with no stated reason must not validate"
+
+
+def test_declared_live_calls_must_carry_telemetry():
+    schema = _instrumented_schema()
+    score = json.load(open(SCORE002))
+    score["model_calls"] = []
+    assert rr.validate(score, schema), \
+        "claiming live calls while listing none must not validate"
+
+
+def test_production_mutation_claim_requires_evidence():
+    schema = _instrumented_schema()
+    score = json.load(open(SCORE002))
+    assert score["production_mutation"]["mutated"] is False
+    del score["production_mutation"]["evidence_ref"]
+    assert rr.validate(score, schema), \
+        "an unevidenced no-mutation claim must not validate"
+
+
 def test_every_allowlisted_adapter_declares_provenance_meta():
     # An adapter with no ADAPTER_META entry would silently write null model /
     # "unknown" boundary into a frozen observation.

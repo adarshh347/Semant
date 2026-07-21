@@ -55,11 +55,23 @@ REHEARSALS_ROOT = os.path.join(
 SCHEMA_DIR = os.path.join(REHEARSALS_ROOT, "schemas")
 DEFAULT_RUNS_ROOT = os.path.join(REHEARSALS_ROOT, "runs")
 
+# Core run schemas — every run needs all four, so `load_all_schemas` requires them.
 SCHEMA_FILES = {
     "manifest": "rehearsal-manifest.schema.json",
     "trace": "rehearsal-trace.schema.json",
     "candidate": "candidate-card.schema.json",
     "observation": "frozen-observation.schema.json",
+}
+
+# Score indexes are mode-specific on purpose: `virtual` indexes IMAGINATIVE runs
+# (interpretive bones), `instrumented` indexes runs that made real model calls
+# (execution truth). Neither validates the other's runs.
+#
+# Kept OUT of SCHEMA_FILES deliberately: a run does not need a score index to
+# execute, and `load_all_schemas` must not hard-fail when one is absent.
+SCORE_SCHEMA_FILES = {
+    "virtual_score": "virtual-rehearsal-score.schema.json",
+    "instrumented_score": "instrumented-score.schema.json",
 }
 
 
@@ -196,14 +208,16 @@ def validate(instance: Any, schema: Dict[str, Any],
 # --------------------------------------------------------------------------- #
 
 def load_schema(name: str, schema_dir: str = SCHEMA_DIR) -> Dict[str, Any]:
-    """Load one of the four research schemas by short name."""
-    if name not in SCHEMA_FILES:
-        raise KeyError(f"unknown schema {name!r}; known: {sorted(SCHEMA_FILES)}")
-    with open(os.path.join(schema_dir, SCHEMA_FILES[name]), "r") as fh:
+    """Load a core run schema or a mode-specific score schema by short name."""
+    known = {**SCHEMA_FILES, **SCORE_SCHEMA_FILES}
+    if name not in known:
+        raise KeyError(f"unknown schema {name!r}; known: {sorted(known)}")
+    with open(os.path.join(schema_dir, known[name]), "r") as fh:
         return json.load(fh)
 
 
 def load_all_schemas(schema_dir: str = SCHEMA_DIR) -> Dict[str, Dict[str, Any]]:
+    """Load the four CORE run schemas. Score indexes are loaded on demand."""
     return {name: load_schema(name, schema_dir) for name in SCHEMA_FILES}
 
 

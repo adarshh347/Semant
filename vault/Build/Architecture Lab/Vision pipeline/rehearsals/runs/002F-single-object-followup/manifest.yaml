@@ -1,0 +1,39 @@
+# RESEARCH-ONLY instrumented FOLLOWUP to run 002 (A1). Not A2 of the breadth batch.
+# Tests exactly one thing: does A1's stall survive on a single, non-composite photograph?
+rehearsal_id: "002F-single-object-followup"
+rehearsal_type: "figure-ground-reversal-control-on-single-photograph"
+family: "R4 Figure/Ground Reversal (followup control for 002)"
+mode: "instrumented"
+reconstructed: false
+conducted_by: "opus (conductor); same instrument as run 002, changed subject only"
+source_condition: "present"
+dates:
+  date_original: "2026-07-21"
+  date_imported: "2026-07-21"
+seed_constellation:
+  images:
+    - id: "img-01"
+      path: "../../fixtures/002F-pieta-single-object/pieta-in-situ.jpg"
+      dimensions: "544x680"
+      sha256: "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4"
+      metadata_status: "downloaded read-only from the live post's photo_url; Michelangelo's Pieta photographed in situ in its chapel; exact catalogue data absent"
+      source_post_id: "695be77ea9ea58f1b6aef5eb"
+  texts: []
+  existing_percepts: []
+image_order: ["img-01"]
+initiating_act:
+  actor: "human"
+  kind: "figure_ground_reversal"
+  payload: "what is the space between the figure and its boundary doing?"
+source_notes:
+  why_selected: "the controlled counter-case to 002: a SINGLE photograph with real depicted architectural space, rather than a composite plate of cut-out heads on keyed black"
+  known_context: "3 pre-existing regions -- arch_0 'wall', seg_0 'person', arch_1 'floor' -- i.e. detection here already proposed non-figure regions, unlike 002 where all 10 regions were objects"
+  controlled_variable: "identical instrument to 002 (same model, same reasoning_effort, same two-probe structure, same NO_GROUND option offered) so any difference in outcome is attributable to the subject, not the method"
+constraints:
+  technical_silence: false
+  no_model_calls: false
+  model_budget: 2
+  image_call_throttle_s: 25
+  no_iconographic_identification: true
+  no_production_mutation: true
+  time_budget: null

@@ -65,6 +65,27 @@ non-object proposal? If none can, the asymmetry is a property of the model layer
   makes a transmission claim about facial geometry; extending it to the gap would be analogy
   overreach with zero supporting evidence.
 
+---
+
+## Followup correction (added after run `002F-single-object-followup`)
+
+The A1 result above stands unchanged — the stall was real and is not rewritten. But the followup
+control on a single, non-composite photograph (Michelangelo's Pietà in situ) narrowed two of the
+claims on this page. Recorded here so this file is not read in isolation:
+
+- **spark-01 narrows to reproductions.** The artifact/depiction split arose *because* A1's subject
+  was a made comparative plate. On a real photograph the space beside the figure is in the depicted
+  world; there is no category gap. Still a real corpus problem for plates, scans, and collages —
+  but not the general claim it appeared to be.
+- **spark-02 was overstated and is corrected.** Detection is **not** purely object-shaped: the
+  Pietà post's pre-existing regions include `arch_0 "wall"` and `arch_1 "floor"`. The accurate,
+  narrower claim is that detection proposes **things** (figures *and* surfaces) but never
+  **intervals** — no region in either run points at a space-between.
+- **The measurement contrast is stark:** 59.5 % literally `(0,0,0)` in A1's interval vs **0.0 %**
+  everywhere tested in the photograph.
+
+See `../002F-single-object-followup/score.md`.
+
 ## Unresolved questions
 
 1. Is the artifact/depiction distinction a Ground *type*, a Ground *attribute*, or something that
