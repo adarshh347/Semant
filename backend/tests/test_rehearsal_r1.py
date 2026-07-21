@@ -838,3 +838,58 @@ def test_006_records_the_byte_identical_twin_and_checks_both():
     for oid in pre:
         for key in ("regions", "grounds", "percepts", "text_blocks"):
             assert post[oid][key] == pre[oid][key], f"{oid}.{key} changed"
+
+
+RUN007 = os.path.join(REHEARSALS, "runs", "007-anthropomorphism-ab")
+
+
+def test_007_ab_score_validates_and_replays_clean(monkeypatch):
+    assert rr.validate(
+        json.load(open(os.path.join(RUN007, "instrumented-score.json"))),
+        rr.load_schema("instrumented_score")) == []
+
+    def boom(*a, **k):
+        raise AssertionError("replay invoked an adapter")
+
+    for name in list(rehearsal_adapters.ALLOWLIST):
+        monkeypatch.setitem(rehearsal_adapters.ALLOWLIST, name, boom)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    res = rr.run(os.path.join(RUN007, "manifest.yaml"), mode="replay")
+    assert res.adapter_calls == 0 and len(res.observations) == 3
+
+
+def test_007_ab_isolated_exactly_one_variable():
+    # The whole finding depends on this: identical stimulus, identical budget,
+    # and the word "address" present in ONE arm only.
+    obs_dir = os.path.join(RUN007, "observations")
+    probes = []
+    for fn in sorted(os.listdir(obs_dir)):
+        obs = json.load(open(os.path.join(obs_dir, fn)))
+        if obs["adapter"] == "groq_vlm_probe":
+            probes.append(obs["output"])
+    assert len(probes) == 2
+    a, b = probes
+    # same stimulus, byte-for-byte
+    assert a["image_sha256"] == b["image_sha256"]
+    assert a["model"] == b["model"]
+    assert a["reasoning_effort"] == b["reasoning_effort"] == "none"
+    # the variable, present in exactly one arm
+    assert "address" in a["prompt"].lower()
+    assert "address" not in b["prompt"].lower()
+    # neither arm primed anthropomorphism (whole words; "surface" contains "face")
+    primes = ("face", "faces", "eye", "eyes", "gaze", "body", "head", "watching")
+    for p in (a["prompt"].lower(), b["prompt"].lower()):
+        for word in primes:
+            assert re.search(rf"\b{re.escape(word)}\b", p) is None, \
+                f"prompt primed anthropomorphism with {word!r}"
+
+
+def test_007_ab_manifest_preregistered_all_four_outcome_cells():
+    # A null result had to be declared CONFOUNDED in advance, so the finding
+    # could not be retrofitted to whatever came back.
+    man = rr.load_manifest(os.path.join(RUN007, "manifest.yaml"))
+    grid = man["design"]["interpretation_grid"]
+    assert set(grid) == {"a_face_b_none", "a_face_b_face",
+                         "a_none_b_none", "a_none_b_face"}
+    assert "CONFOUNDED" in grid["a_none_b_none"].upper()
+    assert man["design"]["variable_isolated"].strip().upper().startswith("PROMPT FRAME")

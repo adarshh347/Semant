@@ -1,0 +1,55 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "f9e7e5efa39b7db03436d029137530d4e1f099d5280ff48ec887eecfd4e66469",
+  "cost": {
+    "token_usage": {
+      "completion_time": 0.319573596,
+      "completion_tokens": 163,
+      "prompt_time": 0.158369313,
+      "prompt_tokens": 1841,
+      "queue_time": 0.298324245,
+      "total_time": 0.477942909,
+      "total_tokens": 2004
+    }
+  },
+  "device": "remote",
+  "latency_ms": 1516.0,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "007-anthropomorphism-ab-obs2",
+  "output": {
+    "answer_sha256": "a28a17ed065bb7807a09378f6df708f50f72e8c8d1b91f11351e474ee58acaef",
+    "answer_text": "This composition is organized by strong vertical symmetry and hierarchical layering, with the central spire acting as the dominant axis around which all other elements are arranged. The repeating geometric patterns \u2014 such as the tiered, ribbed surfaces and evenly spaced illuminated fixtures \u2014 create a rhythmic visual order that reinforces the structure\u2019s monumental scale. Evidence of this arrangement includes the mirrored placement of light fixtures on either side of the central tower, the concentric rings of architectural detail radiating outward, and the consistent alignment of horizontal bands across multiple levels. The dark background further isolates the structure, emphasizing its symmetrical form and making the glowing accents serve as visual anchors that guide the eye along the vertical axis. This deliberate organization suggests an intentional design meant to convey power, precision, and technological grandeur through balanced, repetitive forms.",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_count": 1,
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/007-anthropomorphism-ab/probe-768.jpg",
+    "image_sha256": "d366b2e1ae779807a1ad70568bf1c1ee3c84bd13bc9d8acabe45ca8c9336c086",
+    "images": [
+      {
+        "bytes": 98595,
+        "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/007-anthropomorphism-ab/probe-768.jpg",
+        "sha256": "d366b2e1ae779807a1ad70568bf1c1ee3c84bd13bc9d8acabe45ca8c9336c086"
+      }
+    ],
+    "latency_ms": 1516.0,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "What organises this composition -- how are its parts arranged, and what decides that arrangement? Say what specific evidence in the image decides your answer. 4-6 sentences.",
+    "prompt_sha256": "0770ce2e429740d6a247d1ab33f79d0f07d2a35e72ed5abffd1ccc69dfa01155",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 0.319573596,
+      "completion_tokens": 163,
+      "prompt_time": 0.158369313,
+      "prompt_tokens": 1841,
+      "queue_time": 0.298324245,
+      "total_time": 0.477942909,
+      "total_tokens": 2004
+    }
+  },
+  "provenance": "capture:007-anthropomorphism-ab:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}

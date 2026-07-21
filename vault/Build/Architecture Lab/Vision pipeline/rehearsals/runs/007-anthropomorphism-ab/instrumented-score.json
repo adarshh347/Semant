@@ -1,0 +1,73 @@
+{
+  "rehearsal_id": "007-anthropomorphism-ab",
+  "research_only": true,
+  "mode": "instrumented",
+  "family": "Replication probe (serves R7 / R12; resolves spark-06)",
+  "status": "completed",
+  "stall_or_refusal": null,
+  "score_ref": "score.md",
+  "trace_ref": "trace.json",
+  "manifest_ref": "manifest.yaml",
+  "artifacts": [
+    "manifest.yaml",
+    "trace.json",
+    "score.md",
+    "critique.md",
+    "sparks.md",
+    "source-notes.md",
+    "pre-state.json",
+    "post-state.json",
+    "instrumented-score.json",
+    "observations/007-anthropomorphism-ab-obs0.json",
+    "observations/007-anthropomorphism-ab-obs1.json",
+    "observations/007-anthropomorphism-ab-obs2.json"
+  ],
+  "candidate_count": 0,
+  "spark_count": 0,
+  "observation_count": 3,
+  "live_model_call_count": 2,
+  "model_call_budget": 2,
+  "model_calls": [
+    {
+      "observation_ref": "007-anthropomorphism-ab-obs1",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 1681.8,
+      "total_tokens": 2018,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    },
+    {
+      "observation_ref": "007-anthropomorphism-ab-obs2",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 1516.0,
+      "total_tokens": 2004,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    }
+  ],
+  "latency_summary": {
+    "count": 2,
+    "min_ms": 1516.0,
+    "max_ms": 1681.8
+  },
+  "replay_live_call_count": 0,
+  "replay_proof": {
+    "verified": true,
+    "method": "Replay with every ALLOWLIST entry monkeypatched to raise, socket.connect patched to raise, GROQ_API_KEY absent; 3 observations replayed, 4 events reproduced, 0 adapter calls."
+  },
+  "production_mutation": {
+    "mutated": false,
+    "evidence_ref": "post-state.json",
+    "subject_ref": "post 695be843a9ea58f1b6aef5ff"
+  },
+  "unresolved_questions": [
+    "Does kinship/motif vocabulary pull as hard as address vocabulary? That is A6's actual exposure and this run says nothing about it.",
+    "Would a counterbalanced order (arm B first) reproduce the asymmetry?",
+    "Is 'address' special because it names a viewer-relation, or would any relational frame do?"
+  ],
+  "notes": "A/B replication resolving spark-06. Same image, identical 768px stimulus by sha256 in both arms, same model/budget/call-shape, both stateless; only the question frame differed. ARM A (address-framed) produced 'glowing eyes', 'face-like frontality', 'almost facial architecture'. ARM B (structure-framed) described the SAME lamps as 'light fixtures', 'mirrored placement', 'visual anchors'. Pre-registered cell a_face_b_none obtained: THE QUESTION FRAME DRIVES IT. Supersedes A4's narrowing, which rested on a negative result on a different image that may have lacked the triggering feature. Secondary result: arm A reproduced A3's face reading at 768px single-image, so A3's finding was NOT an artifact of 256px degradation or 3-image comparison context. Scope stated narrowly: address vocabulary resolved; kinship/motif vocabulary explicitly NOT, which is what A6 actually asks."
+}

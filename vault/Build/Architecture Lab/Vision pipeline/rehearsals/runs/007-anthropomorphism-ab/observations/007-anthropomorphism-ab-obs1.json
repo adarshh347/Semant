@@ -1,0 +1,55 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "aea350d110cfce98beb58324ef62a61b59dc3d65f6347cde64e00abc91d9b191",
+  "cost": {
+    "token_usage": {
+      "completion_time": 0.394386519,
+      "completion_tokens": 168,
+      "prompt_time": 0.152648692,
+      "prompt_tokens": 1850,
+      "queue_time": 0.448601344,
+      "total_time": 0.547035211,
+      "total_tokens": 2018
+    }
+  },
+  "device": "remote",
+  "latency_ms": 1681.8,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "007-anthropomorphism-ab-obs1",
+  "output": {
+    "answer_sha256": "db34966c07c720e6ae17604a9ef028038c6563c16e7ede3cf71b79b640c34427",
+    "answer_text": "The address of what is shown here \u2014 the imposing, vertically oriented structure with its glowing eyes and layered, almost facial architecture \u2014 directs itself upward, toward the dark void above, as if reaching for or confronting an unseen sky or cosmos. It turns away from the ground, withholding any sense of earthly anchoring or horizontal stability; instead, it leans into verticality, suggesting aspiration, isolation, or defiance. The glowing \u201ceyes\u201d and central spire act as focal points that pull the viewer\u2019s gaze skyward, while the surrounding darkness and lack of horizon reinforce this upward orientation. What decides this direction is the deliberate composition: the structure\u2019s symmetrical, face-like frontality combined with its towering height and the absence of any terrestrial context forces the eye to follow its ascent \u2014 making the void above not empty, but charged with meaning.",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_count": 1,
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/007-anthropomorphism-ab/probe-768.jpg",
+    "image_sha256": "d366b2e1ae779807a1ad70568bf1c1ee3c84bd13bc9d8acabe45ca8c9336c086",
+    "images": [
+      {
+        "bytes": 98595,
+        "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/007-anthropomorphism-ab/probe-768.jpg",
+        "sha256": "d366b2e1ae779807a1ad70568bf1c1ee3c84bd13bc9d8acabe45ca8c9336c086"
+      }
+    ],
+    "latency_ms": 1681.8,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "Where does the address of what is shown here go -- that is, where does it direct itself, and what does it turn away from or withhold? Say what in the picture decides this. 4-6 sentences.",
+    "prompt_sha256": "3975afc9ccee080170d9ff56fd7386f11c7cae484fe65f8d9447a8910030e832",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 0.394386519,
+      "completion_tokens": 168,
+      "prompt_time": 0.152648692,
+      "prompt_tokens": 1850,
+      "queue_time": 0.448601344,
+      "total_time": 0.547035211,
+      "total_tokens": 2018
+    }
+  },
+  "provenance": "capture:007-anthropomorphism-ab:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}

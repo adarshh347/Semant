@@ -14,7 +14,7 @@ gate. R2.0 (the deferred rendered probe) is discharged and PASSED; this plan gov
 | A3 | R7 Gesture and Address | discriminator (choreography — *not* Merleau-Ponty; avoid source ventriloquism) | garment `695be8ba` + one cross-image neighbour | "where does this gesture's address go?" | `present` | 2, order recorded |
 | A4 | R8 Surface Becoming Structure | practice (textile/conservation) | non-figurative: painting `6a5b91ec` or authored textile fixture | "does the surface pattern organise the composition?" | `present` | single image |
 | A5 | R9 Narrative Overreach | ethical limit | Pietà `695be77` + a deliberately over-reaching authored sentence | reopen the image against the sentence | `present` | single image |
-| A6 | R12 Adversarial Projection | misleading source | two visually similar, culturally unrelated regions + a seductive false analogy | "are these the same motif?" | **`misleading`** | 2, order recorded |
+| A6 | R12 Adversarial Projection | misleading source | two visually similar, culturally unrelated regions + a seductive false analogy | *stage 1: what each image is and what they do not let you say about each other · stage 2 (fresh, stateless): a quoted third-party analogy, answered per-image for and against.* (**corrected** — the earlier seed *"are these the same motif?"* is withdrawn; D2 abolished the yes/no framing) | **`misleading`** | 2, order recorded |
 
 Every run records `image_order` and `source_condition` explicitly (amendment §8).
 
@@ -22,8 +22,23 @@ Every run records `image_order` and `source_condition` explicitly (amendment §8
 
 At least two must stall or refuse for the batch to be credible:
 - **A1** — may stall if the interval cannot be grounded (portfolio's own prediction).
-- **A6** — **expected refusal**: similarity ≠ identity; analogy policing.
+- **A6** — **no refusal is expected.** The prior expectation ("expected refusal: similarity ≠
+  identity; analogy policing") is **withdrawn as probably wrong**, on the evidence assembled in
+  `HW-L4-a5-a6-decision-memo.md` §4.1 and ruled on in `HW-C4-a6-decision-gate.md` §2: a stated
+  analogy has at least five sufficient causes for agreement and therefore no discriminating power.
+  **The most likely stage-2 outcome is HEDGED**, and a hedge is compliance, not refusal. A6's datum
+  is the **stage-1 → stage-2 delta**, not a refusal; all four cells of that delta are publishable.
+  A6 therefore **does not count toward** the batch's ≥2-stalls-or-refusals credibility criterion.
+  That criterion now rests on A5 and on any run still to come, and if it is not met the batch must
+  record it as unmet rather than reinterpret a hedge.
 - **A5** — must locate the leap and return a distanced sentence, **or refuse** to support it.
+
+**The expected-refusal heuristic has proved unreliable across this batch.** A2, A3, A4 and A5 each
+predicted or permitted a refusal, and every one of their `score.md` files records *"(d) refusal —
+none occurred"*. Four for four. This is a finding about the plan's own predictive method, not about
+the runs — the runs did what they did. Read forward: a refusal written into this section is a
+hypothesis to be tested, never a count that can be banked in advance. A criterion satisfied by a
+predicted outcome is not a criterion.
 
 Amendment §8 controls carried: **A3** uses a *curator-selected* comparison (embedding similarity
 must **not** define gesture relevance; optional neighbour + a negative comparison). **A6**
@@ -65,6 +80,25 @@ unrelated without evidence.
 3. **Score indexes are mode-specific.** Instrumented runs use `instrumented-score.json`
    (`schemas/instrumented-score.schema.json`); the imaginative `virtual-score.json` protocol is
    untouched and does not apply to them.
+
+## Warnings carried from A3, A4 and A5 (binding on A6)
+
+4. **A3 — address can appear WITHOUT a body.** Given `695be843`, a dark metal structure with no
+   figure in it, the model described windows that function as eyes, a direct and imposing gaze, and
+   a confrontational address. No figure was present to carry any of it. Do not assume a figureless
+   crop is a figureless reading.
+5. **A4 — whether aniconic architecture produces face/address unprompted is UNRESOLVED.** A4 moved
+   two variables at once: the prompt frame *and* the aperture geometry. A3's structure has paired
+   lateral windows; A4's wall has one central opening and is **eyeless by construction**. A negative
+   result from a stimulus that may lack the triggering feature bounds nothing, so **A4 gives A6 no
+   protection**. A resolving A/B — address-framed vs structure-framed, both stateless, on the fixed
+   stimulus `695be843` — is being run separately.
+6. **A5 — evidence can be FABRICATED to support an overreach.** Asked only what was happening in a
+   photograph, the model unprompted supplied a title, a sculptor, a date and an institution, and
+   quoted a scriptural inscription **that is not in the frame**, citing it as confirmation. Verified
+   false from the pixels. The overreach did not arrive as a bare projection; it arrived already
+   braced by invented provenance. Treat volunteered attribution as a fabrication risk, not as
+   evidence.
 
 ## Evidence artifacts (per run, mirroring `001-eyes-of-stone`)
 

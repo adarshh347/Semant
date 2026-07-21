@@ -13,7 +13,7 @@ Nothing below meets it. Speculative locations are marked **[SPEC]** and are gues
 | spark-03 | **evidence loss should be announced, not merely survived** | A2, A2S | **strongest** |
 | spark-04 | out-of-domain collapse ≠ channel disagreement | A2 | moderate |
 | spark-05 | address as a viewer-facing stance, maybe without a figure | A3 | new, n=1 |
-| spark-06 | anthropomorphism — spontaneous or question-conditional? | A3, A4 | **UNRESOLVED** |
+| spark-06 | anthropomorphism is **question-conditional** (address vocabulary) | A3, A4, **resolved by 007 A/B** | **RESOLVED** |
 | spark-07 | a claim can be its own counterexample — **within one response** | A4, **strengthened by A5** | moderate |
 | spark-08 | **the evidence base grows silently to meet the claim** | A5 | new, n=1, high value |
 
@@ -224,30 +224,34 @@ attribution appears each time, this is standing behaviour, not an accident of on
 
 ---
 
-## spark-06 — UNRESOLVED: two competing narrowings
+## spark-06 — RESOLVED: question-conditional (address vocabulary)
 
-**Status: SPARK, contested. A4's confident narrowing does not hold.**
+**Status: RESOLVED by run `007-anthropomorphism-ab`. No longer contested.**
 
-A3 observed the model describe *"windows that function as eyes… a confrontational gaze"* for a
-figureless metal structure, and called the behaviour **spontaneous**. A4 ran the most
-face-suggestive aniconic image in the corpus with no anthropomorphic priming, saw **no face**, and
-narrowed the claim to **question-conditional**.
+**Evidence.** Same image, identical 768 px stimulus by sha256 in both arms, same model,
+`reasoning_effort`, `max_tokens` and call shape, both arms stateless. Only the question differed.
 
-**The A6 decision gate disputes that narrowing, and is right to.** A4 changed **two** variables at
-once: the prompt frame *and* the aperture configuration. A3's structure carries **paired lateral
-windows**; A4's wall has **one central opening** — eyeless by construction, so it may have produced
-no face under *either* prompt.
+- **Address-framed:** *"glowing eyes"*, *"face-like frontality"*, *"almost facial architecture"*.
+- **Structure-framed:** *"light fixtures"*, *"mirrored placement"*, *"visual anchors"*.
 
-**Current status: unresolved.** Two narrowings compete — prompt-framing versus aperture geometry —
-and A4 cannot distinguish them.
+**The same lamps.** The face is not in the photograph; it is in the question.
 
-**Why it matters now:** the muqarnas hood proposed for A6 is the paired-aperture condition in its
-most extreme corpus form, so **A4 gives A6 no protection.**
+**Why this supersedes A4's narrowing.** A4 argued from a *negative* result on a *different* image
+whose aperture geometry may have lacked the triggering feature. This argues from a *positive*
+result in one arm and a *positive non-face* reading in the other, on **the one image known to have
+produced the behaviour**. Pre-registered cell `a_face_b_none`.
 
-**Resolving test (cheap, specified):** an A/B on `695be843` — the image that already produced the
-face — address-framed versus structure-framed prompt, two native single-image calls, declared as a
-replication.
+**Secondary result:** arm A reproduced A3's face at 768 px single-image, where A3's original was
+256 px inside a three-image comparison — so A3's finding was **not** an artifact of downscale
+degradation or comparison context.
 
+**Scope — deliberately narrow.** Resolved: **address-framing is sufficient**; the image alone is
+not. **Not resolved:** whether kinship or motif-similarity vocabulary pulls the same way. **A6 asks
+exactly such a question**, so it gains a real but limited protection — avoid address vocabulary, and
+do not read this as clearance for A6's actual question.
+
+**What would overturn it.** A counterbalanced replication where arm B produces the face, or the same
+A/B on a second stimulus showing the opposite pattern.
 
 ## Withheld across the program
 
