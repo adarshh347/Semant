@@ -23,9 +23,14 @@ class VisionService:
         """Initialize Groq client with API key from settings."""
         if settings.GROQ_API_KEY:
             self.client = Groq(api_key=settings.GROQ_API_KEY)
-            # Using llama-3.2-90b-vision-preview for better quality
-            # Can switch to llama-3.2-11b-vision-preview for faster responses
-            self.vision_model = "meta-llama/llama-4-scout-17b-16e-instruct"
+            # Groq retired the llama-4 vision models (scout/maverick both 404). qwen3.6-27b is
+            # the vision-capable model now on the catalogue — verified live against an image.
+            # NB it is a REASONING model: left to itself it emits an unclosed <think>… block that
+            # consumes the whole max_tokens budget before any JSON is produced (finish_reason
+            # "length" → parsers return []). Every call below therefore passes
+            # reasoning_effort="none", which suppresses the block entirely; the model then emits
+            # the fenced JSON the existing regex parsers already handle.
+            self.vision_model = "qwen/qwen3.6-27b"
         else:
             self.client = None
             self.vision_model = None
@@ -52,6 +57,7 @@ class VisionService:
         try:
             completion = self.client.chat.completions.create(
                 model=self.vision_model,
+                reasoning_effort="none",
                 messages=[
                     {
                         "role": "user",
@@ -356,6 +362,7 @@ Generate ONLY the subtitle, no additional text or explanation:"""
         try:
             completion = self.client.chat.completions.create(
                 model=self.vision_model,
+                reasoning_effort="none",
                 messages=[
                     {
                         "role": "user",
@@ -454,6 +461,7 @@ Generate ONLY the subtitle, no additional text or explanation:"""
         try:
             completion = self.client.chat.completions.create(
                 model=self.vision_model,
+                reasoning_effort="none",
                 messages=[
                     {
                         "role": "user",
@@ -586,6 +594,7 @@ Generate ONLY the subtitle, no additional text or explanation:"""
         try:
             completion = self.client.chat.completions.create(
                 model=self.vision_model,
+                reasoning_effort="none",
                 messages=[
                     {
                         "role": "user",
