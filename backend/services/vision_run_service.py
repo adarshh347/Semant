@@ -42,7 +42,7 @@ from backend.services.vision_orchestrator.vision_run_contracts import (
 __all__ = [
     "create_run", "append_event", "transition", "finalize",
     "get_run", "get_latest_run", "ensure_indexes",
-    "DissectRunRecorder", "make_event",
+    "VisionRunRecorder", "DissectRunRecorder", "make_event",
 ]
 
 log = logging.getLogger("vision_run")
@@ -210,13 +210,16 @@ async def ensure_indexes(collection=None) -> None:
 
 # --- route-facing write-behind recorder (never raises) ----------------------
 
-class DissectRunRecorder:
-    """Route-facing, write-behind telemetry handle.
+class VisionRunRecorder:
+    """Route-facing, write-behind telemetry handle for ANY vision operation.
 
-    Every method swallows persistence errors and flags ``telemetry_degraded``; none can
-    raise into the instrumented route. If the run doc itself can't be created,
-    ``run_id`` stays ``None`` and every later call is a safe no-op — the route runs
-    exactly as it did before P1, and the additive ``run_id`` response field is ``None``.
+    P2.1 generalized this from the P1 ``DissectRunRecorder`` (kept as an alias below) —
+    the same write-behind contract now records heterogeneous operations (dissect / refine /
+    semantic_read / find_similar) by varying ``operation``. Every method swallows persistence
+    errors and flags ``telemetry_degraded``; none can raise into the instrumented route. If
+    the run doc itself can't be created, ``run_id`` stays ``None`` and every later call is a
+    safe no-op — the route runs exactly as it did before instrumentation, and the additive
+    ``run_id`` response field is ``None``.
     """
 
     def __init__(
@@ -283,3 +286,9 @@ class DissectRunRecorder:
         except Exception as e:
             self.telemetry_degraded = True
             log.warning("vision_run finish failed (write-behind, non-fatal): %s", e)
+
+
+# Backward-compat alias: P1 shipped this as `DissectRunRecorder`. The recorder is generic
+# (its `operation` param carries the family), so P2.1 renamed it `VisionRunRecorder` and keeps
+# this alias so the P1 detect_regions route and existing tests are untouched.
+DissectRunRecorder = VisionRunRecorder

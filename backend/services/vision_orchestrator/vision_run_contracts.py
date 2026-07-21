@@ -60,6 +60,35 @@ STAGE_CANONICALIZE    = "dissect.canonicalize_geometry"
 STAGE_PERSIST         = "dissect.persist_regions"
 STAGE_COMPLETE        = "dissect.complete"
 
+# ── P2.1 · heterogeneous sibling operations (SAME contract, distinct operation) ──
+# Deliberately distinct from any vision_service.* adapter name (no conflation).
+OPERATION_REFINE        = "refine"          # geometry family (authors mask + geometry_rev)
+OPERATION_SEMANTIC_READ = "semantic_read"   # semantic family (writes semantics only)
+OPERATION_FIND_SIMILAR  = "find_similar"    # retrieval family (read-mostly research)
+
+# refine (geometry) — the SAM2 confirm path
+STAGE_REFINE_RECEIVE  = "refine.receive"
+STAGE_REFINE_PROPOSE  = "refine.propose"            # fetch + SAM2 mask compute (one seam)
+STAGE_REFINE_MERGE    = "refine.merge_curator_state"
+STAGE_REFINE_PERSIST  = "refine.persist_regions"
+STAGE_REFINE_COMPLETE = "refine.complete"
+
+# semantic-read (semantic)
+STAGE_SEM_RECEIVE     = "semantic_read.receive"
+STAGE_SEM_FETCH       = "semantic_read.fetch_image"
+STAGE_SEM_RUN         = "semantic_read.run"
+STAGE_SEM_MERGE       = "semantic_read.merge_curator_state"
+STAGE_SEM_PERSIST     = "semantic_read.persist_semantics"
+STAGE_SEM_COMPLETE    = "semantic_read.complete"
+
+# find-similar (retrieval)
+STAGE_FS_RECEIVE      = "find_similar.receive"
+STAGE_FS_ROUTE_SPACE  = "find_similar.route_space"
+STAGE_FS_SCOPE        = "find_similar.scope"
+STAGE_FS_FETCH        = "find_similar.fetch_image"
+STAGE_FS_RETRIEVE     = "find_similar.retrieve"
+STAGE_FS_COMPLETE     = "find_similar.complete"
+
 # A run that reaches one of these is done; it must not transition back to active.
 TERMINAL_STATUSES = frozenset({
     JobStatus.SUCCEEDED, JobStatus.PARTIAL, JobStatus.FAILED,

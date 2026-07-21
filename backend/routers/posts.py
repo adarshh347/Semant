@@ -880,11 +880,14 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
 
 
 @router.get("/{post_id}/vision-runs/latest")
-async def get_latest_vision_run(post_id: str):
-    """The most recent Dissect run for a post — small additive read for refresh recovery.
-    Returns `{run: null}` when none exists yet. (Declared before the `{run_id}` route so
-    the literal `latest` is not swallowed as an id.)"""
-    run = await vision_run_service.get_latest_run(post_id, now=datetime.now(timezone.utc))
+async def get_latest_vision_run(post_id: str, operation: str = vrc.OPERATION_DISSECT):
+    """The most recent run for a post and operation — small additive read for refresh
+    recovery. `operation` defaults to `dissect` (P1-compatible); P2.1 accepts
+    `refine|semantic_read|find_similar` to fetch the latest sibling run. Returns
+    `{run: null}` when none exists. (Declared before the `{run_id}` route so the literal
+    `latest` is not swallowed as an id.)"""
+    run = await vision_run_service.get_latest_run(
+        post_id, operation=operation, now=datetime.now(timezone.utc))
     return {"run": run}
 
 
@@ -1194,26 +1197,67 @@ async def refine_region_confirm(post_id: str, req: RefineRequest):
     Non-destructive — upgrades the base region's identity in place (or appends a new one),
     preserves curator fields, and never touches other regions, Grounds, Percepts or
     Mentions. The saved region is authoritative (`proposed: false`)."""
+    # SAM2 mask compute FIRST: _propose_refined_region owns the 400/404/503/422 guards, so
+    # minting the run only after it returns keeps rejections run-free (matches Dissect).
+    _t = time.perf_counter()
     obj_id, post, region = await _propose_refined_region(post_id, req)
-    region["proposed"] = False                                   # confirmed → authoritative
-    regions = list(post.get("region_annotations") or [])
-    idx = next((i for i, r in enumerate(regions) if r.get("id") == region["id"]), None)
-    if idx is not None:
-        prev = regions[idx]
-        for k in ("prioritised", "weight", "user_note"):         # keep curator meaning
-            if prev.get(k) is not None:                          # never overwrite the
-                region[k] = prev[k]                              # region's valid default with None
-        region["depth"] = prev.get("depth") if prev.get("depth") is not None else region.get("depth", 0)
-        if prev.get("parent_id") is not None:
-            region["parent_id"] = prev["parent_id"]
-        regions[idx] = region                                    # upgrade in place
-    else:
-        regions.append(region)
-    await post_collection.update_one(
-        {"_id": obj_id}, {"$set": {"region_annotations": regions,
-                                   "updated_at": datetime.now(timezone.utc)}})
-    updated = await post_collection.find_one({"_id": obj_id})
-    return {"post": post_helper(updated), "region": region}
+    propose_ms = round((time.perf_counter() - _t) * 1000, 1)
+
+    # ── P2.1 · recorded refine (geometry family; write-behind telemetry). ──────
+    # Records the run WITHOUT touching the authoritative mask/geometry_rev, the curator-field
+    # preservation, or the persistence payload. region_id/geometry_rev correlation rides the
+    # existing requested_profile + input/output refs — no new schema (see correlation report).
+    rec = vision_run_service.VisionRunRecorder(
+        post_id=post_id, operation=vrc.OPERATION_REFINE, initiator="api",
+        requested_profile={"region_id": region.get("id"), "base_id": req.base_id,
+                           "base_geometry_rev": req.base_geometry_rev,
+                           "geometry_rev": region.get("geometry_rev")})
+    await rec.start()
+    await rec.event(vrc.STAGE_REFINE_RECEIVE, JobStatus.SUCCEEDED,
+                    detail={"base_id": req.base_id, "base_geometry_rev": req.base_geometry_rev})
+    await rec.event(vrc.STAGE_REFINE_PROPOSE, JobStatus.SUCCEEDED, capability="refine-mask",
+                    adapter="sam2", latency_ms=propose_ms,
+                    input_refs=[{"region_id": req.base_id, "geometry_rev": req.base_geometry_rev}],
+                    detail={"geometry_rev": region.get("geometry_rev")})
+    try:
+        region["proposed"] = False                                   # confirmed → authoritative
+        regions = list(post.get("region_annotations") or [])
+        idx = next((i for i, r in enumerate(regions) if r.get("id") == region["id"]), None)
+        if idx is not None:
+            prev = regions[idx]
+            for k in ("prioritised", "weight", "user_note"):         # keep curator meaning
+                if prev.get(k) is not None:                          # never overwrite the
+                    region[k] = prev[k]                              # region's valid default with None
+            region["depth"] = prev.get("depth") if prev.get("depth") is not None else region.get("depth", 0)
+            if prev.get("parent_id") is not None:
+                region["parent_id"] = prev["parent_id"]
+            regions[idx] = region                                    # upgrade in place
+        else:
+            regions.append(region)
+        await rec.event(vrc.STAGE_REFINE_MERGE, JobStatus.SUCCEEDED,
+                        detail={"in_place": idx is not None, "region_count": len(regions)})
+        persist_res = await post_collection.update_one(
+            {"_id": obj_id}, {"$set": {"region_annotations": regions,
+                                       "updated_at": datetime.now(timezone.utc)}})
+        persist_ok = getattr(persist_res, "matched_count", 1) > 0
+        await rec.event(vrc.STAGE_REFINE_PERSIST,
+                        JobStatus.SUCCEEDED if persist_ok else JobStatus.FAILED,
+                        detail={"region_count": len(regions),
+                                "matched_count": getattr(persist_res, "matched_count", None)},
+                        error=None if persist_ok else "region_annotations update matched 0 documents")
+        updated = await post_collection.find_one({"_id": obj_id})
+        final_status = JobStatus.SUCCEEDED if persist_ok else JobStatus.PARTIAL
+        await rec.event(vrc.STAGE_REFINE_COMPLETE, final_status,
+                        output_refs=[{"region_id": region.get("id"),
+                                      "geometry_rev": region.get("geometry_rev")}])
+        await rec.finish(final_status, terminal_reason="ok" if persist_ok else "persist_no_match",
+                         result_summary={"region_id": region.get("id"),
+                                         "geometry_rev": region.get("geometry_rev"),
+                                         "region_count": len(regions)})
+        return {"post": post_helper(updated), "region": region, "run_id": rec.run_id}
+    except Exception as e:
+        await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
+        raise
 
 
 @router.post("/refine-region/unload")
@@ -1330,12 +1374,46 @@ async def semantic_read(post_id: str, req: SemanticReadRequest = None):
     if not post:
         raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
 
-    img_bytes = await _fetch_post_image_cached(post_id, post)
-    new_sem = await semantic_pass.run_semantic(post, img_bytes, intent=req.intent, force=req.force)
-    merged = semantic_pass.merge_curator_state(new_sem, post.get("semantics"))
-    # ONLY semantics is written — geometry is untouched (D2 invariant).
-    await post_collection.update_one({"_id": obj_id}, {"$set": {"semantics": merged}})
-    return {"semantics": merged, "status": (merged.get("meta") or {}).get("status")}
+    # ── P2.1 · recorded semantic-read (semantic family; write-behind). Geometry is never
+    # touched here and instrumentation adds none — it records the run and an optional run_id.
+    rec = vision_run_service.VisionRunRecorder(
+        post_id=post_id, operation=vrc.OPERATION_SEMANTIC_READ, initiator="api",
+        requested_profile={"intent": req.intent, "force": bool(req.force),
+                           "region_ids": [r.get("id") for r in (post.get("region_annotations") or [])][:64]})
+    await rec.start()
+    await rec.event(vrc.STAGE_SEM_RECEIVE, JobStatus.SUCCEEDED,
+                    detail={"intent": req.intent, "force": bool(req.force)})
+    try:
+        _t = time.perf_counter()
+        img_bytes = await _fetch_post_image_cached(post_id, post)
+        await rec.event(vrc.STAGE_SEM_FETCH, JobStatus.SUCCEEDED,
+                        latency_ms=round((time.perf_counter() - _t) * 1000, 1))
+        _t = time.perf_counter()
+        new_sem = await semantic_pass.run_semantic(post, img_bytes, intent=req.intent, force=req.force)
+        await rec.event(vrc.STAGE_SEM_RUN, JobStatus.SUCCEEDED, capability="semantic",
+                        adapter="semantic_pass", latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                        detail={"assertions": len((new_sem or {}).get("assertions") or [])})
+        merged = semantic_pass.merge_curator_state(new_sem, post.get("semantics"))
+        await rec.event(vrc.STAGE_SEM_MERGE, JobStatus.SUCCEEDED,
+                        detail={"assertions": len((merged or {}).get("assertions") or [])})
+        # ONLY semantics is written — geometry is untouched (D2 invariant).
+        persist_res = await post_collection.update_one({"_id": obj_id}, {"$set": {"semantics": merged}})
+        persist_ok = getattr(persist_res, "matched_count", 1) > 0
+        await rec.event(vrc.STAGE_SEM_PERSIST, JobStatus.SUCCEEDED if persist_ok else JobStatus.FAILED,
+                        detail={"matched_count": getattr(persist_res, "matched_count", None)},
+                        error=None if persist_ok else "semantics update matched 0 documents",
+                        output_refs=[a.get("candidate_id") for a in (merged or {}).get("assertions") or []][:64])
+        final_status = JobStatus.SUCCEEDED if persist_ok else JobStatus.PARTIAL
+        await rec.event(vrc.STAGE_SEM_COMPLETE, final_status,
+                        detail={"status": (merged.get("meta") or {}).get("status")})
+        await rec.finish(final_status, terminal_reason="ok" if persist_ok else "persist_no_match",
+                         result_summary={"assertions": len((merged or {}).get("assertions") or []),
+                                         "status": (merged.get("meta") or {}).get("status")})
+        return {"semantics": merged, "status": (merged.get("meta") or {}).get("status"),
+                "run_id": rec.run_id}
+    except Exception as e:
+        await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
+        raise
 
 
 @router.patch("/{post_id}/semantics/{candidate_id}")
@@ -1404,19 +1482,57 @@ async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = N
     post = await post_collection.find_one({"_id": obj_id})
     if not post:
         raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
-    # scope: every post already indexed in the query's model space (own-corpus research), + self.
-    domain = find_similar_service._domain_of(post)
-    routed = retrieval_service.route(query_kind="evidence", domain=domain,
-                                     context_sensitive=(req.mode == "context"))
-    model = retrieval_service._SPACES[routed["space"]]["model"]
-    scope = await region_embedding_service.region_embeddings_collection.distinct("post_id", {"model": model})
-    scope = list(scope)
-    if post_id not in scope:
-        scope.append(post_id)
-    img = await _fetch_post_image_cached(post_id, post)
-    return await find_similar_service.find_similar_for_region(
-        post, region_id, img, mode=req.mode, top_k=req.top_k,
-        exclude_self_post=req.exclude_self_post, reindex=req.reindex, scope_post_ids=scope)
+
+    # ── P2.1 · recorded find-similar (retrieval family; write-behind). Read-mostly research;
+    # instrumentation writes no post geometry/curator state — only telemetry + an optional run_id.
+    rec = vision_run_service.VisionRunRecorder(
+        post_id=post_id, operation=vrc.OPERATION_FIND_SIMILAR, initiator="api",
+        requested_profile={"region_id": region_id, "mode": req.mode, "top_k": req.top_k,
+                           "exclude_self_post": req.exclude_self_post, "reindex": req.reindex})
+    await rec.start()
+    await rec.event(vrc.STAGE_FS_RECEIVE, JobStatus.SUCCEEDED,
+                    detail={"region_id": region_id, "mode": req.mode, "top_k": req.top_k})
+    try:
+        # scope: every post already indexed in the query's model space (own-corpus research), + self.
+        domain = find_similar_service._domain_of(post)
+        routed = retrieval_service.route(query_kind="evidence", domain=domain,
+                                         context_sensitive=(req.mode == "context"))
+        model = retrieval_service._SPACES[routed["space"]]["model"]
+        await rec.event(vrc.STAGE_FS_ROUTE_SPACE, JobStatus.SUCCEEDED, capability="route",
+                        detail={"space": routed.get("space"), "model": model, "domain": domain})
+        scope = await region_embedding_service.region_embeddings_collection.distinct("post_id", {"model": model})
+        scope = list(scope)
+        if post_id not in scope:
+            scope.append(post_id)
+        await rec.event(vrc.STAGE_FS_SCOPE, JobStatus.SUCCEEDED, detail={"scope_size": len(scope)})
+        _t = time.perf_counter()
+        img = await _fetch_post_image_cached(post_id, post)
+        await rec.event(vrc.STAGE_FS_FETCH, JobStatus.SUCCEEDED,
+                        latency_ms=round((time.perf_counter() - _t) * 1000, 1))
+        _t = time.perf_counter()
+        result = await find_similar_service.find_similar_for_region(
+            post, region_id, img, mode=req.mode, top_k=req.top_k,
+            exclude_self_post=req.exclude_self_post, reindex=req.reindex, scope_post_ids=scope)
+        status = (result or {}).get("status")
+        n = len((result or {}).get("results") or [])
+        await rec.event(vrc.STAGE_FS_RETRIEVE, JobStatus.SUCCEEDED, capability="retrieve",
+                        adapter=model, latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                        input_refs=[{"region_id": region_id, "space": routed.get("space")}],
+                        output_refs=[{"neighbours": n, "space": (result or {}).get("space")}],
+                        detail={"status": status, "neighbours": n})
+        # a research 'unavailable'/'error' is a degraded retrieval → PARTIAL (the route still
+        # returned a valid research packet); 'ready'/'empty' → SUCCEEDED.
+        final_status = JobStatus.PARTIAL if status in ("error", "unavailable") else JobStatus.SUCCEEDED
+        await rec.event(vrc.STAGE_FS_COMPLETE, final_status, detail={"neighbours": n})
+        await rec.finish(final_status, terminal_reason=status or "ok",
+                         result_summary={"region_id": region_id, "space": (result or {}).get("space"),
+                                         "neighbours": n, "status": status})
+        if isinstance(result, dict):
+            result.setdefault("run_id", rec.run_id)          # additive; never overwrites
+        return result
+    except Exception as e:
+        await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
+        raise
 
 
 @router.get("/{post_id}/regions/{region_id}/crop")
