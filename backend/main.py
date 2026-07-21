@@ -5,6 +5,7 @@ from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
 from backend.services.taste_signal_service import ensure_indexes as ensure_taste_indexes
+from backend.services.vision_run_service import ensure_indexes as ensure_vision_run_indexes
 from backend.database import post_collection
 from backend.schemas.post import PaginatedPosts
 from backend.security import require_api_key
@@ -41,6 +42,8 @@ async def startup_event():
     await ensure_indexes()
     # Index the audience signal store (Track F)
     await ensure_taste_indexes()
+    # Index the vision-run provenance store (CIRCULATION-SPINE-001 · P1)
+    await ensure_vision_run_indexes()
     # Start the Research Article Agent background worker (drains the agent_runs queue)
     start_worker()
 

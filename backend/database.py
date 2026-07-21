@@ -87,6 +87,15 @@ region_embeddings_collection = database.get_collection("region_embeddings")
 taste_signals_collection = database.get_collection("taste_signals")
 taste_consent_collection = database.get_collection("taste_consent")
 
+# --- Vision runtime provenance (CIRCULATION-SPINE-001 · P1) ---
+# vision_run_collection: one poll-friendly document per vision operation attempt, with
+# its stage events embedded (mirrors the agent_runs run+step-ledger pattern). This is a
+# WRITE-BEHIND observability record only — it never holds authoritative geometry and a
+# failed write must never change the instrumented route's behavior. Currently records
+# the inline Dissect/detect-regions route; other vision endpoints stay uninstrumented
+# until they adopt the same pattern.
+vision_run_collection = database.get_collection("vision_runs")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""
