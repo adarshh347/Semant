@@ -11,6 +11,7 @@ import useSemanticRead from './useSemanticRead';
 import SemanticReading from './SemanticReading';
 import useFindSimilar from './useFindSimilar';
 import FindSimilar from './FindSimilar';
+import VisionActivityRail from './VisionActivityRail';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
 import './DifferentialWorkspace.css';
@@ -815,6 +816,17 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                         {grounds.length} ground{grounds.length !== 1 ? 's' : ''} ·{' '}
                         {expressionPercepts.length} percept{expressionPercepts.length !== 1 ? 's' : ''}
                     </footer>
+
+                    {/* CIRCULATION-SPINE-001 · P2.2 — read-only observation of recorded vision runs */}
+                    <VisionActivityRail
+                        postId={postId}
+                        regions={regions}
+                        actionStatus={{
+                            refine: refine.status,
+                            semantic_read: reading.status,
+                            find_similar: similar.status,
+                        }}
+                    />
                 </aside>
             </div>
         </div>
