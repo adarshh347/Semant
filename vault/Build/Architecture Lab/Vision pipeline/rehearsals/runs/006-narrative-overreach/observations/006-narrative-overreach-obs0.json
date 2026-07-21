@@ -1,0 +1,19 @@
+{
+  "adapter": "local_file_digest",
+  "captured_at": null,
+  "content_hash": "e14b9ebf914cb54b2a9375c88b672a4ee19501720382846b2040a9de62496cbc",
+  "cost": null,
+  "device": "cpu",
+  "latency_ms": null,
+  "model": null,
+  "observation_id": "006-narrative-overreach-obs0",
+  "output": {
+    "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/006-narrative-overreach/angel-of-grief-rotunda.jpg",
+    "sha256": "c5055621ef8782c18898b650941abb4cadca8dc22942c3f1c5021156f1fc3ab5",
+    "size_bytes": 70836
+  },
+  "provenance": "capture:006-narrative-overreach:local_file_digest",
+  "request_boundary": "local_filesystem_read",
+  "uncertainty": null,
+  "version": "r1.local-pure.1"
+}

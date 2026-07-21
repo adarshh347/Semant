@@ -13,8 +13,9 @@ Nothing below meets it. Speculative locations are marked **[SPEC]** and are gues
 | spark-03 | **evidence loss should be announced, not merely survived** | A2, A2S | **strongest** |
 | spark-04 | out-of-domain collapse ≠ channel disagreement | A2 | moderate |
 | spark-05 | address as a viewer-facing stance, maybe without a figure | A3 | new, n=1 |
-| spark-06 | ~~spontaneous~~ **question-conditional** anthropomorphism | A3, **corrected by A4** | narrowed |
-| spark-07 | a claim can be general and its own counterexample at once | A4 | new, n=1 |
+| spark-06 | anthropomorphism — spontaneous or question-conditional? | A3, A4 | **UNRESOLVED** |
+| spark-07 | a claim can be its own counterexample — **within one response** | A4, **strengthened by A5** | moderate |
+| spark-08 | **the evidence base grows silently to meet the claim** | A5 | new, n=1, high value |
 
 ---
 
@@ -188,28 +189,64 @@ differ as predicted. If they do, scope is already encoded and merely unused.
 
 ---
 
-## spark-06 — CORRECTED by A4: question-conditional, not spontaneous
+## spark-08 — the evidence base grows silently to meet the claim
 
-**Status: SPARK, narrowed. A3 overstated it.**
+**Status: SPARK, new, n=1. The most consequential thing A5 found.**
 
-A3 claimed the model *spontaneously* anthropomorphises, having described "windows that function as
-eyes… a confrontational gaze" for a figureless metal structure.
+**Evidence.** `006-narrative-overreach/score.md` + `sparks.md`;
+`fixtures/006-narrative-overreach/_medallion-x6.png`.
 
-**A4 tested this properly and it did not hold.** Given the most face-suggestive aniconic image in
-the corpus — a frontal, three-arched wall with a single lit opening on the centre axis — and two
-prompts that never mentioned faces, eyes, gaze or bodies, **no face reading appeared at all**.
+Asked only what is happening in a photograph, the model supplied a title, sculptor, date and
+institution, and quoted a scriptural inscription that **is not in the frame** — writing that it
+*"confirm[s]"* the location. Verified false from the pixels: the medallion is a coloured figural
+mosaic with a fragmentary non-English band.
 
-**The correction:** A3's probe asked where an image's *address* goes and whether another image
-"makes the same kind of address." That primes a viewer-facing reading. The behaviour is elicited by
-**address-framed questions**, not by architecture as such.
+**Enablement claim.** Percepts cite Grounds, and a Ground points at a region of *this* image. There
+is no way to record that a reading was licensed by something **outside the frame** — a remembered
+attribution, a catalogue fact, a half-recalled monument type. When that licence is false, the
+percept looks exactly like one grounded in the picture.
 
-**Consequence for A6:** the hazard is narrower and better understood than A3 implied. A
-false-analogy test that avoids address language is materially less exposed. The guard against
-*stating* the analogy still stands on its own reasoning.
+**Why it outranks ordinary over-reading.** Every earlier run tested whether the model would say too
+much *about what is visible*. A5 shows it will **import** evidence and present it as read off the
+image. A citation system that can only point inward cannot distinguish "I see this" from "I know
+this from elsewhere" — and the second is where the error entered.
 
-**Caveat, stated plainly:** this correction rests on a **negative** result — "no face appeared" is
-weaker than "a face appeared." The honest settlement is an A/B on one image (address-framed vs
-structure-framed prompt), which has not been run.
+**Nearest existing construct:** `Ground` — the exact inverse of spark-01. spark-01 wanted to speak
+about the artifact rather than the depiction; spark-08 wants to mark a claim as resting on
+something outside the image entirely.
+
+**Deliberately NOT concluded:** that Semant should add an external-citation entity. One run. The
+honest first move is far smaller — a rehearsal convention recording, verbatim, whenever a model
+supplies a name, date, place or quotation the frame does not contain.
+
+**Next test.** Stage 1 on two further monuments of recognisable *type* but no legible text. If
+attribution appears each time, this is standing behaviour, not an accident of one famous pose.
+
+---
+
+## spark-06 — UNRESOLVED: two competing narrowings
+
+**Status: SPARK, contested. A4's confident narrowing does not hold.**
+
+A3 observed the model describe *"windows that function as eyes… a confrontational gaze"* for a
+figureless metal structure, and called the behaviour **spontaneous**. A4 ran the most
+face-suggestive aniconic image in the corpus with no anthropomorphic priming, saw **no face**, and
+narrowed the claim to **question-conditional**.
+
+**The A6 decision gate disputes that narrowing, and is right to.** A4 changed **two** variables at
+once: the prompt frame *and* the aperture configuration. A3's structure carries **paired lateral
+windows**; A4's wall has **one central opening** — eyeless by construction, so it may have produced
+no face under *either* prompt.
+
+**Current status: unresolved.** Two narrowings compete — prompt-framing versus aperture geometry —
+and A4 cannot distinguish them.
+
+**Why it matters now:** the muqarnas hood proposed for A6 is the paired-aperture condition in its
+most extreme corpus form, so **A4 gives A6 no protection.**
+
+**Resolving test (cheap, specified):** an A/B on `695be843` — the image that already produced the
+face — address-framed versus structure-framed prompt, two native single-image calls, declared as a
+replication.
 
 
 ## Withheld across the program

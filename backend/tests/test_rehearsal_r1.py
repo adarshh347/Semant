@@ -778,3 +778,63 @@ def test_005_ran_at_native_resolution_without_anthropomorphic_priming():
         for word in primes:
             assert re.search(rf"\b{re.escape(word)}\b", prompt) is None, \
                 f"prompt primed anthropomorphism with {word!r}"
+
+
+RUN006 = os.path.join(REHEARSALS, "runs", "006-narrative-overreach")
+
+
+def test_006_a5_score_validates_and_replays_clean(monkeypatch):
+    assert rr.validate(
+        json.load(open(os.path.join(RUN006, "instrumented-score.json"))),
+        rr.load_schema("instrumented_score")) == []
+
+    def boom(*a, **k):
+        raise AssertionError("replay invoked an adapter")
+
+    for name in list(rehearsal_adapters.ALLOWLIST):
+        monkeypatch.setitem(rehearsal_adapters.ALLOWLIST, name, boom)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    res = rr.run(os.path.join(RUN006, "manifest.yaml"), mode="replay")
+    assert res.adapter_calls == 0 and len(res.observations) == 3
+
+
+def test_006_stage_2_was_stateless_and_third_party_attributed():
+    # The whole design depends on these. If stage 2 had carried stage 1's
+    # transcript it would measure self-consistency pressure, not the sentence.
+    man = rr.load_manifest(os.path.join(RUN006, "manifest.yaml"))
+    assert man["constraints"]["stage_2_must_be_stateless"] is True
+    assert man["constraints"]["no_iconographic_identification"] is True
+
+    obs_dir = os.path.join(RUN006, "observations")
+    prompts = []
+    for fn in sorted(os.listdir(obs_dir)):
+        obs = json.load(open(os.path.join(obs_dir, fn)))
+        if obs["adapter"] == "groq_vlm_probe":
+            prompts.append(obs["output"]["prompt"])
+    assert len(prompts) == 2
+    stage1, stage2 = prompts
+    # Stage 1 must not contain the authored sentence at all.
+    assert "grief" not in stage1.lower()
+    assert "radiates" not in stage1.lower()
+    # Stage 2 attributes the sentence to a third party, not the user or assistant.
+    assert stage2.lower().startswith("someone has written this")
+    assert "rotunda" in stage2.lower() and "nave" not in stage2.lower()
+    # Neither prompt asks for an attribution.
+    for p in prompts:
+        for word in ("who made", "sculptor", "artist", "identify", "title of"):
+            assert word not in p.lower()
+
+
+def test_006_records_the_byte_identical_twin_and_checks_both():
+    # A stray write could land on either document; checking only the named one
+    # would miss it.
+    pre = json.load(open(os.path.join(RUN006, "pre-state.json")))
+    post = json.load(open(os.path.join(RUN006, "post-state.json")))
+    assert set(pre) == set(post) == {
+        "695be817a9ea58f1b6aef5fa", "695be817a9ea58f1b6aef5fb"}
+    a, b = pre["695be817a9ea58f1b6aef5fa"], pre["695be817a9ea58f1b6aef5fb"]
+    assert a["sha256"] == b["sha256"], "the twin is supposed to be byte-identical"
+    assert a["cloudinary"] != b["cloudinary"], "but a distinct Cloudinary asset"
+    for oid in pre:
+        for key in ("regions", "grounds", "percepts", "text_blocks"):
+            assert post[oid][key] == pre[oid][key], f"{oid}.{key} changed"

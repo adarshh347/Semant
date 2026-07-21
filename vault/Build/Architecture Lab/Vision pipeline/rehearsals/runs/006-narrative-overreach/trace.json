@@ -1,0 +1,82 @@
+{
+  "events": [
+    {
+      "actor": "human",
+      "cost": null,
+      "event_id": "006-narrative-overreach-e0",
+      "kind": "RECEIVE",
+      "observation_ref": null,
+      "parent_event": null,
+      "provenance": "runner:capture:receive",
+      "reconstructed": false,
+      "register": "opening",
+      "reversibility": "reversible",
+      "source_refs": [],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "006-narrative-overreach-e1",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "006-narrative-overreach-obs0",
+      "parent_event": "006-narrative-overreach-e0",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/006-narrative-overreach/angel-of-grief-rotunda.jpg"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "006-narrative-overreach-e2",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "006-narrative-overreach-obs1",
+      "parent_event": "006-narrative-overreach-e1",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "img-01"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "006-narrative-overreach-e3",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "006-narrative-overreach-obs2",
+      "parent_event": "006-narrative-overreach-e2",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "img-01"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    }
+  ],
+  "reconstructed": false,
+  "rehearsal_id": "006-narrative-overreach",
+  "score_ref": null,
+  "status": "completed"
+}
