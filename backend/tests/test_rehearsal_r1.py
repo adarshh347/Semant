@@ -607,3 +607,51 @@ def test_003_stayed_within_its_declared_call_budget():
     for call in score["model_calls"]:
         assert call["finish_reason"] == "stop"
         assert call["emitted_think_block"] is False
+
+
+# --------------------------------------------------------------------------- #
+# 7. detached-ground sweep helper (R2-A2S)                                     #
+# --------------------------------------------------------------------------- #
+
+import detached_ground_sweep as dgs  # noqa: E402
+
+
+def _resolve(ground, regions=(), grounds=()):
+    return dgs.resolve_ground(ground, {r: r for r in regions}, {g: g for g in grounds})
+
+
+def test_region_ground_detaches_only_when_its_region_is_gone():
+    g = {"ground_type": "region", "region_id": "fine_0"}
+    assert _resolve(g, regions=["fine_0"])["detached"] is False
+    out = _resolve(g, regions=["arch_0"])
+    assert out["detached"] is True and out["missing"] == ["fine_0"]
+    assert out["kind"] == "reference"
+
+
+def test_geometry_bearing_grounds_are_never_detached():
+    # This is the invariant the sweep's headline finding rests on: field/frame
+    # survived the same re-dissect that stranded the region grounds.
+    for gtype in ("field", "path", "boundary", "frame"):
+        out = _resolve({"ground_type": gtype}, regions=[])
+        assert out["detached"] is False, gtype
+        assert out["kind"] == "geometry", gtype
+
+
+def test_composite_detaches_only_when_no_member_and_no_raw_points():
+    # Mirrors resolveGround: a composite with ANY surviving member, or with raw
+    # points of its own, is not detached. Treating it like a region ground would
+    # over-count.
+    base = {"ground_type": "constellation", "member_ids": ["g1", "g2"]}
+    assert _resolve(base, grounds=["g1"])["detached"] is False
+    assert _resolve(base, grounds=[])["detached"] is True
+    with_points = {**base, "points": [[0.1, 0.1]]}
+    assert _resolve(with_points, grounds=[])["detached"] is False
+    # A composite with no members at all is not detached either.
+    assert _resolve({"ground_type": "relation", "member_ids": []})["detached"] is False
+
+
+def test_sweep_helper_is_pure_and_needs_no_database():
+    # resolve_ground must be callable with plain dicts so the port can be tested
+    # without touching production data.
+    assert dgs.resolve_ground({"ground_type": "frame"}, {}, {}) == {
+        "kind": "geometry", "detached": False, "missing": []}
