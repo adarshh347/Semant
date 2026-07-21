@@ -1,0 +1,19 @@
+{
+  "adapter": "local_file_digest",
+  "captured_at": null,
+  "content_hash": "5dc198a6c5b8eafa550f6848f232909a702ff1b7e0b39d621ca5c310859782a6",
+  "cost": null,
+  "device": "cpu",
+  "latency_ms": null,
+  "model": null,
+  "observation_id": "004-gesture-and-address-obs0",
+  "output": {
+    "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/004-gesture-and-address/probe/subject-painting-bound-face.jpg",
+    "sha256": "d5345391862be0aab4bb4efe48ab2534e448adfb684f63b761a7e5f7e0f8694e",
+    "size_bytes": 93130
+  },
+  "provenance": "capture:004-gesture-and-address:local_file_digest",
+  "request_boundary": "local_filesystem_read",
+  "uncertainty": null,
+  "version": "r1.local-pure.1"
+}

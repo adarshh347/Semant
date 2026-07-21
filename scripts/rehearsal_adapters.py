@@ -28,6 +28,7 @@ import json
 import mimetypes
 import os
 import time
+import urllib.error
 import urllib.request
 from typing import Any, Callable, Dict
 
@@ -54,16 +55,23 @@ GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_VLM_MODEL = "qwen/qwen3.6-27b"
 
 
-def groq_vlm_probe(image_path: str, prompt: str, *,
+def groq_vlm_probe(image_path: str = None, prompt: str = "", *,
+                   image_paths: list = None,
                    model: str = GROQ_VLM_MODEL,
                    max_tokens: int = 700,
                    timeout_s: int = 90) -> Dict[str, Any]:
     """R2 BOUNDED sensory adapter — exactly ONE vision-language call.
 
-    Reads a LOCAL fixture image (never a production URL), asks one question, and
+    Reads LOCAL fixture images (never a production URL), asks one question, and
     returns the RAW answer plus full provenance. It deliberately does **not**
     parse or coerce the model's output: the rehearsal records what the model
     actually said, including malformed output, as an observation.
+
+    Accepts either a single ``image_path`` or an ordered ``image_paths`` list for
+    multi-image comparisons. The images are sent as SEPARATE content parts in the
+    given order — never composited into one sheet — because compositing would
+    introduce exactly the reproduction artifact that run 002 was about, and would
+    make ``image_order`` a fiction. Every image's sha256 is recorded in order.
 
     ``reasoning_effort="none"`` is mandatory for this model — qwen3.6 is a
     reasoning model and will otherwise spend the whole ``max_tokens`` budget on
@@ -76,19 +84,29 @@ def groq_vlm_probe(image_path: str, prompt: str, *,
     key = (os.environ.get("GROQ_API_KEY") or "").strip()
     if not key:
         raise RuntimeError("GROQ_API_KEY is not set in the environment")
-    with open(image_path, "rb") as fh:
-        raw = fh.read()
-    mime = mimetypes.guess_type(image_path)[0] or "image/jpeg"
-    b64 = base64.b64encode(raw).decode()
+
+    paths = list(image_paths) if image_paths else ([image_path] if image_path else [])
+    if not paths:
+        raise ValueError("groq_vlm_probe needs image_path or image_paths")
+
+    parts = [{"type": "text", "text": prompt}]
+    images = []
+    for p in paths:
+        with open(p, "rb") as fh:
+            raw = fh.read()
+        mime = mimetypes.guess_type(p)[0] or "image/jpeg"
+        parts.append({"type": "image_url", "image_url": {
+            "url": f"data:{mime};base64,{base64.b64encode(raw).decode()}"}})
+        images.append({"path": os.path.abspath(p),
+                       "sha256": hashlib.sha256(raw).hexdigest(),
+                       "bytes": len(raw)})
+
     body = {
         "model": model,
         "reasoning_effort": "none",
         "max_tokens": max_tokens,
         "temperature": 0.2,
-        "messages": [{"role": "user", "content": [
-            {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
-        ]}],
+        "messages": [{"role": "user", "content": parts}],
     }
     # The User-Agent is load-bearing, not cosmetic: Groq sits behind Cloudflare,
     # which rejects urllib's default `Python-urllib/3.x` agent with HTTP 403 and
@@ -100,8 +118,23 @@ def groq_vlm_probe(image_path: str, prompt: str, *,
                  "Content-Type": "application/json",
                  "User-Agent": "semant-rehearsal/1.0"})
     t0 = time.perf_counter()
-    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-        payload = json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            payload = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        # Surface the provider's own message. Groq's failures are otherwise
+        # indistinguishable from each other at the status-code level:
+        #   403 + "error code: 1010" -> Cloudflare agent ban (not a bad key)
+        #   413                      -> the request's TOTAL token requirement
+        #                               exceeds the per-minute limit outright,
+        #                               so it can never be served (shrink it)
+        #   429                      -> temporarily over TPM (wait and retry)
+        body = ""
+        try:
+            body = e.read().decode()[:500]
+        except Exception:
+            pass
+        raise RuntimeError(f"groq_vlm_probe HTTP {e.code}: {body}") from e
     latency_ms = round((time.perf_counter() - t0) * 1000, 1)
     choice = (payload.get("choices") or [{}])[0]
     text = ((choice.get("message") or {}).get("content")) or ""
@@ -114,8 +147,11 @@ def groq_vlm_probe(image_path: str, prompt: str, *,
         "usage": payload.get("usage"),
         "prompt": prompt,
         "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
-        "image_path": os.path.abspath(image_path),
-        "image_sha256": hashlib.sha256(raw).hexdigest(),
+        # Ordered — position is meaningful when a prompt says "IMAGE 1 / IMAGE 2".
+        "images": images,
+        "image_count": len(images),
+        "image_path": images[0]["path"],
+        "image_sha256": images[0]["sha256"],
         "answer_text": text,
         "answer_sha256": hashlib.sha256(text.encode()).hexdigest(),
         "emitted_think_block": "<think>" in text,

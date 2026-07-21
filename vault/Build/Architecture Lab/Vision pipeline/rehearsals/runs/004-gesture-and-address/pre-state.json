@@ -1,0 +1,52 @@
+{
+  "695be790a9ea58f1b6aef5ef": {
+    "detached_grounds": [],
+    "dimensions": "500x666",
+    "grounds": 0,
+    "percepts": 0,
+    "region_ids": [],
+    "regions": 0,
+    "role": "neighbour",
+    "sha256": "570b295451587ab2fa1495e792ed071510798f1790f6fc2bbfc6e85da832dd19",
+    "text_blocks": 0
+  },
+  "695be843a9ea58f1b6aef5ff": {
+    "detached_grounds": [],
+    "dimensions": "1366x2048",
+    "grounds": 0,
+    "percepts": 0,
+    "region_ids": [],
+    "regions": 0,
+    "role": "negative",
+    "sha256": "c1f69be0be7aba25240a3d5ed23fed709b9d1384f15c8397a56f8c8ce303c86d",
+    "text_blocks": 0
+  },
+  "695be8baa9ea58f1b6aef609": {
+    "detached_grounds": [],
+    "dimensions": "643x680",
+    "grounds": 1,
+    "percepts": 0,
+    "region_ids": [
+      "fseg_3",
+      "fseg_0",
+      "fseg_5",
+      "fseg_1",
+      "fseg_2",
+      "fseg_6",
+      "fseg_4",
+      "fine_0",
+      "fine_1",
+      "fine_2",
+      "fine_3",
+      "fine_4",
+      "fine_5",
+      "fine_6",
+      "fine_7",
+      "fine_8"
+    ],
+    "regions": 16,
+    "role": "subject",
+    "sha256": "b6e2c10ef53606fe517edb2ccb18faabb7638c0a98d1860b5e572fb4b7f526b5",
+    "text_blocks": 0
+  }
+}

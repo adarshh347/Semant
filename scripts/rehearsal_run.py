@@ -529,12 +529,47 @@ def _run_capture(manifest: Dict[str, Any], rehearsal_id: str, run_dir: str,
         float(p.get("sleep_before_s") or 0.0) for p in (probes or [])
     ]
 
+    reuse_flags = [False] * len(capture_targets) + [
+        bool(p.get("reuse_frozen")) for p in (probes or [])
+    ]
+
     for i, (adapter_name, kwargs, source_refs) in enumerate(steps):
+        obs_id = f"{rehearsal_id}-obs{i}"
+        obs_fn = f"{obs_id}.json"
+        obs_path = os.path.join(run_dir, "observations", obs_fn)
+
+        # RESUME: a multi-probe capture that died partway (e.g. the provider
+        # rejected a later call) leaves earlier observations already frozen on
+        # disk. Adopting one instead of re-calling keeps the live-call budget
+        # honest — re-running a successful probe would spend budget to obtain
+        # evidence already held. Never invents an observation: the file must
+        # exist and validate.
+        if reuse_flags[i]:
+            if not os.path.exists(obs_path):
+                raise FileNotFoundError(
+                    f"reuse_frozen set for step {i} but {obs_path} does not exist")
+            obs = load_json(obs_path)
+            if validate(obs, schemas["observation"]):
+                raise ValidationError(f"frozen observation {obs_fn} invalid; refusing to reuse")
+            observations.append(obs_fn)
+            ev = {
+                "event_id": f"{rehearsal_id}-e{i + 1}", "actor": "system",
+                "kind": "CALL_ORGAN", "parent_event": parent, "source_refs": source_refs,
+                "target_refs": [], "register": "evidence", "uncertainty": None,
+                "reconstructed": False, "observation_ref": obs_id,
+                "reversibility": "reversible", "cost": None,
+                "provenance": f"capture:{rehearsal_id}:{adapter_name}:reused_frozen",
+                "timestamp": None,
+                "timestamp_null_reason": "deterministic runner records no wall-clock time",
+            }
+            append_event(trace, **ev)
+            parent = ev["event_id"]
+            continue
+
         # Rate-limit throttle. CAPTURE-only: replay never reaches this code, so the
         # frozen run stays instantaneous and deterministic.
         if throttles[i] > 0:
             time.sleep(throttles[i])
-        obs_id = f"{rehearsal_id}-obs{i}"
         obs = capture_observation(
             adapter_name, obs_id,
             provenance=f"capture:{rehearsal_id}:{adapter_name}", **kwargs,

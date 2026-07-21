@@ -655,3 +655,83 @@ def test_sweep_helper_is_pure_and_needs_no_database():
     # without touching production data.
     assert dgs.resolve_ground({"ground_type": "frame"}, {}, {}) == {
         "kind": "geometry", "detached": False, "missing": []}
+
+
+# --------------------------------------------------------------------------- #
+# 8. A3 additions: reuse_frozen + multi-image probes                           #
+# --------------------------------------------------------------------------- #
+
+RUN004 = os.path.join(REHEARSALS, "runs", "004-gesture-and-address")
+
+
+def test_004_a3_score_validates_and_replays_clean(monkeypatch):
+    assert rr.validate(
+        json.load(open(os.path.join(RUN004, "instrumented-score.json"))),
+        rr.load_schema("instrumented_score")) == []
+
+    def boom(*a, **k):
+        raise AssertionError("replay invoked an adapter")
+
+    for name in list(rehearsal_adapters.ALLOWLIST):
+        monkeypatch.setitem(rehearsal_adapters.ALLOWLIST, name, boom)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    res = rr.run(os.path.join(RUN004, "manifest.yaml"), mode="replay")
+    assert res.adapter_calls == 0 and len(res.observations) == 3
+
+
+def test_004_manifest_records_reproduction_per_image():
+    # A3 mixes a painting reproduction with two photographs, so the field had to
+    # move from run-level to per-image.
+    man = rr.load_manifest(os.path.join(RUN004, "manifest.yaml"))
+    imgs = man["seed_constellation"]["images"]
+    assert len(imgs) == 3
+    for im in imgs:
+        assert im["reproduction_vs_depiction"] in {"reproduction", "depiction"}
+    assert man["image_order"] == ["img-01", "img-02", "img-03"]
+    assert man["constraints"]["no_named_refusal_token"] is True
+
+
+def test_004_multi_image_observation_records_every_image_in_order():
+    obs = json.load(open(os.path.join(
+        RUN004, "observations", "004-gesture-and-address-obs2.json")))
+    out = obs["output"]
+    # Position is meaningful — the prompt addresses IMAGE 1/2/3 by index.
+    assert out["image_count"] == 3
+    assert len(out["images"]) == 3
+    for img in out["images"]:
+        assert img["sha256"] and img["bytes"] > 0
+    assert out["image_path"] == out["images"][0]["path"]
+
+
+def test_reuse_frozen_adopts_an_existing_observation_without_calling(tmp_path):
+    # The budget-honesty path: a probe step may adopt an already-frozen
+    # observation instead of re-calling the provider.
+    runs_root = str(tmp_path / "runs")
+    first = rr.run(MANIFEST000, mode="capture", runs_root=runs_root,
+                   capture_targets=[MANIFEST000])
+    assert first.adapter_calls == 1
+    # Wipe the trace so the dir is no longer frozen, keeping the observation.
+    os.remove(os.path.join(first.run_dir, "trace.json"))
+
+    def boom(*a, **k):
+        raise AssertionError("reuse_frozen must not invoke an adapter")
+
+    saved = rehearsal_adapters.ALLOWLIST["local_file_digest"]
+    rehearsal_adapters.ALLOWLIST["local_file_digest"] = boom
+    try:
+        res = rr.run(MANIFEST000, mode="capture", runs_root=runs_root,
+                     probes=[{"adapter": "local_file_digest", "reuse_frozen": True,
+                              "source_refs": ["x"]}])
+    finally:
+        rehearsal_adapters.ALLOWLIST["local_file_digest"] = saved
+    assert res.adapter_calls == 0
+    assert len(res.observations) == 1
+    ev = [e for e in res.trace["events"] if e["kind"] == "CALL_ORGAN"][0]
+    assert ev["provenance"].endswith(":reused_frozen")
+
+
+def test_reuse_frozen_refuses_to_invent_a_missing_observation(tmp_path):
+    runs_root = str(tmp_path / "runs")
+    with pytest.raises(FileNotFoundError):
+        rr.run(MANIFEST000, mode="capture", runs_root=runs_root,
+               probes=[{"adapter": "local_file_digest", "reuse_frozen": True}])

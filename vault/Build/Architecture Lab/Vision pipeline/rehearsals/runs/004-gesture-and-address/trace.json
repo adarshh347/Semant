@@ -1,0 +1,84 @@
+{
+  "events": [
+    {
+      "actor": "human",
+      "cost": null,
+      "event_id": "004-gesture-and-address-e0",
+      "kind": "RECEIVE",
+      "observation_ref": null,
+      "parent_event": null,
+      "provenance": "runner:capture:receive",
+      "reconstructed": false,
+      "register": "opening",
+      "reversibility": "reversible",
+      "source_refs": [],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "004-gesture-and-address-e1",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "004-gesture-and-address-obs0",
+      "parent_event": "004-gesture-and-address-e0",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/004-gesture-and-address/probe/subject-painting-bound-face.jpg"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "004-gesture-and-address-e2",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "004-gesture-and-address-obs1",
+      "parent_event": "004-gesture-and-address-e1",
+      "provenance": "capture:004-gesture-and-address:groq_vlm_probe:reused_frozen",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "img-01"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "004-gesture-and-address-e3",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "004-gesture-and-address-obs2",
+      "parent_event": "004-gesture-and-address-e2",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "img-01",
+        "img-02",
+        "img-03"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    }
+  ],
+  "reconstructed": false,
+  "rehearsal_id": "004-gesture-and-address",
+  "score_ref": null,
+  "status": "completed"
+}

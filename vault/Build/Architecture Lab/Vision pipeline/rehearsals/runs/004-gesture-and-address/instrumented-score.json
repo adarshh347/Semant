@@ -1,0 +1,73 @@
+{
+  "rehearsal_id": "004-gesture-and-address",
+  "research_only": true,
+  "mode": "instrumented",
+  "family": "R7 Gesture and Address",
+  "status": "completed",
+  "stall_or_refusal": null,
+  "score_ref": "score.md",
+  "trace_ref": "trace.json",
+  "manifest_ref": "manifest.yaml",
+  "artifacts": [
+    "manifest.yaml",
+    "trace.json",
+    "score.md",
+    "critique.md",
+    "sparks.md",
+    "source-notes.md",
+    "pre-state.json",
+    "post-state.json",
+    "instrumented-score.json",
+    "observations/004-gesture-and-address-obs0.json",
+    "observations/004-gesture-and-address-obs1.json",
+    "observations/004-gesture-and-address-obs2.json"
+  ],
+  "candidate_count": 0,
+  "spark_count": 2,
+  "observation_count": 3,
+  "live_model_call_count": 2,
+  "model_call_budget": 2,
+  "model_calls": [
+    {
+      "observation_ref": "004-gesture-and-address-obs1",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 1148.3,
+      "total_tokens": 1476,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    },
+    {
+      "observation_ref": "004-gesture-and-address-obs2",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 1322.5,
+      "total_tokens": 5118,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    }
+  ],
+  "latency_summary": {
+    "count": 2,
+    "min_ms": 1148.3,
+    "max_ms": 1322.5
+  },
+  "replay_live_call_count": 0,
+  "replay_proof": {
+    "verified": true,
+    "method": "Replay with every ALLOWLIST entry monkeypatched to raise, socket.connect patched to raise, GROQ_API_KEY absent; 3 observations replayed, 4 events reproduced, 0 adapter calls."
+  },
+  "production_mutation": {
+    "mutated": false,
+    "evidence_ref": "post-state.json",
+    "subject_ref": "posts 695be8ba (subject), 695be790 (neighbour), 695be843 (negative)"
+  },
+  "unresolved_questions": [
+    "Does the existing `relation` ground already suffice for within-image address, leaving only cross-post reach missing?",
+    "Is address without a figure a real category, or did the model pattern-match a facade?",
+    "Would the cross-medium match survive at full resolution? Probe 2 mis-described the subject at 256px."
+  ],
+  "notes": "A3. Curator-selected cross-medium neighbour CONFIRMED on gesture grounds by an independent judgement, across the colour/material axis F6 names as dominant (subject saturation 0.192 vs neighbour 0.0000). Negative correctly rejected but by an unexpected route: the model found an anthropomorphic 'confrontational address' in a building with no figure, which both widens R7 (address may not require a body) and warns A6 (spontaneous anthropomorphism). Embedding counterfactual explicitly NOT claimed: neighbour and negative have 0 embeddings, and raw chromaticity actually favours the neighbour. Probe 1 was adopted from an aborted attempt via the runner's new reuse_frozen path rather than re-called, keeping the live budget honest. 3 requests rejected 413 pre-execution consuming 0 tokens."
+}
