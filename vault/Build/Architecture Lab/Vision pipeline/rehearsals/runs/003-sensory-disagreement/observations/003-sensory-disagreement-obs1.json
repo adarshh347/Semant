@@ -1,0 +1,47 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "02cfbeb4b0ae0f77df76416c5062c67bf7162faa25056c3f52ec556ec091d08c",
+  "cost": {
+    "token_usage": {
+      "completion_time": 0.231966603,
+      "completion_tokens": 121,
+      "prompt_time": 0.166323626,
+      "prompt_tokens": 1851,
+      "queue_time": 0.143589418,
+      "total_time": 0.398290229,
+      "total_tokens": 1972
+    }
+  },
+  "device": "remote",
+  "latency_ms": 1625.0,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "003-sensory-disagreement-obs1",
+  "output": {
+    "answer_sha256": "e5759126526c7763d3203f4b7a656dcd17e8ff341c2a889812972bbebc3f753a",
+    "answer_text": "This is one continuous surface \u2014 the sculpted body of a figure, likely from an ancient stone carving. The evidence lies in the seamless transition of texture, lighting, and form: the skin\u2019s grain, the subtle shadows along the shoulder and arm, and the draped fabric all flow without breaks or seams, indicating they are carved from a single block. Even the ornamental details (like the armband and hair coil) integrate naturally into the anatomy, reinforcing that this is not two separate objects but one unified sculpture. The consistent materiality and directional lighting further confirm it\u2019s a single sculptural entity.",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/003-sensory-disagreement/carved-figure-close.jpg",
+    "image_sha256": "12eaa7e7a44d17cf7ee6514181a6bcf319ccd7f1b6117d27947fb0ec583c89f4",
+    "latency_ms": 1625.0,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "Look carefully at this image. Consider the area in the UPPER-LEFT and the large form beside it. Is this one surface or two? Answer in 3-5 sentences and say what evidence in the image decides it.",
+    "prompt_sha256": "5c8635842ae5543fbd1a59842d13db6810c7c461d1356aa83f0a8cf495247d86",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 0.231966603,
+      "completion_tokens": 121,
+      "prompt_time": 0.166323626,
+      "prompt_tokens": 1851,
+      "queue_time": 0.143589418,
+      "total_time": 0.398290229,
+      "total_tokens": 1972
+    }
+  },
+  "provenance": "capture:003-sensory-disagreement:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}

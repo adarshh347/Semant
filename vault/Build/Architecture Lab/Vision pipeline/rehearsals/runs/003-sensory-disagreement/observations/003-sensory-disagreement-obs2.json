@@ -1,0 +1,47 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "36175d5fd96fa42a8a49bb6e93670165c90e9d593c3bcf0e577bd8a002ee1f7f",
+  "cost": {
+    "token_usage": {
+      "completion_time": 0.441107101,
+      "completion_tokens": 170,
+      "prompt_time": 0.163900022,
+      "prompt_tokens": 1887,
+      "queue_time": 0.874178834,
+      "total_time": 0.605007123,
+      "total_tokens": 2057
+    }
+  },
+  "device": "remote",
+  "latency_ms": 3928.3,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "003-sensory-disagreement-obs2",
+  "output": {
+    "answer_sha256": "16774949b502ee04a66bd083b1b353fb6f9f5fc4af92af8c1781ee0f82675609",
+    "answer_text": "Based on the provided image and the specified quadrant, here is a description of what is physically present:\n\nThe upper-left quadrant of the image displays a portion of a sculpture. The material appears to be a dark, weathered stone, such as basalt or granite, characterized by its rough texture and deep brownish-black color. The subject is a carved human figure, specifically showing the head, shoulder, and upper arm. The carving style is detailed, with visible features like facial expressions, hair styled in an elaborate bun, and decorative patterns on the skin and clothing.\n\nThe single most prominent thing in this quadrant is the head of the sculpted figure.\n\nThe normalized bounding box for the head is:\n`[0.08, 0.03, 0.54, 0.26]`",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/003-sensory-disagreement/carved-figure-close.jpg",
+    "image_sha256": "12eaa7e7a44d17cf7ee6514181a6bcf319ccd7f1b6117d27947fb0ec583c89f4",
+    "latency_ms": 3928.3,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "Describe what is physically present in the UPPER-LEFT quadrant of this image (roughly x 0.00-0.40, y 0.00-0.53). Say what material it is and what kind of thing it is. Then give a normalized bounding box [x0,y0,x1,y1] for the single most prominent thing you can identify there.",
+    "prompt_sha256": "9d79e0ef739cedb3053548c6a445d65feba876fa2719ef6f304d8927588f24b9",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 0.441107101,
+      "completion_tokens": 170,
+      "prompt_time": 0.163900022,
+      "prompt_tokens": 1887,
+      "queue_time": 0.874178834,
+      "total_time": 0.605007123,
+      "total_tokens": 2057
+    }
+  },
+  "provenance": "capture:003-sensory-disagreement:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}

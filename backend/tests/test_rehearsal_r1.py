@@ -572,3 +572,38 @@ def test_vendored_validator_rejects_wrong_types():
     bad2 = copy.deepcopy(manifest)
     bad2["reconstructed"] = "yes"  # wrong type
     assert rr.validate(bad2, schemas["manifest"]) != []
+
+
+RUN003 = os.path.join(REHEARSALS, "runs", "003-sensory-disagreement")
+
+
+def test_003_a2_score_validates_and_replays_clean(monkeypatch):
+    assert rr.validate(
+        json.load(open(os.path.join(RUN003, "instrumented-score.json"))),
+        rr.load_schema("instrumented_score")) == []
+
+    def boom(*a, **k):
+        raise AssertionError("replay invoked an adapter")
+
+    for name in list(rehearsal_adapters.ALLOWLIST):
+        monkeypatch.setitem(rehearsal_adapters.ALLOWLIST, name, boom)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    res = rr.run(os.path.join(RUN003, "manifest.yaml"), mode="replay")
+    assert res.adapter_calls == 0 and len(res.observations) == 3
+
+
+def test_003_manifest_records_reproduction_vs_depiction():
+    # Amendment carried from 002F: this field decided A1's outcome and must be
+    # stated on every subsequent run.
+    man = rr.load_manifest(os.path.join(RUN003, "manifest.yaml"))
+    assert man["reproduction_vs_depiction"] in {"reproduction", "depiction"}
+    assert man["constraints"]["no_named_refusal_token"] is True
+    assert man["constraints"]["model_budget"] == 2
+
+
+def test_003_stayed_within_its_declared_call_budget():
+    score = json.load(open(os.path.join(RUN003, "instrumented-score.json")))
+    assert score["live_model_call_count"] <= score["model_call_budget"]
+    for call in score["model_calls"]:
+        assert call["finish_reason"] == "stop"
+        assert call["emitted_think_block"] is False
