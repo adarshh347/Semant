@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import uuid
 import os
 import math
+import time
 import json
 import random
 import re
@@ -18,6 +19,9 @@ from backend.services import architecture_segmentation_service
 from backend.services import region_embedding_service
 from backend.services import region_geometry
 from backend.services import mask_geometry
+from backend.services import vision_run_service
+from backend.services.vision_orchestrator.contracts import JobStatus
+from backend.services.vision_orchestrator import vision_run_contracts as vrc
 from backend.services.vision_orchestrator.refine_session import refine_session
 from backend.services import anuranana_service
 from backend.services.persona_service import persona_service, normalize_handle, normalize_handles, handle_from_source_url
@@ -648,125 +652,263 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
 
     photo_url = post.get("photo_url")
 
-    # --- Stage 1 · STHŪLA: coarse anchors with real masks. ---
-    # Domain-routed (Track B Phase 2a): a fashion image gets the garment segmenter, whose
-    # regions ARE the anatomy — top, skirt, belt — instead of YOLO's one COCO "person".
-    # Everything else gets YOLO, which is also the fallback whenever the garment model
-    # is unavailable or sees nothing. The vision-LLM remains the last resort.
-    anchors, source = None, "segmentation"
-    try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            resp = await client.get(photo_url, headers=_image_fetch_headers(photo_url))
-            resp.raise_for_status()
-            img_bytes = resp.content
-
-        is_fashion = await _resolve_is_fashion(post, obj_id, img_bytes)
-        chosen = _profile_chosen(post)                # VISION-C domain profile (may be empty)
-        garments = None
-        if is_fashion or "fashion" in chosen:
-            garments = await asyncio.to_thread(
-                fashion_segmentation_service.segment_image_bytes, img_bytes)
-        arch = None
-        if "architecture" in chosen:                  # C2: the architecture profile's pass
-            arch = await asyncio.to_thread(
-                architecture_segmentation_service.segment_image_bytes, img_bytes)
-
-        yolo_regions = await asyncio.to_thread(segmentation_service.segment_image_bytes, img_bytes)
-
-        # Layer specialists over YOLO by GEOMETRY/precedence (never label-parenting). Each
-        # specialist keeps its own masks; YOLO objects the specialist can't see survive.
-        anchors = list(yolo_regions or [])
-        src_bits = ["yolo"] if yolo_regions else []
-        if garments:
-            anchors = fashion_segmentation_service.merge_with_precedence(garments, anchors)
-            src_bits.insert(0, "segformer_clothes")
-        if arch:
-            anchors = fashion_segmentation_service.merge_with_precedence(arch, anchors)
-            src_bits.insert(0, "segformer_ade")
-        source = "+".join(src_bits) if src_bits else "segmentation"
-    except Exception as e:
-        print(f"Segmentation fetch/run failed, will fall back: {e}")
-        anchors = None
-    if not anchors:
-        # No local model / nothing found — the vision detector becomes the anchor source.
-        anchors = await vision_service.detect_regions(photo_url)
-        source = "vision"
-    for a in anchors:
-        a.setdefault("depth", 0)
-
-    # --- Stage 2 · SŪKṢMA: fine semantic decomposition (Groq vision). ---
+    # ── CIRCULATION-SPINE-001 · P1: recorded Dissect (write-behind telemetry). ──────
+    # A run is minted for this attempt and events are appended at the *existing* await
+    # seams. `rec` never raises and never alters control flow — if the run store is down
+    # the route behaves exactly as it did pre-P1 (run_id is simply None). The run
+    # operation is `dissect`; the Groq fallback detector `vision_service.detect_regions`
+    # appears only as the `dissect.fallback.detect` stage (no conflation). 400/404 above
+    # are request rejections, not vision-operation attempts, so they mint no run.
+    # initiator="api": this route carries no authenticated principal, so we record the
+    # honest transport fact (an API caller) rather than guessing a human "curator". A
+    # future authenticated or background path can set a truer initiator.
+    rec = vision_run_service.DissectRunRecorder(
+        post_id=post_id, operation=vrc.OPERATION_DISSECT, initiator="api",
+        requested_profile={"mode": req.mode, "lens": req.lens,
+                           "coarse_only": req.coarse_only, "chosen": _profile_chosen(post)},
+    )
+    await rec.start()
     fine = []
-    if not req.coarse_only:
+    anchors = None
+    try:
+        # Every await after the run is minted lives inside this boundary — including the
+        # first event write — so a cancellation can never escape un-terminalized (R1).
+        await rec.event(vrc.STAGE_RECEIVE, JobStatus.SUCCEEDED,
+                        detail={"coarse_only": bool(req.coarse_only)})
+        # --- Stage 1 · STHŪLA: coarse anchors with real masks. ---
+        # Domain-routed (Track B Phase 2a): a fashion image gets the garment segmenter, whose
+        # regions ARE the anatomy — top, skirt, belt — instead of YOLO's one COCO "person".
+        # Everything else gets YOLO, which is also the fallback whenever the garment model
+        # is unavailable or sees nothing. The vision-LLM remains the last resort.
+        anchors, source = None, "segmentation"
         try:
-            fine = await vision_service.decompose_regions(
-                photo_url, anchors=anchors, lens=req.lens or "", mode=req.mode or "general"
-            )
+            _t = time.perf_counter()
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                resp = await client.get(photo_url, headers=_image_fetch_headers(photo_url))
+                resp.raise_for_status()
+                img_bytes = resp.content
+            await rec.event(vrc.STAGE_FETCH_IMAGE, JobStatus.SUCCEEDED,
+                            latency_ms=round((time.perf_counter() - _t) * 1000, 1))
+
+            is_fashion = await _resolve_is_fashion(post, obj_id, img_bytes)
+            chosen = _profile_chosen(post)                # VISION-C domain profile (may be empty)
+            await rec.event(vrc.STAGE_ROUTE_DOMAIN, JobStatus.SUCCEEDED, capability="domain-route",
+                            detail={"is_fashion": bool(is_fashion), "chosen": chosen})
+            garments = None
+            if is_fashion or "fashion" in chosen:
+                _t = time.perf_counter()
+                garments = await asyncio.to_thread(
+                    fashion_segmentation_service.segment_image_bytes, img_bytes)
+                await rec.event(vrc.STAGE_SEGMENT_FASHION, JobStatus.SUCCEEDED, capability="segment",
+                                adapter="segformer_clothes",
+                                latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                                detail={"count": len(garments or [])})
+            arch = None
+            if "architecture" in chosen:                  # C2: the architecture profile's pass
+                _t = time.perf_counter()
+                arch = await asyncio.to_thread(
+                    architecture_segmentation_service.segment_image_bytes, img_bytes)
+                await rec.event(vrc.STAGE_SEGMENT_ARCH, JobStatus.SUCCEEDED, capability="segment",
+                                adapter="segformer_ade",
+                                latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                                detail={"count": len(arch or [])})
+
+            _t = time.perf_counter()
+            yolo_regions = await asyncio.to_thread(segmentation_service.segment_image_bytes, img_bytes)
+            await rec.event(vrc.STAGE_SEGMENT_GENERAL, JobStatus.SUCCEEDED, capability="segment",
+                            adapter="yolo11_seg",
+                            latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                            detail={"count": len(yolo_regions or [])})
+
+            # Layer specialists over YOLO by GEOMETRY/precedence (never label-parenting). Each
+            # specialist keeps its own masks; YOLO objects the specialist can't see survive.
+            anchors = list(yolo_regions or [])
+            src_bits = ["yolo"] if yolo_regions else []
+            if garments:
+                anchors = fashion_segmentation_service.merge_with_precedence(garments, anchors)
+                src_bits.insert(0, "segformer_clothes")
+            if arch:
+                anchors = fashion_segmentation_service.merge_with_precedence(arch, anchors)
+                src_bits.insert(0, "segformer_ade")
+            source = "+".join(src_bits) if src_bits else "segmentation"
+            await rec.event(vrc.STAGE_MERGE_ANCHORS, JobStatus.SUCCEEDED,
+                            detail={"anchor_count": len(anchors), "source": source})
         except Exception as e:
-            print(f"Fine decomposition failed (non-fatal): {e}")
-            fine = []
-        # Link each fine part to its anchor. Geometry guard (VISION-BUILD-001 B2):
-        # a mask-bearing region's exact mask is authoritative and is NEVER clipped or
-        # collapsed by semantic parenting; only a box-only fine part may be nudged into
-        # its parent's box. Parenting sets lineage, never mutates a mask.
-        for f in fine:
-            parent = _match_parent(f, anchors)
-            if parent:
-                f["parent_id"] = parent.get("id")
-                if not f.get("mask_rle"):
-                    f["box"] = _clip_box_to_parent(f["box"], parent.get("box") or {})
-            f.setdefault("depth", 1)
-            # parent_label was only a transient matching key — drop it (Track A:
-            # canonicalize on parent_id; parent_label is not a Region field).
-            f.pop("parent_label", None)
+            print(f"Segmentation fetch/run failed, will fall back: {e}")
+            # Truthful block-level failure marker — the coarse pipeline raised and we fall
+            # back to the vision detector. (Which fallback runs is unchanged by telemetry.)
+            await rec.event(vrc.STAGE_SEGMENT_COARSE, JobStatus.FAILED, capability="segment",
+                            error=str(e))
+            anchors = None
+        if not anchors:
+            # No local model / nothing found — the vision detector becomes the anchor source.
+            _t = time.perf_counter()
+            anchors = await vision_service.detect_regions(photo_url)
+            source = "vision"
+            await rec.event(vrc.STAGE_FALLBACK_DETECT, JobStatus.SUCCEEDED,
+                            capability="detect", adapter="vision_service.detect_regions",
+                            latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                            fallbacks=["vision"], detail={"anchor_count": len(anchors or [])})
+        for a in anchors:
+            a.setdefault("depth", 0)
 
-    candidates = (anchors or []) + fine
-    if fine:
-        source = f"{source}+sukshma"
+        # --- Stage 2 · SŪKṢMA: fine semantic decomposition (Groq vision). ---
+        fine_degraded = False
+        if not req.coarse_only:
+            try:
+                _t = time.perf_counter()
+                fine = await vision_service.decompose_regions(
+                    photo_url, anchors=anchors, lens=req.lens or "", mode=req.mode or "general"
+                )
+                await rec.event(vrc.STAGE_DECOMPOSE_FINE, JobStatus.SUCCEEDED, capability="decompose",
+                                adapter="vision_service.decompose_regions",
+                                latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                                detail={"fine_count": len(fine)})
+            except Exception as e:
+                print(f"Fine decomposition failed (non-fatal): {e}")
+                fine = []
+                fine_degraded = True                       # → the run finalizes PARTIAL, not FAILED
+                await rec.event(vrc.STAGE_DECOMPOSE_FINE, JobStatus.FAILED, capability="decompose",
+                                adapter="vision_service.decompose_regions", error=str(e))
+            # Link each fine part to its anchor. Geometry guard (VISION-BUILD-001 B2):
+            # a mask-bearing region's exact mask is authoritative and is NEVER clipped or
+            # collapsed by semantic parenting; only a box-only fine part may be nudged into
+            # its parent's box. Parenting sets lineage, never mutates a mask.
+            for f in fine:
+                parent = _match_parent(f, anchors)
+                if parent:
+                    f["parent_id"] = parent.get("id")
+                    if not f.get("mask_rle"):
+                        f["box"] = _clip_box_to_parent(f["box"], parent.get("box") or {})
+                f.setdefault("depth", 1)
+                # parent_label was only a transient matching key — drop it (Track A:
+                # canonicalize on parent_id; parent_label is not a Region field).
+                f.pop("parent_label", None)
 
-    # ── candidate merge + curator-safety (VISION-C · C5) ─────────────────────
-    existing_list = post.get("region_annotations") or []
-    existing = {r.get("id"): r for r in existing_list}
-    # 1. Creator-authored regions SURVIVE a re-dissect intact — geometry and all. A
-    #    curator's refined mask (Refine → confirm) is never overwritten by an auto pass.
-    creator_regions = [r for r in existing_list if r.get("actor") == "creator"]
-    creator_ids = {r.get("id") for r in creator_regions}
-    # 2. Auto candidates: carry curator fields by id, stamp lineage, then dedup by GEOMETRY
-    #    (never by label) against creator regions and each other, so no two near-identical
-    #    masks masquerade as separate evidence.
-    kept_auto = []
-    for r in candidates:
-        if r.get("id") in creator_ids:
-            continue                                       # the creator's region wins
-        # Provenance defaults (Track A): every detected region is auto-authored.
-        r.setdefault("actor", "auto")
-        r.setdefault("detector", "vision")
-        prev = existing.get(r["id"])
-        if prev:
-            r["prioritised"] = prev.get("prioritised", False)
-            r["weight"] = prev.get("weight", 0)
-            r["user_note"] = prev.get("user_note", "")
-            if prev.get("actor") == "creator":
-                r["actor"] = "creator"
+        candidates = (anchors or []) + fine
+        if fine:
+            source = f"{source}+sukshma"
+
+        # ── candidate merge + curator-safety (VISION-C · C5) ─────────────────────
+        existing_list = post.get("region_annotations") or []
+        existing = {r.get("id"): r for r in existing_list}
+        # 1. Creator-authored regions SURVIVE a re-dissect intact — geometry and all. A
+        #    curator's refined mask (Refine → confirm) is never overwritten by an auto pass.
+        creator_regions = [r for r in existing_list if r.get("actor") == "creator"]
+        creator_ids = {r.get("id") for r in creator_regions}
+        # 2. Auto candidates: carry curator fields by id, stamp lineage, then dedup by GEOMETRY
+        #    (never by label) against creator regions and each other, so no two near-identical
+        #    masks masquerade as separate evidence.
+        kept_auto = []
+        for r in candidates:
+            if r.get("id") in creator_ids:
+                continue                                       # the creator's region wins
+            # Provenance defaults (Track A): every detected region is auto-authored.
+            r.setdefault("actor", "auto")
+            r.setdefault("detector", "vision")
+            prev = existing.get(r["id"])
+            if prev:
+                r["prioritised"] = prev.get("prioritised", False)
+                r["weight"] = prev.get("weight", 0)
+                r["user_note"] = prev.get("user_note", "")
+                if prev.get("actor") == "creator":
+                    r["actor"] = "creator"
+            else:
+                r.setdefault("prioritised", False)
+                r.setdefault("weight", 0)
+                r.setdefault("user_note", "")
+            # Canonicalise geometry lineage (B2): mask-bearing regions already carry it from
+            # the segmenter; stamp the rest (box-only/legacy) without fabricating a mask.
+            if not r.get("geometry_provenance"):
+                mask_geometry.canonicalize_geometry(r, provenance={"via": "detect-regions"})
+            # geometry-only dedup — a candidate that is a near-duplicate (box IoU) of a
+            # creator region or an already-kept auto is dropped; the more-specific /
+            # higher-confidence one is kept. Never merges by label.
+            if _is_duplicate_geometry(r, creator_regions, 0.7, require_same_kind=False) \
+                    or _is_duplicate_geometry(r, kept_auto, 0.85, require_same_kind=True):
+                continue
+            kept_auto.append(r)
+
+        regions = creator_regions + kept_auto
+        await rec.event(vrc.STAGE_MERGE_CURATOR, JobStatus.SUCCEEDED,
+                        detail={"creator_preserved": len(creator_regions),
+                                "kept_auto": len(kept_auto), "candidates": len(candidates)})
+        # canonicalize_geometry ran per-region inside the loop above; summarise it as one
+        # observed stage (bounded counts only — never the geometry itself).
+        await rec.event(vrc.STAGE_CANONICALIZE, JobStatus.SUCCEEDED,
+                        detail={"region_count": len(regions)})
+
+        # Persist exactly as pre-P1 (same payload, same single $set), but RECORD the real
+        # outcome. matched_count==0 (e.g. the post was deleted mid-run) means the write
+        # touched nothing — telemetry must not claim a false SUCCEEDED. The route response
+        # and control flow are unchanged: pre-P1 ignored this result and returned the
+        # computed regions, and so do we.
+        persist_res = await post_collection.update_one(
+            {"_id": obj_id}, {"$set": {"region_annotations": regions}})
+        persist_ok = getattr(persist_res, "matched_count", 1) > 0
+        await rec.event(
+            vrc.STAGE_PERSIST, JobStatus.SUCCEEDED if persist_ok else JobStatus.FAILED,
+            detail={"region_count": len(regions),
+                    "matched_count": getattr(persist_res, "matched_count", None)},
+            error=None if persist_ok else "region_annotations update matched 0 documents")
+
+        # Truthful terminal status: SUCCEEDED only when nothing degraded. A non-fatal
+        # fine-decomposition failure OR a zero-match persist makes the run PARTIAL (the
+        # route still returns its regions, exactly as before).
+        degraded = fine_degraded or (not persist_ok)
+        final_status = JobStatus.PARTIAL if degraded else JobStatus.SUCCEEDED
+        if not persist_ok:
+            terminal_reason = "persist_no_match"
+        elif fine_degraded:
+            terminal_reason = "fine_decomposition_degraded"
         else:
-            r.setdefault("prioritised", False)
-            r.setdefault("weight", 0)
-            r.setdefault("user_note", "")
-        # Canonicalise geometry lineage (B2): mask-bearing regions already carry it from
-        # the segmenter; stamp the rest (box-only/legacy) without fabricating a mask.
-        if not r.get("geometry_provenance"):
-            mask_geometry.canonicalize_geometry(r, provenance={"via": "detect-regions"})
-        # geometry-only dedup — a candidate that is a near-duplicate (box IoU) of a
-        # creator region or an already-kept auto is dropped; the more-specific /
-        # higher-confidence one is kept. Never merges by label.
-        if _is_duplicate_geometry(r, creator_regions, 0.7, require_same_kind=False) \
-                or _is_duplicate_geometry(r, kept_auto, 0.85, require_same_kind=True):
-            continue
-        kept_auto.append(r)
+            terminal_reason = "ok"
+        await rec.event(vrc.STAGE_COMPLETE, final_status,
+                        detail={"anchor_count": len(anchors or []), "fine_count": len(fine)})
+        await rec.finish(
+            final_status, actual_source=source, terminal_reason=terminal_reason,
+            result_summary={"anchor_count": len(anchors or []), "fine_count": len(fine),
+                            "creator_preserved": len(creator_regions),
+                            "region_count": len(regions)})
+        return {"regions": regions, "source": source, "anchor_count": len(anchors or []),
+                "fine_count": len(fine), "creator_preserved": len(creator_regions),
+                "run_id": rec.run_id}
+    except asyncio.CancelledError:
+        # Request cancelled/shutdown — terminalize the run CANCELLED (shielded finalize) and
+        # re-raise the original cancellation. Never swallowed or translated (R1).
+        await rec.finish(JobStatus.CANCELLED, actual_source=locals().get("source"),
+                         terminal_reason="request_cancelled")
+        raise
+    except Exception as e:
+        # The primary route exception stays primary — record FAILED (best-effort) and
+        # re-raise. Telemetry never swallows nor replaces the real failure (Invariant 7).
+        await rec.finish(JobStatus.FAILED, actual_source=locals().get("source"),
+                         terminal_reason="route_exception", error=str(e))
+        raise
 
-    regions = creator_regions + kept_auto
-    await post_collection.update_one({"_id": obj_id}, {"$set": {"region_annotations": regions}})
-    return {"regions": regions, "source": source, "anchor_count": len(anchors or []),
-            "fine_count": len(fine), "creator_preserved": len(creator_regions)}
+
+@router.get("/{post_id}/vision-runs/latest")
+async def get_latest_vision_run(post_id: str, operation: str = vrc.OPERATION_DISSECT):
+    """The most recent run for a post and operation — small additive read for refresh
+    recovery. `operation` defaults to `dissect` (P1-compatible); P2.1 accepts
+    `refine|semantic_read|find_similar` to fetch the latest sibling run. Returns
+    `{run: null}` when none exists. (Declared before the `{run_id}` route so the literal
+    `latest` is not swallowed as an id.)"""
+    run = await vision_run_service.get_latest_run(
+        post_id, operation=operation, now=datetime.now(timezone.utc))
+    return {"run": run}
+
+
+@router.get("/{post_id}/vision-runs/{run_id}", response_model=vrc.VisionRunOut)
+async def get_vision_run(post_id: str, run_id: str):
+    """Read one recorded Dissect run, scoped to its post. 404 if the run does not exist
+    or belongs to a different post. Telemetry that was never measured stays null/absent;
+    a stalled RUNNING record is projected `stale` with a real age, not claimed live."""
+    run = await vision_run_service.get_run(
+        run_id, post_id=post_id, now=datetime.now(timezone.utc))
+    if not run:
+        raise HTTPException(status_code=404, detail=f"vision run {run_id} not found for post {post_id}")
+    return run
 
 
 async def _embed_marked_regions(post_id: str) -> int:
@@ -1063,26 +1205,71 @@ async def refine_region_confirm(post_id: str, req: RefineRequest):
     Non-destructive — upgrades the base region's identity in place (or appends a new one),
     preserves curator fields, and never touches other regions, Grounds, Percepts or
     Mentions. The saved region is authoritative (`proposed: false`)."""
+    # SAM2 mask compute FIRST: _propose_refined_region owns the 400/404/503/422 guards, so
+    # minting the run only after it returns keeps rejections run-free (matches Dissect).
+    _t = time.perf_counter()
     obj_id, post, region = await _propose_refined_region(post_id, req)
-    region["proposed"] = False                                   # confirmed → authoritative
-    regions = list(post.get("region_annotations") or [])
-    idx = next((i for i, r in enumerate(regions) if r.get("id") == region["id"]), None)
-    if idx is not None:
-        prev = regions[idx]
-        for k in ("prioritised", "weight", "user_note"):         # keep curator meaning
-            if prev.get(k) is not None:                          # never overwrite the
-                region[k] = prev[k]                              # region's valid default with None
-        region["depth"] = prev.get("depth") if prev.get("depth") is not None else region.get("depth", 0)
-        if prev.get("parent_id") is not None:
-            region["parent_id"] = prev["parent_id"]
-        regions[idx] = region                                    # upgrade in place
-    else:
-        regions.append(region)
-    await post_collection.update_one(
-        {"_id": obj_id}, {"$set": {"region_annotations": regions,
-                                   "updated_at": datetime.now(timezone.utc)}})
-    updated = await post_collection.find_one({"_id": obj_id})
-    return {"post": post_helper(updated), "region": region}
+    propose_ms = round((time.perf_counter() - _t) * 1000, 1)
+
+    # ── P2.1 · recorded refine (geometry family; write-behind telemetry). ──────
+    # Records the run WITHOUT touching the authoritative mask/geometry_rev, the curator-field
+    # preservation, or the persistence payload. region_id/geometry_rev correlation rides the
+    # existing requested_profile + input/output refs — no new schema (see correlation report).
+    rec = vision_run_service.VisionRunRecorder(
+        post_id=post_id, operation=vrc.OPERATION_REFINE, initiator="api",
+        requested_profile={"region_id": region.get("id"), "base_id": req.base_id,
+                           "base_geometry_rev": req.base_geometry_rev,
+                           "geometry_rev": region.get("geometry_rev")})
+    await rec.start()
+    try:
+        # Initial event writes are inside the protected boundary (R1).
+        await rec.event(vrc.STAGE_REFINE_RECEIVE, JobStatus.SUCCEEDED,
+                        detail={"base_id": req.base_id, "base_geometry_rev": req.base_geometry_rev})
+        await rec.event(vrc.STAGE_REFINE_PROPOSE, JobStatus.SUCCEEDED, capability="refine-mask",
+                        adapter="sam2", latency_ms=propose_ms,
+                        input_refs=[{"region_id": req.base_id, "geometry_rev": req.base_geometry_rev}],
+                        detail={"geometry_rev": region.get("geometry_rev")})
+        region["proposed"] = False                                   # confirmed → authoritative
+        regions = list(post.get("region_annotations") or [])
+        idx = next((i for i, r in enumerate(regions) if r.get("id") == region["id"]), None)
+        if idx is not None:
+            prev = regions[idx]
+            for k in ("prioritised", "weight", "user_note"):         # keep curator meaning
+                if prev.get(k) is not None:                          # never overwrite the
+                    region[k] = prev[k]                              # region's valid default with None
+            region["depth"] = prev.get("depth") if prev.get("depth") is not None else region.get("depth", 0)
+            if prev.get("parent_id") is not None:
+                region["parent_id"] = prev["parent_id"]
+            regions[idx] = region                                    # upgrade in place
+        else:
+            regions.append(region)
+        await rec.event(vrc.STAGE_REFINE_MERGE, JobStatus.SUCCEEDED,
+                        detail={"in_place": idx is not None, "region_count": len(regions)})
+        persist_res = await post_collection.update_one(
+            {"_id": obj_id}, {"$set": {"region_annotations": regions,
+                                       "updated_at": datetime.now(timezone.utc)}})
+        persist_ok = getattr(persist_res, "matched_count", 1) > 0
+        await rec.event(vrc.STAGE_REFINE_PERSIST,
+                        JobStatus.SUCCEEDED if persist_ok else JobStatus.FAILED,
+                        detail={"region_count": len(regions),
+                                "matched_count": getattr(persist_res, "matched_count", None)},
+                        error=None if persist_ok else "region_annotations update matched 0 documents")
+        updated = await post_collection.find_one({"_id": obj_id})
+        final_status = JobStatus.SUCCEEDED if persist_ok else JobStatus.PARTIAL
+        await rec.event(vrc.STAGE_REFINE_COMPLETE, final_status,
+                        output_refs=[{"region_id": region.get("id"),
+                                      "geometry_rev": region.get("geometry_rev")}])
+        await rec.finish(final_status, terminal_reason="ok" if persist_ok else "persist_no_match",
+                         result_summary={"region_id": region.get("id"),
+                                         "geometry_rev": region.get("geometry_rev"),
+                                         "region_count": len(regions)})
+        return {"post": post_helper(updated), "region": region, "run_id": rec.run_id}
+    except asyncio.CancelledError:
+        await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
+        raise
+    except Exception as e:
+        await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
+        raise
 
 
 @router.post("/refine-region/unload")
@@ -1199,12 +1386,49 @@ async def semantic_read(post_id: str, req: SemanticReadRequest = None):
     if not post:
         raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
 
-    img_bytes = await _fetch_post_image_cached(post_id, post)
-    new_sem = await semantic_pass.run_semantic(post, img_bytes, intent=req.intent, force=req.force)
-    merged = semantic_pass.merge_curator_state(new_sem, post.get("semantics"))
-    # ONLY semantics is written — geometry is untouched (D2 invariant).
-    await post_collection.update_one({"_id": obj_id}, {"$set": {"semantics": merged}})
-    return {"semantics": merged, "status": (merged.get("meta") or {}).get("status")}
+    # ── P2.1 · recorded semantic-read (semantic family; write-behind). Geometry is never
+    # touched here and instrumentation adds none — it records the run and an optional run_id.
+    rec = vision_run_service.VisionRunRecorder(
+        post_id=post_id, operation=vrc.OPERATION_SEMANTIC_READ, initiator="api",
+        requested_profile={"intent": req.intent, "force": bool(req.force),
+                           "region_ids": [r.get("id") for r in (post.get("region_annotations") or [])][:64]})
+    await rec.start()
+    try:
+        await rec.event(vrc.STAGE_SEM_RECEIVE, JobStatus.SUCCEEDED,     # inside boundary (R1)
+                        detail={"intent": req.intent, "force": bool(req.force)})
+        _t = time.perf_counter()
+        img_bytes = await _fetch_post_image_cached(post_id, post)
+        await rec.event(vrc.STAGE_SEM_FETCH, JobStatus.SUCCEEDED,
+                        latency_ms=round((time.perf_counter() - _t) * 1000, 1))
+        _t = time.perf_counter()
+        new_sem = await semantic_pass.run_semantic(post, img_bytes, intent=req.intent, force=req.force)
+        await rec.event(vrc.STAGE_SEM_RUN, JobStatus.SUCCEEDED, capability="semantic",
+                        adapter="semantic_pass", latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                        detail={"assertions": len((new_sem or {}).get("assertions") or [])})
+        merged = semantic_pass.merge_curator_state(new_sem, post.get("semantics"))
+        await rec.event(vrc.STAGE_SEM_MERGE, JobStatus.SUCCEEDED,
+                        detail={"assertions": len((merged or {}).get("assertions") or [])})
+        # ONLY semantics is written — geometry is untouched (D2 invariant).
+        persist_res = await post_collection.update_one({"_id": obj_id}, {"$set": {"semantics": merged}})
+        persist_ok = getattr(persist_res, "matched_count", 1) > 0
+        await rec.event(vrc.STAGE_SEM_PERSIST, JobStatus.SUCCEEDED if persist_ok else JobStatus.FAILED,
+                        detail={"matched_count": getattr(persist_res, "matched_count", None)},
+                        error=None if persist_ok else "semantics update matched 0 documents",
+                        output_refs=[a.get("candidate_id") for a in (merged or {}).get("assertions") or []][:64])
+        final_status = JobStatus.SUCCEEDED if persist_ok else JobStatus.PARTIAL
+        await rec.event(vrc.STAGE_SEM_COMPLETE, final_status,
+                        detail={"status": (merged.get("meta") or {}).get("status")})
+        await rec.finish(final_status, terminal_reason="ok" if persist_ok else "persist_no_match",
+                         result_summary={"assertions": len((merged or {}).get("assertions") or []),
+                                         "status": (merged.get("meta") or {}).get("status")})
+        return {"semantics": merged, "status": (merged.get("meta") or {}).get("status"),
+                "run_id": rec.run_id}
+    except asyncio.CancelledError:
+        await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
+        raise
+    except Exception as e:
+        await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
+        raise
 
 
 @router.patch("/{post_id}/semantics/{candidate_id}")
@@ -1273,19 +1497,60 @@ async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = N
     post = await post_collection.find_one({"_id": obj_id})
     if not post:
         raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
-    # scope: every post already indexed in the query's model space (own-corpus research), + self.
-    domain = find_similar_service._domain_of(post)
-    routed = retrieval_service.route(query_kind="evidence", domain=domain,
-                                     context_sensitive=(req.mode == "context"))
-    model = retrieval_service._SPACES[routed["space"]]["model"]
-    scope = await region_embedding_service.region_embeddings_collection.distinct("post_id", {"model": model})
-    scope = list(scope)
-    if post_id not in scope:
-        scope.append(post_id)
-    img = await _fetch_post_image_cached(post_id, post)
-    return await find_similar_service.find_similar_for_region(
-        post, region_id, img, mode=req.mode, top_k=req.top_k,
-        exclude_self_post=req.exclude_self_post, reindex=req.reindex, scope_post_ids=scope)
+
+    # ── P2.1 · recorded find-similar (retrieval family; write-behind). Read-mostly research;
+    # instrumentation writes no post geometry/curator state — only telemetry + an optional run_id.
+    rec = vision_run_service.VisionRunRecorder(
+        post_id=post_id, operation=vrc.OPERATION_FIND_SIMILAR, initiator="api",
+        requested_profile={"region_id": region_id, "mode": req.mode, "top_k": req.top_k,
+                           "exclude_self_post": req.exclude_self_post, "reindex": req.reindex})
+    await rec.start()
+    try:
+        await rec.event(vrc.STAGE_FS_RECEIVE, JobStatus.SUCCEEDED,      # inside boundary (R1)
+                        detail={"region_id": region_id, "mode": req.mode, "top_k": req.top_k})
+        # scope: every post already indexed in the query's model space (own-corpus research), + self.
+        domain = find_similar_service._domain_of(post)
+        routed = retrieval_service.route(query_kind="evidence", domain=domain,
+                                         context_sensitive=(req.mode == "context"))
+        model = retrieval_service._SPACES[routed["space"]]["model"]
+        await rec.event(vrc.STAGE_FS_ROUTE_SPACE, JobStatus.SUCCEEDED, capability="route",
+                        detail={"space": routed.get("space"), "model": model, "domain": domain})
+        scope = await region_embedding_service.region_embeddings_collection.distinct("post_id", {"model": model})
+        scope = list(scope)
+        if post_id not in scope:
+            scope.append(post_id)
+        await rec.event(vrc.STAGE_FS_SCOPE, JobStatus.SUCCEEDED, detail={"scope_size": len(scope)})
+        _t = time.perf_counter()
+        img = await _fetch_post_image_cached(post_id, post)
+        await rec.event(vrc.STAGE_FS_FETCH, JobStatus.SUCCEEDED,
+                        latency_ms=round((time.perf_counter() - _t) * 1000, 1))
+        _t = time.perf_counter()
+        result = await find_similar_service.find_similar_for_region(
+            post, region_id, img, mode=req.mode, top_k=req.top_k,
+            exclude_self_post=req.exclude_self_post, reindex=req.reindex, scope_post_ids=scope)
+        status = (result or {}).get("status")
+        n = len((result or {}).get("results") or [])
+        await rec.event(vrc.STAGE_FS_RETRIEVE, JobStatus.SUCCEEDED, capability="retrieve",
+                        adapter=model, latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                        input_refs=[{"region_id": region_id, "space": routed.get("space")}],
+                        output_refs=[{"neighbours": n, "space": (result or {}).get("space")}],
+                        detail={"status": status, "neighbours": n})
+        # a research 'unavailable'/'error' is a degraded retrieval → PARTIAL (the route still
+        # returned a valid research packet); 'ready'/'empty' → SUCCEEDED.
+        final_status = JobStatus.PARTIAL if status in ("error", "unavailable") else JobStatus.SUCCEEDED
+        await rec.event(vrc.STAGE_FS_COMPLETE, final_status, detail={"neighbours": n})
+        await rec.finish(final_status, terminal_reason=status or "ok",
+                         result_summary={"region_id": region_id, "space": (result or {}).get("space"),
+                                         "neighbours": n, "status": status})
+        if isinstance(result, dict):
+            result.setdefault("run_id", rec.run_id)          # additive; never overwrites
+        return result
+    except asyncio.CancelledError:
+        await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
+        raise
+    except Exception as e:
+        await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
+        raise
 
 
 @router.get("/{post_id}/regions/{region_id}/crop")

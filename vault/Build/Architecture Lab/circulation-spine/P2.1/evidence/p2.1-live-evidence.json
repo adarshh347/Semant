@@ -1,0 +1,157 @@
+{
+  "checks": [
+    {
+      "id": "setup.regions_seeded",
+      "ok": true,
+      "detail": "source=segformer_clothes+yolo regions=4"
+    },
+    {
+      "id": "semantic.run_created",
+      "ok": true,
+      "detail": "status=succeeded run=6a5ecb78d83f2018cab49350 status=succeeded"
+    },
+    {
+      "id": "geometry.run_or_honest_503",
+      "ok": true,
+      "detail": "HTTP 503 (Mask refiner (SAM2) unavailable on this )"
+    },
+    {
+      "id": "retrieval.run_created",
+      "ok": true,
+      "detail": "status=ready neighbours=5 run=6a5ecb82d83f2018cab49351 status=succeeded"
+    },
+    {
+      "id": "retrieval_ep.semantic_read",
+      "ok": true,
+      "detail": "get_run+latest ok, 6 events, op=semantic_read"
+    },
+    {
+      "id": "retrieval_ep.refine",
+      "ok": true,
+      "detail": "no run to fetch (refine)"
+    },
+    {
+      "id": "retrieval_ep.find_similar",
+      "ok": true,
+      "detail": "get_run+latest ok, 6 events, op=find_similar"
+    },
+    {
+      "id": "retrieval_ep.ownership_404",
+      "ok": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "telemetry_isolation.run_id_null_or_route_survived",
+      "ok": true,
+      "detail": "run_id=None (status=succeeded)"
+    },
+    {
+      "id": "telemetry_isolation.no_run_doc_created",
+      "ok": true,
+      "detail": "runs before=3 after=3"
+    },
+    {
+      "id": "cleanup.post_deleted",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "cleanup.db_restored_to_baseline",
+      "ok": true,
+      "detail": "{'posts': 127, 'runs': 0, 'emb': 98} -> {'posts': 127, 'runs': 0, 'emb': 98}"
+    }
+  ],
+  "families": {
+    "semantic_read": {
+      "run_id": "6a5ecb78d83f2018cab49350",
+      "note": "status=succeeded",
+      "status": "succeeded"
+    },
+    "refine": {
+      "run_id": null,
+      "note": "HTTP 503 (Mask refiner (SAM2) unavailable on this )",
+      "status": null
+    },
+    "find_similar": {
+      "run_id": "6a5ecb82d83f2018cab49351",
+      "note": "status=ready neighbours=5",
+      "status": "succeeded"
+    }
+  },
+  "counts": {
+    "baseline": {
+      "posts": 127,
+      "runs": 0,
+      "emb": 98
+    },
+    "seed_source": "segformer_clothes+yolo",
+    "final": {
+      "posts": 127,
+      "runs": 0,
+      "emb": 98
+    },
+    "deleted": {
+      "post": 1,
+      "runs": 3,
+      "emb": 9
+    }
+  },
+  "runs": {
+    "semantic_read": {
+      "stages": [
+        "semantic_read.receive",
+        "semantic_read.fetch_image",
+        "semantic_read.run",
+        "semantic_read.merge_curator_state",
+        "semantic_read.persist_semantics",
+        "semantic_read.complete"
+      ],
+      "operation": "semantic_read",
+      "status": "succeeded",
+      "requested_profile": {
+        "intent": "name",
+        "force": false,
+        "region_ids": [
+          "seg_0",
+          "fseg_1",
+          "fseg_0",
+          "fseg_2"
+        ]
+      },
+      "result_summary": {
+        "assertions": 4,
+        "status": "succeeded"
+      }
+    },
+    "find_similar": {
+      "stages": [
+        "find_similar.receive",
+        "find_similar.route_space",
+        "find_similar.scope",
+        "find_similar.fetch_image",
+        "find_similar.retrieve",
+        "find_similar.complete"
+      ],
+      "operation": "find_similar",
+      "status": "succeeded",
+      "requested_profile": {
+        "region_id": "seg_0",
+        "mode": "identity",
+        "top_k": 5,
+        "exclude_self_post": false,
+        "reindex": false
+      },
+      "result_summary": {
+        "region_id": "seg_0",
+        "space": "visual_identity",
+        "neighbours": 5,
+        "status": "ready"
+      }
+    }
+  },
+  "all_passed": true,
+  "summary": {
+    "total": 12,
+    "passed": 12
+  }
+}
