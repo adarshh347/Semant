@@ -15,14 +15,36 @@ Nothing below meets it. Speculative locations are marked **[SPEC]** and are gues
 | spark-05 | address as a viewer-facing stance, maybe without a figure | A3 | new, n=1 |
 | spark-06 | anthropomorphism is **question-conditional** (address vocabulary) | A3, A4, **resolved by 007 A/B** | **RESOLVED** |
 | spark-07 | a claim can be its own counterexample — **within one response** | A4, **strengthened by A5** | moderate |
-| spark-08 | **the evidence base grows silently to meet the claim** | A5, **corroborated by 008** | n=1, high value |
-| spark-09 | **relational vocabulary is an attractor — the noun is the variable** | 008 (sibling to spark-06) | new, n=1 pair |
+| spark-08 | **the evidence base grows silently to meet the claim** | A5, 008, **replicated on identical bytes by 009** | n=1 pair, high value |
+| spark-09 | **the noun licenses the register; the relational demand licenses the joint predication** | 008 + **009 (dissociated)** | n=1 pair, 4 calls |
 
 ---
 
-## spark-09 — relational vocabulary is an attractor; the noun is the variable
+## spark-09 — the noun licenses the register; the relational demand licenses the joint predication
 
-**From:** `runs/008-kinship-pull-ab/` (cell 1). **Strength:** SPARK at n=1 pair, 1 model, 3 calls.
+**REVISED cycle 8 by `runs/009-motif-noun-isolation/`.** The original 008 formulation — *"relational
+vocabulary is an attractor; the noun is the variable"* — is **retired as too coarse**. 009 removed
+the relational clause from arm A's prompt and the model produced **no cross-image claim at all**,
+which splits the spark in two:
+
+- **spark-09a — the noun licenses the register.** *Motif* moves the model into
+  purpose-and-atmosphere talk (*"intended to evoke a sense of the divine"*) — **per image**.
+- **spark-09b — the relational demand licenses the joint predication.** Turning that into *"**both
+  images share** a fundamental motif of creating a sense of the divine"* required being asked what
+  the two share. **The content was already available; the demand supplied the act of predicating it
+  jointly.**
+
+**A 2×2 with exactly one filled corner, on byte-identical stimulus:**
+
+| | no relational demand | relational demand |
+|---|---|---|
+| **without *motif*** | 008 arm B — `KIN-ABSENT` | 008 arm C — `KIN-SPECIFIC-ONLY`, denies sameness |
+| **with *motif*** | **009 arm D — `KIN-ABSENT`** | 008 arm A — `KIN-HEDGED`, asserts a shared motif |
+
+**Neither ingredient is sufficient alone.** Declared weaknesses: the deletion also halved the noun's
+frequency (2 → 1), and the 009 curator was not blind. Both are one call from being settled.
+
+**Strength:** SPARK at n=1 pair, 1 model, 4 calls across 008 and 009.
 
 On one image pair, held constant in bytes, order and co-presence, asking what **motif** each carries
 elicited a shared-motif assertion (`KIN-HEDGED`); asking how each is **put together** elicited shared

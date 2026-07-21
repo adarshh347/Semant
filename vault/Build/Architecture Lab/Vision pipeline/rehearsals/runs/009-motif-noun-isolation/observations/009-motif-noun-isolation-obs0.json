@@ -1,0 +1,60 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "b1a12bb9fd49e64872156d65d2fa17d876a655bf34807b1733c78eabaa029031",
+  "cost": {
+    "token_usage": {
+      "completion_time": 1.012872148,
+      "completion_tokens": 519,
+      "prompt_time": 0.304186608,
+      "prompt_tokens": 3633,
+      "queue_time": 0.259892868,
+      "total_time": 1.317058756,
+      "total_tokens": 4152
+    }
+  },
+  "device": "remote",
+  "latency_ms": 2413.6,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "009-motif-noun-isolation-obs0",
+  "output": {
+    "answer_sha256": "7d6a13e31627d7db8ab90646f1f3f150b93688f13deb4a3e2e1eada32782f6c6",
+    "answer_text": "Based on the visual evidence in the provided images, here is an analysis of the motifs present in each.\n\n### Image 1\n\n-   **Motif:** The primary motif is **Islamic geometric and calligraphic art**, specifically featuring a form of vaulting known as *muqarnas*.\n-   **Supporting Evidence:**\n    -   **Muqarnas Vaulting:** The most prominent feature is the intricate, honeycomb-like structure that forms the ceiling and upper walls. This is a hallmark of Islamic architecture, designed to create a complex, three-dimensional transition from a square base to a circular dome or arch.\n    -   **Geometric Patterns:** The entire surface is covered in repeating geometric patterns, including stars, polygons, and interlacing lines. These are visible in the blue and white tiles at the bottom and in the smaller decorative panels.\n    -   **Calligraphy:** Vertical bands of Arabic script, likely verses from the Quran, are clearly visible on the left and right sides of the main structure. The integration of sacred text into the architectural decoration is a key element of Islamic art.\n    -   **Color Palette:** The dominant use of cobalt blue, turquoise, gold, and white is characteristic of Persian and Islamic tilework.\n\n---\n\n### Image 2\n\n-   **Motif:** The primary motif is **Gothic architecture**, characterized by its structural elements and the use of stained glass to create a specific spiritual atmosphere.\n-   **Supporting Evidence:**\n    -   **Ribbed Vaulting:** The ceiling is constructed with a network of stone ribs that form a star-like or fan-like pattern. This is a defining feature of Gothic cathedrals, designed to distribute the weight of the roof and allow for taller, more open structures.\n    -   **Stained Glass Windows:** The walls are largely replaced by massive stained glass windows. The light filtering through the colored glass (predominantly blues, reds, and purples) creates a luminous, ethereal environment, which was intended to evoke a sense of the divine.\n    -   **Verticality:** The composition emphasizes height and upward movement, drawing the viewer's eye towards the apex of the vault. This vertical emphasis is a core principle of Gothic design, symbolizing a connection to heaven.\n    -   **Tracery:** The stone framework within the windows, known as tracery, creates intricate patterns that divide the glass into smaller sections, adding to the overall complexity and beauty of the design.",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_count": 2,
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/008-kinship-pull-ab/img1-muqarnas-parent.jpg",
+    "image_sha256": "7cf371cd4a10a48b6fc759281007b9bb1cd1189cc773af5a4728d4ab46e54f03",
+    "images": [
+      {
+        "bytes": 136017,
+        "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/008-kinship-pull-ab/img1-muqarnas-parent.jpg",
+        "sha256": "7cf371cd4a10a48b6fc759281007b9bb1cd1189cc773af5a4728d4ab46e54f03"
+      },
+      {
+        "bytes": 398149,
+        "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/008-kinship-pull-ab/img2-vault-crop.png",
+        "sha256": "4e76caff29217bc5d40d9adfdf50133ebe52b4d73572b65143c7701889067b47"
+      }
+    ],
+    "latency_ms": 2413.6,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "Here are two images, image 1 and image 2. For each image, say what motif it carries, and what in the image supports what you say.",
+    "prompt_sha256": "a7eff196585dede8ad3e0973d4fd8e8a1ee3cca8897a742aab22a6ba88428f57",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 1.012872148,
+      "completion_tokens": 519,
+      "prompt_time": 0.304186608,
+      "prompt_tokens": 3633,
+      "queue_time": 0.259892868,
+      "total_time": 1.317058756,
+      "total_tokens": 4152
+    }
+  },
+  "provenance": "capture:009-motif-noun-isolation:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}

@@ -1,0 +1,62 @@
+{
+  "rehearsal_id": "009-motif-noun-isolation",
+  "research_only": true,
+  "mode": "instrumented",
+  "family": "Instrument check (serves R12; isolates the noun from the identity presupposition)",
+  "status": "completed",
+  "stall_or_refusal": null,
+  "score_ref": "score.md",
+  "trace_ref": "trace.json",
+  "manifest_ref": "manifest.yaml",
+  "artifacts": [
+    "manifest.yaml",
+    "trace.json",
+    "score.md",
+    "critique.md",
+    "sparks.md",
+    "pre-state.json",
+    "post-state.json",
+    "instrumented-score.json",
+    "observations/009-motif-noun-isolation-obs0.json"
+  ],
+  "candidate_count": 0,
+  "spark_count": 1,
+  "observation_count": 1,
+  "live_model_call_count": 1,
+  "model_call_budget": 2,
+  "model_calls": [
+    {
+      "observation_ref": "009-motif-noun-isolation-obs0",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 2413.6,
+      "total_tokens": 4152,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    }
+  ],
+  "latency_summary": {
+    "count": 1,
+    "min_ms": 2413.6,
+    "max_ms": 2413.6
+  },
+  "replay_live_call_count": 0,
+  "replay_proof": {
+    "verified": true,
+    "method": "Replay with every ALLOWLIST entry monkeypatched to raise and GROQ_API_KEY absent from the environment; 1 observation replayed, status completed, 0 adapter invocations."
+  },
+  "production_mutation": {
+    "mutated": false,
+    "evidence_ref": "post-state.json",
+    "subject_ref": "posts 695be8eca9ea58f1b6aef60b and 695be815a9ea58f1b6aef5f9; four comparisons each (full key set, array lengths, updated_at to the millisecond, region_embeddings/vision_runs counts); pre-state.json and post-state.json byte-identical, and the pre-state was byte-identical to run 008's post-state"
+  },
+  "unresolved_questions": [
+    "Is arm D's silence caused by the missing relational demand, or by the halved noun frequency? Arm A says 'motif' twice, arm D once, because the second occurrence lived inside the deleted sentence. One call settles it.",
+    "Does a sameness ASSERTION behave like a sameness DEMAND? Arm E - 'These two images share a motif; say what supports that and what contradicts it' - would isolate A6's attribution device cleanly and is now the highest-value single call available.",
+    "Is A6 the right instrument at all? Three cycles have each found one more variable inside it.",
+    "Would arm D repeat? One sample at temperature 0.2; within-arm variance unmeasured.",
+    "Do other relational vocabularies (influence, lineage, belongs to the same tradition) show the same dissociation?"
+  ],
+  "notes": "The fourth arm named in 008 section 9.3. Arm A's prompt with its final relational sentence deleted and nothing else changed, on byte-identical fixtures reused from 008. RESULT: KIN-ABSENT - the model named a motif for image 1, a motif for image 2, and made NO cross-image statement of any kind. Pre-registered cell d_names_per_image_motifs_only: THE PRESUPPOSITION CARRIES IT, not the noun. Completes a 2x2 across runs 008 and 009 with exactly one filled corner: arm B (no noun, no demand) KIN-ABSENT; arm D (noun, no demand) KIN-ABSENT; arm C (demand, no noun) KIN-SPECIFIC-ONLY and denies sameness; arm A (noun AND demand) KIN-HEDGED. Neither ingredient is sufficient alone. Sharpest detail: arm D wrote 'intended to evoke a sense of the divine' of image 2 ALONE, while 008 arm A wrote 'Both images share a fundamental motif of creating a sense of the divine or celestial' - the same content, made joint only by the relational demand. Consequence for A6: cycle 7's re-derived delta (arm A -> stage 2) SURVIVES and is better anchored, but a new residual is exposed - arm A DEMANDS sameness while A6 stage 2 ASSERTS it, so the delta still moves two things. Arm E would fix it in one call. External claims: 8 rows, 1 identity-reaching (hedged) and 7 low-grade, 0 frame-contradicts, 0 stimulus-contradicts; no monument named, replicating 008's question-type finding on identical bytes. Anthropomorphism ABSENT for the fourth consecutive arm; the model wrote 'the viewer's eye', retroactively supporting 008's one contestable adjudication. Declared weaknesses: the curator was not blind, and deleting the sentence also halved the noun's frequency."
+}

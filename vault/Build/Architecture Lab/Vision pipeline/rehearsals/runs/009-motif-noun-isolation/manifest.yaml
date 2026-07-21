@@ -1,0 +1,227 @@
+# RESEARCH-ONLY single-call follow-up to run 008. Not a new breadth family.
+# Creates no production entity, route, schema, collection, or corpus write.
+# This is the "fourth arm" named in 008's design section 9.3 and in
+# runs/008-kinship-pull-ab/sparks.md unresolved-question 1.
+rehearsal_id: "009-motif-noun-isolation"
+rehearsal_type: "single-arm-isolation-followup"
+family: "Instrument check (serves R12; isolates the noun from the identity presupposition)"
+mode: "instrumented"
+reconstructed: false
+conducted_by: "opus (execution); design and scoring marked Fable-pass in score.md"
+source_condition: "present"
+
+dates:
+  date_original: "2026-07-22"
+  date_imported: "2026-07-22"
+
+design_ref: "runs/008-kinship-pull-ab/ (section 9.3 of R2/HW-C6-kinship-pull-probe-design.md)"
+
+question: >
+  Run 008 arm A moved ONE word but carried TWO sub-variables: "motif" (a category noun) and
+  "sharing" (an identity presupposition), and could not separate them. This run separates them.
+  It asks arm A's question with the RELATIONAL CLAUSE REMOVED. If the model asserts a shared motif
+  ANYWAY, the NOUN carries the pull. If it names two per-image motifs and stops, the
+  PRESUPPOSITION carries it.
+
+why_it_matters: >
+  A6's stage-2 analogy ("the same motif rendered in tile and in glass") supplies BOTH the noun and
+  the sameness assertion, plus a third-party attribution. 008 established that the combination is
+  an attractor. Until the noun and the presupposition are separated, A6 cannot attribute a stage-2
+  agreement to its own instrument rather than to its wording. This is one call; A6 is not.
+
+seed_constellation:
+  images:
+    - id: "img-01"
+      role: "image 1 of the fixed pair — sent first, exactly as in every 008 arm"
+      path: "../../fixtures/008-kinship-pull-ab/img1-muqarnas-parent.jpg"
+      source_post_id: "695be8eca9ea58f1b6aef60b"
+      probe_dimensions: "680x442"
+      sha256: "7cf371cd4a10a48b6fc759281007b9bb1cd1189cc773af5a4728d4ab46e54f03"
+      reproduction_vs_depiction: "depiction"
+      crop_provenance: "NONE — parent JPEG bytes unchanged. Byte-identical to 008."
+      actor: "none (unmodified parent)"
+      fixture_reuse: >
+        DELIBERATELY REUSES 008's FROZEN BYTES. A different stimulus would make the comparison to
+        008 arm A worthless, which is the entire point of this run.
+    - id: "img-02"
+      role: "image 2 of the fixed pair — sent second, exactly as in every 008 arm"
+      path: "../../fixtures/008-kinship-pull-ab/img2-vault-crop.png"
+      source_post_id: "695be815a9ea58f1b6aef5f9"
+      parent_sha256: "12681a874c01dd831f3e5106faa7d0cb142ff0d3d229a4ca00644ed047e6b31d"
+      probe_dimensions: "454x353"
+      sha256: "4e76caff29217bc5d40d9adfdf50133ebe52b4d73572b65143c7701889067b47"
+      reproduction_vs_depiction: "depiction"
+      crop_provenance: >
+        CURATOR-AUTHORED CROP, cut for 008 and reused byte-identically here. Box normalised
+        x in [0.000, 1.000], y in [0.000, 0.520]; pixels (0, 0, 454, 353). Lossless cut, no
+        resampling, saved as PNG. The box lives in a manifest ONLY and was NEVER written to Mongo.
+      actor: "curator"
+      retained_deliberately: >
+        Figurative stained glass remains inside the lancets, per HW-C4 D1. Excluded by the crop:
+        the suspended gilt corona with a figure inside it, the organ pipes, and the burned-in text
+        overlay at the right edge.
+  texts: []
+  existing_percepts: []
+
+image_order: ["img-01", "img-02"]
+
+initiating_act:
+  actor: "human"
+  kind: "single_arm_isolation"
+  payload: "is it the noun 'motif', or the presupposition of sharing, that pulls?"
+
+source_notes:
+  reuses_008_bytes: >
+    Both fixture files are byte-identical to run 008, verified by sha256 at call time and logged in
+    the observation. This is a REQUIREMENT, not a convenience: the run's only claim comes from
+    comparing its single arm against 008's arm A and arm B on the same stimulus.
+  is_not_a6: >
+    This run states no analogy, quotes no third party, supplies no curator attributions, and scores
+    no refusal. It does NOT consume A6's Pair 2 further than 008 already did — 008 declared the
+    pre-spend, and this run adds a third look at the same already-seen pair. A6 must record that
+    its own stage 1, if bought fresh, would be a FOURTH look.
+  not_counterbalanced: >
+    This arm was run AFTER 008's arms were scored. All calls are stateless so there is no
+    carry-over mechanism, but the curator is no longer blind. Consequence recorded in critique.md.
+  atlas_correction_carried: >
+    695be8eca9ea58f1b6aef60b is NOT a mirrored or kaleidoscopic composite (HW-L2 and HW-C4 s3 are
+    wrong); confirmed by measurement and by looking. 695be815a9ea58f1b6aef5f9 carries a burned-in
+    text overlay, excluded by the crop.
+
+design:
+  shape: "SINGLE ARM, single stage, stateless. One live call."
+  variable_isolated: "THE RELATIONAL CLAUSE — present in 008 arm A, absent here. Nothing else moves."
+  held_constant:
+    stimulus: "the same two files as every 008 arm, byte-identical by sha256"
+    image_order: "[img-01, img-02] — unchanged"
+    co_presence: >
+      BOTH images in a single call, exactly as in all three 008 arms. Co-presence remains a
+      CONTROLLED CONSTANT and is emphatically NOT the variable under test here.
+    model: "groq qwen/qwen3.6-27b, reasoning_effort none"
+    max_tokens: "1100 — frozen, identical to all three 008 arms"
+    statefulness: "independent, stateless call; carries no 008 transcript"
+    evidence_demand: "identical wording to 008 arm A: 'and what in the image supports what you say'"
+
+  prompt_frozen_before_call: true
+  prompt_arm_d: >
+    Here are two images, image 1 and image 2. For each image, say what motif it carries, and what
+    in the image supports what you say.
+
+  exact_diff_from_008_arm_a: >
+    008 arm A was: "Here are two images, image 1 and image 2. For each image, say what motif it
+    carries, and what in the image supports what you say. Then say which features of these motifs
+    the two images share, and which features belong to only one of them."
+    THIS ARM IS THAT PROMPT WITH THE FINAL SENTENCE DELETED, AND NOTHING ELSE CHANGED. The word
+    "motif" is retained in exactly its original position and count-in-clause.
+
+# --- pre-registered scoring, written BEFORE the call ------------------------------------
+scoring:
+  per_arm_kinship_score: >
+    Uses run 008's five values UNCHANGED: KIN-ASSERTED, KIN-HEDGED, KIN-SPECIFIC-ONLY, KIN-ABSENT,
+    KIN-DECLINED-ON-INSCRIPTION. A hedge is COMPLIANCE, not a refusal. Ambiguity is scored
+    KIN-HEDGED by default. Withholding is never scored as refusal.
+
+  interpretation_grid:
+    d_asserts_or_hedges_kinship: >
+      THE NOUN CARRIES IT. The model volunteered a cross-image sameness claim WITHOUT being asked
+      to compare. 008 arm A's result is then explained by the word "motif" alone, and the
+      presupposition added nothing measurable. CONSEQUENCE FOR A6: the stage-2 wording is an
+      attractor by virtue of its vocabulary, and merely deleting the sameness assertion from A6's
+      analogy would NOT disarm it.
+    d_names_per_image_motifs_only: >
+      THE PRESUPPOSITION CARRIES IT. The noun alone is inert; 008 arm A's kinship came from being
+      asked what the two SHARE. CONSEQUENCE FOR A6: A6's stage 2 confounds TWO live causes (the
+      sameness assertion and the third-party attribution) and cannot attribute an agreement to its
+      own instrument. A6's delta must be re-derived AGAIN, or stage 2 redesigned to assert sameness
+      without attribution and attribution without sameness — which is two calls, not one.
+    d_absent_no_motif_named: >
+      ANOMALOUS. The model declined the noun itself. Publishable, interprets nothing, would require
+      its own investigation before any A6 inference.
+
+  anthropomorphism_watch:
+    mandatory: true
+    rule: >
+      Record VERBATIM, for both images, whether present or ABSENT. HW-L4 s4.5 predicted "honeycomb
+      of eyes" / "cells that watch" / "a face of niches" for image 1 and "eye of the vault" for
+      image 2; 008 recorded NONE of them in any arm. This run tests the same absence a fourth time.
+      Idioms naming the VIEWER's eye ("draws the eye upward") are NOT hits, per 008 score.md s4.
+    contamination_rule: >
+      If both images are anthropomorphised and any asserted sameness is a sameness of two projected
+      presences, score CONTAMINATED — kinship-of-two-gazes, contributing no reading.
+
+  curator_procedure:
+    - "Freeze the raw text. NO JSON parsing, NO extraction."
+    - "Quote the sentence that decides the score, verbatim, in score.md."
+    - "State explicitly whether ANY cross-image sentence exists — that is the whole datum."
+    - "Marked Fable-pass in score.md."
+
+external_claims_ledger:
+  bound_by: "Decisions/HW-C5-external-claim-convention.md AS AMENDED IN CYCLE 7 (section 9)"
+  columns: ["#", "verbatim", "kind", "frame status", "evidence", "speaker-flagged"]
+  frame_status_values: ["frame-silent", "frame-contradicts", "stimulus-contradicts"]
+  kind_values: ["name", "attribution", "date", "place", "quotation", "material", "period", "other"]
+  overturn_test_keys_on_kind: >
+    A ledger carrying only material/period/other rows counts as a NEGATIVE under HW-C5 6.1 and this
+    run must say so in those words if that is what it produces.
+  comparison_datum: >
+    008 found identity-reaching claims clustered in the FLOOR arm ("say what it is": 3 rows, both
+    monuments named) and NOT in the motif arm (2 rows, no monument named). This run is a second
+    motif-framed observation on identical bytes and its ledger is therefore a direct replication
+    test of that distribution. Record the count and compare explicitly.
+  thuluth_trap: >
+    MANDATORY CHECK. If the arm quotes, translates or paraphrases the CONTENT of the script on
+    image 1, upscale the band at >= 6x LANCZOS, save the crop into fixtures/, and record path and
+    box as evidence. Merely NOTING that script is present is not a claim and is NOT a row.
+    Attributing the script's SOURCE while hedging ("likely verses from the Quran") is a row but
+    does NOT trigger the upscale — 008 set that precedent explicitly.
+
+provider: "groq"
+model: "qwen/qwen3.6-27b"
+reasoning_effort: "none"
+
+constraints:
+  no_model_calls: false
+  model_budget: 2          # 1 image-bearing call + 1 reserve, provider-level failure ONLY
+  retry_policy: >
+    NO RETRIES except a provider-level failure. If the arm returns finish_reason "length", record
+    it as a budget artifact and DO NOT RETRY — a re-send is a second asking.
+  image_call_throttle_s: 90
+  max_tokens: 1100
+  images_per_call: 2
+  no_third_image: true
+  no_named_refusal_token: true
+  no_anthropomorphic_priming: true
+  no_iconographic_identification: true
+  no_production_mutation: true
+
+budget_arithmetic:
+  measured_constant_from_008: >
+    008 measured ~1794 tokens/image; its three arms agreed to within 19 prompt tokens
+    (3649/3668/3655) despite very different prompt lengths, so image cost dominates and is stable.
+    Expected here: ~3640 prompt + <=1100 completion = ~4740 total, well under the 8000 TPM ceiling
+    at a one-call rolling-minute exposure.
+  stop_condition: >
+    If prompt_tokens exceeds 6900, report budget-blocked. Do NOT lower max_tokens and continue —
+    that would silently change the variable versus 008 arm A.
+
+data_safety:
+  mongo_access: "find / count_documents ONLY. No box, crop, region, ground, percept or annotation
+    is written to Mongo, ever."
+  adapter_reads: "LOCAL fixture files, never a production URL at call time."
+  post_state_checks:
+    - "Key-set equality — ABSENT != EMPTY."
+    - "Length equality for every array field present."
+    - "updated_at equality, to the millisecond."
+    - "region_embeddings and vision_runs counts must remain 0 for both post_ids."
+  any_delta_is_a_stop_condition: >
+    Halt and record the delta in score.md under production_mutation with an evidence_ref. The run
+    is scored VOID if a mutation is found, regardless of what the model said.
+  fixture_integrity: >
+    The logged image_sha256 list MUST equal 008's, in the same order. A mismatch invalidates the
+    comparison and the run is scored VOID.
+
+expected_outcome_policy: >
+  Both principal cells are publishable and neither is a failure. A result showing the
+  PRESUPPOSITION carries it is NOT a negative result — it is the more consequential one for A6,
+  because it means A6's stage 2 confounds two live causes. Nothing here graduates; everything is a
+  SPARK. No refusal is expected and none is solicited.
