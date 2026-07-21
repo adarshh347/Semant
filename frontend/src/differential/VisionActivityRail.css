@@ -1,0 +1,217 @@
+/* CIRCULATION-SPINE-001 · P2.2 — Vision Activity Rail.
+   A quiet margin recording acts of seeing. Token grammar only: --line hairlines, one
+   --accent, --surface layers. No dashboard cards, no terminal aesthetic, no loading theatre,
+   no anthropomorphic animation, no causal flowchart. Container-responsive inside .diff-inspector. */
+
+.va-rail {
+  --va-ok: #2f9e5e;
+  --va-err: #d0432b;
+  --va-warn: #a8741c;
+  margin-top: auto; /* settle to the bottom of the inspector column — a true margin */
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-2, 0.5rem);
+  font-family: var(--font-sans);
+}
+
+/* ── collapsed header: a single quiet line ── */
+.va-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-secondary, var(--ink-muted));
+}
+.va-toggle:hover { color: var(--text-primary, var(--ink)); }
+.va-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 0.375rem);
+}
+.va-eyebrow {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.va-summary { font-size: 0.7rem; color: var(--ink-subtle); }
+.va-caret { margin-left: auto; font-size: 0.7rem; color: var(--ink-subtle); }
+
+/* ── body ── */
+.va-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.35rem 0 0.15rem;
+}
+.va-scope {
+  font-size: 0.64rem;
+  line-height: 1.35;
+  color: var(--ink-subtle);
+  font-style: italic;
+}
+
+/* ── one operation, standalone (never a step in a chain) ── */
+.va-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+.va-entry--empty { opacity: 0.62; }
+
+.va-entry-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.va-op {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.va-status { font-size: 0.68rem; }
+.va-status--ok { color: var(--va-ok); }
+.va-status--err { color: var(--va-err); }
+.va-status--warn { color: var(--va-warn); }
+.va-status--active { color: var(--accent); }
+.va-status--muted { color: var(--ink-subtle); }
+/* unreadable ≠ absent: a calm "couldn't read" notice, not a red alarm (P2.2R-B1) */
+.va-status--unreadable { color: var(--va-warn); }
+.va-summary--unreadable { color: var(--va-warn); }
+.va-affects {
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill, 999px);
+  padding: 0.02rem 0.4rem;
+}
+.va-age { margin-left: auto; font-size: 0.64rem; color: var(--ink-subtle); }
+
+/* status mark: a low-noise dot (no animation) */
+.va-mark {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  align-self: center;
+  background: var(--ink-subtle);
+}
+.va-mark--ok { background: var(--va-ok); }
+.va-mark--err { background: var(--va-err); }
+.va-mark--warn { background: var(--va-warn); }
+.va-mark--muted { background: var(--line-strong, #d6cdd3); }
+.va-mark--unreadable { background: var(--va-warn); }
+.va-mark--active {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.va-epistemic {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-secondary, var(--ink-muted));
+}
+
+.va-notes { display: flex; flex-direction: column; gap: 0.15rem; }
+.va-note {
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--ink-muted);
+}
+.va-note--fallback { color: var(--va-warn); }
+.va-note--ref { color: var(--ink-subtle); }
+
+.va-meta {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-subtle);
+  letter-spacing: -0.01em;
+}
+
+/* ── compact stage disclosure ── */
+.va-stages, .va-diag { font-size: 0.68rem; }
+.va-stages > summary, .va-diag > summary {
+  cursor: pointer;
+  color: var(--ink-subtle);
+  font-size: 0.64rem;
+  padding: 0.1rem 0;
+  list-style: revert;
+}
+.va-stages > summary:focus-visible, .va-diag > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 0.375rem);
+}
+.va-stage-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+.va-stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  color: var(--ink-muted);
+}
+.va-stage-name { color: var(--ink); }
+.va-stage--failed .va-stage-name { color: var(--va-err); }
+.va-stage-status {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--va-warn);
+}
+.va-stage--failed .va-stage-status { color: var(--va-err); }
+.va-stage-lat {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-subtle);
+}
+.va-stage-fb { font-size: 0.62rem; color: var(--va-warn); }
+
+/* ── diagnostics: opt-in only, scrubbed ── */
+.va-diag-text {
+  margin: 0.25rem 0 0;
+  padding: 0.4rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--ink-muted);
+  background: var(--surface-2, #f3eef1);
+  border-radius: var(--radius-sm, 0.375rem);
+}
+
+/* ── footer ── */
+.va-foot { display: flex; justify-content: flex-end; padding-top: 0.15rem; }
+.va-refresh {
+  font-size: 0.66rem;
+  color: var(--text-secondary, var(--ink-muted));
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill, 999px);
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+}
+.va-refresh:hover:not(:disabled) { color: var(--ink); background: var(--surface-hover, #ece4ea); }
+.va-refresh:disabled { opacity: 0.5; cursor: default; }
+.va-refresh:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* deliberately no keyframes: the rail stays still. */
+}
