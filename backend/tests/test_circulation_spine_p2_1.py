@@ -6,6 +6,7 @@ run created with the right operation + correlation refs; response gains only run
 failure isolates (run_id None, route unaffected, no run doc); and authoritative geometry /
 curator state / semantics are untouched. Route-level tests with mocked services (no models).
 """
+import asyncio
 import copy
 import pytest
 from bson.objectid import ObjectId
@@ -219,3 +220,137 @@ def test_latest_run_is_operation_scoped():
     latest_dissect = run(svc.get_latest_run("p", operation="dissect", collection=c))
     assert latest_refine["run_id"] == rr and latest_refine["operation"] == "refine"
     assert latest_dissect["run_id"] == rd and latest_dissect["operation"] == "dissect"
+
+
+# ══════════════ P2.1R-R1 · cancellation terminalization + R3 FAILED ═══════════
+# A cancelled request must terminalize an already-minted run as CANCELLED/request_cancelled
+# and re-raise the original CancelledError (never swallow/translate). An ordinary exception
+# must terminalize FAILED/route_exception and re-raise the primary error (R3).
+
+def _assert_terminal(runs, status, reason):
+    docs = list(runs.docs.values())
+    assert len(docs) == 1, f"expected exactly one run, got {len(docs)}"
+    assert docs[0]["status"] == status, f"status={docs[0]['status']}"
+    assert docs[0]["terminal_reason"] == reason, f"reason={docs[0]['terminal_reason']}"
+
+
+# ---- cancellation (all four instrumented routes) ----
+
+def test_dissect_cancellation_terminalizes_cancelled(monkeypatch):
+    from backend.tests.test_circulation_spine_p1 import _FakePosts, _fresh_post, _install_route_mocks
+    from backend.schemas.post import RegionDetectRequest
+    runs = FakeCollection(); posts = _FakePosts(_fresh_post())
+    _install_route_mocks(monkeypatch, posts, runs)
+    async def _cancel(q, u):
+        raise asyncio.CancelledError()
+    monkeypatch.setattr(posts, "update_one", _cancel)           # cancel at persist (after mint)
+    with pytest.raises(asyncio.CancelledError):
+        run(R.detect_regions(str(posts.post["_id"]), RegionDetectRequest(coarse_only=True)))
+    _assert_terminal(runs, "cancelled", "request_cancelled")
+
+
+def test_refine_cancellation_terminalizes_cancelled(monkeypatch):
+    posts, runs = _Posts(_refine_post()), FakeCollection()
+    _install_refine(monkeypatch, posts, runs)
+    async def _cancel(q, u):
+        raise asyncio.CancelledError()
+    monkeypatch.setattr(posts, "update_one", _cancel)
+    with pytest.raises(asyncio.CancelledError):
+        run(R.refine_region_confirm(str(posts.post["_id"]),
+                                    R.RefineRequest(base_id="r1", base_geometry_rev=2)))
+    _assert_terminal(runs, "cancelled", "request_cancelled")
+
+
+def test_semantic_cancellation_terminalizes_cancelled(monkeypatch):
+    posts, runs = _Posts(_sem_post()), FakeCollection()
+    _install_semantic(monkeypatch, posts, runs)
+    async def _cancel(post, img, *, intent="name", force=False):
+        raise asyncio.CancelledError()
+    monkeypatch.setattr(semantic_pass, "run_semantic", _cancel)
+    with pytest.raises(asyncio.CancelledError):
+        run(R.semantic_read(str(posts.post["_id"]), R.SemanticReadRequest()))
+    _assert_terminal(runs, "cancelled", "request_cancelled")
+
+
+def test_find_similar_cancellation_terminalizes_cancelled(monkeypatch):
+    result = {"status": "ready", "space": "evidence_identity", "results": []}
+    posts, runs = _Posts(_fs_post()), FakeCollection()
+    _install_find_similar(monkeypatch, posts, runs, result)
+    async def _cancel(post, region_id, img, **k):
+        raise asyncio.CancelledError()
+    monkeypatch.setattr(find_similar_service, "find_similar_for_region", _cancel)
+    with pytest.raises(asyncio.CancelledError):
+        run(R.find_similar(str(posts.post["_id"]), "r1", R.FindSimilarRequest()))
+    _assert_terminal(runs, "cancelled", "request_cancelled")
+
+
+# ---- recorder finish() shields the finalize write under real task cancellation ----
+
+def test_finish_shields_finalize_write_under_task_cancellation():
+    async def scenario():
+        started, release = asyncio.Event(), asyncio.Event()
+
+        class Gated(FakeCollection):
+            async def update_one(self, q, u):
+                if isinstance(q.get("status"), dict):           # gate ONLY the finalize transition
+                    started.set()
+                    await release.wait()
+                return await FakeCollection.update_one(self, q, u)
+
+        coll = Gated()
+        rid = await svc.create_run(post_id="p", operation="dissect", collection=coll)
+        rec = svc.VisionRunRecorder(post_id="p", collection=coll)
+        rec.run_id = rid
+        task = asyncio.ensure_future(
+            rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled"))
+        await started.wait()                                    # finish is mid shielded-write
+        task.cancel()                                           # cancel the outer request
+        release.set()                                           # let the shielded write proceed
+        with pytest.raises(asyncio.CancelledError):
+            await task                                          # cancellation is re-raised
+        proj = None
+        for _ in range(50):                                     # let the shielded task commit
+            await asyncio.sleep(0)
+            proj = await svc.get_run(rid, collection=coll)
+            if proj["status"] == "cancelled":
+                break
+        assert proj["status"] == "cancelled"                   # write survived the cancellation
+        assert rec._finished is True                           # no double-finalize afterwards
+    asyncio.run(scenario())
+
+
+# ---- R3 · ordinary-exception FAILED finalization (siblings) ----
+
+def test_refine_ordinary_exception_finalizes_failed(monkeypatch):
+    posts, runs = _Posts(_refine_post()), FakeCollection()
+    _install_refine(monkeypatch, posts, runs)
+    async def _boom(q, u):
+        raise RuntimeError("db exploded")
+    monkeypatch.setattr(posts, "update_one", _boom)
+    with pytest.raises(RuntimeError, match="db exploded"):
+        run(R.refine_region_confirm(str(posts.post["_id"]),
+                                    R.RefineRequest(base_id="r1", base_geometry_rev=2)))
+    _assert_terminal(runs, "failed", "route_exception")
+
+
+def test_semantic_ordinary_exception_finalizes_failed(monkeypatch):
+    posts, runs = _Posts(_sem_post()), FakeCollection()
+    _install_semantic(monkeypatch, posts, runs)
+    async def _boom(post, img, *, intent="name", force=False):
+        raise RuntimeError("vlm exploded")
+    monkeypatch.setattr(semantic_pass, "run_semantic", _boom)
+    with pytest.raises(RuntimeError, match="vlm exploded"):
+        run(R.semantic_read(str(posts.post["_id"]), R.SemanticReadRequest()))
+    _assert_terminal(runs, "failed", "route_exception")
+
+
+def test_find_similar_ordinary_exception_finalizes_failed(monkeypatch):
+    result = {"status": "ready", "results": []}
+    posts, runs = _Posts(_fs_post()), FakeCollection()
+    _install_find_similar(monkeypatch, posts, runs, result)
+    async def _boom(post, region_id, img, **k):
+        raise RuntimeError("retriever exploded")
+    monkeypatch.setattr(find_similar_service, "find_similar_for_region", _boom)
+    with pytest.raises(RuntimeError, match="retriever exploded"):
+        run(R.find_similar(str(posts.post["_id"]), "r1", R.FindSimilarRequest()))
+    _assert_terminal(runs, "failed", "route_exception")

@@ -16,6 +16,7 @@ recorder is the safe adapter the route actually uses.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -264,26 +265,47 @@ class VisionRunRecorder:
         result_summary: Optional[Dict[str, Any]] = None,
         terminal_reason: Optional[str] = None, error: Optional[str] = None,
     ) -> None:
+        """Terminalize the run (write-behind). Idempotent.
+
+        R1 hardening: the finalize is a SHORT telemetry write wrapped in ``asyncio.shield`` —
+        if the surrounding request is cancelled *during this write*, the write still runs to
+        completion (the run is terminalized) instead of aborting mid-flight and stranding the
+        run in RUNNING. ``_finished`` is only set once a finalize attempt has been made, so a
+        premature flag can't suppress the sole viable cleanup. Cancellation is NEVER swallowed
+        or translated — it is re-raised. Only this telemetry op is shielded, never model/route
+        work.
+
+        Residual (documented): if the shielded write itself fails (DB down) or the event loop
+        is torn down before it commits, the run can still be left as a *stale* RUNNING record —
+        honestly surfaced by the read projection, not silently 'completed'."""
         if self._finished:
             return
-        self._finished = True
         if not self.run_id:
+            self._finished = True
             self.telemetry_degraded = True
             return
         try:
-            await finalize(
+            await asyncio.shield(finalize(
                 self.run_id, status, terminal_reason=terminal_reason, error=error,
                 result_summary=result_summary, actual_source=actual_source,
-                collection=self._collection)
+                collection=self._collection))
+            self._finished = True
             if self.telemetry_degraded:
                 # Best-effort: record that some earlier event write was lost.
                 try:
                     coll = _coll(self._collection)
-                    await coll.update_one({"_id": ObjectId(self.run_id)},
-                                          {"$set": {"telemetry_degraded": True}})
+                    await asyncio.shield(coll.update_one(
+                        {"_id": ObjectId(self.run_id)}, {"$set": {"telemetry_degraded": True}}))
                 except Exception:
                     pass
+        except asyncio.CancelledError:
+            # The shielded finalize is running to completion; the cancellation targets the
+            # request, not the write. Mark finished so a retry can't double-finalize, and
+            # re-raise — cancellation is never swallowed (R1).
+            self._finished = True
+            raise
         except Exception as e:
+            self._finished = True
             self.telemetry_degraded = True
             log.warning("vision_run finish failed (write-behind, non-fatal): %s", e)
 

@@ -668,11 +668,13 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
                            "coarse_only": req.coarse_only, "chosen": _profile_chosen(post)},
     )
     await rec.start()
-    await rec.event(vrc.STAGE_RECEIVE, JobStatus.SUCCEEDED,
-                    detail={"coarse_only": bool(req.coarse_only)})
     fine = []
     anchors = None
     try:
+        # Every await after the run is minted lives inside this boundary — including the
+        # first event write — so a cancellation can never escape un-terminalized (R1).
+        await rec.event(vrc.STAGE_RECEIVE, JobStatus.SUCCEEDED,
+                        detail={"coarse_only": bool(req.coarse_only)})
         # --- Stage 1 · STHŪLA: coarse anchors with real masks. ---
         # Domain-routed (Track B Phase 2a): a fashion image gets the garment segmenter, whose
         # regions ARE the anatomy — top, skirt, belt — instead of YOLO's one COCO "person".
@@ -871,6 +873,12 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
         return {"regions": regions, "source": source, "anchor_count": len(anchors or []),
                 "fine_count": len(fine), "creator_preserved": len(creator_regions),
                 "run_id": rec.run_id}
+    except asyncio.CancelledError:
+        # Request cancelled/shutdown — terminalize the run CANCELLED (shielded finalize) and
+        # re-raise the original cancellation. Never swallowed or translated (R1).
+        await rec.finish(JobStatus.CANCELLED, actual_source=locals().get("source"),
+                         terminal_reason="request_cancelled")
+        raise
     except Exception as e:
         # The primary route exception stays primary — record FAILED (best-effort) and
         # re-raise. Telemetry never swallows nor replaces the real failure (Invariant 7).
@@ -1213,13 +1221,14 @@ async def refine_region_confirm(post_id: str, req: RefineRequest):
                            "base_geometry_rev": req.base_geometry_rev,
                            "geometry_rev": region.get("geometry_rev")})
     await rec.start()
-    await rec.event(vrc.STAGE_REFINE_RECEIVE, JobStatus.SUCCEEDED,
-                    detail={"base_id": req.base_id, "base_geometry_rev": req.base_geometry_rev})
-    await rec.event(vrc.STAGE_REFINE_PROPOSE, JobStatus.SUCCEEDED, capability="refine-mask",
-                    adapter="sam2", latency_ms=propose_ms,
-                    input_refs=[{"region_id": req.base_id, "geometry_rev": req.base_geometry_rev}],
-                    detail={"geometry_rev": region.get("geometry_rev")})
     try:
+        # Initial event writes are inside the protected boundary (R1).
+        await rec.event(vrc.STAGE_REFINE_RECEIVE, JobStatus.SUCCEEDED,
+                        detail={"base_id": req.base_id, "base_geometry_rev": req.base_geometry_rev})
+        await rec.event(vrc.STAGE_REFINE_PROPOSE, JobStatus.SUCCEEDED, capability="refine-mask",
+                        adapter="sam2", latency_ms=propose_ms,
+                        input_refs=[{"region_id": req.base_id, "geometry_rev": req.base_geometry_rev}],
+                        detail={"geometry_rev": region.get("geometry_rev")})
         region["proposed"] = False                                   # confirmed → authoritative
         regions = list(post.get("region_annotations") or [])
         idx = next((i for i, r in enumerate(regions) if r.get("id") == region["id"]), None)
@@ -1255,6 +1264,9 @@ async def refine_region_confirm(post_id: str, req: RefineRequest):
                                          "geometry_rev": region.get("geometry_rev"),
                                          "region_count": len(regions)})
         return {"post": post_helper(updated), "region": region, "run_id": rec.run_id}
+    except asyncio.CancelledError:
+        await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
+        raise
     except Exception as e:
         await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
         raise
@@ -1381,9 +1393,9 @@ async def semantic_read(post_id: str, req: SemanticReadRequest = None):
         requested_profile={"intent": req.intent, "force": bool(req.force),
                            "region_ids": [r.get("id") for r in (post.get("region_annotations") or [])][:64]})
     await rec.start()
-    await rec.event(vrc.STAGE_SEM_RECEIVE, JobStatus.SUCCEEDED,
-                    detail={"intent": req.intent, "force": bool(req.force)})
     try:
+        await rec.event(vrc.STAGE_SEM_RECEIVE, JobStatus.SUCCEEDED,     # inside boundary (R1)
+                        detail={"intent": req.intent, "force": bool(req.force)})
         _t = time.perf_counter()
         img_bytes = await _fetch_post_image_cached(post_id, post)
         await rec.event(vrc.STAGE_SEM_FETCH, JobStatus.SUCCEEDED,
@@ -1411,6 +1423,9 @@ async def semantic_read(post_id: str, req: SemanticReadRequest = None):
                                          "status": (merged.get("meta") or {}).get("status")})
         return {"semantics": merged, "status": (merged.get("meta") or {}).get("status"),
                 "run_id": rec.run_id}
+    except asyncio.CancelledError:
+        await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
+        raise
     except Exception as e:
         await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
         raise
@@ -1490,9 +1505,9 @@ async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = N
         requested_profile={"region_id": region_id, "mode": req.mode, "top_k": req.top_k,
                            "exclude_self_post": req.exclude_self_post, "reindex": req.reindex})
     await rec.start()
-    await rec.event(vrc.STAGE_FS_RECEIVE, JobStatus.SUCCEEDED,
-                    detail={"region_id": region_id, "mode": req.mode, "top_k": req.top_k})
     try:
+        await rec.event(vrc.STAGE_FS_RECEIVE, JobStatus.SUCCEEDED,      # inside boundary (R1)
+                        detail={"region_id": region_id, "mode": req.mode, "top_k": req.top_k})
         # scope: every post already indexed in the query's model space (own-corpus research), + self.
         domain = find_similar_service._domain_of(post)
         routed = retrieval_service.route(query_kind="evidence", domain=domain,
@@ -1530,6 +1545,9 @@ async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = N
         if isinstance(result, dict):
             result.setdefault("run_id", rec.run_id)          # additive; never overwrites
         return result
+    except asyncio.CancelledError:
+        await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
+        raise
     except Exception as e:
         await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
         raise
