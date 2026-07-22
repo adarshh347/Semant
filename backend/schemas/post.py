@@ -122,6 +122,11 @@ class Post(BaseModel):
     # region machinery (persona rollup, embeddings, catalog) iterates it.
     grounds: Optional[List[dict]] = None
     percepts: Optional[List[dict]] = None
+    # CIRCUIT-001 P2E — durable visual_marks (contract v2 §7.3). Additive, PATCH-persisted
+    # beside grounds/percepts; only committed/superseded marks are ever written (the client
+    # filters — a suggestion never reaches here). Rides the same exclude_unset PATCH, so a
+    # re-dissect that replaces region_annotations can never wipe them.
+    visual_marks: Optional[List[dict]] = None
 
 class PostUpdate(BaseModel):
     # bounding_box_tags removed (Track A): the manual pixel-rect write path is retired.
@@ -130,6 +135,7 @@ class PostUpdate(BaseModel):
     highlights: Optional[List[Highlight]] = None  # NEW: Can update highlights
     grounds: Optional[List[dict]] = None   # Differential v1
     percepts: Optional[List[dict]] = None  # Differential v1
+    visual_marks: Optional[List[dict]] = None  # CIRCUIT-001 P2E — durable marks
     domain_profile: Optional[dict] = None  # VISION-C domain profile
     semantics: Optional[dict] = None       # VISION-D semantic assertions
 

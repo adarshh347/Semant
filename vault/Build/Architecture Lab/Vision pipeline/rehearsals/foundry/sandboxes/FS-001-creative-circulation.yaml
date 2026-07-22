@@ -1,0 +1,136 @@
+# Creative Circulation Sandbox 001 — DESIGNED, NOT RUN.
+# RESEARCH-ONLY. Zero live model calls. Authorizes no production change.
+
+sandbox_id: FS-001-creative-circulation
+axis: creative-circulation
+research_question: >-
+  When a percept leaves the image it was made on, does anything downstream still depend on it —
+  and can that dependency be shown from frozen artifacts alone, without a live call?
+
+mode: foundry
+research_only: true
+
+allowed_inputs:
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/
+  - vault/Writing/
+
+forbidden_actions:
+  - mutate_production_db
+  - create_backend_route
+  - create_mongo_collection
+  - create_product_entity
+  - create_frontend_surface
+  - modify_product_code
+  - read_production_database
+  - propose_cross_post_relation_entity
+
+# Circulation is studied on frozen run artifacts, not on live posts. The images are present only
+# to anchor which run's circulation is being traced.
+seed_images:
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/011-strained-premise-probe/img1-nataraja-shadow.jpg
+    role: circulation-origin
+    sha256: null
+    provenance: "run 011 fixture; recorded a POOR rhyme by HW-L4 D4 before spark-10 existed"
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/011-strained-premise-probe/img2-rose-window.jpg
+    role: circulation-destination
+    sha256: null
+    provenance: "run 011 fixture"
+
+seed_text_slices:
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/010-sameness-assertion-arm-e/score.md
+    role: prior-claim
+    locator: "§1"
+    pressure: "the sameness assertion whose downstream life is being traced"
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/011-strained-premise-probe/score.md
+    role: prior-claim
+    locator: "§1"
+    pressure: "the replication on a pair two lanes called weak"
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/CANDIDATE-REGISTER.md
+    role: register
+    locator: "spark-03"
+    pressure: "evidence loss should be announced, not merely survived — the circulation boundary"
+
+model_budget:
+  max_live_calls: 0
+  reserve_calls: 0
+  approved: false
+  throttle_s: null
+  notes: >-
+    Deliberately zero. This sandbox's whole claim is that circulation yield can be measured from
+    artifacts the program ALREADY holds. If it needs a live call, the design is wrong.
+
+adapters:
+  - local_file_digest
+
+capture_policy:
+  requires_explicit_approval: true
+  freeze_observations: true
+  notes: "No capture expected — the run is analysis over frozen artifacts."
+
+replay_policy:
+  frozen_observations_only: true
+  adapter_calls_permitted: 0
+  notes: null
+
+scoring_rubric:
+  dimensions:
+    - name: circulation_yield
+      asks: "Does the percept change a LATER surface or return, or does it die at the image?"
+      scale: "changes-later / referenced-only / dies-at-image"
+    - name: dependency_visibility
+      asks: "Can the downstream dependency be SHOWN from a frozen artifact, or only asserted?"
+      scale: "shown / inferable / asserted"
+    - name: survival_of_detachment
+      asks: "If its evidence detached, did anything downstream notice?"
+      scale: "noticed / silent-degradation / unaffected"
+    - name: discrimination
+      asks: "Does the measure separate circulating from non-circulating percepts?"
+      scale: "separates / partially / names-everything"
+  recording_rule: >-
+    Score each traced percept independently on all four dimensions with a file-and-line pointer.
+    Report the distribution, never a mean. A percept that cannot be scored is recorded as
+    unscoreable with the reason, not dropped.
+  no_composite_score: true
+
+stop_condition:
+  bounded_by: "one pass over the frozen runs already in the repository"
+  stop_when:
+    - "every percept in the frozen runs has been scored or marked unscoreable"
+    - "a result would require reading the production database"
+    - "a result would require a live model call"
+    - "the finding would require a cross-post relation entity to express"
+  pause_after_bounded_task: true
+
+graduation_rule:
+  emits: SPARK
+  may_not_create:
+    - production entity
+    - backend route
+    - mongo collection
+    - frontend surface
+    - schema change
+    - cross-post relation entity
+  promotion_requires:
+    - "a repeated pattern across >= 2 independent runs"
+    - "a candidate card with an enablement claim"
+    - "transfer, negative case, and sequence-inversion trials"
+    - "an explicit build gate decided by the orchestrator"
+
+product_implication_section:
+  required: true
+  must_mark_speculative: true
+  must_not_propose:
+    - new production entity
+    - new route
+    - new collection
+    - new UI surface
+    - cross-post relation entity
+
+notes: >-
+  Circulation yield is an evaluation axis the Candidate Foundry REQUIRES for graduation
+  (06-candidate-foundry.md) and that the program has never once measured. Every spark in the R2
+  register is stuck below graduation partly for that reason. This sandbox is the cheapest way to
+  stop being blocked on it.
+related_sparks: [spark-03, spark-05, spark-10]

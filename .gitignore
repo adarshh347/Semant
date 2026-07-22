@@ -15,11 +15,14 @@ yolo*.pt
 runs/
 # ...but the Rehearsal Research Program's runs ARE inspectable research memory — keep them.
 # The first exception is the retired pre-vault path for branch compatibility; the second is
-# the canonical home after the vault reorganisation.
+# the canonical home after the vault reorganisation; the third is the Foundry Sandbox runs,
+# which are research memory on exactly the same footing (Markdown/JSON only, no weights).
 !architecture-lab/rehearsals/runs/
 !architecture-lab/rehearsals/runs/**
 !vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/
 !vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/**
+!vault/Build/Architecture Lab/Vision pipeline/rehearsals/foundry/runs/
+!vault/Build/Architecture Lab/Vision pipeline/rehearsals/foundry/runs/**
 .ds-sync/
 ds-bundle/
 .design-sync/.cache/

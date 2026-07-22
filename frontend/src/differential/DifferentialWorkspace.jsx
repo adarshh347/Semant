@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ArrowLeft, MousePointer2, Brush, PenTool, Group, Waypoints, Frame, Eye, Check,
-    Play, Undo2, X, Plus, Scan, Sparkles, Search,
+    Undo2, X, Plus, Scan, Sparkles, Search,
 } from 'lucide-react';
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
@@ -11,9 +11,20 @@ import useSemanticRead from './useSemanticRead';
 import SemanticReading from './SemanticReading';
 import useFindSimilar from './useFindSimilar';
 import FindSimilar from './FindSimilar';
-import VisionActivityRail from './VisionActivityRail';
+import SeeingConsole from './SeeingConsole';
+import PerceptWorkshop from './PerceptWorkshop';
+import AttunementPanel from './AttunementPanel';
+import useFindParts from './useFindParts';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
+import { CORE_ROLES } from './groundRoles';
+// CIRCUIT-001 P2D-A — the renderer-independent truth model. Marks emitted here are the
+// canonical record of what an instrument produced; grounds stay the persisted surface.
+import { makeVisualMark, normalizeMark, markSummary } from './visualMarks';
+import {
+    quarantineSuggestion, acceptSuggestion,
+    summarizeProvenance, hasModelInvolvement,
+} from './suggestionQuarantine';
 import './DifferentialWorkspace.css';
 
 /**
@@ -68,7 +79,7 @@ const groundTitle = (g, regions = []) => {
 
 const MIN_SAMPLE_DIST = 0.004;
 
-export default function DifferentialWorkspace({ post, store, onExit }) {
+export default function DifferentialWorkspace({ post, store, onExit, onSendToManuscript = null, onPostChange = null }) {
     const [tool, setTool] = useState('select');
     const [traceSub, setTraceSub] = useState('path');
     const [untouched, setUntouched] = useState(false);
@@ -106,6 +117,29 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
 
     // ── Similar (VISION-E · E5) — a selected part's visual neighbours (research, not fact) ──
     const similar = useFindSimilar(postId, tool === 'similar' ? selectedId : null);
+
+    // ── Find parts (CIRCUIT-001 P2) — the operation, available where composing happens ──
+    const findParts = useFindParts(postId, store);
+    const [grain, setGrain] = useState('general');
+
+    // ── CIRCUIT-001 P2B — a mark the curator has ARMED but not yet made. ───────────
+    // This is the whole shape of "applying" an image act: the tool is switched and the
+    // intended role/label is held here, and the geometry is still the curator's hand. When
+    // the draft is committed the staged label rides onto the ground; if they switch tools
+    // or clear, it is dropped. Nothing is written by arming.
+    const [stagedMark, setStagedMark] = useState(null);   // { kind, role, label, actionId }
+
+    // ── CIRCUIT-001 P2D-A — the visual_mark record. ───────────────────────────────
+    // Grounds are the persisted surface; a visual_mark is the renderer-independent TRUTH of
+    // what an instrument produced — role, source, status, lineage. Held in component state
+    // this session (there is no marks backend yet, by design), and linked to the ground it
+    // rides on via `linked_ground_ids`, so the two never disagree about provenance.
+    const [marks, setMarks] = useState([]);
+    const emitMark = useCallback((mark) => {
+        if (!mark) return null;
+        setMarks((ms) => [...ms, mark]);
+        return mark;
+    }, []);
 
     // ── Read (VISION-D · D4) — the VLM interprets the candidate masks (never geometry) ──
     const reading = useSemanticRead(postId, post?.semantics || null);
@@ -162,6 +196,10 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
         setDraft(key === 'collect' ? { kind: 'constellation', member_ids: [], points: [] }
             : key === 'connect' ? { kind: 'relation', member_ids: [], relation_label: '' }
                 : null);
+        // An armed act belongs to the tool it armed. Leaving that tool abandons it — the
+        // alternative is a stale label riding onto an unrelated mark later.
+        // (P2B: `applyPerceptualAction` calls this first and stages after, so arming works.)
+        setStagedMark(null);
         setTool(key);
     }, []);
 
@@ -284,35 +322,76 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
         setDraft((d) => (d?.kind === 'field' ? { ...d, strokes: d.strokes.slice(0, -1) } : d));
     }, []);
 
-    const openComposer = useCallback((groundIds) => {
-        setComposer({ groundIds: Array.isArray(groundIds) ? groundIds : [groundIds], expression: '', properties: [] });
+    const openComposer = useCallback((groundIds, { expression = '' } = {}) => {
+        setComposer({
+            groundIds: Array.isArray(groundIds) ? groundIds : [groundIds],
+            // CIRCUIT-001 P2B: a proposed percept can arrive with the curator's own
+            // sentence already in the box. It is still a draft — nothing is written until
+            // "Keep this percept".
+            expression, properties: [], roles: {},
+        });
     }, []);
 
     // ── commits ──────────────────────────────────────────────────────────────
     const commitDraft = useCallback(() => {
         if (!draft) return;
+        // CIRCUIT-001 P2B/P2D — an armed act contributes its label AND its role AND the id of
+        // the act that armed it to the ground the curator just drew. The geometry, and the
+        // decision to keep it, are entirely theirs; the act only carried the intent over.
+        // P2B dropped everything but `label` here — the role and action_id below close that gap.
+        const staged = stagedMark && stagedMark.kind === draft.kind ? stagedMark : null;
+        // Additive fields on an untyped ground dict: safe, and never read by the ground store.
+        const carry = {
+            ...(staged?.label ? { label: staged.label } : {}),
+            ...(staged?.role ? { instrument_role: staged.role } : {}),
+            ...(staged?.actionId ? { origin_action_id: staged.actionId } : {}),
+        };
+        // The visual_mark family the drawn ground answers to.
+        const MARK_TYPE = { field: 'brush_field', path: 'trace_mark', boundary: 'frame_mark' };
+        const MARK_GEOM = { field: 'freehand_path', path: 'polyline', boundary: 'polyline' };
         let ground = null;
         if (draft.kind === 'field') {
             const strokes = draft.live ? [...draft.strokes, draft.live] : draft.strokes;
             if (!strokes.length) return;
-            ground = addGround(makeGround('field', { strokes }));
+            ground = addGround(makeGround('field', { strokes, ...carry }));
         } else if (draft.kind === 'path') {
             if (draft.points.length < 2) return;
-            ground = addGround(makeGround('path', { points: draft.points, arrowhead: true }));
+            ground = addGround(makeGround('path', { points: draft.points, arrowhead: true, ...carry }));
         } else if (draft.kind === 'boundary') {
             if (draft.points.length < 2) return;
-            ground = addGround(makeGround('boundary', { points: draft.points, band_width: draft.band_width }));
+            ground = addGround(makeGround('boundary', { points: draft.points, band_width: draft.band_width, ...carry }));
         } else if (draft.kind === 'constellation') {
             if (!hasCompDraft) return;
-            ground = addGround(makeGround('constellation', { member_ids: draft.member_ids, points: draft.points || [] }));
+            ground = addGround(makeGround('constellation', { member_ids: draft.member_ids, points: draft.points || [], ...carry }));
         } else if (draft.kind === 'relation') {
             if ((draft.member_ids || []).length < 2) return;
-            ground = addGround(makeGround('relation', { member_ids: draft.member_ids, relation_label: draft.relation_label || '' }));
+            ground = addGround(makeGround('relation', {
+                member_ids: draft.member_ids,
+                relation_label: draft.relation_label || staged?.role || '',
+                ...carry,
+            }));
+        }
+        // Emit the canonical mark alongside the ground — but only for the families the mark
+        // model has a home for, and only when the staged act named a role the vocabulary
+        // knows. `normalizeMark` fails closed, so a mismatch produces no mark rather than a
+        // wrong one; the ground is unaffected either way.
+        if (ground && staged?.role && MARK_TYPE[draft.kind]) {
+            emitMark(normalizeMark({
+                type: MARK_TYPE[draft.kind],
+                role: staged.role,
+                label: staged.label || '',
+                source: 'user',                       // the curator's own hand
+                status: 'committed',
+                geometry: { kind: MARK_GEOM[draft.kind] },
+                linked_ground_ids: [ground.id],
+                linked_action_ids: staged.actionId ? [staged.actionId] : [],
+            }));
         }
         setDraft(null);
         setTool('select');
+        setStagedMark(null);
         if (ground) { selectGround(ground.id); openComposer(ground.id); }
-    }, [draft, hasCompDraft, addGround, selectGround, openComposer]);
+    }, [draft, hasCompDraft, addGround, selectGround, openComposer, stagedMark, emitMark]);
 
     const commitFrame = useCallback(() => {
         const evidence = [...tray];
@@ -346,25 +425,123 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
         if (!composer) return;
         const expression = composer.expression.trim();
         if (!expression) return;
+        // Roles ride on the percept record the curator already saves — no new
+        // entity, no migration, and nothing written to post.grounds.
+        const named = Object.entries(composer.roles || {}).filter(([, r]) => !!r);
         const p = addExpressionPercept({
             expression, ground_ids: composer.groundIds, properties: composer.properties,
+            ...(named.length ? { ground_roles: Object.fromEntries(named) } : {}),
         });
         setComposer(null);
         playRecall(p.id);
     }, [composer, addExpressionPercept, playRecall]);
+
+    // ── CIRCUIT-001 P2B — carrying a proposed act through ────────────────────
+    //
+    // The deterministic half of the Perceptual Action Grammar. Every branch below is an
+    // affordance that already existed; the act only routes to it and carries a name. What
+    // this function will NOT do, by construction:
+    //
+    //   - it never writes geometry (the curator's hand does that);
+    //   - it never saves a percept (the composer's own button does that);
+    //   - it never sends anything to a model;
+    //   - and for anything it cannot do, it is NOT in `ACTION_CAPABILITIES`, so the card
+    //     renders "Preview only" instead of an Apply button that quietly no-ops.
+    //
+    // Returns 'armed' when the curator must still make the mark, 'applied' when the act is
+    // complete, and undefined when nothing was carried out.
+    const applyPerceptualAction = useCallback((action) => {
+        const p = action?.payload || {};
+        switch (action?.type) {
+            case 'find_parts':
+                findParts.find({ mode: grain });
+                return 'applied';
+
+            case 'brush_field':
+                switchTool('brush');
+                setStagedMark({ kind: 'field', role: p.field_role, label: p.label, actionId: action.id });
+                return 'armed';
+
+            case 'trace_direction': {
+                // A vector reads as a path; anything else the trace tool can hold is a path
+                // too — `boundary` is a seam, which is a different act entirely.
+                switchTool('trace');
+                setTraceSub('path');
+                setStagedMark({ kind: 'path', role: p.trace_role, label: p.label, actionId: action.id });
+                return 'armed';
+            }
+
+            case 'connect_marks':
+                switchTool('connect');
+                setStagedMark({ kind: 'relation', role: p.relation_role, label: p.label || '', actionId: action.id });
+                return 'armed';
+
+            case 'compose_percept': {
+                // Opens the composer with the curator's own sentence and whatever evidence
+                // they have already gathered. Still a draft: "Keep this percept" is the
+                // only thing that writes, and it is theirs to press.
+                const gathered = tray.size ? [...tray] : (selectedGroundId ? [selectedGroundId] : []);
+                openComposer(gathered, { expression: p.draft_text || '' });
+                return 'armed';
+            }
+
+            default:
+                return undefined;
+        }
+    }, [findParts, grain, switchTool, tray, selectedGroundId, openComposer]);
+
+    // Exactly the acts the branch above can carry out. Anything absent renders as preview
+    // only — the list and the switch are read together, so a capability cannot be claimed
+    // without an executor behind it.
+    const ACTION_CAPABILITIES = [
+        'find_parts', 'brush_field', 'trace_direction', 'connect_marks', 'compose_percept',
+    ];
 
     // ── refine commit / cancel / session release ─────────────────────────────
     // Confirm saves the new geometry revision (the endpoint persists) and refreshes
     // the region in the store IN PLACE — no reload, still inside Differential. Cancel
     // changes nothing on the server.
     const confirmRefine = useCallback(async () => {
+        // CIRCUIT-001 P2D-A — accepting a SAM proposal is an ACCEPT, and it must stay visibly
+        // model-assisted rather than flatten to "I drew this". Two cases, both honest:
+        //   - refining an existing region → the model tightened the curator's mask → model_refined
+        //   - a fresh mask               → the model proposed, the curator accepted → user_confirmed
+        // The proposal is first quarantined as a suggestion, so acceptance MINTS a mark that
+        // points back at it (Label Studio parent_prediction), never flips a flag in place.
+        const base = tool === 'refine' ? selectedRegion : null;
+        const suggestion = quarantineSuggestion(makeVisualMark('brush_field', {
+            role: 'material_field',                 // a mask is a material extent; role is coarse, honest
+            source: 'system',
+            geometry: { kind: 'raster_mask' },      // mask_ref only — never inline pixels
+            provenance: { model: 'sam2' },
+        }));
         const data = await refine.confirm();
         const r = data?.region;
         if (!r) return;
-        if (regions.some((x) => x.id === r.id)) updateRegion(r.id, r, { save: false });
-        else addRegion(r, { save: false });
-        selectRegion(r.id);
-    }, [refine, regions, updateRegion, addRegion, selectRegion]);
+        // Mint the accepted mark, lineage back to the suggestion. Fresh masks are user_confirmed
+        // (needs no prior geometry); a refine-of-existing is model_refined (derives from the base).
+        const accepted = base
+            ? normalizeMark({
+                type: 'brush_field', role: 'material_field', source: 'model_refined', status: 'committed',
+                geometry: { kind: 'raster_mask' }, derived_from: suggestion.id,
+                linked_ground_ids: [], provenance: { model: 'sam2' },
+            })
+            : acceptSuggestion(suggestion)?.accepted;
+        if (accepted) emitMark(accepted);
+        // Stamp the region with additive provenance so the store — and the chip below — show
+        // the model's part this session. (Cross-reload PERSISTENCE of these fields needs the
+        // confirm endpoint to echo them; that is a backend change, out of P2D-A scope, and is
+        // recorded as residue in the report.)
+        const stamped = {
+            ...r,
+            mark_source: accepted?.source || 'user_confirmed',
+            refined_from: base?.id || null,
+            mark_id: accepted?.id || null,
+        };
+        if (regions.some((x) => x.id === stamped.id)) updateRegion(stamped.id, stamped, { save: false });
+        else addRegion(stamped, { save: false });
+        selectRegion(stamped.id);
+    }, [refine, tool, selectedRegion, regions, updateRegion, addRegion, selectRegion, emitMark]);
 
     // Release the SAM session when refinement mode ends…
     const wasRefine = useRef(false);
@@ -550,6 +727,14 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                             </div>
                         )}
                     </div>
+                    {/* CIRCUIT-001 P2B — an armed act, waiting for the curator's hand. It
+                        says what will be named, and that nothing exists until they draw. */}
+                    {stagedMark && (
+                        <p className="diff-armed" role="status">
+                            <strong>{stagedMark.label || stagedMark.role}</strong>
+                            {' — armed. Make the mark; nothing is created until you do.'}
+                        </p>
+                    )}
                     <p className="diff-stage-hint">
                         {untouched ? 'The untouched image. Release O to see your evidence again.'
                             : brushing ? 'Paint where it lives. [ ] size · ⌥ lifts paint away · Esc clears the draft.'
@@ -567,8 +752,48 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                     </p>
                 </main>
 
-                {/* ── inspector ── */}
+                {/* ── orchestration column (CIRCUIT-001 P2B) ──
+                    Was a narrow inspector holding whatever was selected, with the console
+                    bolted underneath. Now a sectioned column, ordered by when a curator
+                    needs each part: attend → operate → work → review. */}
                 <aside className="diff-inspector">
+
+                    {/* 1 — FIRST ATTENTION. The panel a curator meets first, because
+                        beginning from what caught you is the point of this gate. */}
+                    <section className="diff-insp-section diff-insp-section--attune">
+                        <AttunementPanel
+                            hasParts={regions.length > 0}
+                            wayOfLooking={(post?.domain_profile?.chosen || ['general'])[0]}
+                            capabilities={ACTION_CAPABILITIES}
+                            onApplyAction={applyPerceptualAction}
+                        />
+                    </section>
+
+                    {/* 2 — SEEING. Find parts stays one keystroke away, but it is now one
+                        act among several rather than the door into the workspace. */}
+                    <section className="diff-insp-section">
+                        <SeeingConsole
+                            postId={postId}
+                            profile={post?.domain_profile}
+                            onProfile={(p) => onPostChange?.({ ...post, domain_profile: p })}
+                            regions={regions}
+                            onFindParts={(opts) => findParts.find({ ...(opts || {}), mode: grain })}
+                            busy={findParts.busy}
+                            grain={grain}
+                            onGrain={setGrain}
+                            actionStatus={{
+                                refine: refine.status,
+                                semantic_read: reading.status,
+                                find_similar: similar.status,
+                            }}
+                            compact
+                        />
+                        {findParts.error && (
+                            <p className="diff-insp-hint" role="alert">{findParts.error}</p>
+                        )}
+                    </section>
+
+                    {/* 3 — the working area: whatever is under the hand right now. */}
                     {/* refine (VISION-B5) — exact-mask refinement of the selected part */}
                     {tool === 'refine' && (
                         <div className="diff-insp-refine">
@@ -586,10 +811,22 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                 {refine.status === 'confirmed' && <span className="diff-refine-ok">saved ✓</span>}
                                 {refine.status === 'idle' && (selectedRegion ? 'click the part, or drag a box' : 'select a part first')}
                             </div>
+                            {/* CIRCUIT-001 P2D-A — the quarantine, made visible. While the model's
+                                mask is only proposed it is a SUGGESTION, and the chip says so out
+                                loud (the anti-CVAT rule: invisible provenance is no provenance).
+                                Confirm ACCEPTS it — minting a mark that keeps the model's part in
+                                the record — rather than laundering it into "I drew this". */}
+                            {refine.status === 'ok' && (
+                                <p className="diff-mark-prov diff-mark-prov--suggested" role="status">
+                                    <span className="diff-prov-dot" aria-hidden="true" />
+                                    {summarizeProvenance({ source: 'model_suggested' })}
+                                    <span className="diff-prov-note"> — accepting keeps it as “{summarizeProvenance({ source: selectedRegion ? 'model_refined' : 'user_confirmed' })}”.</span>
+                                </p>
+                            )}
                             <div className="diff-refine-actions">
                                 <button type="button" className="diff-mini" onClick={() => refine.clear()} disabled={!refine.hasPrompt}>Clear</button>
-                                <button type="button" className="diff-mini" onClick={() => { refine.clear(); switchTool('select'); }}>Cancel</button>
-                                <button type="button" className="diff-mini diff-mini--primary" onClick={confirmRefine} disabled={refine.status !== 'ok'}>Confirm</button>
+                                <button type="button" className="diff-mini" onClick={() => { refine.clear(); switchTool('select'); }}>Dismiss</button>
+                                <button type="button" className="diff-mini diff-mini--primary" onClick={confirmRefine} disabled={refine.status !== 'ok'}>Accept</button>
                             </div>
                         </div>
                     )}
@@ -690,6 +927,38 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                     </button>
                                 ))}
                             </div>
+                            {/* CIRCUIT-001 P1C — Ground Roles. What each cited ground DOES for
+                                this reading. Optional everywhere: a percept with no roles is
+                                complete, and nothing downstream may refuse one for lacking them.
+                                Click a named role again to clear it. The role belongs to this
+                                percept's USE of the ground, never to the ground record — the
+                                same region is an anchor in one noticing and a counterforce in
+                                another. */}
+                            {composer.groundIds.length > 0 && (
+                                <div className="diff-composer-roles">
+                                    {composer.groundIds.map((gid) => (
+                                        <div key={gid} className="diff-role-row">
+                                            <span className="diff-role-ground">
+                                                {groundTitle(groundById(gid), regions)}
+                                            </span>
+                                            <span className="diff-role-opts">
+                                                {CORE_ROLES.map((r) => (
+                                                    <button key={r.key} type="button" title={r.hint}
+                                                        className={`diff-role${(composer.roles?.[gid] === r.key) ? ' on' : ''}`}
+                                                        onClick={() => setComposer((c) => {
+                                                            const roles = { ...(c.roles || {}) };
+                                                            if (roles[gid] === r.key) delete roles[gid];
+                                                            else roles[gid] = r.key;
+                                                            return { ...c, roles };
+                                                        })}>
+                                                        {r.label}
+                                                    </button>
+                                                ))}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             <div className="diff-insp-row-actions">
                                 <button type="button" className="diff-primary"
                                     disabled={!composer.expression.trim()} onClick={savePercept}>Keep this percept</button>
@@ -736,6 +1005,20 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                 {selectedGround.ground_type === 'frame' && (selectedGround.evidence_ids || []).length > 0 && (
                                     <span className="diff-chip diff-chip--dim">{selectedGround.evidence_ids.length} inside</span>
                                 )}
+                                {/* CIRCUIT-001 P2D-A — provenance, made visible on the ground itself.
+                                    The mark linked to this ground carries the real source; the chip
+                                    speaks it (anti-CVAT). A user's own brush reads "Yours" quietly;
+                                    anything the model touched says so. */}
+                                {(() => {
+                                    const gm = marks.find((m) => (m.linked_ground_ids || []).includes(selectedGround.id));
+                                    if (!gm) return null;
+                                    return (
+                                        <span className={`diff-chip diff-mark-prov-chip${hasModelInvolvement(gm) ? ' is-model' : ''}`}
+                                            title={markSummary(gm)}>
+                                            {summarizeProvenance(gm)}
+                                        </span>
+                                    );
+                                })()}
                             </div>
                             {selectedGround.ground_type === 'frame' && (
                                 <p className="diff-insp-hint">
@@ -791,28 +1074,29 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                         </div>
                     )}
 
-                    {/* the percepts so far — each replays on demand */}
-                    {expressionPercepts.length > 0 && (
-                        <div className="diff-insp-percepts">
-                            <span className="diff-eyebrow">Percepts</span>
-                            {expressionPercepts.map((p) => (
-                                <div key={p.id} className="diff-percept-row">
-                                    <button type="button" className="diff-icon-btn diff-percept-play"
-                                        title="Replay this noticing on the image" onClick={() => playRecall(p.id)}>
-                                        <Play size={12} />
-                                    </button>
-                                    <span className="diff-percept-text">{p.expression}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    {/* CIRCUIT-001 P2 — the percept workshop. Same percepts, same actions,
+                        same P1D thread and P1C roles; what changed is that a percept now
+                        reads as a unit of attention — the noticing, what it rests on, where
+                        it has got to in the writing — rather than a row with verbs after it. */}
+                    <PerceptWorkshop
+                        percepts={expressionPercepts}
+                        grounds={grounds} regions={regions}
+                        mentions={store?.mentions || []} postId={postId}
+                        onPlay={playRecall}
+                        onSendToManuscript={onSendToManuscript}
+                    />
 
                     {detachedGrounds.length > 0 && (
                         <div className="diff-insp-detached">
                             <span className="diff-eyebrow">Detached evidence</span>
                             {detachedGrounds.map((g) => (
                                 <p key={g.id} className="diff-detached-row">
-                                    {g.label || g.ground_type} — its part was replaced by a re-dissect
+                                    {/* States what no longer resolves, never why. resolveGround
+                                        knows only that the region_id does not resolve — a
+                                        re-dissect is one cause among several (a deleted region, a
+                                        never-existed id), and naming it asserted a fact the code
+                                        cannot have. Same rule the Rail already keeps. */}
+                                    {g.label || g.ground_type} — its part is no longer in the image
                                 </p>
                             ))}
                         </div>
@@ -824,16 +1108,6 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                         {expressionPercepts.length} percept{expressionPercepts.length !== 1 ? 's' : ''}
                     </footer>
 
-                    {/* CIRCULATION-SPINE-001 · P2.2 — read-only observation of recorded vision runs */}
-                    <VisionActivityRail
-                        postId={postId}
-                        regions={regions}
-                        actionStatus={{
-                            refine: refine.status,
-                            semantic_read: reading.status,
-                            find_similar: similar.status,
-                        }}
-                    />
                 </aside>
             </div>
         </div>

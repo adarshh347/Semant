@@ -68,12 +68,29 @@
 }
 .rs-stage.is-recalling .rs-svg { opacity: 0.22; }
 
-.rs-recall-caption {
+/* The caption and its evidence note travel together: one positioned wrapper so
+   the note cannot drift away from the sentence it qualifies. Bounded and
+   scrollable, because a percept may be a paragraph and must never cover the
+   image it is speaking about. Mirrors .diff-recall-say. */
+.rs-recall-say {
     position: absolute;
     left: 50%;
     bottom: 0.9rem;
     transform: translateX(-50%);
     max-width: min(84%, 30rem);
+    max-height: 45%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    align-items: center;
+    pointer-events: none;
+    animation: rs-caption-in 480ms ease both;
+}
+
+.rs-recall-caption {
+    max-width: 100%;
+    overflow-wrap: anywhere;
     margin: 0;
     padding: 0.35rem 0.85rem;
     font-family: 'Fraunces', Georgia, serif;
@@ -83,16 +100,32 @@
     color: #FAF7F5;
     background: rgba(23, 18, 26, 0.78);
     border-radius: var(--radius-pill);
-    pointer-events: none;
-    animation: rs-caption-in 480ms ease both;
 }
+
+/* Quieter than the caption on purpose: this qualifies the sentence, it does not
+   compete with it. Degradation-only — it appears solely when evidence is gone. */
+.rs-recall-detached {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    margin: 0;
+    padding: 0.26rem 0.7rem;
+    font-size: 0.7rem;
+    font-style: normal;
+    letter-spacing: 0.01em;
+    text-align: center;
+    color: #F3E6D8;
+    background: rgba(23, 18, 26, 0.72);
+    border: 1px solid rgba(226, 174, 108, 0.5);
+    border-radius: var(--radius-pill);
+}
+
 @keyframes rs-caption-in {
     from { opacity: 0; transform: translateX(-50%) translateY(6px); }
     to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
     .rs-stage.is-recalling img { transition: none; }
-    .rs-recall-caption { animation: none; }
+    .rs-recall-say { animation: none; }
 }
 
 .rs-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -419,3 +452,16 @@
 }
 .rs-write:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
 .rs-write:disabled { opacity: 0.6; cursor: default; }
+
+/* CIRCUIT-001 P1B — "the noticing crossed into the writing". Quieter than the
+   caption and distinct from the degradation note: this is not a warning, it is
+   the circuit reporting that the percept arrived somewhere. */
+.rs-recall-crossed {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    margin: 0;
+    padding: 0.22rem 0.7rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    opacity: 0.72;
+}

@@ -7,6 +7,9 @@ import {
     blockIdsForRegion as blockIdsForRegionPure, mentionsFromBlocks,
 } from './perceptMentions';
 import { hydrateGrounds } from '../differential/grounds';
+// CIRCUIT-001 P2E — durable visual_marks. Only committed/superseded persist; a suggestion
+// stays session truth and never reaches the database (contract v2 §7.3).
+import { normalizeMark, persistableMarks, PERSISTED_STATUSES } from '../differential/visualMarks';
 
 const BASE = `${API_URL}/api/v1/posts`;
 const AUTOSAVE_MS = 800;
@@ -44,6 +47,19 @@ export function useRegionStore() {
 
 export { RegionStoreContext };
 
+/**
+ * Which of these referenced ids still exist on the image?
+ *
+ * CIRCUIT-001 P1B. Exported as a pure function so the rule can be pinned by a
+ * test without mounting a store — the behaviour it guards (a reference from the
+ * writing that resolves to nothing) is one of the four silent recall failures
+ * CIRCUIT-001 P0 found, and it shipped green precisely because it lived inside
+ * a hook nothing could reach.
+ */
+export function liveRegionIds(ids = [], regions = []) {
+    return (ids || []).filter(Boolean).filter((id) => regions.some((r) => r.id === id));
+}
+
 export function useRegionState(post, onPostChange) {
     const [regions, setRegionsState] = useState([]);
     const [aletheia, setAletheia] = useState(null);
@@ -54,11 +70,15 @@ export function useRegionState(post, onPostChange) {
     const [percepts, setPercepts] = useState([]);
     const [mentions, setMentions] = useState([]);
     const [grounds, setGroundsState] = useState([]);          // Differential v1 evidence
+    const [visualMarks, setVisualMarksState] = useState([]);  // CIRCUIT-001 P2E truth model
     const [selectedId, setSelectedId] = useState(null);
     const [hoveredId, setHoveredId] = useState(null);
     const [selectedGroundId, setSelectedGroundId] = useState(null);
     const [hoveredGroundId, setHoveredGroundId] = useState(null);
     const [lensRegionIds, setLensRegionIds] = useState(null); // Set | null
+    // A reference from the writing that resolves to nothing on the image. Held so
+    // the surface can SAY so; cleared by the next resolving focus or by Escape.
+    const [missingRef, setMissingRef] = useState(null);   // { ids, at } | null
     const [recall, setRecall] = useState(null);               // { perceptId } | null
     const [feedPersona, setFeedPersona] = useState(true);
     const [saveState, setSaveState] = useState('idle');       // idle | saving | saved
@@ -70,6 +90,7 @@ export function useRegionState(post, onPostChange) {
     const regionsRef = useRef(regions);
     const groundsRef = useRef(grounds);
     const perceptsRef = useRef(percepts);
+    const visualMarksRef = useRef(visualMarks);
     const saveTimer = useRef(null);
     const metaSaveTimer = useRef(null);
     const loadedFor = useRef(null);
@@ -82,6 +103,11 @@ export function useRegionState(post, onPostChange) {
     const setGrounds = useCallback((next) => {
         groundsRef.current = typeof next === 'function' ? next(groundsRef.current) : next;
         setGroundsState(groundsRef.current);
+    }, []);
+
+    const setVisualMarks = useCallback((next) => {
+        visualMarksRef.current = typeof next === 'function' ? next(visualMarksRef.current) : next;
+        setVisualMarksState(visualMarksRef.current);
     }, []);
 
     // The meta debounce reads percepts through a ref for the same stale-closure reason.
@@ -97,12 +123,21 @@ export function useRegionState(post, onPostChange) {
         const loadedRegions = post.region_annotations || [];
         setRegions(loadedRegions);
         setGrounds(hydrateGrounds(post.grounds));
+        // Hydrate durable marks, fail-closed: a stored mark that no longer validates is
+        // dropped rather than trusted (the same discipline normalizeMark keeps on the way in).
+        // Only persisted statuses ever reach storage, so this is committed/superseded only.
+        setVisualMarks(
+            (post.visual_marks || [])
+                .map((m) => normalizeMark(m))
+                .filter((m) => m && PERSISTED_STATUSES.has(m.status)),
+        );
         setAletheia(post.local_context?.aletheia || null);
         setSelectedId(null);
         setHoveredId(null);
         setSelectedGroundId(null);
         setHoveredGroundId(null);
         setLensRegionIds(null);
+        setMissingRef(null);
         setRecall(null);
         // Reconstruct the relationship model from what's already stored, so existing
         // links resolve with no backend table and nothing regresses migrating off
@@ -116,7 +151,7 @@ export function useRegionState(post, onPostChange) {
                 .reduce((ps, r) => upsertPercept(ps, makePercept(r, { actor: 'creator' })), []),
             ...(post.percepts || []).filter(isExpressionPercept),
         ]);
-    }, [post, setRegions, setGrounds]);
+    }, [post, setRegions, setGrounds, setVisualMarks]);
 
     // A pending edit must not be lost because a pane unmounted.
     useEffect(() => () => { clearTimeout(saveTimer.current); clearTimeout(metaSaveTimer.current); }, []);
@@ -175,6 +210,9 @@ export function useRegionState(post, onPostChange) {
                 body: JSON.stringify({
                     grounds: groundsRef.current,
                     percepts: perceptsRef.current.filter(isExpressionPercept),
+                    // Only committed/superseded marks are written — a suggestion never
+                    // touches the database (contract v2 §7.3). The quarantine is session truth.
+                    visual_marks: persistableMarks(visualMarksRef.current),
                 }),
             });
             if (!res.ok) throw new Error();
@@ -213,6 +251,48 @@ export function useRegionState(post, onPostChange) {
 
     const groundById = useCallback(
         (id) => groundsRef.current.find(g => g.id === id) || null, [],
+    );
+
+    // ── CIRCUIT-001 P2E — visual_marks store API (the surface Lane B2's tools call). ──
+    // Marks ride the same debounced meta-save as grounds/percepts. The save FILTERS to
+    // committed/superseded (persistMeta above), so a suggestion can be added here — to
+    // render, quarantined — and simply never be written. Adding a mark schedules a save
+    // only when it is persistable, so a stream of drafts does not thrash the network.
+    const addVisualMark = useCallback((mark, { save = true } = {}) => {
+        if (!mark || !mark.id) return null;
+        setVisualMarks(ms => [...ms.filter(m => m.id !== mark.id), mark]);
+        if (save && PERSISTED_STATUSES.has(mark.status)) scheduleMetaSave();
+        return mark;
+    }, [setVisualMarks, scheduleMetaSave]);
+
+    const updateVisualMark = useCallback((id, patch, { save = true } = {}) => {
+        let next = null;
+        setVisualMarks(ms => ms.map(m => {
+            if (m.id !== id) return m;
+            next = { ...m, ...patch, updated_at: new Date().toISOString() };
+            return next;
+        }));
+        // Save when the RESULT is persistable — a draft promoted to committed must write,
+        // and a committed mark superseded must write (recoverability, P1F/P1G).
+        if (save && next && PERSISTED_STATUSES.has(next.status)) scheduleMetaSave();
+        return next;
+    }, [setVisualMarks, scheduleMetaSave]);
+
+    const removeVisualMark = useCallback((id, { save = true } = {}) => {
+        const existed = visualMarksRef.current.find(m => m.id === id);
+        setVisualMarks(ms => ms.filter(m => m.id !== id));
+        // Removing a persisted mark must write the removal; removing a session-only draft
+        // need not touch the network.
+        if (save && existed && PERSISTED_STATUSES.has(existed.status)) scheduleMetaSave();
+    }, [setVisualMarks, scheduleMetaSave]);
+
+    const visualMarksForGround = useCallback(
+        (groundId) => visualMarksRef.current.filter(
+            m => (m.linked_ground_ids || []).includes(groundId)), [],
+    );
+
+    const visualMarkById = useCallback(
+        (id) => visualMarksRef.current.find(m => m.id === id) || null, [],
     );
 
     /** Compose a durable act of noticing over one or more Grounds. Persists. */
@@ -272,8 +352,28 @@ export function useRegionState(post, onPostChange) {
     const focusRegions = useCallback((ids) => {
         const list = (ids || []).filter(Boolean);
         if (!list.length) return;
-        setSelectedId(list[0]);
-        setLensRegionIds(list.length > 1 ? new Set(list) : null);
+        // CIRCUIT-001 P1B — a reference can outlive what it points at. Selecting a
+        // dead id used to run the full "I am showing you this" choreography and
+        // then dim EVERY region and light none: the surface pointed confidently at
+        // nothing, silently. Say it instead, and change nothing on the image.
+        //
+        // Only a reference that resolves NOWHERE is refused. A lens that has lost
+        // some of its parts still has something true to show, and showing it is
+        // better than withholding the whole citation.
+        const live = liveRegionIds(list, regionsRef.current);
+        if (!live.length) {
+            setMissingRef({ ids: list, missing: list, someLive: false, at: Date.now() });
+            return;
+        }
+        // A lens that has lost only SOME of its parts still shows the rest — and
+        // says that some are gone. Withholding the whole citation would hide
+        // evidence that is still true; showing it silently would overstate what
+        // the citation now covers.
+        setMissingRef(live.length < list.length
+            ? { ids: list, missing: list.filter((id) => !live.includes(id)), someLive: true, at: Date.now() }
+            : null);
+        setSelectedId(live[0]);
+        setLensRegionIds(live.length > 1 ? new Set(live) : null);
     }, []);
 
     /** The region→story link (`Region.block_id`), written when a chip is inserted. */
@@ -332,7 +432,7 @@ export function useRegionState(post, onPostChange) {
 
     return useMemo(() => ({
         regions, setRegions, updateRegion, addRegion, regionById,
-        selectedId, selectRegion, setSelectedId, focusRegions,
+        selectedId, selectRegion, setSelectedId, focusRegions, missingRef, setMissingRef,
         hoveredId, setHoveredId,
         lensRegionIds, setLensRegionIds,
         focusIds,
@@ -350,11 +450,14 @@ export function useRegionState(post, onPostChange) {
         addExpressionPercept, perceptsForGround,
         recall, playRecall, clearRecall,
         metaSaveState, persistMeta, scheduleMetaSave,
+        // CIRCUIT-001 P2E — durable visual_marks (the API Lane B2's tools call at merge).
+        visualMarks, addVisualMark, updateVisualMark, removeVisualMark,
+        visualMarksForGround, visualMarkById,
         // The image, so a /part evidence block can crop a region by reference.
         photoUrl: post?.photo_url ?? null,
     }), [
         regions, setRegions, updateRegion, addRegion, regionById,
-        selectedId, selectRegion, focusRegions, hoveredId, lensRegionIds, focusIds,
+        selectedId, selectRegion, focusRegions, hoveredId, lensRegionIds, focusIds, missingRef,
         aletheia, lensFor, feedPersona, saveState, error,
         persist, scheduleSave, linkRegionToBlock,
         percepts, ensurePercept, perceptForRegionId,
@@ -363,6 +466,8 @@ export function useRegionState(post, onPostChange) {
         selectedGroundId, selectGround, hoveredGroundId, focusGroundIds,
         addExpressionPercept, perceptsForGround, recall, playRecall, clearRecall,
         metaSaveState, persistMeta, scheduleMetaSave,
+        visualMarks, addVisualMark, updateVisualMark, removeVisualMark,
+        visualMarksForGround, visualMarkById,
         post,
     ]);
 }

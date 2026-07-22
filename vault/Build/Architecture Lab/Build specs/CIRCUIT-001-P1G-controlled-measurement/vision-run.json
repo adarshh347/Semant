@@ -1,0 +1,293 @@
+{
+  "_id": {
+    "$oid": "6a6047a67651dd52e8260e85"
+  },
+  "contract_version": "vision-run-v1",
+  "post_id": "695be8b0a9ea58f1b6aef606",
+  "operation": "dissect",
+  "status": "succeeded",
+  "initiator": "api",
+  "requested_profile": {
+    "mode": "general",
+    "lens": "",
+    "coarse_only": false,
+    "chosen": [
+      "general"
+    ]
+  },
+  "actual_source": "yolo+sukshma",
+  "created_at": {
+    "$date": "2026-07-22T04:31:34.901Z"
+  },
+  "started_at": {
+    "$date": "2026-07-22T04:31:34.901Z"
+  },
+  "updated_at": {
+    "$date": "2026-07-22T04:31:45.829Z"
+  },
+  "completed_at": {
+    "$date": "2026-07-22T04:31:45.829Z"
+  },
+  "terminal_reason": "ok",
+  "error": null,
+  "telemetry_degraded": false,
+  "events": [
+    {
+      "event_id": "453726f93f7f404999a6edba0cf99bc2",
+      "run_id": "6a6047a67651dd52e8260e85",
+      "contract_version": "vision-run-v1",
+      "stage_id": "dissect.receive",
+      "capability": null,
+      "status": "succeeded",
+      "observed_at": {
+        "$date": "2026-07-22T04:31:35.076Z"
+      },
+      "started_at": null,
+      "completed_at": null,
+      "latency_ms": null,
+      "dependencies": [],
+      "adapter": null,
+      "provenance": null,
+      "fallbacks": [],
+      "input_refs": [],
+      "output_refs": [],
+      "error": null,
+      "detail": {
+        "coarse_only": false
+      }
+    },
+    {
+      "event_id": "84e07ee692344427880ffe8c76ef6352",
+      "run_id": "6a6047a67651dd52e8260e85",
+      "contract_version": "vision-run-v1",
+      "stage_id": "dissect.fetch_image",
+      "capability": null,
+      "status": "succeeded",
+      "observed_at": {
+        "$date": "2026-07-22T04:31:36.143Z"
+      },
+      "started_at": null,
+      "completed_at": null,
+      "latency_ms": 932.5,
+      "dependencies": [],
+      "adapter": null,
+      "provenance": null,
+      "fallbacks": [],
+      "input_refs": [],
+      "output_refs": [],
+      "error": null,
+      "detail": null
+    },
+    {
+      "event_id": "7f5efd0705f34462aa6847fcf62dbe5c",
+      "run_id": "6a6047a67651dd52e8260e85",
+      "contract_version": "vision-run-v1",
+      "stage_id": "dissect.route_domain",
+      "capability": "domain-route",
+      "status": "succeeded",
+      "observed_at": {
+        "$date": "2026-07-22T04:31:36.285Z"
+      },
+      "started_at": null,
+      "completed_at": null,
+      "latency_ms": null,
+      "dependencies": [],
+      "adapter": null,
+      "provenance": null,
+      "fallbacks": [],
+      "input_refs": [],
+      "output_refs": [],
+      "error": null,
+      "detail": {
+        "is_fashion": false,
+        "chosen": [
+          "general"
+        ]
+      }
+    },
+    {
+      "event_id": "c5e197a41f8e49b8a532ec6c8074d357",
+      "run_id": "6a6047a67651dd52e8260e85",
+      "contract_version": "vision-run-v1",
+      "stage_id": "dissect.segment.general",
+      "capability": "segment",
+      "status": "succeeded",
+      "observed_at": {
+        "$date": "2026-07-22T04:31:40.894Z"
+      },
+      "started_at": null,
+      "completed_at": null,
+      "latency_ms": 4454.8,
+      "dependencies": [],
+      "adapter": "yolo11_seg",
+      "provenance": null,
+      "fallbacks": [],
+      "input_refs": [],
+      "output_refs": [],
+      "error": null,
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "event_id": "3fd62b736fae4e12b8a2f70c001189ca",
+      "run_id": "6a6047a67651dd52e8260e85",
+      "contract_version": "vision-run-v1",
+      "stage_id": "dissect.merge_anchors",
+      "capability": null,
+      "status": "succeeded",
+      "observed_at": {
+        "$date": "2026-07-22T04:31:41.010Z"
+      },
+      "started_at": null,
+      "completed_at": null,
+      "latency_ms": null,
+      "dependencies": [],
+      "adapter": null,
+      "provenance": null,
+      "fallbacks": [],
+      "input_refs": [],
+      "output_refs": [],
+      "error": null,
+      "detail": {
+        "anchor_count": 1,
+        "source": "yolo"
+      }
+    },
+    {
+      "event_id": "1561291d416d4a89b5be3aa127957fee",
+      "run_id": "6a6047a67651dd52e8260e85",
+      "contract_version": "vision-run-v1",
+      "stage_id": "dissect.decompose_fine",
+      "capability": "decompose",
+      "status": "succeeded",
+      "observed_at": {
+        "$date": "2026-07-22T04:31:45.318Z"
+      },
+      "started_at": null,
+      "completed_at": null,
+      "latency_ms": 4213.7,
+      "dependencies": [],
+      "adapter": "vision_service.decompose_regions",
+      "provenance": null,
+      "fallbacks": [],
+      "input_refs": [],
+      "output_refs": [],
+      "error": null,
+      "detail": {
+        "fine_count": 12
+      }
+    },
+    {
+      "event_id": "f88260a70e064f3a9d6a30b5b3849077",
+      "run_id": "6a6047a67651dd52e8260e85",
+      "contract_version": "vision-run-v1",
+      "stage_id": "dissect.merge_curator_state",
+      "capability": null,
+      "status": "succeeded",
+      "observed_at": {
+        "$date": "2026-07-22T04:31:45.365Z"
+      },
+      "started_at": null,
+      "completed_at": null,
+      "latency_ms": null,
+      "dependencies": [],
+      "adapter": null,
+      "provenance": null,
+      "fallbacks": [],
+      "input_refs": [],
+      "output_refs": [],
+      "error": null,
+      "detail": {
+        "creator_preserved": 1,
+        "kept_auto": 12,
+        "candidates": 13,
+        "suppressed_by_id": 1,
+        "suppressed_by_id_moved": 1,
+        "suppressed_by_geometry": 0,
+        "id_reused_auto": 0,
+        "id_reused_auto_moved": 0
+      }
+    },
+    {
+      "event_id": "26459307231943849da450b9b068b49b",
+      "run_id": "6a6047a67651dd52e8260e85",
+      "contract_version": "vision-run-v1",
+      "stage_id": "dissect.canonicalize_geometry",
+      "capability": null,
+      "status": "succeeded",
+      "observed_at": {
+        "$date": "2026-07-22T04:31:45.447Z"
+      },
+      "started_at": null,
+      "completed_at": null,
+      "latency_ms": null,
+      "dependencies": [],
+      "adapter": null,
+      "provenance": null,
+      "fallbacks": [],
+      "input_refs": [],
+      "output_refs": [],
+      "error": null,
+      "detail": {
+        "region_count": 13
+      }
+    },
+    {
+      "event_id": "19700646c4b6456faf723b19fea8b909",
+      "run_id": "6a6047a67651dd52e8260e85",
+      "contract_version": "vision-run-v1",
+      "stage_id": "dissect.persist_regions",
+      "capability": null,
+      "status": "succeeded",
+      "observed_at": {
+        "$date": "2026-07-22T04:31:45.620Z"
+      },
+      "started_at": null,
+      "completed_at": null,
+      "latency_ms": null,
+      "dependencies": [],
+      "adapter": null,
+      "provenance": null,
+      "fallbacks": [],
+      "input_refs": [],
+      "output_refs": [],
+      "error": null,
+      "detail": {
+        "region_count": 13,
+        "matched_count": 1
+      }
+    },
+    {
+      "event_id": "ae0d3115bde848f198a264ce6aeb84cc",
+      "run_id": "6a6047a67651dd52e8260e85",
+      "contract_version": "vision-run-v1",
+      "stage_id": "dissect.complete",
+      "capability": null,
+      "status": "succeeded",
+      "observed_at": {
+        "$date": "2026-07-22T04:31:45.731Z"
+      },
+      "started_at": null,
+      "completed_at": null,
+      "latency_ms": null,
+      "dependencies": [],
+      "adapter": null,
+      "provenance": null,
+      "fallbacks": [],
+      "input_refs": [],
+      "output_refs": [],
+      "error": null,
+      "detail": {
+        "anchor_count": 1,
+        "fine_count": 12
+      }
+    }
+  ],
+  "result_summary": {
+    "anchor_count": 1,
+    "fine_count": 12,
+    "creator_preserved": 1,
+    "region_count": 13
+  }
+}

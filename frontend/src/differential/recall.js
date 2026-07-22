@@ -39,20 +39,38 @@ export function buildRecallScript(percept, lookup, { isResolved } = {}) {
     // "A, then B, then unite" via the existing stagger machinery.
     const seen = new Set();
     const grounds = [];
-    const unresolved = [];
-    const take = (g) => {
-        if (isResolved && !isResolved(g)) { unresolved.push(g.id); return; }
-        grounds.push(g);
-    };
+    // Two ledgers, not one. `citedCount` is the count of ground_ids the Percept
+    // names, so anything counted against it must also be one of those ids —
+    // otherwise an expanded member could push the numerator past the
+    // denominator and the note would read "2 of 1 cited grounds no longer
+    // resolve". Members are still reported, separately, so nothing is hidden.
+    const unresolvedCited = [];
+    const unresolvedMembers = [];
+    const performs = (g) => !isResolved || isResolved(g);
+
     for (const id of percept?.ground_ids || []) {
         const g = lookup(id);
-        if (!g || seen.has(g.id)) continue;
+        // A cited Ground whose RECORD is gone (not merely whose region is) was
+        // previously skipped in silence: it counted as neither resolved nor
+        // unresolved, so a Percept citing only vanished records produced no note
+        // at all. A citation that names nothing is the loudest kind of loss.
+        if (!g) {
+            if (!seen.has(id)) { seen.add(id); unresolvedCited.push(id); }
+            continue;
+        }
+        if (seen.has(g.id)) continue;
         seen.add(g.id);
-        take(g);
+        if (!performs(g)) { unresolvedCited.push(g.id); continue; }
+        grounds.push(g);
+        // Only expand a composition that itself performs. An expanded member of
+        // a detached composition has nothing to join.
         if ((g.ground_type === 'constellation' || g.ground_type === 'relation') && g.member_ids) {
             for (const mid of g.member_ids) {
                 const m = lookup(mid);
-                if (m && !seen.has(m.id)) { seen.add(m.id); take(m); }
+                if (!m || seen.has(m.id)) continue;
+                seen.add(m.id);
+                if (!performs(m)) { unresolvedMembers.push(m.id); continue; }
+                grounds.push(m);
             }
         }
     }
@@ -81,7 +99,10 @@ export function buildRecallScript(percept, lookup, { isResolved } = {}) {
         total: expressionAt + RECALL_TIMING.expression,
         // Reported, never performed. `cited` is the denominator so a reader can
         // tell "1 of 3 gone" from "3 of 3 gone".
-        unresolvedGroundIds: unresolved,
+        unresolvedGroundIds: [...unresolvedCited, ...unresolvedMembers],
+        // The subset that can be spoken about against `citedCount`.
+        unresolvedCitedIds: unresolvedCited,
+        unresolvedMemberIds: unresolvedMembers,
         resolvedCount: grounds.length,
         citedCount: (percept?.ground_ids || []).length,
     };
@@ -148,6 +169,10 @@ export function useRecallPlayer(store) {
     const captionVisible = active && expressionStep && elapsed >= expressionStep.at;
 
     const unresolvedCount = script?.unresolvedGroundIds.length || 0;
+    // The note speaks about what the Percept CITES, so its numerator must come
+    // from the cited ledger. Members that could not perform are still counted in
+    // `unresolvedCount`; they just cannot be phrased against `citedCount`.
+    const unresolvedCitedCount = script?.unresolvedCitedIds?.length || 0;
 
     return {
         active,
@@ -155,16 +180,30 @@ export function useRecallPlayer(store) {
         receding: active,                 // the image stays receded until cleared
         caption: captionVisible ? (percept?.expression || '') : '',
         percept,
+        // CIRCUIT-001 P1C — recall was ASKED FOR and there is no percept to
+        // perform. Previously the chip lit itself (`store.recall.perceptId`
+        // matches, regardless of whether the percept exists) while nothing
+        // played: the prose asserted "I am being replayed right now" over a
+        // no-op. Reachable whenever a `pctx_` id in the writing is not in
+        // `post.percepts` — prose copied between posts, or a percepts PATCH that
+        // failed. States the absence; never a cause.
+        perceptMissing: !!recall && !percept,
         progressFor,
         // Honesty channel. A Percept can outlive the evidence it cites; when it
         // does, say so beside the caption rather than letting the caption stand
         // alone over an empty image. Appears with the caption, not before it.
         unresolvedCount,
+        unresolvedCitedCount,
         citedCount: script?.citedCount || 0,
         evidenceNote: captionVisible && unresolvedCount
             ? (script.resolvedCount === 0
                 ? `Detached evidence — none of the ${script.citedCount} cited ground${script.citedCount === 1 ? '' : 's'} still resolves.`
-                : `Detached evidence — ${unresolvedCount} of ${script.citedCount} cited grounds no longer resolve.`)
+                : unresolvedCitedCount
+                    ? `Detached evidence — ${unresolvedCitedCount} of ${script.citedCount} cited ground${script.citedCount === 1 ? '' : 's'} no longer resolve${unresolvedCitedCount === 1 ? 's' : ''}.`
+                    // Every cited Ground performs; what is missing sits inside a
+                    // composition. Say that, rather than borrowing the cited
+                    // denominator for a number that does not belong to it.
+                    : `Partial evidence — ${unresolvedCount} ground${unresolvedCount === 1 ? '' : 's'} inside this composition no longer resolve${unresolvedCount === 1 ? 's' : ''}.`)
             : '',
     };
 }

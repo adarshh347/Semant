@@ -163,6 +163,16 @@ export default function AletheiaHook({ postId }) {
                                     ? `${tapped.size} noted` : 'it tells your taste which part moved you'}.
                             </p>
                         )}
+                        {/* CIRCUIT-001 P1C — the lens cites parts that are no longer in the
+                            image. Previously this produced zero tappable shapes AND no hint,
+                            because the hint was guarded by `regions.length > 0`: the reading
+                            stood unchanged over an image it could no longer point at, and
+                            said nothing. States the absence, never a cause. */}
+                        {cited.size > 0 && regions.length === 0 && (
+                            <p className="hook-hint hook-hint--absent">
+                                The parts this reading points at are no longer in the image.
+                            </p>
+                        )}
                     </div>
                 )}
             </div>

@@ -13,9 +13,11 @@ import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
 import TagStrip from './TagStrip';
 import RefPicker from './RefPicker';
+import PassageInspector from '../manuscript/PassageInspector';
 import { API_URL } from '../config/api';
 import { epicService } from '../services/epicService';
 import { RegionStoreContext, useRegionState } from '../state/regionStore';
+import { emptyHandoff, requestHandoff, canFlush, completeHandoff, wasDelivered } from '../state/manuscriptHandoff';
 import './PostDetailPage.css';
 
 // Convert plain AI text (paragraphs split by blank lines) into simple HTML blocks.
@@ -474,6 +476,78 @@ function PostDetailPage() {
   // Enter edit mode with the current post's blocks/tags loaded in.
   // On an empty story, seed one focused empty paragraph so the caret is ready
   // to type (skip when `seed:false`, e.g. the draft-from-image path fills it).
+  // ── CIRCUIT-001 P1B — the Differential → Manuscript crossing ────────────────
+  // A REQUEST, not a call. See state/manuscriptHandoff.js for why the same-tick
+  // call in P1A could not work.
+  const [handoff, setHandoff] = useState(emptyHandoff);
+
+  const sendPerceptToManuscript = (percept) => {
+    if (!percept?.id) return;
+    // Leave Differential, make sure the writing surface will actually exist
+    // (<Manuscript> renders only while editing), and put the story tab in front.
+    setWorkspaceMode('chiasm');
+    setActiveRightTab('content');
+    // `seed: false` — on an empty story the percept's own chip is the first
+    // thing in the document; a seeded blank paragraph would sit above it.
+    if (!isEditing) startEditing({ seed: false });
+    setHandoff((h) => requestHandoff(h, percept));
+    // The crossing must be FELT. Play the percept on the image so its grounds
+    // light and its expression speaks while the chip lands in the writing —
+    // otherwise the surface simply navigates away and the noticing is lost from
+    // view at the exact moment it travels.
+    regionStore.playRecall(percept.id);
+  };
+
+  // Flush when — and only when — the editor is genuinely there. Runs on every
+  // render; `canFlush` is the whole guard, and `completeHandoff` makes delivery
+  // at-most-once so a remount cannot produce a second chip.
+  useEffect(() => {
+    const handle = manuscriptRef.current;
+    if (!canFlush(handoff, { isEditing, hasHandle: !!handle })) return;
+    const percept = handoff.percept;
+    if (wasDelivered(handoff, percept.id)) { setHandoff(completeHandoff); return; }
+    // Insert against the block the editor is actually on, not a stale ref.
+    insertRef(percept, 'percept', handle.currentBlockId?.() || null);
+    setHandoff(completeHandoff);
+    handle.focus?.();
+  });   // eslint-disable-line react-hooks/exhaustive-deps -- must re-check after every render until the editor mounts
+
+  // ── CIRCUIT-001 P2C-MS2 — Manuscript circulation actions ────────────────────
+  // The writing acting back on the image and on Differential. All are safe: none
+  // mutates the corpus, none dispatches a model, none autosaves. They are the
+  // return leg the P2C-MS report named as the smallest useful piece of the
+  // circuit's governing rule — nothing may leave the circuit without being able
+  // to return.
+  const recallFromManuscript = (perceptId) => {
+    if (perceptId) regionStore.playRecall(perceptId);
+  };
+
+  const reviseInDifferential = (perceptId) => {
+    if (!perceptId) return;
+    setWorkspaceMode('differential');
+    // Return to where the percept was formed: light its grounds and replay the
+    // noticing so the crossing is felt, not merely navigated. If the grounds no
+    // longer resolve, playRecall already refuses to point at nothing (P1B).
+    const percept = (regionStore.percepts || []).find((p) => p.id === perceptId);
+    const regionIds = (percept?.ground_ids || [])
+      .map((gid) => regionStore.groundById(gid)?.region_id)
+      .filter(Boolean);
+    if (regionIds.length) regionStore.focusRegions(regionIds);
+    regionStore.playRecall(perceptId);
+  };
+
+  const startPassageFromChip = (blockId) => {
+    // The inspector only mounts while editing, so the editor handle is present.
+    manuscriptRef.current?.startPassage?.({ blockId: blockId || null });
+  };
+
+  const sendSelectionToDifferential = () => {
+    // The reverse crossing for prose: return to the image side. Prefilling First
+    // Attention is Lane A's surface (P2D interface contract) and is not wired
+    // here — but the switch itself is a real, visible effect, never a no-op.
+    setWorkspaceMode('differential');
+  };
+
   const startEditing = ({ seed = true } = {}) => {
     setIsEditing(true);
     const existing = post.text_blocks || [];
@@ -647,9 +721,17 @@ function PostDetailPage() {
   const runRefSlashCommand = ({ key } = {}) => onRefTrigger(key || 'part');
 
   /** Drop the chip in Manuscript AND record the Mention (Region.block_id kept primary). */
-  const insertRef = (raw) => {
-    const { kind } = refPicker;
-    const blockId = refBlockIdRef.current;
+  // `kindOverride` lets a caller that did not come through the RefPicker say what
+  // it is inserting — the Differential artery (CIRCUIT-001 P1A Part A) inserts a
+  // percept without a slash command, and must reuse THIS path rather than build a
+  // second one, so the two can never drift.
+  //
+  // `blockIdOverride` matters for the queued handoff: `refBlockIdRef` is written
+  // by the slash-command flow only (onRefTrigger), so a crossing that never typed
+  // "/" would otherwise land against a stale block id from a previous insertion.
+  const insertRef = (raw, kindOverride = null, blockIdOverride = undefined) => {
+    const kind = kindOverride || refPicker.kind;
+    const blockId = blockIdOverride !== undefined ? blockIdOverride : refBlockIdRef.current;
     closeRefPicker();
     const handle = manuscriptRef.current;
     if (!handle) return;
@@ -891,6 +973,14 @@ function PostDetailPage() {
           post={post}
           store={regionStore}
           onExit={() => setWorkspaceMode('chiasm')}
+          /* The artery. A percept formed here could previously reach the writing
+             only if the curator left, remembered it existed, typed /percept and
+             found it again in a picker. Same insertion path as the slash command
+             — deliberately, so the chip is identical either way. The Chiasm shell
+             stays mounted while Differential is open, so the editor handle is
+             already live and no remount is involved. */
+          onSendToManuscript={sendPerceptToManuscript}
+          onPostChange={setPost}
         />
       )}
       {/* Underline Tooltip */}
@@ -1170,6 +1260,20 @@ function PostDetailPage() {
                           onChange={setEditedBlocks}
                           store={regionStore}
                           onRefTrigger={onRefTrigger}
+                        />
+                        {/* CIRCUIT-001 P2C-MS — the writing answering back. Read-only:
+                            it listens to the chip's existing `semant:region-focus`
+                            event and the live selection, and derives what the
+                            selection rests on. It persists nothing, calls no model,
+                            and creates no Mention. */}
+                        <PassageInspector
+                          store={regionStore}
+                          blocks={editedBlocks}
+                          postId={post?.id}
+                          onRecall={recallFromManuscript}
+                          onReviseInDifferential={reviseInDifferential}
+                          onStartPassage={startPassageFromChip}
+                          onSendToDifferential={sendSelectionToDifferential}
                         />
                         {aiError && <p className="composer-error">{aiError}</p>}
                       </div>

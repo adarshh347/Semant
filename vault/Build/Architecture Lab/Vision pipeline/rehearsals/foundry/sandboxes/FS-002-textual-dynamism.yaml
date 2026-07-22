@@ -1,0 +1,131 @@
+# Textual Dynamism Sandbox 001 — DESIGNED, NOT RUN.
+# RESEARCH-ONLY. Zero live model calls. Authorizes no production change.
+
+sandbox_id: FS-002-textual-dynamism
+axis: textual-dynamism
+research_question: >-
+  When a passage is revised, does the revision leave any trace of WHAT pressured it — and is the
+  program currently able to distinguish a text that moved from a text that was merely rewritten?
+
+mode: foundry
+research_only: true
+
+allowed_inputs:
+  - vault/Writing/
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/
+  - vault/Concepts/
+
+forbidden_actions:
+  - mutate_production_db
+  - create_backend_route
+  - create_mongo_collection
+  - create_product_entity
+  - create_frontend_surface
+  - modify_product_code
+  - edit_user_prose
+  - infer_authorial_intent_from_absence
+
+# Textual dynamism is studied on TEXT. No image seeds — including one "to be safe" would give the
+# run a second axis it cannot attribute.
+seed_images: []
+
+seed_text_slices:
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/CANDIDATE-REGISTER.md
+    role: revision-corpus
+    locator: "spark-08 and spark-09"
+    pressure: "two entries the program demonstrably REVISED — 08 weakened, 09 split in two"
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/HB-009-horizon-brief.md
+    role: before
+    locator: "whole"
+    pressure: "the state of belief before run 011"
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/HB-010-horizon-brief.md
+    role: after
+    locator: "§4"
+    pressure: "the disconfirmation that forced the revision"
+  - ref: vault/Writing/Stories and motives/plan.md
+    role: human-prose-control
+    locator: "whole"
+    pressure: "human writing that revised for reasons NOT supplied by a rehearsal"
+
+model_budget:
+  max_live_calls: 0
+  reserve_calls: 0
+  approved: false
+  throttle_s: null
+  notes: >-
+    Zero. The first bounded task is a diff study over text the repository already holds, including
+    its own git history. A live call would only add a paraphrase we would then have to trust.
+
+adapters:
+  - local_file_digest
+
+capture_policy:
+  requires_explicit_approval: true
+  freeze_observations: true
+  notes: "No capture expected in the first bounded task."
+
+replay_policy:
+  frozen_observations_only: true
+  adapter_calls_permitted: 0
+  notes: null
+
+scoring_rubric:
+  dimensions:
+    - name: pressure_traceability
+      asks: "Can the thing that forced the revision be identified from the artifacts alone?"
+      scale: "identified / inferable / untraceable"
+    - name: movement_vs_rewrite
+      asks: "Did the claim CHANGE, or did only the wording change?"
+      scale: "claim-moved / scope-narrowed / wording-only"
+    - name: retraction_honesty
+      asks: "When a claim weakened, does the text say so, or does it quietly read as if always so?"
+      scale: "states-retraction / hedges / silently-overwrites"
+    - name: discrimination
+      asks: "Does the measure separate revised-under-pressure from ordinary editing?"
+      scale: "separates / partially / names-everything"
+  recording_rule: >-
+    Score each revision pair independently, quoting both versions verbatim. Never paraphrase a text
+    you are measuring for wording change. Unscoreable pairs are recorded with the reason.
+  no_composite_score: true
+
+stop_condition:
+  bounded_by: "the revision pairs already present in the repository and its git history"
+  stop_when:
+    - "every identified revision pair has been scored or marked unscoreable"
+    - "a result would require editing the user's prose"
+    - "a result would require a live model call"
+    - "scoring would require guessing the author's intent"
+  pause_after_bounded_task: true
+
+graduation_rule:
+  emits: SPARK
+  may_not_create:
+    - production entity
+    - backend route
+    - mongo collection
+    - frontend surface
+    - schema change
+    - revision-history entity
+  promotion_requires:
+    - "a repeated pattern across >= 2 independent runs"
+    - "a candidate card with an enablement claim"
+    - "transfer, negative case, and sequence-inversion trials"
+    - "an explicit build gate decided by the orchestrator"
+
+product_implication_section:
+  required: true
+  must_mark_speculative: true
+  must_not_propose:
+    - new production entity
+    - new route
+    - new collection
+    - new UI surface
+    - revision-history entity
+
+notes: >-
+  The program has one documented case of a belief WEAKENING under evidence (spark-08, HB-010 §4).
+  That is the highest-value textual object it owns, and nothing currently studies how such a
+  movement is recorded. The human-prose control is deliberate: without it, every revision in the
+  corpus was caused by a rehearsal and the measure would separate nothing.
+related_sparks: [spark-08, spark-09]

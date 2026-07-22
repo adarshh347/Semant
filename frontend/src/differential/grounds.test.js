@@ -132,3 +132,58 @@ describe('groundBBox — normalized union of the evidence', () => {
     expect(groundCenter(groundFromRegion('gone'), { regions: [] })).toBeNull();
   });
 });
+
+// ── CIRCUIT-001 P1A: composite resolution must agree with the render ─────────
+// A composition keeps its member RECORDS after a re-dissect, so a presence-only
+// check called it attached while GroundLayers' compositionNodes dropped every
+// node and drew nothing. Resolution is recursive so the two agree.
+describe('composite detachment is recursive', () => {
+  const region = (id) => ({ id, box: { x: 0.2, y: 0.2, w: 0.3, h: 0.4 } });
+
+  it('is detached when every member is itself detached', () => {
+    const m1 = groundFromRegion('gone_1');
+    const m2 = groundFromRegion('gone_2');
+    const c = makeGround('constellation', { member_ids: [m1.id, m2.id] });
+    const res = resolveGround(c, { regions: [region('still_here')], grounds: [m1, m2] });
+    expect(res.members).toHaveLength(2);   // the records survive…
+    expect(res.detached).toBe(true);       // …but nothing can be drawn
+  });
+
+  it('is NOT detached while one member still resolves', () => {
+    const alive = groundFromRegion('reg_1');
+    const dead = groundFromRegion('gone');
+    const c = makeGround('relation', { member_ids: [alive.id, dead.id] });
+    const res = resolveGround(c, { regions: [region('reg_1')], grounds: [alive, dead] });
+    expect(res.detached).toBe(false);
+  });
+
+  it('survives on its own raw points even when every member is gone', () => {
+    const dead = groundFromRegion('gone');
+    const c = makeGround('constellation', {
+      member_ids: [dead.id], points: [{ x: 0.5, y: 0.5 }],
+    });
+    expect(resolveGround(c, { regions: [], grounds: [dead] }).detached).toBe(false);
+  });
+
+  it('a geometry-bearing member keeps the composition attached', () => {
+    const path = makeGround('path', { points: [[0.1, 0.1], [0.2, 0.2]] });
+    const dead = groundFromRegion('gone');
+    const c = makeGround('constellation', { member_ids: [path.id, dead.id] });
+    expect(resolveGround(c, { regions: [], grounds: [path, dead] }).detached).toBe(false);
+  });
+
+  it('terminates on a cycle instead of recursing forever', () => {
+    const a = makeGround('constellation', { member_ids: [] });
+    const b = makeGround('relation', { member_ids: [a.id] });
+    a.member_ids = [b.id];                 // a → b → a
+    const res = resolveGround(a, { regions: [], grounds: [a, b] });
+    expect(res.detached).toBe(true);       // neither can ground the other
+  });
+
+  it('nests: a composition of compositions is detached when the leaves are', () => {
+    const leaf = groundFromRegion('gone');
+    const inner = makeGround('constellation', { member_ids: [leaf.id] });
+    const outer = makeGround('relation', { member_ids: [inner.id] });
+    expect(resolveGround(outer, { regions: [], grounds: [leaf, inner, outer] }).detached).toBe(true);
+  });
+});

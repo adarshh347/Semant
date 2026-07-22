@@ -1,0 +1,24 @@
+{
+  "adapters": [
+    "local_file_digest"
+  ],
+  "axis": "communication-quality",
+  "created_at": null,
+  "created_at_null_reason": "deterministic runner records no wall-clock time",
+  "manifest_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/foundry/sandboxes/FS-004-communication-quality.yaml",
+  "manifest_sha256": "0ffae8b7fffdec11a1773033afc275513f69f1698f5e2406f72ff86fe355d5af",
+  "mode": "foundry",
+  "model_budget": {
+    "approved": false,
+    "max_live_calls": 0,
+    "notes": "Zero. The corpus of utterances is already written down. Generating new ones would produce prose to admire rather than evidence to score.",
+    "reserve_calls": 0,
+    "throttle_s": null
+  },
+  "research_only": true,
+  "run_id": "FS-004-communication-quality",
+  "sandbox_id": "FS-004-communication-quality",
+  "seeds_frozen": true,
+  "status": "initialised",
+  "summarized": true
+}

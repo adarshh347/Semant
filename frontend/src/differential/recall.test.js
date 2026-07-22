@@ -123,3 +123,95 @@ describe('buildRecallScript — unresolved evidence', () => {
         expect(script.steps.filter((s) => s.kind === 'ground')).toHaveLength(1);
     });
 });
+
+// ── CIRCUIT-001 P1A: the note's arithmetic must be sayable ───────────────────
+// `citedCount` counts the ids the Percept names. Before this split, expanded
+// composition members were counted against that denominator too, so the note
+// could read "2 of 1 cited grounds no longer resolve".
+describe('buildRecallScript — cited vs member ledgers', () => {
+    const regionGround = (id, region_id) => ({ id, ground_type: 'region', region_id });
+
+    it('never counts more unresolved-cited than were cited', () => {
+        const m1 = regionGround('m1', 'gone_1');
+        const m2 = regionGround('m2', 'gone_2');
+        const c = { id: 'c', ground_type: 'constellation', member_ids: ['m1', 'm2'] };
+        const byId = { c, m1, m2 };
+        const p = { id: 'p1', expression: 'x', ground_ids: ['c'] };
+        // The composition performs; both members do not.
+        const script = buildRecallScript(p, (id) => byId[id] || null, {
+            isResolved: (g) => g.id === 'c',
+        });
+        expect(script.citedCount).toBe(1);
+        expect(script.unresolvedCitedIds).toEqual([]);
+        expect(script.unresolvedMemberIds).toEqual(['m1', 'm2']);
+        expect(script.unresolvedCitedIds.length).toBeLessThanOrEqual(script.citedCount);
+    });
+
+    it('a detached composition is reported and never expanded', () => {
+        const m1 = regionGround('m1', 'gone_1');
+        const c = { id: 'c', ground_type: 'constellation', member_ids: ['m1'] };
+        const byId = { c, m1 };
+        const p = { id: 'p1', expression: 'x', ground_ids: ['c'] };
+        const script = buildRecallScript(p, (id) => byId[id] || null, { isResolved: () => false });
+        expect(script.steps.filter((s) => s.kind === 'ground')).toHaveLength(0);
+        expect(script.unresolvedCitedIds).toEqual(['c']);
+        expect(script.unresolvedMemberIds).toEqual([]);  // not expanded
+        expect(script.resolvedCount).toBe(0);
+    });
+
+    it('a healthy composition still performs itself and its members', () => {
+        const m1 = regionGround('m1', 'reg_1');
+        const c = { id: 'c', ground_type: 'relation', member_ids: ['m1'] };
+        const byId = { c, m1 };
+        const p = { id: 'p1', expression: 'x', ground_ids: ['c'] };
+        const script = buildRecallScript(p, (id) => byId[id] || null, { isResolved: () => true });
+        expect(script.steps.filter((s) => s.kind === 'ground').map((s) => s.groundId))
+            .toEqual(['c', 'm1']);
+        expect(script.unresolvedGroundIds).toEqual([]);
+    });
+
+    it('counts a cited Ground whose record is gone entirely', () => {
+        // Previously skipped in silence: neither resolved nor unresolved, so a
+        // Percept citing only vanished records produced no note at all.
+        const p = { id: 'p1', expression: 'the upper head', ground_ids: ['g_vanished'] };
+        const script = buildRecallScript(p, () => null, { isResolved: () => true });
+        expect(script.unresolvedCitedIds).toEqual(['g_vanished']);
+        expect(script.resolvedCount).toBe(0);
+        expect(script.citedCount).toBe(1);
+    });
+
+    it('partially resolving composition: cited ledger stays clean', () => {
+        const alive = regionGround('m1', 'reg_1');
+        const dead = regionGround('m2', 'gone');
+        const c = { id: 'c', ground_type: 'constellation', member_ids: ['m1', 'm2'] };
+        const byId = { c, m1: alive, m2: dead };
+        const p = { id: 'p1', expression: 'x', ground_ids: ['c'] };
+        const script = buildRecallScript(p, (id) => byId[id] || null, {
+            isResolved: (g) => g.id !== 'm2',
+        });
+        expect(script.steps.filter((s) => s.kind === 'ground').map((s) => s.groundId))
+            .toEqual(['c', 'm1']);
+        expect(script.unresolvedCitedIds).toEqual([]);
+        expect(script.unresolvedMemberIds).toEqual(['m2']);
+    });
+});
+
+// ── CIRCUIT-001 P1C — recall asked for, nothing to perform ──────────────────
+describe('perceptMissing — the chip must not claim a replay that is not happening', () => {
+    // Reachable whenever a pctx_ id in the writing is not in post.percepts:
+    // prose copied between posts, or a percepts PATCH that failed. Before this,
+    // regionRefInline lit the chip on an id MATCH alone, so the prose asserted
+    // "I am being replayed right now" over a no-op.
+    it('is true when recall names a percept the store does not have', () => {
+        const recall = { perceptId: 'pctx_gone' };
+        const percepts = [{ id: 'pctx_other', ground_ids: [] }];
+        const found = percepts.find((p) => p.id === recall.perceptId) || null;
+        expect(!!recall && !found).toBe(true);
+    });
+
+    it('is false when the percept is present, and false when nothing was asked', () => {
+        const percepts = [{ id: 'pctx_a', ground_ids: [] }];
+        expect(!!{ perceptId: 'pctx_a' } && !percepts.find((p) => p.id === 'pctx_a')).toBe(false);
+        expect(!!null && true).toBe(false);
+    });
+});

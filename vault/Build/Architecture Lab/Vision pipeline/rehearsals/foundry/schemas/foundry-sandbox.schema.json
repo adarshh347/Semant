@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:rehearsal/foundry-sandbox.schema.json",
+  "title": "Foundry Sandbox Manifest",
+  "description": "RESEARCH-ONLY declaration of a Foundry Sandbox. Implies NO production entity, route, Mongo collection, or UI surface. Lives only under vault/Build/Architecture Lab/Vision pipeline/rehearsals/foundry/. Schema-level checks are necessary but NOT sufficient: scripts/foundry_run.py applies additional semantic guards (baseline forbidden actions, adapter allowlist membership, production-path denial, approval-gating of live calls) that this subset schema cannot express.",
+  "type": "object",
+  "required": [
+    "sandbox_id",
+    "axis",
+    "research_question",
+    "mode",
+    "research_only",
+    "allowed_inputs",
+    "forbidden_actions",
+    "seed_images",
+    "seed_text_slices",
+    "model_budget",
+    "adapters",
+    "capture_policy",
+    "replay_policy",
+    "scoring_rubric",
+    "stop_condition",
+    "graduation_rule",
+    "product_implication_section"
+  ],
+  "properties": {
+    "sandbox_id": {
+      "type": "string",
+      "pattern": "^FS-[0-9]{3}-[a-z0-9-]+$",
+      "description": "FS-###-slug. Deliberately distinct from rehearsal run ids, HB-### briefs, HW-C# lanes and spark-##."
+    },
+    "axis": {
+      "type": "string",
+      "enum": [
+        "evidence-honesty",
+        "creative-circulation",
+        "textual-dynamism",
+        "model-orchestration",
+        "communication-quality",
+        "ui-emergence",
+        "seed-ecology",
+        "agent-skill-emergence"
+      ],
+      "description": "The sandbox family. One axis per sandbox — a sandbox that moves two axes cannot attribute its result."
+    },
+    "research_question": { "type": "string", "minLength": 20 },
+    "mode": { "const": "foundry" },
+    "research_only": { "const": true },
+
+    "allowed_inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Repo-relative paths or declared input kinds the sandbox may read. Read-only by construction."
+    },
+    "forbidden_actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Must be a superset of foundry_run.REQUIRED_FORBIDDEN. Enforced in code, not here."
+    },
+
+    "seed_images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "role"],
+        "properties": {
+          "ref": { "type": "string", "minLength": 1 },
+          "role": { "type": "string", "minLength": 1 },
+          "sha256": { "type": ["string", "null"] },
+          "provenance": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "seed_text_slices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "role"],
+        "properties": {
+          "ref": { "type": "string", "minLength": 1 },
+          "role": { "type": "string", "minLength": 1 },
+          "locator": { "type": ["string", "null"] },
+          "pressure": { "type": ["string", "null"] }
+        }
+      }
+    },
+
+    "model_budget": {
+      "type": "object",
+      "required": ["max_live_calls", "reserve_calls", "approved"],
+      "properties": {
+        "max_live_calls": { "type": "integer", "minimum": 0 },
+        "reserve_calls": { "type": "integer", "minimum": 0 },
+        "approved": {
+          "type": "boolean",
+          "description": "Human approval for live calls. max_live_calls > 0 with approved:false is rejected by the runner."
+        },
+        "throttle_s": { "type": ["number", "null"], "minimum": 0 },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "adapters": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Every entry must be a member of rehearsal_adapters.ALLOWLIST. Empty means a zero-call sandbox."
+    },
+
+    "capture_policy": {
+      "type": "object",
+      "required": ["requires_explicit_approval", "freeze_observations"],
+      "properties": {
+        "requires_explicit_approval": { "const": true },
+        "freeze_observations": { "const": true },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "replay_policy": {
+      "type": "object",
+      "required": ["frozen_observations_only", "adapter_calls_permitted"],
+      "properties": {
+        "frozen_observations_only": { "const": true },
+        "adapter_calls_permitted": { "const": 0 },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+
+    "scoring_rubric": {
+      "type": "object",
+      "required": ["dimensions", "recording_rule"],
+      "properties": {
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "asks", "scale"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "asks": { "type": "string", "minLength": 1 },
+              "scale": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "recording_rule": { "type": "string", "minLength": 1 },
+        "no_composite_score": {
+          "const": true,
+          "description": "No composite number may auto-graduate anything (Candidate Foundry rule)."
+        }
+      }
+    },
+
+    "stop_condition": {
+      "type": "object",
+      "required": ["bounded_by", "stop_when"],
+      "properties": {
+        "bounded_by": { "type": "string", "minLength": 1 },
+        "stop_when": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "pause_after_bounded_task": { "const": true }
+      }
+    },
+
+    "graduation_rule": {
+      "type": "object",
+      "required": ["emits", "may_not_create", "promotion_requires"],
+      "properties": {
+        "emits": {
+          "const": "SPARK",
+          "description": "A sandbox may emit only SPARKs. Nothing graduates in its originating run."
+        },
+        "may_not_create": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "promotion_requires": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+
+    "product_implication_section": {
+      "type": "object",
+      "required": ["required", "must_mark_speculative", "must_not_propose"],
+      "properties": {
+        "required": { "const": true },
+        "must_mark_speculative": { "const": true },
+        "must_not_propose": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+
+    "notes": { "type": ["string", "null"] },
+    "supersedes": { "type": ["string", "null"] },
+    "related_sparks": { "type": "array", "items": { "type": "string" } }
+  }
+}

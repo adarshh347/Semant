@@ -1,27 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Sparkles, Star, Scan, Plus, Eye, Check, MoreHorizontal, AlertCircle, Expand } from 'lucide-react';
+import { Sparkles, Star, Eye, Check, AlertCircle, Expand } from 'lucide-react';
 import { API_URL } from '../config/api';
 import RegionOverlay from './RegionOverlay';
 import RegionLightbox from './RegionLightbox';
-import ProfileControl from './ProfileControl';
+import SeeingConsole from '../differential/SeeingConsole';
+import { EMPTY_TITLE, EMPTY_BODY, LOOKING_CAPTION, FIND_PARTS_FAILED } from '../differential/seeingConsole';
 import GroundLayers from '../differential/GroundLayers';
 import { useRecallPlayer } from '../differential/recall';
 import useStageGeometry, { useNaturalSize, pointerToNormalized } from '../differential/useStageGeometry';
+import { blockIdsForPercept } from '../state/perceptMentions';
+import { handoffStatus } from '../state/manuscriptHandoff';
 import './RegionSurface.css';
 
 const BASE = `${API_URL}/api/v1/posts`;
 const AUTOSAVE_MS = 800;
 
-// Sūkṣma subdivision modes. Backend machinery — demoted into a quiet menu, because the
-// user feels the result, not the vocabulary the model was steered with.
-const MODES = [
-    { key: 'general', label: 'General' },
-    { key: 'garment', label: 'Garments' },
-    { key: 'body', label: 'Body' },
-    { key: 'texture', label: 'Textures' },
-    { key: 'material', label: 'Materials' },
-    { key: 'composition', label: 'Composition' },
-];
+// The subdivision vocabulary (`mode` on the wire) now lives in differential/seeingConsole
+// as GRAINS, beside the rest of the console's vocabulary. Keys are unchanged and frozen;
+// only the labels are curator-facing.
 
 // Above this many regions the surface opens in the quiet map: 40 hairline outlines read
 // as texture, 40 filled polygons read as noise.
@@ -71,7 +67,6 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
 
     const [mode, setMode] = useState('general');
     const [lens, setLens] = useState('');
-    const [overflowOpen, setOverflowOpen] = useState(false);
     const [drawing, setDrawing] = useState(false);
     const [draft, setDraft] = useState(null);
 
@@ -120,6 +115,20 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
     // recall-only mode, so evidence appears only while a Percept performs.
     const recallPlayer = useRecallPlayer(store);
 
+    // Where this percept has got to in the writing. Recomputed from the live
+    // mention set, so it appears the moment the chip lands and disappears if the
+    // chip is removed — the status tracks the circuit rather than remembering an
+    // event that may no longer be true.
+    const recallStatus = useMemo(() => {
+        const pid = store?.recall?.perceptId;
+        if (!pid || !recallPlayer.active) return '';
+        const ms = store.mentions || [];
+        return handoffStatus(
+            blockIdsForPercept(ms, pid).size,
+            ms.filter((m) => m.perceptId === pid).length,
+        );
+    }, [store?.recall?.perceptId, store?.mentions, recallPlayer.active]);
+
     // --- persistence: autosave on blur, debounced -----------------------------------
     const persistInt = useCallback(async (next) => {
         setSaveState('saving');
@@ -164,9 +173,11 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
         scheduleSave();   // one tap is the shallow rung — it must stick on its own
     };
 
-    // --- detection -------------------------------------------------------------------
+    // --- finding parts ---------------------------------------------------------------
+    // The operation id is `dissect` and stays `dissect`: same route, same payload keys,
+    // same telemetry. Only what the curator reads has changed (CIRCUIT-001 P2).
     const detect = useCallback(async (opts = {}) => {
-        setStatus('detecting'); setError(''); setOverflowOpen(false);
+        setStatus('detecting'); setError('');
         try {
             const res = await fetch(`${BASE}/${post.id}/detect-regions`, {
                 method: 'POST',
@@ -184,7 +195,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
             setViewMap(next.length > QUIET_THRESHOLD ? 'quiet' : 'outline');
             setStatus('idle');
         } catch {
-            setError('Dissection failed — is the backend running?');
+            setError(FIND_PARTS_FAILED);
             setStatus('error');
         }
     }, [post.id, mode, lens]);
@@ -327,8 +338,52 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
                                 recallOnly
                             />
                         )}
+                        {/* The Percept speaks, and — when its evidence has gone —
+                            says so in the same breath. `evidenceNote` is computed
+                            on this very code path by useRecallPlayer and was, until
+                            now, rendered only in Differential: recall in the writing
+                            surface asserted the Percept over an emptied image while
+                            the disclaimer sat unread in the player's return value.
+                            Degradation-only: a healthy recall shows the caption alone. */}
                         {recallPlayer.caption && (
-                            <p className="rs-recall-caption">{recallPlayer.caption}</p>
+                            <div className="rs-recall-say">
+                                <p className="rs-recall-caption">{recallPlayer.caption}</p>
+                                {recallPlayer.evidenceNote && (
+                                    <p className="rs-recall-detached">{recallPlayer.evidenceNote}</p>
+                                )}
+                                {/* CIRCUIT-001 P1B — the crossing, made visible. When a percept
+                                    has been carried into the writing it says so HERE, over the
+                                    image, so the curator sees the noticing arrive rather than
+                                    watching the surface navigate away from it.
+                                    Derived from the mentions, never from a "sent" flag: a flag
+                                    would keep claiming the crossing after the chip was deleted. */}
+                                {recallStatus && <p className="rs-recall-crossed">{recallStatus}</p>}
+                            </div>
+                        )}
+                        {/* CIRCUIT-001 P1B — a reference from the writing that resolves to
+                            nothing. Previously the surface ran its full "I am showing you
+                            this" choreography and then dimmed every region and lit none:
+                            confident, silent, and pointing at nothing. States the absence;
+                            never the cause, because focusRegions knows only that the id
+                            does not resolve. */}
+                        {store?.missingRef && !recallPlayer.caption && (
+                            <div className="rs-recall-say">
+                                <p className="rs-recall-detached">
+                                    {store.missingRef.ids.length > 1
+                                        ? (store.missingRef.someLive
+                                            ? 'Some of those parts are no longer in the image.'
+                                            : 'Those parts are no longer in the image.')
+                                        : 'That part is no longer in the image.'}
+                                </p>
+                            </div>
+                        )}
+                        {/* CIRCUIT-001 P1C — recall was asked for and the percept is not
+                            here. The chip no longer lights over this; say why nothing
+                            plays instead of leaving the image untouched in silence. */}
+                        {recallPlayer.perceptMissing && (
+                            <div className="rs-recall-say">
+                                <p className="rs-recall-detached">This noticing is no longer available.</p>
+                            </div>
                         )}
 
                         {!drawing && (
@@ -362,7 +417,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
 
                         {busy && (
                             <div className="rs-busy" role="status">
-                                <span className="rs-spin" /> Dissecting the image…
+                                <span className="rs-spin" /> {LOOKING_CAPTION}
                             </div>
                         )}
                         {drawing && <p className="rs-hint-float">Drag to mark a part detection missed</p>}
@@ -385,49 +440,29 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
 
                 {/* ── panel ─────────────────────────────────────────────────────────── */}
                 <aside className="rs-panel">
-                    {/* VISION-C · C5 — the domain-profile control drives which specialist
-                        passes the next Dissect schedules (selective scheduling). */}
-                    <ProfileControl postId={post.id} profile={post.domain_profile}
-                        onProfile={(p) => onPostChange?.({ ...post, domain_profile: p })} />
-                    {/* the taxonomy, demoted: a quiet menu, not a wall */}
-                    <div className="rs-verbs">
-                        <label className="rs-sr" htmlFor="rs-mode">Dissection vocabulary</label>
-                        <select id="rs-mode" className="rs-select" value={mode} disabled={busy}
-                            onChange={e => setMode(e.target.value)}>
-                            {MODES.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
-                        </select>
-                        <button className="rs-primary" onClick={() => detect()} disabled={busy}
-                            title="Dissect the image into its parts">
-                            {busy ? <span className="rs-spin" /> : <Sparkles size={14} />}
-                            {/* the label hides when the pane is cramped; the icon carries it */}
-                            <span className="rs-primary-label">Dissect</span>
-                        </button>
-                        <div className="rs-overflow-wrap">
-                            <button className="rs-icon" aria-label="More actions"
-                                aria-expanded={overflowOpen} disabled={busy}
-                                onClick={() => setOverflowOpen(o => !o)}>
-                                <MoreHorizontal size={15} />
-                            </button>
-                            {overflowOpen && (
-                                <div className="rs-overflow" role="menu">
-                                    <button role="menuitem" onClick={() => detect({ coarseOnly: true })}>
-                                        <Scan size={13} /> Coarse only
-                                    </button>
-                                    <button role="menuitem"
-                                        onClick={() => { setDrawing(true); setOverflowOpen(false); }}>
-                                        <Plus size={13} /> Mark a part
-                                    </button>
-                                    <input className="rs-lens" value={lens} placeholder="Intention (optional)…"
-                                        onChange={e => setLens(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && detect()} />
-                                </div>
-                            )}
-                        </div>
-                        <span className={`rs-save rs-save--${saveState}`}>
-                            {saveState === 'saving' && 'saving…'}
-                            {saveState === 'saved' && <><Check size={12} /> saved</>}
-                        </span>
-                    </div>
+                    {/* CIRCUIT-001 P2 — the Seeing Console. What was a profile block, a
+                        vocabulary select, a primary button and an overflow menu scattered
+                        across two rows is now one instrument: the operation, how to attend
+                        to the image, what sources that schedules, and what the asking
+                        actually did. The controls did not change — their arrangement and
+                        their names did. */}
+                    <SeeingConsole
+                        postId={post.id}
+                        profile={post.domain_profile}
+                        onProfile={(p) => onPostChange?.({ ...post, domain_profile: p })}
+                        regions={regions}
+                        onFindParts={(opts) => detect(opts || {})}
+                        busy={busy}
+                        grain={mode}
+                        onGrain={setMode}
+                        intention={lens}
+                        onIntention={setLens}
+                        onMarkPart={() => setDrawing(true)}
+                    />
+                    <span className={`rs-save rs-save--${saveState}`}>
+                        {saveState === 'saving' && 'saving…'}
+                        {saveState === 'saved' && <><Check size={12} /> saved</>}
+                    </span>
 
                     {/* categories: not decoration — the filter that splits numerosity */}
                     {categories.length > 1 && (
@@ -459,8 +494,8 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
                         </div>
                     ) : !regions.length ? (
                         <div className="rs-empty">
-                            <p className="rs-muted">No parts yet.</p>
-                            <p className="rs-muted rs-dim">Dissect the image to see its anatomy, then say what each part does to you.</p>
+                            <p className="rs-muted">{EMPTY_TITLE}</p>
+                            <p className="rs-muted rs-dim">{EMPTY_BODY}</p>
                         </div>
                     ) : (
                         <div className="rs-list" role="listbox" tabIndex={0} ref={listRef}

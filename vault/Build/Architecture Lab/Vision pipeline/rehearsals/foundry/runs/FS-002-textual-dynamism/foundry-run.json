@@ -1,0 +1,24 @@
+{
+  "adapters": [
+    "local_file_digest"
+  ],
+  "axis": "textual-dynamism",
+  "created_at": null,
+  "created_at_null_reason": "deterministic runner records no wall-clock time",
+  "manifest_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/foundry/sandboxes/FS-002-textual-dynamism.yaml",
+  "manifest_sha256": "0edf58b9f75bf634d4b64916428af0bd9798f6c0293fe3b36679d2174ff783a0",
+  "mode": "foundry",
+  "model_budget": {
+    "approved": false,
+    "max_live_calls": 0,
+    "notes": "Zero. The first bounded task is a diff study over text the repository already holds, including its own git history. A live call would only add a paraphrase we would then have to trust.",
+    "reserve_calls": 0,
+    "throttle_s": null
+  },
+  "research_only": true,
+  "run_id": "FS-002-textual-dynamism",
+  "sandbox_id": "FS-002-textual-dynamism",
+  "seeds_frozen": true,
+  "status": "initialised",
+  "summarized": true
+}

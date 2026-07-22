@@ -63,9 +63,21 @@ export const isCompositeGround = (g) => !!g && COMPOSITE_TYPES.has(g.ground_type
  * Returns { ground, region|null, members: Ground[], detached: boolean }.
  * - region adapter: detached when its region_id no longer resolves (re-dissect).
  * - compositions: members resolve by id; missing members are simply absent, and
- *   the composition is detached only when NO member survives.
+ *   the composition is detached when NO member still has anything to draw.
+ *
+ * "Still has anything to draw" is RECURSIVE, and that is load-bearing. A member
+ * record surviving in `grounds` is not the same as that member resolving: a
+ * constellation of three region-adapters whose Regions were all replaced keeps
+ * three member RECORDS, so a presence-only check called it attached — while
+ * `compositionNodes` (GroundLayers) dropped every node and rendered nothing.
+ * Recall then spent a full timed highlight step on empty air, which is exactly
+ * the A2R failure one ground type deeper. Resolution must agree with the render.
+ *
+ * `seen` guards the cycle a malformed archive can contain (a composition citing
+ * itself, or two citing each other); a ground already being resolved cannot
+ * count as evidence for itself.
  */
-export function resolveGround(ground, { regions = [], grounds = [] } = {}) {
+export function resolveGround(ground, { regions = [], grounds = [] } = {}, seen = null) {
   if (!ground) return null;
   if (ground.ground_type === 'region') {
     const region = regions.find((r) => r.id === ground.region_id) || null;
@@ -76,9 +88,17 @@ export function resolveGround(ground, { regions = [], grounds = [] } = {}) {
       .map((id) => grounds.find((g) => g.id === id))
       .filter(Boolean);
     const hasRawPoints = (ground.points || []).length > 0;
+    const guard = seen || new Set();
+    guard.add(ground.id);
+    const performing = members.filter((m) => {
+      if (guard.has(m.id)) return false;
+      return !resolveGround(m, { regions, grounds }, guard)?.detached;
+    });
     return {
       ground, region: null, members,
-      detached: (ground.member_ids || []).length > 0 && members.length === 0 && !hasRawPoints,
+      detached: (ground.member_ids || []).length > 0
+        && performing.length === 0
+        && !hasRawPoints,
     };
   }
   return { ground, region: null, members: [], detached: false };

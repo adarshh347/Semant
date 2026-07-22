@@ -1,0 +1,115 @@
+# Foundry Sandbox manifest — TEMPLATE
+#
+# Copy into ../sandboxes/FS-NNN-your-slug.yaml and edit. Validate before use:
+#     ./venv/bin/python scripts/foundry_run.py validate \
+#       "vault/Build/Architecture Lab/Vision pipeline/rehearsals/foundry/sandboxes/FS-NNN-your-slug.yaml"
+#
+# RESEARCH-ONLY. This file authorizes no production change of any kind.
+
+sandbox_id: FS-000-template            # ^FS-[0-9]{3}-[a-z0-9-]+$
+axis: evidence-honesty                 # exactly ONE of the eight families
+research_question: >-
+  A single question, at least 20 characters, that this sandbox can actually answer or fail to
+  answer. If it needs two sentences it is probably two sandboxes.
+
+mode: foundry
+research_only: true
+
+# Repo-relative paths or input kinds this sandbox may READ. Read-only by construction.
+# Anything reaching into production (mongodb://, backend/routers, frontend/src, .env, …) is
+# rejected by the runner, not merely discouraged.
+allowed_inputs:
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/
+
+# Must be a SUPERSET of foundry_run.REQUIRED_FORBIDDEN. Add sandbox-specific bans below the six.
+forbidden_actions:
+  - mutate_production_db
+  - create_backend_route
+  - create_mongo_collection
+  - create_product_entity
+  - create_frontend_surface
+  - modify_product_code
+
+seed_images: []
+#  - ref: vault/…/fixtures/011-strained-premise-probe/img1-nataraja-shadow.jpg
+#    role: subject
+#    sha256: null            # filled by `foundry_run.py freeze`
+#    provenance: null
+
+seed_text_slices: []
+#  - ref: vault/…/runs/010-sameness-assertion-arm-e/score.md
+#    role: pressure
+#    locator: "§1"
+#    pressure: "what the model claimed about sameness"
+
+# Live MODEL calls only. Pure local adapters (local_file_digest) are not live calls.
+# max_live_calls > 0 REQUIRES approved: true — flipping that is a visible, reviewable diff.
+model_budget:
+  max_live_calls: 0
+  reserve_calls: 0
+  approved: false
+  throttle_s: 90
+  notes: "Zero-call by default. Raising this needs explicit human approval in the manifest diff."
+
+# Every entry must already be in rehearsal_adapters.ALLOWLIST.
+adapters:
+  - local_file_digest
+
+capture_policy:
+  requires_explicit_approval: true
+  freeze_observations: true
+  notes: null
+
+replay_policy:
+  frozen_observations_only: true
+  adapter_calls_permitted: 0
+  notes: null
+
+scoring_rubric:
+  dimensions:
+    - name: discrimination
+      asks: "Does it separate cases, or does it name everything?"
+      scale: "separates / partially / names-everything"
+    - name: grounding
+      asks: "Can the evidence be shown, not just asserted?"
+      scale: "shown / partial / asserted"
+  recording_rule: >-
+    Record each dimension independently with its evidence pointer. Never combine into one number.
+  no_composite_score: true
+
+stop_condition:
+  bounded_by: "one bounded task, then pause"
+  stop_when:
+    - "the declared bounded task is complete"
+    - "the budget is exhausted"
+    - "a result would require an un-approved live call"
+    - "the finding would require creating a production entity to express"
+  pause_after_bounded_task: true
+
+graduation_rule:
+  emits: SPARK
+  may_not_create:
+    - production entity
+    - backend route
+    - mongo collection
+    - frontend surface
+    - schema change
+  promotion_requires:
+    - "a repeated pattern across >= 2 independent runs"
+    - "a candidate card with an enablement claim"
+    - "transfer, negative case, and sequence-inversion trials"
+    - "an explicit build gate decided by the orchestrator"
+
+product_implication_section:
+  required: true
+  must_mark_speculative: true
+  must_not_propose:
+    - new production entity
+    - new route
+    - new collection
+    - new UI surface
+
+notes: null
+supersedes: null
+related_sparks: []

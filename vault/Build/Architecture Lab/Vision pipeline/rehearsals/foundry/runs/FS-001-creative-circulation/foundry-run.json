@@ -1,0 +1,24 @@
+{
+  "adapters": [
+    "local_file_digest"
+  ],
+  "axis": "creative-circulation",
+  "created_at": null,
+  "created_at_null_reason": "deterministic runner records no wall-clock time",
+  "manifest_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/foundry/sandboxes/FS-001-creative-circulation.yaml",
+  "manifest_sha256": "e1daee84fa835c6d34149c5be6b74956a54af300943929120080bfdd94ef00cd",
+  "mode": "foundry",
+  "model_budget": {
+    "approved": false,
+    "max_live_calls": 0,
+    "notes": "Deliberately zero. This sandbox's whole claim is that circulation yield can be measured from artifacts the program ALREADY holds. If it needs a live call, the design is wrong.",
+    "reserve_calls": 0,
+    "throttle_s": null
+  },
+  "research_only": true,
+  "run_id": "FS-001-creative-circulation",
+  "sandbox_id": "FS-001-creative-circulation",
+  "seeds_frozen": true,
+  "status": "initialised",
+  "summarized": true
+}

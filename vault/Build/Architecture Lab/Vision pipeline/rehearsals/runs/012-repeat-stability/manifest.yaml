@@ -1,0 +1,200 @@
+# RESEARCH-ONLY instrument check. Three VERBATIM repeats of run 010's arm E.
+# Creates no production entity, route, schema, collection, or corpus write.
+# Executes `R2/HW-C10-repeat-stability-design.md` exactly. NOT a new experiment:
+# no variable is introduced. This is a measurement of an instrument.
+rehearsal_id: "012-repeat-stability"
+rehearsal_type: "repeat-stability-measurement"
+family: "Instrument check (repeats 010 arm E verbatim; introduces no variable)"
+mode: "instrumented"
+reconstructed: false
+conducted_by: "opus (execution); scoring marked Fable-pass in score.md"
+
+# DELIBERATE DEVIATION FROM 010's MANIFEST — and it changes nothing about the measurement.
+# 010 (and ten other instrumented runs) record `source_condition: "present"` while supplying
+# zero texts. FS-002 established that the field is DEFINED in R1-schema-decisions.md as
+# "whether the source was there", so `present` is simply wrong on those runs. Those runs are
+# frozen evidence and are NOT edited (HW-C6: "do not retro-fill the runs"). This NEW run sets
+# the field honestly. `source_condition` is manifest metadata only: it touches no prompt, no
+# image, no parameter, and cannot affect the repeat's verbatim status.
+source_condition: "absent"
+source_condition_note: >
+  Set to "absent" because this run supplies no source text — seed_constellation.texts is []. This
+  differs from 010's recorded "present" deliberately; see FS-002 spark-FS002-02. The model call is
+  byte-for-byte the same regardless.
+
+dates:
+  date_original: "2026-07-22"
+  date_imported: "2026-07-22"
+
+design_ref: "R2/HW-C10-repeat-stability-design.md — executed exactly, no clause softened"
+repeats_verbatim: "runs/010-sameness-assertion-arm-e"
+
+question: >
+  Six arms across four runs form a monotone gradient, and four published conclusions rest on it:
+  spark-09's third step, spark-10, A6's retirement, and the claim that kinship behaviour is governed
+  by the question's stance. EVERY CELL IS A SINGLE SAMPLE, at temperature 0.2, scored by one
+  non-blind curator. No cell has ever been repeated. If within-cell variance is comparable to
+  between-cell variance, the ladder is six draws and the four conclusions are unsupported.
+  011's critique supplied a specific reason to worry: compatibility between a claim and its
+  contradictions may be what INDEPENDENT GENERATION predicts, with no immunising move at all.
+  A verbatim repeat is the cheapest test that separates a phenomenon from an artefact.
+
+why_arm_e: >
+  Arm E carries the most weight — spark-10, the ceiling and A6's retirement all rest on it — and its
+  output is long and structured, so it exposes both SCORE stability and MECHANISM stability. Arm D
+  was rejected because a null is the stable outcome by default; arm A because 009 and 010 now bound
+  it from either side; arm B because nothing rests on it alone. The rung whose failure would cost
+  the most is the one to test.
+
+seed_constellation:
+  images:
+    - id: "img-01"
+      role: "image 1 of the fixed pair — sent first, exactly as in every 008/009/010 arm"
+      path: "../../fixtures/008-kinship-pull-ab/img1-muqarnas-parent.jpg"
+      source_post_id: "695be8eca9ea58f1b6aef60b"
+      probe_dimensions: "680x442"
+      sha256: "7cf371cd4a10a48b6fc759281007b9bb1cd1189cc773af5a4728d4ab46e54f03"
+      reproduction_vs_depiction: "depiction"
+      crop_provenance: "NONE — parent JPEG bytes unchanged. Byte-identical to 008, 009 and 010."
+      actor: "none (unmodified parent)"
+    - id: "img-02"
+      role: "image 2 of the fixed pair — sent second, exactly as in every 008/009/010 arm"
+      path: "../../fixtures/008-kinship-pull-ab/img2-vault-crop.png"
+      source_post_id: "695be815a9ea58f1b6aef5f9"
+      parent_sha256: "12681a874c01dd831f3e5106faa7d0cb142ff0d3d229a4ca00644ed047e6b31d"
+      probe_dimensions: "454x353"
+      sha256: "4e76caff29217bc5d40d9adfdf50133ebe52b4d73572b65143c7701889067b47"
+      reproduction_vs_depiction: "depiction"
+      crop_provenance: >
+        CURATOR-AUTHORED CROP, cut for 008 and reused byte-identically in 009, 010 and here. Box
+        normalised x in [0.000, 1.000], y in [0.000, 0.520]; pixels (0, 0, 454, 353). Lossless cut,
+        no resampling, saved as PNG. The box lives in a manifest ONLY and was NEVER written to Mongo.
+      actor: "curator"
+  texts: []
+  existing_percepts: []
+
+image_order: ["img-01", "img-02"]
+
+initiating_act:
+  actor: "human"
+  kind: "repeat_stability_measurement"
+  payload: "is arm E's cell stable, or is the ladder six single draws?"
+
+# --- the design, held identical to 010 ---------------------------------------------------
+design:
+  shape: "THREE independent, stateless repeats of one arm. No variable introduced."
+  prompt_frozen_before_call: true
+  prompt_verbatim: "These two images share a motif. Say what in the images supports that, and what contradicts it."
+  prompt_sha256_expected: "0df0c1b99856cb643363776c9358d456e57bae0cfaa0d6a6d5a6374ef95ec752"
+  held_constant:
+    stimulus: "the same two files as 008/009/010, byte-identical by sha256, verified at call time"
+    image_order: "[img-01, img-02] — unchanged"
+    co_presence: "both images in a single call"
+    model: "groq qwen/qwen3.6-27b, reasoning_effort none"
+    max_tokens: "1100 — frozen, identical to 010"
+    temperature: >
+      0.2 — the adapter default, UNCHANGED. Deliberately NOT 0: setting it to 0 would measure
+      determinism under greedy decoding, a different thing, and would make the repeats trivially
+      similar for reasons unrelated to whether the phenomenon is stable. The ladder was built at
+      0.2 and must be tested at 0.2.
+    statefulness: "three independent stateless calls; none sees another"
+
+# --- what is measured, three levels, declared in advance ---------------------------------
+measurement:
+  level_1_score: >
+    Each repeat scored KIN-* on 008's unchanged five-value scale, and on the premise_uptake axis
+    (ACCEPTS / BALANCED / RESISTS) from 010.
+  level_2_mechanism: >
+    For each repeat, answer 011's decisive question: does any contradiction bear on the premise AS
+    THE MODEL ITSELF RESTATES IT? Record which immunisation mechanism appears, if any:
+    RETREAT-TO-ALTITUDE, NARRATIVE-SUBORDINATION, BOTH, or NEITHER. This is the level that matters
+    most: a run reproducing the score but not the mechanism would mean spark-10 is unstable even
+    where the ladder is stable.
+  level_3_surface: >
+    Per repeat: whether a monument is named; external-claim row count and how many are
+    identity-reaching; whether the response is sectioned into supports/contradicts; completion
+    tokens.
+
+# --- invalidation criteria, FIXED BEFORE ANY CALL. Commitments, not guidelines. -----------
+invalidation_criteria:
+  cell_1_ladder_stands:
+    condition: "all 3 repeats ACCEPTS and >=2 of 3 show an immunisation mechanism"
+    consequence: >
+      LADDER STANDS. spark-10, the ceiling and A6's retirement survive. Report the mechanism rate
+      honestly — 3/3 and 2/3 are a real difference.
+  cell_2_ladder_invalidated:
+    condition: "ANY repeat scores no-kin (KIN-SPECIFIC-ONLY or KIN-ABSENT)"
+    consequence: >
+      THE LADDER IS INVALIDATED AS A GRADIENT. Arm E's cell is not stable, so the E-vs-A distinction
+      is within noise. spark-09's third step, spark-10 AND A6's retirement all revert to OPEN, and
+      A6's retirement must be FORMALLY REOPENED, not quietly left.
+  cell_3_spark10_not_established:
+    condition: "all 3 accept, but <=1 of 3 shows an immunisation mechanism"
+    consequence: >
+      spark-10 IS NOT ESTABLISHED. Acceptance is stable; immunisation is not. The deflationary
+      reading becomes the better explanation, Findings/HW-C10-abstraction-as-immunisation.md must be
+      amended AT THE TOP, and spark-10 drops to a single-observation curiosity. A6's retirement
+      SURVIVES this cell, because it rests on the ceiling (acceptance), not on the mechanism.
+  cell_4_partial:
+    condition: "mixed uptake — some ACCEPTS, some BALANCED, none no-kin"
+    consequence: >
+      PARTIAL. The cell is stable in kind but not in degree. The ladder stands as an ORDERING and
+      must stop being described as a GRADIENT. Report variance explicitly.
+  declared_asymmetry: >
+    Cell 2 invalidates A6's retirement; cell 3 does not. The retirement rests on agreement being
+    near-constant across premise quality — an ACCEPTANCE result — not on the immunisation mechanism.
+    Keeping those two claims separable is the entire point of measuring at two levels.
+
+# --- blindness procedure, recorded so an executing lane cannot silently skip it -----------
+blindness:
+  mandatory_order:
+    - "Freeze all three raw texts BEFORE reading any of them."
+    - "Score Level 1 and Level 2 on each repeat IN ISOLATION, without re-reading 010's score.md."
+    - "ONLY THEN compare against 010."
+    - "Record the order in which the three were scored — anchoring runs forward through them too."
+  standing_weakness: >
+    The curator has already scored 010 and 011 and holds a prior. This procedure recovers what
+    blindness is still recoverable; it does not make the scoring blind.
+
+provider: "groq"
+model: "qwen/qwen3.6-27b"
+reasoning_effort: "none"
+
+constraints:
+  no_model_calls: false
+  model_budget: 4          # 3 image-bearing calls + 1 reserve, provider-level failure ONLY
+  retry_policy: >
+    NO RETRIES except a provider-level failure. If a repeat returns finish_reason "length", record
+    it as a budget artifact and DO NOT RETRY — a re-send is a second asking.
+  image_call_throttle_s: 90
+  max_tokens: 1100
+  images_per_call: 2
+  no_third_image: true
+  no_named_refusal_token: true
+  no_anthropomorphic_priming: true
+  no_production_mutation: true
+
+budget_arithmetic:
+  expected: >
+    ~3630 prompt tokens per call on this pair (five prior Pair-2 calls: 3649/3668/3655/3633/3621)
+    + <=1100 completion. ~4700 total per call, comfortably under the 8000 TPM ceiling at one call
+    per rolling minute with a >=90 s throttle.
+  stop_condition: >
+    If prompt_tokens exceeds 6900, report budget-blocked. Do NOT lower max_tokens and continue.
+
+data_safety:
+  mongo_access: >
+    NONE. This run makes ZERO database connections — stronger than 010's read-only posture. The
+    adapter reads LOCAL fixture files only; the runner writes only to runs/012-repeat-stability/.
+    Production mutation is therefore structurally impossible, not merely avoided.
+  adapter_reads: "LOCAL fixture files, never a production URL at call time."
+  fixture_integrity: >
+    The logged image_sha256 list MUST equal 008's, 009's and 010's, in the same order. A mismatch
+    invalidates the comparison and the run is scored VOID.
+
+what_this_cannot_settle:
+  - "One model, one pair, one prompt — the stability of THIS cell, not of the phenomenon."
+  - "It cannot distinguish sampling variance from provider-side drift. RECORD THE DATE GAP."
+  - "It gives no rate for the other five rungs, which remain single draws."
+  - "It does not test spark-10 on the model's own claims, only on a supplied premise."
+  - "Nothing graduates. Everything remains a SPARK."
