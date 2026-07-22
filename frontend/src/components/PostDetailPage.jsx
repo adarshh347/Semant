@@ -943,6 +943,7 @@ function PostDetailPage() {
              stays mounted while Differential is open, so the editor handle is
              already live and no remount is involved. */
           onSendToManuscript={sendPerceptToManuscript}
+          onPostChange={setPost}
         />
       )}
       {/* Underline Tooltip */}

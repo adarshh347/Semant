@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ArrowLeft, MousePointer2, Brush, PenTool, Group, Waypoints, Frame, Eye, Check,
-    Play, Undo2, X, Plus, Scan, Sparkles, Search,
+    Undo2, X, Plus, Scan, Sparkles, Search,
 } from 'lucide-react';
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
@@ -11,11 +11,12 @@ import useSemanticRead from './useSemanticRead';
 import SemanticReading from './SemanticReading';
 import useFindSimilar from './useFindSimilar';
 import FindSimilar from './FindSimilar';
-import VisionActivityRail from './VisionActivityRail';
+import SeeingConsole from './SeeingConsole';
+import PerceptWorkshop from './PerceptWorkshop';
+import useFindParts from './useFindParts';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
-import PerceptThread from './PerceptThread';
-import { CORE_ROLES, rolesSummary } from './groundRoles';
+import { CORE_ROLES } from './groundRoles';
 import './DifferentialWorkspace.css';
 
 /**
@@ -70,7 +71,7 @@ const groundTitle = (g, regions = []) => {
 
 const MIN_SAMPLE_DIST = 0.004;
 
-export default function DifferentialWorkspace({ post, store, onExit, onSendToManuscript = null }) {
+export default function DifferentialWorkspace({ post, store, onExit, onSendToManuscript = null, onPostChange = null }) {
     const [tool, setTool] = useState('select');
     const [traceSub, setTraceSub] = useState('path');
     const [untouched, setUntouched] = useState(false);
@@ -108,6 +109,10 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
 
     // ── Similar (VISION-E · E5) — a selected part's visual neighbours (research, not fact) ──
     const similar = useFindSimilar(postId, tool === 'similar' ? selectedId : null);
+
+    // ── Find parts (CIRCUIT-001 P2) — the operation, available where composing happens ──
+    const findParts = useFindParts(postId, store);
+    const [grain, setGrain] = useState('general');
 
     // ── Read (VISION-D · D4) — the VLM interprets the candidate masks (never geometry) ──
     const reading = useSemanticRead(postId, post?.semantics || null);
@@ -829,44 +834,17 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         </div>
                     )}
 
-                    {/* the percepts so far — each replays on demand */}
-                    {expressionPercepts.length > 0 && (
-                        <div className="diff-insp-percepts">
-                            <span className="diff-eyebrow">Percepts</span>
-                            {expressionPercepts.map((p) => (
-                                <div key={p.id} className="diff-percept-row">
-                                    <button type="button" className="diff-icon-btn diff-percept-play"
-                                        title="Replay this noticing on the image" onClick={() => playRecall(p.id)}>
-                                        <Play size={12} />
-                                    </button>
-                                    <span className="diff-percept-text">{p.expression}</span>
-                                    {/* CIRCUIT-001 P1A Part A — the artery. Quiet on purpose: a
-                                        second verb beside the percept, not a panel. The noticing is
-                                        not consumed by writing from it; it can be carried many times. */}
-                                    {onSendToManuscript && (
-                                        <button type="button" className="diff-percept-send"
-                                            title="Carry this noticing into the writing"
-                                            onClick={() => onSendToManuscript(p)}>
-                                            Write from this
-                                        </button>
-                                    )}
-                                    {/* Seed Circulation Thread — one line, degradation-first. */}
-                                    {rolesSummary(p) && (
-                                        <span className="diff-percept-roles" title="what each ground does for this noticing">
-                                            {rolesSummary(p)}
-                                        </span>
-                                    )}
-                                    {/* CIRCUIT-001 P1D — the Circulation Thread. Resting: one
-                                        quiet line. Expanded: the relation chain in two voices,
-                                        records above judgements. Not a timeline, and no row
-                                        asserts that one thing produced another. */}
-                                    <PerceptThread
-                                        percept={p} grounds={grounds} regions={regions}
-                                        mentions={store?.mentions || []} postId={postId} />
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    {/* CIRCUIT-001 P2 — the percept workshop. Same percepts, same actions,
+                        same P1D thread and P1C roles; what changed is that a percept now
+                        reads as a unit of attention — the noticing, what it rests on, where
+                        it has got to in the writing — rather than a row with verbs after it. */}
+                    <PerceptWorkshop
+                        percepts={expressionPercepts}
+                        grounds={grounds} regions={regions}
+                        mentions={store?.mentions || []} postId={postId}
+                        onPlay={playRecall}
+                        onSendToManuscript={onSendToManuscript}
+                    />
 
                     {detachedGrounds.length > 0 && (
                         <div className="diff-insp-detached">
@@ -890,16 +868,30 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         {expressionPercepts.length} percept{expressionPercepts.length !== 1 ? 's' : ''}
                     </footer>
 
-                    {/* CIRCULATION-SPINE-001 · P2.2 — read-only observation of recorded vision runs */}
-                    <VisionActivityRail
+                    {/* CIRCUIT-001 P2 — the Seeing Console. The operation memory it carries
+                        is the same read-only projection the Vision Activity Rail was
+                        (CIRCULATION-SPINE-001 · P2.2), now inside the console rather than
+                        bolted beneath the inspector — and with the operation itself, which
+                        Differential previously had no way to invoke at all. */}
+                    <SeeingConsole
                         postId={postId}
+                        profile={post?.domain_profile}
+                        onProfile={(p) => onPostChange?.({ ...post, domain_profile: p })}
                         regions={regions}
+                        onFindParts={(opts) => findParts.find({ ...(opts || {}), mode: grain })}
+                        busy={findParts.busy}
+                        grain={grain}
+                        onGrain={setGrain}
                         actionStatus={{
                             refine: refine.status,
                             semantic_read: reading.status,
                             find_similar: similar.status,
                         }}
+                        compact
                     />
+                    {findParts.error && (
+                        <p className="diff-insp-hint" role="alert">{findParts.error}</p>
+                    )}
                 </aside>
             </div>
         </div>

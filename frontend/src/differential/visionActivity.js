@@ -9,8 +9,12 @@
 // must not imply that all vision endpoints are observable.
 export const OPERATIONS = ['dissect', 'refine', 'semantic_read', 'find_similar'];
 
+// CIRCUIT-001 P2: labels are curator-facing and may be rewritten freely; the KEYS are wire
+// identity and are frozen. `dissect` remains the operation id on the route, in the payload,
+// in every `dissect.*` stage id and in `vision_runs.operation` — the curator just no longer
+// reads that word. The key-integrity test pins the keys; nothing pins this copy.
 export const OPERATION_LABEL = {
-  dissect: 'Dissect',
+  dissect: 'Find parts',
   refine: 'Refine',
   semantic_read: 'Semantic read',
   find_similar: 'Find similar',

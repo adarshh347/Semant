@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Sparkles, Star, Scan, Plus, Eye, Check, MoreHorizontal, AlertCircle, Expand } from 'lucide-react';
+import { Sparkles, Star, Eye, Check, AlertCircle, Expand } from 'lucide-react';
 import { API_URL } from '../config/api';
 import RegionOverlay from './RegionOverlay';
 import RegionLightbox from './RegionLightbox';
-import ProfileControl from './ProfileControl';
+import SeeingConsole from '../differential/SeeingConsole';
+import { EMPTY_TITLE, EMPTY_BODY, LOOKING_CAPTION, FIND_PARTS_FAILED } from '../differential/seeingConsole';
 import GroundLayers from '../differential/GroundLayers';
 import { useRecallPlayer } from '../differential/recall';
 import useStageGeometry, { useNaturalSize, pointerToNormalized } from '../differential/useStageGeometry';
@@ -14,16 +15,9 @@ import './RegionSurface.css';
 const BASE = `${API_URL}/api/v1/posts`;
 const AUTOSAVE_MS = 800;
 
-// Sūkṣma subdivision modes. Backend machinery — demoted into a quiet menu, because the
-// user feels the result, not the vocabulary the model was steered with.
-const MODES = [
-    { key: 'general', label: 'General' },
-    { key: 'garment', label: 'Garments' },
-    { key: 'body', label: 'Body' },
-    { key: 'texture', label: 'Textures' },
-    { key: 'material', label: 'Materials' },
-    { key: 'composition', label: 'Composition' },
-];
+// The subdivision vocabulary (`mode` on the wire) now lives in differential/seeingConsole
+// as GRAINS, beside the rest of the console's vocabulary. Keys are unchanged and frozen;
+// only the labels are curator-facing.
 
 // Above this many regions the surface opens in the quiet map: 40 hairline outlines read
 // as texture, 40 filled polygons read as noise.
@@ -73,7 +67,6 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
 
     const [mode, setMode] = useState('general');
     const [lens, setLens] = useState('');
-    const [overflowOpen, setOverflowOpen] = useState(false);
     const [drawing, setDrawing] = useState(false);
     const [draft, setDraft] = useState(null);
 
@@ -180,9 +173,11 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
         scheduleSave();   // one tap is the shallow rung — it must stick on its own
     };
 
-    // --- detection -------------------------------------------------------------------
+    // --- finding parts ---------------------------------------------------------------
+    // The operation id is `dissect` and stays `dissect`: same route, same payload keys,
+    // same telemetry. Only what the curator reads has changed (CIRCUIT-001 P2).
     const detect = useCallback(async (opts = {}) => {
-        setStatus('detecting'); setError(''); setOverflowOpen(false);
+        setStatus('detecting'); setError('');
         try {
             const res = await fetch(`${BASE}/${post.id}/detect-regions`, {
                 method: 'POST',
@@ -200,7 +195,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
             setViewMap(next.length > QUIET_THRESHOLD ? 'quiet' : 'outline');
             setStatus('idle');
         } catch {
-            setError('Dissection failed — is the backend running?');
+            setError(FIND_PARTS_FAILED);
             setStatus('error');
         }
     }, [post.id, mode, lens]);
@@ -422,7 +417,7 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
 
                         {busy && (
                             <div className="rs-busy" role="status">
-                                <span className="rs-spin" /> Dissecting the image…
+                                <span className="rs-spin" /> {LOOKING_CAPTION}
                             </div>
                         )}
                         {drawing && <p className="rs-hint-float">Drag to mark a part detection missed</p>}
@@ -445,49 +440,29 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
 
                 {/* ── panel ─────────────────────────────────────────────────────────── */}
                 <aside className="rs-panel">
-                    {/* VISION-C · C5 — the domain-profile control drives which specialist
-                        passes the next Dissect schedules (selective scheduling). */}
-                    <ProfileControl postId={post.id} profile={post.domain_profile}
-                        onProfile={(p) => onPostChange?.({ ...post, domain_profile: p })} />
-                    {/* the taxonomy, demoted: a quiet menu, not a wall */}
-                    <div className="rs-verbs">
-                        <label className="rs-sr" htmlFor="rs-mode">Dissection vocabulary</label>
-                        <select id="rs-mode" className="rs-select" value={mode} disabled={busy}
-                            onChange={e => setMode(e.target.value)}>
-                            {MODES.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
-                        </select>
-                        <button className="rs-primary" onClick={() => detect()} disabled={busy}
-                            title="Dissect the image into its parts">
-                            {busy ? <span className="rs-spin" /> : <Sparkles size={14} />}
-                            {/* the label hides when the pane is cramped; the icon carries it */}
-                            <span className="rs-primary-label">Dissect</span>
-                        </button>
-                        <div className="rs-overflow-wrap">
-                            <button className="rs-icon" aria-label="More actions"
-                                aria-expanded={overflowOpen} disabled={busy}
-                                onClick={() => setOverflowOpen(o => !o)}>
-                                <MoreHorizontal size={15} />
-                            </button>
-                            {overflowOpen && (
-                                <div className="rs-overflow" role="menu">
-                                    <button role="menuitem" onClick={() => detect({ coarseOnly: true })}>
-                                        <Scan size={13} /> Coarse only
-                                    </button>
-                                    <button role="menuitem"
-                                        onClick={() => { setDrawing(true); setOverflowOpen(false); }}>
-                                        <Plus size={13} /> Mark a part
-                                    </button>
-                                    <input className="rs-lens" value={lens} placeholder="Intention (optional)…"
-                                        onChange={e => setLens(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && detect()} />
-                                </div>
-                            )}
-                        </div>
-                        <span className={`rs-save rs-save--${saveState}`}>
-                            {saveState === 'saving' && 'saving…'}
-                            {saveState === 'saved' && <><Check size={12} /> saved</>}
-                        </span>
-                    </div>
+                    {/* CIRCUIT-001 P2 — the Seeing Console. What was a profile block, a
+                        vocabulary select, a primary button and an overflow menu scattered
+                        across two rows is now one instrument: the operation, how to attend
+                        to the image, what sources that schedules, and what the asking
+                        actually did. The controls did not change — their arrangement and
+                        their names did. */}
+                    <SeeingConsole
+                        postId={post.id}
+                        profile={post.domain_profile}
+                        onProfile={(p) => onPostChange?.({ ...post, domain_profile: p })}
+                        regions={regions}
+                        onFindParts={(opts) => detect(opts || {})}
+                        busy={busy}
+                        grain={mode}
+                        onGrain={setMode}
+                        intention={lens}
+                        onIntention={setLens}
+                        onMarkPart={() => setDrawing(true)}
+                    />
+                    <span className={`rs-save rs-save--${saveState}`}>
+                        {saveState === 'saving' && 'saving…'}
+                        {saveState === 'saved' && <><Check size={12} /> saved</>}
+                    </span>
 
                     {/* categories: not decoration — the filter that splits numerosity */}
                     {categories.length > 1 && (
@@ -519,8 +494,8 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
                         </div>
                     ) : !regions.length ? (
                         <div className="rs-empty">
-                            <p className="rs-muted">No parts yet.</p>
-                            <p className="rs-muted rs-dim">Dissect the image to see its anatomy, then say what each part does to you.</p>
+                            <p className="rs-muted">{EMPTY_TITLE}</p>
+                            <p className="rs-muted rs-dim">{EMPTY_BODY}</p>
                         </div>
                     ) : (
                         <div className="rs-list" role="listbox" tabIndex={0} ref={listRef}
