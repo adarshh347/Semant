@@ -1,0 +1,65 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "fdb6741d6f413fc751114396d0f2d554e5f2391fba00e8961e16392655ed93b0",
+  "cost": {
+    "token_usage": {
+      "completion_time": 0.332953953,
+      "completion_tokens": 158,
+      "prompt_time": 0.354272825,
+      "prompt_tokens": 4960,
+      "queue_time": 0.32461014,
+      "total_time": 0.687226778,
+      "total_tokens": 5118
+    }
+  },
+  "device": "remote",
+  "latency_ms": 1322.5,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "004-gesture-and-address-obs2",
+  "output": {
+    "answer_sha256": "4c09770ac72a8f445d34ae53014aa04cc41d211db3b89f7d8b3ccd8e3a627c05",
+    "answer_text": "IMAGE 1 presents a figure whose address is one of refusal. The downward tilt of the head and the obscuring lace veil create a barrier, turning the figure away from the viewer and into a private, interior space.\n\nIMAGE 2 makes the same kind of address as IMAGE 1. The statue's eyes are closed and its head is tilted back in a pose of ecstasy or sorrow that is entirely self-contained. This gesture refuses engagement with an external viewer, directing the figure's experience inward.\n\nIMAGE 3 does not make the same kind of address. The building's facade is structured as a monumental, frontal face with windows that function as eyes. This architectural design creates a direct, imposing gaze toward the viewer, establishing a powerful and confrontational address rather than a refusal.",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_count": 3,
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/004-gesture-and-address/probe2/subject-painting-bound-face.jpg",
+    "image_sha256": "da306a9fec01c95f295c5d52e56b5d4d96e5fe7ad8eb2b594b3e81246cc8ad46",
+    "images": [
+      {
+        "bytes": 7972,
+        "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/004-gesture-and-address/probe2/subject-painting-bound-face.jpg",
+        "sha256": "da306a9fec01c95f295c5d52e56b5d4d96e5fe7ad8eb2b594b3e81246cc8ad46"
+      },
+      {
+        "bytes": 12661,
+        "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/004-gesture-and-address/probe2/neighbour-veiled-funerary.jpg",
+        "sha256": "b7262f91eaeb47f6b468aaaad3ef6823d9dced047dc47ceeaf898a5b092fcda9"
+      },
+      {
+        "bytes": 7950,
+        "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/004-gesture-and-address/probe2/negative-dark-structure.jpg",
+        "sha256": "2b5ff911883786aea39f64a0a94d0be48ecdd56617b8f2e4b637475923584311"
+      }
+    ],
+    "latency_ms": 1322.5,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "Three images, in order: IMAGE 1, IMAGE 2, IMAGE 3. IMAGE 1 is a painting of a figure. For EACH of IMAGE 2 and IMAGE 3, say whether it makes the same kind of ADDRESS as IMAGE 1 -- where a figure directs itself, or refuses to -- and what decides it. Judge each on its own terms. Be brief.",
+    "prompt_sha256": "3c5aa76c5e20d05629184adc6c91a6474ba46ee098b9070d60347589e7529f01",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 0.332953953,
+      "completion_tokens": 158,
+      "prompt_time": 0.354272825,
+      "prompt_tokens": 4960,
+      "queue_time": 0.32461014,
+      "total_time": 0.687226778,
+      "total_tokens": 5118
+    }
+  },
+  "provenance": "capture:004-gesture-and-address:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}

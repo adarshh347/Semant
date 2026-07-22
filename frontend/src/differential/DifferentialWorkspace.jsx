@@ -541,7 +541,14 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                 width: brushRadius * content.w * 2, height: brushRadius * content.w * 2,
                             }} />
                         )}
-                        {recallPlayer.caption && <p className="diff-recall-caption">{recallPlayer.caption}</p>}
+                        {recallPlayer.caption && (
+                            <div className="diff-recall-say">
+                                <p className="diff-recall-caption">{recallPlayer.caption}</p>
+                                {recallPlayer.evidenceNote && (
+                                    <p className="diff-recall-detached">{recallPlayer.evidenceNote}</p>
+                                )}
+                            </div>
+                        )}
                     </div>
                     <p className="diff-stage-hint">
                         {untouched ? 'The untouched image. Release O to see your evidence again.'

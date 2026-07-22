@@ -38,8 +38,10 @@ Three deployable pieces:
 
 ### Groq models in use
 - `openai/gpt-oss-120b` — story/plot generation, literary refinement (`llm_service`, `editor_llm_service`)
-- `meta-llama/llama-4-maverick-17b-128e-instruct` — vision (editor)
-- `meta-llama/llama-4-scout-17b-16e-instruct` — vision (`vision_service`)
+- `qwen/qwen3.6-27b` — vision (`vision_service` + editor). Replaced the retired
+  `meta-llama/llama-4-{scout,maverick}` models, which Groq removed (both 404). It is a reasoning
+  model, so every call passes `reasoning_effort="none"` — otherwise an unclosed `<think>` block
+  eats the whole `max_tokens` budget and the JSON parsers get nothing.
 - `llama-3.3-70b-versatile` — story-block segmentation (`story_block_service`)
 
 ## 3. Repository layout

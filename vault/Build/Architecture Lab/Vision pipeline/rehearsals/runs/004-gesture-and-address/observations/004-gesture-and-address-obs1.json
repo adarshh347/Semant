@@ -1,0 +1,55 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "931981038d7c5ece9d42f57945a78baa652db7701c8150e076765beed09d7ed6",
+  "cost": {
+    "token_usage": {
+      "completion_time": 0.254872393,
+      "completion_tokens": 130,
+      "prompt_time": 0.115954642,
+      "prompt_tokens": 1346,
+      "queue_time": 0.248494056,
+      "total_time": 0.370827035,
+      "total_tokens": 1476
+    }
+  },
+  "device": "remote",
+  "latency_ms": 1148.3,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "004-gesture-and-address-obs1",
+  "output": {
+    "answer_sha256": "b9022b507bd94da909a7d614f0196f7c897ad2575dc890ca97df110fa8b36549",
+    "answer_text": "The figure\u2019s gesture \u2014 the turned head, obscured face, and draped black fabric \u2014 directs attention inward, toward self-containment or introspection. It turns away from the viewer, withholding direct engagement or emotional accessibility. The heavy, dark bow and veil-like cloth act as a visual barrier, suggesting concealment or mourning. The soft, blurred brushwork around the neck and shoulder further dissolves identity, reinforcing withdrawal. What decides this is the composition\u2019s deliberate cropping and the figure\u2019s averted posture \u2014 we see only what is offered, not what is hidden. The painting thus becomes an act of quiet refusal, inviting contemplation rather than connection.",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_count": 1,
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/004-gesture-and-address/probe/subject-painting-bound-face.jpg",
+    "image_sha256": "d5345391862be0aab4bb4efe48ab2534e448adfb684f63b761a7e5f7e0f8694e",
+    "images": [
+      {
+        "bytes": 93130,
+        "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/004-gesture-and-address/probe/subject-painting-bound-face.jpg",
+        "sha256": "d5345391862be0aab4bb4efe48ab2534e448adfb684f63b761a7e5f7e0f8694e"
+      }
+    ],
+    "latency_ms": 1148.3,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "This is a painting. Look at the figure. Where does this gesture's address go -- that is, where does the figure direct itself, and what does it turn away from or withhold? Describe what in the picture decides this. 4-6 sentences.",
+    "prompt_sha256": "99f6894f05a9621f224c1b021eab04c492c2162cff14fc39e573c14f73ab2291",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 0.254872393,
+      "completion_tokens": 130,
+      "prompt_time": 0.115954642,
+      "prompt_tokens": 1346,
+      "queue_time": 0.248494056,
+      "total_time": 0.370827035,
+      "total_tokens": 1476
+    }
+  },
+  "provenance": "capture:004-gesture-and-address:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}

@@ -1,0 +1,82 @@
+{
+  "events": [
+    {
+      "actor": "human",
+      "cost": null,
+      "event_id": "005-surface-becoming-structure-e0",
+      "kind": "RECEIVE",
+      "observation_ref": null,
+      "parent_event": null,
+      "provenance": "runner:capture:receive",
+      "reconstructed": false,
+      "register": "opening",
+      "reversibility": "reversible",
+      "source_refs": [],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "005-surface-becoming-structure-e1",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "005-surface-becoming-structure-obs0",
+      "parent_event": "005-surface-becoming-structure-e0",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/005-surface-becoming-structure/turquoise-tile-revetment.jpg"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "005-surface-becoming-structure-e2",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "005-surface-becoming-structure-obs1",
+      "parent_event": "005-surface-becoming-structure-e1",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "img-01"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "005-surface-becoming-structure-e3",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "005-surface-becoming-structure-obs2",
+      "parent_event": "005-surface-becoming-structure-e2",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "img-01"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    }
+  ],
+  "reconstructed": false,
+  "rehearsal_id": "005-surface-becoming-structure",
+  "score_ref": null,
+  "status": "completed"
+}

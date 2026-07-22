@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:rehearsal/instrumented-score.schema.json",
+  "title": "Instrumented Rehearsal Score index",
+  "description": "RESEARCH-ONLY comparison index for an INSTRUMENTED rehearsal run — one that made real model calls and froze real observations. Deliberately separate from virtual-rehearsal-score.schema.json, which indexes IMAGINATIVE rehearsals and is left untouched: an imaginative score records interpretive bones (source pressures, attention threads, returns), while an instrumented score must record execution truth (call counts, latency, replay proof, mutation status). Merging them would force one mode to carry the other's empty fields and would loosen the honesty constraints on both. Creates no product entity, route, Mongo collection, Ground, Percept, Atlas object, or agent skill. Prose stays in score.md; this file records only cross-run bones.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rehearsal_id",
+    "research_only",
+    "mode",
+    "family",
+    "status",
+    "score_ref",
+    "artifacts",
+    "candidate_count",
+    "observation_count",
+    "live_model_call_count",
+    "model_calls",
+    "latency_summary",
+    "replay_live_call_count",
+    "replay_proof",
+    "production_mutation"
+  ],
+  "properties": {
+    "rehearsal_id": { "type": "string", "minLength": 1 },
+    "research_only": { "const": true },
+
+    "mode": {
+      "const": "instrumented",
+      "description": "Pinned. An instrumented run cannot be indexed as imaginative, and an imaginative run cannot validate here — the two protocols stay distinguishable by construction."
+    },
+
+    "family": { "type": "string", "minLength": 1 },
+
+    "status": {
+      "type": "string",
+      "enum": ["completed", "stalled", "refused", "partial", "failed"],
+      "description": "A stall or a refusal is a RESULT, not a failure. 'failed' means the rehearsal could not be conducted, not that it reached an unwelcome answer."
+    },
+
+    "stall_or_refusal": {
+      "description": "Required whenever status is 'stalled' or 'refused' — a stall with no stated reason is indistinguishable from an unfinished run.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["reason", "evidence_refs"],
+      "properties": {
+        "reason": { "type": "string", "minLength": 1 },
+        "evidence_refs": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "predicted": {
+          "type": ["boolean", "null"],
+          "description": "Whether a prior document predicted this outcome. A predicted stall is stronger evidence than a surprise one."
+        },
+        "predicted_by": { "type": ["string", "null"] }
+      }
+    },
+
+    "score_ref": { "type": "string", "minLength": 1 },
+    "trace_ref": { "type": ["string", "null"] },
+    "manifest_ref": { "type": ["string", "null"] },
+
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Every file this run produced, run-dir-relative."
+    },
+
+    "candidate_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Graduated candidates. SPARKs are NOT candidates; graduation needs >=3 fixtures plus transfer and negative tests."
+    },
+    "spark_count": { "type": "integer", "minimum": 0 },
+
+    "observation_count": { "type": "integer", "minimum": 0 },
+
+    "live_model_call_count": { "type": "integer", "minimum": 0 },
+    "model_call_budget": { "type": ["integer", "null"], "minimum": 0 },
+
+    "model_calls": {
+      "type": "array",
+      "description": "One entry per live call. Uncaptured telemetry stays null and is never invented.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["observation_ref", "provider", "model", "latency_ms"],
+        "properties": {
+          "observation_ref": { "type": "string", "minLength": 1 },
+          "provider": { "type": "string", "minLength": 1 },
+          "model": { "type": "string", "minLength": 1 },
+          "reasoning_effort": { "type": ["string", "null"] },
+          "latency_ms": { "type": ["number", "null"], "minimum": 0 },
+          "total_tokens": { "type": ["integer", "null"], "minimum": 0 },
+          "finish_reason": { "type": ["string", "null"] },
+          "emitted_think_block": { "type": ["boolean", "null"] }
+        }
+      }
+    },
+
+    "latency_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "min_ms", "max_ms"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "min_ms": { "type": ["number", "null"], "minimum": 0 },
+        "max_ms": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+
+    "replay_live_call_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Live calls made during REPLAY. Deliberately an integer rather than a pinned 0 so a violation can be RECORDED truthfully — but see the conditional below: a verified replay proof requires this to be 0."
+    },
+
+    "replay_proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verified", "method"],
+      "properties": {
+        "verified": { "type": "boolean" },
+        "method": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "production_mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mutated", "evidence_ref"],
+      "properties": {
+        "mutated": { "type": "boolean" },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required either way. An unevidenced 'we changed nothing' is an assertion, not a check."
+        },
+        "subject_ref": { "type": ["string", "null"] }
+      }
+    },
+
+    "unresolved_questions": { "type": "array", "items": { "type": "string" } },
+    "notes": { "type": ["string", "null"] }
+  },
+
+  "allOf": [
+    {
+      "description": "A verified replay proof is only coherent if replay made zero live calls.",
+      "if": {
+        "type": "object",
+        "required": ["replay_proof"],
+        "properties": {
+          "replay_proof": { "type": "object", "required": ["verified"], "properties": { "verified": { "const": true } } }
+        }
+      },
+      "then": {
+        "properties": { "replay_live_call_count": { "const": 0 } }
+      }
+    },
+    {
+      "description": "A stall or refusal must state its reason and cite evidence.",
+      "if": {
+        "type": "object",
+        "required": ["status"],
+        "properties": { "status": { "enum": ["stalled", "refused"] } }
+      },
+      "then": {
+        "required": ["stall_or_refusal"],
+        "properties": { "stall_or_refusal": { "type": "object" } }
+      }
+    },
+    {
+      "description": "If any live call was made, its telemetry must actually be listed.",
+      "if": {
+        "type": "object",
+        "required": ["live_model_call_count"],
+        "properties": { "live_model_call_count": { "minimum": 1 } }
+      },
+      "then": {
+        "properties": { "model_calls": { "minItems": 1 } }
+      }
+    }
+  ]
+}

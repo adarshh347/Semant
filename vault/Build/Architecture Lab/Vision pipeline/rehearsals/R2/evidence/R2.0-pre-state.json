@@ -1,0 +1,30 @@
+{
+  "post_id": "695be6c9a9ea58f1b6aef5e0",
+  "text_blocks_count": 0,
+  "percepts": [
+    {
+      "id": "pctx_mrpi3rjk_0",
+      "expression": "there is facial geometric relation between gupta and pala fa",
+      "ground_ids": [
+        "gnd_mrpi1jbv_3",
+        "gnd_mrpi1jbv_4",
+        "gnd_mrpi1jbv_5"
+      ]
+    }
+  ],
+  "grounds_count": 3,
+  "region_count": 10,
+  "region_ids": [
+    "seg_0",
+    "fine_0",
+    "fine_1",
+    "fine_2",
+    "fine_3",
+    "fine_4",
+    "fine_5",
+    "fine_6",
+    "fine_7",
+    "fine_8"
+  ],
+  "curator_identity_hash": "030b23b215c1270ec7c6668f36351e48d908ff75d5251cb1a8fb3b9dcbf393ec"
+}

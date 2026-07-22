@@ -1,0 +1,105 @@
+{
+  "affected_posts": [
+    {
+      "current_region_ids": [
+        "refine_c6485b9a94",
+        "arch_0",
+        "arch_4",
+        "arch_1",
+        "arch_3",
+        "arch_2",
+        "arch_5"
+      ],
+      "detached_but_uncited_grounds": [],
+      "percepts": [
+        {
+          "cited_grounds": 2,
+          "detached_grounds": [
+            {
+              "ground_id": "gnd_mrqp8tls_0",
+              "ground_type": "region",
+              "missing_region_ids": [
+                "fine_3"
+              ]
+            },
+            {
+              "ground_id": "gnd_mrqp8tlt_1",
+              "ground_type": "region",
+              "missing_region_ids": [
+                "fine_0"
+              ]
+            }
+          ],
+          "expression": "the upper head",
+          "fully_unevidenced": true,
+          "grounds_absent_entirely": [],
+          "percept_id": "pctx_mrqp950d_0"
+        }
+      ],
+      "post_id": "695be786a9ea58f1b6aef5ed",
+      "surviving_geometry_grounds": [
+        {
+          "ground_id": "gnd_mrq9hljq_0",
+          "ground_type": "frame"
+        },
+        {
+          "ground_id": "gnd_mrq9hnef_1",
+          "ground_type": "frame"
+        },
+        {
+          "ground_id": "gnd_mrqpa3av_2",
+          "ground_type": "field"
+        }
+      ]
+    },
+    {
+      "current_region_ids": [
+        "seg_0"
+      ],
+      "detached_but_uncited_grounds": [
+        {
+          "ground_id": "gnd_mrphxkl1_0",
+          "ground_type": "region",
+          "missing_region_ids": [
+            "fine_3"
+          ]
+        },
+        {
+          "ground_id": "gnd_mrpi0b4o_2",
+          "ground_type": "region",
+          "missing_region_ids": [
+            "fine_8"
+          ]
+        }
+      ],
+      "percepts": [],
+      "post_id": "695be794a9ea58f1b6aef5f1",
+      "surviving_geometry_grounds": [
+        {
+          "ground_id": "gnd_mrphosd0_0",
+          "ground_type": "frame"
+        },
+        {
+          "ground_id": "gnd_mrphqi7e_1",
+          "ground_type": "frame"
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "detached_but_uncited": 2,
+    "detached_grounds": 4,
+    "detached_reference": 4,
+    "grounds": 26,
+    "grounds_geometry": 15,
+    "grounds_reference": 11,
+    "percepts": 7,
+    "percepts_citing_grounds": 7,
+    "percepts_fully_unevidenced": 1,
+    "percepts_with_detached": 1,
+    "posts": 127,
+    "posts_affected": 2,
+    "posts_with_annotation": 11,
+    "posts_with_harmed_percepts": 1
+  }
+}

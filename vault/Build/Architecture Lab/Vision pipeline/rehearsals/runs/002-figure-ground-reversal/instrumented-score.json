@@ -1,0 +1,80 @@
+{
+  "rehearsal_id": "002-figure-ground-reversal",
+  "research_only": true,
+  "mode": "instrumented",
+  "family": "R4 Figure/Ground Reversal",
+  "status": "stalled",
+  "stall_or_refusal": {
+    "reason": "The interval between the Gupta and Pala faces is determinate (x 0.43-0.46) but ungroundable. It is not depicted space: the plate is a composite with keyed-out black behind cut-out heads (59.5% of interval pixels are exactly (0,0,0); the two heads carry incompatible colour temperature, R-B spread 65.5 vs 10.4). Not a representation gap - field/boundary/frame grounds are constructible today. It is a proposal gap (every automated path is object-shaped, and the VLM returned NO_GROUND) plus a category gap (what the interval is doing belongs to the plate as an artifact, and every Ground type points into the depicted surface).",
+    "evidence_refs": [
+      "score.md#what-the-interval-is-made-of-measured-no-model",
+      "observations/002-figure-ground-reversal-obs1.json",
+      "observations/002-figure-ground-reversal-obs2.json"
+    ],
+    "predicted": true,
+    "predicted_by": "R0-breadth-portfolio.md row A1 ('may stall if no evidence supports the void -> a valid refusal')"
+  },
+  "score_ref": "score.md",
+  "trace_ref": "trace.json",
+  "manifest_ref": "manifest.yaml",
+  "artifacts": [
+    "manifest.yaml",
+    "trace.json",
+    "score.md",
+    "critique.md",
+    "sparks.md",
+    "source-notes.md",
+    "instrumented-score.json",
+    "observations/002-figure-ground-reversal-obs0.json",
+    "observations/002-figure-ground-reversal-obs1.json",
+    "observations/002-figure-ground-reversal-obs2.json"
+  ],
+  "candidate_count": 0,
+  "spark_count": 2,
+  "observation_count": 3,
+  "live_model_call_count": 2,
+  "model_call_budget": 2,
+  "model_calls": [
+    {
+      "observation_ref": "002-figure-ground-reversal-obs1",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 712.1,
+      "total_tokens": 902,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    },
+    {
+      "observation_ref": "002-figure-ground-reversal-obs2",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 2090.5,
+      "total_tokens": 903,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    }
+  ],
+  "latency_summary": {
+    "count": 2,
+    "min_ms": 712.1,
+    "max_ms": 2090.5
+  },
+  "replay_live_call_count": 0,
+  "replay_proof": {
+    "verified": true,
+    "method": "Replay run with every ALLOWLIST entry monkeypatched to raise, socket.connect patched to raise, and GROQ_API_KEY absent from the environment; 3 frozen observations replayed and 4 events reproduced with 0 adapter calls. Pinned by test_r2_run_002_replays_without_touching_any_adapter."
+  },
+  "production_mutation": {
+    "mutated": false,
+    "evidence_ref": "../../R2/evidence/R2.0-post-state.json",
+    "subject_ref": "post 695be6c9a9ea58f1b6aef5e0"
+  },
+  "unresolved_questions": [
+    "Is the artifact/depiction distinction a Ground type, a Ground attribute, or a property of the image record?",
+    "Does the stall survive on a single-object photograph rather than a composite plate?",
+    "Should a percept whose evidence is 'the absence of evidence here' be expressible at all?"
+  ],
+  "notes": "A1 of the R2 breadth batch. Stall is the result, not a failure."
+}

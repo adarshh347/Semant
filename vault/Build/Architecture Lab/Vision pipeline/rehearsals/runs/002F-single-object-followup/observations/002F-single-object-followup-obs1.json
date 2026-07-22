@@ -1,0 +1,47 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "70cb7a1827de2e02685e29a1e705c603e466b29dc6e295b8420dde29abadf69f",
+  "cost": {
+    "token_usage": {
+      "completion_time": 0.20453896,
+      "completion_tokens": 104,
+      "prompt_time": 0.154350379,
+      "prompt_tokens": 1843,
+      "queue_time": 0.277009228,
+      "total_time": 0.358889339,
+      "total_tokens": 1947
+    }
+  },
+  "device": "remote",
+  "latency_ms": 1052.8,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "002F-single-object-followup-obs1",
+  "output": {
+    "answer_sha256": "7afc754fe929ec1b09adc4593aafd4c4eb3a6999de9067d6067471cfb94ee637",
+    "answer_text": "The space between the sculpted figures and the surrounding architecture is a textured, mottled wall surface composed of layered stone or marble panels in deep browns, grays, and muted blues. It appears aged and weathered, with subtle variations in tone that suggest depth and historical patina. This backdrop serves as a somber, almost cavernous void that frames the sculpture without competing for attention \u2014 its roughness contrasts with the smoothness of the marble figures, enhancing their emotional presence through visual silence and shadow.",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg",
+    "image_sha256": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "latency_ms": 1052.8,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "Look carefully at this image. What is the space BETWEEN the sculpted figures and the architecture around them doing? Describe only that space, not the figures. 3-5 sentences.",
+    "prompt_sha256": "4bbf971da595a9750a83fd8ac0fe05adbe727be1136cfef6004e91d45a3036ba",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 0.20453896,
+      "completion_tokens": 104,
+      "prompt_time": 0.154350379,
+      "prompt_tokens": 1843,
+      "queue_time": 0.277009228,
+      "total_time": 0.358889339,
+      "total_tokens": 1947
+    }
+  },
+  "provenance": "capture:002F-single-object-followup:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}

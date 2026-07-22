@@ -1,0 +1,19 @@
+{
+  "adapter": "local_file_digest",
+  "captured_at": null,
+  "content_hash": "5a84f8e67086b49f335ceaa7d6ab6b77a850f519c587b8229c9592b2d67992a0",
+  "cost": null,
+  "device": "cpu",
+  "latency_ms": null,
+  "model": null,
+  "observation_id": "007-anthropomorphism-ab-obs0",
+  "output": {
+    "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/007-anthropomorphism-ab/probe-768.jpg",
+    "sha256": "d366b2e1ae779807a1ad70568bf1c1ee3c84bd13bc9d8acabe45ca8c9336c086",
+    "size_bytes": 98595
+  },
+  "provenance": "capture:007-anthropomorphism-ab:local_file_digest",
+  "request_boundary": "local_filesystem_read",
+  "uncertainty": null,
+  "version": "r1.local-pure.1"
+}

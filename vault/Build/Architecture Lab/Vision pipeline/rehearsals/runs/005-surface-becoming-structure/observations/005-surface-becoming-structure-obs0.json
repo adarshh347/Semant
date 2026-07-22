@@ -1,0 +1,19 @@
+{
+  "adapter": "local_file_digest",
+  "captured_at": null,
+  "content_hash": "5f8ee766775eb9c4d9779cfc9f19ef75194c187d4172cfbcc062a38b163820d1",
+  "cost": null,
+  "device": "cpu",
+  "latency_ms": null,
+  "model": null,
+  "observation_id": "005-surface-becoming-structure-obs0",
+  "output": {
+    "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/005-surface-becoming-structure/turquoise-tile-revetment.jpg",
+    "sha256": "b3d660ce9bdcae48c50c64410423ace3f8fa9887aebdd65e13fe91da52716f16",
+    "size_bytes": 150535
+  },
+  "provenance": "capture:005-surface-becoming-structure:local_file_digest",
+  "request_boundary": "local_filesystem_read",
+  "uncertainty": null,
+  "version": "r1.local-pure.1"
+}

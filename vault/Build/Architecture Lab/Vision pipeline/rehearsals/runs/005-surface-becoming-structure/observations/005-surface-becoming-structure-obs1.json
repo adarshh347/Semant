@@ -1,0 +1,55 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "8b931f273160d029b3df1a76a5164f19607469a5843e53974d5d0c239021c513",
+  "cost": {
+    "token_usage": {
+      "completion_time": 0.326819095,
+      "completion_tokens": 167,
+      "prompt_time": 0.164203112,
+      "prompt_tokens": 1854,
+      "queue_time": 0.269067069,
+      "total_time": 0.491022207,
+      "total_tokens": 2021
+    }
+  },
+  "device": "remote",
+  "latency_ms": 1393.0,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "005-surface-becoming-structure-obs1",
+  "output": {
+    "answer_sha256": "1c6b9668550d7c1f302cb5186a8df023c902853514581efcbb44e5ae967592c7",
+    "answer_text": "The built structure organizes the composition \u2014 the pattern merely fills what the architecture provides. Evidence includes the clear vertical and horizontal divisions created by arches, pilasters, and cornices that frame distinct zones of decoration. The central mihrab niche and flanking arched panels are structurally defined first; the intricate tilework conforms precisely to these boundaries. Even the repeating geometric bands follow architectural lines rather than dictating them \u2014 for instance, the lower frieze runs parallel to the floor, anchored by the wall\u2019s base. The dome\u2019s curvature is also structurally imposed, with patterns radiating outward from its apex in response to form, not vice versa. Thus, while the pattern is visually dominant, it serves as ornamental infill within a pre-established architectural grid. The hierarchy is clear: structure first, pattern second.",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_count": 1,
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/005-surface-becoming-structure/turquoise-tile-revetment.jpg",
+    "image_sha256": "b3d660ce9bdcae48c50c64410423ace3f8fa9887aebdd65e13fe91da52716f16",
+    "images": [
+      {
+        "bytes": 150535,
+        "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/005-surface-becoming-structure/turquoise-tile-revetment.jpg",
+        "sha256": "b3d660ce9bdcae48c50c64410423ace3f8fa9887aebdd65e13fe91da52716f16"
+      }
+    ],
+    "latency_ms": 1393.0,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "Look carefully at this image. Does the surface pattern organise the composition, or does the built structure organise it and the pattern merely fill what the structure gives? Say what specific evidence in the image decides your answer. 5-7 sentences.",
+    "prompt_sha256": "e7ce4ee28a9a8952ceb47965b0a73e3a6e4c74a868a9492df75d068e65d8c4d2",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 0.326819095,
+      "completion_tokens": 167,
+      "prompt_time": 0.164203112,
+      "prompt_tokens": 1854,
+      "queue_time": 0.269067069,
+      "total_time": 0.491022207,
+      "total_tokens": 2021
+    }
+  },
+  "provenance": "capture:005-surface-becoming-structure:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}

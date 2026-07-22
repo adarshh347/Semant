@@ -1,0 +1,55 @@
+{
+  "adapter": "groq_vlm_probe",
+  "captured_at": null,
+  "content_hash": "4c9736b50d2befcf0cf4639ffab0357efd6b40a71c2466328dd1c0bebe7f522d",
+  "cost": {
+    "token_usage": {
+      "completion_time": 1.009689133,
+      "completion_tokens": 445,
+      "prompt_time": 0.160583623,
+      "prompt_tokens": 1858,
+      "queue_time": 0.261657805,
+      "total_time": 1.170272756,
+      "total_tokens": 2303
+    }
+  },
+  "device": "remote",
+  "latency_ms": 1963.3,
+  "model": "qwen/qwen3.6-27b",
+  "observation_id": "006-narrative-overreach-obs2",
+  "output": {
+    "answer_sha256": "98c4926204d5ba590f146cf5266c8d63624912021b4c1394a2f3266a29befa78",
+    "answer_text": "Let\u2019s go through the sentence clause by clause:\n\n---\n\n**Clause 1: \u201cthe figure's grief\u201d**\n\n\u2705 **Supported by the photograph.**\n\nThe statue depicts an angel (or winged figure) slumped over a tomb or sarcophagus, head bowed, face buried in its arm \u2014 a classic pose of mourning. The body language \u2014 collapsed posture, draped fabric suggesting weightlessness or exhaustion, and the downward gaze \u2014 all visually convey profound sorrow or grief. This is clearly visible in multiple cropped views, especially the close-up of the face and upper body.\n\n---\n\n**Clause 2: \u201cradiates through\u201d**\n\n\u26a0\ufe0f **Partially supported / Interpretive.**\n\n\u201cRadiates\u201d implies that the emotion spreads outward from the figure into the surrounding space. While the photograph doesn\u2019t literally show \u201cradiation,\u201d the composition supports this idea:\n\n- The figure is centrally placed within a grand architectural setting (rotunda with columns).\n- The lighting (strong sunlight hitting parts of the statue and columns) creates dramatic contrast, which can be interpreted as emphasizing the emotional intensity.\n- The scale of the architecture relative to the figure suggests the emotion fills the space \u2014 the viewer feels the weight of the scene.\n\nSo while \u201cradiates\u201d is metaphorical, the visual framing and lighting support the *idea* that the grief dominates the space.\n\n---\n\n**Clause 3: \u201cthe whole rotunda\u201d**\n\n\u2705 **Supported by the photograph.**\n\nThe background clearly shows a circular or semi-circular architectural space with tall fluted columns and a domed ceiling (visible in the top crop). The word \u201crotunda\u201d accurately describes this structure. The photograph captures enough of the surrounding architecture \u2014 including the curved wall, columns, and ceiling detail \u2014 to confirm the setting is indeed a rotunda.\n\n---\n\n### Final Assessment:\n\nAll three clauses are **visually supported** by the photograph, though \u201cradiates\u201d is interpretive rather than literal \u2014 it\u2019s a poetic description of how the emotion seems to fill the space, which the composition and lighting help convey.\n\n\u2705 **Conclusion**: The statement is well-supported by the image.",
+    "emitted_think_block": false,
+    "finish_reason": "stop",
+    "image_count": 1,
+    "image_path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/006-narrative-overreach/angel-of-grief-rotunda.jpg",
+    "image_sha256": "c5055621ef8782c18898b650941abb4cadca8dc22942c3f1c5021156f1fc3ab5",
+    "images": [
+      {
+        "bytes": 70836,
+        "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/006-narrative-overreach/angel-of-grief-rotunda.jpg",
+        "sha256": "c5055621ef8782c18898b650941abb4cadca8dc22942c3f1c5021156f1fc3ab5"
+      }
+    ],
+    "latency_ms": 1963.3,
+    "model": "qwen/qwen3.6-27b",
+    "prompt": "Someone has written this about the photograph: \"the figure's grief radiates through the whole rotunda.\" Go through it clause by clause. For each clause, say what in the photograph supports it. If nothing in the photograph supports a clause, say so.",
+    "prompt_sha256": "b83db6e87de2a5c03fbc037dc1557d0e76da6fe79e0d4bf9d6f2ce40f5d84e58",
+    "provider": "groq",
+    "reasoning_effort": "none",
+    "usage": {
+      "completion_time": 1.009689133,
+      "completion_tokens": 445,
+      "prompt_time": 0.160583623,
+      "prompt_tokens": 1858,
+      "queue_time": 0.261657805,
+      "total_time": 1.170272756,
+      "total_tokens": 2303
+    }
+  },
+  "provenance": "capture:006-narrative-overreach:groq_vlm_probe",
+  "request_boundary": "remote_http_groq_openai_v1",
+  "uncertainty": null,
+  "version": "r2.groq-vlm.1"
+}

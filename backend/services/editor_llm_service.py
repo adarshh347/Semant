@@ -35,8 +35,9 @@ class EditorLLMService:
             
         # Literary refinement model (high quality text generation)
         self.literary_model = "openai/gpt-oss-120b"
-        # Vision model (image understanding)
-        self.vision_model = "meta-llama/llama-4-maverick-17b-128e-instruct"
+        # Vision model (image understanding). Groq retired llama-4-maverick (404); qwen3.6-27b
+        # is the vision-capable replacement on the current catalogue.
+        self.vision_model = "qwen/qwen3.6-27b"
 
     def _literary_refine(self, raw_text: str, context: str = "", style_hint: str = "evocative literary prose") -> str:
         """
@@ -231,6 +232,7 @@ Respond clearly and concisely:"""
             vision_completion = self.client.chat.completions.create(
                 messages=messages,
                 model=self.vision_model,
+                reasoning_effort="none",
                 max_tokens=1500,
                 temperature=0.7,
             )
@@ -335,6 +337,7 @@ What in the image resonates with "{node_text}"?"""
                     ]}
                 ],
                 model=self.vision_model,
+                reasoning_effort="none",
                 max_tokens=800,
                 temperature=0.7,
             )
@@ -422,6 +425,7 @@ Return ONLY a valid JSON object:
                     {"role": "user", "content": user_content}
                 ],
                 model=self.vision_model,
+                reasoning_effort="none",
                 max_tokens=1500,
                 response_format={"type": "json_object"},
             )

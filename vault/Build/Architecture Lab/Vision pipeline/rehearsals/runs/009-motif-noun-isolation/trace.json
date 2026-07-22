@@ -1,0 +1,44 @@
+{
+  "events": [
+    {
+      "actor": "human",
+      "cost": null,
+      "event_id": "009-motif-noun-isolation-e0",
+      "kind": "RECEIVE",
+      "observation_ref": null,
+      "parent_event": null,
+      "provenance": "runner:capture:receive",
+      "reconstructed": false,
+      "register": "opening",
+      "reversibility": "reversible",
+      "source_refs": [],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "009-motif-noun-isolation-e1",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "009-motif-noun-isolation-obs0",
+      "parent_event": "009-motif-noun-isolation-e0",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "arm-D"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    }
+  ],
+  "reconstructed": false,
+  "rehearsal_id": "009-motif-noun-isolation",
+  "score_ref": null,
+  "status": "completed"
+}

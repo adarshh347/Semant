@@ -1,0 +1,24 @@
+{
+  "695be817a9ea58f1b6aef5fa": {
+    "bytes": 70836,
+    "cloudinary": "45fd517f-c6d0-4dae-9eff-f13e15597c35.jpg",
+    "dimensions": "510x680",
+    "grounds": 0,
+    "percepts": 0,
+    "region_ids": [],
+    "regions": 0,
+    "sha256": "c5055621ef8782c18898b650941abb4cadca8dc22942c3f1c5021156f1fc3ab5",
+    "text_blocks": 0
+  },
+  "695be817a9ea58f1b6aef5fb": {
+    "bytes": 70836,
+    "cloudinary": "10b6e04a-e40a-43ef-a024-a600ec6011e6.jpg",
+    "dimensions": "510x680",
+    "grounds": 0,
+    "percepts": 0,
+    "region_ids": [],
+    "regions": 0,
+    "sha256": "c5055621ef8782c18898b650941abb4cadca8dc22942c3f1c5021156f1fc3ab5",
+    "text_blocks": 0
+  }
+}

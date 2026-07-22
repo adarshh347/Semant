@@ -1,0 +1,68 @@
+# RESEARCH-ONLY instrumented rehearsal. A2 of the R2 breadth batch.
+# Creates no production entity, route, schema, collection, or corpus write.
+# Reads one production post read-only; mutates nothing.
+rehearsal_id: "003-sensory-disagreement"
+rehearsal_type: "sensory-disagreement-material-vs-semantic"
+family: "R5 Sensory Disagreement"
+mode: "instrumented"
+reconstructed: false
+conducted_by: "opus (conductor); evidence from local chromaticity measurement + 2 bounded VLM calls"
+source_condition: "present"
+
+# Amendment 2, carried from the 002F followup: reproduction-vs-depiction fully
+# determined A1's outcome and must be stated explicitly on every run.
+reproduction_vs_depiction: "depiction"
+reproduction_notes: >
+  A single photograph of one carved stone object, not a composite plate, scan, or collage.
+  Unlike 002 (a made comparative plate with keyed-out black), the negative space and the
+  surfaces here belong to the world the photograph depicts. No compositing detected.
+
+dates:
+  date_original: "2026-07-21"
+  date_imported: "2026-07-21"
+
+seed_constellation:
+  images:
+    - id: "img-01"
+      path: "../../fixtures/003-sensory-disagreement/carved-figure-close.jpg"
+      dimensions: "452x679"
+      sha256: "12eaa7e7a44d17cf7ee6514181a6bcf319ccd7f1b6117d27947fb0ec583c89f4"
+      metadata_status: "downloaded read-only from the live post's photo_url; close-up of a carved stone figure (headdress, torso, arm) with relief carving behind; exact catalogue data absent"
+      source_post_id: "695be786a9ea58f1b6aef5ed"
+  texts: []
+  existing_percepts:
+    - note: "post carries 2 percepts and 5 grounds, read-only context, not the subject of this rehearsal"
+image_order: ["img-01"]
+
+initiating_act:
+  actor: "human"
+  kind: "sensory_disagreement"
+  payload: "is this one surface or two?"
+
+source_notes:
+  why_selected: "portfolio row A2. NOTE A DISCREPANCY: the portfolio describes this post as 'architecture (wall/floor)'. The image is NOT architecture -- it is a close-up of a carved stone figure. The portfolio appears to have inherited the DETECTOR'S region labels as ground truth. All 7 pre-existing regions are labelled 'wall' (x4) or 'floor' (x2). That mislabelling is not an obstacle to A2; it IS the sensory disagreement, already persisted in production."
+  known_context: "no title, no description; 0 text_blocks; 5 grounds; 2 percepts"
+  disagreement_engine: "F6 recorded that material/colour dominance caps identity rank-1 at 24% on the single-material sculpture set. Here one continuous stone is partitioned by a semantic channel into architectural classes that are not present."
+
+provider: "groq"
+model: "qwen/qwen3.6-27b"
+reasoning_effort: "none"
+
+constraints:
+  technical_silence: false
+  no_model_calls: false
+  model_budget: 2
+  retry_policy: "no retries except a provider-level failure of the first call"
+  image_call_throttle_s: 25
+  # Amendment 1, carried from 002F: offering a refusal token makes it an attractor.
+  no_named_refusal_token: true
+  no_iconographic_identification: true
+  no_production_mutation: true
+  time_budget: null
+
+expected_outcome_policy: >
+  Valid outcomes: (a) a SPARK candidate for representing channel disagreement, (b) evidence that an
+  existing construct already suffices, (c) evidence that an uncertainty / active-resensing surface
+  is needed later, or (d) an honest stall or refusal. A natural, unprompted refusal by the model is
+  a valid result and must be recorded as such, never re-prompted into compliance. No candidate may
+  be graduated: SPARK only.

@@ -62,3 +62,64 @@ describe('buildRecallScript — recede → primary → supporting (stagger) → 
     expect(ids).toEqual([c.id, a.id]); // a appears once
   });
 });
+
+// ── R2-A2S/A2R: detached evidence must be reported, never silently performed ──
+// A region-adapter Ground whose Region was replaced by a re-dissect still EXISTS
+// in the grounds array, so the raw `groundById` lookup returns it. Before this
+// guard it received a full timed highlight step that drew nothing, and the
+// caption then asserted the Percept over an empty image.
+describe('buildRecallScript — unresolved evidence', () => {
+    const regionGround = (id, region_id) => ({ id, ground_type: 'region', region_id });
+
+    it('gives a detached ground NO highlight step and reports it instead', () => {
+        const g = regionGround('g1', 'fine_0');
+        const p = { id: 'p1', expression: 'the upper head', ground_ids: ['g1'] };
+        const script = buildRecallScript(p, () => g, { isResolved: () => false });
+        expect(script.steps.filter((s) => s.kind === 'ground')).toHaveLength(0);
+        expect(script.unresolvedGroundIds).toEqual(['g1']);
+        expect(script.resolvedCount).toBe(0);
+        expect(script.citedCount).toBe(1);
+    });
+
+    it('keeps the resolved grounds and counts only the missing ones', () => {
+        const byId = { a: regionGround('a', 'seg_0'), b: regionGround('b', 'fine_9') };
+        const p = { id: 'p1', expression: 'x', ground_ids: ['a', 'b'] };
+        const script = buildRecallScript(p, (id) => byId[id], {
+            isResolved: (g) => g.id === 'a',
+        });
+        const played = script.steps.filter((s) => s.kind === 'ground');
+        expect(played.map((s) => s.groundId)).toEqual(['a']);
+        expect(script.unresolvedGroundIds).toEqual(['b']);
+        expect(script.resolvedCount).toBe(1);
+        expect(script.citedCount).toBe(2);
+    });
+
+    it('still reaches the expression step when every ground is detached', () => {
+        // The percept is the curator's own words and must not be suppressed —
+        // it is qualified, not deleted.
+        const p = { id: 'p1', expression: 'the upper head', ground_ids: ['g1', 'g2'] };
+        const script = buildRecallScript(p, (id) => regionGround(id, 'gone'),
+            { isResolved: () => false });
+        const expression = script.steps.find((s) => s.kind === 'expression');
+        expect(expression).toBeTruthy();
+        expect(script.unresolvedGroundIds).toEqual(['g1', 'g2']);
+    });
+
+    it('is unchanged when no isResolved is supplied (back-compat)', () => {
+        const g = regionGround('g1', 'seg_0');
+        const p = { id: 'p1', expression: 'x', ground_ids: ['g1'] };
+        const script = buildRecallScript(p, () => g);
+        expect(script.steps.filter((s) => s.kind === 'ground')).toHaveLength(1);
+        expect(script.unresolvedGroundIds).toEqual([]);
+    });
+
+    it('does not count a geometry-bearing ground as unresolved', () => {
+        // field/frame carry their own geometry and survive re-dissection — the
+        // corpus sweep found 0 of 15 detached.
+        const g = { id: 'f1', ground_type: 'field', strokes: [[[0.1, 0.1]]] };
+        const p = { id: 'p1', expression: 'x', ground_ids: ['f1'] };
+        const script = buildRecallScript(p, () => g, { isResolved: () => true });
+        expect(script.unresolvedGroundIds).toEqual([]);
+        expect(script.steps.filter((s) => s.kind === 'ground')).toHaveLength(1);
+    });
+});

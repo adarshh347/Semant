@@ -271,12 +271,27 @@
     filter: saturate(0.55);
 }
 
-.diff-recall-caption {
+/* Caption + its evidence note travel together, so a long expression cannot push
+   the note off the stage or grow past the image. */
+.diff-recall-say {
     position: absolute;
     left: 50%;
     bottom: 1.1rem;
     transform: translateX(-50%);
     max-width: min(80%, 34rem);
+    max-height: 45%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.diff-recall-caption {
+    max-width: 100%;
+    /* A percept may be a paragraph. Bound it rather than let it cover the image;
+       the full text remains readable in the inspector. */
+    overflow-wrap: anywhere;
     margin: 0;
     padding: 0.4rem 0.9rem;
     font-family: 'Fraunces', Georgia, serif;
@@ -291,6 +306,23 @@
 @keyframes diff-caption-in {
     from { opacity: 0; transform: translateX(-50%) translateY(6px); }
     to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Detached evidence — stated, not dramatised. Quieter than the caption it
+   qualifies: this reports a fact about the record, it does not accuse the
+   curator of anything, and the noticing above it stays legible. */
+.diff-recall-detached {
+    max-width: 100%;
+    margin: 0;
+    padding: 0.28rem 0.75rem;
+    font-size: 0.72rem;
+    font-style: normal;
+    letter-spacing: 0.01em;
+    text-align: center;
+    color: #F3E6D8;
+    background: rgba(23, 18, 26, 0.72);
+    border: 1px solid rgba(226, 174, 108, 0.5);
+    border-radius: var(--radius-pill);
 }
 
 .diff-stage-hint {

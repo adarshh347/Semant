@@ -1,0 +1,62 @@
+{
+  "rehearsal_id": "011-strained-premise-probe",
+  "research_only": true,
+  "mode": "instrumented",
+  "family": "Instrument check (serves R12; tests spark-10 and settles A6)",
+  "status": "completed",
+  "stall_or_refusal": null,
+  "score_ref": "score.md",
+  "trace_ref": "trace.json",
+  "manifest_ref": "manifest.yaml",
+  "artifacts": [
+    "manifest.yaml",
+    "trace.json",
+    "score.md",
+    "critique.md",
+    "sparks.md",
+    "pre-state.json",
+    "post-state.json",
+    "instrumented-score.json",
+    "observations/011-strained-premise-probe-obs0.json"
+  ],
+  "candidate_count": 0,
+  "spark_count": 0,
+  "observation_count": 1,
+  "live_model_call_count": 1,
+  "model_call_budget": 2,
+  "model_calls": [
+    {
+      "observation_ref": "011-strained-premise-probe-obs0",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 1884.4,
+      "total_tokens": 3636,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    }
+  ],
+  "latency_summary": {
+    "count": 1,
+    "min_ms": 1884.4,
+    "max_ms": 1884.4
+  },
+  "replay_live_call_count": 0,
+  "replay_proof": {
+    "verified": true,
+    "method": "Replay with every ALLOWLIST entry monkeypatched to raise and GROQ_API_KEY absent; 1 observation replayed, status completed, 0 adapter invocations."
+  },
+  "production_mutation": {
+    "mutated": false,
+    "evidence_ref": "post-state.json",
+    "subject_ref": "posts 695be6bca9ea58f1b6aef5df and 695be803a9ea58f1b6aef5f8; four comparisons each (full key set, array lengths, updated_at to the millisecond, region_embeddings/vision_runs counts); pre-state.json and post-state.json byte-identical"
+  },
+  "unresolved_questions": [
+    "Will the model EVER decline a supplied premise? Eleven arms, zero refusals, zero dissents, and now acceptance of a kinship two prior lanes called weak.",
+    "Is narrative subordination available in both directions? Reversing image order would test whether the move tracks the images or the presentation order.",
+    "Does spark-10 appear when the premise is the MODEL's own rather than supplied?",
+    "Is HW-C8's frame-contradicts rule too strict? This run is its first live cost: a substantively wrong structural claim recorded frame-silent.",
+    "Is the deflationary reading right - that compatibility is what independent generation predicts, and there is no immunising move at all? A verbatim repeat is the cheapest test."
+  ],
+  "notes": "Arm E's prompt, character for character; only the pair changed - to Pair 1, recorded as A POOR PAIR by HW-L4 D4 and HW-C4 D4 in earlier cycles, before spark-10 existed (weak rhyme, figure-dominated, lum 39.3/136.4 - both re-measured at execution and matching exactly). RESULT: ACCEPTS, pre-registered cell accepts_with_abstraction. SPARK-10 REPLICATES ON A STRAINED PREMISE and gains a second mechanism. Mechanism 1, retreat to altitude, is visible in one signposted sentence: 'the rose window or, MORE BROADLY, the concept of a circular, radiating, and intricately patterned design' - the escape hatch offered before any objection arrives. Mechanism 2 is NEW and sharper - NARRATIVE SUBORDINATION: the model recasts image 1 as a derivative of image 2 ('an interpretation of the motif rather than the motif itself'), after which every difference becomes evidence OF the relation rather than against it. All three supplied contradictions are compatible with the premise as the model formulated it; the third is converted into support. A6 FORMAL STATUS: REPLACED-BY-LADDER. Agreement is maximal without attribution on a good pair (010) and is also obtained on a poor pair (011), so agreement is close to a constant and a device measuring it measures nothing; the two-stage device, the stage-1/stage-2 delta, the quoted third-party proposition and the five-causes grid are retired, replaced by the single-call ladder that produced six clean results for six calls. UNPLANNED AND MORE VALUABLE: spark-08 is WEAKENED. This run used the IDENTICAL prompt to 010 and named a monument where 010 named none - only the pictures changed - so identity claims track the question AND fixture recognisability, not the question alone. First evidence in the program to push back on a spark rather than accumulate behind it. Also corrects a published measurement: the ~1794 tokens/image constant in HB-008 and HB-009 was an artefact of holding one pair fixed - this call measured 3109 prompt tokens on LARGER files, so image cost tracks pixel area, not bytes. Anthropomorphism recorded but EXCLUDED from the five-arm absence series, per HW-L4: both images contain real figures. External claims: 11 rows, 3 identity-reaching, 0 frame-contradicts, 0 stimulus-contradicts - including the first live cost of HW-C8's deliberate under-counting, a substantively wrong structural claim held at frame-silent because falsifying it needs an imported premise."
+}

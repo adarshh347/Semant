@@ -1,0 +1,44 @@
+{
+  "events": [
+    {
+      "actor": "human",
+      "cost": null,
+      "event_id": "011-strained-premise-probe-e0",
+      "kind": "RECEIVE",
+      "observation_ref": null,
+      "parent_event": null,
+      "provenance": "runner:capture:receive",
+      "reconstructed": false,
+      "register": "opening",
+      "reversibility": "reversible",
+      "source_refs": [],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    },
+    {
+      "actor": "system",
+      "cost": null,
+      "event_id": "011-strained-premise-probe-e1",
+      "kind": "CALL_ORGAN",
+      "observation_ref": "011-strained-premise-probe-obs0",
+      "parent_event": "011-strained-premise-probe-e0",
+      "provenance": "runner:capture:call_organ",
+      "reconstructed": false,
+      "register": "evidence",
+      "reversibility": "reversible",
+      "source_refs": [
+        "strained"
+      ],
+      "target_refs": [],
+      "timestamp": null,
+      "timestamp_null_reason": "deterministic runner records no wall-clock time",
+      "uncertainty": null
+    }
+  ],
+  "reconstructed": false,
+  "rehearsal_id": "011-strained-premise-probe",
+  "score_ref": null,
+  "status": "completed"
+}

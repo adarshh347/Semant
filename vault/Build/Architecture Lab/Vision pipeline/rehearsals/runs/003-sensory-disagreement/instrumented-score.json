@@ -1,0 +1,71 @@
+{
+  "rehearsal_id": "003-sensory-disagreement",
+  "research_only": true,
+  "mode": "instrumented",
+  "family": "R5 Sensory Disagreement",
+  "status": "completed",
+  "stall_or_refusal": null,
+  "score_ref": "score.md",
+  "trace_ref": "trace.json",
+  "manifest_ref": "manifest.yaml",
+  "artifacts": [
+    "manifest.yaml",
+    "trace.json",
+    "score.md",
+    "critique.md",
+    "sparks.md",
+    "source-notes.md",
+    "instrumented-score.json",
+    "observations/003-sensory-disagreement-obs0.json",
+    "observations/003-sensory-disagreement-obs1.json",
+    "observations/003-sensory-disagreement-obs2.json"
+  ],
+  "candidate_count": 0,
+  "spark_count": 2,
+  "observation_count": 3,
+  "live_model_call_count": 2,
+  "model_call_budget": 2,
+  "model_calls": [
+    {
+      "observation_ref": "003-sensory-disagreement-obs1",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 1625.0,
+      "total_tokens": 1972,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    },
+    {
+      "observation_ref": "003-sensory-disagreement-obs2",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 3928.3,
+      "total_tokens": 2057,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    }
+  ],
+  "latency_summary": {
+    "count": 2,
+    "min_ms": 1625.0,
+    "max_ms": 3928.3
+  },
+  "replay_live_call_count": 0,
+  "replay_proof": {
+    "verified": true,
+    "method": "Replay with every ALLOWLIST entry monkeypatched to raise, socket.connect patched to raise, GROQ_API_KEY absent; 3 observations replayed, 4 events reproduced, 0 adapter calls."
+  },
+  "production_mutation": {
+    "mutated": false,
+    "evidence_ref": "score.md#provenance",
+    "subject_ref": "post 695be786a9ea58f1b6aef5ed"
+  },
+  "unresolved_questions": [
+    "How many percepts corpus-wide currently cite detached region grounds?",
+    "Is the field ground's durability an argument for preferring it over reference-based grounding, or is notification the real fix?",
+    "Should a re-dissect be allowed to replace a region set that grounds depend on, or should old regions persist as tombstones?"
+  ],
+  "notes": "A2 of the R2 breadth batch. NOT a stall. Answer to the seed gesture is ONE surface (chromaticity across the detector's label boundaries is smaller than within a single label, and both VLM probes agree). Main finding came from read-only inspection rather than the probes: percept pctx_mrqp950d_0 ('the upper head') has 2/2 grounds DETACHED because a dissect replaced the fine_* regions they cited with an architecture-model arch_* set labelling a sculpture as wall/floor. Field and frame grounds on the same post survived. Also records that R0's portfolio mis-describes this fixture as 'architecture (wall/floor)' -- it inherited the detector's labels as ground truth."
+}

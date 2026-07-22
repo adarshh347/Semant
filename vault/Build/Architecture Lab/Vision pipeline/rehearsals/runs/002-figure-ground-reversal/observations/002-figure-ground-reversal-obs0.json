@@ -1,0 +1,19 @@
+{
+  "adapter": "local_file_digest",
+  "captured_at": null,
+  "content_hash": "21c0829525adf091da03a09692b4d35537613a3bc635ba70ec72e2c7580f18ec",
+  "cost": null,
+  "device": "cpu",
+  "latency_ms": null,
+  "model": null,
+  "observation_id": "002-figure-ground-reversal-obs0",
+  "output": {
+    "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/002-figure-ground-reversal/five-sculpture-collage.jpg",
+    "sha256": "c6c9fc86673ba3e7e0c25174c4f422843e644642d2037c9b169a45b9ac6e225f",
+    "size_bytes": 35720
+  },
+  "provenance": "capture:002-figure-ground-reversal:local_file_digest",
+  "request_boundary": "local_filesystem_read",
+  "uncertainty": null,
+  "version": "r1.local-pure.1"
+}

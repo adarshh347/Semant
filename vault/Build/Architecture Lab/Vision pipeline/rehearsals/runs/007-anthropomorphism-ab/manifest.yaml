@@ -1,0 +1,100 @@
+# RESEARCH-ONLY instrumented A/B REPLICATION. Not a new breadth family.
+# Creates no production entity, route, schema, collection, or corpus write.
+rehearsal_id: "007-anthropomorphism-ab"
+rehearsal_type: "ab-replication-prompt-frame-vs-image"
+family: "Replication probe (serves R7 / R12; resolves spark-06)"
+mode: "instrumented"
+reconstructed: false
+conducted_by: "opus (execution); design and scoring marked Fable-pass in score.md"
+source_condition: "present"
+reproduction_vs_depiction: "depiction"
+
+dates:
+  date_original: "2026-07-21"
+  date_imported: "2026-07-21"
+
+replication_of:
+  a3_finding: >
+    Run 004 (A3) reported that, given this exact image inside a 3-image comparison at 256px, the
+    model described "windows that function as eyes ... a direct, imposing gaze ... confrontational
+    address" for a structure with NO figure in it. A3 called the behaviour SPONTANEOUS.
+  a4_narrowing: >
+    Run 005 (A4) saw no face on an aniconic frontal wall under structure-framed prompts and
+    narrowed spark-06 to QUESTION-CONDITIONAL.
+  why_unresolved: >
+    The A6 decision gate showed A4 moved TWO variables at once - prompt frame AND aperture
+    geometry. A3's structure carries paired lateral apertures; A4's wall has one central opening
+    and is EYELESS BY CONSTRUCTION, so it may have produced no face under either prompt. spark-06
+    is therefore UNRESOLVED, and A4 gives A6 no protection.
+  question_this_run_answers: >
+    Does face/address emerge from the IMAGE or from the QUESTION FRAME? Same image, same
+    resolution, same budget; only the frame differs.
+
+seed_constellation:
+  images:
+    - id: "img-01"
+      role: "fixed stimulus for both arms"
+      path: "../../fixtures/007-anthropomorphism-ab/dark-structure.jpg"
+      probe_path: "../../fixtures/007-anthropomorphism-ab/probe-768.jpg"
+      native_dimensions: "1366x2048"
+      probe_dimensions: "512x768"
+      sha256: "c1f69be0be7aba25240a3d5ed23fed709b9d1384f15c8397a56f8c8ce303c86d"
+      probe_sha256: "d366b2e1ae779807a1ad70568bf1c1ee3c84bd13bc9d8acabe45ca8c9336c086"
+      reproduction_vs_depiction: "depiction"
+      reproduction_notes: >
+        Photograph of a dark metal structure. NO figure, NO face, NO body present. This is the
+        image that produced A3's face reading, which is why it is the correct stimulus for the
+        replication: it is the one case where the behaviour is known to have occurred.
+      metadata_status: "no title, no description, no catalogue data"
+      source_post_id: "695be843a9ea58f1b6aef5ff"
+  texts: []
+  existing_percepts: []
+image_order: ["img-01"]
+
+initiating_act:
+  actor: "human"
+  kind: "ab_replication"
+  payload: "does face/address emerge from the image or from the question frame?"
+
+design:
+  variable_isolated: "PROMPT FRAME only"
+  held_constant: >
+    Same image, same 768px probe variant (identical sha256 in both arms), same model, same
+    reasoning_effort, same max_tokens, same single-image call shape, both arms STATELESS and
+    independent.
+  arm_a: "ADDRESS-framed - mirrors run 004's framing, which asked where an address goes and what it turns away from"
+  arm_b: "STRUCTURE-framed - mirrors run 005's framing, which asked what organises the composition"
+  neither_arm_primes: >
+    Neither prompt contains face, eye, gaze, body, head, watching, or looking-at-us. The word
+    ADDRESS appears in arm A only - that IS the variable under test.
+  known_confound_stated_in_advance: >
+    A3 sent this image at 256px inside a THREE-image comparison. This replication sends it alone
+    at 768px. Resolution and call-shape therefore differ from A3 in BOTH arms. Consequence: if arm
+    A produces a face, prompt frame is SUFFICIENT and spark-06 resolves toward question-conditional.
+    If NEITHER arm produces a face, the result is confounded - it may mean the frame is not
+    sufficient, or that A3's reading depended on 256px degradation or on the 3-image comparison
+    context. A null result must NOT be scored as resolving spark-06.
+  interpretation_grid:
+    a_face_b_none: "prompt frame drives it - spark-06 resolves to question-conditional"
+    a_face_b_face: "the image drives it - aperture geometry; frame is not necessary; A6 is exposed"
+    a_none_b_none: "CONFOUNDED - see known_confound; spark-06 stays unresolved"
+    a_none_b_face: "anomalous; would require its own investigation"
+
+provider: "groq"
+model: "qwen/qwen3.6-27b"
+reasoning_effort: "none"
+
+constraints:
+  no_model_calls: false
+  model_budget: 2
+  retry_policy: "no retries except a provider-level failure"
+  image_call_throttle_s: 30
+  no_named_refusal_token: true
+  no_anthropomorphic_priming: true
+  no_iconographic_identification: true
+  no_production_mutation: true
+
+expected_outcome_policy: >
+  All four cells of the interpretation grid are publishable. A null result in both arms is a
+  CONFOUNDED result, not a negative one, and must be reported as such rather than claimed as a
+  resolution of spark-06.

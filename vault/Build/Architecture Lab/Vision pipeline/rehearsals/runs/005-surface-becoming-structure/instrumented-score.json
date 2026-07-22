@@ -1,0 +1,73 @@
+{
+  "rehearsal_id": "005-surface-becoming-structure",
+  "research_only": true,
+  "mode": "instrumented",
+  "family": "R8 Surface Becoming Structure",
+  "status": "completed",
+  "stall_or_refusal": null,
+  "score_ref": "score.md",
+  "trace_ref": "trace.json",
+  "manifest_ref": "manifest.yaml",
+  "artifacts": [
+    "manifest.yaml",
+    "trace.json",
+    "score.md",
+    "critique.md",
+    "sparks.md",
+    "source-notes.md",
+    "pre-state.json",
+    "post-state.json",
+    "instrumented-score.json",
+    "observations/005-surface-becoming-structure-obs0.json",
+    "observations/005-surface-becoming-structure-obs1.json",
+    "observations/005-surface-becoming-structure-obs2.json"
+  ],
+  "candidate_count": 0,
+  "spark_count": 1,
+  "observation_count": 3,
+  "live_model_call_count": 2,
+  "model_call_budget": 2,
+  "model_calls": [
+    {
+      "observation_ref": "005-surface-becoming-structure-obs1",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 1393.0,
+      "total_tokens": 2021,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    },
+    {
+      "observation_ref": "005-surface-becoming-structure-obs2",
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "reasoning_effort": "none",
+      "latency_ms": 2527.9,
+      "total_tokens": 2292,
+      "finish_reason": "stop",
+      "emitted_think_block": false
+    }
+  ],
+  "latency_summary": {
+    "count": 2,
+    "min_ms": 1393.0,
+    "max_ms": 2527.9
+  },
+  "replay_live_call_count": 0,
+  "replay_proof": {
+    "verified": true,
+    "method": "Replay with every ALLOWLIST entry monkeypatched to raise, socket.connect patched to raise, GROQ_API_KEY absent; 3 observations replayed, 4 events reproduced, 0 adapter calls."
+  },
+  "production_mutation": {
+    "mutated": false,
+    "evidence_ref": "post-state.json",
+    "subject_ref": "post 695be784a9ea58f1b6aef5ec"
+  },
+  "unresolved_questions": [
+    "Does ground type already encode claim scope (frame = general, region/field = local)?",
+    "Is the pattern/structure contradiction a property of this image, or of any richly ornamented surface?",
+    "Is anthropomorphism strictly address-conditional? Only an A/B on one image would settle it."
+  ],
+  "notes": "A4. Ran at NATIVE resolution (453x680, unscaled), repairing A3's 256px confound. The two probes CONTRADICT: probe 1 asserts 'structure first, pattern second - the pattern merely fills'; probe 2, asked to point at the strongest dividing line, names one made by 'a change in surface pattern itself, not by a structural edge' and says the two 'disagree'. Measurement independently confirms probe 2's LOCATION (149% edge-density jump at y~0.765, the largest in the image) but not its attribution. Separately A4 BOUNDS spark-06: on the most face-suggestive aniconic image in the corpus, with no anthropomorphic priming, NO face reading appeared - correcting A3's claim that the behaviour is spontaneous. It is question-conditional, elicited by address-framed prompts. Model volunteered unrequested cultural attribution ('a classic Islamic architectural device'), recorded as source overreach and withheld."
+}

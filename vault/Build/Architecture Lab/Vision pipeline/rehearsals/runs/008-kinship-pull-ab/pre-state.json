@@ -1,0 +1,62 @@
+{
+  "695be815a9ea58f1b6aef5f9": {
+    "bounding_box_tags": 0,
+    "key_set": [
+      "_id",
+      "bounding_box_tags",
+      "general_tags",
+      "photo_public_id",
+      "photo_url",
+      "source_url",
+      "text_blocks",
+      "updated_at"
+    ],
+    "lengths": {
+      "general_tags": 0,
+      "text_blocks": 0
+    },
+    "present": {
+      "general_tags": true,
+      "grounds": false,
+      "percepts": false,
+      "region_annotations": false,
+      "regions": false,
+      "text_blocks": true
+    },
+    "region_embeddings": 0,
+    "updated_at": "2026-01-05 16:34:29.993000",
+    "vision_runs": 0
+  },
+  "695be8eca9ea58f1b6aef60b": {
+    "bounding_box_tags": 0,
+    "key_set": [
+      "_id",
+      "bounding_box_tags",
+      "general_tags",
+      "grounds",
+      "percepts",
+      "photo_public_id",
+      "photo_url",
+      "source_url",
+      "text_blocks",
+      "updated_at"
+    ],
+    "lengths": {
+      "general_tags": 0,
+      "grounds": 0,
+      "percepts": 0,
+      "text_blocks": 0
+    },
+    "present": {
+      "general_tags": true,
+      "grounds": true,
+      "percepts": true,
+      "region_annotations": false,
+      "regions": false,
+      "text_blocks": true
+    },
+    "region_embeddings": 0,
+    "updated_at": "2026-07-17 17:48:40.803000",
+    "vision_runs": 0
+  }
+}

@@ -1,0 +1,124 @@
+# RESEARCH-ONLY instrumented rehearsal. A3 of the R2 breadth batch.
+# Creates no production entity, route, schema, collection, or corpus write.
+# Reads three production posts read-only; mutates nothing.
+rehearsal_id: "004-gesture-and-address"
+rehearsal_type: "gesture-and-address-cross-medium"
+family: "R7 Gesture and Address"
+mode: "instrumented"
+reconstructed: false
+conducted_by: "opus (conductor); curator-selected comparison, NOT embedding-selected"
+source_condition: "present"
+
+# Per-image now, not per-run: A3 deliberately mixes a reproduction of a painting with
+# photographs of objects, and run 002/002F showed this distinction decides outcomes.
+reproduction_vs_depiction: "mixed — recorded per image below"
+
+dates:
+  date_original: "2026-07-21"
+  date_imported: "2026-07-21"
+
+seed_constellation:
+  images:
+    - id: "img-01"
+      role: "subject"
+      path: "../../fixtures/004-gesture-and-address/subject-painting-bound-face.jpg"
+      probe_path: "../../fixtures/004-gesture-and-address/probe/subject-painting-bound-face.jpg"
+      dimensions: "643x680"
+      sha256: "b6e2c10ef536"          # truncated for readability; full hash in pre-state.json
+      reproduction_vs_depiction: "reproduction"
+      reproduction_notes: >
+        A photographed/scanned OIL PAINTING - visible brushwork, palette-knife strokes, a signature
+        at lower left. NOT a garment photograph. R0's portfolio called this a "garment"; that
+        reading came from fashion-segmenter region labels (dress, scarf, tie knot, collar), not
+        from the artwork. Third consecutive portfolio fixture description found to be inherited
+        detector output.
+      metadata_status: "no title, no description, no catalogue data"
+      source_post_id: "695be8baa9ea58f1b6aef609"
+    - id: "img-02"
+      role: "neighbour"
+      path: "../../fixtures/004-gesture-and-address/neighbour-veiled-funerary.jpg"
+      probe_path: "../../fixtures/004-gesture-and-address/probe/neighbour-veiled-funerary.jpg"
+      dimensions: "500x666"
+      sha256: "570b29545158"
+      reproduction_vs_depiction: "depiction"
+      reproduction_notes: >
+        A black-and-white photograph of a weathered veiled funerary figure, outdoors. Depicts a
+        real object in real space. Carries a visible photographer watermark at lower right - a
+        reproduction artifact on an otherwise depictive image, recorded so it is not mistaken for
+        carved or painted content.
+      metadata_status: "no title, no description, no catalogue data"
+      source_post_id: "695be790a9ea58f1b6aef5ef"
+    - id: "img-03"
+      role: "negative"
+      path: "../../fixtures/004-gesture-and-address/negative-dark-structure.jpg"
+      probe_path: "../../fixtures/004-gesture-and-address/probe/negative-dark-structure.jpg"
+      dimensions: "1366x2048"
+      sha256: "c1f69be0be7a"
+      reproduction_vs_depiction: "depiction"
+      reproduction_notes: >
+        Photograph of a dark metal structure/spire. NO figure, NO face, NO body - gesture relevance
+        is exactly zero by construction. Present as the negative comparison.
+      metadata_status: "no title, no description, no catalogue data"
+      source_post_id: "695be843a9ea58f1b6aef5ff"
+  texts: []
+  existing_percepts: []
+
+# Explicit and load-bearing: the prompts address images by position.
+image_order: ["img-01", "img-02", "img-03"]
+
+initiating_act:
+  actor: "human"
+  kind: "gesture_and_address"
+  payload: "where does this gesture's address go?"
+
+source_notes:
+  why_selected: >
+    Portfolio row A3. The neighbour was chosen by a curator on GESTURE grounds - both figures throw
+    the head back with the face withheld from the viewer (bound by fabric in one, eyes closed and
+    veiled in the other). Nothing about their surfaces is alike: the subject is a warm-toned oil
+    painting (mean saturation 0.192), the neighbour a PURE GREYSCALE photograph (mean saturation
+    0.0000). On the colour/material axis F6 documented as dominant, this pair is maximally unlikely.
+  negative_selection: >
+    695be843 shares the subject's low-key darkness (87.9% of pixels below luminance 64, vs 65.7%
+    for the subject) but contains no figure at all, so no address is possible.
+  embedding_counterfactual_is_UNTESTABLE: >
+    The subject has 37 region embeddings; the neighbour and the negative have ZERO. There is
+    nothing to run a similarity query against, so this rehearsal may NOT claim that an embedding
+    would have ranked the negative above the neighbour. It reasons only from F6's documented
+    material/colour dominance and labels the counterfactual untested. Note also that raw
+    chromaticity distance actually places the neighbour CLOSER to the subject (0.0494) than the
+    negative (0.0697), so the naive form of that argument is wrong; the real divergence is medium,
+    saturation and texture.
+  probe_downscaling: >
+    Probe variants are capped at 768px on the long edge and hashed separately. All three images
+    were treated identically so none is privileged. The negative's original is 1366x2048 and would
+    otherwise have consumed a large share of the 8000 TPM ceiling on its own. Originals are frozen
+    unmodified in the fixture root.
+  two_region_generations: >
+    The subject carries TWO coexisting region generations - fseg_* (7) and fine_* (9), 16 total -
+    unlike post 695be786 where arch_* REPLACED fine_* and stranded two grounds. Re-dissection does
+    not always replace. Neither generation is disturbed here.
+
+provider: "groq"
+model: "qwen/qwen3.6-27b"
+reasoning_effort: "none"
+
+constraints:
+  technical_silence: false
+  no_model_calls: false
+  model_budget: 2
+  retry_policy: "no retries except a provider-level failure of the first call (then 1 extra)"
+  image_call_throttle_s: 65
+  no_named_refusal_token: true
+  no_iconographic_identification: true
+  no_embedding_selected_comparison: true
+  no_production_mutation: true
+  time_budget: null
+
+expected_outcome_policy: >
+  Valid outcomes: (a) a SPARK for expressing address/orientation as something that is neither a
+  region nor a similarity score, (b) evidence that an existing construct suffices - `relation`
+  grounds already reference members by id and carry a relation_label, and A2's most useful finding
+  was of exactly this shape, (c) an honest stall if address cannot be evidenced from single frames
+  without importing iconography, or (d) a natural, unprompted refusal - which is a result and must
+  never be re-prompted into compliance. SPARK only; no graduation.

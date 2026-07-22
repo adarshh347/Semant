@@ -1,0 +1,19 @@
+{
+  "adapter": "local_file_digest",
+  "captured_at": null,
+  "content_hash": "82892ef8e0860f520e11c70efe1caa8e8b8bbc639881b0010c5c26ee4970ec65",
+  "cost": null,
+  "device": "cpu",
+  "latency_ms": null,
+  "model": null,
+  "observation_id": "003-sensory-disagreement-obs0",
+  "output": {
+    "path": "/home/adarsh-yadav/Documents/projects/semant/vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/003-sensory-disagreement/carved-figure-close.jpg",
+    "sha256": "12eaa7e7a44d17cf7ee6514181a6bcf319ccd7f1b6117d27947fb0ec583c89f4",
+    "size_bytes": 52470
+  },
+  "provenance": "capture:003-sensory-disagreement:local_file_digest",
+  "request_boundary": "local_filesystem_read",
+  "uncertainty": null,
+  "version": "r1.local-pure.1"
+}

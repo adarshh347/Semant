@@ -13,6 +13,13 @@ __pycache__/
 yolo*.pt
 *.pt
 runs/
+# ...but the Rehearsal Research Program's runs ARE inspectable research memory — keep them.
+# The first exception is the retired pre-vault path for branch compatibility; the second is
+# the canonical home after the vault reorganisation.
+!architecture-lab/rehearsals/runs/
+!architecture-lab/rehearsals/runs/**
+!vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/
+!vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/**
 .ds-sync/
 ds-bundle/
 .design-sync/.cache/
