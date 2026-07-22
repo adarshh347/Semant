@@ -79,7 +79,7 @@ const groundTitle = (g, regions = []) => {
 
 const MIN_SAMPLE_DIST = 0.004;
 
-export default function DifferentialWorkspace({ post, store, onExit, onSendToManuscript = null, onPostChange = null }) {
+export default function DifferentialWorkspace({ post, store, onExit, onSendToManuscript = null, onPostChange = null, firstAttentionPrefill = null }) {
     const [tool, setTool] = useState('select');
     const [traceSub, setTraceSub] = useState('path');
     const [untouched, setUntouched] = useState(false);
@@ -766,6 +766,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             wayOfLooking={(post?.domain_profile?.chosen || ['general'])[0]}
                             capabilities={ACTION_CAPABILITIES}
                             onApplyAction={applyPerceptualAction}
+                            prefill={firstAttentionPrefill}
                         />
                     </section>
 

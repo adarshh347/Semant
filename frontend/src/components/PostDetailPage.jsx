@@ -522,13 +522,21 @@ function PostDetailPage() {
     if (perceptId) regionStore.playRecall(perceptId);
   };
 
+  // CIRCUIT-001 P2E — a sentence or percept expression carried into Differential's
+  // First Attention. Seeds the prompt; the curator still presses "Suggest acts".
+  // Cleared on exit so a later manual open of Differential does not re-seed.
+  const [firstAttentionPrefill, setFirstAttentionPrefill] = useState(null);
+
   const reviseInDifferential = (perceptId) => {
     if (!perceptId) return;
+    const percept = (regionStore.percepts || []).find((p) => p.id === perceptId);
+    // P2E: the percept's own expression seeds First Attention — you land in
+    // Differential already holding what the writing said about it.
+    if (percept?.expression) setFirstAttentionPrefill(percept.expression);
     setWorkspaceMode('differential');
     // Return to where the percept was formed: light its grounds and replay the
     // noticing so the crossing is felt, not merely navigated. If the grounds no
     // longer resolve, playRecall already refuses to point at nothing (P1B).
-    const percept = (regionStore.percepts || []).find((p) => p.id === perceptId);
     const regionIds = (percept?.ground_ids || [])
       .map((gid) => regionStore.groundById(gid)?.region_id)
       .filter(Boolean);
@@ -541,11 +549,18 @@ function PostDetailPage() {
     manuscriptRef.current?.startPassage?.({ blockId: blockId || null });
   };
 
-  const sendSelectionToDifferential = () => {
-    // The reverse crossing for prose: return to the image side. Prefilling First
-    // Attention is Lane A's surface (P2D interface contract) and is not wired
-    // here — but the switch itself is a real, visible effect, never a no-op.
+  const sendSelectionToDifferential = (text) => {
+    // The reverse crossing for prose: return to the image side AND seed First
+    // Attention with the sentence (P2E — the MS2 deferred caveat, now wired). It
+    // does not auto-submit and it mutates nothing.
+    if (text && text.trim()) setFirstAttentionPrefill(text.trim());
     setWorkspaceMode('differential');
+  };
+
+  const exitDifferential = () => {
+    setWorkspaceMode('chiasm');
+    // Consume the prefill so opening Differential manually later starts blank.
+    setFirstAttentionPrefill(null);
   };
 
   const startEditing = ({ seed = true } = {}) => {
@@ -972,7 +987,8 @@ function PostDetailPage() {
         <DifferentialWorkspace
           post={post}
           store={regionStore}
-          onExit={() => setWorkspaceMode('chiasm')}
+          onExit={exitDifferential}
+          firstAttentionPrefill={firstAttentionPrefill}
           /* The artery. A percept formed here could previously reach the writing
              only if the curator left, remembered it existed, typed /percept and
              found it again in a picker. Same insertion path as the slash command

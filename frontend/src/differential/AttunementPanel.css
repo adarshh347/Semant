@@ -69,6 +69,32 @@
   color: var(--ink-subtle);
 }
 
+/* CIRCUIT-001 P2E — the sentence arrived from the Manuscript. Present, quiet,
+   and clearly not a claim that anything has been suggested yet. */
+.ap-brought {
+  margin: 0;
+  font-size: 0.66rem;
+  line-height: 1.45;
+  color: var(--accent);
+  font-style: italic;
+}
+
+/* CIRCUIT-001 P2E — the draft visual_mark an armed image-act would produce.
+   Shown BEFORE any geometry: role named, shape not yet drawn. */
+.ap-draft-mark {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.5rem;
+  margin-top: 0.35rem;
+  padding: 0.3rem 0.4rem;
+  border-left: 2px dashed var(--accent-soft, var(--accent));
+  font-size: 0.64rem;
+}
+.ap-draft-mark-status { font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.ap-draft-mark-prov { color: var(--ink-subtle); }
+.ap-draft-mark-cite { color: var(--ink-subtle); font-style: italic; }
+
 .ap-first-actions { display: flex; }
 
 .ap-suggest {
