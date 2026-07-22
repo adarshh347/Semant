@@ -1,0 +1,275 @@
+/* CIRCUIT-001 P2B — First Attention and the acts it opens.
+
+   The panel a curator meets first. It has to feel like a place to say something, not a form
+   to fill: the prompt is generous, the chips are light, and the cards below are quiet until
+   one of them is the one you want.
+
+   Token grammar only — one --accent, --line hairlines, --surface layers. */
+
+.ap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  font-family: var(--font-sans);
+}
+
+.ap-eyebrow {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.ap-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── first attention ──────────────────────────────────────────────────────── */
+
+.ap-first {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 0.625rem);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 88%, var(--accent-soft)) 0%,
+      var(--surface) 62%);
+}
+
+.ap-prompt-wrap { display: flex; }
+
+.ap-prompt {
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm, 0.375rem);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  resize: vertical;
+  min-height: 4.2rem;
+}
+.ap-prompt::placeholder { color: var(--ink-subtle); font-family: var(--font-sans); }
+.ap-prompt:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.ap-help {
+  margin: 0;
+  font-size: 0.66rem;
+  line-height: 1.45;
+  color: var(--ink-subtle);
+}
+
+.ap-first-actions { display: flex; }
+
+.ap-suggest {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 2.3rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--accent-deep);
+  border-radius: var(--radius-sm, 0.375rem);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.ap-suggest:hover:not(:disabled) { background: var(--accent-deep); }
+.ap-suggest:disabled { opacity: 0.45; cursor: default; }
+.ap-suggest:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.ap-chips { display: flex; flex-wrap: wrap; gap: 0.28rem; }
+
+.ap-chip {
+  min-height: 1.7rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.ap-chip:hover { border-color: var(--accent); color: var(--accent-deep); background: var(--accent-soft); }
+.ap-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── suggested acts ───────────────────────────────────────────────────────── */
+
+.ap-suggested { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.ap-suggested-head { display: flex; align-items: baseline; gap: 0.5rem; }
+.ap-summary { font-size: 0.68rem; color: var(--ink-subtle); }
+
+.ap-empty {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--ink-subtle);
+}
+
+.ap-group { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.ap-group-title {
+  margin: 0.2rem 0 0;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+/* ── one card ─────────────────────────────────────────────────────────────── */
+
+.ap-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--line-strong);
+  border-radius: var(--radius-sm, 0.375rem);
+  background: var(--surface);
+  transition: border-color 120ms ease;
+}
+.ap-card:hover { border-left-color: var(--accent); }
+.ap-card.is-previewed { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 30%, var(--surface)); }
+.ap-card.is-applied { border-left-color: #2f9e5e; opacity: 0.75; }
+
+.ap-card-head { display: flex; align-items: center; gap: 0.35rem; }
+
+.ap-swatch {
+  width: 0.62rem; height: 0.62rem;
+  flex: none;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+}
+
+.ap-card-label {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ap-source {
+  flex: none;
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+.ap-source--user { color: var(--accent); }
+
+.ap-card-reason {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.ap-facts { margin: 0; display: flex; flex-wrap: wrap; gap: 0.15rem 0.5rem; }
+.ap-fact { display: inline-flex; align-items: baseline; gap: 0.25rem; }
+.ap-fact dt {
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+.ap-fact dd { margin: 0; font-size: 0.68rem; color: var(--ink); }
+
+.ap-draft {
+  margin: 0.1rem 0 0;
+  padding: 0.35rem 0.5rem;
+  border-left: 2px solid var(--accent-soft);
+  background: var(--bg);
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.ap-warnings {
+  margin: 0;
+  padding-left: 0.9rem;
+  list-style: none;
+}
+.ap-warnings li {
+  position: relative;
+  font-size: 0.64rem;
+  line-height: 1.4;
+  color: #a8741c;
+}
+.ap-warnings li::before {
+  content: '·';
+  position: absolute;
+  left: -0.6rem;
+}
+
+.ap-state { margin: 0; font-size: 0.65rem; line-height: 1.4; }
+.ap-state--preview { color: var(--ink-subtle); font-style: italic; }
+.ap-state--staged { color: var(--accent-deep); font-weight: 600; }
+.ap-state--applied { color: #2f9e5e; }
+
+.ap-card-actions { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.15rem; }
+
+.ap-apply,
+.ap-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.8rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm, 0.375rem);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.ap-apply {
+  border-color: var(--accent);
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.ap-apply:hover { background: var(--accent); color: var(--accent-ink); }
+.ap-preview:hover { color: var(--ink); background: var(--surface-hover); }
+.ap-apply:focus-visible,
+.ap-preview:focus-visible,
+.ap-dismiss:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.ap-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  width: 1.6rem; height: 1.6rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 0.375rem);
+  background: transparent;
+  color: var(--ink-subtle);
+  cursor: pointer;
+}
+.ap-dismiss:hover { color: var(--ink); background: var(--surface-hover); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ap-card, .ap-suggest { transition: none; }
+}

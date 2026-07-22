@@ -119,7 +119,11 @@
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) clamp(200px, 24cqi, 300px);
+    /* CIRCUIT-001 P2B — the orchestration column earns real width. At 24cqi/300px max it
+       held a console, a workshop and a trace in a 300px gutter; First Attention needs a
+       prompt a sentence actually fits in. The stage still takes everything left over, and
+       `minmax(0, 1fr)` means the image is never squeezed below its own box. */
+    grid-template-columns: auto minmax(0, 1fr) clamp(320px, 30cqi, 440px);
     grid-template-areas: "rail stage insp";
 }
 
@@ -343,6 +347,31 @@
     overflow-y: auto;
     min-height: 0;
 }
+
+/* CIRCUIT-001 P2B — the column is now sectioned. A hairline between sections is enough
+   structure to read as a stack; boxes inside boxes would make it a dashboard. */
+.diff-insp-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.diff-insp-section + .diff-insp-section,
+.diff-insp-section--attune + * {
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line);
+}
+/* First Attention keeps its own weight at the top of the column. */
+.diff-insp-section--attune { padding-bottom: 0.1rem; }
+
+/* An armed act, under the stage. Quiet — it is an instruction, not an alarm. */
+.diff-armed {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--accent-deep, var(--accent));
+    text-align: center;
+}
+.diff-armed strong { font-weight: 600; }
 
 .diff-insp-name {
     margin: 0.3rem 0 0.55rem;

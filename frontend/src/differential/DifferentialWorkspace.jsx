@@ -13,6 +13,7 @@ import useFindSimilar from './useFindSimilar';
 import FindSimilar from './FindSimilar';
 import SeeingConsole from './SeeingConsole';
 import PerceptWorkshop from './PerceptWorkshop';
+import AttunementPanel from './AttunementPanel';
 import useFindParts from './useFindParts';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
@@ -114,6 +115,13 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     const findParts = useFindParts(postId, store);
     const [grain, setGrain] = useState('general');
 
+    // ── CIRCUIT-001 P2B — a mark the curator has ARMED but not yet made. ───────────
+    // This is the whole shape of "applying" an image act: the tool is switched and the
+    // intended role/label is held here, and the geometry is still the curator's hand. When
+    // the draft is committed the staged label rides onto the ground; if they switch tools
+    // or clear, it is dropped. Nothing is written by arming.
+    const [stagedMark, setStagedMark] = useState(null);   // { kind, role, label, actionId }
+
     // ── Read (VISION-D · D4) — the VLM interprets the candidate masks (never geometry) ──
     const reading = useSemanticRead(postId, post?.semantics || null);
     // "needs better evidence" hands the curator straight to Refine on that part.
@@ -169,6 +177,10 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         setDraft(key === 'collect' ? { kind: 'constellation', member_ids: [], points: [] }
             : key === 'connect' ? { kind: 'relation', member_ids: [], relation_label: '' }
                 : null);
+        // An armed act belongs to the tool it armed. Leaving that tool abandons it — the
+        // alternative is a stale label riding onto an unrelated mark later.
+        // (P2B: `applyPerceptualAction` calls this first and stages after, so arming works.)
+        setStagedMark(null);
         setTool(key);
     }, []);
 
@@ -291,35 +303,51 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         setDraft((d) => (d?.kind === 'field' ? { ...d, strokes: d.strokes.slice(0, -1) } : d));
     }, []);
 
-    const openComposer = useCallback((groundIds) => {
-        setComposer({ groundIds: Array.isArray(groundIds) ? groundIds : [groundIds], expression: '', properties: [], roles: {} });
+    const openComposer = useCallback((groundIds, { expression = '' } = {}) => {
+        setComposer({
+            groundIds: Array.isArray(groundIds) ? groundIds : [groundIds],
+            // CIRCUIT-001 P2B: a proposed percept can arrive with the curator's own
+            // sentence already in the box. It is still a draft — nothing is written until
+            // "Keep this percept".
+            expression, properties: [], roles: {},
+        });
     }, []);
 
     // ── commits ──────────────────────────────────────────────────────────────
     const commitDraft = useCallback(() => {
         if (!draft) return;
+        // CIRCUIT-001 P2B — an armed act contributes its label to the ground the curator
+        // just drew, and nothing else. The geometry, and the decision to keep it, are
+        // entirely theirs; the act only carried the name over.
+        const staged = stagedMark && stagedMark.kind === draft.kind ? stagedMark : null;
+        const named = staged?.label ? { label: staged.label } : {};
         let ground = null;
         if (draft.kind === 'field') {
             const strokes = draft.live ? [...draft.strokes, draft.live] : draft.strokes;
             if (!strokes.length) return;
-            ground = addGround(makeGround('field', { strokes }));
+            ground = addGround(makeGround('field', { strokes, ...named }));
         } else if (draft.kind === 'path') {
             if (draft.points.length < 2) return;
-            ground = addGround(makeGround('path', { points: draft.points, arrowhead: true }));
+            ground = addGround(makeGround('path', { points: draft.points, arrowhead: true, ...named }));
         } else if (draft.kind === 'boundary') {
             if (draft.points.length < 2) return;
-            ground = addGround(makeGround('boundary', { points: draft.points, band_width: draft.band_width }));
+            ground = addGround(makeGround('boundary', { points: draft.points, band_width: draft.band_width, ...named }));
         } else if (draft.kind === 'constellation') {
             if (!hasCompDraft) return;
-            ground = addGround(makeGround('constellation', { member_ids: draft.member_ids, points: draft.points || [] }));
+            ground = addGround(makeGround('constellation', { member_ids: draft.member_ids, points: draft.points || [], ...named }));
         } else if (draft.kind === 'relation') {
             if ((draft.member_ids || []).length < 2) return;
-            ground = addGround(makeGround('relation', { member_ids: draft.member_ids, relation_label: draft.relation_label || '' }));
+            ground = addGround(makeGround('relation', {
+                member_ids: draft.member_ids,
+                relation_label: draft.relation_label || staged?.role || '',
+                ...named,
+            }));
         }
         setDraft(null);
         setTool('select');
+        setStagedMark(null);
         if (ground) { selectGround(ground.id); openComposer(ground.id); }
-    }, [draft, hasCompDraft, addGround, selectGround, openComposer]);
+    }, [draft, hasCompDraft, addGround, selectGround, openComposer, stagedMark]);
 
     const commitFrame = useCallback(() => {
         const evidence = [...tray];
@@ -363,6 +391,67 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         setComposer(null);
         playRecall(p.id);
     }, [composer, addExpressionPercept, playRecall]);
+
+    // ── CIRCUIT-001 P2B — carrying a proposed act through ────────────────────
+    //
+    // The deterministic half of the Perceptual Action Grammar. Every branch below is an
+    // affordance that already existed; the act only routes to it and carries a name. What
+    // this function will NOT do, by construction:
+    //
+    //   - it never writes geometry (the curator's hand does that);
+    //   - it never saves a percept (the composer's own button does that);
+    //   - it never sends anything to a model;
+    //   - and for anything it cannot do, it is NOT in `ACTION_CAPABILITIES`, so the card
+    //     renders "Preview only" instead of an Apply button that quietly no-ops.
+    //
+    // Returns 'armed' when the curator must still make the mark, 'applied' when the act is
+    // complete, and undefined when nothing was carried out.
+    const applyPerceptualAction = useCallback((action) => {
+        const p = action?.payload || {};
+        switch (action?.type) {
+            case 'find_parts':
+                findParts.find({ mode: grain });
+                return 'applied';
+
+            case 'brush_field':
+                switchTool('brush');
+                setStagedMark({ kind: 'field', role: p.field_role, label: p.label, actionId: action.id });
+                return 'armed';
+
+            case 'trace_direction': {
+                // A vector reads as a path; anything else the trace tool can hold is a path
+                // too — `boundary` is a seam, which is a different act entirely.
+                switchTool('trace');
+                setTraceSub('path');
+                setStagedMark({ kind: 'path', role: p.trace_role, label: p.label, actionId: action.id });
+                return 'armed';
+            }
+
+            case 'connect_marks':
+                switchTool('connect');
+                setStagedMark({ kind: 'relation', role: p.relation_role, label: p.label || '', actionId: action.id });
+                return 'armed';
+
+            case 'compose_percept': {
+                // Opens the composer with the curator's own sentence and whatever evidence
+                // they have already gathered. Still a draft: "Keep this percept" is the
+                // only thing that writes, and it is theirs to press.
+                const gathered = tray.size ? [...tray] : (selectedGroundId ? [selectedGroundId] : []);
+                openComposer(gathered, { expression: p.draft_text || '' });
+                return 'armed';
+            }
+
+            default:
+                return undefined;
+        }
+    }, [findParts, grain, switchTool, tray, selectedGroundId, openComposer]);
+
+    // Exactly the acts the branch above can carry out. Anything absent renders as preview
+    // only — the list and the switch are read together, so a capability cannot be claimed
+    // without an executor behind it.
+    const ACTION_CAPABILITIES = [
+        'find_parts', 'brush_field', 'trace_direction', 'connect_marks', 'compose_percept',
+    ];
 
     // ── refine commit / cancel / session release ─────────────────────────────
     // Confirm saves the new geometry revision (the endpoint persists) and refreshes
@@ -561,6 +650,14 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             </div>
                         )}
                     </div>
+                    {/* CIRCUIT-001 P2B — an armed act, waiting for the curator's hand. It
+                        says what will be named, and that nothing exists until they draw. */}
+                    {stagedMark && (
+                        <p className="diff-armed" role="status">
+                            <strong>{stagedMark.label || stagedMark.role}</strong>
+                            {' — armed. Make the mark; nothing is created until you do.'}
+                        </p>
+                    )}
                     <p className="diff-stage-hint">
                         {untouched ? 'The untouched image. Release O to see your evidence again.'
                             : brushing ? 'Paint where it lives. [ ] size · ⌥ lifts paint away · Esc clears the draft.'
@@ -578,8 +675,48 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                     </p>
                 </main>
 
-                {/* ── inspector ── */}
+                {/* ── orchestration column (CIRCUIT-001 P2B) ──
+                    Was a narrow inspector holding whatever was selected, with the console
+                    bolted underneath. Now a sectioned column, ordered by when a curator
+                    needs each part: attend → operate → work → review. */}
                 <aside className="diff-inspector">
+
+                    {/* 1 — FIRST ATTENTION. The panel a curator meets first, because
+                        beginning from what caught you is the point of this gate. */}
+                    <section className="diff-insp-section diff-insp-section--attune">
+                        <AttunementPanel
+                            hasParts={regions.length > 0}
+                            wayOfLooking={(post?.domain_profile?.chosen || ['general'])[0]}
+                            capabilities={ACTION_CAPABILITIES}
+                            onApplyAction={applyPerceptualAction}
+                        />
+                    </section>
+
+                    {/* 2 — SEEING. Find parts stays one keystroke away, but it is now one
+                        act among several rather than the door into the workspace. */}
+                    <section className="diff-insp-section">
+                        <SeeingConsole
+                            postId={postId}
+                            profile={post?.domain_profile}
+                            onProfile={(p) => onPostChange?.({ ...post, domain_profile: p })}
+                            regions={regions}
+                            onFindParts={(opts) => findParts.find({ ...(opts || {}), mode: grain })}
+                            busy={findParts.busy}
+                            grain={grain}
+                            onGrain={setGrain}
+                            actionStatus={{
+                                refine: refine.status,
+                                semantic_read: reading.status,
+                                find_similar: similar.status,
+                            }}
+                            compact
+                        />
+                        {findParts.error && (
+                            <p className="diff-insp-hint" role="alert">{findParts.error}</p>
+                        )}
+                    </section>
+
+                    {/* 3 — the working area: whatever is under the hand right now. */}
                     {/* refine (VISION-B5) — exact-mask refinement of the selected part */}
                     {tool === 'refine' && (
                         <div className="diff-insp-refine">
@@ -868,30 +1005,6 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         {expressionPercepts.length} percept{expressionPercepts.length !== 1 ? 's' : ''}
                     </footer>
 
-                    {/* CIRCUIT-001 P2 — the Seeing Console. The operation memory it carries
-                        is the same read-only projection the Vision Activity Rail was
-                        (CIRCULATION-SPINE-001 · P2.2), now inside the console rather than
-                        bolted beneath the inspector — and with the operation itself, which
-                        Differential previously had no way to invoke at all. */}
-                    <SeeingConsole
-                        postId={postId}
-                        profile={post?.domain_profile}
-                        onProfile={(p) => onPostChange?.({ ...post, domain_profile: p })}
-                        regions={regions}
-                        onFindParts={(opts) => findParts.find({ ...(opts || {}), mode: grain })}
-                        busy={findParts.busy}
-                        grain={grain}
-                        onGrain={setGrain}
-                        actionStatus={{
-                            refine: refine.status,
-                            semantic_read: reading.status,
-                            find_similar: similar.status,
-                        }}
-                        compact
-                    />
-                    {findParts.error && (
-                        <p className="diff-insp-hint" role="alert">{findParts.error}</p>
-                    )}
                 </aside>
             </div>
         </div>
