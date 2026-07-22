@@ -571,6 +571,15 @@ def _match_parent(fine: dict, anchors: list) -> Optional[dict]:
         fine.get("box") or {}, anchors, parent_label=fine.get("parent_label") or "")
 
 
+# CIRCUIT-001 P1F. "Is this candidate in the same place as the thing whose id it
+# shares?" — an OBSERVATION threshold, deliberately lenient and deliberately NOT
+# one of the dedup thresholds (0.7 / 0.85), which are decisions. Below half-overlap
+# a box has substantively relocated; above it, calling the id reuse "moved" would
+# manufacture alarm out of ordinary jitter between detector runs. Nothing branches
+# on this value — it only labels a count.
+_MERGE_SAME_PLACE_IOU = 0.5
+
+
 def _region_box_iou(a: dict, b: dict) -> float:
     ba, bb = a.get("box") or {}, b.get("box") or {}
     ax, ay, aw, ah = ba.get("x", 0), ba.get("y", 0), ba.get("w", 0), ba.get("h", 0)
@@ -800,13 +809,45 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
         #    (never by label) against creator regions and each other, so no two near-identical
         #    masks masquerade as separate evidence.
         kept_auto = []
+        # ── CIRCUIT-001 P1F · announcement-only merge observation ──────────────
+        # The merge event's arithmetic did not close: `candidates - kept_auto` was
+        # an unlabelled residual mixing two distinct drop reasons, so a candidate
+        # that vanished here left no trace of WHY. These counters close it.
+        #
+        # They are OBSERVATION ONLY. Nothing below branches on them, no merge
+        # decision changes, no id changes, and `region_annotations` is
+        # byte-identical to what this route produced before. Every operation is
+        # `.get()` + `_region_box_iou` (pure arithmetic with a zero-guard), so
+        # nothing here can raise inside a live route.
+        suppressed_by_id = 0
+        suppressed_by_id_moved = 0    # ...and the candidate was NOT where the creator region is
+        suppressed_by_geometry = 0
+        id_reused_auto = 0            # an auto candidate reusing an existing auto id
+        id_reused_auto_moved = 0      # ...and its box no longer overlaps the old one
         for r in candidates:
             if r.get("id") in creator_ids:
+                # Observed before the drop, never instead of it. A same-id/different-place
+                # candidate is the HW-C8 hazard: the auto pass found something else at
+                # this id and it is discarded in favour of the curator's older mask,
+                # while telemetry reported only `creator_preserved` and looked like success.
+                suppressed_by_id += 1
+                _held = next((c for c in creator_regions if c.get("id") == r.get("id")), None)
+                if _held is not None and _region_box_iou(r, _held) < _MERGE_SAME_PLACE_IOU:
+                    suppressed_by_id_moved += 1
                 continue                                       # the creator's region wins
             # Provenance defaults (Track A): every detected region is auto-authored.
             r.setdefault("actor", "auto")
             r.setdefault("detector", "vision")
             prev = existing.get(r["id"])
+            if prev is not None and prev.get("actor") != "creator":
+                # The auto→auto branch. This candidate KEEPS an id that already
+                # named something, and it survives into `kept_auto` as an ordinary
+                # region — so a re-pointed reference is invisible in the counts.
+                # This is the larger population (auto regions outnumber curator
+                # ones ~8:1 in the corpus) and it was the uninstrumented one.
+                id_reused_auto += 1
+                if _region_box_iou(r, prev) < _MERGE_SAME_PLACE_IOU:
+                    id_reused_auto_moved += 1
             if prev:
                 r["prioritised"] = prev.get("prioritised", False)
                 r["weight"] = prev.get("weight", 0)
@@ -826,13 +867,25 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             # higher-confidence one is kept. Never merges by label.
             if _is_duplicate_geometry(r, creator_regions, 0.7, require_same_kind=False) \
                     or _is_duplicate_geometry(r, kept_auto, 0.85, require_same_kind=True):
+                suppressed_by_geometry += 1
                 continue
             kept_auto.append(r)
 
         regions = creator_regions + kept_auto
+        # The arithmetic now closes: every candidate is either kept or accounted for
+        # by exactly one reason. `candidates == kept_auto + suppressed_by_id +
+        # suppressed_by_geometry` is an invariant of the loop above, asserted in
+        # tests — a residual would mean a candidate vanished for a reason nobody
+        # named. The `_moved` counts are observations layered on top and do NOT
+        # participate in that sum: they describe suppressions already counted.
         await rec.event(vrc.STAGE_MERGE_CURATOR, JobStatus.SUCCEEDED,
                         detail={"creator_preserved": len(creator_regions),
-                                "kept_auto": len(kept_auto), "candidates": len(candidates)})
+                                "kept_auto": len(kept_auto), "candidates": len(candidates),
+                                "suppressed_by_id": suppressed_by_id,
+                                "suppressed_by_id_moved": suppressed_by_id_moved,
+                                "suppressed_by_geometry": suppressed_by_geometry,
+                                "id_reused_auto": id_reused_auto,
+                                "id_reused_auto_moved": id_reused_auto_moved})
         # canonicalize_geometry ran per-region inside the loop above; summarise it as one
         # observed stage (bounded counts only — never the geometry itself).
         await rec.event(vrc.STAGE_CANONICALIZE, JobStatus.SUCCEEDED,
