@@ -1,0 +1,54 @@
+/* P2D-B spike chrome — dev-only, deliberately utilitarian. */
+.spk-root { height: 100vh; display: flex; flex-direction: column; background: #14110F; color: #E8E2D8; font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; }
+.spk-head { padding: 10px 16px; border-bottom: 1px solid #2A2622; }
+.spk-head h1 { margin: 0; font-size: 15px; font-weight: 600; }
+.spk-sub { margin: 2px 0 0; color: #7A7268; font-size: 11px; }
+.spk-body { flex: 1; display: grid; grid-template-columns: 220px 1fr 380px; min-height: 0; }
+
+.spk-tools { padding: 12px; border-right: 1px solid #2A2622; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.spk-tool-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.spk-btn { padding: 5px 10px; background: #241F1B; border: 1px solid #3A332C; color: #D8D2C8; border-radius: 5px; cursor: pointer; font-size: 12px; text-transform: capitalize; }
+.spk-btn:hover { background: #2E2822; }
+.spk-btn.is-on { background: #C08457; border-color: #C08457; color: #14110F; font-weight: 600; }
+.spk-commit { background: #2E4A3A; border-color: #3E6A50; }
+.spk-accept { background: #7FB3A8; border-color: #7FB3A8; color: #14110F; font-weight: 600; }
+.spk-roles { gap: 4px; }
+.spk-chip { padding: 3px 7px; font-size: 11px; border-radius: 4px; cursor: pointer; background: #241F1B; border: 1px solid var(--chip, #3A332C); color: var(--chip, #D8D2C8); }
+.spk-chip.is-on { background: var(--chip); color: #14110F; font-weight: 600; }
+.spk-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #A89E90; cursor: pointer; }
+.spk-layers { border-top: 1px solid #2A2622; padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.spk-layers-h { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #7A7268; }
+.spk-layer { display: flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 4px; background: #1C1815; border-left: 3px solid #3A332C; }
+.spk-layer--evidence { border-left-color: #C08457; }
+.spk-layer--suggestion { border-left-color: #7FB3A8; border-style: dashed; }
+.spk-layer--recall { border-left-color: #9C7FB3; }
+.spk-layer--scratch { border-left-color: #5A5560; }
+.spk-layer-name { flex: 1; font-size: 11px; }
+.spk-mini { background: transparent; border: none; cursor: pointer; opacity: 0.4; font-size: 12px; padding: 1px 3px; }
+.spk-mini.is-on { opacity: 1; }
+.spk-mini:disabled { cursor: not-allowed; opacity: 0.15; }
+.spk-note { font-size: 10px; color: #8A8276; border-top: 1px solid #2A2622; padding-top: 8px; margin: 0; }
+
+.spk-canvas-wrap { position: relative; overflow: hidden; background: #0C0A08; }
+.spk-stage { position: absolute; inset: 12px; }
+.spk-probe-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; pointer-events: none; }
+.spk-svg-stage { position: absolute; inset: 0; width: 100%; height: 100%; }
+.spk-svg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+
+.spk-panel-wrap { border-left: 1px solid #2A2622; overflow: hidden; }
+.spk-panel { height: 100%; display: flex; flex-direction: column; }
+.spk-panel-h { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #2A2622; }
+.spk-badge { font-size: 10px; padding: 2px 6px; border-radius: 3px; }
+.spk-badge.is-ok { background: #1E3A2E; color: #7FD8A8; }
+.spk-badge.is-bad { background: #4A1E1E; color: #E88; }
+.spk-panel-stat { padding: 6px 12px; font-size: 11px; color: #A89E90; border-bottom: 1px solid #2A2622; }
+.spk-json { flex: 1; overflow: auto; margin: 0; padding: 10px 12px; font: 11px/1.45 ui-monospace, monospace; color: #C8C0B4; white-space: pre; }
+
+/* SVG spike marks */
+.spk-svg-handle { fill: #fff; stroke: #C08457; stroke-width: 2; cursor: grab; }
+.spk-svg-handle:active { cursor: grabbing; }
+.spk-svg-mid { fill: #C08457; opacity: 0.5; cursor: copy; }
+.spk-svg-trace { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.spk-svg-trace.is-ambiguous { stroke-dasharray: 6 5; }
+.spk-suggestion { opacity: 0.85; }
+.spk-suggestion-ring { fill: none; stroke: #7FB3A8; stroke-dasharray: 4 4; stroke-width: 1; }
