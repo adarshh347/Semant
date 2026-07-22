@@ -327,8 +327,20 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
                                 recallOnly
                             />
                         )}
+                        {/* The Percept speaks, and — when its evidence has gone —
+                            says so in the same breath. `evidenceNote` is computed
+                            on this very code path by useRecallPlayer and was, until
+                            now, rendered only in Differential: recall in the writing
+                            surface asserted the Percept over an emptied image while
+                            the disclaimer sat unread in the player's return value.
+                            Degradation-only: a healthy recall shows the caption alone. */}
                         {recallPlayer.caption && (
-                            <p className="rs-recall-caption">{recallPlayer.caption}</p>
+                            <div className="rs-recall-say">
+                                <p className="rs-recall-caption">{recallPlayer.caption}</p>
+                                {recallPlayer.evidenceNote && (
+                                    <p className="rs-recall-detached">{recallPlayer.evidenceNote}</p>
+                                )}
+                            </div>
                         )}
 
                         {!drawing && (

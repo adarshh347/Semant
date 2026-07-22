@@ -4,7 +4,7 @@ import {
   makeExpressionPercept, isExpressionPercept, perceptsForGround,
   makeMention, addMention, removeMentionsForBlock,
   mentionsForBlock, mentionsForRegion, mentionsForPercept,
-  blockIdsForRegion, mentionsFromBlocks,
+  blockIdsForRegion, mentionsFromBlocks, blockIdsForPercept,
 } from './perceptMentions.js';
 
 const region = (id, extra = {}) => ({ id, label: 'shoulder drape', ...extra });
@@ -135,5 +135,73 @@ describe('Expression Percept (Differential v1) — many-to-many-to-many', () => 
   it('survives the storage round-trip (plain JSON, nothing lost)', () => {
     const p = makeExpressionPercept({ expression: 'x', ground_ids: ['gnd_1'], properties: ['colour', 'repetition'] });
     expect(JSON.parse(JSON.stringify(p))).toEqual(p);
+  });
+});
+
+// ── CIRCUIT-001 P1A · Part B — lossless reconstruction ───────────────────────
+// The chip has always round-tripped percept id, mention id, ref kind and label
+// (blockConvert.test.js proves the markup survives). What did not survive was
+// the READ: mentionsFromBlocks parsed one attribute and defaulted the rest, so
+// a percept citation came back as an anonymous region edge. These tests pin the
+// read, and each of them failed before this change.
+describe('mentionsFromBlocks — percept identity survives the markup round-trip', () => {
+  const chip = (attrs) =>
+    `<p>text <span data-region-ref="" ${attrs}>label</span> more</p>`;
+
+  it('recovers the percept id, so a manuscript chip can find its percept', () => {
+    const blocks = [{ id: 'blk1', content: chip('data-inline-type="percept" data-region-ids="gnd_1,gnd_2" data-percept-id="pctx_abc" data-label="the upper head"') }];
+    const [men] = mentionsFromBlocks(blocks);
+    expect(men.perceptId).toBe('pctx_abc');
+    expect(men.refKind).toBe('percept');
+    expect(men.label).toBe('the upper head');
+    expect(men.blockId).toBe('blk1');
+  });
+
+  it('mints ONE edge for a percept chip, not one per ground id', () => {
+    // The ids on a /percept chip are GROUND ids. Splitting per id would create
+    // region edges pointing at gnd_… — links to something that is not a region.
+    const blocks = [{ id: 'blk1', content: chip('data-region-ids="gnd_1,gnd_2,gnd_3" data-percept-id="pctx_abc"') }];
+    const out = mentionsFromBlocks(blocks);
+    expect(out).toHaveLength(1);
+    expect(out[0].perceptId).toBe('pctx_abc');
+  });
+
+  it('keeps the id the markup carries, so it is stable across a reload', () => {
+    const stored = 'men_pctx_abc_blk1_ic_lx8f_0';
+    const blocks = [{ id: 'blk1', content: chip(`data-region-ids="gnd_1" data-percept-id="pctx_abc" data-mention-id="${stored}"`) }];
+    expect(mentionsFromBlocks(blocks)[0].id).toBe(stored);
+    // Reconstructing twice is the same edge, not two.
+    expect(mentionsFromBlocks([...blocks, ...blocks])).toHaveLength(1);
+  });
+
+  it('BACK-COMPAT: a chip with no percept id still yields one region edge per id', () => {
+    const blocks = [{ id: 'blk1', content: chip('data-region-ids="region_1,region_2" data-inline-type="part"') }];
+    const out = mentionsFromBlocks(blocks);
+    expect(out.map((m) => m.regionId)).toEqual(['region_1', 'region_2']);
+    expect(out.every((m) => m.perceptId === null)).toBe(true);
+  });
+
+  it('reads several chips in one block, and several blocks', () => {
+    const blocks = [
+      { id: 'blk1', content: `${chip('data-region-ids="gnd_1" data-percept-id="pctx_a"')}${chip('data-region-ids="gnd_2" data-percept-id="pctx_b"')}` },
+      { id: 'blk2', content: chip('data-region-ids="gnd_3" data-percept-id="pctx_c"') },
+    ];
+    expect(mentionsFromBlocks(blocks).map((m) => m.perceptId)).toEqual(['pctx_a', 'pctx_b', 'pctx_c']);
+  });
+
+  it('ignores markup that is not a chip, and empty blocks', () => {
+    expect(mentionsFromBlocks([{ id: 'b', content: '<p>just prose</p>' }, { id: 'c' }])).toEqual([]);
+    expect(mentionsFromBlocks()).toEqual([]);
+  });
+
+  it('blockIdsForPercept answers "is this carried by the writing?"', () => {
+    const blocks = [
+      { id: 'blk1', content: chip('data-region-ids="gnd_1" data-percept-id="pctx_a"') },
+      { id: 'blk2', content: chip('data-region-ids="gnd_1" data-percept-id="pctx_a"') },
+      { id: 'blk3', content: chip('data-region-ids="gnd_9" data-percept-id="pctx_z"') },
+    ];
+    const ms = mentionsFromBlocks(blocks);
+    expect([...blockIdsForPercept(ms, 'pctx_a')].sort()).toEqual(['blk1', 'blk2']);
+    expect(blockIdsForPercept(ms, 'pctx_none').size).toBe(0);
   });
 });

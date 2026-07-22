@@ -647,8 +647,12 @@ function PostDetailPage() {
   const runRefSlashCommand = ({ key } = {}) => onRefTrigger(key || 'part');
 
   /** Drop the chip in Manuscript AND record the Mention (Region.block_id kept primary). */
-  const insertRef = (raw) => {
-    const { kind } = refPicker;
+  // `kindOverride` lets a caller that did not come through the RefPicker say what
+  // it is inserting — the Differential artery (CIRCUIT-001 P1A Part A) inserts a
+  // percept without a slash command, and must reuse THIS path rather than build a
+  // second one, so the two can never drift.
+  const insertRef = (raw, kindOverride = null) => {
+    const kind = kindOverride || refPicker.kind;
     const blockId = refBlockIdRef.current;
     closeRefPicker();
     const handle = manuscriptRef.current;
@@ -891,6 +895,16 @@ function PostDetailPage() {
           post={post}
           store={regionStore}
           onExit={() => setWorkspaceMode('chiasm')}
+          /* The artery. A percept formed here could previously reach the writing
+             only if the curator left, remembered it existed, typed /percept and
+             found it again in a picker. Same insertion path as the slash command
+             — deliberately, so the chip is identical either way. The Chiasm shell
+             stays mounted while Differential is open, so the editor handle is
+             already live and no remount is involved. */
+          onSendToManuscript={(percept) => {
+            setWorkspaceMode('chiasm');
+            insertRef(percept, 'percept');
+          }}
         />
       )}
       {/* Underline Tooltip */}

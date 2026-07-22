@@ -14,6 +14,7 @@ import FindSimilar from './FindSimilar';
 import VisionActivityRail from './VisionActivityRail';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
+import { buildCirculationThread, threadSummary } from './circulationThread';
 import './DifferentialWorkspace.css';
 
 /**
@@ -68,7 +69,7 @@ const groundTitle = (g, regions = []) => {
 
 const MIN_SAMPLE_DIST = 0.004;
 
-export default function DifferentialWorkspace({ post, store, onExit }) {
+export default function DifferentialWorkspace({ post, store, onExit, onSendToManuscript = null }) {
     const [tool, setTool] = useState('select');
     const [traceSub, setTraceSub] = useState('path');
     const [untouched, setUntouched] = useState(false);
@@ -802,6 +803,22 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                                         <Play size={12} />
                                     </button>
                                     <span className="diff-percept-text">{p.expression}</span>
+                                    {/* CIRCUIT-001 P1A Part A — the artery. Quiet on purpose: a
+                                        second verb beside the percept, not a panel. The noticing is
+                                        not consumed by writing from it; it can be carried many times. */}
+                                    {onSendToManuscript && (
+                                        <button type="button" className="diff-percept-send"
+                                            title="Carry this noticing into the writing"
+                                            onClick={() => onSendToManuscript(p)}>
+                                            Write from this
+                                        </button>
+                                    )}
+                                    {/* Seed Circulation Thread — one line, degradation-first. */}
+                                    <span className="diff-percept-thread">
+                                        {threadSummary(buildCirculationThread(p, {
+                                            grounds, regions, mentions: store?.mentions || [],
+                                        }))}
+                                    </span>
                                 </div>
                             ))}
                         </div>
@@ -812,7 +829,12 @@ export default function DifferentialWorkspace({ post, store, onExit }) {
                             <span className="diff-eyebrow">Detached evidence</span>
                             {detachedGrounds.map((g) => (
                                 <p key={g.id} className="diff-detached-row">
-                                    {g.label || g.ground_type} — its part was replaced by a re-dissect
+                                    {/* States what no longer resolves, never why. resolveGround
+                                        knows only that the region_id does not resolve — a
+                                        re-dissect is one cause among several (a deleted region, a
+                                        never-existed id), and naming it asserted a fact the code
+                                        cannot have. Same rule the Rail already keeps. */}
+                                    {g.label || g.ground_type} — its part is no longer in the image
                                 </p>
                             ))}
                         </div>

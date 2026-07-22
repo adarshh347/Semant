@@ -103,9 +103,15 @@ export function makeMention({
   form = 'block',
   relationType = RELATION_DEFAULT,
   actor = 'human',
+  refKind = null,
+  label = null,
+  // An id carried by the markup wins over a derived one. Deriving is right when
+  // a chip is BEING made; when one is being READ BACK, the chip already has an
+  // identity and re-deriving it invents a second name for the same edge.
+  id = null,
 }) {
   return {
-    id: mentionId({ perceptId: pid, regionId, blockId, inlineContentId, form }),
+    id: id || mentionId({ perceptId: pid, regionId, blockId, inlineContentId, form }),
     perceptId: pid,
     regionId,
     blockId,
@@ -113,6 +119,8 @@ export function makeMention({
     form,
     relationType,
     actor,
+    refKind,
+    label,
   };
 }
 
@@ -151,20 +159,59 @@ export function blockIdsForRegion(mentions, regions, regionId) {
  * read view) resolve region↔block links without a backend table, so no link is
  * lost migrating off Path A.
  */
+const ATTR = (tag, name) => {
+  const m = tag.match(new RegExp(`${name}="([^"]*)"`));
+  return m ? m[1] : null;
+};
+
 export function mentionsFromBlocks(textBlocks = []) {
-  const re = /data-region-ids="([^"]*)"/g;
+  // Match the whole chip element, not one attribute of it. The old regex read
+  // `data-region-ids` alone, which is why every other attribute the chip
+  // faithfully round-trips (percept id, mention id, ref kind, label) was
+  // discarded on load — the information was never missing, only unread.
+  const chipRe = /<[a-zA-Z]+[^>]*\bdata-region-ref\b[^>]*>/g;
   const out = [];
   for (const b of textBlocks || []) {
     const html = b.content || '';
     let m;
-    while ((m = re.exec(html)) !== null) {
-      for (const rid of m[1].split(',').filter(Boolean)) {
-        out.push(makeMention({ regionId: rid, blockId: b.id, form: 'inline', relationType: 'cites', actor: 'human' }));
+    while ((m = chipRe.exec(html)) !== null) {
+      const tag = m[0];
+      const perceptId = ATTR(tag, 'data-percept-id');
+      const storedId = ATTR(tag, 'data-mention-id');
+      const refKind = ATTR(tag, 'data-inline-type') || ATTR(tag, 'data-ref-kind');
+      const label = ATTR(tag, 'data-label');
+      const regionIds = (ATTR(tag, 'data-region-ids') || '').split(',').filter(Boolean);
+      const base = { blockId: b.id, form: 'inline', relationType: 'cites', actor: 'human', refKind, label };
+
+      if (perceptId) {
+        // ONE edge per chip, keyed on the percept. A `/percept` chip's
+        // `data-region-ids` are GROUND ids, so splitting it per id would mint
+        // region edges pointing at `gnd_…` — a set of "whatever was in that
+        // attribute"↔block edges rather than region↔block edges.
+        out.push(makeMention({
+          ...base, perceptId, regionId: regionIds[0] || null, id: storedId || null,
+        }));
+        continue;
       }
+      // No percept on the chip → the pre-existing shape: one region edge per id.
+      // Kept verbatim so chips written before this change reconstruct exactly as
+      // they always did.
+      for (const rid of regionIds) out.push(makeMention({ ...base, regionId: rid }));
     }
   }
   // Dedupe by id (a block citing the same region twice → one edge).
   const seen = new Map();
   for (const men of out) seen.set(men.id, men);
   return [...seen.values()];
+}
+
+/**
+ * Is this Percept carried by the writing? Answers the Circulation Thread's
+ * "mentioned" link. Reports WHERE, never why — a block id is a location, not a
+ * cause.
+ */
+export function blockIdsForPercept(mentions, perceptId) {
+  const ids = new Set();
+  for (const m of mentions || []) if (m.perceptId === perceptId && m.blockId) ids.add(m.blockId);
+  return ids;
 }
