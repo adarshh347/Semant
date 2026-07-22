@@ -14,9 +14,8 @@ import FindSimilar from './FindSimilar';
 import VisionActivityRail from './VisionActivityRail';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
-import { buildCirculationThread, threadSummary } from './circulationThread';
+import PerceptThread from './PerceptThread';
 import { CORE_ROLES, rolesSummary } from './groundRoles';
-import { buildPerceptPacket, packetSummary } from './perceptPacket';
 import './DifferentialWorkspace.css';
 
 /**
@@ -857,28 +856,13 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                             {rolesSummary(p)}
                                         </span>
                                     )}
-                                    <span className="diff-percept-thread">
-                                        {threadSummary(buildCirculationThread(p, {
-                                            grounds, regions, mentions: store?.mentions || [],
-                                        }))}
-                                    </span>
-                                    {/* CIRCUIT-001 P1C — the operation packet, INSPECTABLE and
-                                        unsent. Perceptive Orchestration's packing rule, built
-                                        long before anything dispatches: what is being asked, on
-                                        what evidence, under what constraints. Collapsed by
-                                        default — this is for a curator who wants to look, not a
-                                        thing the surface pushes forward. */}
-                                    <details className="diff-packet">
-                                        <summary>{packetSummary(buildPerceptPacket(p, {
-                                            postId, grounds, mentions: store?.mentions || [],
-                                            resolve: (g) => resolveGround(g, { regions, grounds }),
-                                        }))}</summary>
-                                        <pre className="diff-packet-body">{JSON.stringify(
-                                            buildPerceptPacket(p, {
-                                                postId, grounds, mentions: store?.mentions || [],
-                                                resolve: (g) => resolveGround(g, { regions, grounds }),
-                                            }), null, 2)}</pre>
-                                    </details>
+                                    {/* CIRCUIT-001 P1D — the Circulation Thread. Resting: one
+                                        quiet line. Expanded: the relation chain in two voices,
+                                        records above judgements. Not a timeline, and no row
+                                        asserts that one thing produced another. */}
+                                    <PerceptThread
+                                        percept={p} grounds={grounds} regions={regions}
+                                        mentions={store?.mentions || []} postId={postId} />
                                 </div>
                             ))}
                         </div>

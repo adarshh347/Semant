@@ -855,19 +855,6 @@
     color: var(--diff-ink, #4a443e);
 }
 
-/* The thread line. Degradation-first: it is nearly silent when all is well, and
-   it never occupies a second row unless it has something to say. */
-.diff-percept-thread {
-    flex: 1 0 100%;
-    padding-left: 1.55rem;
-    font-size: 0.64rem;
-    letter-spacing: 0.015em;
-    color: var(--diff-ink-faint, #a9a096);
-}
-
-.diff-percept-thread:empty {
-    display: none;
-}
 
 /* ── CIRCUIT-001 P1C · Ground Roles + packet preview ───────────────────────── */
 /* Roles are an affordance, never a required field: unnamed is the resting state
@@ -962,3 +949,75 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
+
+/* ── CIRCUIT-001 P1D · the Circulation Thread ──────────────────────────────── */
+/* Resting is one quiet line; a curator is usually composing, not auditing. */
+.diff-thread {
+    flex: 1 0 100%;
+    padding-left: 1.55rem;
+    font-size: 0.64rem;
+}
+
+.diff-thread-summary {
+    cursor: pointer;
+    list-style: none;
+    letter-spacing: 0.015em;
+    color: var(--diff-ink-faint, #a9a096);
+    transition: color 140ms ease;
+}
+
+.diff-thread-summary::-webkit-details-marker { display: none; }
+.diff-thread-summary::before { content: '▸ '; opacity: 0.6; }
+.diff-thread[open] > .diff-thread-summary::before { content: '▾ '; }
+.diff-thread-summary:hover { color: var(--diff-ink, #4a443e); }
+
+/* Degradation earns a little weight on the closed line — and only a real
+   degradation. "Not assessed" is honest but is not news. */
+.diff-thread.has-degraded > .diff-thread-summary {
+    color: var(--diff-ink-soft, #8a8178);
+}
+
+.diff-thread-body {
+    margin-top: 0.3rem;
+    padding-left: 0.2rem;
+    border-left: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.diff-thread-row {
+    display: flex;
+    gap: 0.45rem;
+    align-items: baseline;
+    margin: 0 0 0.16rem;
+    line-height: 1.45;
+}
+
+/* The two voices. A record is observed; a judgement is concluded. They must not
+   read as the same kind of statement, or a reader learns to trust them equally. */
+.diff-thread-voice {
+    flex: 0 0 4.1rem;
+    font-size: 0.56rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.55;
+}
+
+.diff-thread-row--record .diff-thread-text {
+    color: var(--diff-ink-soft, #8a8178);
+}
+
+/* Judgements speak in the curator's own register — italic, and never louder
+   than the percept's own words. */
+.diff-thread-row--judgement .diff-thread-voice { opacity: 0.75; }
+.diff-thread-row--judgement .diff-thread-text {
+    font-style: italic;
+    color: var(--diff-ink, #4a443e);
+}
+
+/* Absent and unassessed recede: they are true, and they are not findings. */
+.diff-thread-row.is-absent .diff-thread-text,
+.diff-thread-row.is-unassessed .diff-thread-text {
+    opacity: 0.62;
+    font-style: normal;
+}
+
+.diff-thread .diff-packet { margin-top: 0.35rem; }
