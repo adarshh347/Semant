@@ -97,9 +97,12 @@ describe('invalid marks fail closed', () => {
 
     it('accepts every key in every published role vocabulary', () => {
         const geomFor = { relation_mark: 'derived', collection_mark: 'derived' };
+        // region_mask is the one family with a constrained geometry — raster_mask + mask_ref.
+        const rmGeom = { kind: 'raster_mask', mask_ref: { region_id: 'reg_1', geometry_rev: 0 } };
         for (const [type, vocab] of Object.entries(ROLE_VOCABULARY)) {
             for (const role of vocab) {
-                const m = good(type, { role, geometry: { kind: geomFor[type] || 'polygon' } });
+                const geometry = type === 'region_mask' ? rmGeom : { kind: geomFor[type] || 'polygon' };
+                const m = good(type, { role, geometry });
                 expect(m, `${type}:${role}`).toBeTruthy();
             }
         }
