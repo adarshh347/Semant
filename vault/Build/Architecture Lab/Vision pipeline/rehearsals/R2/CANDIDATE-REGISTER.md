@@ -15,15 +15,33 @@ Nothing below meets it. Speculative locations are marked **[SPEC]** and are gues
 | spark-05 | address as a viewer-facing stance, maybe without a figure | A3 | new, n=1 |
 | spark-06 | anthropomorphism is **question-conditional** (address vocabulary) | A3, A4, **resolved by 007 A/B** | **RESOLVED** |
 | spark-07 | a claim can be its own counterexample — **within one response** | A4, **strengthened by A5** | moderate |
-| spark-08 | **the evidence base grows silently to meet the claim** | A5, 008, **replicated on identical bytes by 009** | n=1 pair, high value |
+| spark-08 | **the model names what it is asked to name AND what it can recognise** | A5, 008, 009, **WEAKENED by 011** | restated as a conjunction |
 | spark-09 | **the noun licenses the register; the relational demand licenses the joint predication** | 008 + 009 + **010 (ladder complete)** | n=1 pair, 5 calls, **no cell repeated** |
-| spark-10 | **abstraction as immunisation — the claim is pitched above its own counter-evidence** | 010 | new, n=1 call |
+| spark-10 | **abstraction as immunisation — the claim is pitched above its own counter-evidence** | 010, **replicated on a poor pair by 011** | n=2 calls, 2 pairs |
 
 ---
 
 ## spark-10 — abstraction as immunisation
 
-**From:** `runs/010-sameness-assertion-arm-e/`. **Strength:** SPARK at n=1 call.
+**From:** `runs/010-sameness-assertion-arm-e/`, **replicated by `runs/011-strained-premise-probe/`**.
+**Strength:** SPARK at n=2 calls, 2 pairs, 1 model. Standalone finding:
+`Findings/HW-C10-abstraction-as-immunisation.md`.
+
+**011 replicated it on a pair recorded in advance as a POOR rhyme** (HW-L4 D4, HW-C4 D4 — before
+spark-10 existed), and added a **second mechanism**:
+
+- **Retreat to altitude** (010, and visible in 011's opening sentence): *"the rose window or,
+  **more broadly**, the concept of a circular, radiating, and intricately patterned design"* — the
+  escape hatch offered before any objection arrives.
+- **Narrative subordination** (NEW, 011): one image is recast as a *derivative* of the other —
+  *"an interpretation of the motif rather than the motif itself"*. Once that story holds, **every
+  difference becomes evidence OF the relation rather than against it.** Altitude makes
+  contradictions irrelevant; subordination makes them **confirmatory**.
+
+**The live alternative that must be carried:** the *deflationary reading* — independently generated
+passages ordinarily fail to interact, so compatibility may be what independence predicts, with no
+immunising move at all. A **verbatim repeat** is the cheapest test
+(`R2/HW-C10-repeat-stability-design.md`).
 
 Handed the premise *"These two images share a motif"*, the model restated it as *"a **powerful and
 unifying** motif: the use of intricate, colorful patterns to create a sense of divine order"* — then
