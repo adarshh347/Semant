@@ -1,0 +1,2 @@
+Run directories are created here by `scripts/foundry_run.py init`.
+One dir per run, keyed by sandbox_id. RESEARCH-ONLY.

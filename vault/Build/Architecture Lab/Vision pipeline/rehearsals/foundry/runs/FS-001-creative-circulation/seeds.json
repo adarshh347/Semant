@@ -1,0 +1,56 @@
+{
+  "frozen_at": null,
+  "frozen_at_null_reason": "deterministic runner records no wall-clock time",
+  "manifest_sha256": "e1daee84fa835c6d34149c5be6b74956a54af300943929120080bfdd94ef00cd",
+  "missing_count": 0,
+  "present_count": 5,
+  "sandbox_id": "FS-001-creative-circulation",
+  "seed_count": 5,
+  "seeds": [
+    {
+      "kind": "seed_images",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/011-strained-premise-probe/img1-nataraja-shadow.jpg",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/011-strained-premise-probe/img1-nataraja-shadow.jpg",
+      "role": "circulation-origin",
+      "sha256": "bfd45671693a1112f851120f5132db9a77ef56f323be8ae9c80bea7ebef5159c",
+      "size_bytes": 73891,
+      "status": "present"
+    },
+    {
+      "kind": "seed_images",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/011-strained-premise-probe/img2-rose-window.jpg",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/011-strained-premise-probe/img2-rose-window.jpg",
+      "role": "circulation-destination",
+      "sha256": "417f63a98460a6ca1fd837bf6025ea8118cc44459fb49050ede50fb2f13494e2",
+      "size_bytes": 134138,
+      "status": "present"
+    },
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/010-sameness-assertion-arm-e/score.md",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/010-sameness-assertion-arm-e/score.md",
+      "role": "prior-claim",
+      "sha256": "92f0eb59e14e7c211307d91d9bb11ad94f89107c3e18ce80d90a801cb3b2025a",
+      "size_bytes": 11924,
+      "status": "present"
+    },
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/011-strained-premise-probe/score.md",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/011-strained-premise-probe/score.md",
+      "role": "prior-claim",
+      "sha256": "21479b68d61b9325861dbc8a07203505ee378558d204d7b402692a101dc0a7df",
+      "size_bytes": 13526,
+      "status": "present"
+    },
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/CANDIDATE-REGISTER.md",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/CANDIDATE-REGISTER.md",
+      "role": "register",
+      "sha256": "d96e3d59326a823ed8f1bea82b52b5fc2e0da13267183d89d26c4a611620a54e",
+      "size_bytes": 21309,
+      "status": "present"
+    }
+  ]
+}

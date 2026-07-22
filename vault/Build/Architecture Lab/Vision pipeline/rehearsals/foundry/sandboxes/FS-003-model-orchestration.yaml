@@ -1,0 +1,138 @@
+# Model Orchestration Sandbox 001 — DESIGNED, NOT RUN.
+# RESEARCH-ONLY. Committed with a ZERO live-call budget: as written this manifest CANNOT spend.
+# Raising max_live_calls above 0 requires approved: true, which is a visible, reviewable diff.
+
+sandbox_id: FS-003-model-orchestration
+axis: model-orchestration
+research_question: >-
+  Does asking two differently-constituted readers the same question produce disagreement the
+  program can USE, or only disagreement it must arbitrate — and is a second reader worth its cost?
+
+mode: foundry
+research_only: true
+
+allowed_inputs:
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/
+
+forbidden_actions:
+  - mutate_production_db
+  - create_backend_route
+  - create_mongo_collection
+  - create_product_entity
+  - create_frontend_surface
+  - modify_product_code
+  - install_new_model_weights
+  - batch_calls_without_throttle
+  - treat_model_agreement_as_truth
+
+# The pair is held byte-identical to run 010/011 on purpose: the program already knows what ONE
+# reader said about exactly these bytes, so a second reader's answer is interpretable immediately.
+seed_images:
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/011-strained-premise-probe/img1-nataraja-shadow.jpg
+    role: image-1
+    sha256: null
+    provenance: "run 011 fixture, byte-identical; luminance 39.3 re-measured at execution"
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/fixtures/011-strained-premise-probe/img2-rose-window.jpg
+    role: image-2
+    sha256: null
+    provenance: "run 011 fixture, byte-identical; luminance 136.4"
+
+seed_text_slices:
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/011-strained-premise-probe/score.md
+    role: incumbent-answer
+    locator: "§1"
+    pressure: "what the single existing reader said about these exact bytes"
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/HW-C10-repeat-stability-design.md
+    role: precondition
+    locator: "§5"
+    pressure: "run 012 must settle single-reader stability BEFORE a second reader is interpretable"
+
+model_budget:
+  max_live_calls: 0
+  reserve_calls: 0
+  approved: false
+  throttle_s: 90
+  notes: >-
+    ZERO AND BLOCKED. The proposed budget is 2 calls + 1 reserve, but it must not be granted yet:
+    run 012-repeat-stability has not run, so the incumbent reader's variance is unknown. Comparing a
+    second model against an unrepeated single draw would attribute variance to model identity that
+    may just be sampling noise. Precondition: 012 completes and does not invalidate the ladder.
+
+adapters:
+  - groq_vlm_probe
+
+capture_policy:
+  requires_explicit_approval: true
+  freeze_observations: true
+  notes: >-
+    One call per invocation, no retry, >= 90 s throttle. Every call frozen to observations/ with
+    full provenance before any interpretation is written.
+
+replay_policy:
+  frozen_observations_only: true
+  adapter_calls_permitted: 0
+  notes: null
+
+scoring_rubric:
+  dimensions:
+    - name: disagreement_usability
+      asks: "Is the disagreement something a curator could ACT on, or only arbitrate?"
+      scale: "actionable / informative / noise"
+    - name: independence
+      asks: "Do the readers fail differently, or do they share the same failure?"
+      scale: "fails-differently / partially / same-failure"
+    - name: cost_justification
+      asks: "Does the second reader change a conclusion often enough to be worth its tokens?"
+      scale: "changes-conclusion / adds-confidence / redundant"
+    - name: abstention
+      asks: "Can either reader decline? Eleven arms have produced zero refusals."
+      scale: "declines / hedges / never-declines"
+  recording_rule: >-
+    Score each reader in ISOLATION before the answers are compared — the 012 discipline. Agreement
+    is never scored as correctness; two readers sharing a failure is the finding, not a null.
+  no_composite_score: true
+
+stop_condition:
+  bounded_by: "two calls, one per reader, on one held-constant pair"
+  stop_when:
+    - "both readers have answered and been scored in isolation"
+    - "run 012-repeat-stability has not completed (hard precondition — do not start)"
+    - "the approved call budget is exhausted"
+    - "a provider error occurs (record the degraded run; do not retry into budget)"
+  pause_after_bounded_task: true
+
+graduation_rule:
+  emits: SPARK
+  may_not_create:
+    - production entity
+    - backend route
+    - mongo collection
+    - frontend surface
+    - schema change
+    - model-router or ensemble service
+  promotion_requires:
+    - "a repeated pattern across >= 2 independent runs"
+    - "a candidate card with an enablement claim"
+    - "transfer, negative case, and sequence-inversion trials"
+    - "an explicit build gate decided by the orchestrator"
+
+product_implication_section:
+  required: true
+  must_mark_speculative: true
+  must_not_propose:
+    - new production entity
+    - new route
+    - new collection
+    - new UI surface
+    - model-router or ensemble service
+    - uncertainty UI driven by model disagreement
+
+notes: >-
+  Sequenced THIRD deliberately. spark-04 already warns that an uncertainty UI offering
+  "wall or figure — which do you trust?" would present a false choice between a competent reading
+  and a confident non-answer; a second reader makes that temptation stronger, not weaker. The CUDA
+  probe (VISION-CUDA-RUNTIME-001) proved a local GPU is available, but 4 GB VRAM does not fit the
+  gated models, so a local second reader is not the cheap option it appears to be.
+related_sparks: [spark-04, spark-08, spark-10]

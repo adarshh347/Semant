@@ -1,0 +1,2 @@
+Decision docs (ADRs) resolving conflicts BETWEEN sandboxes.
+Conflicts are resolved here in prose, never as a code race. RESEARCH-ONLY.

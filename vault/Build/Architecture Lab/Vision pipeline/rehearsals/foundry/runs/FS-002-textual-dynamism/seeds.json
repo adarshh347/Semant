@@ -1,0 +1,47 @@
+{
+  "frozen_at": null,
+  "frozen_at_null_reason": "deterministic runner records no wall-clock time",
+  "manifest_sha256": "0edf58b9f75bf634d4b64916428af0bd9798f6c0293fe3b36679d2174ff783a0",
+  "missing_count": 0,
+  "present_count": 4,
+  "sandbox_id": "FS-002-textual-dynamism",
+  "seed_count": 4,
+  "seeds": [
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/CANDIDATE-REGISTER.md",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/CANDIDATE-REGISTER.md",
+      "role": "revision-corpus",
+      "sha256": "d96e3d59326a823ed8f1bea82b52b5fc2e0da13267183d89d26c4a611620a54e",
+      "size_bytes": 21309,
+      "status": "present"
+    },
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/HB-009-horizon-brief.md",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/HB-009-horizon-brief.md",
+      "role": "before",
+      "sha256": "e58a089ab5bfdfb145ac104307818ac9ee31aeff5ef31a2a4b224df61dbadd4e",
+      "size_bytes": 15900,
+      "status": "present"
+    },
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/HB-010-horizon-brief.md",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/HB-010-horizon-brief.md",
+      "role": "after",
+      "sha256": "f21df7849c29f7867a18a6e4a01c5af7a5eb72f4f632dc123231446604b41613",
+      "size_bytes": 15158,
+      "status": "present"
+    },
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Writing/Stories and motives/plan.md",
+      "resolved_path": "vault/Writing/Stories and motives/plan.md",
+      "role": "human-prose-control",
+      "sha256": "b77d9afe466db2a211cce7acdbc88ca6ad5a3367074ef7da836c7f03d7a29ae0",
+      "size_bytes": 460,
+      "status": "present"
+    }
+  ]
+}

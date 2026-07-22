@@ -1,0 +1,141 @@
+# Communication Quality Sandbox 001 — Batch 1, Lane 3.
+# RESEARCH-ONLY. Zero live model calls. Authorizes no production change.
+
+sandbox_id: FS-004-communication-quality
+axis: communication-quality
+research_question: >-
+  When Semant has less than it wishes it had — absent evidence, an unreadable run, a contradicted
+  model, a claim it cannot check — does the way it speaks earn trust, or spend it?
+
+mode: foundry
+research_only: true
+
+allowed_inputs:
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/
+  - vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/
+  - vault/Build/Architecture Lab/Findings/
+  - vault/Build/Architecture Lab/Decisions/
+
+forbidden_actions:
+  - mutate_production_db
+  - create_backend_route
+  - create_mongo_collection
+  - create_product_entity
+  - create_frontend_surface
+  - modify_product_code
+  - write_ui_copy_into_product
+  - propose_a_tone_system
+
+# Communication quality is studied on RECORDED UTTERANCES, not images. No image seeds — the
+# artifact under study is a sentence, and adding an image would give the run a second axis.
+seed_images: []
+
+seed_text_slices:
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/A2R-recall-evidence-honesty.md
+    role: honest-utterance
+    locator: "Verification"
+    pressure: >-
+      "Detached evidence — none of the 2 cited grounds still resolves." The one sentence the
+      program has written, shipped and render-verified for the absent-evidence case.
+  - ref: vault/Build/Architecture Lab/Findings/HW-S1-frontend-opportunity-scout.md
+    role: silent-utterance
+    locator: "§1.2 and E5"
+    pressure: >-
+      The Vision Activity Rail discriminates absent from unreadable, forbids causal wording, and
+      then collapses every non-nominal state into "N recorded". Honest machinery, mute surface.
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/HW-C6-external-claim-audit-001-006.md
+    role: unsayable-claim
+    locator: "000-passage-001"
+    pressure: >-
+      "n/a, never none" — the distinction between having nothing to say and having said nothing.
+  - ref: vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/011-strained-premise-probe/score.md
+    role: overclaiming-utterance
+    locator: "§1"
+    pressure: >-
+      "a powerful and unifying motif" — force amplified while content is diluted (spark-10).
+
+model_budget:
+  max_live_calls: 0
+  reserve_calls: 0
+  approved: false
+  throttle_s: null
+  notes: >-
+    Zero. The corpus of utterances is already written down. Generating new ones would produce
+    prose to admire rather than evidence to score.
+
+adapters:
+  - local_file_digest
+
+capture_policy:
+  requires_explicit_approval: true
+  freeze_observations: true
+  notes: "No capture expected — analysis over recorded utterances."
+
+replay_policy:
+  frozen_observations_only: true
+  adapter_calls_permitted: 0
+  notes: null
+
+scoring_rubric:
+  dimensions:
+    - name: states_the_limit
+      asks: "Does the utterance name what is missing, or leave the reader to infer it?"
+      scale: "names-it / hints / silent"
+    - name: locates_the_fault
+      asks: "Is the limit stated as a fact about the RECORD, or as a fault of the curator/system?"
+      scale: "about-record / neutral / blames"
+    - name: denominator
+      asks: "Does it give a scale — 1 of 3 vs 3 of 3 — or an undifferentiated count?"
+      scale: "denominated / counted / bare"
+    - name: force_vs_content
+      asks: "Does confidence track evidence, or does force rise as content thins?"
+      scale: "tracks / flat / inverted"
+    - name: invites_return
+      asks: "Can the reader DO something next, or is it a closed announcement?"
+      scale: "invites / informs / closes"
+  recording_rule: >-
+    Score each utterance verbatim and in isolation, quoting it exactly. Never paraphrase a sentence
+    being measured for its wording. An utterance that does not exist yet is recorded as absent, not
+    imagined and then scored.
+  no_composite_score: true
+
+stop_condition:
+  bounded_by: "the utterances already written down in the repository"
+  stop_when:
+    - "every identified utterance has been scored or marked absent"
+    - "scoring would require writing new UI copy"
+    - "a finding would require proposing a tone system or voice guide"
+    - "a result would require a live model call"
+  pause_after_bounded_task: true
+
+graduation_rule:
+  emits: SPARK
+  may_not_create:
+    - production entity
+    - backend route
+    - mongo collection
+    - frontend surface
+    - schema change
+    - tone system or voice guide
+  promotion_requires:
+    - "a repeated pattern across >= 2 independent runs"
+    - "a candidate card with an enablement claim"
+    - "transfer, negative case, and sequence-inversion trials"
+    - "an explicit build gate decided by the orchestrator"
+
+product_implication_section:
+  required: true
+  must_mark_speculative: true
+  must_not_propose:
+    - new production entity
+    - new route
+    - new collection
+    - new UI surface
+    - tone system or voice guide
+    - copy changes to shipped surfaces
+
+notes: >-
+  Batch 1 lane 3. The program has exactly ONE render-verified honest sentence (A2R) and a great
+  deal of machinery that knows the truth and does not say it (HW-S1 §1.2). That asymmetry — honest
+  internals, mute surface — is the thing to measure, and it is measurable today without a model.
+related_sparks: [spark-03, spark-04, spark-08, spark-10]

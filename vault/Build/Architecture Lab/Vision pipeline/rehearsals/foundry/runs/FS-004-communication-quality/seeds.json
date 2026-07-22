@@ -1,0 +1,47 @@
+{
+  "frozen_at": null,
+  "frozen_at_null_reason": "deterministic runner records no wall-clock time",
+  "manifest_sha256": "0ffae8b7fffdec11a1773033afc275513f69f1698f5e2406f72ff86fe355d5af",
+  "missing_count": 0,
+  "present_count": 4,
+  "sandbox_id": "FS-004-communication-quality",
+  "seed_count": 4,
+  "seeds": [
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/A2R-recall-evidence-honesty.md",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/A2R-recall-evidence-honesty.md",
+      "role": "honest-utterance",
+      "sha256": "27487a3491c82c8666688920090ed21eb3f23fa41b41f8b130ccafd733b1f577",
+      "size_bytes": 5685,
+      "status": "present"
+    },
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Build/Architecture Lab/Findings/HW-S1-frontend-opportunity-scout.md",
+      "resolved_path": "vault/Build/Architecture Lab/Findings/HW-S1-frontend-opportunity-scout.md",
+      "role": "silent-utterance",
+      "sha256": "3cf7f47a27876830c0c13121d92eb1522ca1eb38a2ed5bb83625982068b08833",
+      "size_bytes": 21831,
+      "status": "present"
+    },
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/HW-C6-external-claim-audit-001-006.md",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/R2/HW-C6-external-claim-audit-001-006.md",
+      "role": "unsayable-claim",
+      "sha256": "d92e71d3717ec194ea23e09e1fb9a91f9eb2703365972dc5dec14b164144f61b",
+      "size_bytes": 34440,
+      "status": "present"
+    },
+    {
+      "kind": "seed_text_slices",
+      "ref": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/011-strained-premise-probe/score.md",
+      "resolved_path": "vault/Build/Architecture Lab/Vision pipeline/rehearsals/runs/011-strained-premise-probe/score.md",
+      "role": "overclaiming-utterance",
+      "sha256": "21479b68d61b9325861dbc8a07203505ee378558d204d7b402692a101dc0a7df",
+      "size_bytes": 13526,
+      "status": "present"
+    }
+  ]
+}
