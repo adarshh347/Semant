@@ -7,6 +7,7 @@ import {
 import { resolveGround } from '../differential/grounds';
 import { buildPerceptPacket, packetSummary } from '../differential/perceptPacket';
 import { buildCirculationThread, threadSummary } from '../differential/circulationThread';
+import { marksForPercept, markDisplay } from '../differential/markStaging';
 import './PassageInspector.css';
 
 /**
@@ -122,6 +123,15 @@ export default function PassageInspector({
   );
   const actions = useMemo(() => actionsForSelection(selection), [selection]);
 
+  // CIRCUIT-001 P2E — the visual marks (P2D-A) standing behind this percept's
+  // evidence: an instrument mark rides on a ground, the percept cites the ground,
+  // so the writing can reach the mark. Read-only from the store; SESSION-ONLY, so
+  // the panel says "not saved" and does not pretend a mark survives reload.
+  const markRefs = useMemo(() => {
+    if (selection.kind !== 'percept_chip' || !percept) return [];
+    return marksForPercept(percept, store?.visualMarks || []).map(markDisplay);
+  }, [selection, percept, store]);
+
   // ── acting ──────────────────────────────────────────────────────────────
   const runLive = (key) => {
     switch (key) {
@@ -228,6 +238,25 @@ export default function PassageInspector({
             ) : (
               <p className="pi-judgement">{inspection.note}</p>
             )
+          )}
+
+          {/* CIRCUIT-001 P2E — the visual marks behind the evidence. Session-only,
+              and it says so. A suggestion reads as uncitable; a user/confirmed mark
+              reads differently, with its provenance and any lineage. */}
+          {selection.kind === 'percept_chip' && markRefs.length > 0 && (
+            <div className="pi-marks" role="group" aria-label="Visual marks">
+              <div className="pi-marks-head">Visual marks · Session — not saved</div>
+              <ul>
+                {markRefs.map((m) => (
+                  <li key={m.id} className={`pi-mark${m.is_suggestion ? ' is-suggestion' : ''}`} data-citable={m.citable}>
+                    <span className="pi-mark-role">{m.type.replace(/_/g, ' ')} · {m.role_label}</span>
+                    <span className="pi-mark-prov">{m.provenance}</span>
+                    <span className="pi-mark-cite">{m.citable ? 'citable' : 'not citable'}</span>
+                    {m.derived_from && <span className="pi-mark-derived">accepted from {m.derived_from}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {/* disclosures */}

@@ -1,6 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Sparkle, X, Eye } from 'lucide-react';
 import { planFromPrompt, quickAction, QUICK_CHIPS } from './attunementPlanner';
+import { draftMarkFromAction, markDisplay } from './markStaging';
 import {
     groupActionsByTarget, summarizeActions, setActionStatus,
     actionCanApplyNow, actionNeedsGeometry, actionToShortReason,
@@ -80,6 +81,12 @@ function ActionCard({ action, canApply, onApply, onPreview, onDismiss }) {
     const staged = action.status === 'previewed';
     const applied = action.status === 'applied';
 
+    // CIRCUIT-001 P2E — the visual_mark this act would put on the image, shown as a
+    // DRAFT the moment the act is staged. It carries the role, the provenance and
+    // the action id already; the geometry is still the curator's hand. This is the
+    // P2D-A model surfaced at the point of intent, not only at commit.
+    const draftMark = (staged || applied) ? markDisplay(draftMarkFromAction(action)) : null;
+
     return (
         <article
             className={`ap-card is-${action.status}`}
@@ -116,6 +123,18 @@ function ActionCard({ action, canApply, onApply, onPreview, onDismiss }) {
                 <ul className="ap-warnings">
                     {action.warnings.map((w) => <li key={w}>{w}</li>)}
                 </ul>
+            )}
+
+            {draftMark && (
+                <div className="ap-draft-mark" data-mark-type={draftMark.type} data-citable={draftMark.citable}>
+                    <span className="ap-draft-mark-status">{draftMark.status_label}</span>
+                    <span className="ap-draft-mark-prov">
+                        {draftMark.role_label} · {draftMark.provenance}
+                    </span>
+                    <span className="ap-draft-mark-cite">
+                        {draftMark.needs_geometry ? 'Ready for your mark' : (draftMark.citable ? 'citable' : 'not citable')}
+                    </span>
+                </div>
             )}
 
             {applied ? (
@@ -161,10 +180,29 @@ export default function AttunementPanel({
     wayOfLooking = 'general',
     capabilities = [],
     onApplyAction = null,
+    // CIRCUIT-001 P2E — a sentence or a percept expression carried in from the
+    // Manuscript ("Send to Differential as First Attention"). It SEEDS the prompt;
+    // it never auto-submits. The curator still presses "Suggest acts" — the
+    // planner keys on words THEY approved, and pre-running it would put words in
+    // the image's mouth the curator only meant to consider.
+    prefill = null,
 }) {
     const [prompt, setPrompt] = useState('');
     const [actions, setActions] = useState([]);
     const [planned, setPlanned] = useState(false);
+    const [brought, setBrought] = useState(false);
+
+    // Seed once per distinct arrival. A ref (not the prompt value) is the guard, so
+    // a curator who then edits or clears the seeded text is never re-seeded behind
+    // their back.
+    const seededRef = useRef(null);
+    useEffect(() => {
+        const text = String(prefill || '').trim();
+        if (!text || seededRef.current === text) return;
+        seededRef.current = text;
+        setPrompt(text);
+        setBrought(true);
+    }, [prefill]);
 
     const suggest = useCallback((text) => {
         const t = String(text ?? prompt).trim();
@@ -214,13 +252,19 @@ export default function AttunementPanel({
                         rows={3}
                         placeholder="What catches you here?"
                         value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
+                        onChange={(e) => { setPrompt(e.target.value); setBrought(false); }}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); suggest(); }
                         }}
                     />
                 </label>
-                <p className="ap-help">{PROMPT_HELP}</p>
+                {brought ? (
+                    <p className="ap-brought" role="status">
+                        Brought from the Manuscript — suggest acts when ready.
+                    </p>
+                ) : (
+                    <p className="ap-help">{PROMPT_HELP}</p>
+                )}
                 <div className="ap-first-actions">
                     <button
                         type="button" className="ap-suggest"
