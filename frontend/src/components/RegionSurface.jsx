@@ -7,6 +7,8 @@ import ProfileControl from './ProfileControl';
 import GroundLayers from '../differential/GroundLayers';
 import { useRecallPlayer } from '../differential/recall';
 import useStageGeometry, { useNaturalSize, pointerToNormalized } from '../differential/useStageGeometry';
+import { blockIdsForPercept } from '../state/perceptMentions';
+import { handoffStatus } from '../state/manuscriptHandoff';
 import './RegionSurface.css';
 
 const BASE = `${API_URL}/api/v1/posts`;
@@ -119,6 +121,20 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
     // beside the writing. Resting state stays quiet: GroundLayers mounts in
     // recall-only mode, so evidence appears only while a Percept performs.
     const recallPlayer = useRecallPlayer(store);
+
+    // Where this percept has got to in the writing. Recomputed from the live
+    // mention set, so it appears the moment the chip lands and disappears if the
+    // chip is removed — the status tracks the circuit rather than remembering an
+    // event that may no longer be true.
+    const recallStatus = useMemo(() => {
+        const pid = store?.recall?.perceptId;
+        if (!pid || !recallPlayer.active) return '';
+        const ms = store.mentions || [];
+        return handoffStatus(
+            blockIdsForPercept(ms, pid).size,
+            ms.filter((m) => m.perceptId === pid).length,
+        );
+    }, [store?.recall?.perceptId, store?.mentions, recallPlayer.active]);
 
     // --- persistence: autosave on blur, debounced -----------------------------------
     const persistInt = useCallback(async (next) => {
@@ -340,6 +356,28 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
                                 {recallPlayer.evidenceNote && (
                                     <p className="rs-recall-detached">{recallPlayer.evidenceNote}</p>
                                 )}
+                                {/* CIRCUIT-001 P1B — the crossing, made visible. When a percept
+                                    has been carried into the writing it says so HERE, over the
+                                    image, so the curator sees the noticing arrive rather than
+                                    watching the surface navigate away from it.
+                                    Derived from the mentions, never from a "sent" flag: a flag
+                                    would keep claiming the crossing after the chip was deleted. */}
+                                {recallStatus && <p className="rs-recall-crossed">{recallStatus}</p>}
+                            </div>
+                        )}
+                        {/* CIRCUIT-001 P1B — a reference from the writing that resolves to
+                            nothing. Previously the surface ran its full "I am showing you
+                            this" choreography and then dimmed every region and lit none:
+                            confident, silent, and pointing at nothing. States the absence;
+                            never the cause, because focusRegions knows only that the id
+                            does not resolve. */}
+                        {store?.missingRef && !recallPlayer.caption && (
+                            <div className="rs-recall-say">
+                                <p className="rs-recall-detached">
+                                    {store.missingRef.ids.length > 1
+                                        ? 'Those parts are no longer in the image.'
+                                        : 'That part is no longer in the image.'}
+                                </p>
                             </div>
                         )}
 

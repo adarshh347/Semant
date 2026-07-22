@@ -16,6 +16,7 @@ import RefPicker from './RefPicker';
 import { API_URL } from '../config/api';
 import { epicService } from '../services/epicService';
 import { RegionStoreContext, useRegionState } from '../state/regionStore';
+import { emptyHandoff, requestHandoff, canFlush, completeHandoff, wasDelivered } from '../state/manuscriptHandoff';
 import './PostDetailPage.css';
 
 // Convert plain AI text (paragraphs split by blank lines) into simple HTML blocks.
@@ -474,6 +475,42 @@ function PostDetailPage() {
   // Enter edit mode with the current post's blocks/tags loaded in.
   // On an empty story, seed one focused empty paragraph so the caret is ready
   // to type (skip when `seed:false`, e.g. the draft-from-image path fills it).
+  // ── CIRCUIT-001 P1B — the Differential → Manuscript crossing ────────────────
+  // A REQUEST, not a call. See state/manuscriptHandoff.js for why the same-tick
+  // call in P1A could not work.
+  const [handoff, setHandoff] = useState(emptyHandoff);
+
+  const sendPerceptToManuscript = (percept) => {
+    if (!percept?.id) return;
+    // Leave Differential, make sure the writing surface will actually exist
+    // (<Manuscript> renders only while editing), and put the story tab in front.
+    setWorkspaceMode('chiasm');
+    setActiveRightTab('content');
+    // `seed: false` — on an empty story the percept's own chip is the first
+    // thing in the document; a seeded blank paragraph would sit above it.
+    if (!isEditing) startEditing({ seed: false });
+    setHandoff((h) => requestHandoff(h, percept));
+    // The crossing must be FELT. Play the percept on the image so its grounds
+    // light and its expression speaks while the chip lands in the writing —
+    // otherwise the surface simply navigates away and the noticing is lost from
+    // view at the exact moment it travels.
+    regionStore.playRecall(percept.id);
+  };
+
+  // Flush when — and only when — the editor is genuinely there. Runs on every
+  // render; `canFlush` is the whole guard, and `completeHandoff` makes delivery
+  // at-most-once so a remount cannot produce a second chip.
+  useEffect(() => {
+    const handle = manuscriptRef.current;
+    if (!canFlush(handoff, { isEditing, hasHandle: !!handle })) return;
+    const percept = handoff.percept;
+    if (wasDelivered(handoff, percept.id)) { setHandoff(completeHandoff); return; }
+    // Insert against the block the editor is actually on, not a stale ref.
+    insertRef(percept, 'percept', handle.currentBlockId?.() || null);
+    setHandoff(completeHandoff);
+    handle.focus?.();
+  });   // eslint-disable-line react-hooks/exhaustive-deps -- must re-check after every render until the editor mounts
+
   const startEditing = ({ seed = true } = {}) => {
     setIsEditing(true);
     const existing = post.text_blocks || [];
@@ -651,9 +688,13 @@ function PostDetailPage() {
   // it is inserting — the Differential artery (CIRCUIT-001 P1A Part A) inserts a
   // percept without a slash command, and must reuse THIS path rather than build a
   // second one, so the two can never drift.
-  const insertRef = (raw, kindOverride = null) => {
+  //
+  // `blockIdOverride` matters for the queued handoff: `refBlockIdRef` is written
+  // by the slash-command flow only (onRefTrigger), so a crossing that never typed
+  // "/" would otherwise land against a stale block id from a previous insertion.
+  const insertRef = (raw, kindOverride = null, blockIdOverride = undefined) => {
     const kind = kindOverride || refPicker.kind;
-    const blockId = refBlockIdRef.current;
+    const blockId = blockIdOverride !== undefined ? blockIdOverride : refBlockIdRef.current;
     closeRefPicker();
     const handle = manuscriptRef.current;
     if (!handle) return;
@@ -901,10 +942,7 @@ function PostDetailPage() {
              — deliberately, so the chip is identical either way. The Chiasm shell
              stays mounted while Differential is open, so the editor handle is
              already live and no remount is involved. */
-          onSendToManuscript={(percept) => {
-            setWorkspaceMode('chiasm');
-            insertRef(percept, 'percept');
-          }}
+          onSendToManuscript={sendPerceptToManuscript}
         />
       )}
       {/* Underline Tooltip */}

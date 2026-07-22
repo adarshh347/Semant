@@ -452,3 +452,16 @@
 }
 .rs-write:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
 .rs-write:disabled { opacity: 0.6; cursor: default; }
+
+/* CIRCUIT-001 P1B — "the noticing crossed into the writing". Quieter than the
+   caption and distinct from the degradation note: this is not a warning, it is
+   the circuit reporting that the percept arrived somewhere. */
+.rs-recall-crossed {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    margin: 0;
+    padding: 0.22rem 0.7rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    opacity: 0.72;
+}
