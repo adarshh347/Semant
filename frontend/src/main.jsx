@@ -14,6 +14,7 @@ import PostDetailPage from './components/PostDetailPage.jsx';
 import ReadDeeperPage from './pages/ReadDeeperPage.jsx';
 import RegionSurfaceLab from './pages/RegionSurfaceLab.jsx';
 import RefineLab from './pages/RefineLab.jsx';
+import DifferentialLab from './pages/DifferentialLab.jsx';   // DEV-ONLY · CIRCUIT-001 P2E-B harness
 import HighlightsPage from './pages/HighlightsPage.jsx';
 import './index.css';
 import TextFeedPage from './pages/TextFeedPage.jsx';
@@ -46,6 +47,8 @@ const router = createBrowserRouter([
       // Track D Phase 1 — dev harness for RegionSurface, before it is mounted for real.
       { path: "lab/region-surface/:postId", element: <RegionSurfaceLab /> },
       { path: "lab/refine/:postId", element: <RefineLab /> },
+      // DEV-ONLY · CIRCUIT-001 P2E-B — offline Differential harness (fixture post).
+      { path: "lab/differential", element: <DifferentialLab /> },
       { path: "feed", element: <TextFeedPage /> },
       { path: "epics", element: <EpicsPage /> },
       { path: "epics/:id", element: <EpicEditorPage /> },
