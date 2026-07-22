@@ -3,6 +3,11 @@
 Both lanes obey this file. Lane A **implements** it; Lane B **emits against** it. Neither lane
 may change it unilaterally — proposed amendments go in the lane's report for the P2E synthesis.
 
+> **Version: v2** (P2E-A). §§1–6 below are the frozen v1 baseline Lane B2 read against at
+> `3aa4b3e`; **§7 is the v2 amendment layer and takes precedence where it overrides.** Five
+> decisions are recorded in §7 — two settled upstream (anchors, erase), three decided by Lane A
+> this gate (region_mask family, boundary, provenance home). Read §7 before §1–2.
+
 ## 1. The emission shape — `visual_mark`
 
 Every tool, spike, or suggestion path produces marks of this shape (normalized 0..1,
@@ -91,3 +96,72 @@ from §1–§4.
 No renderer object is ever truth — no Konva/Fabric node, no raw SVG element, in any serialized
 output. No `run_id` causal claims (slot stays null). No confidence scores on marks. No stored
 mark biography. No tldraw (never read, never install). Licences: MIT/BSD/Apache only.
+
+---
+
+## 7. v2 amendments (P2E-A) — precedence over §§1–6 where they conflict
+
+### 7.1 Settled upstream — record, do not reopen
+
+**A. Ref-anchored endpoints — `detached_from_ref: bool`.** A `trace_mark`/`relation_mark`
+anchor may point at a ground/region/percept (`anchor.ref`). Dragging a ref-anchored endpoint
+**keeps the ref, freezes the dragged position, and sets `detached_from_ref: true`** — the mark
+still records what it was anchored to *and* that the curator moved it off. (Spike report §7.)
+Anchor shape:
+```
+anchor { kind: 'point'|'ground'|'region'|'percept', ref: id|null, at: [x,y], detached_from_ref: bool }
+```
+
+**B. Erase is geometry, not style.** In a `freehand_path`, each stroke carries
+`op: 'add' | 'sub'`. That `op` is **canonical mark data** — it is *what the curator drew*.
+Compositing (`destination-out` etc.) is a renderer detail that reads `op`; it is never the
+source of truth. A serialized mark that dropped `op` would have lost a subtraction the curator
+made.
+
+### 7.2 Decided by Lane A this gate
+
+**C. `region_mask` is a sixth family.** DECISION: **add it.** A SAM-segmented extent is not a
+perceptual field — mapping it to `brush_field + material_field` (P2D-A's stopgap) asserted a
+perceptual reading no one made. `region_mask` names *what was segmented*, honestly, and defers
+the perceptual reading to a later, explicit act.
+```
+region_mask extends visual_mark {
+  type:     'region_mask'
+  role:     null (default) | segment | part | material_extent | anchor_extent   // OPTIONAL — a
+            //   segmented extent has no perceptual role until a curator gives it one
+  geometry: { kind: 'raster_mask', mask_ref: { region_id, geometry_rev } }       // ONLY raster_mask;
+            //   mask_ref is the sole pointer; NEVER inline pixels
+}
+```
+- **Citability:** a `region_mask` follows the same base rule (committed + `source ∈ {user,
+  user_confirmed}` + geometry not `unresolved`) — an accepted region IS citable evidence, as
+  regions always have been. Its optional `role` does **not** gate citability.
+- **Conversion path (later gate, not built here):** `region_mask → brush_field` is an explicit
+  curator act that mints a NEW perceptual mark `derived_from` the region_mask. Reading a
+  segmented extent *as* a light field is a perceptual claim and must be made, never inferred.
+- **Reason it is a family and not a role:** its geometry is constrained to `raster_mask` and its
+  role is optional — both differ structurally from `brush_field`, so overloading would have made
+  `brush_field`'s own invariants weaker.
+
+**D. Boundary stays `frame_mark` with role `boundary`.** DECISION: **no new family.** A drawn
+boundary is a `frame_mark`, `frame_role: 'boundary'` (already in the §2 vocabulary), geometry
+`polyline`. No evidence yet justifies a `boundary_mark` family; multiplying families without a
+distinct invariant is how a vocabulary rots. Revisit only if boundaries acquire behaviour a
+frame does not have.
+
+**E. `visual_mark.provenance` is the ONLY authored provenance.** DECISION: single source of
+truth. The additive `mark_source` / `instrument_role` / `refined_from` fields on grounds and
+regions are **DERIVED BRIDGE FIELDS** — written only by helpers that read from the canonical
+mark, never authored independently, and never read as truth. A bridge field that disagrees with
+its mark is a bug, and a drift test pins that it cannot. Rationale: P2D-A left provenance in two
+places (mark + region stamp); two homes for one fact is exactly the CVAT failure of a provenance
+nobody can trust. The mark is the home; the bridge fields are a convenience view for surfaces
+that hold a ground/region but not its mark.
+
+### 7.3 Persistence (new in v2)
+
+`post.visual_marks: [visual_mark]` — additive on the post document, PATCH-persisted beside
+`grounds`/`percepts`, hydrated in `regionStore`. **Persistence policy:** only `committed` and
+`superseded` marks persist. `superseded` persists because recoverability is the whole point of
+the status (P1F/P1G); `draft`/`staged`/`suggested`/`previewed`/`dismissed` are **session-only** —
+**the quarantine is session truth and a suggestion never touches the database.**
