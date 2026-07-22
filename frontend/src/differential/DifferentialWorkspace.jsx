@@ -18,6 +18,13 @@ import useFindParts from './useFindParts';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
 import { CORE_ROLES } from './groundRoles';
+// CIRCUIT-001 P2D-A — the renderer-independent truth model. Marks emitted here are the
+// canonical record of what an instrument produced; grounds stay the persisted surface.
+import { makeVisualMark, normalizeMark, markSummary } from './visualMarks';
+import {
+    quarantineSuggestion, acceptSuggestion,
+    summarizeProvenance, hasModelInvolvement,
+} from './suggestionQuarantine';
 import './DifferentialWorkspace.css';
 
 /**
@@ -121,6 +128,18 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // the draft is committed the staged label rides onto the ground; if they switch tools
     // or clear, it is dropped. Nothing is written by arming.
     const [stagedMark, setStagedMark] = useState(null);   // { kind, role, label, actionId }
+
+    // ── CIRCUIT-001 P2D-A — the visual_mark record. ───────────────────────────────
+    // Grounds are the persisted surface; a visual_mark is the renderer-independent TRUTH of
+    // what an instrument produced — role, source, status, lineage. Held in component state
+    // this session (there is no marks backend yet, by design), and linked to the ground it
+    // rides on via `linked_ground_ids`, so the two never disagree about provenance.
+    const [marks, setMarks] = useState([]);
+    const emitMark = useCallback((mark) => {
+        if (!mark) return null;
+        setMarks((ms) => [...ms, mark]);
+        return mark;
+    }, []);
 
     // ── Read (VISION-D · D4) — the VLM interprets the candidate masks (never geometry) ──
     const reading = useSemanticRead(postId, post?.semantics || null);
@@ -316,38 +335,63 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // ── commits ──────────────────────────────────────────────────────────────
     const commitDraft = useCallback(() => {
         if (!draft) return;
-        // CIRCUIT-001 P2B — an armed act contributes its label to the ground the curator
-        // just drew, and nothing else. The geometry, and the decision to keep it, are
-        // entirely theirs; the act only carried the name over.
+        // CIRCUIT-001 P2B/P2D — an armed act contributes its label AND its role AND the id of
+        // the act that armed it to the ground the curator just drew. The geometry, and the
+        // decision to keep it, are entirely theirs; the act only carried the intent over.
+        // P2B dropped everything but `label` here — the role and action_id below close that gap.
         const staged = stagedMark && stagedMark.kind === draft.kind ? stagedMark : null;
-        const named = staged?.label ? { label: staged.label } : {};
+        // Additive fields on an untyped ground dict: safe, and never read by the ground store.
+        const carry = {
+            ...(staged?.label ? { label: staged.label } : {}),
+            ...(staged?.role ? { instrument_role: staged.role } : {}),
+            ...(staged?.actionId ? { origin_action_id: staged.actionId } : {}),
+        };
+        // The visual_mark family the drawn ground answers to.
+        const MARK_TYPE = { field: 'brush_field', path: 'trace_mark', boundary: 'frame_mark' };
+        const MARK_GEOM = { field: 'freehand_path', path: 'polyline', boundary: 'polyline' };
         let ground = null;
         if (draft.kind === 'field') {
             const strokes = draft.live ? [...draft.strokes, draft.live] : draft.strokes;
             if (!strokes.length) return;
-            ground = addGround(makeGround('field', { strokes, ...named }));
+            ground = addGround(makeGround('field', { strokes, ...carry }));
         } else if (draft.kind === 'path') {
             if (draft.points.length < 2) return;
-            ground = addGround(makeGround('path', { points: draft.points, arrowhead: true, ...named }));
+            ground = addGround(makeGround('path', { points: draft.points, arrowhead: true, ...carry }));
         } else if (draft.kind === 'boundary') {
             if (draft.points.length < 2) return;
-            ground = addGround(makeGround('boundary', { points: draft.points, band_width: draft.band_width, ...named }));
+            ground = addGround(makeGround('boundary', { points: draft.points, band_width: draft.band_width, ...carry }));
         } else if (draft.kind === 'constellation') {
             if (!hasCompDraft) return;
-            ground = addGround(makeGround('constellation', { member_ids: draft.member_ids, points: draft.points || [], ...named }));
+            ground = addGround(makeGround('constellation', { member_ids: draft.member_ids, points: draft.points || [], ...carry }));
         } else if (draft.kind === 'relation') {
             if ((draft.member_ids || []).length < 2) return;
             ground = addGround(makeGround('relation', {
                 member_ids: draft.member_ids,
                 relation_label: draft.relation_label || staged?.role || '',
-                ...named,
+                ...carry,
+            }));
+        }
+        // Emit the canonical mark alongside the ground — but only for the families the mark
+        // model has a home for, and only when the staged act named a role the vocabulary
+        // knows. `normalizeMark` fails closed, so a mismatch produces no mark rather than a
+        // wrong one; the ground is unaffected either way.
+        if (ground && staged?.role && MARK_TYPE[draft.kind]) {
+            emitMark(normalizeMark({
+                type: MARK_TYPE[draft.kind],
+                role: staged.role,
+                label: staged.label || '',
+                source: 'user',                       // the curator's own hand
+                status: 'committed',
+                geometry: { kind: MARK_GEOM[draft.kind] },
+                linked_ground_ids: [ground.id],
+                linked_action_ids: staged.actionId ? [staged.actionId] : [],
             }));
         }
         setDraft(null);
         setTool('select');
         setStagedMark(null);
         if (ground) { selectGround(ground.id); openComposer(ground.id); }
-    }, [draft, hasCompDraft, addGround, selectGround, openComposer, stagedMark]);
+    }, [draft, hasCompDraft, addGround, selectGround, openComposer, stagedMark, emitMark]);
 
     const commitFrame = useCallback(() => {
         const evidence = [...tray];
@@ -458,13 +502,46 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // the region in the store IN PLACE — no reload, still inside Differential. Cancel
     // changes nothing on the server.
     const confirmRefine = useCallback(async () => {
+        // CIRCUIT-001 P2D-A — accepting a SAM proposal is an ACCEPT, and it must stay visibly
+        // model-assisted rather than flatten to "I drew this". Two cases, both honest:
+        //   - refining an existing region → the model tightened the curator's mask → model_refined
+        //   - a fresh mask               → the model proposed, the curator accepted → user_confirmed
+        // The proposal is first quarantined as a suggestion, so acceptance MINTS a mark that
+        // points back at it (Label Studio parent_prediction), never flips a flag in place.
+        const base = tool === 'refine' ? selectedRegion : null;
+        const suggestion = quarantineSuggestion(makeVisualMark('brush_field', {
+            role: 'material_field',                 // a mask is a material extent; role is coarse, honest
+            source: 'system',
+            geometry: { kind: 'raster_mask' },      // mask_ref only — never inline pixels
+            provenance: { model: 'sam2' },
+        }));
         const data = await refine.confirm();
         const r = data?.region;
         if (!r) return;
-        if (regions.some((x) => x.id === r.id)) updateRegion(r.id, r, { save: false });
-        else addRegion(r, { save: false });
-        selectRegion(r.id);
-    }, [refine, regions, updateRegion, addRegion, selectRegion]);
+        // Mint the accepted mark, lineage back to the suggestion. Fresh masks are user_confirmed
+        // (needs no prior geometry); a refine-of-existing is model_refined (derives from the base).
+        const accepted = base
+            ? normalizeMark({
+                type: 'brush_field', role: 'material_field', source: 'model_refined', status: 'committed',
+                geometry: { kind: 'raster_mask' }, derived_from: suggestion.id,
+                linked_ground_ids: [], provenance: { model: 'sam2' },
+            })
+            : acceptSuggestion(suggestion)?.accepted;
+        if (accepted) emitMark(accepted);
+        // Stamp the region with additive provenance so the store — and the chip below — show
+        // the model's part this session. (Cross-reload PERSISTENCE of these fields needs the
+        // confirm endpoint to echo them; that is a backend change, out of P2D-A scope, and is
+        // recorded as residue in the report.)
+        const stamped = {
+            ...r,
+            mark_source: accepted?.source || 'user_confirmed',
+            refined_from: base?.id || null,
+            mark_id: accepted?.id || null,
+        };
+        if (regions.some((x) => x.id === stamped.id)) updateRegion(stamped.id, stamped, { save: false });
+        else addRegion(stamped, { save: false });
+        selectRegion(stamped.id);
+    }, [refine, tool, selectedRegion, regions, updateRegion, addRegion, selectRegion, emitMark]);
 
     // Release the SAM session when refinement mode ends…
     const wasRefine = useRef(false);
@@ -734,10 +811,22 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                 {refine.status === 'confirmed' && <span className="diff-refine-ok">saved ✓</span>}
                                 {refine.status === 'idle' && (selectedRegion ? 'click the part, or drag a box' : 'select a part first')}
                             </div>
+                            {/* CIRCUIT-001 P2D-A — the quarantine, made visible. While the model's
+                                mask is only proposed it is a SUGGESTION, and the chip says so out
+                                loud (the anti-CVAT rule: invisible provenance is no provenance).
+                                Confirm ACCEPTS it — minting a mark that keeps the model's part in
+                                the record — rather than laundering it into "I drew this". */}
+                            {refine.status === 'ok' && (
+                                <p className="diff-mark-prov diff-mark-prov--suggested" role="status">
+                                    <span className="diff-prov-dot" aria-hidden="true" />
+                                    {summarizeProvenance({ source: 'model_suggested' })}
+                                    <span className="diff-prov-note"> — accepting keeps it as “{summarizeProvenance({ source: selectedRegion ? 'model_refined' : 'user_confirmed' })}”.</span>
+                                </p>
+                            )}
                             <div className="diff-refine-actions">
                                 <button type="button" className="diff-mini" onClick={() => refine.clear()} disabled={!refine.hasPrompt}>Clear</button>
-                                <button type="button" className="diff-mini" onClick={() => { refine.clear(); switchTool('select'); }}>Cancel</button>
-                                <button type="button" className="diff-mini diff-mini--primary" onClick={confirmRefine} disabled={refine.status !== 'ok'}>Confirm</button>
+                                <button type="button" className="diff-mini" onClick={() => { refine.clear(); switchTool('select'); }}>Dismiss</button>
+                                <button type="button" className="diff-mini diff-mini--primary" onClick={confirmRefine} disabled={refine.status !== 'ok'}>Accept</button>
                             </div>
                         </div>
                     )}
@@ -916,6 +1005,20 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                 {selectedGround.ground_type === 'frame' && (selectedGround.evidence_ids || []).length > 0 && (
                                     <span className="diff-chip diff-chip--dim">{selectedGround.evidence_ids.length} inside</span>
                                 )}
+                                {/* CIRCUIT-001 P2D-A — provenance, made visible on the ground itself.
+                                    The mark linked to this ground carries the real source; the chip
+                                    speaks it (anti-CVAT). A user's own brush reads "Yours" quietly;
+                                    anything the model touched says so. */}
+                                {(() => {
+                                    const gm = marks.find((m) => (m.linked_ground_ids || []).includes(selectedGround.id));
+                                    if (!gm) return null;
+                                    return (
+                                        <span className={`diff-chip diff-mark-prov-chip${hasModelInvolvement(gm) ? ' is-model' : ''}`}
+                                            title={markSummary(gm)}>
+                                            {summarizeProvenance(gm)}
+                                        </span>
+                                    );
+                                })()}
                             </div>
                             {selectedGround.ground_type === 'frame' && (
                                 <p className="diff-insp-hint">
