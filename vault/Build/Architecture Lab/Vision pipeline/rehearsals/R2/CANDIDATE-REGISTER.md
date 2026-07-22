@@ -15,9 +15,12 @@ Nothing below meets it. Speculative locations are marked **[SPEC]** and are gues
 | spark-05 | address as a viewer-facing stance, maybe without a figure | A3 | new, n=1 |
 | spark-06 | anthropomorphism is **question-conditional** (address vocabulary) | A3, A4, **resolved by 007 A/B** | **RESOLVED** |
 | spark-07 | a claim can be its own counterexample — **within one response** | A4, **strengthened by A5** | moderate |
-| spark-08 | **the model names what it is asked to name AND what it can recognise** | A5, 008, 009, **WEAKENED by 011** | restated as a conjunction |
-| spark-09 | **the noun licenses the register; the relational demand licenses the joint predication** | 008 + 009 + **010 (ladder complete)** | n=1 pair, 5 calls, **no cell repeated** |
-| spark-10 | **abstraction as immunisation — the claim is pitched above its own counter-evidence** | 010, **replicated on a poor pair by 011** | n=2 calls, 2 pairs |
+| spark-08 | **the model names what it is asked to name AND what it can recognise** | A5, 008, 009, WEAKENED by 011, **WEAKENED AGAIN by 012** | **conjunction insufficient — a large stochastic base sits under both conjuncts** |
+| spark-09 | **the noun licenses the register; the relational demand licenses the joint predication** | 008 + 009 + 010, **arm E cell repeated 3× by 012** | n=1 pair, 5 calls, **one rung now verified; five still single draws** |
+| spark-10 | **abstraction as immunisation — the claim is pitched above its own counter-evidence** | 010, 011, **CELL 1 fired by 012 (mechanism 3/3)** | **n=5 calls, 2 pairs; mechanism 4/4 on Pair 2** |
+| spark-12-01 | **external-authority naming is largely sampling variance** — 0/0/1/2 monuments across four byte-identical calls | 012 | new, n=4 calls, input provably identical |
+| spark-12-02 | **rhetoric is more reproducible than reference** — "powerful" 4/4 while monuments vary 0–2 | 012 | new, n=4; framing is the curator's, hold loosely |
+| spark-12-03 | **the uptake scale collapses the distinction it was built to measure** | 012 | method-level; a different scorer could fire cell 4 |
 
 ---
 
