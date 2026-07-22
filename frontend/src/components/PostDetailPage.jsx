@@ -13,6 +13,7 @@ import ChatbotPanel from './ChatbotPanel';
 import StoryFlow from './StoryFlow';
 import TagStrip from './TagStrip';
 import RefPicker from './RefPicker';
+import PassageInspector from '../manuscript/PassageInspector';
 import { API_URL } from '../config/api';
 import { epicService } from '../services/epicService';
 import { RegionStoreContext, useRegionState } from '../state/regionStore';
@@ -1224,6 +1225,12 @@ function PostDetailPage() {
                           store={regionStore}
                           onRefTrigger={onRefTrigger}
                         />
+                        {/* CIRCUIT-001 P2C-MS — the writing answering back. Read-only:
+                            it listens to the chip's existing `semant:region-focus`
+                            event and the live selection, and derives what the
+                            selection rests on. It persists nothing, calls no model,
+                            and creates no Mention. */}
+                        <PassageInspector store={regionStore} blocks={editedBlocks} />
                         {aiError && <p className="composer-error">{aiError}</p>}
                       </div>
                     </div>
