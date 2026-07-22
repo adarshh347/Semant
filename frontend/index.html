@@ -2,17 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- The ◈ region-mark, plum — the brand's one glyph, as the favicon. -->
-    <link
-      rel="icon"
-      type="image/svg+xml"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='16' y='2.5' width='19' height='19' rx='3' transform='rotate(45 16 2.5)' fill='none' stroke='%235E2B50' stroke-width='3'/%3E%3Crect x='16' y='9.5' width='9.2' height='9.2' rx='1.5' transform='rotate(45 16 9.5)' fill='%235E2B50'/%3E%3C/svg%3E"
-    />
+    <!-- The Ground mark, plum — the brand's one glyph, as the favicon. -->
+    <link rel="icon" type="image/svg+xml" href="/brand/semant-favicon.svg" />
+    <link rel="mask-icon" href="/brand/semant-mark-mono.svg" color="#5E2B50" />
+    <link rel="apple-touch-icon" href="/brand/semant-favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Paper in light, plum-charcoal in dark (matches --bg in index.css). -->
+    <meta name="theme-color" content="#FAF7F5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#191419" media="(prefers-color-scheme: dark)" />
     <meta
       name="description"
       content="Semant reads images part by part — the neckline, the drape, the light — and writes with you from what you noticed. Close-reading for the age of the scroll; your taste, written down."
     />
+
+    <!-- Open Graph / Twitter social card. NOTE: og:image should be an ABSOLUTE
+         URL on deploy (e.g. https://semant.app/brand/…) and ideally a rasterized
+         PNG from semant-brand-kit.zip for maximum scraper compatibility. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Semant" />
+    <meta property="og:title" content="Semant — read images, part by part" />
+    <meta
+      property="og:description"
+      content="The neckline, the drape, the light — Semant reads with you, and writes from what you noticed. Your taste, written down."
+    />
+    <meta property="og:image" content="/brand/semant-social-card.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Semant — read images, part by part" />
+    <meta
+      name="twitter:description"
+      content="The neckline, the drape, the light — Semant reads with you, and writes from what you noticed. Your taste, written down."
+    />
+    <meta name="twitter:image" content="/brand/semant-social-card.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

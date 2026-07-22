@@ -1,0 +1,8 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Semant">
+  <!-- Paper-tile favicon: the mark reads at 16px on a warm-paper rounded tile. -->
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="#FAF7F5"/>
+  <rect x="8" y="8" width="48" height="48" rx="11" fill="none" stroke="#5E2B50" stroke-width="3.6"/>
+  <rect x="17" y="22" width="24" height="20" rx="5.5" transform="rotate(-9 29 32)" fill="#5E2B50"/>
+  <line x1="43" y1="43" x2="53" y2="53" stroke="#5E2B50" stroke-width="3.2" stroke-linecap="round"/>
+  <circle cx="55" cy="55" r="4" fill="none" stroke="#5E2B50" stroke-width="3"/>
+</svg>
