@@ -299,10 +299,16 @@ export function useRegionState(post, onPostChange) {
         // better than withholding the whole citation.
         const live = liveRegionIds(list, regionsRef.current);
         if (!live.length) {
-            setMissingRef({ ids: list, at: Date.now() });
+            setMissingRef({ ids: list, missing: list, someLive: false, at: Date.now() });
             return;
         }
-        setMissingRef(null);
+        // A lens that has lost only SOME of its parts still shows the rest — and
+        // says that some are gone. Withholding the whole citation would hide
+        // evidence that is still true; showing it silently would overstate what
+        // the citation now covers.
+        setMissingRef(live.length < list.length
+            ? { ids: list, missing: list.filter((id) => !live.includes(id)), someLive: true, at: Date.now() }
+            : null);
         setSelectedId(live[0]);
         setLensRegionIds(live.length > 1 ? new Set(live) : null);
     }, []);

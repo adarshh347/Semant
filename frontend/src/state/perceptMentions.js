@@ -65,6 +65,11 @@ export function makeExpressionPercept({
   properties = [],
   actor = 'creator',
   created_at = null,
+  // CIRCUIT-001 P1C — { [ground_id]: role }. What each cited ground DOES for
+  // this reading. Optional: omitted entirely when nothing is named, so a percept
+  // written before roles existed is byte-identical to one whose roles were
+  // cleared. Never written to post.grounds — see differential/groundRoles.js.
+  ground_roles = null,
 } = {}) {
   return {
     id: id || `pctx_${Date.now().toString(36)}_${(pctxSeq++).toString(36)}`,
@@ -72,6 +77,7 @@ export function makeExpressionPercept({
     expression,
     ground_ids: [...ground_ids],
     properties: [...properties],
+    ...(ground_roles && Object.keys(ground_roles).length ? { ground_roles: { ...ground_roles } } : {}),
     actor,
     created_at: created_at || new Date().toISOString(),
   };

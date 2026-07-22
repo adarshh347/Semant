@@ -63,8 +63,13 @@ function RegionRefChip({ p }) {
   const store = useContext(RegionStoreContext);
   const ids = (p.regionIds || '').split(',').filter(Boolean);
   const focused = (!!store?.focusIds && ids.some((id) => store.focusIds.has(id)))
-    // a percept chip is lit while its noticing is being replayed
-    || (!!p.perceptId && store?.recall?.perceptId === p.perceptId);
+    // A percept chip lights while its noticing is being replayed — but ONLY if
+    // there is a noticing to replay. Matching the requested id alone made the
+    // chip claim "I am being replayed right now" over a no-op whenever the
+    // percept was missing from the store (CIRCUIT-001 P1C).
+    || (!!p.perceptId
+      && store?.recall?.perceptId === p.perceptId
+      && (store?.percepts || []).some((x) => x.id === p.perceptId));
   const attrs = chipAttrs(p);
   return (
     <span

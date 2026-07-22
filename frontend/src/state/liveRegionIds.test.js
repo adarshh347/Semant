@@ -31,6 +31,16 @@ describe('liveRegionIds — a reference is only followed as far as it resolves',
         expect(liveRegionIds(['gone', 'region_2', 'region_1'], regions)).toEqual(['region_2', 'region_1']);
     });
 
+    it('a PARTIAL lens keeps what still resolves and can name what does not', () => {
+        // CIRCUIT-001 P1C. The store sets missingRef with someLive:true in this
+        // case, so the surface shows the live parts AND says some are gone —
+        // rather than silently overstating what the citation still covers.
+        const cited = ['region_1', 'gone_a', 'gone_b'];
+        const live = liveRegionIds(cited, regions);
+        expect(live).toEqual(['region_1']);
+        expect(cited.filter((id) => !live.includes(id))).toEqual(['gone_a', 'gone_b']);
+    });
+
     it('tolerates the empty and the malformed', () => {
         expect(liveRegionIds([], regions)).toEqual([]);
         expect(liveRegionIds(undefined, regions)).toEqual([]);

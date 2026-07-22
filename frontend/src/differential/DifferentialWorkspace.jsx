@@ -15,6 +15,8 @@ import VisionActivityRail from './VisionActivityRail';
 import { makeGround, groundFromRegion, resolveGround } from './grounds';
 import { useRecallPlayer } from './recall';
 import { buildCirculationThread, threadSummary } from './circulationThread';
+import { CORE_ROLES, rolesSummary } from './groundRoles';
+import { buildPerceptPacket, packetSummary } from './perceptPacket';
 import './DifferentialWorkspace.css';
 
 /**
@@ -286,7 +288,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     }, []);
 
     const openComposer = useCallback((groundIds) => {
-        setComposer({ groundIds: Array.isArray(groundIds) ? groundIds : [groundIds], expression: '', properties: [] });
+        setComposer({ groundIds: Array.isArray(groundIds) ? groundIds : [groundIds], expression: '', properties: [], roles: {} });
     }, []);
 
     // ── commits ──────────────────────────────────────────────────────────────
@@ -347,8 +349,12 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         if (!composer) return;
         const expression = composer.expression.trim();
         if (!expression) return;
+        // Roles ride on the percept record the curator already saves — no new
+        // entity, no migration, and nothing written to post.grounds.
+        const named = Object.entries(composer.roles || {}).filter(([, r]) => !!r);
         const p = addExpressionPercept({
             expression, ground_ids: composer.groundIds, properties: composer.properties,
+            ...(named.length ? { ground_roles: Object.fromEntries(named) } : {}),
         });
         setComposer(null);
         playRecall(p.id);
@@ -691,6 +697,38 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     </button>
                                 ))}
                             </div>
+                            {/* CIRCUIT-001 P1C — Ground Roles. What each cited ground DOES for
+                                this reading. Optional everywhere: a percept with no roles is
+                                complete, and nothing downstream may refuse one for lacking them.
+                                Click a named role again to clear it. The role belongs to this
+                                percept's USE of the ground, never to the ground record — the
+                                same region is an anchor in one noticing and a counterforce in
+                                another. */}
+                            {composer.groundIds.length > 0 && (
+                                <div className="diff-composer-roles">
+                                    {composer.groundIds.map((gid) => (
+                                        <div key={gid} className="diff-role-row">
+                                            <span className="diff-role-ground">
+                                                {groundTitle(groundById(gid), regions)}
+                                            </span>
+                                            <span className="diff-role-opts">
+                                                {CORE_ROLES.map((r) => (
+                                                    <button key={r.key} type="button" title={r.hint}
+                                                        className={`diff-role${(composer.roles?.[gid] === r.key) ? ' on' : ''}`}
+                                                        onClick={() => setComposer((c) => {
+                                                            const roles = { ...(c.roles || {}) };
+                                                            if (roles[gid] === r.key) delete roles[gid];
+                                                            else roles[gid] = r.key;
+                                                            return { ...c, roles };
+                                                        })}>
+                                                        {r.label}
+                                                    </button>
+                                                ))}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             <div className="diff-insp-row-actions">
                                 <button type="button" className="diff-primary"
                                     disabled={!composer.expression.trim()} onClick={savePercept}>Keep this percept</button>
@@ -814,11 +852,33 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                         </button>
                                     )}
                                     {/* Seed Circulation Thread — one line, degradation-first. */}
+                                    {rolesSummary(p) && (
+                                        <span className="diff-percept-roles" title="what each ground does for this noticing">
+                                            {rolesSummary(p)}
+                                        </span>
+                                    )}
                                     <span className="diff-percept-thread">
                                         {threadSummary(buildCirculationThread(p, {
                                             grounds, regions, mentions: store?.mentions || [],
                                         }))}
                                     </span>
+                                    {/* CIRCUIT-001 P1C — the operation packet, INSPECTABLE and
+                                        unsent. Perceptive Orchestration's packing rule, built
+                                        long before anything dispatches: what is being asked, on
+                                        what evidence, under what constraints. Collapsed by
+                                        default — this is for a curator who wants to look, not a
+                                        thing the surface pushes forward. */}
+                                    <details className="diff-packet">
+                                        <summary>{packetSummary(buildPerceptPacket(p, {
+                                            postId, grounds, mentions: store?.mentions || [],
+                                            resolve: (g) => resolveGround(g, { regions, grounds }),
+                                        }))}</summary>
+                                        <pre className="diff-packet-body">{JSON.stringify(
+                                            buildPerceptPacket(p, {
+                                                postId, grounds, mentions: store?.mentions || [],
+                                                resolve: (g) => resolveGround(g, { regions, grounds }),
+                                            }), null, 2)}</pre>
+                                    </details>
                                 </div>
                             ))}
                         </div>

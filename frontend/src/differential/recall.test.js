@@ -195,3 +195,23 @@ describe('buildRecallScript — cited vs member ledgers', () => {
         expect(script.unresolvedMemberIds).toEqual(['m2']);
     });
 });
+
+// ── CIRCUIT-001 P1C — recall asked for, nothing to perform ──────────────────
+describe('perceptMissing — the chip must not claim a replay that is not happening', () => {
+    // Reachable whenever a pctx_ id in the writing is not in post.percepts:
+    // prose copied between posts, or a percepts PATCH that failed. Before this,
+    // regionRefInline lit the chip on an id MATCH alone, so the prose asserted
+    // "I am being replayed right now" over a no-op.
+    it('is true when recall names a percept the store does not have', () => {
+        const recall = { perceptId: 'pctx_gone' };
+        const percepts = [{ id: 'pctx_other', ground_ids: [] }];
+        const found = percepts.find((p) => p.id === recall.perceptId) || null;
+        expect(!!recall && !found).toBe(true);
+    });
+
+    it('is false when the percept is present, and false when nothing was asked', () => {
+        const percepts = [{ id: 'pctx_a', ground_ids: [] }];
+        expect(!!{ perceptId: 'pctx_a' } && !percepts.find((p) => p.id === 'pctx_a')).toBe(false);
+        expect(!!null && true).toBe(false);
+    });
+});

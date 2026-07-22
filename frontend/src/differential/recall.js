@@ -180,6 +180,14 @@ export function useRecallPlayer(store) {
         receding: active,                 // the image stays receded until cleared
         caption: captionVisible ? (percept?.expression || '') : '',
         percept,
+        // CIRCUIT-001 P1C — recall was ASKED FOR and there is no percept to
+        // perform. Previously the chip lit itself (`store.recall.perceptId`
+        // matches, regardless of whether the percept exists) while nothing
+        // played: the prose asserted "I am being replayed right now" over a
+        // no-op. Reachable whenever a `pctx_` id in the writing is not in
+        // `post.percepts` — prose copied between posts, or a percepts PATCH that
+        // failed. States the absence; never a cause.
+        perceptMissing: !!recall && !percept,
         progressFor,
         // Honesty channel. A Percept can outlive the evidence it cites; when it
         // does, say so beside the caption rather than letting the caption stand

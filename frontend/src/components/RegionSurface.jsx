@@ -375,9 +375,19 @@ export default function RegionSurface({ post, aletheia = null, onPostChange, sto
                             <div className="rs-recall-say">
                                 <p className="rs-recall-detached">
                                     {store.missingRef.ids.length > 1
-                                        ? 'Those parts are no longer in the image.'
+                                        ? (store.missingRef.someLive
+                                            ? 'Some of those parts are no longer in the image.'
+                                            : 'Those parts are no longer in the image.')
                                         : 'That part is no longer in the image.'}
                                 </p>
+                            </div>
+                        )}
+                        {/* CIRCUIT-001 P1C — recall was asked for and the percept is not
+                            here. The chip no longer lights over this; say why nothing
+                            plays instead of leaving the image untouched in silence. */}
+                        {recallPlayer.perceptMissing && (
+                            <div className="rs-recall-say">
+                                <p className="rs-recall-detached">This noticing is no longer available.</p>
                             </div>
                         )}
 

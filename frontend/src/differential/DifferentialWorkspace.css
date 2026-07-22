@@ -868,3 +868,97 @@
 .diff-percept-thread:empty {
     display: none;
 }
+
+/* ── CIRCUIT-001 P1C · Ground Roles + packet preview ───────────────────────── */
+/* Roles are an affordance, never a required field: unnamed is the resting state
+   and must not look unfinished. Nothing here shouts. */
+.diff-composer-roles {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+    margin: 0.3rem 0 0.1rem;
+}
+
+.diff-role-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.diff-role-ground {
+    flex: 0 0 auto;
+    max-width: 42%;
+    font-size: 0.68rem;
+    color: var(--diff-ink-soft, #8a8178);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.diff-role-opts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.18rem;
+}
+
+.diff-role {
+    background: none;
+    border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+    border-radius: 999px;
+    padding: 0.06rem 0.4rem;
+    font-family: inherit;
+    font-size: 0.62rem;
+    letter-spacing: 0.015em;
+    color: var(--diff-ink-faint, #a9a096);
+    cursor: pointer;
+    transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.diff-role:hover { color: var(--diff-ink, #4a443e); }
+
+.diff-role.on {
+    color: var(--diff-ink, #4a443e);
+    border-color: color-mix(in srgb, currentColor 40%, transparent);
+    background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+/* On a saved percept: what its grounds do, in one line. */
+.diff-percept-roles {
+    flex: 0 0 auto;
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+    color: var(--diff-ink-faint, #a9a096);
+    font-style: italic;
+}
+
+/* The packet disclosure. Advanced-feeling, deliberately unglamorous: it is a
+   request being inspected before anything is asked, not a result. */
+.diff-packet {
+    margin-top: 0.35rem;
+    font-size: 0.64rem;
+}
+
+.diff-packet > summary {
+    cursor: pointer;
+    color: var(--diff-ink-faint, #a9a096);
+    letter-spacing: 0.02em;
+    list-style: none;
+}
+
+.diff-packet > summary::-webkit-details-marker { display: none; }
+.diff-packet > summary::before { content: '▸ '; }
+.diff-packet[open] > summary::before { content: '▾ '; }
+.diff-packet > summary:hover { color: var(--diff-ink, #4a443e); }
+
+.diff-packet-body {
+    margin: 0.25rem 0 0;
+    padding: 0.4rem 0.5rem;
+    border-left: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+    color: var(--diff-ink-soft, #8a8178);
+    line-height: 1.5;
+    max-height: 11rem;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
