@@ -25,6 +25,7 @@
  */
 
 import { groundRoleList, roleLabel } from '../differential/groundRoles';
+import { normalizeAction } from '../differential/perceptualActions';
 
 /** The objects that can live in, or attach to, the writing. `exists` is honest. */
 export const MANUSCRIPT_OBJECTS = [
@@ -242,6 +243,13 @@ export function buildChipInspection(percept, {
         percept_id: percept.id,
         label: label || percept.expression || 'percept',
         sections,
+        // Carried for the collapsed summary so it need not re-walk the sections.
+        ground_count: cited,
+        passage_count: blockIds.length,
+        role_count: roled.length,
+        // A degradation the collapsed line names calmly; `unknown` is not degraded,
+        // it is uncomputed, and must not read as trouble.
+        degraded: state !== 'intact' && state !== 'unknown',
         evidence: { state, note: evidenceNote(cited, resolving, resolve) },
     };
 }
@@ -256,52 +264,157 @@ function evidenceNote(cited, resolving, resolve) {
 }
 
 /**
- * The acts a selection can offer.
+ * The acts the Manuscript can offer, classified by how far each can actually go
+ * in THIS gate. The class is the honesty: a curator learns instantly which acts
+ * do something and which are staged, and no act is dressed up beyond what it can
+ * carry through.
  *
- * Every one is PREVIEW ONLY in this gate. `wired: false` is carried on each so a
- * surface renders "Preview only — execution path not wired yet" and NO button:
- * an Apply that quietly does nothing teaches the curator that the whole panel is
- * theatre (P2B).
+ *   live      a real, safe UI effect runs now — recall, return to Differential,
+ *             begin a passage, carry a sentence back. Nothing mutates the corpus.
+ *   disclose  a pure builder reveals something already true (packet, thread).
+ *   staged    a valid Perceptual-Action-Grammar proposal is built and shown, and
+ *             then STOPS. Nothing is dispatched, nothing is saved. "Ready, not sent."
+ *   preview   an act whose grammar type does not exist yet. A structured proposal
+ *             is shown — never loose text — and it plainly cannot execute.
  *
- * `newType: true` marks the seven types not yet in perceptualActions.ACTION_TYPES.
- * `normalizeAction` returns null for an unknown type — the correct failure — so
- * none of these may render an Apply until its spec exists.
+ * Copy is deliberately alive rather than administrative (P2C-MS2 §5). The panel
+ * should read as a surface that can act, while never claiming to have acted.
  */
-export const MANUSCRIPT_ACTIONS = [
-    { type: 'create_percept_from_sentence', label: 'Create percept from this sentence', on: 'text', newType: true },
-    { type: 'map_sentence_to_image', label: 'Map this sentence to the image', on: 'text', newType: true },
-    { type: 'challenge_sentence', label: 'Challenge this sentence', on: 'text', newType: true },
-    { type: 'send_sentence_to_differential', label: 'Send to Differential', on: 'text', newType: true },
-    { type: 'draft_description', label: 'Draft from selection', on: 'text', newType: false },
-    { type: 'recall_percept', label: 'Recall on the image', on: 'percept_chip', newType: false },
-    { type: 'revise_cited_percept', label: 'Revise in Differential', on: 'percept_chip', newType: true },
-    { type: 'challenge_percept', label: 'Challenge support', on: 'percept_chip', newType: false },
-    { type: 'start_manuscript', label: 'Start a passage', on: 'percept_chip', newType: false },
-    { type: 'compare_passage', label: 'Compare', on: 'percept_chip', newType: true },
+
+export const ACTION_KINDS = ['live', 'disclose', 'staged', 'preview'];
+
+export const CHIP_ACTIONS = [
+    { key: 'recall', label: 'Recall on the image', kind: 'live', tone: 'Play it back where its grounds live' },
+    { key: 'revise', label: 'Revise in Differential', kind: 'live', tone: 'Return to where it was formed' },
+    { key: 'start_passage', label: 'Start a passage', kind: 'live', tone: 'Write from here · nothing is saved until you save' },
+    { key: 'packet', label: 'Show packet', kind: 'disclose', tone: 'The request as it would be asked — nothing sent' },
+    { key: 'thread', label: 'Show circulation', kind: 'disclose', tone: 'Its record in the circuit' },
+    { key: 'challenge_support', label: 'Challenge support', kind: 'staged', tone: 'Challenge is staged — no model has read it' },
+    { key: 'compare', label: 'Compare', kind: 'preview', tone: 'Ready when a second noticing is chosen' },
 ];
 
+export const SELECTION_ACTIONS = [
+    { key: 'create_percept', label: 'Create percept from selection', kind: 'staged', tone: 'Ready, not sent' },
+    { key: 'draft_description', label: 'Draft a description', kind: 'staged', tone: 'Staged draft · nothing is saved until you save' },
+    { key: 'draft_critique', label: 'Draft a critique', kind: 'staged', tone: 'Staged draft · nothing is saved until you save' },
+    { key: 'draft_script', label: 'Draft a script', kind: 'staged', tone: 'Staged draft · nothing is saved until you save' },
+    { key: 'map_sentence', label: 'Map sentence to image', kind: 'preview', tone: 'Needs your mark on the image' },
+    { key: 'challenge_sentence', label: 'Challenge sentence', kind: 'preview', tone: 'This sentence has not cited an image yet' },
+    { key: 'mark_external', label: 'Mark external claim', kind: 'preview', tone: 'Staged — the frame may not settle this' },
+    { key: 'send_first_attention', label: 'Send to Differential', kind: 'live', tone: 'Carry it into Differential' },
+];
+
+/** The acts on offer for the current selection. Descriptors only — the inspector
+ *  binds `live`/`disclose` keys to callbacks and `staged`/`preview` to builders. */
 export function actionsForSelection(selection) {
     const kind = selection?.kind || 'none';
-    if (kind === 'none') return [];
-    return MANUSCRIPT_ACTIONS
-        .filter((a) => a.on === kind)
-        .map((a) => ({
-            ...a,
-            // Nothing in this gate has an executor. Stated per-action rather
-            // than assumed, so wiring one is a visible change.
-            wired: false,
-            note: 'Preview only — execution path not wired yet',
-        }));
+    if (kind === 'percept_chip') return CHIP_ACTIONS.map((a) => ({ ...a }));
+    if (kind === 'text') return SELECTION_ACTIONS.map((a) => ({ ...a }));
+    return [];
 }
 
-/** One quiet line for the resting state. Says what is selected, never how good it is. */
+// ── grammar-action builders ────────────────────────────────────────────────
+// Each returns a fully-validated Perceptual-Action-Grammar action, or null if the
+// selection cannot support it. `status: 'previewed'` — surfaced to the curator,
+// never 'applied'. `source: 'user'` — the curator staged it, so a challenge is
+// theirs to author (P2B refuses a model-authored challenge). Nothing is dispatched.
+
+const DRAFT_MODES = { draft_description: 'description', draft_critique: 'art_critique', draft_script: 'youtube_script' };
+
+/** Create-percept-from-selection → a real `compose_percept`, seeded with the
+ *  curator's own sentence VERBATIM (P2B: never a paraphrase). */
+export function composePerceptFromSelection(selection, { now = 0, idFn } = {}) {
+    if (!selection?.text?.trim()) return null;
+    return normalizeAction({
+        type: 'compose_percept', source: 'user', status: 'previewed',
+        payload: {
+            draft_text: selection.text,
+            ground_refs: selection.cited_ground_ids || [],
+            intent: 'read',
+        },
+        provenance: { planner: 'manuscript/selection-v1', promptExcerpt: selection.text.slice(0, 80) },
+    }, { now, idFn });
+}
+
+/** Draft-a-{description,critique,script} → a real `start_manuscript`, unsaved. */
+export function draftFromSelection(actionKey, selection, { now = 0, idFn } = {}) {
+    const mode = DRAFT_MODES[actionKey];
+    if (!mode || !selection?.text?.trim()) return null;
+    return normalizeAction({
+        type: 'start_manuscript', source: 'user', status: 'previewed',
+        payload: { mode, draft: selection.text, insertion_mode: 'unsaved' },
+        provenance: { planner: 'manuscript/selection-v1' },
+    }, { now, idFn });
+}
+
+/** Challenge-support on a percept chip → a real `challenge_percept`, authored by
+ *  the curator. Staged only: no model reads it in this gate. */
+export function challengeSupportAction(perceptId, { challengeType = 'alternative_reading', now = 0, idFn } = {}) {
+    if (!perceptId) return null;
+    return normalizeAction({
+        type: 'challenge_percept', source: 'user', status: 'previewed',
+        payload: { percept_ref: perceptId, challenge_type: challengeType },
+        provenance: { planner: 'manuscript/chip-v1' },
+    }, { now, idFn });
+}
+
+/** A structured proposal for an act whose grammar type does not exist yet. Not a
+ *  validated grammar action, and it says so; but it is structure, not loose text,
+ *  so a later gate can lift it into the grammar without reinterpreting prose. */
+export function previewProposal(descriptor, selection) {
+    const text = selection?.text || '';
+    const bodies = {
+        map_sentence: { target: 'image', sentence: text, needs_geometry: true },
+        challenge_sentence: { target: 'percept', sentence: text, note: 'no percept cited on this sentence' },
+        mark_external: { target: 'manuscript', sentence: text, claim_kind: 'external' },
+        compare: { target: 'percept', note: 'choose a second noticing to compare against' },
+    };
+    return {
+        proposal_kind: 'structured_preview',
+        type: descriptor.key,
+        label: descriptor.label,
+        grammar: false,                 // not yet a Perceptual-Action-Grammar type
+        payload: bodies[descriptor.key] || { sentence: text },
+        note: descriptor.tone,
+        // Stated on the proposal itself so it cannot be mistaken for a dispatch.
+        dispatch: { sent: false },
+        status: 'preview_only',
+    };
+}
+
+/**
+ * The compact line shown when the inspector is collapsed. Context-dependent, and
+ * it never disappears — a collapsed inspector still says what is in hand.
+ *
+ *   percept chip   `Percept · 1 ground · 1 passage`  (+ calm degraded note)
+ *   plain prose    `Selection · cites nothing`
+ *   nothing        a quiet idle line
+ */
+export function collapsedSummary(selection, inspection = null) {
+    const s = selection || describeSelection();
+    if (s.kind === 'none') return 'Nothing selected · pick a sentence or a chip';
+    if (s.kind === 'percept_chip') {
+        if (inspection && !inspection.resolved) return 'Percept · citation no longer resolves';
+        const g = inspection?.ground_count ?? 0;
+        const p = inspection?.passage_count ?? 0;
+        const bits = ['Percept', `${g} ground${g === 1 ? '' : 's'}`, `${p} passage${p === 1 ? '' : 's'}`];
+        // Calm, not alarmist: the degraded note only, and only when truly degraded.
+        if (inspection?.degraded) bits.push(inspection.evidence.note);
+        return bits.join(' · ');
+    }
+    return s.citation_state === 'cites_percepts'
+        ? `Selection · cites ${s.cited_percept_ids.length} percept${s.cited_percept_ids.length === 1 ? '' : 's'}`
+        : s.citation_state === 'cites_nothing' ? 'Selection · cites nothing' : 'Selection';
+}
+
+/** The expanded header's one-line summary. Says what is selected, never how good. */
 export function inspectorSummary(selection, inspection = null) {
     const s = selection || describeSelection();
     if (s.kind === 'none') return 'Nothing selected';
     if (s.kind === 'percept_chip') {
         if (inspection && !inspection.resolved) return 'A citation that no longer resolves';
         const ev = inspection?.evidence?.state;
-        return ev && ev !== 'intact' ? `Percept · evidence ${ev}` : 'Percept';
+        return ev && ev !== 'intact' && ev !== 'unknown' ? `Percept · evidence ${ev}` : 'Percept';
     }
     return s.citation_state === 'cites_percepts'
         ? `Selection · cites ${s.cited_percept_ids.length} percept${s.cited_percept_ids.length === 1 ? '' : 's'}`

@@ -512,6 +512,42 @@ function PostDetailPage() {
     handle.focus?.();
   });   // eslint-disable-line react-hooks/exhaustive-deps -- must re-check after every render until the editor mounts
 
+  // ── CIRCUIT-001 P2C-MS2 — Manuscript circulation actions ────────────────────
+  // The writing acting back on the image and on Differential. All are safe: none
+  // mutates the corpus, none dispatches a model, none autosaves. They are the
+  // return leg the P2C-MS report named as the smallest useful piece of the
+  // circuit's governing rule — nothing may leave the circuit without being able
+  // to return.
+  const recallFromManuscript = (perceptId) => {
+    if (perceptId) regionStore.playRecall(perceptId);
+  };
+
+  const reviseInDifferential = (perceptId) => {
+    if (!perceptId) return;
+    setWorkspaceMode('differential');
+    // Return to where the percept was formed: light its grounds and replay the
+    // noticing so the crossing is felt, not merely navigated. If the grounds no
+    // longer resolve, playRecall already refuses to point at nothing (P1B).
+    const percept = (regionStore.percepts || []).find((p) => p.id === perceptId);
+    const regionIds = (percept?.ground_ids || [])
+      .map((gid) => regionStore.groundById(gid)?.region_id)
+      .filter(Boolean);
+    if (regionIds.length) regionStore.focusRegions(regionIds);
+    regionStore.playRecall(perceptId);
+  };
+
+  const startPassageFromChip = (blockId) => {
+    // The inspector only mounts while editing, so the editor handle is present.
+    manuscriptRef.current?.startPassage?.({ blockId: blockId || null });
+  };
+
+  const sendSelectionToDifferential = () => {
+    // The reverse crossing for prose: return to the image side. Prefilling First
+    // Attention is Lane A's surface (P2D interface contract) and is not wired
+    // here — but the switch itself is a real, visible effect, never a no-op.
+    setWorkspaceMode('differential');
+  };
+
   const startEditing = ({ seed = true } = {}) => {
     setIsEditing(true);
     const existing = post.text_blocks || [];
@@ -1230,7 +1266,15 @@ function PostDetailPage() {
                             event and the live selection, and derives what the
                             selection rests on. It persists nothing, calls no model,
                             and creates no Mention. */}
-                        <PassageInspector store={regionStore} blocks={editedBlocks} />
+                        <PassageInspector
+                          store={regionStore}
+                          blocks={editedBlocks}
+                          postId={post?.id}
+                          onRecall={recallFromManuscript}
+                          onReviseInDifferential={reviseInDifferential}
+                          onStartPassage={startPassageFromChip}
+                          onSendToDifferential={sendSelectionToDifferential}
+                        />
                         {aiError && <p className="composer-error">{aiError}</p>}
                       </div>
                     </div>

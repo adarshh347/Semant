@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
     buildOrchestrationSession, summarizeSession, sessionAllowedActions,
     sessionForModelPreview, validateSession, allowedFrom, _resetSessionIds,
+    MANUSCRIPT_ACTION_STATUSES, RETURN_TARGETS,
 } from './orchestrationSession';
 import { ACTION_TYPES } from '../differential/perceptualActions';
 import { describeSelection } from '../manuscript/manuscriptField';
@@ -234,6 +235,47 @@ describe('manuscript selection and percept context can be included', () => {
         });
         expect(s.ground_context.roles_named).toBe(2);
         expect(s.ground_context.resolution_assessed).toBe(true);
+    });
+});
+
+describe('a Manuscript action can be represented, and never implies dispatch', () => {
+    it('records the requested action, its status, and its return target', () => {
+        const s = buildOrchestrationSession({
+            ...base,
+            manuscriptAction: { type: 'revise', status: 'applied', return_target: 'differential' },
+        });
+        expect(s.manuscript_context.requested_action).toEqual({
+            type: 'revise', status: 'applied', return_target: 'differential',
+        });
+        // A local effect ran — but nothing was dispatched.
+        expect(s.dispatch_state).toBe('none');
+    });
+
+    it('defaults an unknown status to preview_only and an unknown target to null', () => {
+        const s = buildOrchestrationSession({
+            ...base, manuscriptAction: { type: 'map_sentence', status: 'teleported', return_target: 'the_moon' },
+        });
+        expect(s.manuscript_context.requested_action.status).toBe('preview_only');
+        expect(s.manuscript_context.requested_action.return_target).toBeNull();
+    });
+
+    it('is null when no action was reached for', () => {
+        expect(buildOrchestrationSession(base).manuscript_context.requested_action).toBeNull();
+    });
+
+    it('an applied Manuscript action does not make the session claim a dispatch', () => {
+        const s = buildOrchestrationSession({
+            ...base, manuscriptAction: { type: 'recall', status: 'applied', return_target: 'image' },
+        });
+        expect(validateSession(s).valid).toBe(true);
+        expect(s.dispatch_state).not.toBe('sent');
+    });
+
+    it('exposes the status and target vocabularies', () => {
+        expect(MANUSCRIPT_ACTION_STATUSES).toContain('preview_only');
+        expect(MANUSCRIPT_ACTION_STATUSES).toContain('staged');
+        expect(MANUSCRIPT_ACTION_STATUSES).toContain('applied');
+        expect(RETURN_TARGETS).toEqual(['image', 'differential', 'percept', 'ground']);
     });
 });
 

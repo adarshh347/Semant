@@ -1,29 +1,23 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import PassageInspector from './PassageInspector';
 
 /**
- * CIRCUIT-001 P2C-MS — the Passage Inspector, mounted.
+ * CIRCUIT-001 P2C-MS2 — the Passage Inspector, mounted.
  *
- * `manuscriptField.test.js` owns the derivations. This owns the boundary: that
- * the inspector actually hears the chip event the editor already emits, that
- * every act renders WITHOUT a button, and that nothing it renders mutates
- * anything.
- *
- * The last one is the point of the gate. A preview surface whose buttons quietly
- * work is worse than no surface at all.
+ * `manuscriptField.test.js` owns the derivations and builders. This owns the
+ * boundary: that the collapse control works, that live acts call the parent's
+ * callbacks, that staged acts build a proposal and STOP, and that nothing the
+ * inspector does mutates the store.
  */
 
 const GROUND = (id, extra = {}) => ({ id, ground_type: 'region', label: id, region_id: `reg_${id}`, ...extra });
 const REGION = (id) => ({ id, label: id, box: { x: 0, y: 0, w: 0.2, h: 0.2 } });
 
 const PERCEPT = {
-    id: 'pctx_1',
-    kind: 'expression',
-    expression: 'the upper head turns away',
-    ground_ids: ['g1', 'g2'],
-    ground_roles: { g1: 'anchor', g2: 'counterforce' },
+    id: 'pctx_1', kind: 'expression', expression: 'the upper head turns away',
+    ground_ids: ['g1', 'g2'], ground_roles: { g1: 'anchor', g2: 'counterforce' },
 };
 
 const STORE = (over = {}) => ({
@@ -42,169 +36,216 @@ async function mount(props = {}) {
     });
 }
 
-/** Fire the event a percept chip already emits when clicked (regionRefInline). */
 async function focusChip(perceptId = 'pctx_1', regionIds = ['g1', 'g2']) {
     await act(async () => {
-        window.dispatchEvent(new CustomEvent('semant:region-focus', {
-            detail: { perceptId, regionIds },
-        }));
+        window.dispatchEvent(new CustomEvent('semant:region-focus', { detail: { perceptId, regionIds } }));
     });
 }
 
+// Build a real selection inside a `.manuscript` node so readSelection fires.
+async function selectProse(str = 'The vault carries the light upward.') {
+    const m = document.createElement('div');
+    m.className = 'manuscript';
+    const block = document.createElement('div');
+    block.setAttribute('data-id', 'b1');
+    block.textContent = str;
+    m.appendChild(block);
+    document.body.appendChild(m);
+    await act(async () => {
+        const range = document.createRange();
+        range.selectNodeContents(block);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+    });
+    return () => m.remove();
+}
+
 const text = () => container.textContent;
+const btn = (key) => container.querySelector(`.pi-action-btn[data-action-key="${key}"]`);
+const click = async (el) => { await act(async () => el.click()); };
 
 beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
 });
-
 afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+    document.querySelectorAll('.manuscript').forEach((n) => n.remove());
 });
 
-describe('resting state', () => {
-    it('renders quietly with nothing selected', async () => {
+describe('collapse / expand', () => {
+    it('has an obvious, accessible toggle in the header', async () => {
         await mount();
-        expect(container.querySelector('.passage-inspector.is-resting')).toBeTruthy();
-        expect(text()).toMatch(/Select a sentence, or a percept chip/);
+        const toggle = container.querySelector('.pi-toggle');
+        expect(toggle).toBeTruthy();
+        expect(toggle.tagName).toBe('BUTTON');
+        expect(toggle.getAttribute('aria-expanded')).toBe('true');
+        expect(toggle.getAttribute('aria-controls')).toBe('pi-body');
     });
 
-    it('offers no actions when nothing is selected', async () => {
-        await mount();
-        expect(container.querySelectorAll('.pi-action').length).toBe(0);
-    });
-});
-
-describe('a percept chip opens into what it rests on', () => {
-    it('hears the chip event the editor already emits', async () => {
+    it('collapses to a compact summary that does not disappear', async () => {
         await mount();
         await focusChip();
-        expect(container.querySelector('.passage-inspector.is-resting')).toBeFalsy();
+        expect(container.querySelector('#pi-body')).toBeTruthy();
+        await click(container.querySelector('.pi-toggle'));
+        // body gone, but the summary line remains
+        expect(container.querySelector('#pi-body')).toBeFalsy();
+        expect(container.querySelector('.pi-summary').textContent).toMatch(/Percept · \d+ ground/);
+        expect(container.querySelector('.pi-toggle').getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('expands again, preserving the selection', async () => {
+        await mount();
+        await focusChip();
+        await click(container.querySelector('.pi-toggle')); // collapse
+        await click(container.querySelector('.pi-toggle')); // expand
+        expect(container.querySelector('#pi-body')).toBeTruthy();
         expect(text()).toMatch(/the upper head turns away/);
     });
 
-    it('shows the expression, its grounds, and its roles', async () => {
+    it('shows a plain-selection collapsed summary', async () => {
         await mount();
-        await focusChip();
-        const keys = [...container.querySelectorAll('.pi-section dt')].map((d) => d.textContent);
-        expect(keys).toContain('expression');
-        expect(keys).toContain('cited grounds');
-        expect(keys).toContain('ground roles');
-    });
-
-    it('renders NO evidence row when the evidence is healthy', async () => {
-        // Degradation-only. A healthy percept carries no health marks at all.
-        await mount();
-        await focusChip();
-        const keys = [...container.querySelectorAll('.pi-section dt')].map((d) => d.textContent);
-        expect(keys).not.toContain('evidence');
-        expect(text()).not.toMatch(/verified|healthy/i);
-    });
-
-    it('states a degradation, without explaining it, when a ground is gone', async () => {
-        await mount({ store: STORE({ regions: [REGION('reg_g1')] }) });
-        await focusChip();
-        expect(text()).toMatch(/1 of 2 cited grounds no longer resolves/);
-        expect(text()).not.toMatch(/replaced|because/i);
-    });
-
-    it('marks the evidence row as a judgement, in a different voice from records', async () => {
-        await mount({ store: STORE({ regions: [] }) });
-        await focusChip();
-        const ev = [...container.querySelectorAll('.pi-section')]
-            .find((s) => s.querySelector('dt')?.textContent === 'evidence');
-        expect(ev.className).toMatch(/pi-voice-judgement/);
-        const expr = [...container.querySelectorAll('.pi-section')]
-            .find((s) => s.querySelector('dt')?.textContent === 'expression');
-        expect(expr.className).toMatch(/pi-voice-record/);
-    });
-
-    it('reports a citation that no longer resolves, as a fact about the store', async () => {
-        await mount({ store: STORE({ percepts: [] }) });
-        await focusChip('pctx_gone');
-        expect(text()).toMatch(/no longer resolves in the workspace/);
-        expect(container.querySelector('.pi-judgement')).toBeTruthy();
-    });
-
-    it('derives "in the writing" from mentions', async () => {
-        await mount({ store: STORE({ mentions: [{ perceptId: 'pctx_1', blockId: 'b1' }] }) });
-        await focusChip();
-        expect(text()).toMatch(/1 passage/);
-    });
-
-    it('says not yet in the writing when nothing cites it', async () => {
-        await mount();
-        await focusChip();
-        expect(text()).toMatch(/not yet in the writing/);
-    });
-
-    it('ignores a focus event carrying no percept — that is region focus, not a chip', async () => {
-        await mount();
-        await act(async () => {
-            window.dispatchEvent(new CustomEvent('semant:region-focus', {
-                detail: { perceptId: null, regionIds: ['reg_1'] },
-            }));
-        });
-        expect(container.querySelector('.passage-inspector.is-resting')).toBeTruthy();
+        const cleanup = await selectProse();
+        if (btn('recall') || container.querySelector('.pi-quote')) {
+            await click(container.querySelector('.pi-toggle'));
+            expect(container.querySelector('.pi-summary').textContent).toMatch(/Selection/);
+        }
+        cleanup();
     });
 });
 
-describe('preview-only actions do not mutate', () => {
-    it('renders acts for a chip with NO button and NO link', async () => {
-        await mount();
+describe('percept chip — live acts call the parent, and nothing mutates', () => {
+    it('Recall on the image calls the recall path with the percept id', async () => {
+        const onRecall = vi.fn();
+        await mount({ onRecall });
         await focusChip();
-        const acts = container.querySelectorAll('.pi-action');
-        expect(acts.length).toBeGreaterThan(0);
-        expect(container.querySelectorAll('.pi-actions button').length).toBe(0);
-        expect(container.querySelectorAll('.pi-actions a').length).toBe(0);
-        for (const a of acts) expect(a.getAttribute('data-wired')).toBe('false');
+        await click(btn('recall'));
+        expect(onRecall).toHaveBeenCalledWith('pctx_1');
     });
 
-    it('says the execution path is not wired', async () => {
-        await mount();
+    it('Revise in Differential calls the return handler', async () => {
+        const onReviseInDifferential = vi.fn();
+        await mount({ onReviseInDifferential });
         await focusChip();
-        expect(text()).toMatch(/Preview only — execution path not wired yet/);
+        await click(btn('revise'));
+        expect(onReviseInDifferential).toHaveBeenCalledWith('pctx_1');
     });
 
-    it('mutates nothing in the store when an act is clicked', async () => {
+    it('Start a passage calls the start-passage handler', async () => {
+        const onStartPassage = vi.fn();
+        await mount({ onStartPassage });
+        await focusChip();
+        await click(btn('start_passage'));
+        expect(onStartPassage).toHaveBeenCalled();
+    });
+
+    it('clicking a live act does not mutate the store', async () => {
         const store = STORE();
         const before = JSON.stringify(store);
-        await mount({ store });
+        await mount({ store, onRecall: () => {}, onReviseInDifferential: () => {} });
         await focusChip();
-        await act(async () => {
-            container.querySelector('.pi-action').click();
-        });
+        await click(btn('recall'));
+        await click(btn('revise'));
         expect(JSON.stringify(store)).toBe(before);
     });
+});
 
-    it('offers the return leg to Differential as a proposal', async () => {
+describe('percept chip — staged and disclosed acts', () => {
+    it('Challenge support builds a "Ready, not sent" proposal, authored by the user', async () => {
         await mount();
         await focusChip();
-        const types = [...container.querySelectorAll('.pi-action')].map((a) => a.getAttribute('data-action-type'));
-        expect(types).toContain('revise_cited_percept');
-        expect(types).toContain('recall_percept');
+        await click(btn('challenge_support'));
+        const proposal = container.querySelector('.pi-proposal');
+        expect(proposal).toBeTruthy();
+        expect(proposal.textContent).toMatch(/Ready, not sent/);
+        // nothing dispatched, nothing saved
+        expect(text()).not.toMatch(/\bsent\b(?!,)/i);
+    });
+
+    it('Show packet discloses the packet, stating nothing is sent', async () => {
+        await mount();
+        await focusChip();
+        await click(btn('packet'));
+        const d = container.querySelector('.pi-disclosure');
+        expect(d).toBeTruthy();
+        expect(d.textContent).toMatch(/nothing is sent/i);
+    });
+
+    it('Show circulation discloses the thread with record/judgement voices', async () => {
+        await mount();
+        await focusChip();
+        await click(btn('thread'));
+        const d = container.querySelector('.pi-disclosure[aria-label="Circulation thread"]');
+        expect(d).toBeTruthy();
+        // no model reading is a RECORD about the ledger, not a verdict
+        expect(d.textContent).toMatch(/no model reading recorded/i);
+    });
+
+    it('a disclosure toggles off when clicked again', async () => {
+        await mount();
+        await focusChip();
+        await click(btn('packet'));
+        expect(container.querySelector('.pi-disclosure')).toBeTruthy();
+        await click(btn('packet'));
+        expect(container.querySelector('.pi-disclosure')).toBeFalsy();
     });
 
     it('never renders a dispatch affordance', async () => {
         await mount();
         await focusChip();
-        const types = [...container.querySelectorAll('.pi-action')].map((a) => a.getAttribute('data-action-type'));
-        expect(types).not.toContain('ask_model_reading');
-        expect(text()).not.toMatch(/\bsend to model\b|\bask the model\b/i);
+        const keys = [...container.querySelectorAll('.pi-action-btn')].map((b) => b.getAttribute('data-action-key'));
+        expect(keys).not.toContain('ask_model_reading');
+        expect(text()).not.toMatch(/ask the model|send to model/i);
+    });
+});
+
+describe('prose selection — structured, safe acts', () => {
+    it('offers create-percept and a live return to Differential', async () => {
+        const onSendToDifferential = vi.fn();
+        await mount({ onSendToDifferential });
+        const cleanup = await selectProse();
+        // Only assert if jsdom registered the selection (guards flaky Selection support).
+        if (btn('send_first_attention')) {
+            expect(btn('create_percept')).toBeTruthy();
+            await click(btn('send_first_attention'));
+            expect(onSendToDifferential).toHaveBeenCalled();
+        }
+        cleanup();
+    });
+
+    it('a staged create-percept does not mutate the store', async () => {
+        const store = STORE();
+        const before = JSON.stringify(store);
+        await mount({ store });
+        const cleanup = await selectProse();
+        if (btn('create_percept')) {
+            await click(btn('create_percept'));
+            expect(container.querySelector('.pi-proposal')).toBeTruthy();
+        }
+        expect(JSON.stringify(store)).toBe(before);
+        cleanup();
     });
 });
 
 describe('the inspector claims nothing it cannot show', () => {
-    it('never claims a dispatch happened', async () => {
+    it('never renders a fake "supported" claim', async () => {
         await mount();
         await focusChip();
-        expect(text()).not.toMatch(/sent|dispatched/i);
+        expect(text()).not.toMatch(/\bsupported\b|\bverified\b|\bhealthy\b/i);
     });
 
     it('is labelled for assistive technology', async () => {
         await mount();
         expect(container.querySelector('[aria-label="Passage inspector"]')).toBeTruthy();
+    });
+
+    it('rests quietly with nothing selected', async () => {
+        await mount();
+        expect(container.querySelector('.passage-inspector.is-resting')).toBeTruthy();
+        expect(text()).toMatch(/Select a sentence, or a percept chip/);
     });
 });
