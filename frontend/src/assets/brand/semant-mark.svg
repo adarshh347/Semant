@@ -1,0 +1,7 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Semant">
+  <!-- "The Ground": a perceptual world (the frame) holding a durable region and a return point. -->
+  <rect x="3" y="3" width="52" height="52" rx="12" fill="none" stroke="#5E2B50" stroke-width="3.4"/>
+  <rect x="14" y="20" width="26" height="22" rx="6" transform="rotate(-9 27 31)" fill="#5E2B50"/>
+  <line x1="42" y1="42" x2="55" y2="55" stroke="#5E2B50" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="58" cy="58" r="4.4" fill="none" stroke="#5E2B50" stroke-width="2.6"/>
+</svg>
