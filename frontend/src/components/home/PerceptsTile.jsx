@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchRecentPosts, percepts, perceptLabel } from './homeData';
 import PerceptCrop from './PerceptCrop';
+import { PerceptMark } from '../brand/glyphs';
 
 // Parts you recently noticed (3×1). Recent Percept chips (◈, plum) drawn from the
 // region annotations on your recent readings — each a jump back to that image's
@@ -47,7 +48,7 @@ export default function PerceptsTile() {
             >
               <PerceptCrop photoUrl={m.photoUrl} region={m.region} label={m.label} />
               <span className="percept-lift-label">
-                <span className="mark" aria-hidden>◈</span> {m.label}
+                <span className="mark" aria-hidden><PerceptMark size="1em" className="glyph--inline" /></span> {m.label}
               </span>
             </Link>
           ))}
