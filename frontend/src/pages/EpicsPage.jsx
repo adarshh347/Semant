@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { epicService } from '../services/epicService';
+import EmptyState from '../components/brand/EmptyState';
+import { CardGridSkeleton } from '../components/brand/Skeleton';
 import './EpicsPage.css';
 
 const EpicsPage = () => {
@@ -40,15 +42,14 @@ const EpicsPage = () => {
             </div>
 
             {loading ? (
-                <div className="loading-container">
-                    <div className="spinner"></div>
-                    <p>Loading your epics...</p>
-                </div>
+                <CardGridSkeleton count={6} label="Loading your epics…" />
             ) : epics.length === 0 ? (
-                <div className="empty-state">
-                    <h2>No Epics Yet</h2>
-                    <p>Start your first epic story by clicking the button above.</p>
-                </div>
+                <EmptyState
+                    motif="collect"
+                    title="No epics yet"
+                    body="Weave the parts you've noticed into a long-form narrative — your visual journey, told at length."
+                    action={{ onClick: handleCreateNew, label: 'Create your first epic' }}
+                />
             ) : (
                 <div className="epics-grid">
                     {epics.map(epic => (

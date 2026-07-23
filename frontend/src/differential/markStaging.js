@@ -11,7 +11,7 @@
 // citability, surface provenance) — getting that order wrong is exactly how a
 // suggestion launders itself into evidence.
 
-import { actionToDraftMark, markSummary, roleLabel } from './visualMarks';
+import { actionToDraftMark, markSummary, roleLabel, isPersistableMark } from './visualMarks';
 import {
     quarantineSuggestion, summarizeProvenance, canCiteMark, isSuggestion,
 } from './suggestionQuarantine';
@@ -71,10 +71,31 @@ export function markDisplay(mark) {
         // 'unresolved' → the role exists, the shape does not yet. "Ready for your mark."
         needs_geometry: mark.geometry?.kind === 'unresolved',
         linked_action_ids: [...(mark.linked_action_ids || [])],
-        // Session-only in this gate: there is no marks backend (P2D-A §7.3). A
-        // surface must say "not saved" and must not pretend it survives reload.
-        session: true,
+        // CIRCUIT-001 P3-A — marks are now durable (`post.visual_marks`, contract v2
+        // §7.3). Persistence is DERIVED from status, never asserted: a committed or
+        // superseded mark IS saved, everything else is still session-only. The stale
+        // blanket "session-only" of P2D-A is retired here, at the source both the
+        // Manuscript and Differential read from — so no surface can claim otherwise.
+        persisted: isPersistableMark(mark),
+        session: !isPersistableMark(mark),
+        // A superseded mark is kept and recoverable (P1F/P1G); say so out loud.
+        superseded: mark.status === 'superseded',
     };
+}
+
+/**
+ * A one-line lineage note for a mark, from the marks around it: what it REPLACES
+ * (its `derived_from`) and what REPLACED it (a mark deriving from it). Recoverable
+ * supersession made visible (contract §4.2 / P1F/P1G) — silent re-pointing is the
+ * failure this exists to prevent.
+ */
+export function markLineageNote(mark, marks = []) {
+    if (!mark) return '';
+    const bits = [];
+    if (mark.derived_from) bits.push(`replaces ${mark.derived_from}`);
+    const replacedBy = (marks || []).find((m) => m.derived_from === mark.id && m.id !== mark.id);
+    if (replacedBy) bits.push(`replaced by ${replacedBy.id}`);
+    return bits.join(' · ');
 }
 
 /**
@@ -92,11 +113,18 @@ export function marksForPercept(percept, marks = []) {
     ));
 }
 
-/** One quiet line summarising a percept's marks for a collapsed view. */
+/**
+ * One quiet line summarising a percept's marks for a collapsed view. Honest about
+ * durability now that marks persist (P3-A): it counts how many are SAVED, not a
+ * blanket "session", and still flags any that cannot be cited.
+ */
 export function marksSummary(marks = []) {
     if (!marks.length) return '';
-    const citable = marks.filter(canCiteMark).length;
     const n = marks.length;
-    const head = `${n} session mark${n === 1 ? '' : 's'}`;
-    return citable === n ? head : `${head} · ${n - citable} not citable`;
+    const saved = marks.filter(isPersistableMark).length;
+    const citable = marks.filter(canCiteMark).length;
+    const parts = [`${n} mark${n === 1 ? '' : 's'}`];
+    if (saved) parts.push(`${saved} saved`);
+    if (citable < n) parts.push(`${n - citable} not citable`);
+    return parts.join(' · ');
 }

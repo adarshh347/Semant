@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { buildRecallScript, RECALL_TIMING } from './recall.js';
+import {
+  buildRecallScript, RECALL_TIMING,
+  resolveMark, buildMarkRecallScript, markPerformance, MARK_PERFORMANCE,
+} from './recall.js';
 import { makeGround } from './grounds.js';
+import { makeVisualMark } from './visualMarks.js';
 import { makeExpressionPercept } from '../state/perceptMentions.js';
 
 const field = () => makeGround('field', { strokes: [{ points: [[0.5, 0.5]], radius: 0.05, strength: 0.8, op: 'add' }] });
@@ -214,4 +218,211 @@ describe('perceptMissing — the chip must not claim a replay that is not happen
         expect(!!{ perceptId: 'pctx_a' } && !percepts.find((p) => p.id === 'pctx_a')).toBe(false);
         expect(!!null && true).toBe(false);
     });
+});
+
+// ── CIRCUIT-001 P1A: the note's arithmetic can never exceed its denominator ──
+// `unresolved` used to collect expanded members while `citedCount` counted only
+// ground_ids, so a composition with detached members could print "2 of 1 cited
+// grounds". The cited ledger and the member ledger are now separate.
+describe('buildRecallScript — cited vs member ledgers', () => {
+    const regionGround = (id, region_id) => ({ id, ground_type: 'region', region_id });
+
+    it('a cited Ground whose record is entirely gone is counted, not skipped', () => {
+        // Previously: lookup returns null → `continue` in silence → no note.
+        const p = { id: 'p1', expression: 'x', ground_ids: ['gone_a', 'gone_b'] };
+        const script = buildRecallScript(p, () => null, { isResolved: () => true });
+        expect(script.unresolvedCitedIds).toEqual(['gone_a', 'gone_b']);
+        expect(script.citedCount).toBe(2);
+        expect(script.resolvedCount).toBe(0);
+    });
+
+    it('detached composition members count against the MEMBER ledger, not the cited one', () => {
+        const comp = { id: 'c', ground_type: 'constellation', member_ids: ['m1', 'm2'] };
+        const m1 = regionGround('m1', 'gone_1');
+        const m2 = regionGround('m2', 'gone_2');
+        const byId = { c: comp, m1, m2 };
+        const p = { id: 'p1', expression: 'x', ground_ids: ['c'] };
+        // The composition itself performs (isResolved true for c), its members do not.
+        const script = buildRecallScript(p, (id) => byId[id], {
+            isResolved: (g) => g.id === 'c',
+        });
+        expect(script.citedCount).toBe(1);
+        expect(script.unresolvedCitedIds).toEqual([]);          // the cited ground performs
+        expect(script.unresolvedMemberIds).toEqual(['m1', 'm2']); // the loss is inside it
+        // The union is still reported for anyone who wants the total.
+        expect(script.unresolvedGroundIds).toEqual(['m1', 'm2']);
+    });
+
+    it('never lets the numerator exceed citedCount', () => {
+        const comp = { id: 'c', ground_type: 'relation', member_ids: ['m1', 'm2', 'm3'] };
+        const byId = {
+            c: comp,
+            m1: regionGround('m1', 'gone'), m2: regionGround('m2', 'gone'), m3: regionGround('m3', 'gone'),
+        };
+        const p = { id: 'p1', expression: 'x', ground_ids: ['c'] };
+        const script = buildRecallScript(p, (id) => byId[id], { isResolved: (g) => g.id === 'c' });
+        expect(script.unresolvedCitedIds.length).toBeLessThanOrEqual(script.citedCount);
+    });
+});
+
+// ── CIRCUIT-001 P1A: useRecallPlayer note wording — pure assertions on the fn ──
+// These exercise the same string logic the writing surface now renders. They do
+// NOT mount a component (no DOM env yet); they assert the note the render reads.
+describe('evidenceNote wording', () => {
+    // Rebuild the note the way useRecallPlayer does, from a script, so the phrasing
+    // is pinned without a renderer.
+    const noteFrom = (script) => {
+        const unresolvedCount = script.unresolvedGroundIds.length;
+        const unresolvedCitedCount = script.unresolvedCitedIds.length;
+        if (!unresolvedCount) return '';
+        if (script.resolvedCount === 0) {
+            return `Detached evidence — none of the ${script.citedCount} cited ground${script.citedCount === 1 ? '' : 's'} still resolves.`;
+        }
+        if (unresolvedCitedCount) {
+            return `Detached evidence — ${unresolvedCitedCount} of ${script.citedCount} cited ground${script.citedCount === 1 ? '' : 's'} no longer resolve${unresolvedCitedCount === 1 ? 's' : ''}.`;
+        }
+        return `Partial evidence — ${unresolvedCount} ground${unresolvedCount === 1 ? '' : 's'} inside this composition no longer resolve${unresolvedCount === 1 ? 's' : ''}.`;
+    };
+    const regionGround = (id, region_id) => ({ id, ground_type: 'region', region_id });
+
+    it('all cited grounds gone → "none of the N cited grounds still resolves"', () => {
+        const p = { id: 'p', expression: 'the upper head', ground_ids: ['a', 'b'] };
+        const script = buildRecallScript(p, (id) => regionGround(id, 'gone'), { isResolved: () => false });
+        expect(noteFrom(script)).toBe('Detached evidence — none of the 2 cited grounds still resolves.');
+    });
+
+    it('some cited grounds gone → "M of N cited grounds no longer resolve"', () => {
+        const byId = { a: regionGround('a', 'here'), b: regionGround('b', 'gone') };
+        const p = { id: 'p', expression: 'x', ground_ids: ['a', 'b'] };
+        const script = buildRecallScript(p, (id) => byId[id], { isResolved: (g) => g.id === 'a' });
+        expect(noteFrom(script)).toBe('Detached evidence — 1 of 2 cited grounds no longer resolves.');
+    });
+
+    it('only composition members gone → "Partial evidence", never a cited denominator', () => {
+        const comp = { id: 'c', ground_type: 'constellation', member_ids: ['m1', 'm2'] };
+        const byId = { c: comp, m1: regionGround('m1', 'gone'), m2: regionGround('m2', 'gone') };
+        const p = { id: 'p', expression: 'x', ground_ids: ['c'] };
+        const script = buildRecallScript(p, (id) => byId[id], { isResolved: (g) => g.id === 'c' });
+        const note = noteFrom(script);
+        expect(note).toBe('Partial evidence — 2 grounds inside this composition no longer resolve.');
+        expect(note).not.toContain('of 1 cited');   // the bug this fixes
+    });
+
+    it('healthy recall produces no note', () => {
+        const p = { id: 'p', expression: 'x', ground_ids: ['a'] };
+        const script = buildRecallScript(p, () => regionGround('a', 'here'), { isResolved: () => true });
+        expect(noteFrom(script)).toBe('');
+    });
+});
+
+// ── CIRCUIT-001 P3-A: mark recall — a committed mark performs on return ──────
+// The mark analog of buildRecallScript. resolveMark answers "does this mark still
+// have something to draw?"; buildMarkRecallScript stages its performance.
+describe('resolveMark — a mark resolves only while it still has something to draw', () => {
+  const brush = (over = {}) => makeVisualMark('brush_field', {
+    role: 'light_field', source: 'user', status: 'committed',
+    geometry: { kind: 'freehand_path' }, ...over,
+  }, { now: 't' });
+
+  it('a geometry-bearing mark resolves when it has real geometry', () => {
+    expect(resolveMark(brush()).detached).toBe(false);
+  });
+
+  it('a mark whose geometry is unresolved is detached', () => {
+    const m = brush({ geometry: { kind: 'unresolved' } });
+    expect(resolveMark(m)).toEqual({ detached: true, reason: 'no_geometry' });
+  });
+
+  it('a region_mask resolves iff the region it points at still exists', () => {
+    const m = makeVisualMark('region_mask', {
+      source: 'user', status: 'committed',
+      geometry: { kind: 'raster_mask', mask_ref: { region_id: 'reg_1', geometry_rev: 0 } },
+    }, { now: 't' });
+    expect(resolveMark(m, { regions: [{ id: 'reg_1' }] }).detached).toBe(false);
+    expect(resolveMark(m, { regions: [] })).toEqual({ detached: true, reason: 'region_gone' });
+  });
+
+  it('a relation/collection resolves iff it still names at least one ref', () => {
+    const rel = makeVisualMark('relation_mark', {
+      role: 'echoes', source: 'user', status: 'committed',
+      geometry: { kind: 'derived' }, linked_ground_ids: ['g1', 'g2'],
+    }, { now: 't' });
+    expect(resolveMark(rel).detached).toBe(false);
+    const empty = makeVisualMark('relation_mark', {
+      role: 'echoes', source: 'user', status: 'committed', geometry: { kind: 'derived' },
+    }, { now: 't' });
+    expect(resolveMark(empty)).toEqual({ detached: true, reason: 'no_refs' });
+  });
+
+  it('a null mark is detached, not a throw', () => {
+    expect(resolveMark(null).detached).toBe(true);
+  });
+});
+
+describe('buildMarkRecallScript — recede → the mark performs → expression', () => {
+  const markOf = (type, over = {}) => makeVisualMark(type, {
+    role: type === 'region_mask' ? null : (MARK_ROLE[type]),
+    source: 'user', status: 'committed', geometry: GEOM[type], ...over,
+  }, { now: 't' });
+  const MARK_ROLE = {
+    brush_field: 'light_field', trace_mark: 'gaze_path', relation_mark: 'echoes',
+    frame_mark: 'boundary', collection_mark: 'evidence_set',
+  };
+  const GEOM = {
+    brush_field: { kind: 'freehand_path' },
+    trace_mark: { kind: 'polyline' },
+    frame_mark: { kind: 'polygon' },
+    relation_mark: { kind: 'derived' },
+    collection_mark: { kind: 'derived' },
+    region_mask: { kind: 'raster_mask', mask_ref: { region_id: 'reg_1', geometry_rev: 0 } },
+  };
+
+  it('names a performance signature for every family', () => {
+    expect(markPerformance(markOf('brush_field'))).toBe('bloom');
+    expect(markPerformance(markOf('trace_mark'))).toBe('draw_on');
+    expect(markPerformance(markOf('relation_mark'))).toBe('perform_then_unite');
+    expect(markPerformance(markOf('region_mask'))).toBe('illuminate');
+    expect(MARK_PERFORMANCE.frame_mark).toBe('frame');
+    expect(MARK_PERFORMANCE.collection_mark).toBe('gather');
+  });
+
+  it('stages a brush_field to bloom after the recede, then the caption', () => {
+    const m = markOf('brush_field');
+    const s = buildMarkRecallScript(m);
+    expect(s.steps[0].kind).toBe('recede');
+    const mark = s.steps.find((x) => x.kind === 'mark');
+    expect(mark).toMatchObject({ markId: m.id, mark_type: 'brush_field', performance: 'bloom' });
+    expect(mark.at).toBe(RECALL_TIMING.recede);
+    expect(s.steps[s.steps.length - 1].kind).toBe('expression');
+    expect(s.markResolved).toBe(true);
+  });
+
+  it('a region_mask illuminates when its region survives', () => {
+    const m = markOf('region_mask');
+    const s = buildMarkRecallScript(m, { regions: [{ id: 'reg_1' }] });
+    expect(s.steps.find((x) => x.kind === 'mark').performance).toBe('illuminate');
+    expect(s.markResolved).toBe(true);
+  });
+
+  it('a relation performs its member grounds then unites (they stagger behind it)', () => {
+    const m = markOf('relation_mark', { linked_ground_ids: ['g1', 'g2'] });
+    const byId = { g1: makeGround('field', {}, { now: 't' }), g2: makeGround('field', {}, { now: 't' }) };
+    // relabel ids to g1/g2 for the lookup
+    byId.g1.id = 'g1'; byId.g2.id = 'g2';
+    const s = buildMarkRecallScript(m, { groundById: (id) => byId[id] || null });
+    const groundSteps = s.steps.filter((x) => x.kind === 'ground');
+    expect(groundSteps.map((x) => x.groundId)).toEqual(['g1', 'g2']);
+    // the mark performs first, its members after — sequential, never simultaneous
+    const markAt = s.steps.find((x) => x.kind === 'mark').at;
+    expect(groundSteps[0].at).toBeGreaterThan(markAt);
+  });
+
+  it('a detached mark recedes and names the loss — no timed highlight over nothing', () => {
+    const m = markOf('region_mask'); // region gone (no regions passed)
+    const s = buildMarkRecallScript(m, { regions: [] });
+    expect(s.markResolved).toBe(false);
+    expect(s.detachedReason).toBe('region_gone');
+    expect(s.steps.some((x) => x.kind === 'mark')).toBe(false); // nothing performs
+    expect(s.steps[s.steps.length - 1].kind).toBe('expression'); // the caption still lands
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-    draftMarkFromAction, markDisplay, marksForPercept, marksSummary,
+    draftMarkFromAction, markDisplay, marksForPercept, marksSummary, markLineageNote,
 } from './markStaging';
 import { normalizeAction, _resetActionIds } from './perceptualActions';
 import { makeVisualMark, _resetMarkIds, normalizeMark } from './visualMarks';
@@ -151,12 +151,76 @@ describe('marksSummary', () => {
     }, { now: 't' });
     const suggestion = draftMarkFromAction(action({ source: 'model_suggested' }), { now: 't' });
 
-    it('counts session marks and flags the uncitable', () => {
-        expect(marksSummary([committed])).toBe('1 session mark');
-        expect(marksSummary([committed, suggestion])).toBe('2 session marks · 1 not citable');
+    it('counts saved marks and flags the uncitable (P3-A: marks are durable now)', () => {
+        // A committed mark is saved AND citable — no "not citable" clause.
+        expect(marksSummary([committed])).toBe('1 mark · 1 saved');
+        // A suggestion is neither saved nor citable; it does not launder into "saved".
+        expect(marksSummary([committed, suggestion])).toBe('2 marks · 1 saved · 1 not citable');
     });
 
     it('is empty for no marks', () => {
         expect(marksSummary([])).toBe('');
+    });
+});
+
+// ── CIRCUIT-001 P3-A: durability is derived, provenance is visible, lineage shows ──
+describe('markDisplay — persistence is derived from status, never asserted', () => {
+    const mk = (status, source = 'user') => makeVisualMark('brush_field', {
+        role: 'light_field', source, status, geometry: { kind: 'freehand_path' },
+        ...(source === 'user_confirmed' || source === 'model_refined' ? { derived_from: 'vm_0' } : {}),
+    }, { now: 't' });
+
+    it('a committed mark is persisted (saved), not session', () => {
+        const d = markDisplay(mk('committed'));
+        expect(d.persisted).toBe(true);
+        expect(d.session).toBe(false);
+    });
+
+    it('a superseded mark is persisted (recoverable) and flagged superseded', () => {
+        const d = markDisplay(mk('superseded'));
+        expect(d.persisted).toBe(true);
+        expect(d.superseded).toBe(true);
+    });
+
+    it('a draft is session-only — the stale blanket "session" is now honest per mark', () => {
+        const d = markDisplay(mk('draft'));
+        expect(d.persisted).toBe(false);
+        expect(d.session).toBe(true);
+    });
+
+    it('shows the four provenance sources, never a bare "user" for a model-touched mark', () => {
+        expect(markDisplay(mk('committed', 'user')).provenance).toBe('Yours');
+        expect(markDisplay(mk('committed', 'user_confirmed')).provenance).toBe('Model proposed · you accepted');
+        expect(markDisplay(mk('committed', 'model_refined')).provenance).toBe('You drew · model tightened');
+        // a suggestion is quarantined; its provenance is explicit
+        const sugg = markDisplay(makeVisualMark('brush_field', {
+            role: 'light_field', source: 'model_suggested', status: 'suggested',
+            geometry: { kind: 'freehand_path' },
+        }, { now: 't' }));
+        expect(sugg.provenance).toBe('Model suggestion — not accepted');
+        expect(sugg.persisted).toBe(false);
+    });
+});
+
+describe('markLineageNote — a superseded re-point is visible, never silent (P1F/P1G)', () => {
+    it('names what a mark REPLACES and what REPLACED it', () => {
+        const old = makeVisualMark('brush_field', {
+            id: 'vm_old', role: 'light_field', source: 'user', status: 'superseded',
+            geometry: { kind: 'freehand_path' },
+        }, { now: 't' });
+        const next = makeVisualMark('brush_field', {
+            id: 'vm_new', role: 'light_field', source: 'user', status: 'committed',
+            geometry: { kind: 'freehand_path' }, derived_from: 'vm_old',
+        }, { now: 't' });
+        expect(markLineageNote(next, [old, next])).toBe('replaces vm_old');
+        expect(markLineageNote(old, [old, next])).toBe('replaced by vm_new');
+    });
+
+    it('is empty for a mark with no lineage', () => {
+        const m = makeVisualMark('brush_field', {
+            role: 'light_field', source: 'user', status: 'committed', geometry: { kind: 'freehand_path' },
+        }, { now: 't' });
+        expect(markLineageNote(m, [m])).toBe('');
+        expect(markLineageNote(null, [])).toBe('');
     });
 });

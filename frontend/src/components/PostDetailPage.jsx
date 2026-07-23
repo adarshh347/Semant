@@ -17,6 +17,7 @@ import PassageInspector from '../manuscript/PassageInspector';
 import { API_URL } from '../config/api';
 import { epicService } from '../services/epicService';
 import { RegionStoreContext, useRegionState } from '../state/regionStore';
+import { canCiteMark } from '../differential/suggestionQuarantine';
 import { emptyHandoff, requestHandoff, canFlush, completeHandoff, wasDelivered } from '../state/manuscriptHandoff';
 import './PostDetailPage.css';
 
@@ -106,9 +107,9 @@ function PostDetailPage() {
     let pending = null;
     const flush = () => { raf = null; storeRef.current.setHoveredId(pending); };
     const onHover = (e) => {
-      // A percept chip's ids are GROUND ids — hovering lights the evidence
+      // A percept OR mark chip's ids are GROUND ids — hovering lights the evidence
       // channel, not the region channel. Regular chips behave as before.
-      if (e.detail?.perceptId?.startsWith?.('pctx_')) {
+      if (e.detail?.markId || e.detail?.perceptId?.startsWith?.('pctx_')) {
         storeRef.current.setHoveredGroundId((e.detail.regionIds || [])[0] || null);
         return;
       }
@@ -117,9 +118,16 @@ function PostDetailPage() {
       if (raf == null) raf = requestAnimationFrame(flush);
     };
     const onFocus = (e) => {
-      // Mention focus → recall: a percept-Mention replays the noticing on the
-      // image instead of selecting a region. The pane must be visible for the
-      // performance, so expand a collapsed Field first.
+      // Mention focus → recall. A percept-Mention replays the noticing; a mark-Mention
+      // (CIRCUIT-001 P3-A) performs the mark. Either way the Field pane must be visible,
+      // so expand a collapsed one first. `markId` is checked before percept: a mark chip
+      // carries ground ids in regionIds but is NOT a region focus.
+      if (e.detail?.markId) {
+        setActiveLeftTab('regions');
+        if (fieldPanelRef.current?.isCollapsed()) fieldPanelRef.current.expand();
+        storeRef.current.playMarkRecall(e.detail.markId);
+        return;
+      }
       if (e.detail?.perceptId?.startsWith?.('pctx_')) {
         setActiveLeftTab('regions');
         if (fieldPanelRef.current?.isCollapsed()) fieldPanelRef.current.expand();
@@ -794,6 +802,24 @@ function PostDetailPage() {
       return;
     }
 
+    if (kind === 'mark') {
+      // A mark-Mention (CIRCUIT-001 P3-A). The RefPicker only offers citable marks,
+      // but this is the ENFORCING seam: even a caller that reached here another way
+      // cannot cite a suggestion/draft. Fails closed — no chip, no Mention — because
+      // a chip on the page IS a claim of evidence, and the claim must be earned.
+      if (!canCiteMark(raw)) return;
+      const label = (raw.label || raw.role || raw.type || 'mark').replace(/_/g, ' ');
+      const mention = regionStore.addMention({
+        markId: raw.id, perceptId: null, regionId: null, blockId, inlineContentId,
+        form: 'inline', relationType: 'cites', actor: 'human',
+      });
+      handle.insertRegionChip({
+        refKind: 'mark', regionIds: (raw.linked_ground_ids || []).join(','), label,
+        markId: raw.id, mentionId: mention?.id || '', blockId,
+      });
+      return;
+    }
+
     // /part — inserting a reference IS attention: ensure the Percept, write the Mention.
     const percept = regionStore.ensurePercept(raw);
     const mention = regionStore.addMention({
@@ -868,6 +894,21 @@ function PostDetailPage() {
   chipClickRef.current = (e) => {
     const chip = e.target.closest?.('[data-region-ref]');
     if (!chip) return;
+
+    // A mark chip performs its mark (recall), exactly as a percept chip does — its
+    // data-region-ids carry GROUND ids for hover, but the click routes on the mark id.
+    // Read view (dangerouslySetInnerHTML) + editor alike land here.
+    const markId = chip.getAttribute('data-mark-id') || '';
+    if (markId.startsWith('vm_')) {
+      setActiveLeftTab('regions');
+      if (fieldPanelRef.current?.isCollapsed()) fieldPanelRef.current.expand();
+      regionStore.playMarkRecall(markId);
+      setTimeout(() => {
+        document.querySelector('.post-detail-left .rs-stage')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      }, 60);
+      return;
+    }
 
     // A percept chip replays its noticing (recall), it does not select a region —
     // its data-region-ids carry GROUND ids. Read view + editor alike land here.
@@ -1050,6 +1091,7 @@ function PostDetailPage() {
           lenses={regionStore.aletheia?.lenses || []}
           percepts={(regionStore.percepts || []).filter((p) => String(p.id || '').startsWith('pctx_'))}
           grounds={regionStore.grounds || []}
+          marks={regionStore.visualMarks || []}
           onPick={insertRef}
           onClose={closeRefPicker}
         />
