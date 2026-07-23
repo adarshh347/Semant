@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
+import InstrumentHandles from './InstrumentHandles';
 import useStageGeometry, { useNaturalSize, pointerToNormalized } from './useStageGeometry';
 import useMaskRefine from './useMaskRefine';
 import useSemanticRead from './useSemanticRead';
@@ -20,12 +21,21 @@ import { useRecallPlayer } from './recall';
 import { CORE_ROLES } from './groundRoles';
 // CIRCUIT-001 P2D-A — the renderer-independent truth model. Marks emitted here are the
 // canonical record of what an instrument produced; grounds stay the persisted surface.
-import { makeVisualMark, normalizeMark, markSummary } from './visualMarks';
+import { makeVisualMark, normalizeMark, markSummary, FIELD_ROLE_KEYS, roleLabel } from './visualMarks';
 import {
-    quarantineSuggestion, acceptSuggestion,
+    quarantineSuggestion, acceptSuggestion, dismissSuggestion, isSuggestion,
     summarizeProvenance, hasModelInvolvement,
 } from './suggestionQuarantine';
+// CIRCUIT-001 P2E-B — production instrument mechanics: editable anchors on
+// normalized geometry, and the perfect-freehand ribbon (both from the P2D-B spike).
+import {
+    editablePoints, moveAnchor, insertAnchor, removeAnchor, applyPointEdit, isEditableGround,
+} from './handleEditing';
 import './DifferentialWorkspace.css';
+
+// The twelve field roles the semantic brush offers (contract §2), from Lane A's
+// vocabulary — never a fourth dialect. A compact picker uses the first six.
+const BRUSH_ROLES = FIELD_ROLE_KEYS;
 
 /**
  * Differential — the dedicated percept-construction workspace (v1).
@@ -98,7 +108,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     const {
         regions, selectedId, selectRegion, hoveredId, setHoveredId,
         grounds, percepts, saveState, metaSaveState,
-        addGround, removeGround, groundById, selectedGroundId, selectGround,
+        addGround, updateGround, removeGround, groundById, selectedGroundId, selectGround,
         setHoveredGroundId, focusGroundIds,
         addExpressionPercept, playRecall, clearRecall, recall,
         updateRegion, addRegion,
@@ -137,8 +147,123 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     const [marks, setMarks] = useState([]);
     const emitMark = useCallback((mark) => {
         if (!mark) return null;
+        // P2F: marks live in session state (P2D-A design — no marks backend yet). When
+        // Lane A2's store API lands, swap this to regionStore.addVisualMark(mark) so
+        // marks persist alongside grounds. Ground reshapes ALREADY persist via
+        // updateGround; only mark emission is session-local.
         setMarks((ms) => [...ms, mark]);
         return mark;
+    }, []);
+
+    // ── CIRCUIT-001 P2E-B — production instrument mechanics ────────────────────
+    // (2d) the freehand ribbon generator toggle. perfect-freehand is smoother and
+    // pressure-expressive; taperedRibbon is the fallback (its ~20× smaller polygon
+    // is the measured rollback reason). Raw input points stay the stored truth.
+    const [usePerfectFreehand, setUsePerfectFreehand] = useState(false);
+    // (2e) the semantic brush's chosen field role — the whole point of the brush.
+    const [brushRole, setBrushRole] = useState('light_field');
+    // (2c) a reshape session: the geometry being edited by hand, still a DRAFT
+    // until Kept. `target` is a ground id, or '__draft__' for a fresh trace.
+    const [editing, setEditing] = useState(null);   // { target, points } | null
+
+    // The one sanctioned pointer→normalized path, wrapped for the handle overlay
+    // (which has clientX/clientY, not a full event). It never reimplements the
+    // letterbox math — it hands a synthetic event to `pointerToNormalized`.
+    const clientToNormalized = useCallback((clientX, clientY) => (
+        pointerToNormalized({ clientX, clientY }, stageRef.current, content)
+    ), [content]);
+
+    // Begin editing a committed path/boundary ground (from a hit-path pick), unless
+    // its layer is locked. The points are copied into the edit draft; the ground is
+    // untouched until Keep.
+    const beginEditGround = useCallback((groundId) => {
+        const g = grounds.find((x) => x.id === groundId);
+        if (!g || !isEditableGround(g)) return;
+        setEditing({ target: groundId, points: (g.points || []).map((p) => [...p]) });
+        selectGround(groundId);
+    }, [grounds, selectGround]);
+
+    const editMove = useCallback((index, at) => {
+        setEditing((ed) => (ed ? { ...ed, points: moveAnchor(ed.points, index, at) } : ed));
+    }, []);
+    const editInsert = useCallback((segIndex, at, t) => {
+        let newIndex = segIndex + 1;
+        setEditing((ed) => (ed ? { ...ed, points: insertAnchor(ed.points, segIndex, at, t) } : ed));
+        return newIndex;
+    }, []);
+    const editRemove = useCallback((index) => {
+        setEditing((ed) => (ed ? { ...ed, points: removeAnchor(ed.points, index) } : ed));
+    }, []);
+
+    // Keep the reshape: write points back through the store's existing updateGround
+    // (id-preserving, so linked marks/percepts stay intact and it persists via the
+    // established save path — no new store API needed). Any linked mark carrying
+    // own geometry is re-synced (anchors honor detached_from_ref).
+    const keepEdit = useCallback(() => {
+        // Read the edit draft from closure, then commit — never call another
+        // component's setState from inside a setEditing updater (React runs the
+        // updater during render, and doing so warns "setState while rendering").
+        if (!editing) return;
+        if (editing.target === '__draft__') {
+            setDraft((d) => (d && (d.kind === 'path' || d.kind === 'boundary')
+                ? { ...d, points: editing.points } : d));
+        } else if (editing.points.length >= 2) {
+            updateGround(editing.target, { points: editing.points });
+            setMarks((ms) => ms.map((m) => (
+                (m.linked_ground_ids || []).includes(editing.target) && editablePoints(m)
+                    ? applyPointEdit(m, editing.points) : m
+            )));
+        }
+        setEditing(null);
+    }, [editing, updateGround]);
+    const cancelEdit = useCallback(() => setEditing(null), []);
+
+    // (2e) the live quarantine: suggestions still awaiting a human decision — model
+    // proposed, not yet accepted or dismissed, and with no descendant already minted.
+    const pendingSuggestions = useMemo(() => marks.filter((m) => (
+        isSuggestion(m) && m.status !== 'dismissed' && !marks.some((x) => x.derived_from === m.id)
+    )), [marks]);
+
+    // Accept a suggestion (Lane A's acceptSuggestion — mints user_confirmed with
+    // derived_from, leaves the suggestion untouched). Promote its geometry to a real
+    // ground so it becomes citable evidence, and link the two.
+    const acceptBrushSuggestion = useCallback((sugg) => {
+        const out = acceptSuggestion(sugg);
+        if (!out) return;
+        let groundId = null;
+        const strokes = sugg.geometry?.strokes;
+        if (Array.isArray(strokes) && strokes.length) {
+            const g = addGround(makeGround('field', { strokes, label: sugg.label || '', instrument_role: sugg.role }));
+            groundId = g.id;
+        }
+        const accepted = groundId
+            ? { ...out.accepted, linked_ground_ids: [...(out.accepted.linked_ground_ids || []), groundId] }
+            : out.accepted;
+        setMarks((ms) => [...ms, accepted]);
+    }, [addGround]);
+
+    const dismissBrushSuggestion = useCallback((sugg) => {
+        setMarks((ms) => ms.map((m) => (m.id === sugg.id ? dismissSuggestion(m) : m)));
+    }, []);
+
+    // P2F: the planner emits suggestions once orchestration lands (Lane A2). Until
+    // then, a DEV-only seam mints one quarantined brush suggestion over the current
+    // image so the Accept/Dismiss flow is exercisable by hand. Never ships: gated on
+    // import.meta.env.DEV and removed at P2F when a real model_suggested action arrives.
+    useEffect(() => {
+        if (!import.meta.env?.DEV) return undefined;
+        window.__diffSeedSuggestion = (role = 'gaze_field') => {
+            const sugg = quarantineSuggestion(makeVisualMark('brush_field', {
+                role, label: 'a field the model proposes', source: 'model_suggested',
+                geometry: { kind: 'freehand_path', strokes: [{
+                    points: [[0.55, 0.30, 0.6], [0.62, 0.34, 0.9], [0.68, 0.42, 0.8], [0.66, 0.52, 0.5], [0.60, 0.58, 0.3]],
+                    radius: 0.06, strength: 0.7, op: 'add',
+                }] },
+                provenance: { planner: 'dev-seed', model: 'demo' },
+            }));
+            setMarks((ms) => [...ms, sugg]);
+        };
+        return () => { delete window.__diffSeedSuggestion; };
     }, []);
 
     // ── Read (VISION-D · D4) — the VLM interprets the candidate masks (never geometry) ──
@@ -371,27 +496,29 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                 ...carry,
             }));
         }
-        // Emit the canonical mark alongside the ground — but only for the families the mark
-        // model has a home for, and only when the staged act named a role the vocabulary
-        // knows. `normalizeMark` fails closed, so a mismatch produces no mark rather than a
-        // wrong one; the ground is unaffected either way.
-        if (ground && staged?.role && MARK_TYPE[draft.kind]) {
+        // Emit the canonical mark alongside the ground. The role comes from the armed act
+        // when there is one; for the semantic brush (P2E-B 2e) it comes from the brush's own
+        // role picker, so drawing a field ALWAYS mints a contract-shaped brush_field mark —
+        // the first tool where model-or-hand, role, and renderer meet in one gesture.
+        // `normalizeMark` fails closed, so a bad role produces no mark, never a wrong one.
+        const markRole = staged?.role || (draft.kind === 'field' ? brushRole : null);
+        if (ground && markRole && MARK_TYPE[draft.kind]) {
             emitMark(normalizeMark({
                 type: MARK_TYPE[draft.kind],
-                role: staged.role,
-                label: staged.label || '',
+                role: markRole,
+                label: staged?.label || '',
                 source: 'user',                       // the curator's own hand
                 status: 'committed',
                 geometry: { kind: MARK_GEOM[draft.kind] },
                 linked_ground_ids: [ground.id],
-                linked_action_ids: staged.actionId ? [staged.actionId] : [],
+                linked_action_ids: staged?.actionId ? [staged.actionId] : [],
             }));
         }
         setDraft(null);
         setTool('select');
         setStagedMark(null);
         if (ground) { selectGround(ground.id); openComposer(ground.id); }
-    }, [draft, hasCompDraft, addGround, selectGround, openComposer, stagedMark, emitMark]);
+    }, [draft, hasCompDraft, addGround, selectGround, openComposer, stagedMark, emitMark, brushRole]);
 
     const commitFrame = useCallback(() => {
         const evidence = [...tray];
@@ -580,7 +707,8 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
             }
             if (e.code === 'KeyO' && !e.repeat) setUntouched(true);
             else if (e.key === 'Escape') {
-                if (recall) clearRecall();
+                if (editing) cancelEdit();                 // P2E-B: reshape is a draft; Esc reverts it
+                else if (recall) clearRecall();
                 else if (composer) setComposer(null);
                 else if (hasDrawDraft || hasCompDraft) clearDraft();
                 else if (picked.size) setPicked(new Set());
@@ -600,7 +728,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         window.addEventListener('keyup', up);
         return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
         // eslint-disable-next-line react-hooks/exhaustive-deps -- stable refine.clear only
-    }, [recall, clearRecall, composer, hasDrawDraft, hasCompDraft, picked, tray, clearDraft, undoStroke, switchTool, tool, traceSub, selectRegion, selectGround, setHoveredId, confirmRefine, refine.clear]);
+    }, [recall, clearRecall, composer, hasDrawDraft, hasCompDraft, picked, tray, clearDraft, undoStroke, switchTool, tool, traceSub, selectRegion, selectGround, setHoveredId, confirmRefine, refine.clear, editing, cancelEdit]);
 
     const saving = saveState === 'saving' || metaSaveState === 'saving';
     const saved = saveState === 'saved' || metaSaveState === 'saved';
@@ -677,6 +805,28 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         </div>
                     )}
 
+                    {/* P2E-B (2e) — the semantic brush: a field role is the whole point of
+                        the brush. Draw with a role and it mints a contract-shaped brush_field. */}
+                    {brushing && (
+                        <div className="diff-subtools diff-brush-roles" role="radiogroup" aria-label="Field role">
+                            {BRUSH_ROLES.map((rk) => (
+                                <button key={rk} type="button" role="radio" aria-checked={brushRole === rk}
+                                    className={`diff-subtool diff-role-chip${brushRole === rk ? ' on' : ''}`}
+                                    onClick={() => setBrushRole(rk)}>{roleLabel('brush_field', rk)}</button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* P2E-B (2d) — the freehand ribbon generator toggle, shown for the
+                        drawing tools where the taper is visible. */}
+                    {(brushing || tracing) && (
+                        <label className="diff-pf-toggle" title="perfect-freehand: pressure-expressive taper (spike-adopted); off = vendored taperedRibbon">
+                            <input type="checkbox" checked={usePerfectFreehand}
+                                onChange={(e) => setUsePerfectFreehand(e.target.checked)} />
+                            <span>{usePerfectFreehand ? 'perfect-freehand' : 'taperedRibbon'}</span>
+                        </label>
+                    )}
+
                     <div className={
                         `diff-stage${untouched ? ' is-untouched' : ''}`
                         + `${drawingTool ? ' is-drawing' : ''}`
@@ -708,7 +858,25 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     focusGroundIds={draftFocus}
                                     recall={recallPlayer.active ? recallPlayer : null}
                                     draft={draftForLayers?.kind === 'field' || draftForLayers?.kind === 'path' || draftForLayers?.kind === 'boundary' ? draftForLayers : null}
+                                    // P2E-B (2d) ribbon toggle · (2b) editable-ground hit-paths
+                                    usePerfectFreehand={usePerfectFreehand}
+                                    interactive={tool === 'select' && !editing}
+                                    onPickGround={beginEditGround}
+                                    editingGroundId={editing?.target}
                                 />
+                                {/* P2E-B (2e) — pending suggestions render as a distinct dashed
+                                    ghost: model-proposed, uncitable, never mistaken for evidence. */}
+                                <SuggestionGhosts marks={pendingSuggestions} natural={natural} usePF={usePerfectFreehand} />
+                                {/* P2E-B (2c) — editable anchors on the geometry being reshaped */}
+                                {editing && natural && (
+                                    <InstrumentHandles
+                                        natural={natural}
+                                        points={editing.points}
+                                        clientToNormalized={clientToNormalized}
+                                        onMove={editMove} onInsert={editInsert} onRemove={editRemove}
+                                        locked={false}
+                                    />
+                                )}
                             </>
                         )}
                         {brushing && brushCursor && content && (
@@ -769,6 +937,44 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             prefill={firstAttentionPrefill}
                         />
                     </section>
+
+                    {/* P2E-B (2c) — the reshape session. A committed line's points are being
+                        edited by hand; nothing is written until Keep. Esc reverts. */}
+                    {editing && (
+                        <section className="diff-insp-section diff-insp-reshape" role="status">
+                            <span className="diff-eyebrow">Reshaping</span>
+                            <p className="diff-insp-hint">
+                                Drag a handle to move a point · click the line to add one ·
+                                right-click a handle to remove it. {editing.points.length} points — still a draft.
+                            </p>
+                            <div className="diff-insp-row-actions">
+                                <button type="button" className="diff-primary" onClick={keepEdit}>Keep changes</button>
+                                <button type="button" className="diff-quiet" onClick={cancelEdit}>Cancel (Esc)</button>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* P2E-B (2e) — the suggestion quarantine, live. Model-proposed marks
+                        wait here: uncitable, never counted, visibly the model's until a human
+                        Accepts (mints a user_confirmed mark, lineage back) or Dismisses. */}
+                    {pendingSuggestions.length > 0 && (
+                        <section className="diff-insp-section diff-insp-suggestions">
+                            <span className="diff-eyebrow">Model suggestions · {pendingSuggestions.length}</span>
+                            {pendingSuggestions.map((s) => (
+                                <div key={s.id} className="diff-suggestion">
+                                    <div className="diff-suggestion-head">
+                                        <span className="diff-chip diff-mark-prov-chip is-model">{summarizeProvenance(s)}</span>
+                                        <span className="diff-suggestion-role">{roleLabel(s.type, s.role)}</span>
+                                    </div>
+                                    {s.label && <p className="diff-insp-hint">“{s.label}”</p>}
+                                    <div className="diff-insp-row-actions">
+                                        <button type="button" className="diff-primary" onClick={() => acceptBrushSuggestion(s)}>Accept</button>
+                                        <button type="button" className="diff-quiet" onClick={() => dismissBrushSuggestion(s)}>Dismiss</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </section>
+                    )}
 
                     {/* 2 — SEEING. Find parts stays one keystroke away, but it is now one
                         act among several rather than the door into the workspace. */}
@@ -1029,6 +1235,12 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             )}
                             <div className="diff-insp-row-actions">
                                 <button type="button" className="diff-primary" onClick={() => openComposer(selectedGround.id)}>Compose a percept</button>
+                                {/* P2E-B (2c) — reshape a committed line by hand. */}
+                                {isEditableGround(selectedGround) && !editing && (
+                                    <button type="button" className="diff-quiet" onClick={() => beginEditGround(selectedGround.id)}>
+                                        <PenTool size={13} /> Adjust points
+                                    </button>
+                                )}
                                 <button type="button" className="diff-quiet" onClick={() => addToTray(selectedGround.id)}>
                                     <Plus size={13} /> Gather
                                 </button>
@@ -1112,5 +1324,42 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                 </aside>
             </div>
         </div>
+    );
+}
+
+/**
+ * P2E-B (2e) — render pending suggestions as a DISTINCT dashed ghost over the
+ * stage: model-proposed, uncitable, and unmistakable for evidence (the CVAT
+ * lesson — provenance you can SEE). A suggestion's stroke is drawn as a dashed
+ * centerline in the same natural-pixel viewBox the marks use, so it lands exactly
+ * where the model proposed and never touches the committed field wash below it.
+ */
+function SuggestionGhosts({ marks = [], natural, usePF }) {
+    void usePF;
+    if (!natural || !marks.length) return null;
+    const centerline = (pts) => (pts || [])
+        .map((p, i) => {
+            const [x, y] = Array.isArray(p) ? p : [p.x, p.y];
+            return `${i ? 'L' : 'M'}${(x * natural.w).toFixed(2)},${(y * natural.h).toFixed(2)}`;
+        }).join(' ');
+    return (
+        <svg className="diff-suggestion-ghosts"
+            viewBox={`0 0 ${natural.w} ${natural.h}`} preserveAspectRatio="xMidYMid meet"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 5 }}
+            aria-hidden="true">
+            {marks.map((m) => (m.geometry?.strokes || []).map((s, i) => {
+                const d = centerline(s.points);
+                if (!d) return null;
+                const w = Math.max(2, (s.radius || 0.05) * natural.w);
+                return (
+                    <g key={`${m.id}-${i}`} className="diff-suggestion-ghost">
+                        <path d={d} fill="none" stroke="#7FB3A8" strokeOpacity={0.35}
+                            strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+                        <path d={d} fill="none" stroke="#7FB3A8" strokeWidth={Math.max(1.5, w * 0.18)}
+                            strokeDasharray="6 5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                    </g>
+                );
+            }))}
+        </svg>
     );
 }

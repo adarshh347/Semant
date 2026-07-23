@@ -2,7 +2,20 @@ import React, { useEffect, useRef } from 'react';
 import { paintFields } from './fieldCanvas';
 import { resolveGround, groundCenter } from './grounds';
 import { taperedRibbon, centerlinePath, endChevron } from './freehandTaper';
+import { perfectFreehandRibbon } from './freehandStroke';
 import { hasMaskPolygons, ringsToPath } from '../lib/maskGeometry';
+
+// CIRCUIT-001 P2E-B (2d): the freehand ribbon generator, chosen at render.
+// perfect-freehand when the toggle is on (smoother, pressure-expressive), the
+// vendored taperedRibbon as the fallback (its ~20× smaller polygon is the
+// rollback reason the spike measured). Same signature either way.
+const ribbon = (px, maxWidth, usePF) =>
+    (usePF ? perfectFreehandRibbon : taperedRibbon)(px, { maxWidth });
+
+// CIRCUIT-001 P2E-B (2b): the one SVG tax the spike named — a 1-px line is
+// unclickable, so an editable ground gets a fat TRANSPARENT companion path that
+// receives the pointer even though the parent <svg> is pointerEvents:none.
+const HIT_WIDTH = 0.025;   // of natural width — ~a fingertip on screen
 
 /**
  * GroundLayers — the shared Ground renderer (Differential v1).
@@ -44,21 +57,35 @@ const toPx = (points, natural) =>
         return [x * natural.w, y * natural.h, pr];
     });
 
-function PathGround({ g, natural, state }) {
+function PathGround({ g, natural, state, usePF }) {
     const { progress, dim = 1 } = state;
     const px = toPx(g.points, natural);
-    const ribbon = taperedRibbon(px, { maxWidth: 0.02 * natural.w });
+    const body = ribbon(px, 0.02 * natural.w, usePF);
     const center = centerlinePath(px);
     const chevron = endChevron(px, 0.028 * natural.w);
     const traveling = progress < 1;
     return (
         <g className="gl-path" style={{ opacity: dim }}>
             {/* the body reveals as the line travels */}
-            <path d={ribbon} className="gl-path-ribbon" style={{ opacity: 0.85 * progress }} />
+            <path d={body} className="gl-path-ribbon" style={{ opacity: 0.85 * progress }} />
             <path d={center} className="gl-path-center" pathLength={1} vectorEffect="non-scaling-stroke"
                 style={{ strokeDasharray: 1, strokeDashoffset: 1 - progress }} />
             {!traveling && <path d={chevron} className="gl-path-chevron" vectorEffect="non-scaling-stroke" />}
         </g>
+    );
+}
+
+// A transparent wide hit-path for an editable ground (path/boundary), so a thin
+// line is grabbable. pointerEvents:stroke overrides the parent svg's 'none'.
+function GroundHitPath({ g, natural, onPick }) {
+    const px = toPx(g.points, natural);
+    if (px.length < 2) return null;
+    const d = centerlinePath(px);
+    return (
+        <path d={d} fill="none" stroke="transparent" strokeWidth={HIT_WIDTH * natural.w}
+            strokeLinecap="round" strokeLinejoin="round"
+            style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+            onPointerDown={(e) => { e.stopPropagation(); onPick?.(g.id, e); }} />
     );
 }
 
@@ -191,6 +218,10 @@ export default function GroundLayers({
     recall = null,
     recallOnly = false,
     draft = null,           // { kind:'field'|'path'|'boundary', strokes?, points? }
+    usePerfectFreehand = false,   // P2E-B (2d): swap the freehand ribbon generator
+    interactive = false,          // P2E-B (2b): render hit-paths for editable grounds
+    onPickGround = null,          // (groundId, event) → the workspace opens an edit
+    editingGroundId = null,       // hide the hit-path for the ground currently being edited
 }) {
     const canvasRef = useRef(null);
 
@@ -242,7 +273,7 @@ export default function GroundLayers({
                 {svgGrounds.map((g) => {
                     const state = groundAlpha(g, { focusGroundIds, recall, recallOnly });
                     if (!state.on) return null;
-                    if (g.ground_type === 'path') return <PathGround key={g.id} g={g} natural={natural} state={state} />;
+                    if (g.ground_type === 'path') return <PathGround key={g.id} g={g} natural={natural} state={state} usePF={usePerfectFreehand} />;
                     if (g.ground_type === 'boundary') return <BoundaryGround key={g.id} g={g} natural={natural} state={state} />;
                     if (g.ground_type === 'frame') return <FrameGround key={g.id} natural={natural} state={state} />;
                     if (g.ground_type === 'region') {
@@ -261,12 +292,21 @@ export default function GroundLayers({
                 {/* the in-progress trace draft */}
                 {draftPoints && draftPoints.length > 1 && (
                     draft.kind === 'path'
-                        ? <path d={taperedRibbon(toPx(draftPoints, natural), { maxWidth: 0.02 * natural.w })}
+                        ? <path d={ribbon(toPx(draftPoints, natural), 0.02 * natural.w, usePerfectFreehand)}
                             className="gl-path-ribbon gl-draft" />
                         : <path d={centerlinePath(toPx(draftPoints, natural))} className="gl-boundary-band gl-draft"
                             filter="url(#gl-blur)"
                             style={{ strokeWidth: Math.max(2, (draft.band_width || 0.06) * natural.w), opacity: BOUNDARY_VEIL }} />
                 )}
+
+                {/* P2E-B (2b): hit-paths for editable grounds. Only when interactive,
+                    and never for the ground currently being edited (its own handles own
+                    the pointer then). This is the whole SVG "hit-test tax". */}
+                {interactive && onPickGround && svgGrounds.map((g) => (
+                    (g.ground_type === 'path' || g.ground_type === 'boundary') && g.id !== editingGroundId
+                        ? <GroundHitPath key={`hit-${g.id}`} g={g} natural={natural} onPick={onPickGround} />
+                        : null
+                ))}
             </svg>
         </>
     );
