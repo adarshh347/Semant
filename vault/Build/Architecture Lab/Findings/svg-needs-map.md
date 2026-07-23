@@ -2,6 +2,25 @@
 
 **Branch:** `feat/brand-svg` · **Date:** 2026-07-23 · **Method:** grep + read of `frontend/src` (plus a parallel thorough sweep). Every candidate below was **confirmed in code** with a file:line — none assumed. **Status:** audit complete, *stopped for review before building the dynamic set* (per the build spec).
 
+---
+
+## ✅ 2026-07-23 · SHELL build shipped (branch `feat/graphic-system`, L2 + L3)
+
+The 🟢 SHELL half of this map is now **built and wired**. The glyph set (L2) and the branded state surfaces (L3) live under `frontend/src/components/brand/`:
+
+- **L2 · `brand/glyphs/`** — one unified concept-glyph family on a shared 24-grid (`Glyph.jsx`), currentColor-driven, plum/theme-aware: the **7 Ground types** (`groundGlyphs.jsx` — region · field · path · boundary · constellation · relation · frame) + **`PerceptMark` and the acts** (`actGlyphs.jsx` — Percept · Mention · Reading · Recall · Dissect · Refine). No animation (Invariant 9). Barrel: `glyphs/index.js`.
+- **L2 wiring (shell only)** — the literal `◈` retired for `<PerceptMark size="1em" />` at the SHELL sites: `home/HeroTile`, `home/ReadTile`, `home/TasteTile`, `home/ContinueTile`, `home/PerceptsTile`, `ArchiveGrid` (seq divider), `ArchiveTimeline` (seq mark).
+- **L3 · states** — `EmptyState.jsx` (a *door*: motif + Fraunces + one next-action pill), `RegionMotif.jsx` (hand-drawn plum line motifs: seed·stack·collect·infer·parts·portrait), `Skeleton.jsx` (branded shimmer, reduced-motion-safe), `states.css` (namespaced `.semant-empty`/`.skel` to avoid the pre-existing `.empty-state` in `EpicsPage.css`). Wired: **Feed** (skeleton+empty+error), **Epics** (skeleton+empty), **Research** (empty→`runAgent`), **Anatomy** (empty + `MarkLoader`), **Gallery** (`ArchiveGrid`/`ArchiveWall` loads → inline `MarkLoader`), **/you** (`PlaceholderPage` portrait motif). Home `ContinueTile` empty was **already a door** (inline link) — left as-is.
+
+**Ready-for-Field handoff (the 🟡 items — do NOT wire in the shell branch).** The set is built so the Field session swaps one-liners:
+- **C1 `GROUND_GLYPH`** (`differential/DifferentialWorkspace.jsx:69`, used `:1274`) → `import { GroundGlyph } from '../components/brand/glyphs'` then `<GroundGlyph type={g.ground_type} size={16} />`. `GROUND_GLYPHS` registry is keyed identically to the unicode map.
+- **C2 `RefPicker`** dup (`components/RefPicker.jsx:7–8,47`) → same `GROUND_GLYPHS`.
+- **C4 `.diff-tools` rail** (`DifferentialWorkspace.jsx` TOOLS `:53–61`) → `TOOL_GLYPHS` maps the rail keys (brush·trace·collect·connect·frame·refine·read·dissect) onto the same marks; `select`/`similar` stay lucide.
+- **A1 Dissect scan** → `DissectGlyph` (static mark ready; the *animated* perceptual-scan stays Field-owned, gates on real state).
+- Remaining shell-excluded `◈`: `PostDetailPage.jsx:1156` (Differential tab), `blocknote/*`, `BlockNoteLab.jsx` — all 🟡 editor.
+
+**Still BLOCKED (unchanged):** A2 passage/stage-pulse (needs the run/telemetry contract — no fabricated progress, Invariant 9); L4 data-viz (separate spec); E1 pitch/`/about` (awaiting `semant-pitch.html`).
+
 ## Legend
 - **Status** — `ASCII/EMOJI` (unicode/emoji glyph used as an icon) · `GENERIC` (lucide/CSS spinner where a branded mark belongs) · `BARE` (unstyled text, no visual) · `DONE` (already a bespoke on-brand SVG — verify plum tokens only).
 - **Scope** — `🟢 SHELL` build here on this branch (presentational / new brand component, no Field/editor edits) · `🟡 FIELD` requires touching Chiasm/Field/editor files → **out of scope for this branch**, needs another session or an explicit go-ahead. The build spec's own rule ("no Chiasm/editor/Field-logic files") collides with several Phase-2 candidates; that collision is the main thing to resolve in review.
