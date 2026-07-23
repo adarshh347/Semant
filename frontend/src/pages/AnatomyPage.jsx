@@ -7,6 +7,8 @@ import {
     synthesizeInsights,
     fetchInsights,
 } from '../services/anatomyService';
+import EmptyState from '../components/brand/EmptyState';
+import { MarkLoader } from '../components/brand/MarkLoader';
 import './AnatomyPage.css';
 
 export default function AnatomyPage() {
@@ -187,18 +189,14 @@ export default function AnatomyPage() {
                     </div>
 
                     {loading ? (
-                        <div className="anatomy-loading">
-                            <span className="anatomy-spin" /> Loading anatomy data…
-                        </div>
+                        <MarkLoader fullscreen={false} size={34} label="Loading anatomy…" />
                     ) : categories.length === 0 ? (
-                        <div className="anatomy-empty">
-                            <Eye size={32} />
-                            <p>No anatomy annotations yet.</p>
-                            <p className="anatomy-empty-hint">
-                                Open an image in Sutradhar → Unconceal tab → <strong>Detect parts</strong> to start
-                                building your anatomy catalog.
-                            </p>
-                        </div>
+                        <EmptyState
+                            motif="parts"
+                            title="No anatomy yet"
+                            body="Detect parts on an image (Sutradhar → Unconceal → Detect parts) to start building your anatomy catalog."
+                            action={{ to: '/gallery', label: 'Open an image' }}
+                        />
                     ) : (
                         <div className="anatomy-grid">
                             {categories.map((cat, i) => {

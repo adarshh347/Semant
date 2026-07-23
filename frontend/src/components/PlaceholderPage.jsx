@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import RegionMotif from './brand/RegionMotif';
 import './PlaceholderPage.css';
 
 /**
@@ -9,10 +10,11 @@ import './PlaceholderPage.css';
  * of whitespace. Honest by design — it says what the room is for and points to
  * the real on-ramp, rather than faking a finished feature.
  */
-export default function PlaceholderPage({ eyebrow, title, lede, cta, links }) {
+export default function PlaceholderPage({ eyebrow, title, lede, cta, links, motif }) {
   return (
     <div className="placeholder">
       <div className="placeholder-inner">
+        {motif && <RegionMotif variant={motif} size={84} className="placeholder-motif" />}
         {eyebrow && <span className="placeholder-eyebrow">{eyebrow}</span>}
         <h1 className="placeholder-title">{title}</h1>
         {lede && <p className="placeholder-lede">{lede}</p>}
