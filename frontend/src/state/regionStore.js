@@ -13,7 +13,7 @@ import { normalizeMark, persistableMarks, PERSISTED_STATUSES } from '../differen
 // CIRCUIT-001 P3-A — provenance is authored on the mark; a ground carries only DERIVED
 // bridge fields. `reconcileBridgeFields` reads them off the linked mark so a ground can
 // SHOW who made it without ever authoring provenance itself.
-import { reconcileBridgeFields, summarizeProvenance } from '../differential/suggestionQuarantine';
+import { reconcileBridgeFields, summarizeProvenance, suggestionsFromDescriptors } from '../differential/suggestionQuarantine';
 
 const BASE = `${API_URL}/api/v1/posts`;
 const AUTOSAVE_MS = 800;
@@ -319,6 +319,22 @@ export function useRegionState(post, onPostChange) {
         };
     }, []);
 
+    // CIRCUIT-001 P4-A — producer intake. Real model output (SAM refine / semantic read) reaches
+    // the circuit ONLY through here, as quarantined `model_suggested` marks on the suggestion
+    // layer. Three guarantees the tests pin:
+    //   - idempotent: a descriptor has a DETERMINISTIC id (producer:type:source_ref), so a
+    //     re-run REPLACES its suggestion by id rather than adding a duplicate;
+    //   - fail-closed: an invalid descriptor is dropped by suggestionsFromDescriptors, never a
+    //     partial mark;
+    //   - never persisted: a `suggested` status is excluded from `persistableMarks`, so no
+    //     suggestion touches the database — pass {save:false} so intake never even schedules one.
+    // Survives reload by RE-DERIVATION (the producer re-runs), not by storage.
+    const ingestSuggestions = useCallback((descriptors = []) => {
+        const marks = suggestionsFromDescriptors(descriptors);
+        for (const m of marks) addVisualMark(m, { save: false });
+        return marks;
+    }, [addVisualMark]);
+
     /** Compose a durable act of noticing over one or more Grounds. Persists. */
     const addExpressionPercept = useCallback((input) => {
         const p = makeExpressionPercept(input);
@@ -486,6 +502,8 @@ export function useRegionState(post, onPostChange) {
         visualMarksForGround, visualMarkById,
         // CIRCUIT-001 P3-A — derived provenance on a ground (bridge reconciliation).
         groundProvenance,
+        // CIRCUIT-001 P4-A — producer intake (SAM / semantic suggestions → quarantine layer).
+        ingestSuggestions,
         // The image, so a /part evidence block can crop a region by reference.
         photoUrl: post?.photo_url ?? null,
     }), [
@@ -500,7 +518,7 @@ export function useRegionState(post, onPostChange) {
         addExpressionPercept, perceptsForGround, recall, playRecall, playMarkRecall, clearRecall,
         metaSaveState, persistMeta, scheduleMetaSave,
         visualMarks, addVisualMark, updateVisualMark, removeVisualMark,
-        visualMarksForGround, visualMarkById, groundProvenance,
+        visualMarksForGround, visualMarkById, groundProvenance, ingestSuggestions,
         post,
     ]);
 }

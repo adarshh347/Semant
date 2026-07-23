@@ -175,3 +175,93 @@ describe('countEvidence never counts a suggestion', () => {
         expect(countEvidence(marks)).toBe(1);
     });
 });
+
+// ── CIRCUIT-001 P4-A: producer intake — descriptors → quarantined suggestions ──
+import {
+    suggestionKey, suggestionId, suggestionFromDescriptor, suggestionsFromDescriptors,
+} from './suggestionQuarantine';
+
+const samDescriptor = (over = {}) => ({
+    producer: 'sam_refine', type: 'region_mask', role: null, label: 'collar', source_ref: 'reg_7',
+    geometry: { kind: 'raster_mask', mask_ref: { region_id: 'reg_7', geometry_rev: 3 } },
+    linked_ground_ids: [],
+    provenance: { model: 'sam2.1', adapter: 'sam2', latency_ms: 42, run_id: 'run_abc', producer: 'sam_refine' },
+    ...over,
+});
+const labelDescriptor = (cid, over = {}) => ({
+    producer: 'semantic_read', type: 'region_mask', role: null, label: 'sleeve', source_ref: cid,
+    geometry: { kind: 'region_ref', region_ref: { region_id: cid } }, linked_ground_ids: [],
+    provenance: { model: 'vlm', adapter: 'semantic_pass', run_id: 'run_sem', producer: 'semantic_read' },
+    ...over,
+});
+const relationDescriptor = (over = {}) => ({
+    producer: 'semantic_read', type: 'relation_mark', role: 'motif_echo', label: 'echoes',
+    source_ref: 'a|b|echoes', geometry: { kind: 'derived' }, linked_ground_ids: ['a', 'b'],
+    provenance: { model: 'vlm', adapter: 'semantic_pass', run_id: 'run_sem', producer: 'semantic_read' },
+    ...over,
+});
+
+describe('suggestion intake — a producer speaks only as a quarantined suggestion', () => {
+    beforeEach(() => _resetMarkIds());
+
+    it('turns a SAM descriptor into a model_suggested, uncitable region_mask', () => {
+        const m = suggestionFromDescriptor(samDescriptor(), { now: 'T' });
+        expect(m).toBeTruthy();
+        expect(m.source).toBe('model_suggested');
+        expect(m.status).toBe('suggested');
+        expect(canCiteMark(m)).toBe(false);
+        expect(m.provenance.run_id).toBe('run_abc');
+        expect(m.provenance.producer).toBe('sam_refine');
+    });
+
+    it('turns a semantic label descriptor into a region_ref mark (no geometry authored)', () => {
+        const m = suggestionFromDescriptor(labelDescriptor('reg_1'), { now: 'T' });
+        expect(m.type).toBe('region_mask');
+        expect(m.geometry.kind).toBe('region_ref');
+        expect(m.geometry.region_ref.region_id).toBe('reg_1');
+        expect(canCiteMark(m)).toBe(false);
+    });
+
+    it('the id is DETERMINISTIC — re-ingest lands on the same mark id (idempotency basis)', () => {
+        const a = suggestionFromDescriptor(samDescriptor(), { now: 'T1' });
+        const b = suggestionFromDescriptor(samDescriptor(), { now: 'T2' });
+        expect(a.id).toBe(b.id);
+        expect(a.id).toBe(suggestionId(samDescriptor()));
+        expect(suggestionKey(samDescriptor())).toBe('sam_refine:region_mask:reg_7');
+    });
+
+    it('fails closed — an invalid descriptor is dropped, never a partial', () => {
+        // A relation with a role outside the frozen vocabulary → null (not a half-mark).
+        expect(suggestionFromDescriptor(relationDescriptor({ role: 'friendship' }))).toBeNull();
+        // A producer that lost its receipt (no run_id) → null.
+        expect(suggestionFromDescriptor(labelDescriptor('reg_1', { provenance: { producer: 'semantic_read', model: 'vlm' } }))).toBeNull();
+        expect(suggestionFromDescriptor(null)).toBeNull();
+        expect(suggestionFromDescriptor({})).toBeNull();
+    });
+
+    it('a batch keeps the valid and drops the invalid, order preserved', () => {
+        const marks = suggestionsFromDescriptors([
+            labelDescriptor('reg_1'), relationDescriptor({ role: 'friendship' }), samDescriptor(),
+        ]);
+        expect(marks).toHaveLength(2);
+        expect(marks.map((m) => m.type)).toEqual(['region_mask', 'region_mask']);
+    });
+
+    it('quarantine holds under volume: 100 suggestions, zero citable, zero persistable', async () => {
+        const { persistableMarks } = await import('./visualMarks');
+        const descriptors = Array.from({ length: 100 }, (_, i) => labelDescriptor(`reg_${i}`));
+        const marks = suggestionsFromDescriptors(descriptors);
+        expect(marks).toHaveLength(100);
+        expect(marks.filter(canCiteMark)).toHaveLength(0);
+        expect(persistableMarks(marks)).toHaveLength(0);
+    });
+
+    it('accept lineage: a produced suggestion, accepted, mints a user_confirmed mark derived_from it', () => {
+        const suggestion = suggestionFromDescriptor(labelDescriptor('reg_1'), { now: 'T' });
+        const { accepted } = acceptSuggestion(suggestion, {}, { now: 'T2', idFn: () => 'vm_new' });
+        expect(accepted.source).toBe('user_confirmed');
+        expect(accepted.derived_from).toBe(suggestion.id);
+        // the model's authorship travels forward in provenance
+        expect(accepted.provenance.model).toBe('vlm');
+    });
+});

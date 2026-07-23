@@ -20,6 +20,7 @@ from backend.services import region_embedding_service
 from backend.services import region_geometry
 from backend.services import mask_geometry
 from backend.services import vision_run_service
+from backend.services import suggestion_service
 from backend.services.vision_orchestrator.contracts import JobStatus
 from backend.services.vision_orchestrator import vision_run_contracts as vrc
 from backend.services.vision_orchestrator.refine_session import refine_session
@@ -1341,6 +1342,50 @@ async def refine_region_confirm(post_id: str, req: RefineRequest):
         raise
 
 
+@router.post("/{post_id}/refine-region/suggest")
+async def refine_region_suggest(post_id: str, req: RefineRequest):
+    """CIRCUIT-001 P4-A · producer 1 — SAM refine as a SUGGESTER.
+
+    Computes the same SAM2 preview as ``/refine-region/preview`` but (a) mints a real refine run
+    so the suggestion carries a receipt, and (b) returns a quarantined ``model_suggested``
+    suggestion descriptor the frontend circuit ingests onto the suggestion layer — uncitable,
+    unpersisted. NOTHING is written to the post: the mask is a proposal until the curator accepts
+    it (the existing ``/refine-region/confirm`` path mints the user_confirmed mark)."""
+    _t = time.perf_counter()
+    obj_id, post, region = await _propose_refined_region(post_id, req)
+    propose_ms = round((time.perf_counter() - _t) * 1000, 1)
+
+    rec = vision_run_service.VisionRunRecorder(
+        post_id=post_id, operation=vrc.OPERATION_REFINE, initiator="suggest",
+        requested_profile={"region_id": region.get("id"), "base_id": req.base_id,
+                           "base_geometry_rev": req.base_geometry_rev,
+                           "geometry_rev": region.get("geometry_rev"), "mode": "suggest"})
+    await rec.start()
+    try:
+        await rec.event(vrc.STAGE_REFINE_RECEIVE, JobStatus.SUCCEEDED,
+                        detail={"base_id": req.base_id, "mode": "suggest"})
+        await rec.event(vrc.STAGE_REFINE_PROPOSE, JobStatus.SUCCEEDED, capability="refine-mask",
+                        adapter="sam2", latency_ms=propose_ms,
+                        input_refs=[{"region_id": req.base_id, "geometry_rev": req.base_geometry_rev}],
+                        detail={"geometry_rev": region.get("geometry_rev")})
+        suggestion = suggestion_service.suggestion_from_refine_region(
+            region, run_id=rec.run_id, latency_ms=propose_ms, base_id=req.base_id)
+        suggestions = [suggestion] if suggestion else []
+        # A proposal, not a persist — the run terminalizes without a persist stage.
+        await rec.finish(JobStatus.SUCCEEDED, terminal_reason="suggested",
+                         result_summary={"suggested": len(suggestions),
+                                         "region_id": region.get("id"),
+                                         "geometry_rev": region.get("geometry_rev")})
+        return {"region": region, "suggestions": suggestions,
+                "run_id": rec.run_id, "available": True}
+    except asyncio.CancelledError:
+        await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
+        raise
+    except Exception as e:
+        await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
+        raise
+
+
 @router.post("/refine-region/unload")
 async def refine_region_unload():
     """Release the SAM2 predictor (frees VRAM/RAM). Idempotent."""
@@ -1490,8 +1535,13 @@ async def semantic_read(post_id: str, req: SemanticReadRequest = None):
         await rec.finish(final_status, terminal_reason="ok" if persist_ok else "persist_no_match",
                          result_summary={"assertions": len((merged or {}).get("assertions") or []),
                                          "status": (merged.get("meta") or {}).get("status")})
+        # CIRCUIT-001 P4-A · producer 2 — semantic read as a SUGGESTER. Additive: the persisted
+        # `semantics` is unchanged; `suggestions` is the same assertions/relations projected as
+        # quarantined `model_suggested` descriptors, run-linked, that the frontend circuit ingests.
+        # Geometry is never authored here — a label is a region_ref, a relation is `derived`.
+        suggestions = suggestion_service.suggestions_from_semantics(merged, run_id=rec.run_id)
         return {"semantics": merged, "status": (merged.get("meta") or {}).get("status"),
-                "run_id": rec.run_id}
+                "run_id": rec.run_id, "suggestions": suggestions}
     except asyncio.CancelledError:
         await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
         raise
