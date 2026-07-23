@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { researchService } from '../services/researchService';
 import EmptyState from '../components/brand/EmptyState';
+import { SectionEyebrow } from '../components/brand/SectionEyebrow';
 import './ResearchPage.css';
 
 /* ------------------------------------------------------------------ */
@@ -427,7 +428,7 @@ export default function ResearchPage() {
     return (
         <div className="research-page">
             <div className="research-hero">
-                <span className="sk-eyebrow">The studio</span>
+                <SectionEyebrow className="sk-eyebrow">The studio</SectionEyebrow>
                 <h1 className="research-h1">Research agent</h1>
                 <p className="research-sub">
                     A background agent picks a topic from your gallery, weaves your images into an

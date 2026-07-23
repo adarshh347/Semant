@@ -1,0 +1,36 @@
+/* The global tell — section eyebrow tick + section divider.
+   Presentational only, plum-driven, theme-aware, reduced-motion safe (nothing
+   here animates). The tick pins to the plum accent so the brand mark stays plum
+   even before a muted kicker; --accent itself flips light/dark. */
+
+.section-eyebrow {
+  /* Keep the tick and its label on one line so the mark never orphans. The
+     call-site's own eyebrow class still supplies colour, size and tracking. */
+  white-space: nowrap;
+}
+
+.section-eyebrow__tick {
+  color: var(--accent);
+  margin-right: 0.45em;
+  /* Optically seat the small lozenge on the cap-height of the uppercase label. */
+  vertical-align: -0.05em;
+}
+
+/* A hairline with a centered region-mark. Full-width, so it drops in wherever a
+   rule already lives (e.g. a nav-menu separator). */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+.section-divider__line {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.section-divider__mark {
+  color: var(--accent);
+  flex: none;
+  opacity: 0.85;
+}

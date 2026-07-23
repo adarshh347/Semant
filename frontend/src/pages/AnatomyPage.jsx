@@ -9,6 +9,7 @@ import {
 } from '../services/anatomyService';
 import EmptyState from '../components/brand/EmptyState';
 import { MarkLoader } from '../components/brand/MarkLoader';
+import { SectionEyebrow } from '../components/brand/SectionEyebrow';
 import './AnatomyPage.css';
 
 export default function AnatomyPage() {
@@ -106,7 +107,7 @@ export default function AnatomyPage() {
         <div className="anatomy-page">
             {/* Hero */}
             <header className="anatomy-hero">
-                <span className="eyebrow">Anatomy Catalog</span>
+                <SectionEyebrow className="eyebrow">Anatomy Catalog</SectionEyebrow>
                 <h1 className="anatomy-hero-title">
                     Your Anatomy Language
                 </h1>

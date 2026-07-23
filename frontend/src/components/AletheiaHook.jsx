@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Sparkles, Check, Trash2 } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { getSubject, forgetSubject, tasteHeaders } from '../lib/tasteSession';
+import { SectionEyebrow } from './brand/SectionEyebrow';
 import './AletheiaHook.css';
 
 const POSTS = `${API_URL}/api/v1/posts`;
@@ -181,7 +182,7 @@ export default function AletheiaHook({ postId }) {
             <aside className="hook-taste">
                 {!optedIn ? (
                     <div className="hook-consent">
-                        <span className="hook-kicker">Your taste</span>
+                        <SectionEyebrow className="hook-kicker">Your taste</SectionEyebrow>
                         <p className="hook-muted">
                             Nothing is captured unless you say so. Turn this on and your taps build
                             <strong> your own taste portfolio</strong> — shown back to you, deletable
@@ -194,7 +195,7 @@ export default function AletheiaHook({ postId }) {
                 ) : (
                     <div className="hook-portfolio">
                         <div className="hook-portfolio-head">
-                            <span className="hook-kicker">Your taste</span>
+                            <SectionEyebrow className="hook-kicker">Your taste</SectionEyebrow>
                             <button className="hook-ghost" onClick={clearMyTaste} title="Delete every signal">
                                 <Trash2 size={13} /> Clear
                             </button>

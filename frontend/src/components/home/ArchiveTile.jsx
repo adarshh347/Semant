@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { cldCrop, cldLqip } from '../../lib/cloudinary';
 import { fetchRecentPosts, fetchArchiveCount } from './homeData';
+import { SectionEyebrow } from '../brand/SectionEyebrow';
 
 // The Archive (1×1). A live 3-image mosaic + "N images →" — the door to the full
 // justified archive. A quiet three-cell crop (one tall, two stacked) rather than
@@ -24,7 +25,7 @@ export default function ArchiveTile() {
 
   return (
     <Link to="/gallery" className="tile tile-archive" viewTransition>
-      <span className="eyebrow">The Archive</span>
+      <SectionEyebrow className="eyebrow">The Archive</SectionEyebrow>
       <div className="archive-mosaic">
         {mosaic.map((p, i) => (
           <div

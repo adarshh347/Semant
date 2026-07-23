@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchRecentPosts, percepts, perceptLabel } from './homeData';
 import PerceptCrop from './PerceptCrop';
 import { PerceptMark } from '../brand/glyphs';
+import { SectionEyebrow } from '../brand/SectionEyebrow';
 
 // Parts you recently noticed (3×1). Recent Percept chips (◈, plum) drawn from the
 // region annotations on your recent readings — each a jump back to that image's
@@ -34,7 +35,7 @@ export default function PerceptsTile() {
 
   return (
     <section className="tile tile-percepts">
-      <span className="eyebrow">Parts you recently noticed</span>
+      <SectionEyebrow className="eyebrow">Parts you recently noticed</SectionEyebrow>
       {isLoading ? (
         <p className="tile-muted">Gathering the parts you marked…</p>
       ) : marks.length > 0 ? (

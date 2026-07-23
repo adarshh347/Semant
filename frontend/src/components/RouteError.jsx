@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, isRouteErrorResponse, useRouteError } from 'react-router-dom';
 import { SemantMark } from './brand/SemantMark';
+import { SectionEyebrow } from './brand/SectionEyebrow';
 import NotFoundPage from './NotFoundPage';
 import './PlaceholderPage.css';
 
@@ -26,7 +27,7 @@ export default function RouteError() {
     <div className="placeholder">
       <div className="placeholder-inner">
         <SemantMark size={52} color="var(--accent)" title="" aria-hidden="true" style={{ marginBottom: '1.25rem' }} />
-        <span className="placeholder-eyebrow">Something broke</span>
+        <SectionEyebrow className="placeholder-eyebrow">Something broke</SectionEyebrow>
         <h1 className="placeholder-title">We lost the thread</h1>
         <p className="placeholder-lede">{detail}</p>
         <Link to="/" className="placeholder-pill">
