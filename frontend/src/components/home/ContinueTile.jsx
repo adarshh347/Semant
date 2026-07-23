@@ -7,6 +7,7 @@ import { cldCrop, cldLqip } from '../../lib/cloudinary';
 import {
   fetchRecentPosts, isInProgress, titleOf, progressLine,
 } from './homeData';
+import { PerceptMark } from '../brand/glyphs';
 
 // Continue in Chiasm (2×2). Recent readings you've begun — thumb · title ·
 // "N percepts · M words" — overflowing horizontally via Embla. Click → resume
@@ -75,7 +76,7 @@ export default function ContinueTile() {
                 <div className="continue-meta">
                   <span className="continue-name">{titleOf(p)}</span>
                   <span className="continue-progress">
-                    <span className="mark" aria-hidden>◈</span> {progressLine(p)}
+                    <span className="mark" aria-hidden><PerceptMark size="1em" className="glyph--inline" /></span> {progressLine(p)}
                   </span>
                 </div>
               </Link>

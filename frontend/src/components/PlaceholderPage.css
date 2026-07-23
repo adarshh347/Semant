@@ -13,6 +13,9 @@
 
 .placeholder-inner { max-width: 40rem; }
 
+/* Optional region-mark motif leading the room (e.g. /you). */
+.placeholder-motif { margin-bottom: var(--space-6); }
+
 .placeholder-eyebrow {
   display: block;
   font-family: var(--font-sans);

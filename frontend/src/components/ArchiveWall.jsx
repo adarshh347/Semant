@@ -15,6 +15,7 @@ import axios from 'axios';
 import { API_URL } from '../config/api';
 import { PAGE_SIZE } from './ArchiveGrid';
 import { cldCrop, cldLqip } from '../lib/cloudinary';
+import { MarkLoader } from './brand/MarkLoader';
 import './ArchiveWall.css';
 
 const GAP = 4;
@@ -203,7 +204,7 @@ export default function ArchiveWall({ selectedTag, startPage = 1, cell = 150, fi
           </Link>
         ))}
       </div>
-      {cells.length === 0 && <p className="arch-status arch-wall-status">Loading the archive…</p>}
+      {cells.length === 0 && <div className="arch-status arch-wall-status"><MarkLoader fullscreen={false} size={30} label="Loading the archive…" /></div>}
     </div>
   );
 }

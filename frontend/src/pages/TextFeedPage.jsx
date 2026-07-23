@@ -3,13 +3,15 @@ import axios from 'axios';
 import { useQuery } from '@tanstack/react-query';
 import TextPostCard from '../components/TextPostCard'; // Use the feed card
 import { API_URL } from '../config/api';
+import EmptyState from '../components/brand/EmptyState';
+import { FeedSkeleton } from '../components/brand/Skeleton';
 
 function TextFeedPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Feed read → TanStack Query. Uses the shared API_URL (previously hardcoded
   // to a stale :5008, which bypassed the .env backend).
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['feed', currentPage],
     queryFn: async () => {
       const response = await axios.get(
@@ -31,9 +33,15 @@ function TextFeedPage() {
       </div>
 
       {isLoading && posts.length === 0 ? (
-        <p style={{ textAlign: 'center' }}>Loading feed...</p>
+        <FeedSkeleton count={4} />
       ) : isError ? (
-        <p style={{ textAlign: 'center' }}>Couldn't load the feed.</p>
+        <EmptyState
+          tone="error"
+          motif="stack"
+          title="Couldn't load the feed"
+          body="Something interrupted the connection. Give it another try in a moment."
+          action={{ onClick: () => refetch(), label: 'Try again' }}
+        />
       ) : (
         <>
           <div className="highlights-feed"> {/* Use the feed layout class */}
@@ -42,7 +50,12 @@ function TextFeedPage() {
                 <TextPostCard key={post.id} post={post} />
               ))
             ) : (
-              <p style={{ textAlign: 'center' }}>No posts with stories found yet.</p>
+              <EmptyState
+                motif="stack"
+                title="No stories yet"
+                body="Posts with written descriptions gather here. Read an image to write the first one."
+                action={{ to: '/gallery', label: 'Open the Archive' }}
+              />
             )}
           </div>
 

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { API_URL } from '../../config/api';
 import { tasteHeaders } from '../../lib/tasteSession';
+import { PerceptMark } from '../brand/glyphs';
 
 // Your taste · Anuraṇana (2×1). "Your eye leans toward…" + motif chips, read from
 // the taste portfolio (thresholded — one tap is noise). Anonymous until you've
@@ -38,7 +39,7 @@ export default function TasteTile() {
           <div className="tile-taste-chips">
             {chips.map((c) => (
               <span key={`${c.name}`} className="taste-chip">
-                <span className="mark" aria-hidden>◈</span> {c.name}
+                <span className="mark" aria-hidden><PerceptMark size="1em" className="glyph--inline" /></span> {c.name}
               </span>
             ))}
           </div>

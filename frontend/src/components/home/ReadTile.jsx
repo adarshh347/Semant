@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { cldCrop, cldLqip } from '../../lib/cloudinary';
 import { fetchRecentPosts } from './homeData';
+import { PerceptMark } from '../brand/glyphs';
 
 // Read (1×1). One Aletheia hook — an image with the reading's opening move and a
 // perceptual fork — a door into the felt reading at /read/:postId. Deterministic
@@ -36,7 +37,7 @@ export default function ReadTile() {
             />
           </div>
           <p className="read-fork">
-            <span className="mark" aria-hidden>◈</span> What do you notice first?
+            <span className="mark" aria-hidden><PerceptMark size="1em" className="glyph--inline" /></span> What do you notice first?
           </p>
           <span className="tile-link">Read this deeper →</span>
         </Link>
