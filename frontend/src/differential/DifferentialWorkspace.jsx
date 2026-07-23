@@ -15,10 +15,12 @@ import FindSimilar from './FindSimilar';
 import SeeingConsole from './SeeingConsole';
 import PerceptWorkshop from './PerceptWorkshop';
 import AttunementPanel from './AttunementPanel';
+import SuggestionReview from './SuggestionReview';
 import useFindParts from './useFindParts';
 import { makeGround, groundFromRegion, resolveGround, groundCenter } from './grounds';
 import { useRecallPlayer } from './recall';
 import { CORE_ROLES } from './groundRoles';
+import { hasMaskPolygons, ringsToPath } from '../lib/maskGeometry';
 // CIRCUIT-001 P2D-A — the renderer-independent truth model. Marks emitted here are the
 // canonical record of what an instrument produced; grounds stay the persisted surface.
 import {
@@ -39,8 +41,8 @@ import {
 // CIRCUIT-001 P2E-B/P3-B — production instrument mechanics: editable anchors on
 // normalized geometry, endpoint ref-anchoring, and the perfect-freehand ribbon.
 import {
-    editablePoints, moveAnchor, insertAnchor, removeAnchor, applyPointEdit, isEditableGround,
-    anchorForEndpoint,
+    editablePoints, withEditedPoints, moveAnchor, insertAnchor, removeAnchor, applyPointEdit,
+    isEditableGround, anchorForEndpoint,
 } from './handleEditing';
 import './DifferentialWorkspace.css';
 
@@ -252,6 +254,14 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         // component's setState from inside a setEditing updater (React runs the
         // updater during render, and doing so warns "setState while rendering").
         if (!editing) return;
+        if (editing.target === '__suggestion__') {
+            // P4-B (2b): editing a suggestion's shape STAGES the points into the review
+            // edit — it never mutates the suggestion; acceptance folds them into the
+            // derived mark, leaving the original proposal intact in lineage.
+            setReview((rv) => (rv ? { ...rv, edit: { ...rv.edit, points: editing.points } } : rv));
+            setEditing(null);
+            return;
+        }
         if (editing.target === '__draft__') {
             setDraft((d) => (d && (d.kind === 'path' || d.kind === 'boundary')
                 ? { ...d, points: editing.points } : d));
@@ -304,6 +314,94 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         const d = dismissSuggestion(sugg);
         if (d) updateVisualMark(sugg.id, { status: d.status, warnings: d.warnings });
     }, [updateVisualMark]);
+
+    // ── CIRCUIT-001 P4-B — the suggestion review surface. ──────────────────────────
+    // `review` is `{ index, edit, dismissReason } | null`. When on, the review surface
+    // cycles the pending suggestions one at a time; `edit` STAGES role/label/geometry
+    // corrections (never mutating the suggestion) that acceptance folds into the derived
+    // mark (Label Studio edit-before-accept). Accepting many is the a-rhythm — there is
+    // deliberately no function that commits more than one suggestion per call.
+    const [review, setReview] = useState(null);
+    const wrapIndex = (n) => ((n % Math.max(1, pendingSuggestions.length)) + pendingSuggestions.length) % Math.max(1, pendingSuggestions.length);
+    const startReview = useCallback(() => {
+        if (pendingSuggestions.length) setReview({ index: 0, edit: {}, dismissReason: null });
+    }, [pendingSuggestions.length]);
+    const endReview = useCallback(() => setReview(null), []);
+    const reviewNext = useCallback(() => setReview((rv) => (rv ? { ...rv, index: wrapIndex(rv.index + 1), edit: {}, dismissReason: null } : rv)), [pendingSuggestions.length]);   // eslint-disable-line react-hooks/exhaustive-deps
+    const reviewPrev = useCallback(() => setReview((rv) => (rv ? { ...rv, index: wrapIndex(rv.index - 1), edit: {}, dismissReason: null } : rv)), [pendingSuggestions.length]);   // eslint-disable-line react-hooks/exhaustive-deps
+    const stageReviewRole = useCallback((role) => setReview((rv) => (rv ? { ...rv, edit: { ...rv.edit, role } } : rv)), []);
+    const stageReviewLabel = useCallback((label) => setReview((rv) => (rv ? { ...rv, edit: { ...rv.edit, label } } : rv)), []);
+    const setReviewDismissReason = useCallback((reason) => setReview((rv) => (rv ? { ...rv, dismissReason: reason } : rv)), []);
+
+    const currentSuggestion = useCallback(
+        () => pendingSuggestions[Math.min(review?.index ?? 0, pendingSuggestions.length - 1)] || null,
+        [pendingSuggestions, review],
+    );
+
+    // Open the stage handles on the CURRENT suggestion's geometry (a special edit
+    // target that stages back into review.edit rather than committing to a ground).
+    const editReviewGeometry = useCallback(() => {
+        const s = currentSuggestion();
+        const pts = s && editablePoints(s);
+        if (pts && pts.length) setEditing({ target: '__suggestion__', points: pts.map((p) => [...p]) });
+    }, [currentSuggestion]);
+
+    // Accept the current suggestion WITH the staged edits. `acceptSuggestion` mints a
+    // NEW mark (user_confirmed when the geometry KIND is unchanged — which the edits
+    // always keep, so the accepted mark stays citable), `derived_from` the suggestion,
+    // which is returned untouched. One suggestion per call — accepting many is N presses.
+    const acceptCurrentSuggestion = useCallback(() => {
+        if (!review) return;
+        const s = currentSuggestion();
+        if (!s) return;
+        const edits = {};
+        if (review.edit.role != null) edits.role = review.edit.role;
+        if (review.edit.label != null) edits.label = review.edit.label;
+        if (review.edit.points) edits.geometry = withEditedPoints(s, review.edit.points).geometry;
+        const out = acceptSuggestion(s, edits);
+        if (!out) return;
+        // A field suggestion carries strokes — promote them to a ground so the accepted
+        // mark cites real evidence (as the one-at-a-time flow already did).
+        let accepted = out.accepted;
+        const strokes = out.accepted.geometry?.strokes;
+        if (Array.isArray(strokes) && strokes.length) {
+            const g = addGround(makeGround('field', { strokes, label: out.accepted.label || '', instrument_role: out.accepted.role }));
+            accepted = { ...out.accepted, linked_ground_ids: [...(out.accepted.linked_ground_ids || []), g.id] };
+        }
+        addVisualMark(accepted);
+        // The accepted suggestion drops out of pendingSuggestions (it now has a
+        // descendant), so staying at this index lands on the next one; clear the edit.
+        setReview((rv) => (rv ? { ...rv, edit: {}, dismissReason: null } : rv));
+    }, [review, currentSuggestion, addGround, addVisualMark]);
+
+    const dismissCurrentSuggestion = useCallback(() => {
+        if (!review) return;
+        const s = currentSuggestion();
+        if (!s) return;
+        const d = dismissSuggestion(s);
+        // P4F: the quarantine's dismissSuggestion takes no reason; until it does, the
+        // reason rides as an additive session field on the dismissed (non-persisted) mark.
+        if (d) updateVisualMark(s.id, { status: d.status, warnings: d.warnings, ...(review.dismissReason ? { dismiss_reason: review.dismissReason } : {}) });
+        setReview((rv) => (rv ? { ...rv, edit: {}, dismissReason: null } : rv));
+    }, [review, currentSuggestion, updateVisualMark]);
+
+    // Dismiss-all is one button — refusal needs no ceremony (2d).
+    const dismissAllSuggestions = useCallback(() => {
+        for (const s of pendingSuggestions) {
+            const d = dismissSuggestion(s);
+            if (d) updateVisualMark(s.id, { status: d.status, warnings: d.warnings });
+        }
+        setReview(null);
+    }, [pendingSuggestions, updateVisualMark]);
+
+    // Keep review in range as the queue shrinks; leave review when it empties.
+    useEffect(() => {
+        if (!review) return;
+        if (pendingSuggestions.length === 0) { setReview(null); return; }
+        if (review.index >= pendingSuggestions.length) {
+            setReview((rv) => (rv ? { ...rv, index: pendingSuggestions.length - 1, edit: {}, dismissReason: null } : rv));
+        }
+    }, [review, pendingSuggestions.length]);
 
     // ── CIRCUIT-001 P3-B Debt 2 — the real suggestion source. ──────────────────────
     // A model_suggested (or, for tests, `fixture`-source) action arriving through the
@@ -814,6 +912,15 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     useEffect(() => {
         const down = (e) => {
             if (e.target.closest?.('input, textarea, [contenteditable="true"]')) return;
+            // P4-B (2a): review shortcuts take precedence while reviewing (but not while
+            // the geometry handles are open — then Escape/Enter belong to the reshape).
+            if (review && !editing) {
+                if (e.key === 'n' || e.key === 'ArrowRight') { e.preventDefault(); reviewNext(); return; }
+                if (e.key === 'p' || e.key === 'ArrowLeft') { e.preventDefault(); reviewPrev(); return; }
+                if (e.key === 'a') { e.preventDefault(); acceptCurrentSuggestion(); return; }
+                if (e.key === 'd') { e.preventDefault(); dismissCurrentSuggestion(); return; }
+                if (e.key === 'Escape') { e.preventDefault(); endReview(); return; }
+            }
             if (tool === 'refine') {
                 if (e.key === 'Enter') { e.preventDefault(); confirmRefine(); return; }
                 if (e.key === 'Escape') { refine.clear(); return; }
@@ -841,7 +948,8 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         window.addEventListener('keyup', up);
         return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
         // eslint-disable-next-line react-hooks/exhaustive-deps -- stable refine.clear only
-    }, [recall, clearRecall, composer, hasDrawDraft, hasCompDraft, picked, tray, clearDraft, undoStroke, switchTool, tool, traceSub, selectRegion, selectGround, setHoveredId, confirmRefine, refine.clear, editing, cancelEdit]);
+    }, [recall, clearRecall, composer, hasDrawDraft, hasCompDraft, picked, tray, clearDraft, undoStroke, switchTool, tool, traceSub, selectRegion, selectGround, setHoveredId, confirmRefine, refine.clear, editing, cancelEdit,
+        review, reviewNext, reviewPrev, acceptCurrentSuggestion, dismissCurrentSuggestion, endReview]);
 
     const saving = saveState === 'saving' || metaSaveState === 'saving';
     const saved = saveState === 'saved' || metaSaveState === 'saved';
@@ -1046,7 +1154,11 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     onActivate={(tool === 'select' || tool === 'similar') ? setHoveredId : undefined}
                                     className="diff-svg"
                                     interactive={tool !== 'refine'}
-                                    proposal={tool === 'refine' ? refine.proposal : null}
+                                    // P4-B (2c): the mask preview no longer rides RegionOverlay's
+                                    // ad-hoc `rs-proposal` — it renders on the SUGGESTION layer
+                                    // (RefineProposalGhost below), visibly distinct and uncitable.
+                                    // RegionOverlay keeps only the fg/bg point + box PROMPT.
+                                    proposal={null}
                                     prompt={tool === 'refine' ? { points: refine.points, box: refineBox || refine.box } : null}
                                 />
                                 <GroundLayers
@@ -1069,6 +1181,13 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     P3-B (2d): honors the suggestion layer's visibility control. */}
                                 {suggestionLayer?.visibility !== false && (
                                     <SuggestionGhosts marks={pendingSuggestions} natural={natural} usePF={usePerfectFreehand} />
+                                )}
+                                {/* P4-B (2c) — the SAM refine PREVIEW lives on the suggestion
+                                    layer: a distinct dashed teal mask, uncitable, never mistaken
+                                    for a committed segment. Correction (add/remove fg/bg points,
+                                    re-preview) happens under it; Accept persists via confirmRefine. */}
+                                {tool === 'refine' && suggestionLayer?.visibility !== false && (
+                                    <RefineProposalGhost proposal={refine.proposal} natural={natural} />
                                 )}
                                 {/* P2E-B (2c) — editable anchors on the geometry being reshaped */}
                                 {editing && natural && (
@@ -1158,26 +1277,51 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         </section>
                     )}
 
-                    {/* P2E-B (2e) — the suggestion quarantine, live. Model-proposed marks
-                        wait here: uncitable, never counted, visibly the model's until a human
-                        Accepts (mints a user_confirmed mark, lineage back) or Dismisses. */}
-                    {pendingSuggestions.length > 0 && (
+                    {/* P4-B (2a) — the suggestion quarantine, now a REVIEW surface. When
+                        the model proposes marks they wait here, uncitable and visibly the
+                        model's. Not reviewing yet → an entry with the count and a Review
+                        button (a single suggestion still gets quick Accept/Dismiss). While
+                        reviewing → the full surface: cycle, edit, accept/dismiss, bulk. */}
+                    {pendingSuggestions.length > 0 && !review && (
                         <section className="diff-insp-section diff-insp-suggestions">
-                            <span className="diff-eyebrow">Model suggestions · {pendingSuggestions.length}</span>
-                            {pendingSuggestions.map((s) => (
-                                <div key={s.id} className="diff-suggestion">
+                            <div className="diff-review-head">
+                                <span className="diff-eyebrow">Model suggestions · {pendingSuggestions.length}</span>
+                                <button type="button" className="diff-primary diff-review-start" onClick={startReview}>
+                                    Review {pendingSuggestions.length}
+                                </button>
+                            </div>
+                            {pendingSuggestions.length === 1 && (
+                                <div className="diff-suggestion">
                                     <div className="diff-suggestion-head">
-                                        <span className="diff-chip diff-mark-prov-chip is-model">{summarizeProvenance(s)}</span>
-                                        <span className="diff-suggestion-role">{roleLabel(s.type, s.role)}</span>
+                                        <span className="diff-chip diff-mark-prov-chip is-model">{summarizeProvenance(pendingSuggestions[0])}</span>
+                                        <span className="diff-suggestion-role">{roleLabel(pendingSuggestions[0].type, pendingSuggestions[0].role)}</span>
                                     </div>
-                                    {s.label && <p className="diff-insp-hint">“{s.label}”</p>}
+                                    {pendingSuggestions[0].label && <p className="diff-insp-hint">“{pendingSuggestions[0].label}”</p>}
                                     <div className="diff-insp-row-actions">
-                                        <button type="button" className="diff-primary" onClick={() => acceptBrushSuggestion(s)}>Accept</button>
-                                        <button type="button" className="diff-quiet" onClick={() => dismissBrushSuggestion(s)}>Dismiss</button>
+                                        <button type="button" className="diff-primary" onClick={() => acceptBrushSuggestion(pendingSuggestions[0])}>Accept</button>
+                                        <button type="button" className="diff-quiet" onClick={() => dismissBrushSuggestion(pendingSuggestions[0])}>Dismiss</button>
                                     </div>
                                 </div>
-                            ))}
+                            )}
                         </section>
+                    )}
+                    {review && pendingSuggestions.length > 0 && (
+                        <SuggestionReview
+                            suggestions={pendingSuggestions}
+                            index={review.index}
+                            edit={review.edit}
+                            dismissReason={review.dismissReason}
+                            geometryEditing={editing?.target === '__suggestion__'}
+                            onPrev={reviewPrev}
+                            onNext={reviewNext}
+                            onAccept={acceptCurrentSuggestion}
+                            onDismiss={dismissCurrentSuggestion}
+                            onDismissAll={dismissAllSuggestions}
+                            onSetRole={stageReviewRole}
+                            onSetLabel={stageReviewLabel}
+                            onEditGeometry={editReviewGeometry}
+                            onSetDismissReason={setReviewDismissReason}
+                        />
                     )}
 
                     {/* 2 — SEEING. Find parts stays one keystroke away, but it is now one
@@ -1528,6 +1672,28 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                 </aside>
             </div>
         </div>
+    );
+}
+
+/**
+ * P4-B (2c) — the SAM refine proposal, rendered on the suggestion layer as a
+ * DISTINCT dashed teal mask: a preview, visibly the model's, uncitable, never
+ * mistaken for a committed segment. Same natural-pixel viewBox as the marks, so
+ * it registers exactly with the image. The prompt points (fg/bg) render through
+ * RegionOverlay; this is only the mask preview.
+ */
+export function RefineProposalGhost({ proposal, natural }) {
+    if (!natural || !proposal || !hasMaskPolygons(proposal)) return null;
+    return (
+        <svg className="diff-refine-ghost"
+            viewBox={`0 0 ${natural.w} ${natural.h}`} preserveAspectRatio="xMidYMid meet"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 5 }}
+            aria-hidden="true">
+            <path d={ringsToPath(proposal.polygons, natural.w, natural.h)} fillRule="evenodd"
+                fill="#7FB3A8" fillOpacity={0.16} stroke="#7FB3A8" strokeOpacity={0.85}
+                strokeWidth={Math.max(1.5, 0.003 * natural.w)} strokeDasharray="7 5"
+                vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+        </svg>
     );
 }
 

@@ -70,23 +70,38 @@ export default function DifferentialLab() {
 
     const store = useRegionState(post, () => {});
 
-    // Seed one quarantined suggestion (a model-proposed field) so the Accept/Dismiss
-    // flow is visible on load — the fixture producer, not a workspace DEV fork.
+    // Seed a 20-suggestion fixture BATCH so the P4-B review surface (cycle, edit,
+    // accept/dismiss, bulk) can be exercised end-to-end — the fixture producer, not a
+    // workspace DEV fork. Mix of trace (point-editable) and brush (stroke) families,
+    // varied roles, so edit-before-accept and provenance rows are all reachable.
     const seeded = useRef(false);
     useEffect(() => {
         if (seeded.current || !store?.addVisualMark) return;
         seeded.current = true;
-        store.addVisualMark(quarantineSuggestion(makeVisualMark('brush_field', {
-            role: 'gaze_field', label: 'a field the model proposes', source: 'model_suggested',
-            geometry: {
-                kind: 'freehand_path',
-                strokes: [{
-                    points: [[0.55, 0.30, 0.6], [0.62, 0.34, 0.9], [0.68, 0.42, 0.8], [0.66, 0.52, 0.5], [0.60, 0.58, 0.3]],
-                    radius: 0.06, strength: 0.7, op: 'add',
-                }],
-            },
-            provenance: { planner: 'fixture', model: 'demo' },
-        })));
+        const traceRoles = ['gaze_address', 'gesture', 'fall_of_light', 'movement', 'architectural_axis'];
+        const fieldRoles = ['gaze_field', 'light_field', 'shadow_field', 'atmosphere_field', 'pressure_zone'];
+        for (let i = 0; i < 20; i++) {
+            const isTrace = i % 2 === 0;
+            const t = i / 19;
+            const y = 0.2 + 0.55 * ((i % 5) / 4);
+            const mark = isTrace
+                ? makeVisualMark('trace_mark', {
+                    role: traceRoles[i % traceRoles.length],
+                    label: `proposed line ${i + 1}`, source: 'model_suggested',
+                    geometry: { kind: 'polyline', points: [[0.15 + 0.1 * t, y], [0.45 + 0.2 * t, y - 0.05], [0.7, y + 0.05]] },
+                    provenance: { planner: 'fixture', model: 'planner-x' },
+                })
+                : makeVisualMark('brush_field', {
+                    role: fieldRoles[i % fieldRoles.length],
+                    label: `proposed field ${i + 1}`, source: 'model_suggested',
+                    geometry: { kind: 'freehand_path', strokes: [{
+                        points: [[0.5 + 0.03 * (i % 4), y, 0.6], [0.58, y + 0.04, 0.9], [0.64, y + 0.1, 0.5]],
+                        radius: 0.05, strength: 0.7, op: 'add',
+                    }] },
+                    provenance: { planner: 'fixture', model: 'planner-x' },
+                });
+            store.addVisualMark(quarantineSuggestion(mark));
+        }
     }, [store]);
 
     return (
