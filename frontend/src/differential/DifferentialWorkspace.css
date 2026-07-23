@@ -1114,3 +1114,43 @@
 .diff-suggestion-role { font-size: 11px; color: var(--diff-muted, #8a8276); text-transform: capitalize; }
 .diff-mark-prov-chip.is-model { background: rgba(127, 179, 168, 0.18); color: #7FB3A8; }
 .diff-suggestion-ghost path { pointer-events: none; }
+
+/* ── CIRCUIT-001 P3-B — instrument completion ────────────────────────────────── */
+
+/* (2a) trace terminus toggles + (2c) erase toggle — sit in the subtool row */
+.diff-trace-terminus { gap: 12px; }
+.diff-erase-toggle.on { color: var(--accent, #C08457); font-weight: 600; }
+.diff-erase-toggle.on input { accent-color: #C0574F; }
+
+/* (2a) an honest terminus: a detached endpoint reads as a hollow ring; an
+   ambiguous head fades softly rather than asserting a target. */
+.gl-anchor-detached {
+    fill: none; stroke: #C0574F; stroke-width: 2; stroke-dasharray: 3 2;
+    opacity: 0.9;
+}
+.gl-path-soft { fill: var(--accent, #C08457); fill-opacity: 0.28; stroke: none; }
+
+/* (2d) minimal layer controls — a compact strip at the foot of the tool column */
+.diff-layers {
+    margin-top: auto; padding-top: 10px; display: flex; flex-direction: column; gap: 3px;
+    border-top: 1px solid var(--diff-hair, rgba(138, 130, 118, 0.18));
+}
+.diff-layers-title {
+    font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--diff-muted, #8a8276); padding: 0 2px 2px;
+}
+.diff-layer-row {
+    display: flex; align-items: center; gap: 4px; font-size: 10px;
+    color: var(--diff-ink, #2c2822);
+}
+.diff-layer-row.is-hidden { opacity: 0.5; }
+.diff-layer-eye, .diff-layer-lock {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: none; border: none; padding: 2px; cursor: pointer;
+    color: var(--diff-muted, #8a8276); border-radius: 4px;
+}
+.diff-layer-eye:disabled { cursor: default; opacity: 0.5; }
+.diff-layer-lock.on { color: var(--accent, #C08457); }
+.diff-layer-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.diff-layer-opacity { width: 44px; accent-color: var(--accent, #5E2B50); }
+.diff-layer-system { font-size: 9px; color: var(--diff-muted, #8a8276); opacity: 0.7; }

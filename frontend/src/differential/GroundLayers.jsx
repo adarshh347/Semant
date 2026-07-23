@@ -62,15 +62,39 @@ function PathGround({ g, natural, state, usePF }) {
     const px = toPx(g.points, natural);
     const body = ribbon(px, 0.02 * natural.w, usePF);
     const center = centerlinePath(px);
-    const chevron = endChevron(px, 0.028 * natural.w);
     const traveling = progress < 1;
+    // P3-B (2a) — an honest terminus. A trace only wears a sharp arrowhead when it
+    // actually asserts a target: `arrowhead:false` suppresses it, and `ambiguous:true`
+    // (the curator did not commit to what it points at) replaces it with a soft,
+    // fading terminus — never an arrow claiming a target that was never named.
+    const ambiguous = !!g.ambiguous;
+    const showArrow = g.arrowhead !== false && !ambiguous;
+    const chevron = showArrow ? endChevron(px, 0.028 * natural.w) : null;
+    const head = px.length ? px[px.length - 1] : null;
+    const softR = Math.max(3, 0.02 * natural.w);
+    // A detached endpoint (its ref no longer resolves — contract v2 #1) reads as a
+    // distinct hollow ring: the detachment is a visible fact, not a silent move.
+    const anchors = g.anchors || null;
+    const detached = [];
+    if (px.length) {
+        if (anchors?.from?.detached_from_ref) detached.push(px[0]);
+        if (anchors?.to?.detached_from_ref) detached.push(px[px.length - 1]);
+    }
     return (
         <g className="gl-path" style={{ opacity: dim }}>
             {/* the body reveals as the line travels */}
             <path d={body} className="gl-path-ribbon" style={{ opacity: 0.85 * progress }} />
             <path d={center} className="gl-path-center" pathLength={1} vectorEffect="non-scaling-stroke"
                 style={{ strokeDasharray: 1, strokeDashoffset: 1 - progress }} />
-            {!traveling && <path d={chevron} className="gl-path-chevron" vectorEffect="non-scaling-stroke" />}
+            {!traveling && chevron && <path d={chevron} className="gl-path-chevron" vectorEffect="non-scaling-stroke" />}
+            {!traveling && ambiguous && head && (
+                <circle className="gl-path-soft" cx={head[0]} cy={head[1]} r={softR}
+                    vectorEffect="non-scaling-stroke" />
+            )}
+            {detached.map(([x, y], i) => (
+                <circle key={`det-${i}`} className="gl-anchor-detached" cx={x} cy={y}
+                    r={softR * 0.8} vectorEffect="non-scaling-stroke" />
+            ))}
         </g>
     );
 }
@@ -222,6 +246,8 @@ export default function GroundLayers({
     interactive = false,          // P2E-B (2b): render hit-paths for editable grounds
     onPickGround = null,          // (groundId, event) → the workspace opens an edit
     editingGroundId = null,       // hide the hit-path for the ground currently being edited
+    evidenceVisible = true,       // P3-B (2d): the evidence layer's visibility control
+    evidenceOpacity = 1,          // P3-B (2d): the evidence layer's opacity control
 }) {
     const canvasRef = useRef(null);
 
@@ -255,6 +281,9 @@ export default function GroundLayers({
                 style={{
                     position: 'absolute', left: content.x, top: content.y,
                     width: content.w, height: content.h, pointerEvents: 'none',
+                    // P3-B (2d): the evidence layer's visibility/opacity governs the
+                    // committed field wash on the canvas.
+                    opacity: evidenceVisible ? evidenceOpacity : 0,
                 }}
                 aria-hidden="true"
             />
@@ -270,6 +299,12 @@ export default function GroundLayers({
                         <feGaussianBlur stdDeviation={Math.max(2, natural.w * 0.006)} />
                     </filter>
                 </defs>
+                {/* P3-B (2d): committed grounds are the evidence layer — its
+                    visibility/opacity controls wrap them as one group. The draft and
+                    hit-paths sit OUTSIDE (scratch / interaction), so hiding evidence
+                    never hides the line under your hand. */}
+                <g className="gl-evidence" style={{ opacity: evidenceVisible ? evidenceOpacity : 0,
+                    pointerEvents: evidenceVisible ? undefined : 'none' }}>
                 {svgGrounds.map((g) => {
                     const state = groundAlpha(g, { focusGroundIds, recall, recallOnly });
                     if (!state.on) return null;
@@ -288,6 +323,7 @@ export default function GroundLayers({
                     }
                     return null;
                 })}
+                </g>
 
                 {/* the in-progress trace draft */}
                 {draftPoints && draftPoints.length > 1 && (

@@ -3,6 +3,7 @@ import {
     hitAnchor, hitSegment, projectOnSegment, moveAnchor, insertAnchor,
     removeAnchor, translatePoints, scalePoints, pointsBBox,
     editablePoints, withEditedPoints, syncAnchors, applyPointEdit, isEditableGround,
+    anchorForEndpoint,
 } from './handleEditing';
 import { makeVisualMark } from './visualMarks';
 
@@ -119,5 +120,42 @@ describe('anchor sync makes ref detachment visible (contract v2 #1)', () => {
         expect(out.geometry.points[0]).toEqual([0.3, 0.2]);
         expect(out.anchors.from.detached_from_ref).toBe(true);
         expect(out.updated_at).toBe('2026-07-23T00:00:00Z');
+    });
+});
+
+// ── CIRCUIT-001 P3-B (2a) — endpoint ref-anchoring ────────────────────────────
+describe('anchorForEndpoint resolves a trace endpoint onto a reference', () => {
+    const cands = [
+        { kind: 'ground', ref: 'gnd_a', at: [0.30, 0.30] },
+        { kind: 'region', ref: 'reg_b', at: [0.70, 0.70] },
+    ];
+
+    it('anchors to the nearest candidate within tolerance, freezing at to the endpoint', () => {
+        const a = anchorForEndpoint([0.31, 0.29], cands, 0.05);
+        expect(a.kind).toBe('ground');
+        expect(a.ref).toBe('gnd_a');
+        // `at` is the endpoint itself, not the candidate's cached centre.
+        expect(a.at).toEqual([0.31, 0.29]);
+    });
+
+    it('picks the closer of two candidates', () => {
+        const a = anchorForEndpoint([0.68, 0.72], cands, 0.1);
+        expect(a.ref).toBe('reg_b');
+    });
+
+    it('an endpoint far from everything anchors to ITSELF (kind:point), never a wrong ref', () => {
+        const a = anchorForEndpoint([0.02, 0.98], cands, 0.04);
+        expect(a.kind).toBe('point');
+        expect(a.ref).toBeUndefined();
+        expect(a.at).toEqual([0.02, 0.98]);
+    });
+
+    it('a point anchor can later be promoted, and dragging away from a ref detaches it', () => {
+        // land on the ground → ref anchor; then drag the endpoint away → detached.
+        const landed = anchorForEndpoint([0.30, 0.30], cands, 0.05);
+        expect(landed.kind).toBe('ground');
+        const synced = syncAnchors({ from: landed, to: null }, [[0.6, 0.6], [1, 1]]);
+        expect(synced.from.ref).toBe('gnd_a');
+        expect(synced.from.detached_from_ref).toBe(true);
     });
 });

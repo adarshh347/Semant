@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ArrowLeft, MousePointer2, Brush, PenTool, Group, Waypoints, Frame, Eye, Check,
-    Undo2, X, Plus, Scan, Sparkles, Search,
+    ArrowLeft, MousePointer2, Brush, PenTool, Group, Waypoints, Frame, Eye, EyeOff, Check,
+    Undo2, X, Plus, Scan, Sparkles, Search, Lock, Unlock,
 } from 'lucide-react';
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
@@ -16,26 +16,40 @@ import SeeingConsole from './SeeingConsole';
 import PerceptWorkshop from './PerceptWorkshop';
 import AttunementPanel from './AttunementPanel';
 import useFindParts from './useFindParts';
-import { makeGround, groundFromRegion, resolveGround } from './grounds';
+import { makeGround, groundFromRegion, resolveGround, groundCenter } from './grounds';
 import { useRecallPlayer } from './recall';
 import { CORE_ROLES } from './groundRoles';
 // CIRCUIT-001 P2D-A — the renderer-independent truth model. Marks emitted here are the
 // canonical record of what an instrument produced; grounds stay the persisted surface.
-import { makeVisualMark, normalizeMark, markSummary, FIELD_ROLE_KEYS, roleLabel } from './visualMarks';
+import {
+    normalizeMark, markSummary, roleLabel,
+    FIELD_ROLE_KEYS, TRACE_ROLE_KEYS, RELATION_ROLE_KEYS, regionMaskMark,
+} from './visualMarks';
 import {
     quarantineSuggestion, acceptSuggestion, dismissSuggestion, isSuggestion,
     summarizeProvenance, hasModelInvolvement,
 } from './suggestionQuarantine';
-// CIRCUIT-001 P2E-B — production instrument mechanics: editable anchors on
-// normalized geometry, and the perfect-freehand ribbon (both from the P2D-B spike).
+// CIRCUIT-001 P3-B — Debt 2: a model_suggested/fixture action becomes a quarantined
+// draft through the real staging bridge (no DEV fork in production).
+import { draftMarkFromAction } from './markStaging';
+// CIRCUIT-001 P3-B (2d) — the four system layers, via Lane A3's layer vocabulary.
+import {
+    createDefaultLayers, toggleLayerVisibility, setLayerOpacity, lockLayer, unlockLayer, isSystemLayer,
+} from './visualLayers';
+// CIRCUIT-001 P2E-B/P3-B — production instrument mechanics: editable anchors on
+// normalized geometry, endpoint ref-anchoring, and the perfect-freehand ribbon.
 import {
     editablePoints, moveAnchor, insertAnchor, removeAnchor, applyPointEdit, isEditableGround,
+    anchorForEndpoint,
 } from './handleEditing';
 import './DifferentialWorkspace.css';
 
-// The twelve field roles the semantic brush offers (contract §2), from Lane A's
-// vocabulary — never a fourth dialect. A compact picker uses the first six.
+// The role vocabularies the instruments offer (contract §2), from Lane A's
+// module — never a fourth dialect. Brush → field roles, Trace → trace roles,
+// Connect → relation roles. Each instrument mints its family with its own role.
 const BRUSH_ROLES = FIELD_ROLE_KEYS;
+const TRACE_ROLES = TRACE_ROLE_KEYS;
+const RELATION_ROLES = RELATION_ROLE_KEYS;
 
 /**
  * Differential — the dedicated percept-construction workspace (v1).
@@ -112,6 +126,10 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         setHoveredGroundId, focusGroundIds,
         addExpressionPercept, playRecall, clearRecall, recall,
         updateRegion, addRegion,
+        // CIRCUIT-001 P3-B Debt 1 — the visual_mark store API landed in P2E-A. Marks
+        // now persist alongside grounds; the commit is the write (a draft never thrashes
+        // the network — the store filters to committed/superseded, its contract).
+        visualMarks, addVisualMark, updateVisualMark, visualMarksForGround,
     } = store;
 
     const recallPlayer = useRecallPlayer(store);
@@ -139,32 +157,59 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // or clear, it is dropped. Nothing is written by arming.
     const [stagedMark, setStagedMark] = useState(null);   // { kind, role, label, actionId }
 
-    // ── CIRCUIT-001 P2D-A — the visual_mark record. ───────────────────────────────
+    // ── CIRCUIT-001 P2D-A / P3-B Debt 1 — the visual_mark record, now in the store. ──
     // Grounds are the persisted surface; a visual_mark is the renderer-independent TRUTH of
-    // what an instrument produced — role, source, status, lineage. Held in component state
-    // this session (there is no marks backend yet, by design), and linked to the ground it
-    // rides on via `linked_ground_ids`, so the two never disagree about provenance.
-    const [marks, setMarks] = useState([]);
-    const emitMark = useCallback((mark) => {
-        if (!mark) return null;
-        // P2F: marks live in session state (P2D-A design — no marks backend yet). When
-        // Lane A2's store API lands, swap this to regionStore.addVisualMark(mark) so
-        // marks persist alongside grounds. Ground reshapes ALREADY persist via
-        // updateGround; only mark emission is session-local.
-        setMarks((ms) => [...ms, mark]);
-        return mark;
-    }, []);
+    // what an instrument produced — role, source, status, lineage. It rides on the ground it
+    // links via `linked_ground_ids`, so the two never disagree about provenance. Debt 1
+    // routed emission through `regionStore.addVisualMark`: committed marks persist, drafts
+    // and suggestions stay session-local (the store filters to committed/superseded).
+    const marks = visualMarks;
+    const emitMark = addVisualMark;
 
     // ── CIRCUIT-001 P2E-B — production instrument mechanics ────────────────────
     // (2d) the freehand ribbon generator toggle. perfect-freehand is smoother and
     // pressure-expressive; taperedRibbon is the fallback (its ~20× smaller polygon
     // is the measured rollback reason). Raw input points stay the stored truth.
-    const [usePerfectFreehand, setUsePerfectFreehand] = useState(false);
+    // P3-B (2e): perfect-freehand is now the DEFAULT — the measurement held (a few
+    // ms to generate even the heaviest corpus stroke; render cost, not storage cost,
+    // and the corpus tops out at 6 marks/post). taperedRibbon stays the toggle's
+    // rollback. Raw input points remain the stored truth either way.
+    const [usePerfectFreehand, setUsePerfectFreehand] = useState(true);
     // (2e) the semantic brush's chosen field role — the whole point of the brush.
     const [brushRole, setBrushRole] = useState('light_field');
+    // P3-B (2c): the brush's erase mode writes strokes[].op:'sub' as DATA — the
+    // canvas composites it destination-out; the op round-trips through the mark.
+    const [brushErase, setBrushErase] = useState(false);
+    // P3-B (2a): the trace instrument's chosen role, and its terminus honesty —
+    // `ambiguous` replaces the arrowhead with a soft fade (no target asserted).
+    const [traceRole, setTraceRole] = useState(TRACE_ROLES[0]);
+    const [traceAmbiguous, setTraceAmbiguous] = useState(false);
+    const [traceArrowhead, setTraceArrowhead] = useState(true);
+    // P3-B (2b): the relation instrument's chosen role.
+    const [relationRole, setRelationRole] = useState(RELATION_ROLES[0]);
+    // P3-B (2d): the four system layers (Lane A3's vocabulary). Minimal controls —
+    // visibility / opacity / lock — live in the tool column; a locked evidence layer
+    // refuses handle edits and new draws; recall exposes no controls (system-only).
+    const [layers, setLayers] = useState(() => createDefaultLayers());
     // (2c) a reshape session: the geometry being edited by hand, still a DRAFT
     // until Kept. `target` is a ground id, or '__draft__' for a fresh trace.
     const [editing, setEditing] = useState(null);   // { target, points } | null
+
+    const layerByType = useMemo(
+        () => Object.fromEntries((layers || []).map((l) => [l.layer_type, l])),
+        [layers],
+    );
+    const evidenceLayer = layerByType.evidence;
+    const suggestionLayer = layerByType.suggestion;
+    const evidenceLocked = !!evidenceLayer?.locked;
+    // The layer controls, wired to Lane A3's immutable mutators (never reimplemented).
+    const onToggleLayer = useCallback((id) => setLayers((ls) => toggleLayerVisibility(ls, id)), []);
+    const onLayerOpacity = useCallback((id, v) => setLayers((ls) => setLayerOpacity(ls, id, v)), []);
+    const onToggleLock = useCallback((id) => setLayers((ls) => {
+        const l = ls.find((x) => x.id === id);
+        if (!l || isSystemLayer(l)) return ls;   // recall can never be unlocked
+        return l.locked ? unlockLayer(ls, id) : lockLayer(ls, id);
+    }), []);
 
     // The one sanctioned pointer→normalized path, wrapped for the handle overlay
     // (which has clientX/clientY, not a full event). It never reimplements the
@@ -177,11 +222,14 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // its layer is locked. The points are copied into the edit draft; the ground is
     // untouched until Keep.
     const beginEditGround = useCallback((groundId) => {
+        // P3-B (2d): a locked evidence layer refuses handle edits — the committed
+        // grounds are held still until it is unlocked.
+        if (evidenceLocked) return;
         const g = grounds.find((x) => x.id === groundId);
         if (!g || !isEditableGround(g)) return;
         setEditing({ target: groundId, points: (g.points || []).map((p) => [...p]) });
         selectGround(groundId);
-    }, [grounds, selectGround]);
+    }, [grounds, selectGround, evidenceLocked]);
 
     const editMove = useCallback((index, at) => {
         setEditing((ed) => (ed ? { ...ed, points: moveAnchor(ed.points, index, at) } : ed));
@@ -209,13 +257,19 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                 ? { ...d, points: editing.points } : d));
         } else if (editing.points.length >= 2) {
             updateGround(editing.target, { points: editing.points });
-            setMarks((ms) => ms.map((m) => (
-                (m.linked_ground_ids || []).includes(editing.target) && editablePoints(m)
-                    ? applyPointEdit(m, editing.points) : m
-            )));
+            // Re-sync any linked mark that carries its own geometry (anchors honor
+            // detached_from_ref) — through the store now (Debt 1), not session state.
+            for (const m of visualMarksForGround(editing.target)) {
+                if (!editablePoints(m)) continue;
+                const next = applyPointEdit(m, editing.points);
+                updateVisualMark(m.id, {
+                    geometry: next.geometry,
+                    ...(next.anchors ? { anchors: next.anchors } : null),
+                });
+            }
         }
         setEditing(null);
-    }, [editing, updateGround]);
+    }, [editing, updateGround, visualMarksForGround, updateVisualMark]);
     const cancelEdit = useCallback(() => setEditing(null), []);
 
     // (2e) the live quarantine: suggestions still awaiting a human decision — model
@@ -239,32 +293,39 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         const accepted = groundId
             ? { ...out.accepted, linked_ground_ids: [...(out.accepted.linked_ground_ids || []), groundId] }
             : out.accepted;
-        setMarks((ms) => [...ms, accepted]);
-    }, [addGround]);
+        // The suggestion is preserved (lineage points back); the accepted mark is a
+        // NEW committed record — added to the store, so it persists (Debt 1).
+        addVisualMark(accepted);
+    }, [addGround, addVisualMark]);
 
     const dismissBrushSuggestion = useCallback((sugg) => {
-        setMarks((ms) => ms.map((m) => (m.id === sugg.id ? dismissSuggestion(m) : m)));
-    }, []);
+        // dismissSuggestion returns a new mark with status 'dismissed' (kept, not
+        // destroyed); patch it in place through the store (Debt 1).
+        const d = dismissSuggestion(sugg);
+        if (d) updateVisualMark(sugg.id, { status: d.status, warnings: d.warnings });
+    }, [updateVisualMark]);
 
-    // P2F: the planner emits suggestions once orchestration lands (Lane A2). Until
-    // then, a DEV-only seam mints one quarantined brush suggestion over the current
-    // image so the Accept/Dismiss flow is exercisable by hand. Never ships: gated on
-    // import.meta.env.DEV and removed at P2F when a real model_suggested action arrives.
-    useEffect(() => {
-        if (!import.meta.env?.DEV) return undefined;
-        window.__diffSeedSuggestion = (role = 'gaze_field') => {
-            const sugg = quarantineSuggestion(makeVisualMark('brush_field', {
-                role, label: 'a field the model proposes', source: 'model_suggested',
-                geometry: { kind: 'freehand_path', strokes: [{
-                    points: [[0.55, 0.30, 0.6], [0.62, 0.34, 0.9], [0.68, 0.42, 0.8], [0.66, 0.52, 0.5], [0.60, 0.58, 0.3]],
-                    radius: 0.06, strength: 0.7, op: 'add',
-                }] },
-                provenance: { planner: 'dev-seed', model: 'demo' },
-            }));
-            setMarks((ms) => [...ms, sugg]);
-        };
-        return () => { delete window.__diffSeedSuggestion; };
-    }, []);
+    // ── CIRCUIT-001 P3-B Debt 2 — the real suggestion source. ──────────────────────
+    // A model_suggested (or, for tests, `fixture`-source) action arriving through the
+    // attunement/action path becomes a quarantined draft via Lane A3's real staging
+    // bridge — `draftMarkFromAction` routes any model_suggested mark through
+    // `quarantineSuggestion`, so a suggestion can never be constructed outside the
+    // quarantine. No DEV fork: the same code path serves a live planner and a fixture.
+    // The planner has no image access, so a proposal may arrive with geometry
+    // (`payload.geometry`) or unresolved; either way it lands in the suggestion layer
+    // and drives the Accept/Dismiss flow below.
+    const receiveModelSuggestion = useCallback((action) => {
+        const draft = draftMarkFromAction(action);
+        if (!draft) return null;
+        const geometry = action?.payload?.geometry;
+        const withGeom = geometry && typeof geometry === 'object' ? { ...draft, geometry } : draft;
+        // This entry point IS the quarantine door. `draftMarkFromAction` already
+        // quarantines a model_suggested mark; a fixture-source proposal (tests, and any
+        // non-model producer) is quarantined here — so a suggestion is a suggestion no
+        // matter who proposed it, and it can never reach evidence without a human Accept.
+        const sugg = isSuggestion(withGeom) ? withGeom : quarantineSuggestion(withGeom);
+        return addVisualMark(sugg);
+    }, [addVisualMark]);
 
     // ── Read (VISION-D · D4) — the VLM interprets the candidate masks (never geometry) ──
     const reading = useSemanticRead(postId, post?.semantics || null);
@@ -365,10 +426,14 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         if (tool === 'brush') {
             e.currentTarget.setPointerCapture?.(e.pointerId);
             drawingRef.current = true;
+            // P3-B (2c): erase is DATA. The stroke's `op` is 'sub' in erase mode (or
+            // when ⌥ is held), 'add' otherwise; the canvas composites 'sub' as
+            // destination-out, and the op is stored on the stroke so it round-trips.
+            const op = (brushErase || e.altKey) ? 'sub' : 'add';
             setDraft((d) => ({
                 kind: 'field',
                 strokes: d?.kind === 'field' ? d.strokes : [],
-                live: { points: [[p.x, p.y, e.pressure || 0]], radius: brushRadius, strength: 0.8, op: e.altKey ? 'sub' : 'add' },
+                live: { points: [[p.x, p.y, e.pressure || 0]], radius: brushRadius, strength: 0.8, op },
             }));
         } else if (tool === 'trace') {
             e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -460,6 +525,9 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // ── commits ──────────────────────────────────────────────────────────────
     const commitDraft = useCallback(() => {
         if (!draft) return;
+        // P3-B (2d): a locked evidence layer refuses new draws too — the draft stays a
+        // draft (scratch) until the layer is unlocked.
+        if (evidenceLocked) return;
         // CIRCUIT-001 P2B/P2D — an armed act contributes its label AND its role AND the id of
         // the act that armed it to the ground the curator just drew. The geometry, and the
         // decision to keep it, are entirely theirs; the act only carried the intent over.
@@ -471,20 +539,50 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
             ...(staged?.role ? { instrument_role: staged.role } : {}),
             ...(staged?.actionId ? { origin_action_id: staged.actionId } : {}),
         };
-        // The visual_mark family the drawn ground answers to.
-        const MARK_TYPE = { field: 'brush_field', path: 'trace_mark', boundary: 'frame_mark' };
-        const MARK_GEOM = { field: 'freehand_path', path: 'polyline', boundary: 'polyline' };
+        // The visual_mark family the drawn ground answers to. P3-B adds the relation family
+        // (2b); the trace is `trace_mark` with a polyline geometry that also carries anchors.
+        const MARK_TYPE = { field: 'brush_field', path: 'trace_mark', boundary: 'frame_mark', relation: 'relation_mark' };
+        // P3-B (2a): resolve a trace endpoint onto whatever ground/region sits under it, so
+        // the mark carries `anchor {kind, ref, at}` and a later drag can set detached_from_ref.
+        const anchorCandidates = () => {
+            const cands = [];
+            for (const g of grounds) {
+                const c = groundCenter(g, { regions, grounds });
+                if (c) cands.push({ kind: 'ground', ref: g.id, at: [c.x, c.y] });
+            }
+            for (const r of regions) {
+                const b = r.box;
+                if (b && typeof b.x === 'number') cands.push({ kind: 'region', ref: r.id, at: [b.x + b.w / 2, b.y + b.h / 2] });
+            }
+            return cands;
+        };
+        const traceAnchors = (points) => {
+            const cands = anchorCandidates();
+            return {
+                from: anchorForEndpoint(points[0], cands, 0.04),
+                to: anchorForEndpoint(points[points.length - 1], cands, 0.04),
+            };
+        };
         let ground = null;
+        let geometry = null;
         if (draft.kind === 'field') {
             const strokes = draft.live ? [...draft.strokes, draft.live] : draft.strokes;
             if (!strokes.length) return;
             ground = addGround(makeGround('field', { strokes, ...carry }));
+            geometry = { kind: 'freehand_path' };
         } else if (draft.kind === 'path') {
             if (draft.points.length < 2) return;
-            ground = addGround(makeGround('path', { points: draft.points, arrowhead: true, ...carry }));
+            const anchors = traceAnchors(draft.points);
+            // Honesty on the terminus (2a): the arrowhead and the soft-fade ambiguity are the
+            // curator's own toggles, stored on the ground so the renderer performs them.
+            ground = addGround(makeGround('path', {
+                points: draft.points, arrowhead: traceArrowhead, ambiguous: traceAmbiguous, anchors, ...carry,
+            }));
+            geometry = { kind: 'polyline', anchors, ambiguous: traceAmbiguous, arrowhead: traceArrowhead };
         } else if (draft.kind === 'boundary') {
             if (draft.points.length < 2) return;
             ground = addGround(makeGround('boundary', { points: draft.points, band_width: draft.band_width, ...carry }));
+            geometry = { kind: 'polyline' };
         } else if (draft.kind === 'constellation') {
             if (!hasCompDraft) return;
             ground = addGround(makeGround('constellation', { member_ids: draft.member_ids, points: draft.points || [], ...carry }));
@@ -495,21 +593,28 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                 relation_label: draft.relation_label || staged?.role || '',
                 ...carry,
             }));
+            // P3-B (2b): a relation's geometry is DERIVED — computed from its member refs at
+            // render (the compositionNodes idiom), never stored. The mark records only the
+            // members it ties; if one stops resolving, the render degrades, never crashes.
+            geometry = { kind: 'derived', member_ids: [...draft.member_ids] };
         }
         // Emit the canonical mark alongside the ground. The role comes from the armed act
-        // when there is one; for the semantic brush (P2E-B 2e) it comes from the brush's own
-        // role picker, so drawing a field ALWAYS mints a contract-shaped brush_field mark —
-        // the first tool where model-or-hand, role, and renderer meet in one gesture.
-        // `normalizeMark` fails closed, so a bad role produces no mark, never a wrong one.
-        const markRole = staged?.role || (draft.kind === 'field' ? brushRole : null);
-        if (ground && markRole && MARK_TYPE[draft.kind]) {
+        // when there is one; otherwise from the instrument's own picker — brush→field role,
+        // trace→trace role (2a), connect→relation role (2b) — so EVERY instrument mints a
+        // contract-shaped mark of its family. `normalizeMark` fails closed, so a bad role
+        // produces no mark, never a wrong one.
+        const pickerRole = draft.kind === 'field' ? brushRole
+            : draft.kind === 'path' ? traceRole
+                : draft.kind === 'relation' ? relationRole : null;
+        const markRole = staged?.role || pickerRole;
+        if (ground && markRole && MARK_TYPE[draft.kind] && geometry) {
             emitMark(normalizeMark({
                 type: MARK_TYPE[draft.kind],
                 role: markRole,
                 label: staged?.label || '',
                 source: 'user',                       // the curator's own hand
                 status: 'committed',
-                geometry: { kind: MARK_GEOM[draft.kind] },
+                geometry,
                 linked_ground_ids: [ground.id],
                 linked_action_ids: staged?.actionId ? [staged.actionId] : [],
             }));
@@ -518,7 +623,8 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         setTool('select');
         setStagedMark(null);
         if (ground) { selectGround(ground.id); openComposer(ground.id); }
-    }, [draft, hasCompDraft, addGround, selectGround, openComposer, stagedMark, emitMark, brushRole]);
+    }, [draft, hasCompDraft, addGround, selectGround, openComposer, stagedMark, emitMark,
+        brushRole, traceRole, relationRole, traceAmbiguous, traceArrowhead, grounds, regions, evidenceLocked]);
 
     const commitFrame = useCallback(() => {
         const evidence = [...tray];
@@ -579,6 +685,12 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // complete, and undefined when nothing was carried out.
     const applyPerceptualAction = useCallback((action) => {
         const p = action?.payload || {};
+        // Debt 2 — a model-authored (or fixture) proposal does NOT arm the curator's
+        // hand; it lands in the quarantine as a suggestion, awaiting Accept/Dismiss.
+        // Same path for a live planner and a test fixture — the only honest seam.
+        if (action?.source === 'model_suggested' || action?.source === 'fixture') {
+            return receiveModelSuggestion(action) ? 'applied' : undefined;
+        }
         switch (action?.type) {
             case 'find_parts':
                 findParts.find({ mode: grain });
@@ -615,7 +727,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
             default:
                 return undefined;
         }
-    }, [findParts, grain, switchTool, tray, selectedGroundId, openComposer]);
+    }, [findParts, grain, switchTool, tray, selectedGroundId, openComposer, receiveModelSuggestion]);
 
     // Exactly the acts the branch above can carry out. Anything absent renders as preview
     // only — the list and the switch are read together, so a capability cannot be claimed
@@ -629,29 +741,30 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // the region in the store IN PLACE — no reload, still inside Differential. Cancel
     // changes nothing on the server.
     const confirmRefine = useCallback(async () => {
-        // CIRCUIT-001 P2D-A — accepting a SAM proposal is an ACCEPT, and it must stay visibly
-        // model-assisted rather than flatten to "I drew this". Two cases, both honest:
+        // CIRCUIT-001 P2D-A / P3-B Debt 3 — accepting a SAM proposal is an ACCEPT, and it
+        // must stay visibly model-assisted rather than flatten to "I drew this". Two cases,
+        // both honest:
         //   - refining an existing region → the model tightened the curator's mask → model_refined
         //   - a fresh mask               → the model proposed, the curator accepted → user_confirmed
-        // The proposal is first quarantined as a suggestion, so acceptance MINTS a mark that
+        // Debt 3: the mark is a `region_mask`, NOT a brush_field. The mask lives on the Region
+        // (region_id + geometry_rev); the mark only references it — never inline pixels
+        // (contract v2 §7.2-C). The proposal is quarantined, so acceptance MINTS a mark that
         // points back at it (Label Studio parent_prediction), never flips a flag in place.
         const base = tool === 'refine' ? selectedRegion : null;
-        const suggestion = quarantineSuggestion(makeVisualMark('brush_field', {
-            role: 'material_field',                 // a mask is a material extent; role is coarse, honest
-            source: 'system',
-            geometry: { kind: 'raster_mask' },      // mask_ref only — never inline pixels
-            provenance: { model: 'sam2' },
-        }));
         const data = await refine.confirm();
         const r = data?.region;
         if (!r) return;
-        // Mint the accepted mark, lineage back to the suggestion. Fresh masks are user_confirmed
-        // (needs no prior geometry); a refine-of-existing is model_refined (derives from the base).
+        const geometryRev = r.geometry_rev ?? refine.proposal?.geometry_rev ?? 0;
+        const suggestion = quarantineSuggestion(regionMaskMark({
+            regionId: r.id, geometryRev, model: 'sam2',
+        }));
+        // Fresh mask → user_confirmed (no prior geometry); refine-of-existing → model_refined
+        // (derives from the base). Both carry lineage back to the suggestion, and both are
+        // region_mask marks with role null (a segmented extent has no reading until given one).
         const accepted = base
-            ? normalizeMark({
-                type: 'brush_field', role: 'material_field', source: 'model_refined', status: 'committed',
-                geometry: { kind: 'raster_mask' }, derived_from: suggestion.id,
-                linked_ground_ids: [], provenance: { model: 'sam2' },
+            ? regionMaskMark({
+                regionId: r.id, geometryRev, source: 'model_refined', status: 'committed',
+                derivedFrom: suggestion?.id, model: 'sam2',
             })
             : acceptSuggestion(suggestion)?.accepted;
         if (accepted) emitMark(accepted);
@@ -784,6 +897,40 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             <span className="diff-tool-label">{t.label}</span>
                         </button>
                     ))}
+                    {/* P3-B (2d) — minimal layer controls: visibility · opacity · lock on the
+                        four system layers. No panel framework; a compact strip in the tool
+                        column. recall is system-only and exposes no controls. */}
+                    <div className="diff-layers" aria-label="Layers">
+                        <span className="diff-layers-title">Layers</span>
+                        {[...layers].sort((a, b) => b.order - a.order).map((l) => {
+                            const system = isSystemLayer(l);
+                            return (
+                                <div key={l.id} className={`diff-layer-row${l.visibility === false ? ' is-hidden' : ''}`}>
+                                    <button type="button" className="diff-layer-eye"
+                                        aria-pressed={l.visibility !== false} disabled={system}
+                                        title={system ? 'System layer' : (l.visibility === false ? 'Show' : 'Hide')}
+                                        onClick={() => { if (!system) onToggleLayer(l.id); }}>
+                                        {l.visibility === false ? <EyeOff size={12} /> : <Eye size={12} />}
+                                    </button>
+                                    <span className="diff-layer-name">{l.name}</span>
+                                    {system ? (
+                                        <span className="diff-layer-system" title="System layer — no controls">sys</span>
+                                    ) : (
+                                        <>
+                                            <input type="range" className="diff-layer-opacity" min="0" max="1" step="0.05"
+                                                value={l.opacity ?? 1} aria-label={`${l.name} opacity`}
+                                                onChange={(e) => onLayerOpacity(l.id, Number(e.target.value))} />
+                                            <button type="button" className={`diff-layer-lock${l.locked ? ' on' : ''}`}
+                                                aria-pressed={!!l.locked} title={l.locked ? 'Unlock' : 'Lock'}
+                                                onClick={() => onToggleLock(l.id)}>
+                                                {l.locked ? <Lock size={11} /> : <Unlock size={11} />}
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </nav>
 
                 {/* ── stage ── */}
@@ -805,16 +952,65 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         </div>
                     )}
 
-                    {/* P2E-B (2e) — the semantic brush: a field role is the whole point of
-                        the brush. Draw with a role and it mints a contract-shaped brush_field. */}
-                    {brushing && (
-                        <div className="diff-subtools diff-brush-roles" role="radiogroup" aria-label="Field role">
-                            {BRUSH_ROLES.map((rk) => (
-                                <button key={rk} type="button" role="radio" aria-checked={brushRole === rk}
-                                    className={`diff-subtool diff-role-chip${brushRole === rk ? ' on' : ''}`}
-                                    onClick={() => setBrushRole(rk)}>{roleLabel('brush_field', rk)}</button>
+                    {/* P3-B (2a) — the trace instrument: a role picker (like the brush's),
+                        and an honest terminus. Arrowhead is a choice; "ambiguous" replaces it
+                        with a soft fade so the line never asserts a target the curator never
+                        named. Path only — a boundary is a seam, not a directed line. */}
+                    {tracing && traceSub === 'path' && (
+                        <>
+                            <div className="diff-subtools diff-brush-roles" role="radiogroup" aria-label="Trace role">
+                                {TRACE_ROLES.map((rk) => (
+                                    <button key={rk} type="button" role="radio" aria-checked={traceRole === rk}
+                                        className={`diff-subtool diff-role-chip${traceRole === rk ? ' on' : ''}`}
+                                        onClick={() => setTraceRole(rk)}>{roleLabel('trace_mark', rk)}</button>
+                                ))}
+                            </div>
+                            <div className="diff-subtools diff-trace-terminus">
+                                <label className="diff-pf-toggle" title="A sharp arrowhead asserts a direction toward a target.">
+                                    <input type="checkbox" checked={traceArrowhead}
+                                        onChange={(e) => setTraceArrowhead(e.target.checked)} />
+                                    <span>arrowhead</span>
+                                </label>
+                                <label className="diff-pf-toggle" title="Ambiguous target — a soft fading terminus, no arrow claiming a target you did not name.">
+                                    <input type="checkbox" checked={traceAmbiguous}
+                                        onChange={(e) => setTraceAmbiguous(e.target.checked)} />
+                                    <span>ambiguous target</span>
+                                </label>
+                            </div>
+                        </>
+                    )}
+
+                    {/* P3-B (2b) — the relation instrument: a relation-role picker. The
+                        connector geometry is derived from the tied members at render. */}
+                    {tool === 'connect' && !untouched && (
+                        <div className="diff-subtools diff-brush-roles" role="radiogroup" aria-label="Relation role">
+                            {RELATION_ROLES.map((rk) => (
+                                <button key={rk} type="button" role="radio" aria-checked={relationRole === rk}
+                                    className={`diff-subtool diff-role-chip${relationRole === rk ? ' on' : ''}`}
+                                    onClick={() => setRelationRole(rk)}>{roleLabel('relation_mark', rk)}</button>
                             ))}
                         </div>
+                    )}
+
+                    {/* P2E-B (2e) — the semantic brush: a field role is the whole point of
+                        the brush. Draw with a role and it mints a contract-shaped brush_field.
+                        P3-B (2c): an Erase toggle paints strokes[].op:'sub' — erase as DATA. */}
+                    {brushing && (
+                        <>
+                            <div className="diff-subtools diff-brush-roles" role="radiogroup" aria-label="Field role">
+                                {BRUSH_ROLES.map((rk) => (
+                                    <button key={rk} type="button" role="radio" aria-checked={brushRole === rk}
+                                        className={`diff-subtool diff-role-chip${brushRole === rk ? ' on' : ''}`}
+                                        onClick={() => setBrushRole(rk)}>{roleLabel('brush_field', rk)}</button>
+                                ))}
+                            </div>
+                            <label className={`diff-pf-toggle diff-erase-toggle${brushErase ? ' on' : ''}`}
+                                title="Erase mode — the stroke subtracts (op:'sub'), composited destination-out. ⌥ also erases for one stroke.">
+                                <input type="checkbox" checked={brushErase}
+                                    onChange={(e) => setBrushErase(e.target.checked)} />
+                                <span>{brushErase ? 'erasing' : 'erase'}</span>
+                            </label>
+                        </>
                     )}
 
                     {/* P2E-B (2d) — the freehand ribbon generator toggle, shown for the
@@ -860,13 +1056,20 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     draft={draftForLayers?.kind === 'field' || draftForLayers?.kind === 'path' || draftForLayers?.kind === 'boundary' ? draftForLayers : null}
                                     // P2E-B (2d) ribbon toggle · (2b) editable-ground hit-paths
                                     usePerfectFreehand={usePerfectFreehand}
-                                    interactive={tool === 'select' && !editing}
+                                    // P3-B (2d): a locked evidence layer refuses hit-path picks too.
+                                    interactive={tool === 'select' && !editing && !evidenceLocked}
                                     onPickGround={beginEditGround}
                                     editingGroundId={editing?.target}
+                                    // P3-B (2d): the evidence layer's visibility/opacity controls.
+                                    evidenceVisible={evidenceLayer?.visibility !== false}
+                                    evidenceOpacity={evidenceLayer?.opacity ?? 1}
                                 />
                                 {/* P2E-B (2e) — pending suggestions render as a distinct dashed
-                                    ghost: model-proposed, uncitable, never mistaken for evidence. */}
-                                <SuggestionGhosts marks={pendingSuggestions} natural={natural} usePF={usePerfectFreehand} />
+                                    ghost: model-proposed, uncitable, never mistaken for evidence.
+                                    P3-B (2d): honors the suggestion layer's visibility control. */}
+                                {suggestionLayer?.visibility !== false && (
+                                    <SuggestionGhosts marks={pendingSuggestions} natural={natural} usePF={usePerfectFreehand} />
+                                )}
                                 {/* P2E-B (2c) — editable anchors on the geometry being reshaped */}
                                 {editing && natural && (
                                     <InstrumentHandles
@@ -874,7 +1077,8 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                         points={editing.points}
                                         clientToNormalized={clientToNormalized}
                                         onMove={editMove} onInsert={editInsert} onRemove={editRemove}
-                                        locked={false}
+                                        // P3-B (2d): if evidence locks mid-edit, the handles go inert.
+                                        locked={editing.target !== '__draft__' && evidenceLocked}
                                     />
                                 )}
                             </>
