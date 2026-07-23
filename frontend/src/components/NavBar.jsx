@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { Menu, ChevronDown, Upload as UploadIcon, Command as CommandIcon } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { Tooltip } from './ui';
+import { SemantLogo } from './brand/SemantMark';
 import './Navbar.css';
 
 // Ask the shell-level CommandPalette (App.jsx) to open. Decoupled via event so
@@ -54,9 +55,12 @@ function Navbar() {
   return (
     <header className="navbar-wrap">
       <nav className="navbar" ref={navRef}>
-        {/* The wordmark IS the logo (d.1 §8.1) — no generic dot/asterisk. Any
-            future mark must be a bespoke, on-concept glyph. */}
-        <NavLink to="/" className="nav-logo">Semant</NavLink>
+        {/* The logo (d.1 §8.1): the bespoke "Ground" mark + the Fraunces
+            wordmark — one on-concept glyph, no generic dot/asterisk. The mark
+            rides on currentColor, reversing with the ink on dark surfaces. */}
+        <NavLink to="/" className="nav-logo" aria-label="Semant — home">
+          <SemantLogo size={24} />
+        </NavLink>
 
         {/* Inline primary links — the everyday nav. CSS hides these on /posts/*. */}
         <div className="nav-links">

@@ -47,6 +47,15 @@ export const SURFACES = ['differential', 'manuscript', 'unknown'];
 /** Dispatch is stated, never assumed. `sent` requires a run_id the ledger can show. */
 export const DISPATCH_STATES = ['none', 'preview_only', 'sent'];
 
+/** A Manuscript action's standing. `applied` means a LOCAL, safe UI effect ran
+ *  (recall replayed, Differential opened, a passage begun) — never a model
+ *  dispatch, which lives only in `dispatch_state`. */
+export const MANUSCRIPT_ACTION_STATUSES = ['preview_only', 'staged', 'applied'];
+
+/** Where a Manuscript action returns to. The circuit's governing rule made
+ *  addressable: what a piece of writing points back at. */
+export const RETURN_TARGETS = ['image', 'differential', 'percept', 'ground'];
+
 /**
  * The discipline, as data. The first four are P1C's, carried verbatim so a
  * session and a packet cannot drift apart. The last four are this gate's.
@@ -122,6 +131,8 @@ export function buildOrchestrationSession({
     resolutionAssessed = false,
     // the writing
     manuscript = null,            // { block_count, is_editing, selection, model_origin_blocks }
+    manuscriptAction = null,      // { type, status, return_target } — the act the curator reached for
+
     // memory of asking
     operationMemory = null,       // [{ operation, state, at }]
     // proposals
@@ -193,6 +204,19 @@ export function buildOrchestrationSession({
         // null = not assessed. `extract_claims` does not exist; anyone who
         // "cleans this up" to [] converts *we did not look* into *there are none*.
         external_claims: null,
+        // The act the curator reached for, and how far it went. `status: 'applied'`
+        // is a LOCAL effect (recall, a return to Differential, a passage begun) —
+        // never a model dispatch, which lives only in `dispatch_state`. `null` for
+        // an unknown status/target rather than a guessed default.
+        requested_action: manuscriptAction?.type
+            ? {
+                type: manuscriptAction.type,
+                status: MANUSCRIPT_ACTION_STATUSES.includes(manuscriptAction.status)
+                    ? manuscriptAction.status : 'preview_only',
+                return_target: RETURN_TARGETS.includes(manuscriptAction.return_target)
+                    ? manuscriptAction.return_target : null,
+            }
+            : null,
     };
     if (manuscript) note('external_claim_assessment');
 
@@ -350,6 +374,19 @@ export function validateSession(session) {
     if (Array.isArray(session.manuscript_context?.external_claims)
         && !(session.available_tools || []).includes('extract_claims')) {
         errors.push('external_claims asserted without an assessor');
+    }
+    // A Manuscript action is a LOCAL effect at most; it may never carry the
+    // session into a dispatch. An `applied` action alongside `dispatch_state:
+    // 'sent'` (with no run_id) is already refused above, but an applied action
+    // must never be the thing that claims a dispatch happened.
+    const ra = session.manuscript_context?.requested_action;
+    if (ra) {
+        if (!MANUSCRIPT_ACTION_STATUSES.includes(ra.status)) {
+            errors.push(`requested_action.status not recognised: ${ra.status}`);
+        }
+        if (ra.return_target != null && !RETURN_TARGETS.includes(ra.return_target)) {
+            errors.push(`requested_action.return_target not recognised: ${ra.return_target}`);
+        }
     }
 
     if (session.ground_context && !session.ground_context.resolution_assessed

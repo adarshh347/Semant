@@ -7,32 +7,42 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './config/api.js';
 
 import App from './App.jsx';
-import HomePage from './pages/HomePage.jsx';
-import LandingPage from './pages/LandingPage.jsx';
-import GalleryPage from './pages/GalleryPage.jsx';
-import PostDetailPage from './components/PostDetailPage.jsx';
-import ReadDeeperPage from './pages/ReadDeeperPage.jsx';
-import RegionSurfaceLab from './pages/RegionSurfaceLab.jsx';
-import RefineLab from './pages/RefineLab.jsx';
-import DifferentialLab from './pages/DifferentialLab.jsx';   // DEV-ONLY · CIRCUIT-001 P2E-B harness
-import HighlightsPage from './pages/HighlightsPage.jsx';
-import './index.css';
-import TextFeedPage from './pages/TextFeedPage.jsx';
-import EpicsPage from './pages/EpicsPage.jsx';
-import EpicEditorPage from './pages/EpicEditorPage.jsx';
-import MotivePage from './pages/MotivePage.jsx';
-import ResearchPage from './pages/ResearchPage.jsx';
-import PersonasPage from './pages/PersonasPage.jsx';
-import UnconcealQueuePage from './pages/UnconcealQueuePage.jsx';
-import AnatomyPage from './pages/AnatomyPage.jsx';
-import BlockNoteLab from './pages/BlockNoteLab.jsx';
-import ManuscriptLab from './pages/ManuscriptLab.jsx';
+import RouteError from './components/RouteError.jsx';
+import NotFoundPage from './components/NotFoundPage.jsx';
 import PlaceholderPage from './components/PlaceholderPage.jsx';
+import './index.css';
+
+// Route pages are code-split (React.lazy) so a navigation resolves its chunk
+// behind the branded RouteFallback (App.jsx) instead of loading the whole app
+// up front. App / PlaceholderPage / the error surfaces stay eager — the shell
+// and its error boundary must never themselves suspend.
+const HomePage = React.lazy(() => import('./pages/HomePage.jsx'));
+const LandingPage = React.lazy(() => import('./pages/LandingPage.jsx'));
+const GalleryPage = React.lazy(() => import('./pages/GalleryPage.jsx'));
+const PostDetailPage = React.lazy(() => import('./components/PostDetailPage.jsx'));
+const ReadDeeperPage = React.lazy(() => import('./pages/ReadDeeperPage.jsx'));
+const RegionSurfaceLab = React.lazy(() => import('./pages/RegionSurfaceLab.jsx'));
+const RefineLab = React.lazy(() => import('./pages/RefineLab.jsx'));
+const DifferentialLab = React.lazy(() => import('./pages/DifferentialLab.jsx')); // DEV-ONLY · CIRCUIT-001 P2E-B harness
+const HighlightsPage = React.lazy(() => import('./pages/HighlightsPage.jsx'));
+const TextFeedPage = React.lazy(() => import('./pages/TextFeedPage.jsx'));
+const EpicsPage = React.lazy(() => import('./pages/EpicsPage.jsx'));
+const EpicEditorPage = React.lazy(() => import('./pages/EpicEditorPage.jsx'));
+const MotivePage = React.lazy(() => import('./pages/MotivePage.jsx'));
+const ResearchPage = React.lazy(() => import('./pages/ResearchPage.jsx'));
+const PersonasPage = React.lazy(() => import('./pages/PersonasPage.jsx'));
+const UnconcealQueuePage = React.lazy(() => import('./pages/UnconcealQueuePage.jsx'));
+const AnatomyPage = React.lazy(() => import('./pages/AnatomyPage.jsx'));
+const BlockNoteLab = React.lazy(() => import('./pages/BlockNoteLab.jsx'));
+const ManuscriptLab = React.lazy(() => import('./pages/ManuscriptLab.jsx'));
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
+    // Root error boundary — a thrown route (or a 404 Response) renders the
+    // branded RouteError surface instead of the browser's raw stack.
+    errorElement: <RouteError />,
     children: [
       // '/' is the motive See·Read·Write front door; its "Enter" CTA leads into
       // the app at /home, the curated bento dashboard.
@@ -88,7 +98,9 @@ const router = createBrowserRouter([
         ),
       },
       { path: "motive", element: <MotivePage /> },
-      { path: "motive/:slug", element: <MotivePage /> }
+      { path: "motive/:slug", element: <MotivePage /> },
+      // Catch-all — a branded 404 inside the app shell (keeps the nav + chrome).
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ]);

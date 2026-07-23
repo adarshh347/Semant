@@ -184,6 +184,25 @@ const Manuscript = forwardRef(function Manuscript(
         return inserted?.[0]?.id ?? null;
       } catch { return null; }
     },
+    // start-a-passage — an empty human paragraph after the caret's block, focused
+    // so the curator writes immediately. CIRCUIT-001 P2C-MS2: the chip's "Start a
+    // passage" lands here. Local only — like every block edit it is unsaved until
+    // an explicit Save, and Cancel discards it. Nothing is generated, nothing is
+    // seeded; the sentence is the curator's.
+    startPassage: ({ blockId = null } = {}) => {
+      try {
+        const ref = blockId || editor.getTextCursorPosition()?.block?.id;
+        if (!ref) return null;
+        const inserted = editor.insertBlocks([{ type: 'paragraph' }], ref, 'after');
+        const newId = inserted?.[0]?.id ?? null;
+        if (newId) {
+          metaRef.current.set(newId, { origin: 'human', color: null });
+          editor.setTextCursorPosition(newId, 'end');
+        }
+        editor.focus();
+        return newId;
+      } catch { return null; }
+    },
     // write-about-part — a new paragraph block (origin sutradhar) grounded in the
     // region: a leading chip + the generated prose. Origin rides the meta side-channel.
     insertSutradharBlock: ({ text = '', chipProps = null, blockId = null }) => {

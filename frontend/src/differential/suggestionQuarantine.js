@@ -199,5 +199,56 @@ export function countEvidence(marks = []) {
     return (marks || []).filter((m) => m.status === 'committed' && !isSuggestion(m)).length;
 }
 
+// ── provenance bridge (contract v2 §7.2-E) ───────────────────────────────────
+// The mark is the ONLY authored provenance. A ground or region that carries `mark_source`
+// / `instrument_role` / `refined_from` holds them as DERIVED bridge fields — a convenience
+// view for a surface that has the ground but not the mark. These helpers are the only
+// sanctioned writers of those fields, and they read exclusively from the mark, so a bridge
+// field can never say something the mark does not.
+
+/** The bridge fields a mark projects onto the ground/region it is linked to. */
+export function bridgeFieldsFromMark(mark) {
+    if (!mark) return { mark_id: null, mark_source: null, instrument_role: null, refined_from: null };
+    return {
+        mark_id: mark.id,
+        mark_source: mark.source,
+        instrument_role: mark.role ?? null,
+        refined_from: mark.derived_from ?? null,
+    };
+}
+
+/**
+ * Given a ground/region and the marks that reference it, return the object with its bridge
+ * fields rewritten FROM the mark. The most recently updated linked mark wins (a supersession
+ * makes the newer mark the truth). Returns the input unchanged when no mark links to it — a
+ * ground with no mark has no derived provenance to assert.
+ */
+export function reconcileBridgeFields(target, marks = []) {
+    if (!target) return target;
+    const linked = (marks || [])
+        .filter((m) => (m.linked_ground_ids || []).includes(target.id))
+        .sort((a, b) => String(a.updated_at || '').localeCompare(String(b.updated_at || '')));
+    const mark = linked[linked.length - 1];
+    if (!mark) return target;
+    return { ...target, ...bridgeFieldsFromMark(mark) };
+}
+
+/**
+ * Does a target's stored bridge fields agree with its linked mark? The drift check made
+ * runnable — a surface (or a test) can assert this and know a bridge field never lies.
+ * Returns true when there is no linked mark (nothing to disagree with).
+ */
+export function bridgeFieldsAgree(target, marks = []) {
+    if (!target) return true;
+    const reconciled = reconcileBridgeFields(target, marks);
+    if (reconciled === target) return true;
+    for (const k of ['mark_id', 'mark_source', 'instrument_role', 'refined_from']) {
+        const want = reconciled[k] ?? null;
+        const have = target[k] ?? null;
+        if (want !== have) return false;
+    }
+    return true;
+}
+
 // Re-exported so a quarantine consumer has the constructors without a second import.
 export { makeVisualMark, normalizeMark, validateMark };

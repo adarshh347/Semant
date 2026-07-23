@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
     describeSelection, selectionQuestions, buildChipInspection,
-    actionsForSelection, inspectorSummary, MANUSCRIPT_OBJECTS, MANUSCRIPT_ACTIONS,
+    actionsForSelection, inspectorSummary, collapsedSummary, MANUSCRIPT_OBJECTS,
+    CHIP_ACTIONS, SELECTION_ACTIONS, ACTION_KINDS,
+    composePerceptFromSelection, draftFromSelection, challengeSupportAction, previewProposal,
 } from './manuscriptField';
 import { makeExpressionPercept } from '../state/perceptMentions';
+import { validateAction } from '../differential/perceptualActions';
 
 const ground = (id, extra = {}) => ({ id, ground_type: 'region', label: id, region_id: `reg_${id}`, ...extra });
 // A resolver that says a named set of grounds is gone. Supplying one at all is
@@ -166,34 +169,131 @@ describe('buildChipInspection — the chip as a living citation', () => {
     });
 });
 
-describe('actionsForSelection — everything is preview-only', () => {
+describe('actionsForSelection — classified by how far each act can go', () => {
     it('offers nothing when nothing is selected', () => {
         expect(actionsForSelection(describeSelection())).toEqual([]);
     });
 
-    it('marks every action unwired, with the reason on the action', () => {
+    it('every act declares a known kind and an alive tone', () => {
         const forText = actionsForSelection(describeSelection({ kind: 'text', text: 'x' }));
         const forChip = actionsForSelection(describeSelection({ kind: 'percept_chip', chips: [{ perceptId: 'p' }] }));
         expect(forText.length).toBeGreaterThan(0);
         expect(forChip.length).toBeGreaterThan(0);
         for (const a of [...forText, ...forChip]) {
-            expect(a.wired).toBe(false);
-            expect(a.note).toMatch(/Preview only/);
+            expect(ACTION_KINDS).toContain(a.kind);
+            expect(a.tone).toBeTruthy();
         }
     });
 
     it('offers different acts to prose than to a chip', () => {
-        const text = actionsForSelection(describeSelection({ kind: 'text', text: 'x' })).map((a) => a.type);
-        const chip = actionsForSelection(describeSelection({ kind: 'percept_chip', chips: [{ perceptId: 'p' }] })).map((a) => a.type);
-        expect(text).toContain('create_percept_from_sentence');
-        expect(chip).toContain('recall_percept');
-        expect(text).not.toContain('recall_percept');
+        const text = actionsForSelection(describeSelection({ kind: 'text', text: 'x' })).map((a) => a.key);
+        const chip = actionsForSelection(describeSelection({ kind: 'percept_chip', chips: [{ perceptId: 'p' }] })).map((a) => a.key);
+        expect(text).toContain('create_percept');
+        expect(chip).toContain('recall');
+        expect(text).not.toContain('recall');
     });
 
-    it('names which action types do not yet exist in the grammar', () => {
-        // normalizeAction returns null for an unknown type — the correct failure.
-        // None of these may render an Apply until its spec exists.
-        expect(MANUSCRIPT_ACTIONS.filter((a) => a.newType).length).toBeGreaterThan(0);
+    it('gives the chip real live acts and the returns to Differential', () => {
+        const chip = actionsForSelection(describeSelection({ kind: 'percept_chip', chips: [{ perceptId: 'p' }] }));
+        const live = chip.filter((a) => a.kind === 'live').map((a) => a.key);
+        expect(live).toContain('recall');
+        expect(live).toContain('revise');
+        expect(live).toContain('start_passage');
+    });
+
+    it('never uses dead admin copy as the dominant tone', () => {
+        const tones = [...CHIP_ACTIONS, ...SELECTION_ACTIONS].map((a) => a.tone).join(' ');
+        expect(tones).not.toMatch(/execution path not wired yet/);
+    });
+});
+
+describe('grammar-action builders — staged, valid, never dispatched', () => {
+    it('create-percept builds a valid compose_percept seeded verbatim', () => {
+        const sel = describeSelection({ kind: 'text', text: 'the vault carries the light upward', chips: [] });
+        const action = composePerceptFromSelection(sel);
+        expect(action).toBeTruthy();
+        expect(action.type).toBe('compose_percept');
+        expect(action.source).toBe('user');
+        expect(action.payload.draft_text).toBe('the vault carries the light upward');
+        expect(validateAction(action).valid).toBe(true);
+    });
+
+    it('refuses to build a percept from empty prose', () => {
+        expect(composePerceptFromSelection(describeSelection({ kind: 'text', text: '   ' }))).toBeNull();
+    });
+
+    it('draft variants build valid unsaved start_manuscript actions', () => {
+        const sel = describeSelection({ kind: 'text', text: 'a passage' });
+        for (const [key, mode] of [['draft_description', 'description'], ['draft_critique', 'art_critique'], ['draft_script', 'youtube_script']]) {
+            const a = draftFromSelection(key, sel);
+            expect(a.type).toBe('start_manuscript');
+            expect(a.payload.mode).toBe(mode);
+            expect(a.payload.insertion_mode).toBe('unsaved');
+            expect(a.warnings.join(' ')).toMatch(/Nothing is saved until you save it/);
+            expect(validateAction(a).valid).toBe(true);
+        }
+    });
+
+    it('challenge-support is authored by the user, never a model', () => {
+        const a = challengeSupportAction('pctx_1');
+        expect(a.type).toBe('challenge_percept');
+        expect(a.source).toBe('user'); // P2B refuses a model-authored challenge
+        expect(a.payload.percept_ref).toBe('pctx_1');
+        expect(validateAction(a).valid).toBe(true);
+    });
+
+    it('a preview proposal is structure, not loose text, and says it is not sent', () => {
+        const sel = describeSelection({ kind: 'text', text: 'the light rests' });
+        const p = previewProposal({ key: 'map_sentence', label: 'Map sentence to image', tone: 'Needs your mark' }, sel);
+        expect(p.proposal_kind).toBe('structured_preview');
+        expect(p.grammar).toBe(false);       // not yet a grammar type
+        expect(p.payload.sentence).toBe('the light rests');
+        expect(p.dispatch.sent).toBe(false);
+        expect(p.status).toBe('preview_only');
+    });
+});
+
+describe('collapsedSummary — compact, contextual, never gone', () => {
+    const percept = makeExpressionPercept({ id: 'pctx_1', expression: 'x', ground_ids: ['g1'] });
+    const grounds = [ground('g1')];
+
+    it('reports a percept as `Percept · N ground · M passage`', () => {
+        const insp = buildChipInspection(percept, {
+            grounds, resolve: resolverMissing([]),
+            mentions: [{ perceptId: 'pctx_1', blockId: 'b1' }],
+        });
+        expect(collapsedSummary(describeSelection({ kind: 'percept_chip', chips: [{ perceptId: 'pctx_1' }] }), insp))
+            .toBe('Percept · 1 ground · 1 passage');
+    });
+
+    it('adds a calm degraded note, without a cause, when degraded', () => {
+        const two = makeExpressionPercept({ id: 'pctx_2', expression: 'x', ground_ids: ['g1', 'g2'] });
+        const insp = buildChipInspection(two, { grounds: [ground('g1'), ground('g2')], resolve: resolverMissing(['g2']) });
+        const line = collapsedSummary(describeSelection({ kind: 'percept_chip', chips: [{ perceptId: 'pctx_2' }] }), insp);
+        expect(line).toMatch(/no longer resolves/);
+        expect(line).not.toMatch(/replaced|because/i);
+    });
+
+    it('does not treat unknown evidence as degraded', () => {
+        const insp = buildChipInspection(percept, { grounds }); // no resolver ⇒ unknown
+        const line = collapsedSummary(describeSelection({ kind: 'percept_chip', chips: [{ perceptId: 'pctx_1' }] }), insp);
+        expect(line).toMatch(/^Percept · /);
+        expect(line).not.toMatch(/resolve/);
+    });
+
+    it('reports a plain selection as `Selection · cites nothing`', () => {
+        expect(collapsedSummary(describeSelection({ kind: 'text', text: 'x' }))).toBe('Selection · cites nothing');
+    });
+
+    it('has a quiet idle line when nothing is selected', () => {
+        expect(collapsedSummary(describeSelection())).toMatch(/Nothing selected/);
+    });
+
+    it('reports an unresolvable citation calmly', () => {
+        expect(collapsedSummary(
+            describeSelection({ kind: 'percept_chip', chips: [{ perceptId: 'gone' }] }),
+            { resolved: false },
+        )).toBe('Percept · citation no longer resolves');
     });
 });
 

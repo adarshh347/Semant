@@ -97,6 +97,7 @@ def post_helper(post) -> dict:
         "aletheia_cache": post.get("aletheia_cache"),
         "grounds": post.get("grounds"),
         "percepts": post.get("percepts"),
+        "visual_marks": post.get("visual_marks"),  # CIRCUIT-001 P2E — durable marks
     }
 
 
@@ -1201,6 +1202,12 @@ class RefineRequest(BaseModel):
     box: Optional[List[float]] = None            # normalized [x0,y0,x1,y1]
     base_id: Optional[str] = None                # refine an existing region in place
     base_geometry_rev: int = 0
+    # CIRCUIT-001 P2E — provenance round-trip (contract v2 §7.2-E, §7.3). The client mints a
+    # region_mask visual_mark at acceptance; `mark_id` lets the persisted region point back at
+    # it. `mark_source`/`refined_from` are the DERIVED bridge fields — but the server derives
+    # them itself from `base_id` (the same truth the mark derives from), so a stale client
+    # value can never make the region disagree with reality.
+    mark_id: Optional[str] = None
 
 
 async def _fetch_post_image(post: dict) -> bytes:
@@ -1283,6 +1290,15 @@ async def refine_region_confirm(post_id: str, req: RefineRequest):
                         input_refs=[{"region_id": req.base_id, "geometry_rev": req.base_geometry_rev}],
                         detail={"geometry_rev": region.get("geometry_rev")})
         region["proposed"] = False                                   # confirmed → authoritative
+        # CIRCUIT-001 P2E — provenance bridge, derived server-side and persisted so an accepted
+        # model-assisted mask is still visibly model-assisted after reload. Refining an existing
+        # region is model_refined (the model tightened the curator's mask); a fresh mask is
+        # user_confirmed (the model proposed, the curator accepted). Both derive from base_id —
+        # the same fact the frontend mark derives from — so bridge and mark cannot disagree.
+        region["mark_source"] = "model_refined" if req.base_id else "user_confirmed"
+        region["refined_from"] = req.base_id
+        if req.mark_id:
+            region["mark_id"] = req.mark_id
         regions = list(post.get("region_annotations") or [])
         idx = next((i for i, r in enumerate(regions) if r.get("id") == region["id"]), None)
         if idx is not None:

@@ -20,6 +20,9 @@ import {
 
 export const MARK_TYPES = [
     'brush_field', 'trace_mark', 'relation_mark', 'frame_mark', 'collection_mark',
+    // P2E contract v2 §7.2-C: a segmented extent is not a perceptual field. `region_mask`
+    // names what was segmented; the perceptual reading is a later, explicit act.
+    'region_mask',
 ];
 
 /**
@@ -72,6 +75,9 @@ export const COLLECTION_ROLE_KEYS = [
     'percept_constellation', 'evidence_set', 'comparison_set', 'motif_set',
     'contradiction_set', 'field_cluster', 'manuscript_citation_set',
 ];
+// A region_mask's role is OPTIONAL (contract v2 §7.2-C): a segmented extent has no perceptual
+// role until a curator gives it one. If present it names WHAT was segmented, not how it reads.
+export const REGION_MASK_ROLE_KEYS = ['segment', 'part', 'material_extent', 'anchor_extent'];
 
 /** type → the role vocabulary that type's `role` must belong to. */
 export const ROLE_VOCABULARY = {
@@ -80,7 +86,11 @@ export const ROLE_VOCABULARY = {
     relation_mark: RELATION_ROLE_KEYS,
     frame_mark: FRAME_ROLE_KEYS,
     collection_mark: COLLECTION_ROLE_KEYS,
+    region_mask: REGION_MASK_ROLE_KEYS,
 };
+
+/** Families whose `role` is optional — `region_mask` alone, so far. */
+export const OPTIONAL_ROLE_TYPES = new Set(['region_mask']);
 
 /** The payload key each action family carries its role under. */
 export const ACTION_ROLE_KEY = {
@@ -187,11 +197,15 @@ export function validateMark(mark) {
     if (!isStr(mark.label)) errors.push('label must be a string (may be empty)');
 
     // An unknown role is an ERROR, not a coercion. A vocabulary is only worth having if a
-    // word outside it fails — otherwise a planner's mistake becomes invisible.
+    // word outside it fails — otherwise a planner's mistake becomes invisible. `region_mask`
+    // is the one family whose role is OPTIONAL (a segmented extent has no perceptual role yet):
+    // null is allowed, but a NON-null role still has to be in the vocabulary.
     const vocab = ROLE_VOCABULARY[mark.type];
     if (vocab) {
-        if (mark.role == null) errors.push(`${mark.type}: role is required`);
-        else if (!vocab.includes(mark.role)) {
+        const optional = OPTIONAL_ROLE_TYPES.has(mark.type);
+        if (mark.role == null) {
+            if (!optional) errors.push(`${mark.type}: role is required`);
+        } else if (!vocab.includes(mark.role)) {
             errors.push(`${mark.type}: role "${mark.role}" is not in the vocabulary`);
         }
     }
@@ -200,6 +214,21 @@ export function validateMark(mark) {
     if (!geom || typeof geom !== 'object') errors.push('geometry must be an object');
     else if (!GEOMETRY_KINDS.includes(geom.kind)) {
         errors.push(`unknown geometry kind: ${String(geom.kind)}`);
+    }
+
+    // Contract v2 §7.2-C: a region_mask points at a segmented region and NOTHING inline.
+    // Its geometry is raster_mask ONLY, with a mask_ref{region_id} — never pixels, never a
+    // freehand path. The mask lives on the Region; the mark only references it.
+    if (mark.type === 'region_mask' && geom && typeof geom === 'object') {
+        if (geom.kind !== 'raster_mask') {
+            errors.push('region_mask geometry must be raster_mask');
+        }
+        if (!geom.mask_ref || !nonEmpty(geom.mask_ref.region_id)) {
+            errors.push('region_mask requires geometry.mask_ref.region_id');
+        }
+        for (const banned of ['pixels', 'rle', 'polygons', 'strokes', 'points']) {
+            if (geom[banned] != null) errors.push(`region_mask geometry may not carry inline ${banned}`);
+        }
     }
 
     for (const k of ['linked_ground_ids', 'linked_percept_ids', 'linked_action_ids', 'warnings']) {
@@ -300,6 +329,37 @@ export function actionToDraftMark(action, { now = null, idFn = markId } = {}) {
         },
     }, { now, idFn });
 }
+
+/**
+ * A region_mask mark for an accepted/proposed SAM segment. The mask itself lives on the
+ * Region (`region_id` + `geometry_rev`); this only references it — never inline pixels
+ * (contract v2 §7.2-C). Role is left null: a segmented extent has no perceptual reading
+ * until a curator gives it one via the conversion path.
+ */
+export function regionMaskMark({
+    regionId, geometryRev = 0, source = 'user', status = 'draft',
+    derivedFrom = null, role = null, label = '', model = null, linkedGroundIds = [],
+} = {}, { now = null, idFn = markId } = {}) {
+    return normalizeMark({
+        type: 'region_mask',
+        role,
+        label,
+        source,
+        status,
+        derived_from: derivedFrom,
+        geometry: { kind: 'raster_mask', mask_ref: { region_id: regionId, geometry_rev: geometryRev } },
+        linked_ground_ids: arr(linkedGroundIds),
+        provenance: model ? { model } : {},
+    }, { now, idFn });
+}
+
+// ── persistence policy (contract v2 §7.3) ─────────────────────────────────────
+// Only committed and superseded marks persist. `superseded` because recoverability is the
+// whole point of the status (P1F/P1G); everything else — draft/staged/suggested/previewed/
+// dismissed — is session-only, so the quarantine never touches the database.
+export const PERSISTED_STATUSES = new Set(['committed', 'superseded']);
+export const isPersistableMark = (m) => !!m && PERSISTED_STATUSES.has(m.status);
+export const persistableMarks = (marks = []) => (marks || []).filter(isPersistableMark);
 
 // ── reading a mark ───────────────────────────────────────────────────────────
 
