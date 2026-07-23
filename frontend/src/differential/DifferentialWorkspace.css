@@ -1154,3 +1154,35 @@
 .diff-layer-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .diff-layer-opacity { width: 44px; accent-color: var(--accent, #5E2B50); }
 .diff-layer-system { font-size: 9px; color: var(--diff-muted, #8a8276); opacity: 0.7; }
+
+/* ── CIRCUIT-001 P4-B — suggestion review surface ─────────────────────────────── */
+.diff-review-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.diff-review-start { font-size: 11px; padding: 4px 10px; }
+.diff-review { border: 1px solid rgba(127, 179, 168, 0.4); border-radius: 10px; padding: 10px; background: rgba(127, 179, 168, 0.05); }
+.diff-review .diff-eyebrow { color: #7FB3A8; }
+.diff-review-count { font-size: 11px; color: var(--diff-muted, #8a8276); font-variant-numeric: tabular-nums; }
+.diff-review-card { margin-top: 8px; display: flex; flex-direction: column; gap: 7px; }
+.diff-review-provrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.diff-review-status { font-size: 10px; color: var(--diff-muted, #8a8276); text-transform: uppercase; letter-spacing: 0.05em; }
+.diff-review-meta { display: flex; flex-wrap: wrap; gap: 5px; font-size: 11px; color: var(--diff-muted, #8a8276); align-items: baseline; }
+.diff-review-role-label { color: var(--diff-ink, #2c2822); font-weight: 600; text-transform: capitalize; }
+.diff-review-producer { font-style: italic; }
+.diff-review-warn { color: #C0834F; }
+.diff-review-citable.is-no { color: #C0574F; }
+.diff-review-roles { display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
+.diff-review-label { width: 100%; box-sizing: border-box; font-size: 12px; padding: 5px 8px; border: 1px solid var(--diff-hair, rgba(138,130,118,0.25)); border-radius: 6px; background: var(--diff-bg, #fff); }
+.diff-review-geo { align-self: flex-start; font-size: 11px; }
+.diff-review-geo.on { color: var(--accent, #C08457); font-weight: 600; }
+.diff-review-edited { font-size: 11px; color: #5a7d74; margin: 2px 0 0; line-height: 1.4; }
+.diff-review-actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.diff-review-accept { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.diff-review-dismiss { display: inline-flex; align-items: center; gap: 4px; }
+.diff-review-reasons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.diff-review-reason { font-size: 10px; padding: 2px 7px; border-radius: 10px; border: 1px dashed var(--diff-hair, rgba(138,130,118,0.35)); background: none; color: var(--diff-muted, #8a8276); cursor: pointer; }
+.diff-review-reason.on { border-style: solid; border-color: #C0574F; color: #C0574F; background: rgba(192, 87, 79, 0.06); }
+.diff-review-bulk { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(127, 179, 168, 0.2); }
+.diff-review-bulk-hint { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--diff-muted, #8a8276); }
+.diff-review-bulk-hint kbd { font-size: 9px; padding: 0 3px; border: 1px solid var(--diff-hair, rgba(138,130,118,0.4)); border-radius: 3px; }
+.diff-review-dismiss-all { font-size: 11px; color: #C0574F; }
+/* (2c) the SAM refine preview, on the suggestion layer */
+.diff-refine-ghost path { pointer-events: none; }
