@@ -3,10 +3,11 @@
 Both lanes obey this file. Lane A **implements** it; Lane B **emits against** it. Neither lane
 may change it unilaterally — proposed amendments go in the lane's report for the P2E synthesis.
 
-> **Version: v2** (P2E-A). §§1–6 below are the frozen v1 baseline Lane B2 read against at
-> `3aa4b3e`; **§7 is the v2 amendment layer and takes precedence where it overrides.** Five
-> decisions are recorded in §7 — two settled upstream (anchors, erase), three decided by Lane A
-> this gate (region_mask family, boundary, provenance home). Read §7 before §1–2.
+> **Version: v3** (P4-A). §§1–6 are the frozen v1 baseline; **§7 is the v2 amendment layer and
+> §8 is the v3 amendment layer — §8 takes precedence where it overrides.** v3 promotes P3-B's
+> geometry-carried instrument fields to first-class validated schema and adds the
+> suggestion-provenance shape now that real producers mint `model_suggested` marks. Read §8
+> before §7 before §1–2.
 
 ## 1. The emission shape — `visual_mark`
 
@@ -165,3 +166,73 @@ that hold a ground/region but not its mark.
 `superseded` marks persist. `superseded` persists because recoverability is the whole point of
 the status (P1F/P1G); `draft`/`staged`/`suggested`/`previewed`/`dismissed` are **session-only** —
 **the quarantine is session truth and a suggestion never touches the database.**
+
+## 8. v3 amendments (P4-A) — precedence over §§1–7 where they conflict
+
+P3-B (PR #69) added trace anchors, terminus honesty, region_mask and erase — and, to avoid
+touching this contract mid-flight, carried the new fields **inside `geometry` verbatim**,
+validated only by `geometry.kind`. v3 promotes them to first-class, checked schema. **The gate:
+what P3-B persisted must still validate** — the rules below accept exactly the shapes
+`handleEditing.syncAnchors` and the trace tool write.
+
+### 8.1 First-class instrument fields (now validated)
+
+- **Trace anchors.** `geometry.anchors = { from, to }`, each an anchor or `null`. An **anchor** is
+  `{ kind, at:[nx,ny], ref?, detached_from_ref? }` where `kind ∈ {point, ground, region, percept,
+  mark}` (`ANCHOR_KINDS`). A `point` anchor is self-anchored (`at` IS the endpoint, no `ref`); a
+  ref kind requires a non-empty `ref` and treats `at` as a cached copy. `detached_from_ref: true`
+  (a boolean) records a drag that froze the cached position — contract v2 decision #1, now
+  enforced, not merely honored. Validator: `anchorError(anchor)`.
+- **Terminus honesty.** `geometry.ambiguous` and `geometry.arrowhead` are booleans (a trace wears
+  a sharp arrowhead only when it asserts a target; `ambiguous` fades it). Non-boolean → reject.
+- **Erase as data.** `geometry.strokes[].op ∈ {add, sub}` (`STROKE_OPS`) — erase is stroke DATA,
+  not a compositing detail (v2 decision B), so it validates here. `region_mask` still forbids
+  inline `strokes` entirely.
+- **Back-compat:** every one of these fields is optional. A mark that omits them validates exactly
+  as before — no persisted P3-B mark is invalidated (regression-tested against seeded shapes).
+
+### 8.2 `region_ref` — a naming reference (the VLM's law)
+
+`region_mask` may now carry EITHER geometry mode:
+- `raster_mask` + `mask_ref{region_id[, geometry_rev]}` — a **segmented extent** (SAM/Dissect drew
+  the mask). Unchanged from v2 §7.2-C.
+- `region_ref` + `region_ref{region_id}` — a **naming reference only, no mask authored.** This is
+  what a semantic-read label proposal becomes: the VLM may say WHAT a region is, never draw one.
+  Bans inline pixels exactly as `raster_mask` does. Constructor: `regionRefMark(...)`.
+
+### 8.3 Suggestion-provenance shape (producers finally speak)
+
+`run_id: null` was deliberate in P2D (P1E/P1G: run identity was under-specified). **The
+CIRCULATION-SPINE run substrate (`vision_runs` + `vision_run_service`) has landed, so that rule is
+retired.** `provenance` now carries, additively:
+
+```
+provenance {
+  planner, prompt_excerpt, model, matched,   // unchanged
+  run_id,        // null (a curator's mark) OR a non-empty vision-run id (a producer's)
+  producer,      // one of PRODUCERS = {sam_refine, semantic_read, planner, fixture}, or null
+  adapter,       // concrete transport, e.g. 'sam2' / 'semantic_pass' (optional)
+  latency_ms,    // producer wall time when known (optional)
+}
+```
+
+Rules (in `validateMark`):
+- `run_id` must be `null` or a **non-empty** run id (whitespace-only is a broken receipt → reject).
+- A named `producer` must be in `PRODUCERS`; and a real producer (anything but `fixture`) **must
+  carry a `run_id`** — a suggestion that claims the model without a run has lost its receipt.
+- `confidence` remains forbidden (v1 §6). Producers attach receipts, not scores.
+
+### 8.4 Producer → suggestion mapping (P4-A)
+
+- **`sam_refine`** (SAM2 mask preview) → a `model_suggested` **`region_mask`** (`raster_mask`),
+  quarantined, `provenance {model:'sam2.1', adapter:'sam2', latency_ms, run_id, producer:'sam_refine'}`.
+  Accept mints `user_confirmed` + `derived_from` (existing quarantine path); region-level bridge
+  fields stay derived (v2 §7.2-E).
+- **`semantic_read`** (VLM) → label proposals become `model_suggested` `region_ref` marks
+  referencing existing regions (no geometry authored); relation proposals become `model_suggested`
+  `relation_mark`s with `derived` geometry. `provenance {model, adapter:'semantic_pass', run_id,
+  producer:'semantic_read'}`.
+- **Intake** (`store.ingestSuggestions`): idempotent (a re-run does not duplicate — keyed on
+  `producer + type + source_ref`, a deterministic id), fail-closed (invalid → dropped, never a
+  partial), and NEVER persisted (suggestion status → excluded from `persistableMarks`, v2 §7.3).
+  Survives reload by RE-DERIVATION (re-running the producer), not by storage.
