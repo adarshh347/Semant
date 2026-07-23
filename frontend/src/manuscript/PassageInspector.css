@@ -160,9 +160,16 @@
 .pi-mark-role { color: var(--ink); font-weight: 600; }
 .pi-mark-prov { color: var(--ink-muted); }
 .pi-mark-cite { color: var(--ink-muted); font-style: italic; }
+/* CIRCUIT-001 P3-A — durability, per mark. A saved mark is stated plainly; a
+   session-only mark is recessed and italic, so the difference is legible at a glance. */
+.pi-mark-save { font-size: 0.62rem; letter-spacing: 0.02em; color: var(--ink-muted); }
+.pi-mark[data-persisted="true"] .pi-mark-save { color: var(--accent-deep, var(--accent)); font-weight: 600; }
+.pi-mark[data-persisted="false"] .pi-mark-save { font-style: italic; }
 /* A model suggestion is visibly quarantined — dashed, recessed, never mistaken
    for evidence the writing may lean on. */
 .pi-mark.is-suggestion { opacity: 0.72; border-left: 2px dashed var(--accent-soft); padding-left: 0.35rem; }
+/* A superseded mark is kept and recoverable — shown, not hidden, with its lineage. */
+.pi-mark.is-superseded { opacity: 0.66; }
 .pi-mark-derived { color: var(--ink-muted); font-size: 0.64rem; }
 
 /* ── actions ─────────────────────────────────────────────────────────────── */

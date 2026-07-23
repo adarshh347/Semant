@@ -3,7 +3,7 @@ import {
   makePercept, upsertPercept, perceptForRegion, perceptId,
   makeExpressionPercept, isExpressionPercept, perceptsForGround,
   makeMention, addMention, removeMentionsForBlock,
-  mentionsForBlock, mentionsForRegion, mentionsForPercept,
+  mentionsForBlock, mentionsForRegion, mentionsForPercept, mentionsForMark,
   blockIdsForRegion, mentionsFromBlocks, blockIdsForPercept,
 } from './perceptMentions.js';
 
@@ -203,5 +203,44 @@ describe('mentionsFromBlocks — percept identity survives the markup round-trip
     const ms = mentionsFromBlocks(blocks);
     expect([...blockIdsForPercept(ms, 'pctx_a')].sort()).toEqual(['blk1', 'blk2']);
     expect(blockIdsForPercept(ms, 'pctx_none').size).toBe(0);
+  });
+});
+
+// ── CIRCUIT-001 P3-A: a mark chip cites a visual_mark directly ───────────────
+describe('Mention — the mark edge (P3-A)', () => {
+  it('makeMention carries a markId and derives an id without changing the grammar', () => {
+    const men = makeMention({ markId: 'vm_1', blockId: 'block_a', inlineContentId: 'ic_1', form: 'inline' });
+    expect(men.markId).toBe('vm_1');
+    expect(men.perceptId).toBeNull();
+    expect(men.regionId).toBeNull();
+    // grammar unchanged: men_<subject>_<block>_<slot>, subject = the mark
+    expect(men.id).toBe('men_vm_1_block_a_ic_1');
+  });
+
+  it('mentionsForMark finds only the edges citing that mark', () => {
+    const ms = [
+      makeMention({ markId: 'vm_1', blockId: 'b1' }),
+      makeMention({ markId: 'vm_2', blockId: 'b2' }),
+      makeMention({ perceptId: 'pctx_a', blockId: 'b3' }),
+    ].reduce(addMention, []);
+    expect(mentionsForMark(ms, 'vm_1').map((m) => m.blockId)).toEqual(['b1']);
+    expect(mentionsForMark(ms, 'vm_none')).toEqual([]);
+  });
+
+  it('mentionsFromBlocks reconstructs a mark edge from stored chip markup', () => {
+    const blocks = [{
+      id: 'block_m',
+      content: '<p><span data-region-ref data-inline-type="mark" data-mark-id="vm_abc_0" '
+        + 'data-region-ids="gnd_a,gnd_b" data-mention-id="men_vm_abc_0_block_m_ic1" '
+        + 'data-label="the light gathers" class="ref-chip ref-chip--mark">the light gathers</span></p>',
+    }];
+    const out = mentionsFromBlocks(blocks);
+    expect(out).toHaveLength(1);
+    const [men] = out;
+    expect(men.markId).toBe('vm_abc_0');
+    expect(men.id).toBe('men_vm_abc_0_block_m_ic1'); // the stored id wins, not a re-derived one
+    expect(men.regionId).toBeNull(); // a mark chip is NOT split into region edges
+    expect(men.refKind).toBe('mark');
+    expect(men.label).toBe('the light gathers');
   });
 });

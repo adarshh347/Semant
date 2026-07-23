@@ -23,7 +23,7 @@ beforeAll(() => {
   engine = ServerBlockNoteEditor.create();
   // Mirrors regionRefInline's markup contract (core spec — server-util is DOM-only).
   const regionRef = createInlineContentSpec(
-    { type: 'regionRef', propSchema: { refKind: { default: 'part' }, regionIds: { default: '' }, perceptId: { default: '' }, mentionId: { default: '' }, label: { default: '' } }, content: 'none' },
+    { type: 'regionRef', propSchema: { refKind: { default: 'part' }, regionIds: { default: '' }, perceptId: { default: '' }, mentionId: { default: '' }, markId: { default: '' }, label: { default: '' } }, content: 'none' },
     {
       render: (ic) => {
         const p = ic.props;
@@ -36,6 +36,7 @@ beforeAll(() => {
         if (regionId) s.setAttribute('data-region-id', regionId);
         if (p.perceptId) s.setAttribute('data-percept-id', p.perceptId);
         if (p.mentionId) s.setAttribute('data-mention-id', p.mentionId);
+        if (p.markId) s.setAttribute('data-mark-id', p.markId);
         s.setAttribute('data-label', p.label);
         s.className = `ref-chip ref-chip--${p.refKind}`;
         s.textContent = p.label;
@@ -47,6 +48,7 @@ beforeAll(() => {
             regionIds: el.getAttribute('data-region-ids') || el.getAttribute('data-region-id') || '',
             perceptId: el.getAttribute('data-percept-id') || '',
             mentionId: el.getAttribute('data-mention-id') || '',
+            markId: el.getAttribute('data-mark-id') || '',
             label: el.getAttribute('data-label') || el.textContent || '',
           }
         : undefined),
@@ -229,6 +231,24 @@ describe('region-ref chips (Phase 3 — no data loss on edit)', () => {
     expect(html).toContain('data-percept-id="pctx_abc_0"'); // the recall trigger survives
     expect(html).toContain('data-region-ids="gnd_a,gnd_b"'); // the ground ids survive
     expect(html).toContain('percept'); // refKind class/attr present
+  });
+
+  it('preserves a /mark chip (CIRCUIT-001 P3-A — vm_ id survives for mark recall)', async () => {
+    // A mark-Mention chip: refKind 'mark', data-mark-id carries the vm_ id (the mark
+    // recall trigger), regionIds carry the mark's linked GROUND ids (hover context).
+    const story = [
+      { id: 'block_m', type: 'paragraph', origin: 'human', color: null,
+        content: '<p>The <span data-region-ref data-inline-type="mark" data-ref-kind="mark" '
+          + 'data-region-ids="gnd_a,gnd_b" data-mark-id="vm_abc_0" data-mention-id="men_vm_block_m_ic1" '
+          + 'data-label="the light gathers" class="ref-chip ref-chip--mark">the light gathers</span> holds.</p>' },
+    ];
+    const out = await chipRoundTrip(story);
+    const html = out[0].content;
+    expect(html).toContain('data-mark-id="vm_abc_0"');     // the mark recall trigger survives
+    expect(html).toContain('data-region-ids="gnd_a,gnd_b"'); // the linked ground ids survive
+    expect(html).toContain('data-mention-id="men_vm_block_m_ic1"');
+    expect(html).toContain('mark');                          // refKind class/attr present
+    expect(out[0].id).toBe('block_m');
   });
 
   it('under the DEFAULT (chip-less) schema the span would flatten — proves the spec is load-bearing', async () => {

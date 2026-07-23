@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { resolveGround } from './grounds';
+import { markSummary } from './visualMarks';
 
 /**
  * Recall — the visual re-performance of a Percept from its Mention
@@ -108,6 +109,118 @@ export function buildRecallScript(percept, lookup, { isResolved } = {}) {
     };
 }
 
+// ── mark recall (CIRCUIT-001 P3-A) ────────────────────────────────────────────
+// A committed mark can be CITED in the Manuscript and PERFORMED on return, just as
+// a percept can. Recall stays percept-centric above (a percept performs its
+// grounds); this is its sibling for a single mark. `resolveMark` is to a mark what
+// `resolveGround` is to a ground: it answers "does this mark still have something
+// to draw?" so a citation that outlived its geometry degrades instead of asserting
+// itself over an empty image.
+
+// How each family re-performs on recall. This NAMES the intent; the renderer
+// (GroundLayers / the field canvas, Lane B3) reads `step.performance` +
+// `progressForMark` to actually bloom/draw.
+// P3F: GroundLayers must consume the `kind: 'mark'` step — bloom a brush_field,
+// draw-on a trace (the SVG pathLength idiom recall already uses for paths),
+// perform-then-unite a relation over its member steps, illuminate a region_mask's
+// region. The DATA is here; the rendering lands in B3's file (see report §recall).
+export const MARK_PERFORMANCE = {
+    brush_field: 'bloom',
+    trace_mark: 'draw_on',
+    relation_mark: 'perform_then_unite',
+    collection_mark: 'gather',
+    frame_mark: 'frame',
+    region_mask: 'illuminate',
+};
+export const markPerformance = (mark) => MARK_PERFORMANCE[mark?.type] || 'bloom';
+
+/**
+ * Does a mark still resolve to something a renderer can perform? Returns
+ * `{ detached, reason }` — the same shape `resolveGround` speaks in, so the player
+ * treats a lost mark exactly as it treats a lost ground.
+ *
+ * A geometry-bearing family (brush/trace/frame) resolves iff it has real geometry.
+ * A `region_mask` resolves iff the region it points at still exists (the mask lives
+ * on the Region — contract v2 §7.2-C). A relation/collection derives its shape from
+ * its refs, so it resolves iff it still names at least one.
+ */
+export function resolveMark(mark, { regions = [], marks = [] } = {}) {
+    if (!mark) return { detached: true, reason: 'gone' };
+    const geom = mark.geometry || {};
+    if (mark.type === 'region_mask') {
+        const rid = geom.mask_ref?.region_id;
+        const region = (regions || []).find((r) => r.id === rid);
+        return region ? { detached: false, reason: null } : { detached: true, reason: 'region_gone' };
+    }
+    if (mark.type === 'relation_mark' || mark.type === 'collection_mark') {
+        const refs = [
+            ...(mark.linked_ground_ids || []),
+            // a relation MAY unite other marks; count a ref that still resolves to one
+            ...(mark.linked_mark_ids || []).filter((id) => (marks || []).some((m) => m.id === id)),
+        ];
+        return refs.length ? { detached: false, reason: null } : { detached: true, reason: 'no_refs' };
+    }
+    if (!geom.kind || geom.kind === 'unresolved') return { detached: true, reason: 'no_geometry' };
+    return { detached: false, reason: null };
+}
+
+/**
+ * A mark → a staged recall timeline. Pure, and the mark analog of
+ * `buildRecallScript`: recede → the mark performs → (relation/collection) its member
+ * grounds stagger in → the caption. A detached mark yields a script that recedes and
+ * names the loss, never a timed highlight over nothing (the same discipline the
+ * ground path learned in P1A).
+ */
+export function buildMarkRecallScript(mark, { regions = [], marks = [], groundById } = {}) {
+    const resolution = resolveMark(mark, { regions, marks });
+    const detached = resolution.detached;
+    const steps = [{ kind: 'recede', at: 0, dur: RECALL_TIMING.recede }];
+    let t = RECALL_TIMING.recede;
+
+    if (!detached) {
+        steps.push({
+            kind: 'mark',
+            markId: mark.id,
+            mark_type: mark.type,
+            role: mark.role,
+            performance: markPerformance(mark),
+            at: t,
+            dur: RECALL_TIMING.ground,
+        });
+        t += RECALL_TIMING.ground * 0.7;
+        // "perform its refs then unite" — a relation/collection stages its member
+        // grounds behind itself, reusing the ground step the renderer already knows.
+        if (mark.type === 'relation_mark' || mark.type === 'collection_mark') {
+            const seen = new Set();
+            for (const gid of mark.linked_ground_ids || []) {
+                const g = groundById?.(gid);
+                if (!g || seen.has(g.id)) continue;
+                seen.add(g.id);
+                steps.push({
+                    kind: 'ground', groundId: g.id, ground_type: g.ground_type,
+                    role: 'supporting', at: t, dur: RECALL_TIMING.ground,
+                });
+                t += RECALL_TIMING.stagger;
+            }
+        }
+    }
+
+    const lastPerforming = steps[steps.length - 1];
+    const expressionAt = detached
+        ? RECALL_TIMING.recede
+        : lastPerforming.at + RECALL_TIMING.ground * 0.6;
+    steps.push({ kind: 'expression', at: expressionAt, dur: RECALL_TIMING.expression });
+
+    return {
+        steps,
+        total: expressionAt + RECALL_TIMING.expression,
+        markId: mark?.id || null,
+        markResolved: !detached,
+        markPerformance: detached ? null : markPerformance(mark),
+        detachedReason: detached ? resolution.reason : null,
+    };
+}
+
 const easeOut = (t) => 1 - (1 - t) * (1 - t);
 
 /**
@@ -118,27 +231,50 @@ const easeOut = (t) => 1 - (1 - t) * (1 - t);
  */
 export function useRecallPlayer(store) {
     // Tolerates a null store (RegionSurface mounts standalone in the lab).
-    const { recall, percepts, groundById = () => null, grounds, regions } = store || {};
+    const {
+        recall, percepts, groundById = () => null, grounds, regions,
+        visualMarks = [],
+    } = store || {};
     const [elapsed, setElapsed] = useState(0);
     const rafRef = useRef(null);
 
+    // Recall carries EITHER a perceptId (perform its grounds) or a markId (perform
+    // the mark). The two never coexist — playRecall/playMarkRecall set one or the
+    // other — so a single script drives both, and the layers below don't care which.
+    const isMarkRecall = !!recall?.markId;
+
     const percept = useMemo(
-        () => (recall ? (percepts || []).find((p) => p.id === recall.perceptId) || null : null),
-        [recall, percepts],
+        () => (recall && !isMarkRecall
+            ? (percepts || []).find((p) => p.id === recall.perceptId) || null
+            : null),
+        [recall, isMarkRecall, percepts],
+    );
+
+    const mark = useMemo(
+        () => (isMarkRecall ? (visualMarks || []).find((m) => m.id === recall.markId) || null : null),
+        [isMarkRecall, recall, visualMarks],
     );
 
     // resolveGround is the authority on whether a Ground still has evidence to
     // show — the same function GroundLayers uses to decide what to draw. Feeding
-    // it here keeps the script and the render in agreement.
+    // it here keeps the script and the render in agreement. A mark recall builds
+    // the mark script instead, resolved through `resolveMark`.
     const script = useMemo(
-        () => (percept
-            ? buildRecallScript(percept, groundById, {
-                isResolved: (g) => !resolveGround(g, {
-                    regions: regions || [], grounds: grounds || [],
-                })?.detached,
-            })
-            : null),
-        [percept, groundById, regions, grounds],
+        () => {
+            if (isMarkRecall) {
+                return mark
+                    ? buildMarkRecallScript(mark, { regions: regions || [], marks: visualMarks || [], groundById })
+                    : null;
+            }
+            return percept
+                ? buildRecallScript(percept, groundById, {
+                    isResolved: (g) => !resolveGround(g, {
+                        regions: regions || [], grounds: grounds || [],
+                    })?.detached,
+                })
+                : null;
+        },
+        [isMarkRecall, mark, percept, groundById, regions, grounds, visualMarks],
     );
 
     useEffect(() => {
@@ -165,10 +301,24 @@ export function useRecallPlayer(store) {
         return easeOut(Math.max(0, Math.min(1, (elapsed - step.at) / step.dur)));
     };
 
+    // The mark's own performance progress, keyed by mark id (a `kind: 'mark'` step).
+    // GroundLayers reads this the way it reads progressFor(groundId). P3F.
+    const progressForMark = (markId) => {
+        if (!script) return 0;
+        const step = script.steps.find((s) => s.kind === 'mark' && s.markId === markId);
+        if (!step) return 0;
+        return easeOut(Math.max(0, Math.min(1, (elapsed - step.at) / step.dur)));
+    };
+
     const expressionStep = script?.steps.find((s) => s.kind === 'expression');
     const captionVisible = active && expressionStep && elapsed >= expressionStep.at;
 
-    const unresolvedCount = script?.unresolvedGroundIds.length || 0;
+    // The caption a mark speaks with — its label, or an honest role summary. A
+    // percept speaks its expression (below); a mark has no prose, so it names itself.
+    const markCaption = mark ? (mark.label || markSummary(mark)) : '';
+
+    // Ground-ledger fields exist only on a percept script; a mark script has none.
+    const unresolvedCount = script?.unresolvedGroundIds?.length || 0;
     // The note speaks about what the Percept CITES, so its numerator must come
     // from the cited ledger. Members that could not perform are still counted in
     // `unresolvedCount`; they just cannot be phrased against `citedCount`.
@@ -178,8 +328,26 @@ export function useRecallPlayer(store) {
         active,
         settled,
         receding: active,                 // the image stays receded until cleared
-        caption: captionVisible ? (percept?.expression || '') : '',
+        caption: captionVisible ? (isMarkRecall ? markCaption : (percept?.expression || '')) : '',
         percept,
+        // CIRCUIT-001 P3-A — the mark being performed, and its recall channel.
+        mark,
+        isMarkRecall,
+        progressForMark,
+        markPerformance: script?.markPerformance || null,
+        // The mark id was asked for but the store has no such mark (prose citing a
+        // mark that a later edit removed) — the mark analog of `perceptMissing`.
+        markMissing: isMarkRecall && !mark,
+        // A cited mark that outlived its geometry/region. Say so beside the caption,
+        // exactly as the ground path says "detached evidence".
+        markDetached: isMarkRecall && !!script && script.markResolved === false,
+        markNote: (isMarkRecall && captionVisible && script && script.markResolved === false)
+            ? (script.detachedReason === 'region_gone'
+                ? 'Detached mark — the region it segmented is gone.'
+                : script.detachedReason === 'no_refs'
+                    ? 'Detached mark — nothing left for it to unite.'
+                    : 'Detached mark — its geometry no longer resolves.')
+            : '',
         // CIRCUIT-001 P1C — recall was ASKED FOR and there is no percept to
         // perform. Previously the chip lit itself (`store.recall.perceptId`
         // matches, regardless of whether the percept exists) while nothing
@@ -187,7 +355,7 @@ export function useRecallPlayer(store) {
         // no-op. Reachable whenever a `pctx_` id in the writing is not in
         // `post.percepts` — prose copied between posts, or a percepts PATCH that
         // failed. States the absence; never a cause.
-        perceptMissing: !!recall && !percept,
+        perceptMissing: !!recall && !isMarkRecall && !percept,
         progressFor,
         // Honesty channel. A Percept can outlive the evidence it cites; when it
         // does, say so beside the caption rather than letting the caption stand

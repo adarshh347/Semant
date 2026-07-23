@@ -10,6 +10,10 @@ import { hydrateGrounds } from '../differential/grounds';
 // CIRCUIT-001 P2E — durable visual_marks. Only committed/superseded persist; a suggestion
 // stays session truth and never reaches the database (contract v2 §7.3).
 import { normalizeMark, persistableMarks, PERSISTED_STATUSES } from '../differential/visualMarks';
+// CIRCUIT-001 P3-A — provenance is authored on the mark; a ground carries only DERIVED
+// bridge fields. `reconcileBridgeFields` reads them off the linked mark so a ground can
+// SHOW who made it without ever authoring provenance itself.
+import { reconcileBridgeFields, summarizeProvenance } from '../differential/suggestionQuarantine';
 
 const BASE = `${API_URL}/api/v1/posts`;
 const AUTOSAVE_MS = 800;
@@ -295,6 +299,26 @@ export function useRegionState(post, onPostChange) {
         (id) => visualMarksRef.current.find(m => m.id === id) || null, [],
     );
 
+    // CIRCUIT-001 P3-A — visible provenance on a ground, WITHOUT authoring it. Runs
+    // the bridge reconciliation (Lane A2's recommendation) against the live marks and
+    // returns a short label + the derived source, so any ground-display surface can
+    // say "you drew this" / "model tightened" instead of a bare `user`.
+    // P3F: the Differential inspector (DifferentialWorkspace.jsx, Lane B3) should read
+    // THIS for a ground's row rather than re-deriving provenance — one source of truth.
+    const groundProvenance = useCallback((groundOrId) => {
+        const ground = typeof groundOrId === 'string'
+            ? groundsRef.current.find(g => g.id === groundOrId)
+            : groundOrId;
+        if (!ground) return null;
+        const bridged = reconcileBridgeFields(ground, visualMarksRef.current);
+        // `bridged.mark_source` is the derived truth; summarize it as the mark would.
+        return {
+            mark_id: bridged.mark_id ?? null,
+            mark_source: bridged.mark_source ?? null,
+            label: bridged.mark_source ? summarizeProvenance({ source: bridged.mark_source }) : null,
+        };
+    }, []);
+
     /** Compose a durable act of noticing over one or more Grounds. Persists. */
     const addExpressionPercept = useCallback((input) => {
         const p = makeExpressionPercept(input);
@@ -322,6 +346,13 @@ export function useRegionState(post, onPostChange) {
     const playRecall = useCallback((perceptId) => {
         if (!perceptId) return;
         setRecall({ perceptId, startedAt: Date.now() });
+    }, []);
+    // CIRCUIT-001 P3-A — recall a MARK. Same channel, different citation: a mark
+    // chip performs the mark, a percept chip performs the percept. The two never
+    // coexist in `recall`, so the player reads one shape.
+    const playMarkRecall = useCallback((markId) => {
+        if (!markId) return;
+        setRecall({ markId, startedAt: Date.now() });
     }, []);
     const clearRecall = useCallback(() => setRecall(null), []);
 
@@ -448,11 +479,13 @@ export function useRegionState(post, onPostChange) {
         selectedGroundId, selectGround, hoveredGroundId, setHoveredGroundId,
         focusGroundIds,
         addExpressionPercept, perceptsForGround,
-        recall, playRecall, clearRecall,
+        recall, playRecall, playMarkRecall, clearRecall,
         metaSaveState, persistMeta, scheduleMetaSave,
         // CIRCUIT-001 P2E — durable visual_marks (the API Lane B2's tools call at merge).
         visualMarks, addVisualMark, updateVisualMark, removeVisualMark,
         visualMarksForGround, visualMarkById,
+        // CIRCUIT-001 P3-A — derived provenance on a ground (bridge reconciliation).
+        groundProvenance,
         // The image, so a /part evidence block can crop a region by reference.
         photoUrl: post?.photo_url ?? null,
     }), [
@@ -464,10 +497,10 @@ export function useRegionState(post, onPostChange) {
         mentions, addMention, removeBlockMentions, blockIdsForRegion,
         grounds, addGround, updateGround, removeGround, groundById,
         selectedGroundId, selectGround, hoveredGroundId, focusGroundIds,
-        addExpressionPercept, perceptsForGround, recall, playRecall, clearRecall,
+        addExpressionPercept, perceptsForGround, recall, playRecall, playMarkRecall, clearRecall,
         metaSaveState, persistMeta, scheduleMetaSave,
         visualMarks, addVisualMark, updateVisualMark, removeVisualMark,
-        visualMarksForGround, visualMarkById,
+        visualMarksForGround, visualMarkById, groundProvenance,
         post,
     ]);
 }
