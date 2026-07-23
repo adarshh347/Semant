@@ -128,8 +128,36 @@ describe('rules that are product, not schema', () => {
         expect(good('brush_field', { role: 'fold', provenance: { confidence: 0.9 } })).toBe(null);
     });
 
-    it('a non-null run_id is refused', () => {
-        expect(good('brush_field', { role: 'fold', provenance: { run_id: 'run_1' } })).toBe(null);
+    it('a real run_id is now ACCEPTED (contract v3 — the run substrate exists)', () => {
+        // The P2D "run_id must stay null" rule is retired: a producer mark carries its receipt.
+        expect(good('brush_field', { role: 'fold', provenance: { run_id: 'run_1' } })).toBeTruthy();
+        // null still means "no run" (a curator's own mark).
+        expect(good('brush_field', { role: 'fold', provenance: { run_id: null } })).toBeTruthy();
+        // …but an empty / whitespace run_id is a broken receipt, not "no run".
+        expect(good('brush_field', { role: 'fold', provenance: { run_id: '   ' } })).toBe(null);
+    });
+
+    it('a named producer must be known and (unless a fixture) carry a run_id', () => {
+        // known producer + run_id → ok
+        expect(good('region_mask', {
+            source: 'model_suggested', status: 'suggested',
+            geometry: { kind: 'region_ref', region_ref: { region_id: 'reg_1' } },
+            provenance: { producer: 'semantic_read', model: 'vlm', run_id: 'run_1' },
+        })).toBeTruthy();
+        // producer with no run_id → refused (lost its receipt)
+        expect(good('region_mask', {
+            source: 'model_suggested', status: 'suggested',
+            geometry: { kind: 'region_ref', region_ref: { region_id: 'reg_1' } },
+            provenance: { producer: 'semantic_read', model: 'vlm' },
+        })).toBe(null);
+        // fixture is the one producer allowed to run without a run_id (tests)
+        expect(good('region_mask', {
+            source: 'model_suggested', status: 'suggested',
+            geometry: { kind: 'region_ref', region_ref: { region_id: 'reg_1' } },
+            provenance: { producer: 'fixture', model: 'stub' },
+        })).toBeTruthy();
+        // an unknown producer name → refused
+        expect(good('brush_field', { role: 'fold', provenance: { producer: 'gremlin', run_id: 'r' } })).toBe(null);
     });
 
     it('a model_suggested mark may not arrive committed', () => {
@@ -227,5 +255,97 @@ describe('reading a mark', () => {
         expect(markSummary(good('brush_field', { role: 'light_field', label: 'lit', geometry: { kind: 'soft_mask' } })))
             .toContain('Light field');
         expect(markSummary(null)).toBe('');
+    });
+});
+
+// ── contract v3 (CIRCUIT-001 P4): first-class instrument fields ───────────────
+// P3-B carried anchors / ambiguous / arrowhead / strokes.op inside `geometry` verbatim;
+// v3 promotes them to validated schema. The gate: what P3-B persisted must still validate.
+import {
+    ANCHOR_KINDS, STROKE_OPS, PRODUCERS, anchorError, regionRefMark, regionMaskMark,
+} from './visualMarks';
+
+describe('contract v3 — trace anchors', () => {
+    const trace = (anchors) => good('trace_mark', { role: 'gaze_address', geometry: { kind: 'polyline', anchors } });
+
+    it('accepts the exact shape syncAnchors writes: point + ref + detached', () => {
+        expect(trace({
+            from: { kind: 'point', at: [0.1, 0.2] },
+            to: { kind: 'ground', ref: 'gnd_1', at: [0.8, 0.9], detached_from_ref: true },
+        })).toBeTruthy();
+    });
+
+    it('a ref anchor with no ref is refused; a point anchor needs none', () => {
+        expect(anchorError({ kind: 'ground', at: [0, 0] })).toMatch(/requires a ref/);
+        expect(anchorError({ kind: 'point', at: [0, 0] })).toBeNull();
+    });
+
+    it('an unknown anchor kind is refused', () => {
+        expect(anchorError({ kind: 'wormhole', at: [0, 0] })).toMatch(/not in the vocabulary/);
+        expect(trace({ from: { kind: 'wormhole', at: [0, 0] }, to: null })).toBe(null);
+    });
+
+    it('a non-point `at` must be a real [x,y]', () => {
+        expect(anchorError({ kind: 'point', at: [0.1] })).toMatch(/normalized/);
+    });
+
+    it('every anchor kind is a string in the published vocabulary', () => {
+        expect(ANCHOR_KINDS).toContain('point');
+        expect(ANCHOR_KINDS).toContain('ground');
+    });
+});
+
+describe('contract v3 — ambiguous / arrowhead / strokes.op', () => {
+    it('accepts a trace carrying ambiguous + arrowhead booleans', () => {
+        expect(good('trace_mark', {
+            role: 'gaze_address',
+            geometry: { kind: 'polyline', ambiguous: true, arrowhead: false },
+        })).toBeTruthy();
+    });
+
+    it('refuses a non-boolean ambiguous / arrowhead', () => {
+        expect(good('trace_mark', { role: 'gaze_address', geometry: { kind: 'polyline', ambiguous: 'yes' } })).toBe(null);
+        expect(good('trace_mark', { role: 'gaze_address', geometry: { kind: 'polyline', arrowhead: 1 } })).toBe(null);
+    });
+
+    it('validates strokes[].op as add|sub where a geometry carries strokes', () => {
+        expect(STROKE_OPS).toEqual(['add', 'sub']);
+        expect(good('brush_field', {
+            role: 'light_field',
+            geometry: { kind: 'freehand_path', strokes: [{ op: 'add' }, { op: 'sub' }] },
+        })).toBeTruthy();
+        expect(good('brush_field', {
+            role: 'light_field',
+            geometry: { kind: 'freehand_path', strokes: [{ op: 'multiply' }] },
+        })).toBe(null);
+    });
+});
+
+describe('contract v3 — region_ref (a naming reference, no mask authored)', () => {
+    it('region_mask accepts a region_ref geometry (VLM names, never draws)', () => {
+        const m = regionRefMark({ regionId: 'reg_1', label: 'collar',
+            provenance: {}, runId: 'run_1', model: 'vlm' });
+        // regionRefMark defaults producer semantic_read → needs run_id; supply it
+        expect(m).toBeTruthy();
+        expect(m.geometry.kind).toBe('region_ref');
+        expect(m.geometry.region_ref.region_id).toBe('reg_1');
+    });
+
+    it('region_ref may not carry inline pixels or a mask_ref', () => {
+        expect(good('region_mask', {
+            source: 'model_suggested', status: 'suggested',
+            geometry: { kind: 'region_ref', region_ref: { region_id: 'r' }, pixels: [[1]] },
+            provenance: { producer: 'fixture' },
+        })).toBe(null);
+    });
+
+    it('region_mask still accepts the raster_mask (segmented) mode', () => {
+        expect(regionMaskMark({ regionId: 'reg_1', source: 'user', status: 'committed' })).toBeTruthy();
+    });
+
+    it('PRODUCERS is the published producer vocabulary', () => {
+        expect(PRODUCERS).toContain('sam_refine');
+        expect(PRODUCERS).toContain('semantic_read');
+        expect(PRODUCERS).toContain('fixture');
     });
 });

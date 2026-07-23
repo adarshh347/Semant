@@ -57,7 +57,28 @@ export const MARK_STATUSES = [
 export const GEOMETRY_KINDS = [
     'freehand_path', 'polygon', 'soft_mask', 'raster_mask', 'bounding_box',
     'vector', 'curve', 'polyline', 'derived', 'unresolved',
+    // P4 contract v3: a label suggestion references a region WITHOUT authoring pixels — the
+    // VLM's law (it never draws). `region_ref` points at an existing region's mask by id.
+    'region_ref',
 ];
+
+// ── contract v3: first-class instrument fields (CIRCUIT-001 P4) ────────────────
+// P3-B carried these inside `geometry` verbatim so as not to touch the P2D contract. P4
+// promotes them to validated schema. What P3-B persisted must still validate — the checks
+// below accept exactly the shapes `handleEditing.syncAnchors` / the trace tool write.
+
+// A trace endpoint anchors to a reference or to itself. `point` → `at` IS the endpoint;
+// a ref kind (`ground`/`region`/`percept`/`mark`) → `ref` owns the real position, `at` is a
+// cached copy, and `detached_from_ref` records a drag that froze it (contract v2 decision #1).
+export const ANCHOR_KINDS = ['point', 'ground', 'region', 'percept', 'mark'];
+
+// A brush stroke either adds paint or erases it. Erase is DATA, not a compositing detail
+// (contract v2 decision B) — so `op` travels with the stroke and validates here.
+export const STROKE_OPS = ['add', 'sub'];
+
+// Who produced a mark. Only a real producer (or a fixture, in tests) may carry a run_id;
+// a curator's own mark names no producer. The suggestion-provenance shape (contract v3 §P4).
+export const PRODUCERS = ['sam_refine', 'semantic_read', 'planner', 'fixture'];
 
 // ── role vocabularies ────────────────────────────────────────────────────────
 // The first three are P2B's, imported rather than retyped. `trace_role` adds the two the
@@ -152,9 +173,14 @@ export function makeVisualMark(type, fields = {}, { now = null, idFn = markId } 
         derived_from: fields.derived_from ?? null,
         provenance: {
             planner: null, prompt_excerpt: null, model: null, matched: [],
-            // The slot exists and stays null: P1E left run identity under-specified and
-            // P1G found the stored field is literally None. No causal claim is made.
+            // P4 contract v3: run identity is now REAL. The CIRCULATION-SPINE run substrate
+            // (`vision_runs` + `vision_run_service`) landed, so a producer mark carries the id
+            // of the run that made it. `null` still means "no producer / a curator's own mark".
+            // The deliberate `run_id: null` of P2D ends here (see contract §P4).
             run_id: null,
+            producer: null,     // one of PRODUCERS, or null for a curator's mark
+            adapter: null,      // e.g. 'sam2', 'semantic_pass' — the concrete transport
+            latency_ms: null,   // wall time the producer took, when known
             ...(fields.provenance || {}),
         },
         created_at: fields.created_at || ts,
@@ -181,6 +207,27 @@ export function normalizeMark(raw, { now = null, idFn = markId } = {}) {
 }
 
 // ── validation ───────────────────────────────────────────────────────────────
+
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+const isPoint = (p) => Array.isArray(p) && p.length >= 2 && isNum(p[0]) && isNum(p[1]);
+
+/**
+ * Validate one trace anchor (contract v3). Returns an error string, or null when valid.
+ * Mirrors exactly what `handleEditing.syncAnchors` / the trace tool write:
+ *   { kind, at:[nx,ny], ref?, detached_from_ref? }
+ * A `point` anchor needs no ref (it anchors to itself); a ref kind needs a non-empty ref.
+ */
+export function anchorError(a) {
+    if (a == null) return null;                              // an absent endpoint anchor is fine
+    if (typeof a !== 'object' || Array.isArray(a)) return 'anchor must be an object';
+    if (!ANCHOR_KINDS.includes(a.kind)) return `anchor.kind "${String(a.kind)}" is not in the vocabulary`;
+    if (a.at != null && !isPoint(a.at)) return 'anchor.at must be a normalized [x,y] point';
+    if (a.kind !== 'point' && !nonEmpty(a.ref)) return `anchor.kind "${a.kind}" requires a ref`;
+    if (a.detached_from_ref != null && typeof a.detached_from_ref !== 'boolean') {
+        return 'anchor.detached_from_ref must be a boolean';
+    }
+    return null;
+}
 
 /** @returns {{valid: boolean, errors: string[], warnings: string[]}} */
 export function validateMark(mark) {
@@ -216,18 +263,59 @@ export function validateMark(mark) {
         errors.push(`unknown geometry kind: ${String(geom.kind)}`);
     }
 
-    // Contract v2 §7.2-C: a region_mask points at a segmented region and NOTHING inline.
-    // Its geometry is raster_mask ONLY, with a mask_ref{region_id} — never pixels, never a
-    // freehand path. The mask lives on the Region; the mark only references it.
+    // Contract v2 §7.2-C + v3: a region_mask points at an existing region and authors NOTHING
+    // inline. It references that region one of two ways:
+    //   - `raster_mask` + `mask_ref{region_id}` — a SEGMENTED extent (SAM/Dissect drew the mask);
+    //   - `region_ref` + `region_ref{region_id}`  — a NAMING reference only, no mask authored
+    //     (the VLM's law: it may say WHAT a region is, never draw one). P4 producer 2 mints these.
+    // Never pixels, never a freehand path — the mask lives on the Region, the mark references it.
     if (mark.type === 'region_mask' && geom && typeof geom === 'object') {
-        if (geom.kind !== 'raster_mask') {
-            errors.push('region_mask geometry must be raster_mask');
-        }
-        if (!geom.mask_ref || !nonEmpty(geom.mask_ref.region_id)) {
-            errors.push('region_mask requires geometry.mask_ref.region_id');
+        if (geom.kind === 'raster_mask') {
+            if (!geom.mask_ref || !nonEmpty(geom.mask_ref.region_id)) {
+                errors.push('region_mask (raster_mask) requires geometry.mask_ref.region_id');
+            }
+        } else if (geom.kind === 'region_ref') {
+            if (!geom.region_ref || !nonEmpty(geom.region_ref.region_id)) {
+                errors.push('region_mask (region_ref) requires geometry.region_ref.region_id');
+            }
+        } else {
+            errors.push('region_mask geometry must be raster_mask or region_ref');
         }
         for (const banned of ['pixels', 'rle', 'polygons', 'strokes', 'points']) {
             if (geom[banned] != null) errors.push(`region_mask geometry may not carry inline ${banned}`);
+        }
+    }
+
+    // Contract v3 first-class fields — validated wherever a geometry carries them, so a shape
+    // P3-B wrote (anchors on a polyline/vector trace, ambiguous/arrowhead flags, strokes[].op)
+    // is checked rather than passed through blind. Absent fields are always fine (back-compat).
+    if (geom && typeof geom === 'object') {
+        if (geom.anchors != null) {
+            if (typeof geom.anchors !== 'object' || Array.isArray(geom.anchors)) {
+                errors.push('geometry.anchors must be an object { from, to }');
+            } else {
+                for (const end of ['from', 'to']) {
+                    const err = anchorError(geom.anchors[end]);
+                    if (err) errors.push(`geometry.anchors.${end}: ${err}`);
+                }
+            }
+        }
+        if (geom.ambiguous != null && typeof geom.ambiguous !== 'boolean') {
+            errors.push('geometry.ambiguous must be a boolean');
+        }
+        if (geom.arrowhead != null && typeof geom.arrowhead !== 'boolean') {
+            errors.push('geometry.arrowhead must be a boolean');
+        }
+        if (geom.strokes != null && mark.type !== 'region_mask') {
+            if (!Array.isArray(geom.strokes)) {
+                errors.push('geometry.strokes must be an array');
+            } else {
+                geom.strokes.forEach((s, i) => {
+                    if (s && s.op != null && !STROKE_OPS.includes(s.op)) {
+                        errors.push(`geometry.strokes[${i}].op "${String(s.op)}" is not add|sub`);
+                    }
+                });
+            }
         }
     }
 
@@ -245,8 +333,20 @@ export function validateMark(mark) {
     if (mark.provenance && 'confidence' in mark.provenance) {
         errors.push('provenance.confidence is forbidden — no confidence scores on marks');
     }
-    if (mark.provenance && mark.provenance.run_id != null) {
-        errors.push('provenance.run_id must stay null — no causal run claims');
+    // Contract v3 (P4): run identity is now real. `run_id` may be null (a curator's mark) or a
+    // non-empty run id (a producer's). The P2D "must stay null" rule is retired — the run
+    // substrate exists, so a produced suggestion finally carries its receipt.
+    if (mark.provenance && mark.provenance.run_id != null && !nonEmpty(mark.provenance.run_id)) {
+        errors.push('provenance.run_id must be a non-empty run id or null');
+    }
+    // A named producer must be one we recognise; and a real producer must own a run — a
+    // suggestion that claims to come from the model without a run_id has lost its receipt.
+    if (mark.provenance && mark.provenance.producer != null) {
+        if (!PRODUCERS.includes(mark.provenance.producer)) {
+            errors.push(`provenance.producer "${String(mark.provenance.producer)}" is not in the vocabulary`);
+        } else if (mark.provenance.producer !== 'fixture' && !nonEmpty(mark.provenance.run_id)) {
+            errors.push(`provenance.producer "${mark.provenance.producer}" requires a run_id`);
+        }
     }
     // Contract §4.1: a model suggestion may never arrive already committed.
     if (mark.source === 'model_suggested' && mark.status === 'committed') {
@@ -339,6 +439,7 @@ export function actionToDraftMark(action, { now = null, idFn = markId } = {}) {
 export function regionMaskMark({
     regionId, geometryRev = 0, source = 'user', status = 'draft',
     derivedFrom = null, role = null, label = '', model = null, linkedGroundIds = [],
+    runId = null, producer = null, adapter = null, latencyMs = null,
 } = {}, { now = null, idFn = markId } = {}) {
     return normalizeMark({
         type: 'region_mask',
@@ -349,7 +450,30 @@ export function regionMaskMark({
         derived_from: derivedFrom,
         geometry: { kind: 'raster_mask', mask_ref: { region_id: regionId, geometry_rev: geometryRev } },
         linked_ground_ids: arr(linkedGroundIds),
-        provenance: model ? { model } : {},
+        provenance: { ...(model ? { model } : {}), run_id: runId, producer, adapter, latency_ms: latencyMs },
+    }, { now, idFn });
+}
+
+/**
+ * A region_ref mark: a NAMING reference to an existing region, authoring no mask (contract v3).
+ * This is what a semantic-read label proposal becomes — the VLM says "region X is a collar"
+ * without drawing anything. Defaults to a quarantined model suggestion.
+ */
+export function regionRefMark({
+    regionId, source = 'model_suggested', status = 'suggested', role = null, label = '',
+    model = null, runId = null, producer = 'semantic_read', adapter = null, latencyMs = null,
+    derivedFrom = null, linkedGroundIds = [],
+} = {}, { now = null, idFn = markId } = {}) {
+    return normalizeMark({
+        type: 'region_mask',
+        role,
+        label,
+        source,
+        status,
+        derived_from: derivedFrom,
+        geometry: { kind: 'region_ref', region_ref: { region_id: regionId } },
+        linked_ground_ids: arr(linkedGroundIds),
+        provenance: { model, run_id: runId, producer, adapter, latency_ms: latencyMs },
     }, { now, idFn });
 }
 

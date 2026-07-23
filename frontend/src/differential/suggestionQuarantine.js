@@ -250,5 +250,59 @@ export function bridgeFieldsAgree(target, marks = []) {
     return true;
 }
 
+// ── producer intake (CIRCUIT-001 P4-A) ───────────────────────────────────────
+// Real model output enters the circuit HERE, and only as a quarantined suggestion. A backend
+// producer (SAM refine / semantic read) emits a `suggestion descriptor` — a plain JSON shape,
+// contract v3 §8.4 — and these helpers turn it into a `model_suggested` mark, fail-closed. A
+// descriptor that does not validate is dropped, never rendered as a partial (the same discipline
+// as normalizeMark). Nothing here persists: a suggestion's status keeps it out of the database.
+
+/**
+ * A STABLE identity for a suggestion: `producer:type:source_ref`. Re-running a producer over the
+ * same source (same region / same candidate) yields the same key — the basis of idempotent
+ * intake (a re-run replaces, never duplicates).
+ */
+export function suggestionKey(descriptor) {
+    const d = descriptor || {};
+    return `${d.producer || '?'}:${d.type || '?'}:${d.source_ref ?? '?'}`;
+}
+
+/** The deterministic mark id for a descriptor — so re-ingest lands on the SAME mark id. */
+export function suggestionId(descriptor) {
+    return `vm_sug_${suggestionKey(descriptor).replace(/[^a-zA-Z0-9]+/g, '_')}`;
+}
+
+/**
+ * One descriptor → one quarantined `model_suggested` mark, or **null** (fail-closed). The id is
+ * deterministic (`suggestionId`) so a second ingest of the same descriptor replaces rather than
+ * duplicates. The producer's provenance rides through unchanged — its receipt (model + run_id +
+ * producer) is exactly what makes the suggestion honest.
+ */
+export function suggestionFromDescriptor(descriptor, { now = null } = {}) {
+    if (!descriptor || typeof descriptor !== 'object') return null;
+    const id = suggestionId(descriptor);
+    const mark = normalizeMark({
+        id,
+        type: descriptor.type,
+        role: descriptor.role ?? null,
+        label: typeof descriptor.label === 'string' ? descriptor.label : '',
+        source: 'model_suggested',
+        status: 'suggested',
+        geometry: descriptor.geometry,
+        linked_ground_ids: Array.isArray(descriptor.linked_ground_ids) ? descriptor.linked_ground_ids : [],
+        provenance: descriptor.provenance || {},
+    }, { now, idFn: () => id });
+    if (!mark) return null;
+    // Belt and braces: force the quarantine flags even if a descriptor arrived mislabelled.
+    return quarantineSuggestion(mark, { now });
+}
+
+/** A list of descriptors → the valid suggestion marks (invalid dropped). Order preserved. */
+export function suggestionsFromDescriptors(descriptors = [], opts = {}) {
+    return (Array.isArray(descriptors) ? descriptors : [])
+        .map((d) => suggestionFromDescriptor(d, opts))
+        .filter(Boolean);
+}
+
 // Re-exported so a quarantine consumer has the constructors without a second import.
 export { makeVisualMark, normalizeMark, validateMark };
