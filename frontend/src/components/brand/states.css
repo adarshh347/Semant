@@ -1,0 +1,152 @@
+/* Branded state surfaces — empty / error states and loading skeletons.
+   Plum-themed, reduced-motion-safe, presentational only. */
+
+/* ── Region-mark motifs (the empty-state illustration) ───────────────────── */
+.region-motif {
+  display: inline-flex;
+  color: var(--accent);
+  line-height: 0;
+}
+.region-motif svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Empty / error state — a door, not a dead box ────────────────────────── */
+.semant-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem;
+  padding: clamp(2rem, 6vw, 4rem) 1.5rem;
+  max-width: 30rem;
+  margin: 0 auto;
+}
+.semant-empty--compact {
+  padding: 1.5rem 1rem;
+  gap: 0.35rem;
+}
+.semant-empty .region-motif {
+  margin-bottom: 0.5rem;
+}
+.semant-empty__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.2rem, 2.4vw, 1.6rem);
+  letter-spacing: var(--tracking-tight, -0.02em);
+  color: var(--ink);
+  margin: 0;
+}
+.semant-empty--compact .semant-empty__title {
+  font-size: 1.05rem;
+}
+.semant-empty__body {
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 26rem;
+}
+.semant-empty--compact .semant-empty__body {
+  font-size: 0.85rem;
+}
+
+/* The next-action pill — the ink pill of the design language (accent is never a
+   bright button fill; it stays the mark/text accent). */
+.semant-empty__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--ink);
+  color: var(--ink-inverse);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease, ease), opacity 0.15s var(--ease, ease);
+}
+.semant-empty__action:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
+}
+.semant-empty__action span { transition: transform 0.15s var(--ease, ease); }
+.semant-empty__action:hover span { transform: translateX(2px); }
+
+.semant-empty--error .region-motif { color: var(--ink-subtle); }
+
+/* ── Loading skeletons ───────────────────────────────────────────────────── */
+.skel {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2, #f0ecef);
+}
+.skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent-soft, rgba(94, 43, 80, 0.08)) 50%,
+    transparent 100%
+  );
+  animation: skel-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skel-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.skel-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.skel-card__media { width: 100%; }
+
+.skel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.25rem;
+  padding: 0.5rem 0;
+}
+
+.skel-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
+}
+.skel-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.skel-row__thumb { flex: none; }
+.skel-row__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1;
+  padding-top: 0.25rem;
+}
+
+/* Reduced motion → a still tint, no shimmer sweep (the skeleton is not
+   progress; freezing it loses nothing truthful). */
+@media (prefers-reduced-motion: reduce) {
+  .skel::after {
+    animation: none;
+    transform: none;
+    background: var(--accent-soft, rgba(94, 43, 80, 0.08));
+    opacity: 0.5;
+  }
+}

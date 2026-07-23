@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import { PAGE_SIZE } from './ArchiveGrid';
+import { PerceptMark } from './brand/glyphs';
 import './ArchiveTimeline.css';
 
 const clamp01 = (n) => Math.min(1, Math.max(0, n));
@@ -123,7 +124,7 @@ export default function ArchiveTimeline({ selectedTag, currentPage, onJump, sequ
         ))}
         {seqMarks.map((m, i) => (
           <div key={`s${i}`} className="arch-tl-mark is-seq" style={{ top: `${m.pos * 100}%` }} title={m.label}>
-            <span className="arch-tl-seqmark" aria-hidden>◈</span>
+            <span className="arch-tl-seqmark" aria-hidden><PerceptMark size="1em" /></span>
           </div>
         ))}
         <span className="arch-tl-thumb" style={{ top: `${thumbPos * 100}%` }} />

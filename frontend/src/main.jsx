@@ -87,6 +87,7 @@ const router = createBrowserRouter([
         path: "you",
         element: (
           <PlaceholderPage
+            motif="portrait"
             eyebrow="Your taste"
             title="You"
             lede="Your eye, written down — the details you keep noticing, given back to you. Your highlights and epics live here; the taste portrait is on the way."

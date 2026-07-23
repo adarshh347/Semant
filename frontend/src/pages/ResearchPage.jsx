@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { researchService } from '../services/researchService';
+import EmptyState from '../components/brand/EmptyState';
 import './ResearchPage.css';
 
 /* ------------------------------------------------------------------ */
@@ -456,9 +457,12 @@ export default function ResearchPage() {
                         <ArticleReader article={current} onExplicit={sendExplicit} registerSection={registerSection} />
                     ) : (
                         !running && (
-                            <div className="research-empty">
-                                <p>No articles yet. Run the agent to compose the first one.</p>
-                            </div>
+                            <EmptyState
+                                motif="infer"
+                                title="Nothing inferred yet"
+                                body="No articles yet. Run the agent to compose the first one from what you've been reading."
+                                action={{ onClick: runAgent, label: 'Run the agent' }}
+                            />
                         )
                     )}
 

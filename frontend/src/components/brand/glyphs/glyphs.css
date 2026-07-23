@@ -1,0 +1,15 @@
+/* The Semant glyph family — presentational only, plum-/ink-driven via
+   currentColor. No animation lives here: these are static concept marks, and
+   nothing in this set animates "progress" (Invariant 9). */
+
+.glyph {
+  display: inline-block;
+  vertical-align: middle;
+  flex: none;
+}
+
+/* A glyph used as an inline text mark (the ◈ percept motif inside a line of
+   copy) sits on the text baseline and takes the surrounding plum accent. */
+.glyph--inline {
+  vertical-align: -0.14em;
+}

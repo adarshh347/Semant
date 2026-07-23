@@ -20,6 +20,8 @@ import 'react-photo-album/rows.css';
 import { API_URL } from '../config/api';
 import { cldAt, cldSrcSet, cldLqip } from '../lib/cloudinary';
 import { groupIntoSequences } from '../lib/sequences';
+import { PerceptMark } from './brand/glyphs';
+import { MarkLoader } from './brand/MarkLoader';
 import './ArchiveGrid.css';
 
 export const PAGE_SIZE = 50;
@@ -184,7 +186,7 @@ export default function ArchiveGrid({ selectedTag, startPage = 1, onSequences })
         return (
           <section key={seq.key} className="arch-seq" data-seq={seq.key}>
             <header className="arch-seq-divider">
-              <span className="arch-seq-mark" aria-hidden>◈</span>
+              <span className="arch-seq-mark" aria-hidden><PerceptMark size="1em" /></span>
               <span className="arch-seq-label">{seq.label}</span>
               <span className="arch-seq-rule" />
             </header>
@@ -202,7 +204,7 @@ export default function ArchiveGrid({ selectedTag, startPage = 1, onSequences })
       })}
 
       <div ref={sentinelRef} className="arch-sentinel" aria-hidden />
-      {status === 'loading' && <p className="arch-status">Loading more of the archive…</p>}
+      {status === 'loading' && <div className="arch-status"><MarkLoader fullscreen={false} size={26} label="Loading more of the archive…" /></div>}
       {status === 'done' && <p className="arch-status">You&rsquo;ve reached the end of the archive.</p>}
       {status === 'error' && <p className="arch-status">Couldn&rsquo;t load more of the archive.</p>}
     </div>
