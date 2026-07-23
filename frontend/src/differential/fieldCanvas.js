@@ -82,6 +82,7 @@ export function paintFields(canvas, fields, content, { color = null } = {}) {
     if (canvas.width !== W) canvas.width = W;
     if (canvas.height !== H) canvas.height = H;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;   // no 2D context (e.g. jsdom) — nothing to paint, never throw
     ctx.clearRect(0, 0, W, H);
     if (!fields.length) return;
 

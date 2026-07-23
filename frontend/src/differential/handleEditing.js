@@ -219,6 +219,32 @@ export function syncAnchors(anchors, points) {
 }
 
 /**
+ * Which reference does a trace endpoint land on? (CIRCUIT-001 P3-B, 2a.)
+ *
+ * The caller supplies `candidates` — a flat list of anchorable things, each
+ * `{ kind, ref, at:[nx,ny] }` (a ground centre, a region centre, a mark
+ * endpoint) — because resolving those positions needs `grounds`/`regions`, which
+ * is `grounds.js`'s job, not this pure module's. The nearest candidate within
+ * `tol` becomes a ref anchor `{ kind, ref, at }`; when nothing is close enough
+ * the endpoint anchors to ITSELF (`kind:'point'`), so an unanchored terminus is
+ * still an honest, explicit anchor rather than a silent absence — and a later
+ * drag onto a target can promote it. `at` is always frozen to the endpoint's own
+ * position; a ref anchor's `at` is a cache the ref owns (see `syncAnchors`).
+ */
+export function anchorForEndpoint(at, candidates = [], tol = 0.04, aspect = 1) {
+    let best = null;
+    let bestD = sq(tol);
+    for (const c of candidates) {
+        if (!c?.at) continue;
+        const d = dist2(c.at, at, aspect);
+        if (d <= bestD) { bestD = d; best = c; }
+    }
+    return best
+        ? { kind: best.kind, ref: best.ref, at: [at[0], at[1]] }
+        : { kind: 'point', at: [at[0], at[1]] };
+}
+
+/**
  * The whole edit, applied to a Ground or a mark. Returns a NEW object (never
  * mutates), with `updated_at` bumped and anchors re-synced when present.
  */

@@ -1,18 +1,24 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { RegionStoreContext, useRegionState } from '../state/regionStore';
 import DifferentialWorkspace from '../differential/DifferentialWorkspace';
+import { makeVisualMark } from '../differential/visualMarks';
+import { quarantineSuggestion } from '../differential/suggestionQuarantine';
 
 /**
- * DEV-ONLY harness for the Differential workspace — CIRCUIT-001 P2E-B verification.
+ * DEV-ONLY harness for the Differential workspace — CIRCUIT-001 P2E-B / P3-B verification.
  *
  * The real workspace mounts inside PostDetailPage over a fetched post. This harness
- * mounts it over an OFFLINE fixture post (a data-URI image + a couple of seeded
- * grounds) with a real `useRegionState` store, so the P2E-B mechanics — semantic
- * brush, editable handles, the perfect-freehand toggle, and the suggestion
- * quarantine (via `window.__diffSeedSuggestion()`) — can be exercised without the
- * backend. Not linked from any nav. Reachable at /lab/differential.
+ * mounts it over an OFFLINE fixture post (a data-URI image + seeded grounds and a
+ * region) with a real `useRegionState` store, so the instrument set — semantic brush
+ * + erase, trace (roles / anchors / ambiguity / arrowhead), relation, refine→region_mask,
+ * editable handles, the perfect-freehand default, layer controls, and the suggestion
+ * quarantine — can be exercised without the backend.
  *
- * Autosaves PATCH to an absent backend and fail quietly; local state is the point.
+ * The quarantine is seeded here the honest way: this harness is a FIXTURE producer, so
+ * it seeds one already-quarantined suggestion straight into the store (the same shape
+ * `receiveModelSuggestion` mints from a fixture-source action). There is NO DEV fork
+ * inside the production workspace anymore (P3-B Debt 2). Not linked from any nav.
+ * Reachable at /lab/differential. Autosaves PATCH to an absent backend and fail quietly.
  */
 
 function fixtureImage(w = 1000, h = 667) {
@@ -37,12 +43,13 @@ function fixtureImage(w = 1000, h = 667) {
 export default function DifferentialLab() {
     const photo = useMemo(() => fixtureImage(), []);
     const post = useMemo(() => ({
-        _id: 'lab_p2e_fixture', id: 'lab_p2e_fixture',
+        _id: 'lab_p3_fixture', id: 'lab_p3_fixture',
         photo_url: photo,
-        instagram_handle: 'p2e_fixture',
+        instagram_handle: 'p3_fixture',
         domain_profile: { chosen: ['general'] },
         // Seeded grounds so a path is immediately reshapeable (Adjust points / hit-path)
-        // and a field is on the canvas. Plain dicts; the store hydrates them.
+        // and a trace endpoint has something to anchor to. A region so Refine→region_mask
+        // is exercisable. Plain dicts; the store hydrates them.
         grounds: [
             {
                 id: 'gnd_seed_path', ground_type: 'path', actor: 'creator', detector: null,
@@ -54,10 +61,33 @@ export default function DifferentialLab() {
                 label: 'the seam', points: [[0.30, 0.78], [0.50, 0.72], [0.70, 0.80]], band_width: 0.06,
             },
         ],
+        regions: [
+            { id: 'reg_seed_a', label: 'the lit figure', box: { x: 0.20, y: 0.21, w: 0.26, h: 0.48 } },
+            { id: 'reg_seed_b', label: 'the shadowed form', box: { x: 0.57, y: 0.26, w: 0.22, h: 0.52 } },
+        ],
         percepts: [],
     }), [photo]);
 
     const store = useRegionState(post, () => {});
+
+    // Seed one quarantined suggestion (a model-proposed field) so the Accept/Dismiss
+    // flow is visible on load — the fixture producer, not a workspace DEV fork.
+    const seeded = useRef(false);
+    useEffect(() => {
+        if (seeded.current || !store?.addVisualMark) return;
+        seeded.current = true;
+        store.addVisualMark(quarantineSuggestion(makeVisualMark('brush_field', {
+            role: 'gaze_field', label: 'a field the model proposes', source: 'model_suggested',
+            geometry: {
+                kind: 'freehand_path',
+                strokes: [{
+                    points: [[0.55, 0.30, 0.6], [0.62, 0.34, 0.9], [0.68, 0.42, 0.8], [0.66, 0.52, 0.5], [0.60, 0.58, 0.3]],
+                    radius: 0.06, strength: 0.7, op: 'add',
+                }],
+            },
+            provenance: { planner: 'fixture', model: 'demo' },
+        })));
+    }, [store]);
 
     return (
         <RegionStoreContext.Provider value={store}>
