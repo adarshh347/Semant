@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Star, Crosshair, Eye, Sparkle } from 'lucide-react';
+import { Star, Crosshair, Eye, Sparkle, Brush } from 'lucide-react';
+import { canCiteMark, summarizeProvenance } from '../differential/suggestionQuarantine';
+import { roleLabel, markSummary } from '../differential/visualMarks';
 import './RefPicker.css';
 
 // One glyph per Ground type — the sub-line of a percept row shows what kind of
@@ -23,7 +25,7 @@ const hasNote = (r) => !!(r.user_note || '').trim();
  * Keyboard mirrors SlashMenu exactly (↑/↓/Enter/Esc), because this opens from the same
  * "/" gesture and a different set of keys here would be a small betrayal.
  */
-export default function RefPicker({ kind, regions, lenses, percepts = [], grounds = [], x, y, onPick, onClose }) {
+export default function RefPicker({ kind, regions, lenses, percepts = [], grounds = [], marks = [], x, y, onPick, onClose }) {
     const [index, setIndex] = useState(0);
     const [query, setQuery] = useState('');
     const inputRef = useRef(null);
@@ -49,6 +51,25 @@ export default function RefPicker({ kind, regions, lenses, percepts = [], ground
                         raw: p,
                     };
                 });
+        }
+        if (kind === 'mark') {
+            // A mark is citable evidence only when committed, the curator's own (or
+            // confirmed by them), and actually drawn. `canCiteMark` is THE filter and
+            // it lives in exactly one place — a suggestion, a draft, or an ungeometried
+            // mark is never even offered here, so it can't be laundered into a citation.
+            return (marks || [])
+                .filter(canCiteMark)
+                .filter(m => !q
+                    || (m.label || '').toLowerCase().includes(q)
+                    || (m.type || '').toLowerCase().includes(q)
+                    || (m.role || '').toLowerCase().includes(q))
+                .map(m => ({
+                    id: m.id,
+                    title: m.label || markSummary(m) || m.type.replace(/_/g, ' '),
+                    sub: `${m.type.replace(/_/g, ' ')} · ${summarizeProvenance(m)}`,
+                    badge: roleLabel(m.type, m.role),
+                    raw: m,
+                }));
         }
         if (kind === 'lens') {
             return (lenses || [])
@@ -91,13 +112,13 @@ export default function RefPicker({ kind, regions, lenses, percepts = [], ground
 
     return (
         <div className="ref-picker" style={{ position: 'fixed', left: x, top: y + 6, zIndex: 95 }}
-            role="dialog" aria-label={kind === 'lens' ? 'Cite a lens' : kind === 'percept' ? 'Recall a percept' : 'Point at a part'}>
+            role="dialog" aria-label={kind === 'lens' ? 'Cite a lens' : kind === 'percept' ? 'Recall a percept' : kind === 'mark' ? 'Cite a mark' : 'Point at a part'}>
             <div className="ref-picker-head">
-                {kind === 'lens' ? <Eye size={13} /> : kind === 'percept' ? <Sparkle size={13} /> : <Crosshair size={13} />}
+                {kind === 'lens' ? <Eye size={13} /> : kind === 'percept' ? <Sparkle size={13} /> : kind === 'mark' ? <Brush size={13} /> : <Crosshair size={13} />}
                 <input
                     ref={inputRef}
                     className="ref-picker-input"
-                    placeholder={kind === 'lens' ? 'Which lens?' : kind === 'percept' ? 'Which noticing?' : 'Which part?'}
+                    placeholder={kind === 'lens' ? 'Which lens?' : kind === 'percept' ? 'Which noticing?' : kind === 'mark' ? 'Which mark?' : 'Which part?'}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={onKeyDown}
@@ -111,7 +132,8 @@ export default function RefPicker({ kind, regions, lenses, percepts = [], ground
                 <div className="ref-picker-empty">
                     {kind === 'lens' ? 'No lenses match.'
                         : kind === 'percept' ? 'No percepts yet — compose one in Differential.'
-                            : 'No parts match.'}
+                            : kind === 'mark' ? 'No citable marks yet — commit one in Differential.'
+                                : 'No parts match.'}
                 </div>
             ) : (
                 <div className="ref-picker-list" role="listbox">

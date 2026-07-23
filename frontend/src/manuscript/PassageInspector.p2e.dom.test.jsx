@@ -47,12 +47,23 @@ beforeEach(() => { container = document.createElement('div'); document.body.appe
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 
 describe('visual marks behind a percept', () => {
-    it('shows a session mark, labelled "not saved"', async () => {
+    it('shows a committed mark as SAVED, not the stale "session-only" (P3-A)', async () => {
         await mount(STORE([committedMark('g1')]));
         await focusChip();
         expect(container.querySelector('.pi-marks')).toBeTruthy();
-        expect(text()).toMatch(/Session — not saved/);
+        // Marks are durable now — a committed mark says "Saved", never "session-only".
+        expect(text()).toMatch(/Saved/);
+        expect(text()).not.toMatch(/Session — not saved/);
+        expect(marks()[0].getAttribute('data-persisted')).toBe('true');
         expect(marks()).toHaveLength(1);
+    });
+
+    it('shows a session-only suggestion as "not saved" (durability is per mark)', async () => {
+        await mount(STORE([suggestionMark('g1')]));
+        await focusChip();
+        // A suggestion is not persistable — it must still say so, honestly.
+        expect(text()).toMatch(/Session — not saved/);
+        expect(marks()[0].getAttribute('data-persisted')).toBe('false');
     });
 
     it('shows a committed user mark as citable, provenance "Yours"', async () => {

@@ -97,13 +97,19 @@ export function perceptsForGround(percepts, groundId) {
 // ── Mention ──────────────────────────────────────────────────────────────────
 // Deterministic id from the edge it records → addMention is naturally idempotent
 // (re-inserting the same chip doesn't duplicate the link).
-export function mentionId({ perceptId: pid, regionId, blockId, inlineContentId, form = 'block' }) {
-  return `men_${pid || regionId || 'x'}_${blockId || 'x'}_${inlineContentId || form}`;
+export function mentionId({ perceptId: pid, regionId, markId, blockId, inlineContentId, form = 'block' }) {
+  // Grammar unchanged (`men_<subject>_<block>_<slot>`); a mark chip simply names the
+  // mark as its subject when it cites neither a percept nor a region (CIRCUIT-001 P3-A).
+  return `men_${pid || markId || regionId || 'x'}_${blockId || 'x'}_${inlineContentId || form}`;
 }
 
 export function makeMention({
   perceptId: pid = null,
   regionId = null,
+  // CIRCUIT-001 P3-A — a mark chip cites a visual_mark directly. The edge carries
+  // the `vm_` id so click→recall can perform it. Optional: a percept/region mention
+  // leaves it null and is byte-identical to before.
+  markId = null,
   blockId,
   inlineContentId = null,
   form = 'block',
@@ -117,9 +123,10 @@ export function makeMention({
   id = null,
 }) {
   return {
-    id: id || mentionId({ perceptId: pid, regionId, blockId, inlineContentId, form }),
+    id: id || mentionId({ perceptId: pid, regionId, markId, blockId, inlineContentId, form }),
     perceptId: pid,
     regionId,
+    markId,
     blockId,
     inlineContentId,
     form,
@@ -145,6 +152,8 @@ export function removeMentionsForBlock(mentions, blockId) {
 export const mentionsForBlock = (mentions, blockId) => mentions.filter((m) => m.blockId === blockId);
 export const mentionsForRegion = (mentions, regionId) => mentions.filter((m) => m.regionId === regionId);
 export const mentionsForPercept = (mentions, pid) => mentions.filter((m) => m.perceptId === pid);
+// CIRCUIT-001 P3-A — which blocks cite this mark (the mark analog of the above).
+export const mentionsForMark = (mentions, markId) => mentions.filter((m) => m.markId === markId);
 
 /**
  * Which blocks talk about this region? Union of Mention edges AND the primary
@@ -183,11 +192,22 @@ export function mentionsFromBlocks(textBlocks = []) {
     while ((m = chipRe.exec(html)) !== null) {
       const tag = m[0];
       const perceptId = ATTR(tag, 'data-percept-id');
+      const markId = ATTR(tag, 'data-mark-id');
       const storedId = ATTR(tag, 'data-mention-id');
       const refKind = ATTR(tag, 'data-inline-type') || ATTR(tag, 'data-ref-kind');
       const label = ATTR(tag, 'data-label');
       const regionIds = (ATTR(tag, 'data-region-ids') || '').split(',').filter(Boolean);
       const base = { blockId: b.id, form: 'inline', relationType: 'cites', actor: 'human', refKind, label };
+
+      if (markId) {
+        // A mark chip is ONE edge keyed on the mark. Its `data-region-ids` are the
+        // mark's linked GROUND ids (carried for hover context), never region edges —
+        // so, like a percept chip, it is not split per id.
+        out.push(makeMention({
+          ...base, markId, perceptId: perceptId || null, regionId: null, id: storedId || null,
+        }));
+        continue;
+      }
 
       if (perceptId) {
         // ONE edge per chip, keyed on the percept. A `/percept` chip's

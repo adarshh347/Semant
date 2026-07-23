@@ -124,6 +124,12 @@ function refSlashItems(onRefTrigger) {
       icon: <span aria-hidden>✦</span>,
       onItemClick: () => onRefTrigger?.('percept'),
     },
+    {
+      title: 'Mark', subtext: 'Cite a committed visual mark — click performs it on the image',
+      aliases: ['mark', 'instrument', 'brush', 'trace'], group: 'Chiasm',
+      icon: <span aria-hidden>❯</span>,
+      onItemClick: () => onRefTrigger?.('mark'),
+    },
   ];
 }
 
@@ -161,11 +167,11 @@ const Manuscript = forwardRef(function Manuscript(
     currentBlockId: () => {
       try { return editor.getTextCursorPosition()?.block?.id ?? null; } catch { return null; }
     },
-    insertRegionChip: ({ refKind = 'part', regionIds = '', label = 'part', perceptId = '', mentionId = '', blockId = null }) => {
+    insertRegionChip: ({ refKind = 'part', regionIds = '', label = 'part', perceptId = '', mentionId = '', markId = '', blockId = null }) => {
       try {
         if (blockId) editor.setTextCursorPosition(blockId, 'end');
         editor.insertInlineContent([
-          { type: 'regionRef', props: { refKind, regionIds, perceptId, mentionId, label } },
+          { type: 'regionRef', props: { refKind, regionIds, perceptId, mentionId, markId, label } },
           ' ', // a trailing space so the caret doesn't stick to the atom
         ]);
         editor.focus();
