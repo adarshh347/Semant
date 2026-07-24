@@ -8,6 +8,7 @@ import {
   fetchRecentPosts, isInProgress, titleOf, progressLine,
 } from './homeData';
 import { PerceptMark } from '../brand/glyphs';
+import { SectionEyebrow } from '../brand/SectionEyebrow';
 
 // Continue in Chiasm (2×2). Recent readings you've begun — thumb · title ·
 // "N percepts · M words" — overflowing horizontally via Embla. Click → resume
@@ -36,7 +37,7 @@ export default function ContinueTile() {
     <section className="tile tile-continue">
       <header className="tile-head">
         <div>
-          <span className="eyebrow">Continue in Chiasm</span>
+          <SectionEyebrow className="eyebrow">Continue in Chiasm</SectionEyebrow>
           <h2 className="tile-title">Pick up a reading</h2>
         </div>
         {items.length > 1 && (

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { PerceptMark } from '../brand/glyphs';
+import { SectionEyebrow } from '../brand/SectionEyebrow';
 
 // Hero strip (full width). Wordmark in the display serif, one wedge line, and a
 // single ink-pill CTA into the work — plus one quiet text link to upload. One
@@ -10,7 +11,7 @@ export default function HeroTile() {
 
   return (
     <section className="tile tile-hero">
-      <span className="eyebrow tile-hero-eyebrow">See · Read · Write</span>
+      <SectionEyebrow className="eyebrow tile-hero-eyebrow">See · Read · Write</SectionEyebrow>
       <h1 className="tile-hero-mark">
         Semant<span className="tile-hero-glyph" aria-hidden><PerceptMark size="1em" /></span>
       </h1>

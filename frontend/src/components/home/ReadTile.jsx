@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { cldCrop, cldLqip } from '../../lib/cloudinary';
 import { fetchRecentPosts } from './homeData';
 import { PerceptMark } from '../brand/glyphs';
+import { SectionEyebrow } from '../brand/SectionEyebrow';
 
 // Read (1×1). One Aletheia hook — an image with the reading's opening move and a
 // perceptual fork — a door into the felt reading at /read/:postId. Deterministic
@@ -20,7 +21,7 @@ export default function ReadTile() {
 
   return (
     <section className="tile tile-read">
-      <span className="eyebrow">Read</span>
+      <SectionEyebrow className="eyebrow">Read</SectionEyebrow>
       {isLoading || !post ? (
         <p className="tile-muted">Finding an image to read…</p>
       ) : (

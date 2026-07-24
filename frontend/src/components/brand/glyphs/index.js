@@ -7,7 +7,7 @@
 
 export { Glyph } from './Glyph';
 export {
-  RegionGlyph, FieldGlyph, PathGlyph, BoundaryGlyph,
+  RegionGlyph, RegionTick, FieldGlyph, PathGlyph, BoundaryGlyph,
   FrameGlyph, ConstellationGlyph, RelationGlyph,
 } from './groundGlyphs';
 export {

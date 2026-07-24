@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { API_URL } from '../../config/api';
 import { tasteHeaders } from '../../lib/tasteSession';
 import { PerceptMark } from '../brand/glyphs';
+import { SectionEyebrow } from '../brand/SectionEyebrow';
 
 // Your taste · Anuraṇana (2×1). "Your eye leans toward…" + motif chips, read from
 // the taste portfolio (thresholded — one tap is noise). Anonymous until you've
@@ -30,7 +31,7 @@ export default function TasteTile() {
 
   return (
     <section className="tile tile-taste">
-      <span className="eyebrow">Your taste · Anuraṇana</span>
+      <SectionEyebrow className="eyebrow">Your taste · Anuraṇana</SectionEyebrow>
       {isLoading ? (
         <p className="tile-muted">Reading your eye…</p>
       ) : chips.length > 0 ? (

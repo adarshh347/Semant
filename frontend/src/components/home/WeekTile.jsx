@@ -3,6 +3,7 @@ import NumberFlow from '@number-flow/react';
 import {
   fetchRecentPosts, perceptCount, wordCount, updatedWithin, isInProgress,
 } from './homeData';
+import { SectionEyebrow } from '../brand/SectionEyebrow';
 
 // This week (1×1) — the one dark tile, for contrast. Glanceable numbers:
 // readings touched · words written · percepts marked, over the last 7 days.
@@ -30,7 +31,7 @@ export default function WeekTile() {
 
   return (
     <section className="tile tile-week">
-      <span className="eyebrow tile-week-eyebrow">This week</span>
+      <SectionEyebrow className="eyebrow tile-week-eyebrow">This week</SectionEyebrow>
       {isLoading ? (
         <p className="tile-muted tile-week-muted">Counting…</p>
       ) : (

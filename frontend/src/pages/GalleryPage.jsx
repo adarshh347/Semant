@@ -4,6 +4,7 @@ import Threads from '../components/Threads';
 import ArchiveGrid from '../components/ArchiveGrid';
 import ArchiveWall from '../components/ArchiveWall';
 import ArchiveTimeline from '../components/ArchiveTimeline';
+import { SectionEyebrow } from '../components/brand/SectionEyebrow';
 
 // The Archive — just the archive. Two ways to browse the same images:
 //   · Scroll — the justified, infinite scroll, broken by sequence dividers
@@ -52,6 +53,7 @@ function GalleryPage() {
     <div className="main-content-card">
       <div className="page-header archive-header">
         <div>
+          <SectionEyebrow className="eyebrow">Gallery</SectionEyebrow>
           <h1>The Archive</h1>
           <p>Every image, read part by part — pick one to begin.</p>
         </div>
