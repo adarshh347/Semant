@@ -77,6 +77,15 @@ anatomy_catalog_collection = database.get_collection("anatomy_catalog")
 # (Atlas Vector Search / external DB) later. Write path filled in Track B.
 region_embeddings_collection = database.get_collection("region_embeddings")
 
+# --- Anuraṇana taste map (Layer-4 data-viz): cached 2D projection sidecar ---
+# region_projections_collection: the ONE new capability behind the taste map — a
+# derived, VERSIONED 2D projection (numpy-PCA) of a single embedding space's
+# vectors, keyed by (space, projection_version). A projection is disposable and
+# NEVER canonical geometry (Contract-Atlas caveat): it is rebuilt when coverage
+# grows or the projection_version bumps, and the authoritative vector always
+# stays in region_embeddings. One space per map (E0) — the store never mixes them.
+region_projections_collection = database.get_collection("region_projections")
+
 # --- Darshan audience side (Track F): taste signals + consent ---
 # taste_signals_collection: an audience tap is a LIGHTWEIGHT EVENT, never a Region.
 # It references an existing region_id/embedding_id and aggregates into Anuraṇana, so
