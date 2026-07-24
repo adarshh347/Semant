@@ -30,20 +30,23 @@ import { RegionStoreContext } from '../../state/regionStore';
 // of region focus. `markId` (CIRCUIT-001 P3-A) rides the same way: a `vm_` id
 // routes to MARK recall — the mark performs on the image. Back-compat: consumers
 // that only read regionIds see no change; both ids default to null.
-const emit = (name, regionIds, perceptId = '', markId = '') =>
+// `postId` (CIRCUIT-001 P5-A) rides along when a chip points across the border — it names the
+// SOURCE post a foreign mark/region lives on. Same-post chips omit it and see no change.
+const emit = (name, regionIds, perceptId = '', markId = '', postId = '') =>
   window.dispatchEvent(
     new CustomEvent(name, {
       detail: {
         regionIds: (regionIds || '').split(',').filter(Boolean),
         perceptId: perceptId || null,
         markId: markId || null,
+        postId: postId || null,
       },
     }),
   );
 
 // The full reference markup — one place, so render and toExternalHTML can't drift.
 // Populated attrs only; a bare /part with no percept/mention yet just omits them.
-function chipAttrs({ refKind, regionIds, perceptId, mentionId, markId, label }) {
+function chipAttrs({ refKind, regionIds, perceptId, mentionId, markId, postId, label }) {
   const regionId = (regionIds || '').split(',').filter(Boolean)[0] || '';
   const a = {
     'data-region-ref': '',
@@ -57,6 +60,7 @@ function chipAttrs({ refKind, regionIds, perceptId, mentionId, markId, label }) 
   if (perceptId) a['data-percept-id'] = perceptId; // Mention: which percept
   if (mentionId) a['data-mention-id'] = mentionId; // Mention: the edge id
   if (markId) a['data-mark-id'] = markId;          // P3-A: which mark (recall trigger)
+  if (postId) a['data-post-id'] = postId;          // P5-A: the SOURCE post a crossing points at
   return a;
 }
 
@@ -88,13 +92,13 @@ function RegionRefChip({ p }) {
       role="button"
       tabIndex={0}
       aria-label={`Region reference: ${p.label}`}
-      onMouseEnter={() => emit('semant:region-hover', p.regionIds, p.perceptId, p.markId)}
+      onMouseEnter={() => emit('semant:region-hover', p.regionIds, p.perceptId, p.markId, p.postId)}
       onMouseLeave={() => emit('semant:region-hover', '')}
       // a11y: keyboard focus illuminates the region the same as hover.
-      onFocus={() => emit('semant:region-hover', p.regionIds, p.perceptId, p.markId)}
+      onFocus={() => emit('semant:region-hover', p.regionIds, p.perceptId, p.markId, p.postId)}
       onBlur={() => emit('semant:region-hover', '')}
-      onClick={() => emit('semant:region-focus', p.regionIds, p.perceptId, p.markId)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emit('semant:region-focus', p.regionIds, p.perceptId, p.markId); } }}
+      onClick={() => emit('semant:region-focus', p.regionIds, p.perceptId, p.markId, p.postId)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emit('semant:region-focus', p.regionIds, p.perceptId, p.markId, p.postId); } }}
     >
       {p.label}
     </span>
@@ -110,6 +114,7 @@ export const regionRefInline = createReactInlineContentSpec(
       perceptId: { default: '' },
       mentionId: { default: '' },
       markId: { default: '' },
+      postId: { default: '' },       // P5-A: the source post a crossing points at
       label: { default: '' },
     },
     content: 'none',
@@ -132,6 +137,7 @@ export const regionRefInline = createReactInlineContentSpec(
             perceptId: el.getAttribute('data-percept-id') || '',
             mentionId: el.getAttribute('data-mention-id') || '',
             markId: el.getAttribute('data-mark-id') || '',
+            postId: el.getAttribute('data-post-id') || '',
             label: el.getAttribute('data-label') || el.textContent || '',
           }
         : undefined,
