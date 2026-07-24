@@ -405,3 +405,21 @@ button.sc-way:disabled { opacity: 0.5; cursor: default; }
   .sc-dot--active { animation: none; }
   .sc-spin { animation-duration: 2s; }
 }
+
+/* ── brand glyphs (aesthetic pass · Inspector) ────────────────────────────────
+   Each console dimension carries its family mark: a domain glyph per way of
+   looking, an instrument glyph per source, the Recall arc on Operation memory.
+   The mark holds the plum accent while the label stays in its own ink, so the
+   tell reads without recolouring the text. Presentational only. */
+.sc-way { gap: 0.34rem; }
+.sc-way-glyph { color: var(--accent); flex: none; }
+.sc-way--base .sc-way-glyph { color: var(--ink-subtle); }
+.sc-way.is-on .sc-way-glyph { color: var(--accent-deep); }
+
+.sc-source { align-items: center; }
+.sc-source-glyph { color: var(--accent); opacity: 0.8; flex: none; }
+.sc-source.is-unavailable .sc-source-glyph { color: var(--sc-err); opacity: 0.9; }
+.sc-source.is-deferred .sc-source-glyph { color: var(--sc-warn); opacity: 0.9; }
+
+.sc-eyebrow--op { display: inline-flex; align-items: center; gap: 0.32rem; }
+.sc-op-glyph { color: var(--accent); flex: none; }

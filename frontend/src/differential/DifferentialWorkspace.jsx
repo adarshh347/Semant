@@ -44,6 +44,10 @@ import {
     editablePoints, withEditedPoints, moveAnchor, insertAnchor, removeAnchor, applyPointEdit,
     isEditableGround, anchorForEndpoint,
 } from './handleEditing';
+// Aesthetic pass (Inspector) — the section tell + a quiet waiting motif for the
+// empty inspector. Presentational only; no behaviour rides on these.
+import { SectionEyebrow } from '../components/brand/SectionEyebrow';
+import RegionMotif from '../components/brand/RegionMotif';
 import './DifferentialWorkspace.css';
 
 // The role vocabularies the instruments offer (contract §2), from Lane A's
@@ -1599,7 +1603,8 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
 
                     {!composer && !hasDrawDraft && !composing && picked.size === 0 && !selectedGround && !selected && grounds.length === 0 && tray.size === 0 && (
                         <div className="diff-insp-empty">
-                            <span className="diff-eyebrow">Inspector</span>
+                            <RegionMotif variant="seed" size={72} className="diff-insp-motif" />
+                            <SectionEyebrow className="diff-eyebrow">Inspector</SectionEyebrow>
                             <p>Nothing under attention. Select parts, take the Brush (<kbd>B</kbd>) or Trace
                                 (<kbd>T</kbd>), or press <kbd>O</kbd> for the untouched photograph.</p>
                         </div>

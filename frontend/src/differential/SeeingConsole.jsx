@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sparkles, ChevronDown, MoreHorizontal, Scan, Plus } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, Scan, Plus } from 'lucide-react';
+import { SectionEyebrow } from '../components/brand/SectionEyebrow';
+import {
+    WayGlyph, SourceGlyph, DissectGlyph, SuggestGlyph, OperationMemoryGlyph,
+} from '../components/brand/glyphs';
 import { API_URL } from '../config/api';
 import { useVisionActivity } from './useVisionActivity';
 import {
@@ -207,7 +211,7 @@ export default function SeeingConsole({
                     disabled={busy || !onFindParts}
                     title={FIND_PARTS_TITLE}
                 >
-                    {busy ? <span className="sc-spin" /> : <Sparkles size={16} />}
+                    {busy ? <span className="sc-spin" /> : <DissectGlyph size={16} />}
                     <span className="sc-find-label">{busy ? FIND_PARTS_BUSY : FIND_PARTS_LABEL}</span>
                 </button>
 
@@ -268,12 +272,15 @@ export default function SeeingConsole({
 
             {/* ── ways of looking ─────────────────────────────────────────── */}
             <div className="sc-ways">
-                <span className="sc-eyebrow">Ways of looking</span>
+                <SectionEyebrow className="sc-eyebrow">Ways of looking</SectionEyebrow>
                 <div className="sc-way-chips">
                     {/* The base pass is a statement, not a control: it is always on, and a
                         disabled button that looks like a chip invites a click that can never
                         do anything. */}
-                    <span className="sc-way sc-way--base" title={BASE_WAY.hint}>{BASE_WAY.label}</span>
+                    <span className="sc-way sc-way--base" title={BASE_WAY.hint}>
+                        <WayGlyph way={BASE_WAY.key} size={13} className="sc-way-glyph" aria-hidden="true" />
+                        {BASE_WAY.label}
+                    </span>
                     {SPECIALIST_WAYS.map((w) => (
                         <button
                             key={w.key} type="button" title={w.hint}
@@ -283,6 +290,7 @@ export default function SeeingConsole({
                             disabled={waysBusy || !postId}
                             onClick={() => patchWays(toggleWay(chosen, w.key))}
                         >
+                            <WayGlyph way={w.key} size={13} className="sc-way-glyph" aria-hidden="true" />
                             {w.label}
                         </button>
                     ))}
@@ -293,6 +301,7 @@ export default function SeeingConsole({
                         onClick={runAuto}
                         title="Let Semant propose how to attend to this image"
                     >
+                        <SuggestGlyph size={13} className="sc-way-glyph" aria-hidden="true" />
                         {waysBusy ? '…' : 'Let it choose'}
                     </button>
                 </div>
@@ -302,7 +311,7 @@ export default function SeeingConsole({
             {/* ── sources ─────────────────────────────────────────────────── */}
             {active.length > 0 && (
                 <div className="sc-sources">
-                    <span className="sc-eyebrow">Sources</span>
+                    <SectionEyebrow className="sc-eyebrow">Sources</SectionEyebrow>
                     <div className="sc-source-chips">
                         {active.map((s) => (
                             <span
@@ -310,6 +319,7 @@ export default function SeeingConsole({
                                 className={`sc-source is-${s.state}`}
                                 title={`${s.name}${s.role ? ` · ${s.role}` : ''} — ${s.stateLabel}${s.detail ? ` · ${s.detail}` : ''}`}
                             >
+                                <SourceGlyph source={s.name} size={12} className="sc-source-glyph" aria-hidden="true" />
                                 <span className="sc-source-name">{s.label}</span>
                                 {s.role && <span className="sc-source-role">{s.role}</span>}
                                 {s.state !== 'ready' && <em className="sc-source-state">{s.stateLabel}</em>}
@@ -325,7 +335,10 @@ export default function SeeingConsole({
                     type="button" className="sc-mem-toggle"
                     aria-expanded={memoryOpen} onClick={() => setMemoryOpen((o) => !o)}
                 >
-                    <span className="sc-eyebrow">Operation memory</span>
+                    <span className="sc-eyebrow sc-eyebrow--op">
+                        <OperationMemoryGlyph size={12} className="sc-op-glyph" aria-hidden="true" />
+                        Operation memory
+                    </span>
                     {latest && !memoryOpen && (
                         <span className="sc-mem-latest">
                             <StatusDot tone={latest.present.tone} />
