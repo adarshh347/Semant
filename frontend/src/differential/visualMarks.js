@@ -78,7 +78,9 @@ export const STROKE_OPS = ['add', 'sub'];
 
 // Who produced a mark. Only a real producer (or a fixture, in tests) may carry a run_id;
 // a curator's own mark names no producer. The suggestion-provenance shape (contract v3 §P4).
-export const PRODUCERS = ['sam_refine', 'semantic_read', 'planner', 'fixture'];
+// P5-A adds `find_similar`: a visual-neighbour search is a producer whose suggestions cross the
+// border to another post (a cross-post `region_ref`).
+export const PRODUCERS = ['sam_refine', 'semantic_read', 'planner', 'find_similar', 'fixture'];
 
 // ── role vocabularies ────────────────────────────────────────────────────────
 // The first three are P2B's, imported rather than retyped. `trace_role` adds the two the
@@ -275,8 +277,25 @@ export function validateMark(mark) {
                 errors.push('region_mask (raster_mask) requires geometry.mask_ref.region_id');
             }
         } else if (geom.kind === 'region_ref') {
-            if (!geom.region_ref || !nonEmpty(geom.region_ref.region_id)) {
+            const rr = geom.region_ref;
+            // A naming reference authors NO mask — carrying a mask_ref here is a copy across the
+            // border (P5-A: a crossing is a reference, never a copy). raster_mask is the ONLY
+            // mode that owns a mask_ref.
+            if (geom.mask_ref != null) {
+                errors.push('region_ref geometry may not carry a mask_ref — it references, never copies');
+            }
+            if (!rr || !nonEmpty(rr.region_id)) {
                 errors.push('region_mask (region_ref) requires geometry.region_ref.region_id');
+            } else {
+                // P5-A · the crossing. A region_ref MAY name a region on ANOTHER post — a
+                // cross-post reference `{region_id, post_id, geometry_rev}`. Still no pixels
+                // (a crossing is a reference, never a copy); only the border coordinates.
+                if (rr.post_id != null && !nonEmpty(rr.post_id)) {
+                    errors.push('region_ref.post_id must be a non-empty post id or absent');
+                }
+                if (rr.geometry_rev != null && !isNum(rr.geometry_rev)) {
+                    errors.push('region_ref.geometry_rev must be a number (the rev at citation) or absent');
+                }
             }
         } else {
             errors.push('region_mask geometry must be raster_mask or region_ref');
@@ -463,7 +482,13 @@ export function regionRefMark({
     regionId, source = 'model_suggested', status = 'suggested', role = null, label = '',
     model = null, runId = null, producer = 'semantic_read', adapter = null, latencyMs = null,
     derivedFrom = null, linkedGroundIds = [],
+    // P5-A · the crossing. A region_ref may name a region on ANOTHER post — the reference then
+    // carries the border coordinates `{post_id, geometry_rev}`. Same-post refs omit both.
+    postId = null, geometryRev = null,
 } = {}, { now = null, idFn = markId } = {}) {
+    const region_ref = { region_id: regionId };
+    if (postId != null) region_ref.post_id = postId;
+    if (geometryRev != null) region_ref.geometry_rev = geometryRev;
     return normalizeMark({
         type: 'region_mask',
         role,
@@ -471,11 +496,34 @@ export function regionRefMark({
         source,
         status,
         derived_from: derivedFrom,
-        geometry: { kind: 'region_ref', region_ref: { region_id: regionId } },
+        geometry: { kind: 'region_ref', region_ref },
         linked_ground_ids: arr(linkedGroundIds),
         provenance: { model, run_id: runId, producer, adapter, latency_ms: latencyMs },
     }, { now, idFn });
 }
+
+// ── the crossing (CIRCUIT-001 P5-A) ────────────────────────────────────────────
+// A cross-post mark is a REFERENCE, never a copy: a `region_ref` whose `region_ref` carries a
+// `post_id` naming another post. These readers are the one place that recognises the border, so
+// a chip, a recall, and a staleness check all agree on what "across the border" means.
+
+/**
+ * The border reference a cross-post `region_ref` mark carries, or **null** for a same-post mark.
+ * `{ post_id, region_id, geometry_rev }` — the rev is the value AT CITATION, so a later drift on
+ * the source is detectable (never hidden). Pure; reads only the mark.
+ */
+export function crossPostReference(mark) {
+    const rr = mark?.geometry?.region_ref;
+    if (!rr || !nonEmpty(rr.post_id)) return null;
+    return {
+        post_id: rr.post_id,
+        region_id: rr.region_id ?? null,
+        geometry_rev: isNum(rr.geometry_rev) ? rr.geometry_rev : null,
+    };
+}
+
+/** True when a mark points across the border (references a region on another post). */
+export const isCrossPostMark = (m) => !!crossPostReference(m);
 
 // ── persistence policy (contract v2 §7.3) ─────────────────────────────────────
 // Only committed and superseded marks persist. `superseded` because recoverability is the

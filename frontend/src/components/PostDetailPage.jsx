@@ -2,7 +2,7 @@
 // LeetCode-style split-screen layout with Highlights feature
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import axios from 'axios';
 import { ArrowLeft, Sparkles, Plus, X, ChevronRight, ChevronLeft, BookOpen, Trash2, Edit, Save, XCircle, Highlighter, Underline, PenLine, MoreHorizontal } from 'lucide-react';
@@ -18,6 +18,8 @@ import { API_URL } from '../config/api';
 import { epicService } from '../services/epicService';
 import { RegionStoreContext, useRegionState } from '../state/regionStore';
 import { canCiteMark } from '../differential/suggestionQuarantine';
+import { crossPostReference } from '../differential/visualMarks';
+import { resolveCrossPost, crossPostNote, crossPostResolves } from '../differential/crossPost';
 import { emptyHandoff, requestHandoff, canFlush, completeHandoff, wasDelivered } from '../state/manuscriptHandoff';
 import './PostDetailPage.css';
 
@@ -43,6 +45,10 @@ function PostDetailPage() {
   const [post, setPost] = useState(null);
   const { postId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // P5-A · the crossing. When a foreign chip's source is gone, we STATE the loss rather than
+  // crash or silently no-op — this holds that honest note for a moment (matches recall's tone).
+  const [crossPostNotice, setCrossPostNotice] = useState('');
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedBlocks, setEditedBlocks] = useState([]);
@@ -145,6 +151,28 @@ function PostDetailPage() {
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
+
+  // P5-A · the crossing lands. When we arrived here via a foreign chip (navigate carried
+  // `crossRecall` in router state), perform the armed focus once THIS post has loaded — the
+  // recall then runs natively, as if the noticing had been made here. We clear the router state
+  // afterward so a refresh does not re-fire, and surface staleness as an honest note.
+  useEffect(() => {
+    const cr = location.state?.crossRecall;
+    if (!cr || !post) return;
+    setActiveLeftTab('regions');
+    if (fieldPanelRef.current?.isCollapsed()) fieldPanelRef.current.expand();
+    if (cr.regionId) storeRef.current.focusRegions([cr.regionId]);
+    if (cr.stale) setCrossPostNotice('Source has changed since cited — showing it as it stands now.');
+    // Drop the one-shot instruction so navigating back / refreshing does not replay it.
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.key, post?.id]);
+
+  // The crossing note is a brief, honest breath — let it settle like recall's calm does.
+  useEffect(() => {
+    if (!crossPostNotice) return undefined;
+    const t = setTimeout(() => setCrossPostNotice(''), 6000);
+    return () => clearTimeout(t);
+  }, [crossPostNotice]);
 
   // Close the topbar "⋯" overflow on outside-click / Escape.
   useEffect(() => {
@@ -809,13 +837,19 @@ function PostDetailPage() {
       // a chip on the page IS a claim of evidence, and the claim must be earned.
       if (!canCiteMark(raw)) return;
       const label = (raw.label || raw.role || raw.type || 'mark').replace(/_/g, ' ');
+      // P5-A · the crossing. A cited mark whose geometry references ANOTHER post carries the
+      // border on its chip: the source post id rides along so a click resolves + navigates
+      // there. A same-post mark leaves it null and the chip is byte-identical to before.
+      const crossRef = crossPostReference(raw);
+      const crossPost = crossRef?.post_id || '';
       const mention = regionStore.addMention({
         markId: raw.id, perceptId: null, regionId: null, blockId, inlineContentId,
-        form: 'inline', relationType: 'cites', actor: 'human',
+        postId: crossPost || null, form: 'inline', relationType: 'cites', actor: 'human',
       });
       handle.insertRegionChip({
         refKind: 'mark', regionIds: (raw.linked_ground_ids || []).join(','), label,
         markId: raw.id, mentionId: mention?.id || '', blockId,
+        ...(crossPost ? { postId: crossPost } : {}),
       });
       return;
     }
@@ -894,6 +928,35 @@ function PostDetailPage() {
   chipClickRef.current = (e) => {
     const chip = e.target.closest?.('[data-region-ref]');
     if (!chip) return;
+
+    // P5-A · the crossing. A chip whose source post is NOT the one we are on reaches across the
+    // border. We resolve it truthfully — the reference lives on the local `region_ref` mark
+    // (never on the chip alone), so we look the mark up, FETCH the source post (never assume it
+    // loaded), and either navigate to it with recall armed, or STATE the loss. Never a crash,
+    // never a silent no-op — a foreign chip degrades exactly as a detached ground does.
+    const chipPostId = chip.getAttribute('data-post-id') || '';
+    if (chipPostId && post && chipPostId !== post.id && chipPostId !== postId) {
+      const localMarkId = chip.getAttribute('data-mark-id') || '';
+      const localMark = (regionStore.visualMarks || []).find((m) => m.id === localMarkId);
+      const ref = localMark ? crossPostReference(localMark) : null;
+      if (!ref) {
+        setCrossPostNotice('Evidence unavailable — the cited reference is no longer in this manuscript.');
+        return;
+      }
+      const fetchPost = async (pid) => (await axios.get(`${API_URL}/api/v1/posts/${pid}`)).data;
+      resolveCrossPost(ref, { fetchPost })
+        .then((res) => {
+          if (!crossPostResolves(res)) { setCrossPostNotice(crossPostNote(res)); return; }
+          // Navigate to the source with the region focus armed; the existing recall performs
+          // natively there. Carry staleness so the destination can state the drift in inspection
+          // (the crossing still performs — drift is reported, never a reason to refuse).
+          navigate(`/posts/${ref.post_id}`, {
+            state: { crossRecall: { regionId: ref.region_id, stale: res.status === 'stale' } },
+          });
+        })
+        .catch(() => setCrossPostNotice('Evidence unavailable — the source could not be reached.'));
+      return;
+    }
 
     // A mark chip performs its mark (recall), exactly as a percept chip does — its
     // data-region-ids carry GROUND ids for hover, but the click routes on the mark id.
@@ -1023,6 +1086,18 @@ function PostDetailPage() {
   return (
     <RegionStoreContext.Provider value={regionStore}>
     <div className={`post-detail-page${isEditing ? ' editing-mode' : ''}${workspaceMode === 'differential' ? ' differential-open' : ''}`}>
+      {/* P5-A · the crossing degrades OUT LOUD. When a foreign chip's source is gone or drifted,
+          say so — never a crash, never a silent no-op. A minimal, honest breath here; P5F: B5's
+          Passage Rail may render this in its own idiom (a border-inspection surface). */}
+      {crossPostNotice && (
+        <div className="cross-post-notice" role="status" aria-live="polite"
+          style={{ position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 200,
+            padding: '8px 14px', borderRadius: 8, background: 'rgba(20,20,24,0.92)', color: '#f4f4f5',
+            fontSize: 13, boxShadow: '0 4px 20px rgba(0,0,0,0.3)', maxWidth: '80vw' }}
+          onClick={() => setCrossPostNotice('')}>
+          {crossPostNotice}
+        </div>
+      )}
       {/* Differential — swaps in over the parked (still-mounted) Chiasm shell. */}
       {workspaceMode === 'differential' && (
         <DifferentialWorkspace

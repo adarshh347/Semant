@@ -265,3 +265,51 @@ describe('suggestion intake — a producer speaks only as a quarantined suggesti
         expect(accepted.provenance.model).toBe('vlm');
     });
 });
+
+// ── the crossing (CIRCUIT-001 P5-A) ────────────────────────────────────────────
+// A find-similar neighbour enters the circuit as a cross-post region_ref suggestion. It rides the
+// SAME quarantine as any producer: uncitable until accepted, and accepting mints a user_confirmed
+// cross-post REFERENCE — never copying the neighbour's geometry across the border.
+const crossingDescriptor = (over = {}) => ({
+    producer: 'find_similar', type: 'region_mask', role: null, label: 'lapel',
+    source_ref: 'post_B:reg_9',
+    geometry: { kind: 'region_ref', region_ref: { region_id: 'reg_9', post_id: 'post_B', geometry_rev: 3 } },
+    linked_ground_ids: [],
+    provenance: { model: 'dinov2', adapter: 'find_similar', run_id: 'run_fs', producer: 'find_similar' },
+    ...over,
+});
+
+describe('the crossing — find-similar as a quarantined producer', () => {
+    beforeEach(() => _resetMarkIds());
+
+    it('a find-similar neighbour becomes a model_suggested, uncitable cross-post region_ref', () => {
+        const m = suggestionFromDescriptor(crossingDescriptor(), { now: 'T' });
+        expect(m).toBeTruthy();
+        expect(m.source).toBe('model_suggested');
+        expect(canCiteMark(m)).toBe(false);                         // quarantined until accepted
+        expect(m.geometry.region_ref).toEqual({ region_id: 'reg_9', post_id: 'post_B', geometry_rev: 3 });
+        // the border reference carries NO pixels — a reference, never a copy
+        expect(m.geometry.pixels).toBeUndefined();
+        expect(m.geometry.mask_ref).toBeUndefined();
+    });
+
+    it('idempotent by the border target: re-searching the same neighbour replaces, not duplicates', () => {
+        const a = suggestionFromDescriptor(crossingDescriptor(), { now: 'T1' });
+        const b = suggestionFromDescriptor(crossingDescriptor(), { now: 'T2' });
+        expect(a.id).toBe(b.id);
+        expect(a.id).toBe(suggestionId(crossingDescriptor()));
+    });
+
+    it('accepting a crossing mints a user_confirmed cross-post REFERENCE — geometry preserved, not copied', () => {
+        const suggestion = suggestionFromDescriptor(crossingDescriptor(), { now: 'T' });
+        const { accepted } = acceptSuggestion(suggestion, {}, { now: 'T2', idFn: () => 'vm_cross' });
+        expect(accepted.source).toBe('user_confirmed');
+        expect(accepted.derived_from).toBe(suggestion.id);
+        expect(canCiteMark(accepted)).toBe(true);                   // now citable across the border
+        // the SAME border reference rides forward — nothing of the source's geometry was copied
+        expect(accepted.geometry.kind).toBe('region_ref');
+        expect(accepted.geometry.region_ref).toEqual({ region_id: 'reg_9', post_id: 'post_B', geometry_rev: 3 });
+        expect(accepted.geometry.pixels).toBeUndefined();
+        expect(accepted.geometry.mask_ref).toBeUndefined();
+    });
+});

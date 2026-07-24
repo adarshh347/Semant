@@ -1663,6 +1663,13 @@ async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = N
                                          "neighbours": n, "status": status})
         if isinstance(result, dict):
             result.setdefault("run_id", rec.run_id)          # additive; never overwrites
+            # P5-A · the crossing: neighbours enter the circuit as evidence-suggestions, not
+            # assertions. Additive `suggestions` — cross-post `region_ref` descriptors the
+            # frontend feeds through `ingestSuggestions` into the same review rhythm. The
+            # persisted post is untouched; a suggestion is a proposal, never a write.
+            from backend.services import suggestion_service
+            result.setdefault("suggestions",
+                              suggestion_service.suggestions_from_similar(result, run_id=rec.run_id))
         return result
     except asyncio.CancelledError:
         await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")

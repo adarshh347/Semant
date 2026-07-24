@@ -13,6 +13,8 @@ import SemanticReading from './SemanticReading';
 import useFindSimilar from './useFindSimilar';
 import FindSimilar from './FindSimilar';
 import SeeingConsole from './SeeingConsole';
+import PassageRail from './PassageRail';
+import { acceptedMarksForRun } from './passageRail';
 import PerceptWorkshop from './PerceptWorkshop';
 import AttunementPanel from './AttunementPanel';
 import SuggestionReview from './SuggestionReview';
@@ -151,7 +153,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         grounds, percepts, saveState, metaSaveState,
         addGround, updateGround, removeGround, groundById, selectedGroundId, selectGround,
         setHoveredGroundId, focusGroundIds,
-        addExpressionPercept, playRecall, clearRecall, recall,
+        addExpressionPercept, playRecall, playMarkRecall, clearRecall, recall,
         updateRegion, addRegion,
         // CIRCUIT-001 P3-B Debt 1 — the visual_mark store API landed in P2E-A. Marks
         // now persist alongside grounds; the commit is the write (a draft never thrashes
@@ -462,6 +464,27 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         () => (percepts || []).filter((p) => String(p.id || '').startsWith('pctx_')),
         [percepts],
     );
+
+    // ── CIRCUIT-001 P5-B — the Passage Rail follows the operation under the hand. The tool the
+    // curator is holding is the run they want to watch; idle, the passage is the primary dissect.
+    // (A single `latest` poll per operation — a cross-operation runs-list would let the rail show
+    // the single most-recent run regardless of tool. See the // P5F: marker below.)
+    const passageOperation = tool === 'refine' ? 'refine'
+        : tool === 'similar' ? 'find_similar'
+            : tool === 'read' ? 'semantic_read'
+                : 'dissect';
+    // 2b — tapping a run event highlights the marks that run produced and the curator accepted.
+    // Highlight == the existing read-only recall channel (P3-A): performing the mark IS the
+    // highlight, and it then reappears in the rail as a session recall event — a closed loop.
+    const highlightRunMarks = useCallback((runId) => {
+        const accepted = acceptedMarksForRun(runId, visualMarks);
+        if (accepted.length) playMarkRecall(accepted[0].id);
+        // P5F: with one recall channel only the first accepted mark performs; a multi-mark
+        // highlight (focus every accepted mark from a run at once) wants a store `focusMarks(ids)`.
+    }, [visualMarks, playMarkRecall]);
+    const highlightMark = useCallback((markId) => {
+        if (markId) playMarkRecall(markId);
+    }, [playMarkRecall]);
 
     const composing = tool === 'collect' || tool === 'connect';
 
@@ -1373,6 +1396,18 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         {findParts.error && (
                             <p className="diff-insp-hint" role="alert">{findParts.error}</p>
                         )}
+                        {/* CIRCUIT-001 P5-B — the Passage: the real run under the hand + this
+                            session's circulation, honestly rendered. A witness, not a narrator.
+                            P5F: mounted inside the Differential tool column for v1; spanning
+                            Field ↔ Manuscript is a recorded future promotion (A5 owns those seams). */}
+                        <PassageRail
+                            postId={postId}
+                            operation={passageOperation}
+                            marks={visualMarks}
+                            recall={recall}
+                            onHighlightRun={highlightRunMarks}
+                            onHighlightMark={highlightMark}
+                        />
                     </section>
 
                     {/* 3 — the working area: whatever is under the hand right now. */}

@@ -3,11 +3,11 @@
 Both lanes obey this file. Lane A **implements** it; Lane B **emits against** it. Neither lane
 may change it unilaterally — proposed amendments go in the lane's report for the P2E synthesis.
 
-> **Version: v3** (P4-A). §§1–6 are the frozen v1 baseline; **§7 is the v2 amendment layer and
-> §8 is the v3 amendment layer — §8 takes precedence where it overrides.** v3 promotes P3-B's
-> geometry-carried instrument fields to first-class validated schema and adds the
-> suggestion-provenance shape now that real producers mint `model_suggested` marks. Read §8
-> before §7 before §1–2.
+> **Version: v3.1** (P5-A adds §9). §§1–6 are the frozen v1 baseline; **§7 is the v2 amendment
+> layer, §8 the v3 amendment layer, §9 the P5-A crossing layer — later sections take precedence
+> where they override.** v3 promotes P3-B's geometry-carried instrument fields to first-class
+> validated schema and adds the suggestion-provenance shape now that real producers mint
+> `model_suggested` marks. §9 opens the border between images. Read §9 before §8 before §7 before §1–2.
 
 ## 1. The emission shape — `visual_mark`
 
@@ -236,3 +236,48 @@ Rules (in `validateMark`):
   `producer + type + source_ref`, a deterministic id), fail-closed (invalid → dropped, never a
   partial), and NEVER persisted (suggestion status → excluded from `persistableMarks`, v2 §7.3).
   Survives reload by RE-DERIVATION (re-running the producer), not by storage.
+
+## 9. P5-A amendments (the crossing) — precedence over §§1–8 where they conflict
+
+The border between images opens. A reference may now name a mark/region on ANOTHER post. **The rule:
+a crossing is a reference with receipts — never a copy, never an assertion, never silent about its
+own staleness.**
+
+### 9.1 Cross-post `region_ref` (a reference across the border)
+
+`region_ref` geometry may carry, additively, the border coordinates:
+```
+geometry { kind:'region_ref', region_ref: { region_id, post_id?, geometry_rev? } }
+```
+- `post_id` present (non-empty) → the reference names a region on ANOTHER post (a **crossing**).
+  Absent → a same-post ref, unchanged from §8.2.
+- `geometry_rev` is the source region's rev **AT CITATION**, so later drift is detectable.
+- Still authors **no pixels and no `mask_ref`** — a `region_ref` references, never copies (the
+  border rule, enforced in `validateMark`). `crossPostReference(mark)` reads `{post_id, region_id,
+  geometry_rev}` or null; `isCrossPostMark` is the predicate.
+
+### 9.2 `find_similar` producer (Invariant 4 gets a product seam)
+
+`PRODUCERS` gains **`find_similar`**. A find-similar neighbour → a `model_suggested` cross-post
+`region_ref` on the CURRENT post, `provenance {model, adapter:'find_similar', run_id, producer:
+'find_similar'}`, `source_ref='<post>:<region>'`. It rides the SAME quarantine + `ingestSuggestions`
+as any producer (§8.4). Accepting mints a `user_confirmed` **cross-post reference** (the same
+border geometry rides forward — nothing copied). The find-similar route gains an additive
+`suggestions` field; a degraded/empty search carries none.
+
+### 9.3 Chip + Mention carry the border
+
+- The `regionRef` chip gains additive **`data-post-id`** (the source post). It round-trips through
+  `blockConvert` (gated test) and reconstructs into the Mention model, which gains a `postId` edge
+  (`mentionsForPost`). `postId` does NOT enter the mention id — the slot already keeps a chip
+  unique — so no existing edge is invalidated.
+- **Citability across the border stays fail-closed**: only a committed, curator-owned/confirmed
+  mark is insertable (`canCiteMark`); a find-similar suggestion is not citable until accepted.
+
+### 9.4 Recall across the border (navigate, not overlay)
+
+Clicking a foreign chip **resolves the source post (fetch, never assume loaded)** then **navigates**
+to it with recall armed; the existing recall performs natively there (chosen over an in-place
+overlay: the cheapest honest option — no duplicate render surface, no stale copy). Degradation is
+loud, never a crash or silent no-op: `resolveCrossPost` → `post_gone` / `region_gone` (state
+"evidence unavailable") or `stale` (rev drift → "source has changed since cited", still performs).

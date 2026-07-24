@@ -167,11 +167,12 @@ const Manuscript = forwardRef(function Manuscript(
     currentBlockId: () => {
       try { return editor.getTextCursorPosition()?.block?.id ?? null; } catch { return null; }
     },
-    insertRegionChip: ({ refKind = 'part', regionIds = '', label = 'part', perceptId = '', mentionId = '', markId = '', blockId = null }) => {
+    insertRegionChip: ({ refKind = 'part', regionIds = '', label = 'part', perceptId = '', mentionId = '', markId = '', postId = '', blockId = null }) => {
       try {
         if (blockId) editor.setTextCursorPosition(blockId, 'end');
         editor.insertInlineContent([
-          { type: 'regionRef', props: { refKind, regionIds, perceptId, mentionId, markId, label } },
+          // P5-A: `postId` rides along for a crossing (the source post); '' for a same-post chip.
+          { type: 'regionRef', props: { refKind, regionIds, perceptId, mentionId, markId, postId, label } },
           ' ', // a trailing space so the caret doesn't stick to the atom
         ]);
         editor.focus();

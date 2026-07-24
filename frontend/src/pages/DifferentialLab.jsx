@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { RegionStoreContext, useRegionState } from '../state/regionStore';
 import DifferentialWorkspace from '../differential/DifferentialWorkspace';
 import { makeVisualMark } from '../differential/visualMarks';
@@ -69,6 +70,28 @@ export default function DifferentialLab() {
     }), [photo]);
 
     const store = useRegionState(post, () => {});
+
+    // CIRCUIT-001 P5-B — the Passage Rail reads `vision-runs/latest` from the backend, which the
+    // offline harness has none of. Seed ONE fixture VisionRunOut into the query cache so the rail
+    // renders a full real-shaped run timeline offline — the same fixture-producer honesty the
+    // suggestion seed uses. This is the ONLY offline stand-in; against a live backend the rail
+    // reads the actual run doc and this seed is never reached. A terminal `dissect` run (the idle
+    // passage) with real-shaped stage events, latency and provenance on some, absent on others.
+    const queryClient = useQueryClient();
+    useEffect(() => {
+        queryClient.setQueryData(['passage-run', post._id, 'dissect'], {
+            run_id: 'fixture_run_ab12', operation: 'dissect', status: 'succeeded', stale: false,
+            initiator: 'curator', actual_source: 'live',
+            started_at: '2026-07-24T09:59:58.000Z', completed_at: '2026-07-24T10:00:03.400Z',
+            events: [
+                { event_id: 'fe1', run_id: 'fixture_run_ab12', stage_id: 'dissect.receive', status: 'succeeded', latency_ms: 6.2, adapter: 'router', observed_at: '2026-07-24T09:59:58.100Z' },
+                { event_id: 'fe2', run_id: 'fixture_run_ab12', stage_id: 'dissect.fetch_image', status: 'succeeded', latency_ms: 214.7, observed_at: '2026-07-24T09:59:58.400Z' },
+                { event_id: 'fe3', run_id: 'fixture_run_ab12', stage_id: 'dissect.segment.general', status: 'succeeded', latency_ms: 1880.0, adapter: 'sam21_hiera_tiny', observed_at: '2026-07-24T10:00:00.300Z', provenance: { model: 'sam21_hiera_tiny' } },
+                { event_id: 'fe4', run_id: 'fixture_run_ab12', stage_id: 'dissect.merge_curator_state', status: 'succeeded', observed_at: '2026-07-24T10:00:03.000Z' }, // no latency recorded → "—"
+                { event_id: 'fe5', run_id: 'fixture_run_ab12', stage_id: 'dissect.complete', status: 'succeeded', latency_ms: 3.1, observed_at: '2026-07-24T10:00:03.400Z' },
+            ],
+        });
+    }, [queryClient, post._id]);
 
     // Seed a 20-suggestion fixture BATCH so the P4-B review surface (cycle, edit,
     // accept/dismiss, bulk) can be exercised end-to-end — the fixture producer, not a
