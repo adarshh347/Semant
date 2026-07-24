@@ -1160,6 +1160,10 @@
 }
 .diff-layer-eye:disabled { cursor: default; opacity: 0.5; }
 .diff-layer-lock.on { color: var(--accent, #C08457); }
+/* Aesthetic pass — a quiet family lane-mark per layer (Working·Evidence·
+   Suggestions·Recall). Plum, low-key: it names the lane, it doesn't shout. */
+.diff-layer-glyph { flex: none; color: var(--accent); opacity: 0.72; }
+.diff-layer-row.is-hidden .diff-layer-glyph { opacity: 0.4; }
 .diff-layer-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .diff-layer-opacity { width: 44px; accent-color: var(--accent, #5E2B50); }
 .diff-layer-system { font-size: 9px; color: var(--diff-muted, #8a8276); opacity: 0.7; }

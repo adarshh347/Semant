@@ -12,6 +12,7 @@ export {
 } from './groundGlyphs';
 export {
   PerceptMark, MentionGlyph, ReadingGlyph, RecallGlyph, DissectGlyph, RefineGlyph,
+  SelectGlyph, SimilarGlyph,
 } from './actGlyphs';
 export { GroundGlyph } from './GroundGlyph';
 export { GROUND_GLYPHS, TOOL_GLYPHS } from './registry';

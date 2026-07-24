@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ArrowLeft, MousePointer2, Brush, PenTool, Group, Waypoints, Frame, Eye, EyeOff, Check,
-    Undo2, X, Plus, Scan, Sparkles, Search, Lock, Unlock,
+    ArrowLeft, Brush, PenTool, Frame, Eye, EyeOff, Check,
+    Undo2, X, Plus, Lock, Unlock,
 } from 'lucide-react';
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
@@ -44,10 +44,16 @@ import {
     editablePoints, withEditedPoints, moveAnchor, insertAnchor, removeAnchor, applyPointEdit,
     isEditableGround, anchorForEndpoint,
 } from './handleEditing';
-// Aesthetic pass (Inspector) — the section tell + a quiet waiting motif for the
-// empty inspector. Presentational only; no behaviour rides on these.
+// Aesthetic pass — the section tell, a quiet waiting motif for the empty
+// inspector, and the bespoke plum tool-rail set (one family, replacing the
+// lucide mismatches). Presentational only; no behaviour rides on these.
 import { SectionEyebrow } from '../components/brand/SectionEyebrow';
 import RegionMotif from '../components/brand/RegionMotif';
+import {
+    SelectGlyph, FieldGlyph, PathGlyph, ConstellationGlyph, RelationGlyph,
+    FrameGlyph, RefineGlyph, ReadingGlyph, SimilarGlyph,
+    RegionGlyph, PerceptMark, RecallGlyph,
+} from '../components/brand/glyphs';
 import './DifferentialWorkspace.css';
 
 // The role vocabularies the instruments offer (contract §2), from Lane A's
@@ -69,17 +75,32 @@ const RELATION_ROLES = RELATION_ROLE_KEYS;
  *    and an accumulative tray for composing one Percept from several Grounds.
  */
 
+// The tool rail speaks the Semant glyph family, not lucide: each tool wears the
+// mark of the ground it makes — Brush→Field, Trace→Path, Collect→Constellation,
+// Connect→Relation, Frame→Frame, Refine→Refine, Read→Reading. Select and Similar
+// are the two navigating tools (they ground nothing), so they keep their own
+// bespoke family marks. One alphabet with the inspector and the ground rows.
 const TOOLS = [
-    { key: 'select', label: 'Select', icon: MousePointer2, hint: 'Point at parts — ⇧ to gather several' },
-    { key: 'brush', label: 'Brush', icon: Brush, hint: 'Soft Field — paint where the light lives' },
-    { key: 'trace', label: 'Trace', icon: PenTool, hint: 'Path or Boundary — draw a line' },
-    { key: 'collect', label: 'Collect', icon: Group, hint: 'Constellation — gather grounds and points' },
-    { key: 'connect', label: 'Connect', icon: Waypoints, hint: 'Relation — tie two grounds together' },
-    { key: 'frame', label: 'Frame', icon: Frame, hint: 'The whole image as evidence' },
-    { key: 'refine', label: 'Refine', icon: Scan, hint: 'Select a part, then click/drag to tighten it to an exact mask' },
-    { key: 'read', label: 'Read', icon: Sparkles, hint: 'Ask the model to interpret the parts — name, qualify, relate; it never moves a mask' },
-    { key: 'similar', label: 'Similar', icon: Search, hint: 'Find a selected part\'s visual neighbours — research to inspect, never facts' },
+    { key: 'select', label: 'Select', icon: SelectGlyph, hint: 'Point at parts — ⇧ to gather several' },
+    { key: 'brush', label: 'Brush', icon: FieldGlyph, hint: 'Soft Field — paint where the light lives' },
+    { key: 'trace', label: 'Trace', icon: PathGlyph, hint: 'Path or Boundary — draw a line' },
+    { key: 'collect', label: 'Collect', icon: ConstellationGlyph, hint: 'Constellation — gather grounds and points' },
+    { key: 'connect', label: 'Connect', icon: RelationGlyph, hint: 'Relation — tie two grounds together' },
+    { key: 'frame', label: 'Frame', icon: FrameGlyph, hint: 'The whole image as evidence' },
+    { key: 'refine', label: 'Refine', icon: RefineGlyph, hint: 'Select a part, then click/drag to tighten it to an exact mask' },
+    { key: 'read', label: 'Read', icon: ReadingGlyph, hint: 'Ask the model to interpret the parts — name, qualify, relate; it never moves a mask' },
+    { key: 'similar', label: 'Similar', icon: SimilarGlyph, hint: 'Find a selected part\'s visual neighbours — research to inspect, never facts' },
 ];
+
+// Each system layer wears the family mark of what it holds: the working surface
+// is a region in the making, evidence is the framed image, a suggestion is a
+// proposed percept, and recall is the return arc. Aesthetic only.
+const LAYER_GLYPHS = {
+    scratch: RegionGlyph,
+    evidence: FrameGlyph,
+    suggestion: PerceptMark,
+    recall: RecallGlyph,
+};
 
 const PERCEPT_PROPERTIES = [
     'light', 'colour', 'material', 'movement', 'composition',
@@ -1016,6 +1037,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         <span className="diff-layers-title">Layers</span>
                         {[...layers].sort((a, b) => b.order - a.order).map((l) => {
                             const system = isSystemLayer(l);
+                            const LaneGlyph = LAYER_GLYPHS[l.layer_type] || RegionGlyph;
                             return (
                                 <div key={l.id} className={`diff-layer-row${l.visibility === false ? ' is-hidden' : ''}`}>
                                     <button type="button" className="diff-layer-eye"
@@ -1024,6 +1046,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                         onClick={() => { if (!system) onToggleLayer(l.id); }}>
                                         {l.visibility === false ? <EyeOff size={12} /> : <Eye size={12} />}
                                     </button>
+                                    <LaneGlyph size={12} className="diff-layer-glyph" aria-hidden="true" />
                                     <span className="diff-layer-name">{l.name}</span>
                                     {system ? (
                                         <span className="diff-layer-system" title="System layer — no controls">sys</span>
