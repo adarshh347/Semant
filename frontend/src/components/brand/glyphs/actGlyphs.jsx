@@ -78,3 +78,26 @@ export function RefineGlyph(props) {
     </Glyph>
   );
 }
+
+// Select — pointing at a part: the cursor, in the family's rounded vocabulary.
+// The one tool that navigates rather than grounds, so it stays an outline arrow.
+export function SelectGlyph(props) {
+  return (
+    <Glyph title="Select" {...props}>
+      <path d="M6 4.4 L6 17.2 L9.4 14 L11.9 19.4 L14 18.5 L11.6 13.2 L16.4 13 Z" strokeLinejoin="round" />
+    </Glyph>
+  );
+}
+
+// Similar — a part and its visual neighbours: one region held, two kin nearby.
+// Research to inspect, never facts — so the neighbours are quiet outlines, not
+// filled like the part you selected.
+export function SimilarGlyph(props) {
+  return (
+    <Glyph title="Similar" {...props}>
+      <rect x="8.4" y="8.4" width="7.2" height="7.2" rx="2" transform="rotate(-8 12 12)" fill="currentColor" stroke="none" />
+      <rect x="3.2" y="3.4" width="4.6" height="4.6" rx="1.3" transform="rotate(-8 5.5 5.7)" />
+      <rect x="16.2" y="15.4" width="4.6" height="4.6" rx="1.3" transform="rotate(-8 18.5 17.7)" />
+    </Glyph>
+  );
+}
