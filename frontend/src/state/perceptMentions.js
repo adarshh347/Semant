@@ -110,6 +110,12 @@ export function makeMention({
   // the `vm_` id so click→recall can perform it. Optional: a percept/region mention
   // leaves it null and is byte-identical to before.
   markId = null,
+  // CIRCUIT-001 P5-A — the crossing. A cross-post chip carries the SOURCE post id, so
+  // the edge records which border it reaches across. Optional: a same-post mention
+  // leaves it null and is byte-identical to before. It does NOT enter the mention id
+  // (the slot `inlineContentId` already makes a chip unique within its block), so
+  // adding it invalidates no existing edge.
+  postId = null,
   blockId,
   inlineContentId = null,
   form = 'block',
@@ -127,6 +133,7 @@ export function makeMention({
     perceptId: pid,
     regionId,
     markId,
+    postId,
     blockId,
     inlineContentId,
     form,
@@ -154,6 +161,8 @@ export const mentionsForRegion = (mentions, regionId) => mentions.filter((m) => 
 export const mentionsForPercept = (mentions, pid) => mentions.filter((m) => m.perceptId === pid);
 // CIRCUIT-001 P3-A — which blocks cite this mark (the mark analog of the above).
 export const mentionsForMark = (mentions, markId) => mentions.filter((m) => m.markId === markId);
+// CIRCUIT-001 P5-A — the crossings that reach across to this source post.
+export const mentionsForPost = (mentions, postId) => mentions.filter((m) => m.postId === postId);
 
 /**
  * Which blocks talk about this region? Union of Mention edges AND the primary
@@ -193,16 +202,19 @@ export function mentionsFromBlocks(textBlocks = []) {
       const tag = m[0];
       const perceptId = ATTR(tag, 'data-percept-id');
       const markId = ATTR(tag, 'data-mark-id');
+      const postId = ATTR(tag, 'data-post-id');    // P5-A: the crossing's source post
       const storedId = ATTR(tag, 'data-mention-id');
       const refKind = ATTR(tag, 'data-inline-type') || ATTR(tag, 'data-ref-kind');
       const label = ATTR(tag, 'data-label');
       const regionIds = (ATTR(tag, 'data-region-ids') || '').split(',').filter(Boolean);
-      const base = { blockId: b.id, form: 'inline', relationType: 'cites', actor: 'human', refKind, label };
+      const base = { blockId: b.id, form: 'inline', relationType: 'cites', actor: 'human', refKind, label,
+        postId: postId || null };
 
       if (markId) {
         // A mark chip is ONE edge keyed on the mark. Its `data-region-ids` are the
         // mark's linked GROUND ids (carried for hover context), never region edges —
-        // so, like a percept chip, it is not split per id.
+        // so, like a percept chip, it is not split per id. A crossing rides on the same
+        // edge, carrying its source `postId`.
         out.push(makeMention({
           ...base, markId, perceptId: perceptId || null, regionId: null, id: storedId || null,
         }));

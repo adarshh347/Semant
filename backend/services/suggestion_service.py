@@ -23,6 +23,11 @@ from typing import Any, Dict, List, Optional
 
 PRODUCER_SAM = "sam_refine"
 PRODUCER_SEMANTIC = "semantic_read"
+# CIRCUIT-001 P5-A — the crossing. A find-similar neighbour lives on ANOTHER post; it enters the
+# circuit as an evidence-suggestion, never an assertion (Invariant 4). Its geometry is a
+# cross-post `region_ref`: a REFERENCE across the border ({post_id, region_id, geometry_rev}),
+# never a copy of the neighbour's mask.
+PRODUCER_FIND_SIMILAR = "find_similar"
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -137,4 +142,49 @@ def suggestions_from_semantics(
                                       run_id=run_id, producer=PRODUCER_SEMANTIC),
         })
 
+    return out
+
+
+# ── producer 3: find-similar as producer (CIRCUIT-001 P5-A, the crossing) ─────────────────────
+
+def suggestions_from_similar(
+    result: Optional[Dict[str, Any]], *, run_id: Optional[str], adapter: str = "find_similar",
+) -> List[Dict[str, Any]]:
+    """A find-similar research packet → cross-post ``region_ref`` suggestion descriptors.
+
+    Each neighbour is a Region on ANOTHER post. It becomes a ``model_suggested`` ``region_mask`` in
+    ``region_ref`` mode ON THE CURRENT post, whose geometry is a REFERENCE across the border —
+    ``{region_id, post_id, geometry_rev}`` — never a copy of the neighbour's pixels (the border
+    rule: a crossing is a reference with receipts, never a copy). ``geometry_rev`` is captured at
+    citation so staleness (the source changed since cited) stays detectable downstream.
+
+    A degraded research packet (``status`` error/unavailable) carries no evidence to suggest → []."""
+    res = result or {}
+    if not isinstance(res, dict):
+        return []
+    if res.get("status") in ("error", "unavailable"):
+        return []
+    out: List[Dict[str, Any]] = []
+    for h in res.get("results") or []:
+        npost = h.get("post_id")
+        nregion = h.get("region_id")
+        if not npost or nregion is None:
+            continue                                    # a neighbour with no source is not citable
+        prov = h.get("provenance") or {}
+        grev = prov.get("geometry_rev")
+        region_ref: Dict[str, Any] = {"region_id": str(nregion), "post_id": str(npost)}
+        if grev is not None:
+            region_ref["geometry_rev"] = grev           # rev-at-citation → staleness detectable
+        out.append({
+            "producer": PRODUCER_FIND_SIMILAR,
+            "type": "region_mask",
+            "role": None,                               # a neighbour is evidence, not a reading
+            "label": h.get("label") or "",
+            # idempotency key: the border target, so re-searching the same neighbour replaces.
+            "source_ref": f"{npost}:{nregion}",
+            "geometry": {"kind": "region_ref", "region_ref": region_ref},
+            "linked_ground_ids": [],
+            "provenance": _provenance(model=prov.get("model"), adapter=adapter, latency_ms=None,
+                                      run_id=run_id, producer=PRODUCER_FIND_SIMILAR),
+        })
     return out
