@@ -1,281 +1,332 @@
-/* frontend/src/pages/LandingPage.css */
-/* =============================================================================
-   Semant landing — motive-based front page, on the design language v1.3
-   (Paper + Plum).
+/* frontend/src/pages/LandingPage.css
+   =============================================================================
+   Semant landing — perception-engineering front door (SEMANT-LANDING-002).
+   A self-contained deep-twilight marketing surface (the product UI keeps
+   Paper + Plum; this is the front door). Sophisticated minimalist doodle,
+   large negative space, one red accent thread, editorial serif headline.
+   Visual spec: vault/Concepts/Frontend Analysis/
+   SEMANT-LANDING-001-visual-direction-and-hero.md.
 
-   Discipline: warm paper base + ONE plum *interactive* accent + muted pastel
-   diagram cards; nothing else. Primary action = the ink pill; emphasis =
-   italic Fraunces (never colour). Flat-on-paper, hairline borders only where
-   earned, section rhythm at --space-16+. No decorative gradients/glows.
-   Phase 2b reveal: [data-reveal] sections rise 12px + fade on --ease as they
-   enter (the hook in LandingPage.jsx); under prefers-reduced-motion the
-   transition never applies, so the static state is the fallback.
+   Motion discipline: the hero sequence + the [data-reveal] rise run ONLY under
+   prefers-reduced-motion:no-preference. Every animated element is authored so
+   its non-animated (final) state is the composed afterimage — the reduced-motion
+   fallback loses nothing essential.
    ============================================================================= */
 
-.landing {
+.perc-landing {
+  /* self-scoped twilight tokens */
+  --sky-midnight: #0B1026;
+  --sky-indigo: #171A3A;
+  --sky-nearblack: #05060F;
+  --ink-white: #F6F7FF;
+  --glow-cyan: #46E8FF;
+  --glow-ultra: #7A5CFF;
+  --glow-coral: #FF6E9C;
+  --glow-gold: #FFD98A;
+  --accent-red: #FF3B3B;
+  --graphite: #9AA0C3;
+  --hair: rgba(154, 160, 195, 0.16);
+  --hair-strong: rgba(154, 160, 195, 0.32);
+
   width: 100%;
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--sky-nearblack);
+  color: var(--ink-white);
   font-family: var(--font-sans);
+  overflow-x: hidden;
 }
 
-/* Phase 2b reveal — motion only for those who haven't opted out; everyone else
-   simply sees the static sections (no hidden state to rescue). */
-@media (prefers-reduced-motion: no-preference) {
-  .landing [data-reveal] {
-    opacity: 0;
-    transform: translateY(12px);
-    transition: opacity 0.55s var(--ease), transform 0.55s var(--ease);
-  }
-  .landing [data-reveal].is-revealed {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* Shared section rhythm — air is the material. */
-.landing-section {
-  max-width: 1080px;
+/* ── shared section rhythm ─────────────────────────────────────────────────── */
+.perc-section,
+.perc-band,
+.perc-after {
+  max-width: 1120px;
   margin: 0 auto;
-  padding: var(--space-16) clamp(1.5rem, 6vw, 4rem);
+  padding: clamp(3.5rem, 8vw, 7rem) clamp(1.5rem, 6vw, 4rem);
 }
 
-/* One display + one body + one eyebrow per section. */
-.landing-eyebrow {
-  display: block;
-  font-family: var(--font-sans);
-  font-size: var(--fs-caption);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
+.perc-kicker {
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ink-subtle);
-  margin-bottom: var(--space-5);
+  color: var(--glow-cyan);
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+}
+.perc-kicker--light { color: var(--graphite); }
+
+.perc-eyebrow {
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--glow-gold);
+  margin: 0 0 1.25rem;
+  font-weight: 600;
 }
 
-.landing-h2 {
+.perc-h2 {
   font-family: var(--font-display);
-  font-optical-sizing: auto;
-  font-size: var(--fs-h1);
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: var(--tracking-tight);
-  color: var(--ink);
-  margin: 0 0 var(--space-6) 0;
-  max-width: 20ch;
-  text-wrap: balance;
+  font-size: clamp(1.75rem, 3.2vw, 2.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+  color: var(--ink-white);
 }
-
-.landing-h3 {
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--ink);
-  margin: var(--space-3) 0 var(--space-4) 0;
-}
-
-/* Body is muted, short measure — the elegance tell. */
-.landing-prose {
-  font-size: var(--fs-body-lg);
-  line-height: 1.6;
-  color: var(--ink-muted);
+.perc-lede {
   max-width: 60ch;
-  margin: 0;
-}
-.landing-prose em { color: var(--ink); font-style: italic; font-weight: 500; }
-
-/* Emphasis quote — italic Fraunces in plum: the section's single accent
-   (v1.3 identity — the accent carries emphasis + links + region marks). */
-.landing-pullquote {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: var(--fs-h3);
-  line-height: 1.35;
-  color: var(--accent);
-  max-width: 26ch;
-  margin: var(--space-6) 0 0 0;
-}
-
-/* ── The single primary action: the ink pill ──────────────────────────── */
-.landing-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.95rem 1.75rem;
-  background: var(--ink);
-  color: var(--bg);
-  text-decoration: none;
-  font-family: var(--font-sans);
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-radius: var(--radius-pill);
-  transition: transform 0.2s var(--ease), opacity 0.2s var(--ease);
-}
-.landing-pill:hover { transform: translateY(-2px); opacity: 0.9; }
-.landing-pill span { transition: transform 0.2s var(--ease); }
-.landing-pill:hover span { transform: translateX(3px); }
-.landing-pill--lg { padding: 1.1rem 2.25rem; font-size: 1.05rem; margin-top: var(--space-8); }
-
-/* Secondary = quiet text link; plum only on the hover underline
-   (the single interactive accent). */
-.landing-textlink {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--ink-muted);
-  text-decoration: none;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-bottom: 1px solid transparent;
-  padding-bottom: 2px;
-  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
-}
-.landing-textlink:hover { color: var(--ink); border-bottom-color: var(--accent); }
-
-.landing-cta-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  flex-wrap: wrap;
-  margin-top: var(--space-8);
-}
-
-/* ── Hero (asymmetric: text ~55% left, image right) ───────────────────── */
-.landing-hero {
-  max-width: 1280px;
-  margin: 0 auto;
-  /* dvh, not vh — vh over-measures under iOS Safari's collapsing chrome. */
-  min-height: calc(100dvh - 96px);
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: clamp(2rem, 6vw, 6rem);
-  align-items: center;
-  padding: var(--space-12) clamp(1.5rem, 6vw, 4rem);
-}
-.landing-hero-copy { max-width: 640px; }
-
-.landing-wedge {
-  font-family: var(--font-display);
-  font-optical-sizing: auto;
-  font-size: var(--fs-display);
-  font-weight: 500;
-  line-height: 1.05;
-  letter-spacing: var(--tracking-tight);
-  color: var(--ink);
-  margin: 0 0 var(--space-6) 0;
-  text-wrap: balance;
-}
-.landing-wedge em { font-style: italic; color: var(--accent); }
-
-.landing-lede {
-  font-size: var(--fs-body-lg);
+  color: rgba(246, 247, 255, 0.72);
+  font-size: 1.075rem;
   line-height: 1.6;
-  color: var(--ink-muted);
-  max-width: 48ch;
-  margin: 0;
+  margin: 0 0 2.5rem;
 }
 
-/* Register-1: the real editorial image + our thin region overlay only. */
-.landing-hero-figure { margin: 0; }
-.landing-hero-frame {
-  position: relative;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid var(--line);
-}
-.landing-hero-frame img { display: block; width: 100%; height: auto; object-fit: cover; }
-
-.landing-region {
-  position: absolute;
-  border: 1.5px solid var(--accent);
-  border-radius: 3px;
-}
-.landing-region-label {
-  position: absolute;
-  top: -1.55rem;
-  left: -1.5px;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.02em;
-  color: var(--accent-ink);
-  background: var(--accent);
-  padding: 0.1rem 0.45rem;
-  border-radius: 3px;
+/* ── status chip ───────────────────────────────────────────────────────────── */
+.perc-chip {
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 0.18em 0.6em;
+  border-radius: 999px;
+  border: 1px solid var(--hair-strong);
+  color: var(--graphite);
   white-space: nowrap;
 }
+.perc-chip--built { color: var(--glow-cyan); border-color: rgba(70, 232, 255, 0.4); }
+.perc-chip--emerging { color: var(--glow-gold); border-color: rgba(255, 217, 138, 0.4); }
+.perc-chip--horizon { color: var(--glow-ultra); border-color: rgba(122, 92, 255, 0.45); }
 
-/* ── The spine (See · Read · Write) ───────────────────────────────────── */
-.landing-spine-head { margin-bottom: clamp(3rem, 7vw, 6rem); }
-
-.landing-panel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: clamp(2rem, 6vw, 5rem);
-  align-items: center;
-  padding: var(--space-12) 0;
-}
-.landing-panel + .landing-panel { border-top: 1px solid var(--line); }
-.landing-panel--reverse .landing-panel-copy { order: 2; }
-
-.landing-numeral {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--ink-subtle);
-  letter-spacing: var(--tracking-wide);
-}
-
-/* Register-2: one muted-pastel card holding a hand-drawn motif + 1-line reading.
-   Flat — no shadow. Pastel is illustration background only. */
-.landing-card {
-  margin: 0;
-  padding: clamp(1.75rem, 4vw, 2.75rem);
-  border-radius: var(--radius-lg);
+/* ── buttons ───────────────────────────────────────────────────────────────── */
+.perc-cta-row {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
   align-items: center;
-  gap: var(--space-5);
+  margin-top: 2rem;
 }
-.landing-card--mauve { background: var(--pastel-mauve); }
-.landing-card--stone { background: var(--pastel-stone); }
-.landing-card--bluegrey { background: var(--pastel-bluegrey); }
+.perc-cta-row--center { justify-content: center; }
+.perc-btn {
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 0.72em 1.4em;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  display: inline-block;
+}
+.perc-btn--primary {
+  background: var(--ink-white);
+  color: var(--sky-nearblack);
+}
+.perc-btn--primary:hover { transform: translateY(-1px); background: #fff; }
+.perc-btn--ghost {
+  border: 1px solid var(--hair-strong);
+  color: var(--ink-white);
+}
+.perc-btn--ghost:hover { border-color: var(--glow-cyan); color: var(--glow-cyan); }
+.perc-btn--link {
+  color: var(--graphite);
+  padding: 0.72em 0.4em;
+}
+.perc-btn--link:hover { color: var(--ink-white); }
 
-.motif { width: min(72%, 220px); height: auto; }
-
-.landing-card-reading {
+/* ── HERO ──────────────────────────────────────────────────────────────────── */
+.perc-hero {
+  position: relative;
+  min-height: 92svh;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  isolation: isolate;
+}
+.perc-hero-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.arrival { width: 100%; height: 100%; display: block; }
+.perc-hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+  margin: 0 clamp(1.5rem, 6vw, 5rem) clamp(3rem, 8vh, 6rem);
+  padding: 1.5rem 0;
+}
+.perc-hero-title {
   font-family: var(--font-display);
-  font-style: italic;
-  font-size: var(--fs-body-lg);
-  line-height: 1.4;
-  text-align: center;
-  color: var(--diagram-ink); /* stays dark on the pastel in both themes */
-  max-width: 34ch;
+  font-size: clamp(2.4rem, 5.2vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  margin: 0 0 1.25rem;
+  color: var(--ink-white);
+  text-wrap: balance;
+}
+.perc-hero-sub {
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  line-height: 1.6;
+  color: rgba(246, 247, 255, 0.8);
+  max-width: 54ch;
+  margin: 0;
 }
 
-/* ── Close (centered announcement register, d.1 §7) ───────────────────── */
-.landing-close { text-align: center; padding-block: var(--space-24); }
-.landing-close-line { margin-left: auto; margin-right: auto; max-width: 24ch; }
-.landing-close-line em { font-style: italic; color: var(--accent); }
-.landing-close-sub { margin-left: auto; margin-right: auto; }
+/* ── verbs ─────────────────────────────────────────────────────────────────── */
+.perc-verbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1px;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-lg, 1rem);
+  overflow: hidden;
+}
+.perc-verb {
+  background: var(--sky-nearblack);
+  padding: 1.5rem 1.4rem;
+}
+.perc-verb h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin: 0 0 0.5rem;
+  color: var(--glow-gold);
+}
+.perc-verb p { margin: 0; color: rgba(246, 247, 255, 0.68); font-size: 0.92rem; line-height: 1.55; }
 
-/* ── Responsive ───────────────────────────────────────────────────────── */
-@media (max-width: 900px) {
-  .landing-hero {
-    grid-template-columns: 1fr;
-    min-height: auto;
-    gap: 2.5rem;
+/* ── split (workbench + engine) ────────────────────────────────────────────── */
+.perc-split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4rem); }
+@media (max-width: 860px) { .perc-split { grid-template-columns: 1fr; } }
+
+.perc-cards { display: grid; gap: 0.9rem; margin-top: 1.5rem; }
+.perc-card {
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-md, 0.625rem);
+  padding: 1.15rem 1.2rem;
+  background: linear-gradient(180deg, rgba(23, 26, 58, 0.35), rgba(11, 16, 38, 0.15));
+  transition: border-color 0.2s ease;
+}
+.perc-card:hover { border-color: var(--hair-strong); }
+.perc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.5rem; }
+.perc-card-head h3 { font-family: var(--font-display); font-size: 1.08rem; margin: 0; color: var(--ink-white); }
+.perc-card p { margin: 0; color: rgba(246, 247, 255, 0.66); font-size: 0.9rem; line-height: 1.55; }
+
+/* ── audience ──────────────────────────────────────────────────────────────── */
+.perc-audience { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.25rem; }
+.perc-aud h3 { font-family: var(--font-display); font-size: 1.1rem; margin: 0 0 0.35rem; color: var(--glow-cyan); }
+.perc-aud p { margin: 0; color: rgba(246, 247, 255, 0.66); font-size: 0.92rem; line-height: 1.5; }
+
+/* ── perception-engineering band ───────────────────────────────────────────── */
+.perc-band {
+  border-top: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+  background: radial-gradient(120% 140% at 80% 0%, rgba(122, 92, 255, 0.12), transparent 60%);
+}
+.perc-claim {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.8vw, 2.1rem);
+  line-height: 1.28;
+  letter-spacing: -0.01em;
+  max-width: 30ch;
+  color: rgba(246, 247, 255, 0.82);
+  margin: 0 0 1.5rem;
+}
+.perc-claim--accent { color: var(--ink-white); max-width: 40ch; }
+.perc-claim em { font-style: italic; color: var(--glow-gold); }
+
+/* ── philosophy rows ───────────────────────────────────────────────────────── */
+.perc-phil { display: grid; gap: 1px; background: var(--hair); border-radius: var(--radius-md, 0.625rem); overflow: hidden; }
+.perc-phil-row {
+  display: grid; grid-template-columns: minmax(180px, 0.4fr) 1fr; gap: 1.5rem;
+  padding: 1.2rem 1.25rem; background: var(--sky-nearblack); align-items: baseline;
+}
+@media (max-width: 640px) { .perc-phil-row { grid-template-columns: 1fr; gap: 0.35rem; } }
+.perc-phil-row h3 { font-family: var(--font-display); font-size: 1.02rem; margin: 0; color: var(--glow-coral); }
+.perc-phil-row p { margin: 0; color: rgba(246, 247, 255, 0.68); font-size: 0.94rem; line-height: 1.55; }
+
+/* ── feature notes grid ────────────────────────────────────────────────────── */
+.perc-notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.1rem; }
+.perc-note-card {
+  display: block; text-decoration: none; color: inherit;
+  border: 1px solid var(--hair); border-radius: var(--radius-md, 0.625rem);
+  padding: 1.3rem 1.35rem;
+  background: linear-gradient(180deg, rgba(23, 26, 58, 0.3), rgba(11, 16, 38, 0.1));
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.perc-note-card:hover { border-color: var(--glow-cyan); transform: translateY(-2px); }
+.perc-note-cat { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--graphite); }
+.perc-note-card h3 { font-family: var(--font-display); font-size: 1.2rem; margin: 0.6rem 0 0.5rem; color: var(--ink-white); }
+.perc-note-card p { margin: 0 0 1rem; color: rgba(246, 247, 255, 0.66); font-size: 0.9rem; line-height: 1.5; }
+.perc-note-more { font-size: 0.82rem; color: var(--glow-cyan); font-weight: 600; }
+
+/* ── product forms ─────────────────────────────────────────────────────────── */
+.perc-forms { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+.perc-form { border: 1px solid var(--hair); border-radius: var(--radius-md, 0.625rem); padding: 1.1rem 1.15rem; }
+.perc-form h3 { font-family: var(--font-display); font-size: 1.02rem; margin: 0; color: var(--ink-white); }
+.perc-form p { margin: 0.4rem 0 0; color: rgba(246, 247, 255, 0.62); font-size: 0.88rem; line-height: 1.5; }
+
+/* ── afterimage footer ─────────────────────────────────────────────────────── */
+.perc-after { text-align: center; border-top: 1px solid var(--hair); }
+.perc-after-lede { max-width: 62ch; margin: 0 auto 2rem; color: rgba(246, 247, 255, 0.72); font-size: 1.05rem; line-height: 1.6; }
+.perc-after-lede em { color: var(--glow-gold); font-style: italic; }
+.perc-after-line { font-family: var(--font-display); font-size: clamp(1.3rem, 2.4vw, 1.8rem); color: var(--ink-white); margin: 0 0 2rem; letter-spacing: -0.01em; }
+
+/* ── reveal (opt-in motion) ────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .perc-landing [data-reveal] { opacity: 0; transform: translateY(14px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .perc-landing [data-reveal].is-revealed { opacity: 1; transform: none; }
+}
+
+/* ── HERO cinematic sequence — "The Great Arrival" ─────────────────────────────
+   Default (no-motion) state = the composed afterimage still. Animations below
+   only apply under no-preference, layering the arrival on top. */
+@media (prefers-reduced-motion: no-preference) {
+  /* M4 · threads separate — draw on, staggered */
+  .arrival .thread {
+    stroke-dasharray: 900;
+    stroke-dashoffset: 900;
+    animation: arrivalThread 2.6s ease forwards;
   }
-  .landing-hero-copy { order: 2; }
-  .landing-hero-figure { order: 1; }
+  .arrival .t1 { animation-delay: 3.6s; }
+  .arrival .t3 { animation-delay: 3.72s; }
+  .arrival .t5 { animation-delay: 3.84s; }
+  .arrival .t2 { animation-delay: 3.96s; }
+  .arrival .t4 { animation-delay: 4.08s; }
+  .arrival .t-red { stroke-dasharray: 1100; stroke-dashoffset: 1100; animation: arrivalThread 3s ease 4.3s forwards; }
 
-  .landing-panel { grid-template-columns: 1fr; gap: 2rem; }
-  .landing-panel--reverse .landing-panel-copy { order: 0; }
-  .landing-card { order: 2; }
+  /* M2 · head blooms */
+  .arrival-head { opacity: 0; transform-box: fill-box; transform-origin: 980px 72px; transform: scale(0.4); animation: arrivalHead 1.6s ease 1.8s forwards; }
+  .arrival .head-scribble { stroke-dasharray: 500; stroke-dashoffset: 500; animation: arrivalThread 1.6s ease 2.2s forwards; }
+
+  /* M1 · entry guide draws first */
+  .arrival-guides { opacity: 0; animation: arrivalFade 1.2s ease 0.4s forwards; }
+
+  /* M3 · connection reaches (holds a gap) */
+  .arrival-connect { stroke-dashoffset: 400; animation: arrivalConnect 2s ease 3.2s forwards; }
+
+  /* M2/M5 · figure lifts, ribbon catches wind, mark is kept */
+  .arrival-figure { transform-box: fill-box; transform-origin: 40px 130px; animation: arrivalFigure 3s ease 2s both; }
+  .arrival .figure-ribbon { animation: arrivalRibbon 4s ease-in-out 2.4s infinite alternate; }
+  .arrival .figure-mark { opacity: 0; animation: arrivalFade 1.4s ease 7.6s forwards; }
+
+  /* micro-labels fade in late */
+  .arrival-label { opacity: 0; }
+  .arrival .l1 { animation: arrivalFade 1.4s ease 4s forwards; }
+  .arrival .l2 { animation: arrivalFade 1.4s ease 8s forwards; }
+
+  /* M6 · idle: threads breathe */
+  .arrival-tail { animation: arrivalBreath 7s ease-in-out 6s infinite alternate; }
 }
 
-@media (max-width: 560px) {
-  .landing-cta-row { width: 100%; }
-  .landing-pill { flex: 1; justify-content: center; }
-  .landing-region-label { font-size: 0.6rem; }
+.arrival-label { font-family: var(--font-mono, monospace); font-size: 15px; letter-spacing: 0.04em; opacity: 0.55; }
+
+@keyframes arrivalThread { to { stroke-dashoffset: 0; } }
+@keyframes arrivalHead { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+@keyframes arrivalFade { to { opacity: 1; } }
+@keyframes arrivalConnect { to { stroke-dashoffset: 0; } }
+@keyframes arrivalFigure { 0% { transform: rotate(4deg) translateY(6px); } 60% { transform: rotate(-1.5deg) translateY(0); } 100% { transform: rotate(0) translateY(0); } }
+@keyframes arrivalRibbon { from { transform: translateY(0) skewX(0deg); } to { transform: translateY(-2px) skewX(-4deg); } }
+@keyframes arrivalBreath { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+
+/* narrow screens — keep the arc from crossing the headline */
+@media (max-width: 720px) {
+  .perc-hero { align-items: flex-end; min-height: 88svh; }
+  .perc-hero-copy { margin-bottom: 2.5rem; background: linear-gradient(0deg, rgba(5,6,15,0.75) 40%, transparent); padding: 1.5rem 1rem; border-radius: 1rem; }
 }

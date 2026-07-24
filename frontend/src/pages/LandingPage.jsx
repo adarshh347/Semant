@@ -1,15 +1,33 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import editorialImage from '../assets/background.jpeg';
+import { FIELD_NOTES, CATEGORY_LABEL, STATUS_LABEL } from '../content/fieldNotes';
 import './LandingPage.css';
 
-// Phase 2b, finally: a restrained reveal on the [data-reveal] sections — rise
-// 12px + fade on --ease, once, as each enters the viewport. CSS owns the look;
-// under prefers-reduced-motion the transition never applies, so the static
-// Phase-2a state IS the fallback, exactly as promised below.
+/**
+ * Semant landing — the perception-engineering front door (SEMANT-LANDING-002).
+ *
+ * Replaces the earlier fashion-first "See · Read · Write" motive page with the
+ * broader identity: Semant as a perception engineering environment — the Engine
+ * (action grammar, orchestration session, marks, provenance) + the Workbench
+ * (Differential, Manuscript, instruments, recall).
+ *
+ * Copy is drawn from vault/Writing/Semant Field Notes/00-landing-page.md and the
+ * six field notes; visual direction from vault/Concepts/Frontend Analysis/
+ * SEMANT-LANDING-001-visual-direction-and-hero.md ("The Great Arrival").
+ *
+ * Honesty: `built` states shipped mechanisms; `emerging`/`horizon` mark what the
+ * workbench is growing toward. Nothing claims live model dispatch, agents, or
+ * persistent memory as shipped.
+ *
+ * Motion: the hero's cinematic sequence and the [data-reveal] rise both run only
+ * under prefers-reduced-motion:no-preference. The static composed state IS the
+ * reduced-motion fallback — the hero SVG is authored to read as its own
+ * afterimage still when nothing animates.
+ */
+
 function useReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll('.landing [data-reveal]');
+    const els = document.querySelectorAll('.perc-landing [data-reveal]');
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
@@ -26,252 +44,345 @@ function useReveal() {
   }, []);
 }
 
-/**
- * Semant landing — the motive-based front page, on the design language v1.3
- * (Paper + Plum), positioned per architecture-lab/responses/market-targets.md:
- * visual creators (fashion-first) articulating their taste, against moodboard
- * drift and AI slop. Copy drawn from the landing-articles (01 saving-is-not-
- * seeing · 02 your-taste-is-your-edge · 03 reading-not-tagging · 04 chiasm).
- *
- * Built around one act: See · Read · Write. Editorial, type-led, restrained.
- * Two image registers, used strictly (design-language §4 / §7):
- *   • Hero = register-1, the *real editorial image* carrying only our thin
- *     plum region overlay on a few parts — the product's own truth.
- *   • Spine = register-2, one *muted-pastel card* per panel holding a hand-drawn
- *     thick-black-line motif that dissects an image into parts + a 1-line reading.
- * Colour discipline: warm paper + one plum *interactive* accent + the pastel
- * diagram cards; nothing else. Primary action is the ink pill; emphasis is
- * italic Fraunces, never colour.
- *
- * [data-reveal] sections get the Phase 2b rise-and-fade (useReveal above);
- * the static markup IS the prefers-reduced-motion fallback.
- */
+const StatusChip = ({ status }) => (
+  <span className={`perc-chip perc-chip--${status}`}>{STATUS_LABEL[status] || status}</span>
+);
 
-// Hero region overlay — 2–3 thin plum boxes on garment parts (register-1).
-const HERO_REGIONS = [
-  { label: 'the neckline', top: '26%', left: '46%', width: '20%', height: '13%' },
-  { label: 'the drape', top: '52%', left: '38%', width: '26%', height: '20%' },
-  { label: 'the patterned hem', top: '74%', left: '34%', width: '30%', height: '15%' },
+/* ── The Great Arrival — hand-authored SVG doodle hero ───────────────────────
+   Authored so that WITHOUT animation it already reads as the composed
+   afterimage still (M6). CSS adds the draw-on / arrival motion on top. */
+function GreatArrival() {
+  return (
+    <svg
+      className="arrival"
+      viewBox="0 0 1200 760"
+      preserveAspectRatio="xMidYMid slice"
+      role="img"
+      aria-label="A small figure at the lower edge watches an enormous hand-drawn meteor arrive across a twilight sky, its tail threading into cyan, violet, coral and gold."
+    >
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0.3" y2="1">
+          <stop offset="0" stopColor="#0B1026" />
+          <stop offset="0.55" stopColor="#171A3A" />
+          <stop offset="1" stopColor="#05060F" />
+        </linearGradient>
+        <radialGradient id="starGlow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#F6F7FF" stopOpacity="0.95" />
+          <stop offset="0.4" stopColor="#FFD98A" stopOpacity="0.55" />
+          <stop offset="1" stopColor="#FFD98A" stopOpacity="0" />
+        </radialGradient>
+        <filter id="grain">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="7" />
+        </filter>
+      </defs>
+
+      {/* sky + luminous grain */}
+      <rect x="0" y="0" width="1200" height="760" fill="url(#sky)" />
+      <rect x="0" y="0" width="1200" height="760" fill="#fff" opacity="0.035" filter="url(#grain)" />
+
+      {/* faint graphite construction ticks — the engineering under the gesture */}
+      <g className="arrival-guides" stroke="#9AA0C3" strokeWidth="1" opacity="0.16" fill="none">
+        <path d="M980 70 L560 360" strokeDasharray="3 9" />
+        <path d="M1040 150 L980 70" strokeDasharray="3 9" />
+        <circle cx="980" cy="70" r="34" strokeDasharray="2 8" />
+      </g>
+
+      {/* the tail — threads separating into cyan / violet / coral / gold / white */}
+      <g className="arrival-tail" fill="none" strokeLinecap="round">
+        <path className="thread t1" d="M968 78 C 900 150, 820 210, 690 300" stroke="#46E8FF" strokeWidth="3" />
+        <path className="thread t2" d="M966 84 C 890 168, 800 236, 650 336" stroke="#7A5CFF" strokeWidth="2.5" />
+        <path className="thread t3" d="M972 74 C 918 132, 852 190, 726 276" stroke="#FF6E9C" strokeWidth="2.5" />
+        <path className="thread t4" d="M964 90 C 878 182, 792 250, 636 356" stroke="#FFD98A" strokeWidth="2" />
+        <path className="thread t5" d="M970 80 C 904 156, 828 220, 700 312" stroke="#F6F7FF" strokeWidth="1.6" />
+        {/* one small red thread — the single red in the whole page */}
+        <path className="thread t-red" d="M966 86 C 894 150, 610 300, 540 372" stroke="#FF3B3B" strokeWidth="1.4" opacity="0.85" />
+      </g>
+
+      {/* the star head */}
+      <g className="arrival-head">
+        <circle cx="980" cy="70" r="66" fill="url(#starGlow)" filter="url(#soft)" />
+        <path
+          className="head-scribble"
+          d="M980 40 C 998 54, 1006 66, 998 82 C 1014 78, 1020 92, 1008 104 C 1000 118, 984 118, 972 108 C 958 120, 944 110, 950 94 C 938 92, 940 74, 956 72 C 958 54, 968 44, 980 40 Z"
+          fill="none" stroke="#F6F7FF" strokeWidth="2.2" strokeLinejoin="round"
+        />
+        <circle cx="980" cy="72" r="7" fill="#F6F7FF" />
+      </g>
+
+      {/* connection — reaches toward the figure but holds a gap (the écart) */}
+      <path className="arrival-connect" d="M956 108 C 820 250, 660 360, 556 452" fill="none"
+        stroke="#46E8FF" strokeWidth="1.4" strokeDasharray="2 10" opacity="0.7" />
+
+      {/* the figure — a small attentive silhouette at the lower edge */}
+      <g className="arrival-figure" transform="translate(512 560)">
+        <path d="M18 120 C 12 86, 10 60, 20 34 C 24 20, 34 10, 46 12 C 58 14, 62 26, 60 40
+                 C 58 60, 60 92, 56 122 C 44 130, 30 130, 18 120 Z"
+              fill="#05060F" stroke="#171A3A" strokeWidth="1" />
+        <circle cx="40" cy="8" r="11" fill="#05060F" stroke="#171A3A" strokeWidth="1" />
+        {/* the single red ribbon, caught in wind */}
+        <path className="figure-ribbon" d="M52 26 C 78 30, 96 22, 120 30" fill="none"
+              stroke="#FF3B3B" strokeWidth="2" strokeLinecap="round" />
+        {/* the kept mark beside the figure — captivation, remembered */}
+        <circle className="figure-mark" cx="112" cy="96" r="5" fill="none" stroke="#FFD98A" strokeWidth="1.6" />
+      </g>
+
+      {/* restrained handwritten micro-labels */}
+      <text className="arrival-label l1" x="1010" y="60" fill="#9AA0C3">the arrival</text>
+      <text className="arrival-label l2" x="600" y="512" fill="#9AA0C3">the afterimage</text>
+    </svg>
+  );
+}
+
+function Hero() {
+  return (
+    <header className="perc-hero">
+      <div className="perc-hero-art"><GreatArrival /></div>
+      <div className="perc-hero-copy">
+        <p className="perc-eyebrow">Perception engineering</p>
+        <h1 className="perc-hero-title">Turn visual captivation into structured action.</h1>
+        <p className="perc-hero-sub">
+          Semant is a perception engineering workbench — where images become fields,
+          marks become citations, writing recalls what it rests on, and models
+          propose actions without silently becoming authority.
+        </p>
+        <div className="perc-cta-row">
+          <Link className="perc-btn perc-btn--primary" to="/home">Explore the Workbench</Link>
+          <Link className="perc-btn perc-btn--ghost" to="/notes/perceptual-action-grammar">Read the Technical Notes</Link>
+          <Link className="perc-btn perc-btn--link" to="/notes">View Research Horizons →</Link>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+const VERBS = [
+  { k: 'Notice', d: 'Say, in plain words, what caught you. Semant turns it into suggested acts — it never claims it saw what you saw.' },
+  { k: 'Mark', d: 'Put a field, a trace, or a region on the image: the fall of light, an axis, a drape, a gaze.' },
+  { k: 'Compose', d: 'Gather marks into a percept — a reading, not a list. “The arch, held against the shadow.”' },
+  { k: 'Cite', d: 'Write a passage that points at the exact marks it rests on. The citation is real, not decorative.' },
+  { k: 'Recall', d: 'Replay a percept: the image steps back, its evidence performs in turn, the reading breathes.' },
+  { k: 'Challenge', d: 'Argue with a percept from the image itself. Only a person may author a challenge — never a model.' },
+  { k: 'Orchestrate', d: 'Freeze the whole working context into one inspectable session a model could be asked to read.' },
 ];
 
-/* ── Hand-drawn diagram motifs (thick single-weight black line + one plum
-   accent). Fixed dark stroke via --diagram-ink so they stay black-on-pastel in
-   dark mode. One motif per pastel card. ─────────────────────────────────────── */
-
-function SeeMotif() {
-  // A garment dissected into parts — two ink markers, one plum (the pick).
+function WhatSemantDoes() {
   return (
-    <svg className="motif" viewBox="0 0 240 180" role="img" aria-label="A garment decomposed into parts.">
-      <g fill="none" stroke="var(--diagram-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M96 44 q24 -14 48 0 l16 26 -14 9 v70 q-26 10 -52 0 v-70 l-14 -9 z" />
-        <path d="M120 40 v14" />
-      </g>
-      <circle cx="120" cy="118" r="13" fill="none" stroke="var(--diagram-ink)" strokeWidth="3" />
-      <circle cx="150" cy="150" r="11" fill="none" stroke="var(--diagram-ink)" strokeWidth="3" />
-      {/* the picked part — the one accent */}
-      <circle cx="120" cy="47" r="15" fill="none" stroke="var(--accent)" strokeWidth="3.5" />
-    </svg>
+    <section className="perc-section" data-reveal>
+      <p className="perc-kicker">What Semant does</p>
+      <h2 className="perc-h2">Seven verbs, one surface.</h2>
+      <p className="perc-lede">
+        Something catches your eye. Today that moment goes into a caption a model wrote,
+        or a rectangle you drew. Semant gives it somewhere better to go — acts you can
+        inspect, edit, and take back.
+      </p>
+      <div className="perc-verbs">
+        {VERBS.map((v) => (
+          <div className="perc-verb" key={v.k}>
+            <h3>{v.k}</h3>
+            <p>{v.d}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
-function ReadMotif() {
-  // A part, read: a lens over a swatch + a written reading line.
-  return (
-    <svg className="motif" viewBox="0 0 240 180" role="img" aria-label="A felt reading of a part.">
-      <g fill="none" stroke="var(--diagram-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="40" y="52" width="78" height="78" rx="8" />
-        <path d="M52 74 q14 -10 28 0 t28 0" />
-        <path d="M52 92 q14 -10 28 0 t28 0" />
-        <path d="M52 110 q14 -10 28 0 t28 0" />
-        <line x1="150" y1="132" x2="176" y2="158" />
-      </g>
-      {/* the lens ring — the one accent */}
-      <circle cx="132" cy="112" r="26" fill="none" stroke="var(--accent)" strokeWidth="3.5" />
-    </svg>
-  );
-}
-
-function WriteMotif() {
-  // Words from parts: a page of lines with one picked word marked.
-  return (
-    <svg className="motif" viewBox="0 0 240 180" role="img" aria-label="A paragraph grounded in the picked parts.">
-      <g fill="none" stroke="var(--diagram-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="52" y="34" width="112" height="128" rx="8" />
-        <line x1="70" y1="66" x2="146" y2="66" />
-        <line x1="70" y1="88" x2="146" y2="88" />
-        <line x1="70" y1="110" x2="120" y2="110" />
-        <line x1="70" y1="132" x2="146" y2="132" />
-      </g>
-      {/* the picked word, carried into the prose — the one accent */}
-      <rect x="126" y="102" width="38" height="16" rx="5" fill="none" stroke="var(--accent)" strokeWidth="3.5" />
-    </svg>
-  );
-}
-
-const PANELS = [
-  {
-    n: '01',
-    title: 'See — reading, not tagging.',
-    line: 'A tagger flattens the picture to a list. Semant decomposes it into the parts that carry the meaning.',
-    pastel: 'mauve',
-    motif: <SeeMotif />,
-    reading: 'Not “a gown” — the neckline, the drape, the patterned hem.',
-  },
-  {
-    n: '02',
-    title: 'Read — a felt reading, part by part.',
-    line: 'Each part read through the lenses the image itself calls for — an interpretation you can extend and write from.',
-    pastel: 'stone',
-    motif: <ReadMotif />,
-    reading: '“The drape gives where the neckline holds — softness argued against restraint.”',
-  },
-  {
-    n: '03',
-    title: 'Write — words that could sound like you.',
-    line: 'The aim: prose grounded in the parts you picked and your accumulating voice — not generic slop.',
-    pastel: 'bluegrey',
-    motif: <WriteMotif />,
-    reading: 'The picked part, carried into the sentence — in your own words.',
-  },
+const WORKBENCH = [
+  { t: 'Differential', s: 'built', d: 'The image-side perception workshop. You say what caught you; it offers acts; your hand places the geometry. Marks become grounds, grounds become percepts.' },
+  { t: 'Manuscript', s: 'emerging', d: 'The writing-side multimodal field. A sentence can be asked what it cites — and answer honestly, including “nothing.” No green ticks.' },
+  { t: 'Atlas & Codex', s: 'horizon', d: 'Comparative and time surfaces — percepts held together across many images and across time. Being explored.' },
 ];
+const ENGINE = [
+  { t: 'Perceptual Action Grammar', s: 'built', d: 'A closed vocabulary of perceptual acts. Every proposal is validated; an invalid one is refused, not “mostly kept.”' },
+  { t: 'Attunement Planner', s: 'built', d: 'Turns what caught you into suggested acts, carrying the words it keyed on. It reads “gaze” and offers to mark one — it never claims it saw one.' },
+  { t: 'Visual Marks', s: 'built', d: 'A renderer-independent truth. A drawn line is a view of a mark, never the other way around.' },
+  { t: 'Suggestion Quarantine', s: 'built', d: 'Accepting a model suggestion mints a new mark pointing back at it — an approval can never be laundered into your own decision.' },
+  { t: 'Orchestration Session', s: 'emerging', d: 'Freezes the whole ask into one inspectable request that can refuse an invalid one without spending anything.' },
+  { t: 'Provenance & Recall', s: 'built', d: 'Every mark can say what it is; a percept can re-perform itself from the writing that mentions it.' },
+];
+
+function WorkbenchEngine() {
+  return (
+    <section className="perc-section" data-reveal>
+      <div className="perc-split">
+        <div>
+          <p className="perc-kicker">The Workbench</p>
+          <h2 className="perc-h2">Where seeing is performed.</h2>
+          <div className="perc-cards">
+            {WORKBENCH.map((c) => (
+              <div className="perc-card" key={c.t}>
+                <div className="perc-card-head"><h3>{c.t}</h3><StatusChip status={c.s} /></div>
+                <p>{c.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="perc-kicker">The Engine</p>
+          <h2 className="perc-h2">A small, strict engine.</h2>
+          <div className="perc-cards">
+            {ENGINE.map((c) => (
+              <div className="perc-card" key={c.t}>
+                <div className="perc-card-head"><h3>{c.t}</h3><StatusChip status={c.s} /></div>
+                <p>{c.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const AUDIENCE = [
+  ['Fashion designers', 'Build a moodboard-with-reasoning: mark why a garment works, part by part.'],
+  ['Filmmakers & directors', 'Read a frame’s gaze, axis, and light as marks; keep a shot’s reasoning, not just a screenshot.'],
+  ['Writers', 'Compose passages that genuinely rest on what you saw — and can prove it.'],
+  ['Artists', 'Treat an image as an instrument: fields, traces, negative space, rhythm — the felt parts, named.'],
+  ['Researchers', 'Accumulate percepts and their evidence into something inspectable and comparable.'],
+  ['Curators', 'Turn a stream of captivation into a structured, citable body of looking.'],
+  ['Architects & designers', 'Mark axes, thresholds, and recession; read how an image builds its space.'],
+  ['AI builders & agents', 'A grammar and a session that let models act on seeing without becoming its authority.'],
+];
+
+function AudienceCards() {
+  return (
+    <section className="perc-section" data-reveal>
+      <p className="perc-kicker">Who it is for</p>
+      <h2 className="perc-h2">Anyone whose work begins in being caught by an image.</h2>
+      <div className="perc-audience">
+        {AUDIENCE.map(([t, d]) => (
+          <div className="perc-aud" key={t}><h3>{t}</h3><p>{d}</p></div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PerceptionEngineering() {
+  return (
+    <section className="perc-band" data-reveal>
+      <p className="perc-kicker perc-kicker--light">Perception engineering</p>
+      <p className="perc-claim">
+        Agentic engineering gave language models a grammar of software actions —
+        and with a human in the loop, they could <em>do</em> software work.
+        Seeing never got that layer.
+      </p>
+      <p className="perc-claim perc-claim--accent">
+        Perception engineering gives humans, models, and agents access to <em>situated seeing</em> —
+        with a provenance for every mark, a session that can refuse a bad request, and a hard
+        line between a suggestion and evidence.
+      </p>
+    </section>
+  );
+}
+
+const PHIL = [
+  ['Embodied cognition', 'Perception is something you do — so the core unit is an act, not a label.'],
+  ['Phenomenology (Merleau-Ponty)', 'Seeing happens across a gap — so a percept holds a reading against its evidence, never collapsing into it.'],
+  ['Gestalt figure-ground', 'Meaning lives in what isn’t there — so negative space is a field you can mark.'],
+  ['Gaze studies', 'Where a look goes is data — so gaze and address are traces you can draw and cite.'],
+  ['Architecture of perception', 'Light, surface, threshold, recession build a felt space — so they are field roles, not afterthoughts.'],
+  ['Assemblage (Deleuze / DeLanda)', 'A reading is parts held in relation — so relations are their own marks.'],
+];
+
+function ResearchPhilosophy() {
+  return (
+    <section className="perc-section" data-reveal>
+      <p className="perc-kicker">Research &amp; philosophy</p>
+      <h2 className="perc-h2">Each idea earns its place by becoming a capability.</h2>
+      <div className="perc-phil">
+        {PHIL.map(([t, d]) => (
+          <div className="perc-phil-row" key={t}>
+            <h3>{t}</h3><p>{d}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FeatureArticles() {
+  return (
+    <section className="perc-section" data-reveal>
+      <p className="perc-kicker">Feature notes</p>
+      <h2 className="perc-h2">The view from altitude has depth beneath it.</h2>
+      <div className="perc-notes-grid">
+        {FIELD_NOTES.map((n) => (
+          <Link className="perc-note-card" to={`/notes/${n.slug}`} key={n.slug}>
+            <div className="perc-card-head">
+              <span className="perc-note-cat">{CATEGORY_LABEL[n.category]}</span>
+              <StatusChip status={n.status} />
+            </div>
+            <h3>{n.title}</h3>
+            <p>{n.summary}</p>
+            <span className="perc-note-more">Read the note →</span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const FORMS = [
+  ['Web workbench', 'built', 'The Differential and the Manuscript, in the browser.'],
+  ['Desktop studio', 'horizon', 'A perception cockpit: a coding studio crossed with an orchestration workspace.'],
+  ['CLI', 'horizon', 'The grammar and the session for technical users and automation — scriptable, inspectable.'],
+  ['Phone', 'horizon', 'Everyday capture: catch an image, mark what caught you, let the reading grow later.'],
+  ['Agent engine / API', 'horizon', 'The same grammar offered to agents — acting on seeing through the same guardrails a person does.'],
+];
+
+function ProductForms() {
+  return (
+    <section className="perc-section" data-reveal>
+      <p className="perc-kicker">Product forms</p>
+      <h2 className="perc-h2">One workbench, several doors.</h2>
+      <div className="perc-forms">
+        {FORMS.map(([t, s, d]) => (
+          <div className="perc-form" key={t}>
+            <div className="perc-card-head"><h3>{t}</h3><StatusChip status={s} /></div>
+            <p>{d}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FooterAfterimage() {
+  return (
+    <footer className="perc-after" data-reveal>
+      <p className="perc-after-lede">
+        Most tools want to tell you what an image <em>is</em>. Semant is building something
+        quieter: an interface where perception can be marked, questioned, remembered, and
+        returned — where the thing that caught you becomes an instrument you can think with.
+      </p>
+      <p className="perc-after-line">Semant — where images become instruments for thought.</p>
+      <div className="perc-cta-row perc-cta-row--center">
+        <Link className="perc-btn perc-btn--primary" to="/home">Explore the Workbench</Link>
+        <Link className="perc-btn perc-btn--ghost" to="/notes">Read the Field Notes</Link>
+      </div>
+    </footer>
+  );
+}
 
 export default function LandingPage() {
   useReveal();
   return (
-    <div className="landing">
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <header className="landing-hero" data-reveal>
-        <div className="landing-hero-copy">
-          <span className="landing-eyebrow">See · Read · Write</span>
-          <h1 className="landing-wedge">
-            Every tool tells you <em>what’s</em> in an image. Semant tells you{' '}
-            <em>why it moves you</em> — part by part, in your own words.
-          </h1>
-          <p className="landing-lede">
-            Close-reading for the age of the scroll — an instrument for seeing
-            images, not another place to save them.
-          </p>
-          <div className="landing-cta-row">
-            <Link to="/home" className="landing-pill">
-              Enter <span aria-hidden>→</span>
-            </Link>
-            <a href="#see-read-write" className="landing-textlink">
-              See how it reads <span aria-hidden>↓</span>
-            </a>
-          </div>
-        </div>
-
-        <figure className="landing-hero-figure">
-          <div className="landing-hero-frame">
-            <img src={editorialImage} alt="An editorial fashion figure in a patterned gown." />
-            {HERO_REGIONS.map((r) => (
-              <span
-                key={r.label}
-                className="landing-region"
-                style={{ top: r.top, left: r.left, width: r.width, height: r.height }}
-              >
-                <span className="landing-region-label">{r.label}</span>
-              </span>
-            ))}
-          </div>
-        </figure>
-      </header>
-
-      {/* ── The problem ──────────────────────────────────────────────────── */}
-      <section className="landing-section" data-reveal>
-        <span className="landing-eyebrow">The problem</span>
-        <h2 className="landing-h2">Saving is not seeing.</h2>
-        <p className="landing-prose">
-          Pinterest, Cosmos, Are.na, Savee, a thousand screenshots you will
-          never open again — we have never had more places to <em>save</em> an
-          image, and the reason you saved it evaporates the second you scroll
-          on. A moodboard is an archive of your attention with the attention
-          removed: it remembers <em>that</em> you stopped and forgets{' '}
-          <em>why</em>. Designers call the result drift. It isn&rsquo;t a lack
-          of inspiration. It&rsquo;s a lack of seeing.
-        </p>
-        <p className="landing-pullquote">Saving is a reflex. Seeing is a practice.</p>
-      </section>
-
-      {/* ── See · Read · Write — the spine ───────────────────────────────── */}
-      <section id="see-read-write" className="landing-section landing-spine">
-        <div className="landing-spine-head" data-reveal>
-          <span className="landing-eyebrow">The act</span>
-          <h2 className="landing-h2">See · Read · Write.</h2>
-          <p className="landing-prose">
-            One image, slowed down — decomposed into meaningful parts, read part
-            by part, and written from.
-          </p>
-        </div>
-
-        {PANELS.map((p, i) => (
-          <article
-            key={p.n}
-            className={`landing-panel${i % 2 === 1 ? ' landing-panel--reverse' : ''}`}
-            data-reveal
-          >
-            <div className="landing-panel-copy">
-              <span className="landing-numeral">{p.n}</span>
-              <h3 className="landing-h3">{p.title}</h3>
-              <p className="landing-prose">{p.line}</p>
-            </div>
-            <figure className={`landing-card landing-card--${p.pastel}`}>
-              {p.motif}
-              <figcaption className="landing-card-reading">{p.reading}</figcaption>
-            </figure>
-          </article>
-        ))}
-      </section>
-
-      {/* ── The payoff ───────────────────────────────────────────────────── */}
-      <section className="landing-section" data-reveal>
-        <span className="landing-eyebrow">The payoff</span>
-        <h2 className="landing-h2">Your taste is your edge.</h2>
-        <p className="landing-prose">
-          When everyone can generate everything, the specific way <em>you</em>{' '}
-          see is the last unautomatable thing you own. Read a hundred images
-          this way and a portrait of your own eye appears — the motifs you
-          return to, the details you can&rsquo;t stop noticing — your taste
-          written down as language instead of scattered across boards
-          you&rsquo;ll never reopen. Then it writes <em>with</em> you, not{' '}
-          <em>for</em> you: captions, lookbook lines, notes grounded in the real
-          detail and in your accumulated voice. For stylists, creative
-          directors, and anyone building an aesthetic in public — words that
-          sound like the person who saw the thing.
-        </p>
-        <p className="landing-pullquote">Your taste, given back — not harvested.</p>
-      </section>
-
-      {/* ── The room — Chiasm (article 04) ───────────────────────────────── */}
-      <section className="landing-section" data-reveal>
-        <span className="landing-eyebrow">The room</span>
-        <h2 className="landing-h2">Chiasm — the crossing.</h2>
-        <p className="landing-prose">
-          Most software keeps the image on one side and your words on the
-          other, the detail that moved you stuck behind glass. Semant&rsquo;s
-          workspace has two shores — the <em>Field</em>, where the image is
-          taken apart by attention, and the <em>Manuscript</em>, where it
-          becomes language — and the product is the crossing between them. The
-          drape you mark travels into the sentence as a live thing: hover the
-          word and the shape lights up on the image; write about it and the
-          image remembers being written about.
-        </p>
-        <p className="landing-pullquote">
-          Not a nicer editor — a medium where seeing and saying cross.
-        </p>
-      </section>
-
-      {/* ── Close (centered announcement register) ───────────────────────── */}
-      <section className="landing-section landing-close" data-reveal>
-        <h2 className="landing-h2 landing-close-line">
-          Tagging tells you what you’re looking at. Reading tells you what
-          you’re <em>seeing</em>.
-        </h2>
-        <p className="landing-prose landing-close-sub">We only care about the second one.</p>
-        <Link to="/home" className="landing-pill landing-pill--lg">
-          Start seeing <span aria-hidden>→</span>
-        </Link>
-      </section>
+    <div className="perc-landing">
+      <Hero />
+      <WhatSemantDoes />
+      <WorkbenchEngine />
+      <AudienceCards />
+      <PerceptionEngineering />
+      <ResearchPhilosophy />
+      <FeatureArticles />
+      <ProductForms />
+      <FooterAfterimage />
     </div>
   );
 }

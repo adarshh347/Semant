@@ -35,6 +35,9 @@ const UnconcealQueuePage = React.lazy(() => import('./pages/UnconcealQueuePage.j
 const AnatomyPage = React.lazy(() => import('./pages/AnatomyPage.jsx'));
 const BlockNoteLab = React.lazy(() => import('./pages/BlockNoteLab.jsx'));
 const ManuscriptLab = React.lazy(() => import('./pages/ManuscriptLab.jsx'));
+// Semant Field Notes — the perception-engineering landing's feature articles.
+const FieldNotesPage = React.lazy(() => import('./pages/FieldNotesPage.jsx'));
+const FieldNotePage = React.lazy(() => import('./pages/FieldNotePage.jsx'));
 
 const router = createBrowserRouter([
   {
@@ -100,6 +103,9 @@ const router = createBrowserRouter([
       },
       { path: "motive", element: <MotivePage /> },
       { path: "motive/:slug", element: <MotivePage /> },
+      // Field notes — the six feature articles linked from the landing.
+      { path: "notes", element: <FieldNotesPage /> },
+      { path: "notes/:slug", element: <FieldNotePage /> },
       // Catch-all — a branded 404 inside the app shell (keeps the nav + chrome).
       { path: "*", element: <NotFoundPage /> },
     ],

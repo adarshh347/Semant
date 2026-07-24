@@ -1,0 +1,119 @@
+/* frontend/src/pages/FieldNotes.css
+   Semant Field Notes — index + article, twilight surface matching the landing.
+   Self-scoped tokens under .fnotes (product UI keeps Paper + Plum). */
+
+.fnotes {
+  --sky-nearblack: #05060F;
+  --sky-indigo: #171A3A;
+  --ink-white: #F6F7FF;
+  --glow-cyan: #46E8FF;
+  --glow-gold: #FFD98A;
+  --glow-ultra: #7A5CFF;
+  --graphite: #9AA0C3;
+  --hair: rgba(154, 160, 195, 0.16);
+  --hair-strong: rgba(154, 160, 195, 0.32);
+
+  width: 100%;
+  min-height: 100svh;
+  background: var(--sky-nearblack);
+  color: var(--ink-white);
+  font-family: var(--font-sans);
+}
+
+.fnotes-wrap,
+.fnote-article {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 6vw, 3rem) 6rem;
+}
+.fnotes-wrap { max-width: 1080px; }
+
+.fnotes-eyebrow,
+.fnote-cat {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--glow-cyan);
+  font-weight: 600;
+}
+.fnotes-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.02em;
+  margin: 0.75rem 0 1rem;
+}
+.fnotes-lede {
+  max-width: 62ch;
+  color: rgba(246, 247, 255, 0.72);
+  font-size: 1.075rem;
+  line-height: 1.6;
+  margin: 0 0 2.5rem;
+}
+
+/* ── shared chip (same as landing) ─────────────────────────────────────────── */
+.perc-chip {
+  font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
+  padding: 0.18em 0.6em; border-radius: 999px; border: 1px solid var(--hair-strong);
+  color: var(--graphite); white-space: nowrap;
+}
+.perc-chip--built { color: var(--glow-cyan); border-color: rgba(70, 232, 255, 0.4); }
+.perc-chip--emerging { color: var(--glow-gold); border-color: rgba(255, 217, 138, 0.4); }
+.perc-chip--horizon { color: var(--glow-ultra); border-color: rgba(122, 92, 255, 0.45); }
+
+/* ── index grid ────────────────────────────────────────────────────────────── */
+.fnotes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.1rem; }
+.fnote-card {
+  display: block; text-decoration: none; color: inherit;
+  border: 1px solid var(--hair); border-radius: 0.625rem; padding: 1.3rem 1.35rem;
+  background: linear-gradient(180deg, rgba(23, 26, 58, 0.3), rgba(11, 16, 38, 0.1));
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.fnote-card:hover { border-color: var(--glow-cyan); transform: translateY(-2px); }
+.fnote-card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.fnote-card h2 { font-family: var(--font-display); font-size: 1.2rem; margin: 0.6rem 0 0.5rem; color: var(--ink-white); }
+.fnote-card p { margin: 0 0 1rem; color: rgba(246, 247, 255, 0.66); font-size: 0.9rem; line-height: 1.5; }
+.fnote-more { font-size: 0.82rem; color: var(--glow-cyan); font-weight: 600; }
+
+/* ── article ───────────────────────────────────────────────────────────────── */
+.fnote-meta { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.75rem; }
+.fnote-h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.2vw, 3.1rem);
+  line-height: 1.05; letter-spacing: -0.025em; margin: 0 0 0.85rem;
+}
+.fnote-lede {
+  font-size: 1.15rem; line-height: 1.55; color: rgba(246, 247, 255, 0.78);
+  margin: 0 0 1.5rem; font-style: italic; font-family: var(--font-display);
+}
+.fnote-rule { border: none; border-top: 1px solid var(--hair); margin: 1.5rem 0 2rem; }
+
+/* MiniMarkdown body typography */
+.fnote-body { font-size: 1.05rem; line-height: 1.7; color: rgba(246, 247, 255, 0.82); }
+.fnote-body h2 { font-family: var(--font-display); font-size: 1.5rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.8rem; color: var(--ink-white); }
+.fnote-body h3 { font-family: var(--font-display); font-size: 1.2rem; margin: 1.8rem 0 0.6rem; color: var(--glow-gold); }
+.fnote-body h4 { font-size: 1.02rem; margin: 1.4rem 0 0.5rem; color: var(--ink-white); }
+.fnote-body p { margin: 0 0 1.1rem; }
+.fnote-body ul { margin: 0 0 1.2rem; padding-left: 1.25rem; }
+.fnote-body li { margin: 0 0 0.5rem; }
+.fnote-body strong { color: var(--ink-white); font-weight: 650; }
+.fnote-body em { color: rgba(246, 247, 255, 0.9); }
+.fnote-body code {
+  font-family: var(--font-mono, monospace); font-size: 0.85em;
+  background: rgba(154, 160, 195, 0.14); padding: 0.12em 0.4em; border-radius: 4px; color: var(--glow-cyan);
+}
+.fnote-body blockquote {
+  margin: 1.5rem 0; padding: 0.6rem 1.2rem; border-left: 2px solid var(--glow-cyan);
+  color: rgba(246, 247, 255, 0.86); font-family: var(--font-display); font-size: 1.15rem; font-style: italic;
+}
+.fnote-body hr { border: none; border-top: 1px solid var(--hair); margin: 2rem 0; }
+
+/* ── nav / back ────────────────────────────────────────────────────────────── */
+.fnote-nav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--hair); }
+.fnote-nav-link { color: var(--graphite); text-decoration: none; font-size: 0.92rem; max-width: 45%; }
+.fnote-nav-link:hover { color: var(--glow-cyan); }
+.fnote-nav-link--next { text-align: right; margin-left: auto; }
+
+.fnotes-back { margin-top: 2.5rem; }
+.fnotes-back--top { margin: 0 0 1.5rem; }
+.fnotes-back a { color: var(--graphite); text-decoration: none; font-size: 0.9rem; }
+.fnotes-back a:hover { color: var(--ink-white); }
