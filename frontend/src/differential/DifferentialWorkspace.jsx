@@ -65,6 +65,8 @@ import { ReactComponent as FrameToolGlyph } from '@/assets/glyphs/27-tool-frame.
 import { ReactComponent as RefineToolGlyph } from '@/assets/glyphs/28-tool-refine.svg';
 import { ReactComponent as ReadToolGlyph } from '@/assets/glyphs/29-tool-read.svg';
 import { ReactComponent as SimilarToolGlyph } from '@/assets/glyphs/30-tool-similar.svg';
+// The Differential workbench mark (loupe on a print), worn beside its title.
+import { ReactComponent as DifferentialMark } from '@/assets/glyphs/07-differential.svg';
 import './DifferentialWorkspace.css';
 
 // The role vocabularies the instruments offer (contract §2), from Lane A's
@@ -1035,6 +1037,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                     <ArrowLeft size={15} /> Chiasm
                 </button>
                 <div className="diff-identity">
+                    <DifferentialMark className="diff-identity-glyph" style={{ color: 'inherit' }} aria-hidden="true" />
                     <span className="diff-eyebrow">Differential</span>
                     {post?.instagram_handle && <span className="diff-handle">@{post.instagram_handle}</span>}
                 </div>
@@ -1075,7 +1078,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             const system = isSystemLayer(l);
                             const LaneGlyph = LAYER_GLYPHS[l.layer_type] || RegionGlyph;
                             return (
-                                <div key={l.id} className={`diff-layer-row${l.visibility === false ? ' is-hidden' : ''}`}>
+                                <div key={l.id} data-layer={l.layer_type} className={`diff-layer-row${l.visibility === false ? ' is-hidden' : ''}`}>
                                     <button type="button" className="diff-layer-eye"
                                         aria-pressed={l.visibility !== false} disabled={system}
                                         title={system ? 'System layer' : (l.visibility === false ? 'Show' : 'Hide')}
