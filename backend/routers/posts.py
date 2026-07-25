@@ -1781,8 +1781,9 @@ def _crop_to_box(image, box: Optional[dict]):
 _cpu_perceptual_mgr = None
 _cpu_perceptual_adapter = None
 
-# perceptual role → the producer that reads that map. P6-E adds pressure_zone here.
-_PERCEPTUAL_MAKERS = {"rhythm": "suggestion_from_rhythm"}
+# perceptual role → the producer that reads that map. Both come from ONE adapter call.
+_PERCEPTUAL_MAKERS = {"rhythm": "suggestion_from_rhythm",
+                      "pressure_zone": "suggestion_from_pressure_zone"}
 
 
 async def _produce_cpu_perceptual(post_id, post, region, req, run_id, *, role: str):
@@ -1829,11 +1830,16 @@ async def _produce_rhythm(post_id, post, region, req, run_id):
     return await _produce_cpu_perceptual(post_id, post, region, req, run_id, role="rhythm")
 
 
+async def _produce_pressure_zone(post_id, post, region, req, run_id):
+    return await _produce_cpu_perceptual(post_id, post, region, req, run_id, role="pressure_zone")
+
+
 # The registry: producer name → handler. Extensible — a new producer plugs in here, not a new route.
 _FIELD_PRODUCERS = {
     "negative_space": _produce_negative_space,
     "material_field": _produce_material_field,
     "rhythm": _produce_rhythm,
+    "pressure_zone": _produce_pressure_zone,
 }
 
 

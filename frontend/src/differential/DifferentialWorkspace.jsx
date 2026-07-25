@@ -117,6 +117,8 @@ const FIELD_PRODUCERS = [
       hint: 'Tap a point on the image; DINOv2 paints everything of the same material.' },
     { key: 'rhythm', label: 'Rhythm', needsSeed: false,
       hint: 'Where something repeats — Gabor energy over the part\'s surface. No model, no GPU.' },
+    { key: 'pressure_zone', label: 'Pressure', needsSeed: false,
+      hint: 'Where the surface pulls one way — structure-tensor coherence. Same reading as Rhythm.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface

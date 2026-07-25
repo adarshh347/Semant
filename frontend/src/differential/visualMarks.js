@@ -89,7 +89,7 @@ export const STROKE_OPS = ['add', 'sub'];
 // all, so its receipt names an adapter but no model, like negative_space's.
 export const PRODUCERS = [
     'sam_refine', 'semantic_read', 'planner', 'find_similar',
-    'negative_space', 'material_field', 'rhythm', 'fixture',
+    'negative_space', 'material_field', 'rhythm', 'pressure_zone', 'fixture',
 ];
 
 // ── role vocabularies ────────────────────────────────────────────────────────

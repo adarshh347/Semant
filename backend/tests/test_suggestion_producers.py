@@ -565,3 +565,72 @@ def test_rhythm_refuses_a_near_flat_surface_with_only_noise():
     # and the confidence reported for a real texture is that same relative relief
     d = ss.suggestion_from_rhythm(_rhythm_analysis(), run_id="r", region_id="x")
     assert d["confidence"] == pytest.approx((0.9 - 0.05) / 0.9, abs=1e-3)
+
+
+# ─────────── PURE: producer 7 (pressure_zone — rhythm's sibling, same reading) ───────────
+
+def test_pressure_zone_reads_coherence_from_the_same_analysis():
+    a = _rhythm_analysis()                       # one adapter reading carries BOTH maps
+    d = ss.suggestion_from_pressure_zone(a, run_id="run_p", region_id="reg_d", latency_ms=8.0)
+    assert d is not None
+    assert d["producer"] == "pressure_zone" and d["role"] == "pressure_zone"
+    assert d["type"] == "brush_field" and d["geometry"]["kind"] == "soft_mask"
+    p = d["provenance"]
+    assert p["adapter"] == "cpu_perceptual" and p["run_id"] == "run_p" and p["latency_ms"] == 8.0
+    assert "model" not in p and "checkpoint" not in p     # deterministic: nothing inferred
+    assert "confidence" not in p
+    assert d["source_ref"] == "reg_d:pressure_zone"       # distinct key from rhythm's
+
+
+def test_rhythm_and_pressure_zone_are_distinct_marks_from_one_reading():
+    a = _rhythm_analysis()
+    r = ss.suggestion_from_rhythm(a, run_id="r", region_id="reg_d")
+    p = ss.suggestion_from_pressure_zone(a, run_id="r", region_id="reg_d")
+    assert r["source_ref"] != p["source_ref"]             # they never collide in the quarantine
+    assert r["role"] == "rhythm" and p["role"] == "pressure_zone"
+
+
+def test_pressure_zone_refuses_an_isotropic_surface():
+    # no directional organisation → nothing pulls → refuse
+    grid = 4
+    flat = {"energy": [0.5] * (grid * grid), "coherence": [0.0] * (grid * grid), "grid": grid}
+    assert ss.suggestion_from_pressure_zone(flat, run_id="r") is None
+
+
+def test_pressure_zone_refuses_empty_or_malformed_analysis():
+    assert ss.suggestion_from_pressure_zone(None, run_id="r") is None
+    assert ss.suggestion_from_pressure_zone({}, run_id="r") is None
+    assert ss.suggestion_from_pressure_zone({"grid": 4, "coherence": [0.1]}, run_id="r") is None
+
+
+def test_pressure_zone_list_form_is_empty_on_refusal():
+    grid = 4
+    flat = {"coherence": [0.0] * (grid * grid), "grid": grid}
+    assert ss.suggestions_from_pressure_zone(flat, run_id="r") == []
+    assert len(ss.suggestions_from_pressure_zone(_rhythm_analysis(), run_id="r")) == 1
+
+
+def test_produce_field_pressure_zone_dispatches_through_the_same_surface(monkeypatch):
+    post = {"_id": ObjectId(),
+            "region_annotations": [{"id": "reg_d", "label": "drapery",
+                                    "box": {"x": 0.1, "y": 0.1, "w": 0.5, "h": 0.5}}]}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import cpu_perceptual_service as cps
+
+    class _Img:
+        size = (100, 100)
+        def crop(self, b): return self
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(cps, "is_available", lambda: True)
+    monkeypatch.setattr(cps, "analyze", lambda image, **kw: _rhythm_analysis())
+
+    resp = run(R.produce_field(str(posts.post["_id"]),
+                               R.ProduceFieldRequest(producer="pressure_zone", region_id="reg_d")))
+    assert resp["status"] == "ready"
+    assert resp["suggestions"][0]["role"] == "pressure_zone"
+    assert posts.writes == []

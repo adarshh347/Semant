@@ -448,3 +448,61 @@ describe('the material field — first brush_field producer on a real model, qua
         expect(canCiteMark(dismissed)).toBe(false);
     });
 });
+
+// CIRCUIT-001 P6-D/P6-E — the cpu_perceptual fields. No model at all: the receipt names an adapter
+// and a run, never a model/checkpoint. Both roles come from ONE adapter reading and must stay
+// distinct marks in the quarantine.
+const perceptualDescriptor = (role, over = {}) => ({
+    producer: role, type: 'brush_field', role,
+    label: role === 'rhythm' ? 'rhythm — where something repeats' : 'pressure — where the surface pulls',
+    source_ref: `reg_d:${role}`,
+    geometry: {
+        kind: 'soft_mask',
+        strokes: [{ points: [[0.3, 0.3]], radius: 0.02, strength: 0.9, op: 'add' }],
+    },
+    linked_ground_ids: [],
+    provenance: { run_id: 'run_cpu', producer: role, adapter: 'cpu_perceptual', latency_ms: 14 },
+    confidence: 0.61,
+    ...over,
+});
+
+describe('the cpu_perceptual fields — rhythm + pressure, quarantined', () => {
+    beforeEach(() => _resetMarkIds());
+
+    it.each(['rhythm', 'pressure_zone'])('%s ingests as an uncitable brush_field with a no-model receipt', (role) => {
+        const m = suggestionFromDescriptor(perceptualDescriptor(role), { now: 'T' });
+        expect(m).not.toBeNull();
+        expect(m.type).toBe('brush_field');
+        expect(m.role).toBe(role);
+        expect(m.source).toBe('model_suggested');
+        expect(canCiteMark(m)).toBe(false);
+        expect(m.geometry.kind).toBe('soft_mask');
+        expect(m.provenance.adapter).toBe('cpu_perceptual');
+        expect(m.provenance.run_id).toBe('run_cpu');
+        expect(m.provenance.model == null).toBe(true);      // nothing was inferred, and it says so
+        expect('confidence' in m.provenance).toBe(false);   // never on the mark (contract §6)
+    });
+
+    it('rhythm and pressure from one reading stay two distinct marks', () => {
+        const r = suggestionFromDescriptor(perceptualDescriptor('rhythm'), { now: 'T' });
+        const p = suggestionFromDescriptor(perceptualDescriptor('pressure_zone'), { now: 'T' });
+        expect(r.id).not.toBe(p.id);                        // distinct source_ref → distinct ids
+    });
+
+    it.each(['rhythm', 'pressure_zone'])('accepting %s mints a derived user_confirmed field mark', (role) => {
+        const s = suggestionFromDescriptor(perceptualDescriptor(role), { now: 'T' });
+        const { accepted } = acceptSuggestion(s, {}, { now: 'T2', idFn: () => `vm_${role}` });
+        expect(accepted.source).toBe('user_confirmed');
+        expect(accepted.derived_from).toBe(s.id);
+        expect(canCiteMark(accepted)).toBe(true);
+        expect(accepted.role).toBe(role);
+        expect(accepted.geometry.strokes).toHaveLength(1);
+    });
+
+    it.each(['rhythm', 'pressure_zone'])('dismissing %s discards it and never cites it', (role) => {
+        const s = suggestionFromDescriptor(perceptualDescriptor(role), { now: 'T' });
+        const d = dismissSuggestion(s, { now: 'T2' });
+        expect(d.status).toBe('dismissed');
+        expect(canCiteMark(d)).toBe(false);
+    });
+});

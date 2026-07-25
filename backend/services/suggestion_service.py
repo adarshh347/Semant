@@ -51,6 +51,11 @@ PRODUCER_MATERIAL = "material_field"
 # deterministic like negative_space's (adapter + latency, but NO model/checkpoint: nothing was
 # inferred, only measured).
 PRODUCER_RHYTHM = "rhythm"
+# CIRCUIT-001 P6-E — rhythm's sibling on the SAME cpu_perceptual reading. Where Gabor energy says
+# "something repeats here", structure-tensor coherence says "the gradient here is ORGANISED along
+# an axis" — drapery pulling one way, an architectural run, a directional strain. One adapter
+# call already produces both maps, so this producer is a second reading of work already done.
+PRODUCER_PRESSURE_ZONE = "pressure_zone"
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -489,4 +494,37 @@ def suggestions_from_rhythm(
 ) -> List[Dict[str, Any]]:
     """The list form — one rhythm field, or [] when the surface refuses to have one."""
     d = suggestion_from_rhythm(analysis, run_id=run_id, **kw)
+    return [d] if d else []
+
+
+# ── producer 7: pressure_zone — rhythm's sibling on the same reading (CIRCUIT-001 P6-E) ────────
+
+def suggestion_from_pressure_zone(
+    analysis: Optional[Dict[str, Any]], *, run_id: Optional[str],
+    region_id: Optional[str] = None, box: Optional[Dict[str, Any]] = None,
+    label: Optional[str] = None, latency_ms: Optional[float] = None,
+    min_contrast: float = 0.05, threshold: float = 0.55, radius: float = 0.05,
+    grid_sample: int = 12,
+) -> Optional[Dict[str, Any]]:
+    """A cpu_perceptual reading → a ``brush_field`` / ``pressure_zone`` soft-field suggestion.
+
+    Reads the ``coherence`` map from the SAME analysis rhythm reads — structure-tensor coherence
+    is high where the local gradient is directional (a pull, a run, a strain) and low where it is
+    isotropic. No second adapter call, no model, no GPU.
+
+    Refusal (fail-closed): no analysis, an empty/short map, or an isotropic surface — a region
+    with no directional organisation has no pressure to claim. On a truly flat surface every
+    gradient is zero, so coherence is uniformly zero and the relief test refuses it."""
+    return _from_perceptual_map(
+        analysis, key="coherence", producer=PRODUCER_PRESSURE_ZONE, role="pressure_zone",
+        default_label="pressure — where the surface pulls", run_id=run_id, region_id=region_id,
+        box=box, label=label, latency_ms=latency_ms, min_contrast=min_contrast,
+        threshold=threshold, radius=radius, grid_sample=grid_sample)
+
+
+def suggestions_from_pressure_zone(
+    analysis: Optional[Dict[str, Any]], *, run_id: Optional[str], **kw
+) -> List[Dict[str, Any]]:
+    """The list form — one pressure field, or [] when the surface is isotropic."""
+    d = suggestion_from_pressure_zone(analysis, run_id=run_id, **kw)
     return [d] if d else []
