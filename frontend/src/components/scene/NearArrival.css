@@ -1,0 +1,9 @@
+/*
+ * The Near Arrival scene fills whatever the hero gives it. The SVG's own
+ * preserveAspectRatio="xMidYMid slice" does the cropping (which is why, on a
+ * very wide monitor, the top-right entry hairline can fall outside the frame —
+ * that is expected; the fix, if ever wanted, is to move the entry section
+ * inward in the SVG, not to change the crop).
+ */
+.na-root { display: block; width: 100%; height: 100%; }
+.na-root svg { display: block; width: 100%; height: 100%; }

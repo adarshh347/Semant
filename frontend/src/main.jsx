@@ -46,6 +46,9 @@ const ManuscriptLab = React.lazy(() => import('./pages/ManuscriptLab.jsx'));
 const GlyphContactSheet = import.meta.env.DEV
   ? React.lazy(() => import('./routes/design/GlyphContactSheet.jsx'))
   : null;
+const SceneLab = import.meta.env.DEV
+  ? React.lazy(() => import('./routes/design/SceneLab.jsx'))
+  : null;
 
 const router = createBrowserRouter([
   {
@@ -60,7 +63,10 @@ const router = createBrowserRouter([
       { index: true, element: <LandingPage /> },
       // DEV-ONLY · landing-migration asset checkpoint (stripped from prod builds).
       ...(import.meta.env.DEV
-        ? [{ path: "_design/glyphs", element: <GlyphContactSheet /> }]
+        ? [
+            { path: "_design/glyphs", element: <GlyphContactSheet /> },
+            { path: "_design/scene", element: <SceneLab /> },
+          ]
         : []),
       { path: "home", element: <HomePage /> },
       { path: "gallery", element: <GalleryPage /> },
