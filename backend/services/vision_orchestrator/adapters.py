@@ -542,3 +542,64 @@ class CpuPerceptualAdapter:
             return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
         return JobResult(JobStatus.SUCCEEDED,
                          artifact=VisionArtifact("perceptual", maps, prov), provenance=prov)
+
+
+# ── P6-F: Depth-Anything-V2-Small — relative depth on the GPU pool (CIRCUIT-001) ───────────
+class DepthAnythingAdapter:
+    """The `DEPTH` adapter — Depth-Anything-V2-Small (24.8M params, ~100 MB, Apache-2.0) on the
+    GPU pool through ModelManager, so loading it evicts DINOv2/SAM and vice versa (single-GPU
+    residency on the 4 GB card). `transformers` supports it natively; there is no extra package.
+
+    It emits a coarse RELATIVE depth grid and never geometry — the near/far banding into a soft
+    field is the pure converter's job, exactly as DINOv2's patch grid is banded by the material
+    producer. This class implements the roster's long-standing `depth_anything_v2_small` spec."""
+
+    def __init__(self) -> None:
+        from backend.services import depth_service
+        self._svc = depth_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="depth_anything_v2_small", capability=Capability.DEPTH, resource=ResourceKind.GPU,
+            model_id=depth_service.MODEL_TAG, checkpoint=depth_service.CHECKPOINT,
+            license="Apache-2.0", preprocessing_version=depth_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import depth_service as d
+            return d.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        import time as _t
+        t0 = _t.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (_t.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        t0 = time.perf_counter()
+        depth = await asyncio.to_thread(self._svc.estimate, image)
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if depth is None:
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("depth", depth, prov), provenance=prov)

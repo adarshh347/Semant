@@ -352,6 +352,7 @@ describe('contract v3 — region_ref (a naming reference, no mask authored)', ()
         expect(PRODUCERS).toContain('material_field');  // P6-B: DINOv2 same-material field
         expect(PRODUCERS).toContain('rhythm');          // P6-D: cpu_perceptual, no model at all
         expect(PRODUCERS).toContain('pressure_zone');   // P6-E: the same reading, coherence map
+        expect(PRODUCERS).toContain('recession');       // P6-F: Depth-Anything near/far bands
         expect(PRODUCERS).toContain('fixture');
     });
 });

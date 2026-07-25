@@ -1834,12 +1834,78 @@ async def _produce_pressure_zone(post_id, post, region, req, run_id):
     return await _produce_cpu_perceptual(post_id, post, region, req, run_id, role="pressure_zone")
 
 
+# One manager + adapter for the GPU depth producer — ModelManager enforces single-GPU residency,
+# so loading depth evicts DINOv2/SAM and vice versa. Reused, never hand-rolled.
+_depth_mgr = None
+_depth_adapter = None
+
+
+async def _produce_recession(post_id, post, region, req, run_id, *, role="background_recession"):
+    """Depth-Anything-V2-Small → a recession/atmosphere field. Whole-image depth (a scene recedes
+    against the frame, not against a crop); the region only anchors the mark."""
+    from backend.services import depth_service as ds
+    if not ds.is_available():
+        return [], "unavailable", False
+    role = ((req.params or {}).get("role") if req.params else None) or role
+    if role not in suggestion_service.DEPTH_ROLE_BANDS:
+        return [], "empty", True
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import DepthAnythingAdapter
+    global _depth_mgr, _depth_adapter
+    if _depth_mgr is None:
+        _reg = AdapterRegistry()
+        _depth_adapter = DepthAnythingAdapter()
+        _reg.register(_depth_adapter)
+        _depth_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _depth_mgr.run_adapter(_depth_adapter, {"image": image},
+                                       priority=int(Priority.INTERACTIVE),
+                                       cancel=CancelToken(), timeout_s=180.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        return [], "unavailable", False
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service.suggestion_from_recession(
+        job.artifact.data, run_id=run_id, role=role, region_id=(region or {}).get("id"),
+        model=ds.MODEL_TAG, checkpoint=ds.CHECKPOINT,
+        preprocessing_version=ds.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+async def _produce_atmosphere(post_id, post, region, req, run_id):
+    return await _produce_recession(post_id, post, region, req, run_id, role="atmosphere_field")
+
+
 # The registry: producer name → handler. Extensible — a new producer plugs in here, not a new route.
 _FIELD_PRODUCERS = {
     "negative_space": _produce_negative_space,
     "material_field": _produce_material_field,
     "rhythm": _produce_rhythm,
     "pressure_zone": _produce_pressure_zone,
+    "background_recession": _produce_recession,
+    "atmosphere_field": _produce_atmosphere,
 }
 
 

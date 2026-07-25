@@ -119,6 +119,10 @@ const FIELD_PRODUCERS = [
       hint: 'Where something repeats — Gabor energy over the part\'s surface. No model, no GPU.' },
     { key: 'pressure_zone', label: 'Pressure', needsSeed: false,
       hint: 'Where the surface pulls one way — structure-tensor coherence. Same reading as Rhythm.' },
+    { key: 'background_recession', label: 'Recession', needsSeed: false,
+      hint: 'What falls away behind — relative depth from Depth-Anything.' },
+    { key: 'atmosphere_field', label: 'Atmosphere', needsSeed: false,
+      hint: 'The condition the foreground sits in — the near band of the same depth reading.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface

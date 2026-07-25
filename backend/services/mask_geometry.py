@@ -559,3 +559,22 @@ def soft_field_from_map(values: Sequence[float], grid: int) -> Tuple[List[float]
     if span <= 1e-12:
         return [0.0] * n, grid, grid           # nothing varies → nothing to draw
     return [(v - lo) / span for v in vals], grid, grid
+
+
+def depth_band_field(depth: Sequence[float], grid: int, *, band: str = "far"
+                     ) -> Tuple[List[float], int, int]:
+    """A relative-depth map → the NEAR or FAR band as a normalized [0,1] soft field.
+
+    Depth-Anything emits INVERSE depth (larger = nearer), so after min-max normalization the
+    near band is the map itself and the far band is its complement. `background_recession` is
+    the far band — what falls away behind — and `atmosphere_field` the near one, the condition
+    the foreground sits in.
+
+    A scene with no depth relief (a flat wall, a copy shot) normalizes to all-zeros and yields
+    an empty far band, which the producer reads as a refusal rather than inventing distance."""
+    field, gh, gw = soft_field_from_map(depth, grid)
+    if not field:
+        return [], gh, gw
+    if band == "near":
+        return field, gh, gw
+    return [1.0 - v for v in field], gh, gw

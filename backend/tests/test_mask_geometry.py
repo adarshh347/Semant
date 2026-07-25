@@ -340,3 +340,33 @@ def test_soft_field_from_map_is_monotone_in_the_measurement():
     vals = [1.0, 2.0, 3.0, 4.0]
     field, _, _ = mg.soft_field_from_map(vals, 2)
     assert field[0] < field[1] < field[2] < field[3]
+
+
+# ── depth banding (CIRCUIT-001 P6-F) ─────────────────────────────────────────
+# Depth-Anything emits INVERSE depth (larger = nearer), so far = the complement of near.
+
+def test_depth_band_field_far_is_the_complement_of_near():
+    depth = [10.0, 8.0, 4.0, 2.0]        # 2×2, larger = nearer
+    near, _, _ = mg.depth_band_field(depth, 2, band="near")
+    far, _, _ = mg.depth_band_field(depth, 2, band="far")
+    assert near[0] == pytest.approx(1.0) and near[3] == pytest.approx(0.0)   # nearest / farthest
+    assert far[0] == pytest.approx(0.0) and far[3] == pytest.approx(1.0)     # inverted
+    for n, f in zip(near, far):
+        assert n + f == pytest.approx(1.0)
+
+
+def test_depth_band_field_defaults_to_far():
+    depth = [10.0, 8.0, 4.0, 2.0]
+    assert mg.depth_band_field(depth, 2)[0] == mg.depth_band_field(depth, 2, band="far")[0]
+
+
+def test_depth_band_field_flat_scene_has_no_far_band():
+    # a copy shot / flat wall: nothing recedes, so the band must be empty-or-zero, never invented
+    far, _, _ = mg.depth_band_field([5.0, 5.0, 5.0, 5.0], 2, band="far")
+    assert far == [1.0, 1.0, 1.0, 1.0] or far == [0.0, 0.0, 0.0, 0.0]
+    # (the producer's relief test is what refuses this case — see the producer suite)
+
+
+def test_depth_band_field_degenerate_input_is_empty():
+    assert mg.depth_band_field([], 0)[0] == []
+    assert mg.depth_band_field([1.0], 2)[0] == []

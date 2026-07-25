@@ -21,8 +21,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from backend.services.mask_geometry import (cosine_field_from_features, field_contrast,
-                                            rle_is_valid, soft_field_from_map,
+from backend.services.mask_geometry import (cosine_field_from_features, depth_band_field,
+                                            field_contrast, rle_is_valid, soft_field_from_map,
                                             soft_field_from_mask, strokes_from_field)
 
 PRODUCER_SAM = "sam_refine"
@@ -56,6 +56,12 @@ PRODUCER_RHYTHM = "rhythm"
 # an axis" — drapery pulling one way, an architectural run, a directional strain. One adapter
 # call already produces both maps, so this producer is a second reading of work already done.
 PRODUCER_PRESSURE_ZONE = "pressure_zone"
+# CIRCUIT-001 P6-F — the second REAL-MODEL field (after material). Depth-Anything-V2-Small emits
+# relative depth, which is what recession is actually about: not distance in metres but what falls
+# away behind. Two roles from one reading — `background_recession` (the far band) and
+# `atmosphere_field` (the near band, the condition the foreground sits in). It inferred, so the
+# receipt is FULL (model/checkpoint/latency/vram), like material's and unlike the cpu ones.
+PRODUCER_RECESSION = "recession"
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -528,3 +534,91 @@ def suggestions_from_pressure_zone(
     """The list form — one pressure field, or [] when the surface is isotropic."""
     d = suggestion_from_pressure_zone(analysis, run_id=run_id, **kw)
     return [d] if d else []
+
+
+# ── producer 8: recession — Depth-Anything relative depth (CIRCUIT-001 P6-F) ────────────────────
+
+# The two readings one depth map supports. `background_recession` is the far band (what falls away);
+# `atmosphere_field` is the near band (the condition the foreground sits in). Both are FIELD_ROLES.
+DEPTH_ROLE_BANDS = {"background_recession": "far", "atmosphere_field": "near"}
+
+
+def suggestion_from_recession(
+    depth: Optional[Dict[str, Any]], *, run_id: Optional[str],
+    role: str = "background_recession", region_id: Optional[str] = None,
+    box: Optional[Dict[str, Any]] = None, label: Optional[str] = None,
+    model: Optional[str] = None, adapter: str = "depth_anything_v2_small",
+    checkpoint: Optional[str] = None, preprocessing_version: Optional[str] = None,
+    latency_ms: Optional[float] = None, peak_vram_mib: Optional[float] = None,
+    min_contrast: float = 0.05, threshold: float = 0.55, radius: float = 0.05,
+    grid_sample: int = 12,
+) -> Optional[Dict[str, Any]]:
+    """A relative-depth reading → a ``brush_field`` recession/atmosphere soft field.
+
+    `depth` is the adapter's output — ``{"depth": [...], "grid": n}``. Depth-Anything emits INVERSE
+    depth (larger = nearer), so the far band is the normalized map's complement; `role` selects
+    which band is painted (see ``DEPTH_ROLE_BANDS``).
+
+    This one INFERRED, so the receipt is full — model / checkpoint / preprocessing / latency /
+    peak VRAM — with the same single exception as material: ``confidence`` never enters
+    ``provenance`` (contract §6) and rides the descriptor instead.
+
+    Refusal (fail-closed): no reading, a malformed/short map, an unknown role, or a scene with no
+    depth relief (a flat wall, a copy shot) → None. Distance is never invented."""
+    if not isinstance(depth, dict):
+        return None
+    band = DEPTH_ROLE_BANDS.get(role)
+    if band is None:
+        return None
+    grid = int(depth.get("grid") or 0)
+    values = depth.get("depth")
+    if grid <= 0 or not values or len(values) < grid * grid:
+        return None
+
+    raw = [float(v) for v in list(values)[:grid * grid]]
+    hi, lo = max(raw), min(raw)
+    relief = (hi - lo) / (abs(hi) + 1e-9)
+    if relief < min_contrast:
+        return None                                  # no depth relief → nothing recedes
+
+    field, gh, gw = depth_band_field(raw, grid, band=band)
+    if not field:
+        return None
+    strokes = strokes_from_field(field, gh, gw, grid=min(grid_sample, grid),
+                                 threshold=threshold, radius=radius)
+    if not strokes:
+        return None
+    strokes = _remap_strokes_into_box(strokes, box)
+
+    receipt: Dict[str, Any] = {"run_id": run_id, "producer": PRODUCER_RECESSION, "adapter": adapter}
+    for key, val in (("model", model), ("checkpoint", checkpoint),
+                     ("preprocessing_version", preprocessing_version),
+                     ("latency_ms", latency_ms), ("peak_vram_mib", peak_vram_mib)):
+        if val is not None:
+            receipt[key] = val
+    default_label = ("recession — what falls away behind" if band == "far"
+                     else "atmosphere — the condition the foreground sits in")
+    return {
+        "producer": PRODUCER_RECESSION,
+        "type": "brush_field",
+        "role": role,
+        "label": label or default_label,
+        "source_ref": f"{region_id or 'img'}:{role}",
+        "geometry": {"kind": "soft_mask", "strokes": strokes},
+        "linked_ground_ids": [],
+        "provenance": receipt,                        # FULL receipt — but never `confidence` (§6)
+        "confidence": round(min(1.0, max(0.0, relief)), 4),
+    }
+
+
+def suggestions_from_recession(
+    depth: Optional[Dict[str, Any]], *, run_id: Optional[str],
+    roles: Optional[List[str]] = None, **kw
+) -> List[Dict[str, Any]]:
+    """Both bands of one depth reading, or [] when the scene has no relief to speak of."""
+    out: List[Dict[str, Any]] = []
+    for role in (roles or ["background_recession"]):
+        d = suggestion_from_recession(depth, run_id=run_id, role=role, **kw)
+        if d:
+            out.append(d)
+    return out

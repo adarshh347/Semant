@@ -634,3 +634,107 @@ def test_produce_field_pressure_zone_dispatches_through_the_same_surface(monkeyp
     assert resp["status"] == "ready"
     assert resp["suggestions"][0]["role"] == "pressure_zone"
     assert posts.writes == []
+
+
+# ─────────── PURE: producer 8 (recession — Depth-Anything, a real model) ───────────
+# Fake depth grids: CI needs no GPU and no weights.
+
+def _depth(grid=4, flat=False):
+    if flat:
+        return {"depth": [5.0] * (grid * grid), "grid": grid}
+    # inverse depth: top rows far (small), bottom rows near (large)
+    return {"depth": [float(1 + (i // grid) * 4) for i in range(grid * grid)], "grid": grid}
+
+
+def test_recession_becomes_a_brush_field_with_a_FULL_model_receipt():
+    d = ss.suggestion_from_recession(
+        _depth(), run_id="run_d", region_id="reg_s",
+        model="depth_anything_v2_small", checkpoint="depth-anything/Depth-Anything-V2-Small-hf",
+        preprocessing_version="depth-anything-v2-s-v1", latency_ms=120.0, peak_vram_mib=210.0)
+    assert d is not None
+    assert d["producer"] == "recession" and d["type"] == "brush_field"
+    assert d["role"] == "background_recession"
+    assert d["geometry"]["kind"] == "soft_mask" and d["geometry"]["strokes"]
+    p = d["provenance"]
+    assert p["adapter"] == "depth_anything_v2_small" and p["model"] == "depth_anything_v2_small"
+    assert p["checkpoint"].startswith("depth-anything/") and p["latency_ms"] == 120.0
+    assert p["peak_vram_mib"] == 210.0 and p["run_id"] == "run_d"
+    assert "confidence" not in p                       # never on the mark (contract §6)
+    assert 0.0 <= d["confidence"] <= 1.0
+
+
+def test_atmosphere_is_the_near_band_of_the_same_reading():
+    depth = _depth()
+    far = ss.suggestion_from_recession(depth, run_id="r", role="background_recession", region_id="x")
+    near = ss.suggestion_from_recession(depth, run_id="r", role="atmosphere_field", region_id="x")
+    assert far["role"] == "background_recession" and near["role"] == "atmosphere_field"
+    assert far["source_ref"] != near["source_ref"]     # two distinct marks from one reading
+    # the bands paint opposite parts of the frame
+    far_pts = {tuple(s["points"][0]) for s in far["geometry"]["strokes"]}
+    near_pts = {tuple(s["points"][0]) for s in near["geometry"]["strokes"]}
+    assert far_pts and near_pts and far_pts != near_pts
+
+
+def test_recession_refuses_a_scene_with_no_depth_relief():
+    assert ss.suggestion_from_recession(_depth(flat=True), run_id="r") is None
+
+
+def test_recession_refuses_unknown_role_and_malformed_input():
+    assert ss.suggestion_from_recession(_depth(), run_id="r", role="not_a_role") is None
+    assert ss.suggestion_from_recession(None, run_id="r") is None
+    assert ss.suggestion_from_recession({}, run_id="r") is None
+    assert ss.suggestion_from_recession({"grid": 4, "depth": [1.0, 2.0]}, run_id="r") is None
+
+
+def test_recession_list_form_can_emit_both_bands_and_refuses_flat():
+    out = ss.suggestions_from_recession(_depth(), run_id="r", region_id="x",
+                                        roles=["background_recession", "atmosphere_field"])
+    assert [d["role"] for d in out] == ["background_recession", "atmosphere_field"]
+    assert ss.suggestions_from_recession(_depth(flat=True), run_id="r") == []
+
+
+def test_depth_adapter_is_on_the_GPU_pool_and_implements_the_roster_spec():
+    from backend.services.vision_orchestrator.adapters import DepthAnythingAdapter
+    from backend.services.vision_orchestrator.contracts import Capability, ResourceKind
+    a = DepthAnythingAdapter()
+    assert a.spec.name == "depth_anything_v2_small"       # the roster's long-standing spec name
+    assert a.spec.capability is Capability.DEPTH
+    assert a.spec.resource is ResourceKind.GPU            # single-GPU residency applies
+    assert a.spec.checkpoint == "depth-anything/Depth-Anything-V2-Small-hf"
+    assert a.spec.license == "Apache-2.0"
+
+
+def test_produce_field_recession_dispatches_through_the_same_surface(monkeypatch):
+    post = {"_id": ObjectId(), "region_annotations": [{"id": "reg_s", "box": {"x": 0, "y": 0, "w": 1, "h": 1}}]}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import depth_service as ds
+
+    class _Img:
+        size = (100, 100)
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(ds, "is_available", lambda: True)
+
+    # stub the manager path so CI runs no model
+    class _Art:
+        data = _depth()
+    class _Job:
+        artifact = _Art()
+    async def _fake_run(adapter, payload, **kw):
+        return _Job()
+    import backend.routers.posts as RR
+    RR._depth_mgr = type("M", (), {"run_adapter": staticmethod(_fake_run)})()
+    RR._depth_adapter = object()
+
+    resp = run(R.produce_field(str(posts.post["_id"]),
+                               R.ProduceFieldRequest(producer="background_recession", region_id="reg_s")))
+    RR._depth_mgr = None; RR._depth_adapter = None
+    assert resp["status"] == "ready"
+    sug = resp["suggestions"][0]
+    assert sug["role"] == "background_recession" and sug["producer"] == "recession"
+    assert sug["provenance"]["model"] == ds.MODEL_TAG      # full receipt from a real model
+    assert posts.writes == []
