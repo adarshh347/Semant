@@ -370,3 +370,48 @@ def test_depth_band_field_flat_scene_has_no_far_band():
 def test_depth_band_field_degenerate_input_is_empty():
     assert mg.depth_band_field([], 0)[0] == []
     assert mg.depth_band_field([1.0], 2)[0] == []
+
+
+# ── shading converters (CIRCUIT-001 P6-G) ────────────────────────────────────
+# Intrinsic hands back shading (larger = more lit): light is that map, shadow its complement,
+# and the FALL of light is its gradient — a direction, not a field.
+
+def test_shading_band_shadow_is_the_exact_complement_of_light():
+    shading = [9.0, 6.0, 3.0, 0.0]         # 2×2, larger = more lit
+    light, _, _ = mg.shading_band_field(shading, 2, band="light")
+    shadow, _, _ = mg.shading_band_field(shading, 2, band="shadow")
+    assert light[0] == pytest.approx(1.0) and light[3] == pytest.approx(0.0)
+    assert shadow[0] == pytest.approx(0.0) and shadow[3] == pytest.approx(1.0)
+    for a, b in zip(light, shadow):
+        assert a + b == pytest.approx(1.0)      # shadow IS light's absence, not a 2nd measurement
+
+
+def test_shading_band_defaults_to_light_and_refuses_nothing_by_itself():
+    shading = [9.0, 6.0, 3.0, 0.0]
+    assert mg.shading_band_field(shading, 2)[0] == mg.shading_band_field(shading, 2, band="light")[0]
+    assert mg.shading_band_field([], 0)[0] == []
+    assert mg.shading_band_field([1.0], 2)[0] == []
+
+
+def test_shading_gradient_points_the_way_light_falls():
+    # a 4×4 lit on the LEFT, dark on the right → light falls to the RIGHT (+x)
+    grid = 4
+    left_lit = [float(grid - c) for r in range(grid) for c in range(grid)]
+    g = mg.shading_gradient(left_lit, grid)
+    assert g is not None
+    assert g["dx"] == pytest.approx(1.0, abs=1e-6)     # falls toward the dark side
+    assert abs(g["dy"]) < 1e-6
+    assert g["strength"] > 0
+
+    # lit at the TOP → light falls DOWNWARD (+y, screen axes)
+    top_lit = [float(grid - r) for r in range(grid) for c in range(grid)]
+    g2 = mg.shading_gradient(top_lit, grid)
+    assert g2["dy"] == pytest.approx(1.0, abs=1e-6)
+    assert abs(g2["dx"]) < 1e-6
+
+
+def test_shading_gradient_refuses_an_evenly_lit_or_too_small_field():
+    grid = 4
+    assert mg.shading_gradient([5.0] * (grid * grid), grid) is None    # flat → no direction
+    assert mg.shading_gradient([1.0, 2.0, 3.0, 4.0], 2) is None        # grid < 3
+    assert mg.shading_gradient([1.0], 4) is None                        # too few values

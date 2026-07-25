@@ -27,7 +27,7 @@ walks it column-major, so sequence index `k` maps to `c = k // h`, `r = k % h`.
 """
 
 import math
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 MIN_SIZE = 1e-4  # a normalized extent below this is treated as degenerate
 
@@ -578,3 +578,63 @@ def depth_band_field(depth: Sequence[float], grid: int, *, band: str = "far"
     if band == "near":
         return field, gh, gw
     return [1.0 - v for v in field], gh, gw
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# shading converters (CIRCUIT-001 P6-G) — light, its withholding, and its direction.
+# Intrinsic decomposition hands back a shading map (larger = more lit). Light and
+# shadow are then one normalization and one inversion; the FALL of light is the
+# map's gradient, which is a direction rather than a field. Pure — plain floats in.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def shading_band_field(shading: Sequence[float], grid: int, *, band: str = "light"
+                       ) -> Tuple[List[float], int, int]:
+    """A shading map → the LIT or the WITHHELD band as a normalized [0,1] soft field.
+
+    `light` is the normalized shading itself — where the light lands. `shadow` is its exact
+    complement: shadow is not a separate measurement but the same one read as absence, which is
+    the honest way to put it (nothing measures "shadow"; it is where light is not).
+
+    An evenly-lit surface normalizes to all-zeros and yields no band, which the producer reads as
+    a refusal — a flat studio wash has no light field worth marking."""
+    field, gh, gw = soft_field_from_map(shading, grid)
+    if not field:
+        return [], gh, gw
+    if band == "light":
+        return field, gh, gw
+    return [1.0 - v for v in field], gh, gw
+
+
+def shading_gradient(shading: Sequence[float], grid: int) -> Optional[Dict[str, float]]:
+    """A shading map → the direction light FALLS across it, as a unit vector + strength.
+
+    Central differences over the coarse grid give a mean gradient; light falls from bright toward
+    dark, so the fall direction is the NEGATIVE gradient. Returns
+    ``{"dx", "dy", "strength"}`` in normalized image axes (x right, y down), or None when the
+    field is too flat for a direction to mean anything.
+
+    This is the geometry a `fall_of_light` TRACE mark would carry. P6-G ships the converter and
+    the two field producers; the trace producer is a separate act — a direction is a different
+    mark family (`trace_mark`/vector), not a brush_field, and inventing that surface unattended
+    would be exactly the overreach this gate's guard is about."""
+    n = grid * grid
+    if grid < 3 or len(shading) < n:
+        return None
+    vals = [float(v) for v in shading[:n]]
+    lo, hi = min(vals), max(vals)
+    if hi - lo <= 1e-12:
+        return None                                    # evenly lit — no direction to report
+    gx_sum = 0.0
+    gy_sum = 0.0
+    for r in range(1, grid - 1):
+        for c in range(1, grid - 1):
+            gx_sum += (vals[r * grid + c + 1] - vals[r * grid + c - 1]) / 2.0
+            gy_sum += (vals[(r + 1) * grid + c] - vals[(r - 1) * grid + c]) / 2.0
+    inner = max(1, (grid - 2) * (grid - 2))
+    gx, gy = gx_sum / inner, gy_sum / inner
+    mag = math.sqrt(gx * gx + gy * gy)
+    if mag <= 1e-12:
+        return None                                    # symmetric lighting — no net fall
+    # light falls from lit toward unlit: the negative gradient, unitized.
+    return {"dx": round(-gx / mag, 4), "dy": round(-gy / mag, 4),
+            "strength": round(mag / (hi - lo), 4)}

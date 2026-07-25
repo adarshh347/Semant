@@ -22,7 +22,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from backend.services.mask_geometry import (cosine_field_from_features, depth_band_field,
-                                            field_contrast, rle_is_valid, soft_field_from_map,
+                                            field_contrast, rle_is_valid, shading_band_field,
+                                            shading_gradient, soft_field_from_map,
                                             soft_field_from_mask, strokes_from_field)
 
 PRODUCER_SAM = "sam_refine"
@@ -62,6 +63,12 @@ PRODUCER_PRESSURE_ZONE = "pressure_zone"
 # `atmosphere_field` (the near band, the condition the foreground sits in). It inferred, so the
 # receipt is FULL (model/checkpoint/latency/vram), like material's and unlike the cpu ones.
 PRODUCER_RECESSION = "recession"
+# CIRCUIT-001 P6-G — the Monet answer. Every producer above reads WHAT is where; this one reads
+# the LIGHT. Intrinsic decomposition separates albedo from shading, so `light_field` IS the
+# shading map and `shadow_field` its exact complement — shadow is not a second measurement but
+# the same one read as absence. A real model, so the receipt is full; DEFERRED until the
+# GitHub-only package is installed (see intrinsic_service), which the producer never has to know.
+PRODUCER_SHADING = "shading"
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -619,6 +626,102 @@ def suggestions_from_recession(
     out: List[Dict[str, Any]] = []
     for role in (roles or ["background_recession"]):
         d = suggestion_from_recession(depth, run_id=run_id, role=role, **kw)
+        if d:
+            out.append(d)
+    return out
+
+
+# ── producer 9: light / shadow — Intrinsic Ordinal Shading (CIRCUIT-001 P6-G) ───────────────────
+
+# The two readings one shading map supports. `fall_of_light` is deliberately NOT here: a direction
+# is a trace_mark, not a brush_field, and that family is a separate act (the converter ships).
+SHADING_ROLE_BANDS = {"light_field": "light", "shadow_field": "shadow"}
+
+
+def _suggestion_from_shading(
+    shading: Optional[Dict[str, Any]], *, role: str, run_id: Optional[str],
+    region_id: Optional[str] = None, box: Optional[Dict[str, Any]] = None,
+    label: Optional[str] = None, model: Optional[str] = None,
+    adapter: str = "intrinsic_ordinal_shading", checkpoint: Optional[str] = None,
+    preprocessing_version: Optional[str] = None, latency_ms: Optional[float] = None,
+    peak_vram_mib: Optional[float] = None, min_contrast: float = 0.05,
+    threshold: float = 0.55, radius: float = 0.05, grid_sample: int = 12,
+) -> Optional[Dict[str, Any]]:
+    """Shared body: a shading reading → a lit or withheld ``brush_field``.
+
+    Full model receipt (it inferred), with `confidence` on the descriptor only (contract §6).
+    Refuses an evenly-lit surface: a flat wash has no light field worth marking, and inventing
+    one would be the same lie as painting rhythm onto a blank wall."""
+    if not isinstance(shading, dict):
+        return None
+    band = SHADING_ROLE_BANDS.get(role)
+    if band is None:
+        return None
+    grid = int(shading.get("grid") or 0)
+    values = shading.get("shading")
+    if grid <= 0 or not values or len(values) < grid * grid:
+        return None
+
+    raw = [float(v) for v in list(values)[:grid * grid]]
+    hi, lo = max(raw), min(raw)
+    relief = (hi - lo) / (abs(hi) + 1e-9)
+    if relief < min_contrast:
+        return None                                  # evenly lit → no light field to claim
+
+    field, gh, gw = shading_band_field(raw, grid, band=band)
+    if not field:
+        return None
+    strokes = strokes_from_field(field, gh, gw, grid=min(grid_sample, grid),
+                                 threshold=threshold, radius=radius)
+    if not strokes:
+        return None
+    strokes = _remap_strokes_into_box(strokes, box)
+
+    receipt: Dict[str, Any] = {"run_id": run_id, "producer": PRODUCER_SHADING, "adapter": adapter}
+    for key, val in (("model", model), ("checkpoint", checkpoint),
+                     ("preprocessing_version", preprocessing_version),
+                     ("latency_ms", latency_ms), ("peak_vram_mib", peak_vram_mib)):
+        if val is not None:
+            receipt[key] = val
+    default_label = ("light — where the light lives" if band == "light"
+                     else "shadow — where it is withheld")
+    d: Dict[str, Any] = {
+        "producer": PRODUCER_SHADING,
+        "type": "brush_field",
+        "role": role,
+        "label": label or default_label,
+        "source_ref": f"{region_id or 'img'}:{role}",
+        "geometry": {"kind": "soft_mask", "strokes": strokes},
+        "linked_ground_ids": [],
+        "provenance": receipt,
+        "confidence": round(min(1.0, max(0.0, relief)), 4),
+    }
+    # The fall of light rides along as context for the review UX (and for a future trace
+    # producer). It is NOT geometry on this mark — a field does not carry a direction.
+    fall = shading_gradient(raw, grid)
+    if fall:
+        d["fall_of_light"] = fall
+    return d
+
+
+def suggestion_from_light(shading, *, run_id, **kw):
+    """A shading reading → a ``light_field`` soft field: where the light lives."""
+    return _suggestion_from_shading(shading, role="light_field", run_id=run_id, **kw)
+
+
+def suggestion_from_shadow(shading, *, run_id, **kw):
+    """A shading reading → a ``shadow_field`` soft field: where the light is withheld."""
+    return _suggestion_from_shading(shading, role="shadow_field", run_id=run_id, **kw)
+
+
+def suggestions_from_shading(
+    shading: Optional[Dict[str, Any]], *, run_id: Optional[str],
+    roles: Optional[List[str]] = None, **kw
+) -> List[Dict[str, Any]]:
+    """Both bands of one shading reading, or [] when the surface is evenly lit."""
+    out: List[Dict[str, Any]] = []
+    for role in (roles or ["light_field"]):
+        d = _suggestion_from_shading(shading, role=role, run_id=run_id, **kw)
         if d:
             out.append(d)
     return out

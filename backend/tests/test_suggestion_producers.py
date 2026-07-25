@@ -738,3 +738,99 @@ def test_produce_field_recession_dispatches_through_the_same_surface(monkeypatch
     assert sug["role"] == "background_recession" and sug["producer"] == "recession"
     assert sug["provenance"]["model"] == ds.MODEL_TAG      # full receipt from a real model
     assert posts.writes == []
+
+
+# ─────────── PURE: producer 9 (light / shadow — Intrinsic, deferred weights) ───────────
+# Fake shading grids: the producers are fully testable while the model stays deferred.
+
+def _shading(grid=4, flat=False):
+    if flat:
+        return {"shading": [5.0] * (grid * grid), "grid": grid}
+    # lit on the left, falling away to the right
+    return {"shading": [float(grid - c) for r in range(grid) for c in range(grid)], "grid": grid}
+
+
+def test_light_becomes_a_brush_field_with_a_full_model_receipt():
+    d = ss.suggestion_from_light(
+        _shading(), run_id="run_l", region_id="reg_w",
+        model="intrinsic_ordinal_shading", checkpoint="compphoto/Intrinsic:paper_weights",
+        preprocessing_version="intrinsic-ordinal-v1", latency_ms=310.0, peak_vram_mib=480.0)
+    assert d is not None
+    assert d["producer"] == "shading" and d["type"] == "brush_field"
+    assert d["role"] == "light_field"
+    assert d["geometry"]["kind"] == "soft_mask" and d["geometry"]["strokes"]
+    p = d["provenance"]
+    assert p["adapter"] == "intrinsic_ordinal_shading" and p["model"] == "intrinsic_ordinal_shading"
+    assert p["checkpoint"].startswith("compphoto/") and p["latency_ms"] == 310.0
+    assert p["peak_vram_mib"] == 480.0 and p["run_id"] == "run_l"
+    assert "confidence" not in p                        # never on the mark (contract §6)
+    assert 0.0 <= d["confidence"] <= 1.0
+
+
+def test_shadow_is_the_same_reading_read_as_absence():
+    sh = _shading()
+    light = ss.suggestion_from_light(sh, run_id="r", region_id="x")
+    shadow = ss.suggestion_from_shadow(sh, run_id="r", region_id="x")
+    assert light["role"] == "light_field" and shadow["role"] == "shadow_field"
+    assert light["source_ref"] != shadow["source_ref"]   # two distinct marks from one reading
+    lit_pts = {tuple(s["points"][0]) for s in light["geometry"]["strokes"]}
+    dark_pts = {tuple(s["points"][0]) for s in shadow["geometry"]["strokes"]}
+    assert lit_pts and dark_pts and lit_pts != dark_pts  # they paint opposite parts of the frame
+
+
+def test_shading_producers_carry_the_fall_of_light_as_context_not_geometry():
+    d = ss.suggestion_from_light(_shading(), run_id="r", region_id="x")
+    fall = d["fall_of_light"]
+    assert fall["dx"] == pytest.approx(1.0, abs=1e-6)    # lit left → falls right
+    # it is CONTEXT: the mark's geometry stays a soft field, carrying no direction
+    assert "fall_of_light" not in d["geometry"]
+    assert d["geometry"]["kind"] == "soft_mask"
+
+
+def test_shading_producers_refuse_an_evenly_lit_surface():
+    assert ss.suggestion_from_light(_shading(flat=True), run_id="r") is None
+    assert ss.suggestion_from_shadow(_shading(flat=True), run_id="r") is None
+
+
+def test_shading_producers_refuse_malformed_input_and_unknown_roles():
+    assert ss.suggestion_from_light(None, run_id="r") is None
+    assert ss.suggestion_from_light({}, run_id="r") is None
+    assert ss.suggestion_from_light({"grid": 4, "shading": [1.0, 2.0]}, run_id="r") is None
+    assert ss._suggestion_from_shading(_shading(), role="not_a_role", run_id="r") is None
+
+
+def test_shading_list_form_emits_both_bands_and_refuses_flat():
+    out = ss.suggestions_from_shading(_shading(), run_id="r", region_id="x",
+                                      roles=["light_field", "shadow_field"])
+    assert [d["role"] for d in out] == ["light_field", "shadow_field"]
+    assert ss.suggestions_from_shading(_shading(flat=True), run_id="r") == []
+
+
+def test_intrinsic_adapter_is_registered_but_DEFERRED_and_never_executes():
+    """The guard's whole point: the wiring ships, the weights do not, and an unavailable
+    adapter can never silently produce a field."""
+    from backend.services.vision_orchestrator.adapters import IntrinsicShadingAdapter
+    from backend.services.vision_orchestrator.contracts import Capability, ResourceKind
+    a = IntrinsicShadingAdapter()
+    assert a.spec.name == "intrinsic_ordinal_shading"
+    assert a.spec.capability is Capability.SHADING
+    assert a.spec.resource is ResourceKind.GPU
+    assert a.is_available() is False and a.spec.deferred is True
+
+    # ModelManager refuses to execute an unavailable adapter — UNAVAILABLE, never a blank field
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority, JobStatus)
+    reg = AdapterRegistry(); reg.register(a)
+    job = run(ModelManager(reg).run_adapter(a, {"image": None},
+                                            priority=int(Priority.BACKGROUND),
+                                            cancel=CancelToken()))
+    assert job.status is JobStatus.UNAVAILABLE
+    assert job.artifact is None
+
+
+def test_intrinsic_service_is_unavailable_and_estimate_refuses_cleanly():
+    from backend.services import intrinsic_service as isvc
+    assert isvc.is_available() is False        # GitHub-only package absent on this box
+    assert isvc.estimate(object()) is None     # refuses without touching the image
+    # the PyPI 0.0.1 stub must NOT satisfy availability — we probe intrinsic.pipeline + chrislib
+    assert "intrinsic.pipeline" in isvc.is_available.__doc__
