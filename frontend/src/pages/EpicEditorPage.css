@@ -88,8 +88,8 @@
 .submit-btn {
     width: 100%;
     padding: 1.2rem;
-    background: var(--accent-primary);
-    color: #0f1115;
+    background: var(--fill);
+    color: var(--on-fill);
     border: none;
     border-radius: 8px;
     font-size: 1.2rem;

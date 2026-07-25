@@ -574,76 +574,75 @@
 }
 
 /* Story empty state — fills the void when a post has no written story */
+/* Empty story — "the unwritten page" (lab option A). A plum margin rule, one
+   serif line with a plum caret, three ruled lines fading downward, and a mono
+   foot line. No icon, no heading, no filled button: the panel IS the affordance
+   and clicking (or Enter/Space) focuses the editor. */
 .story-empty {
+    position: relative;
     min-height: 18rem;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    text-align: left;
-    gap: var(--space-2);
-    padding: var(--space-8) 0 var(--space-6);
+    width: 100%;
     max-width: 30rem;
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--space-8) 0 var(--space-6) 20px;
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: text;
 }
-.story-empty-icon {
-    width: 2.6rem;
-    height: 2.6rem;
-    border-radius: var(--radius-md);
-    display: grid;
-    place-items: center;
-    background: color-mix(in srgb, var(--surface-2) 86%, transparent);
-    color: var(--accent);
-    margin-bottom: var(--space-1);
+.story-empty::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: var(--space-6);
+    bottom: var(--space-6);
+    width: 1px;
+    background: color-mix(in srgb, var(--plum) 42%, transparent);
+    transition: background 0.25s var(--ease);
 }
-.story-empty-title {
+.story-empty:hover::before { background: color-mix(in srgb, var(--plum) 62%, transparent); }
+.story-empty:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--plum) 50%, transparent);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
+}
+.story-empty-first {
     font-family: var(--font-display);
-    font-size: var(--fs-h3);
-    font-weight: 500;
-    color: var(--ink);
+    font-size: 1.05rem;
+    color: var(--ink-muted);
+    line-height: 1.5;
     margin: 0;
 }
-.story-empty-sub {
-    font-size: var(--fs-small);
-    color: var(--ink-muted);
-    line-height: 1.6;
-    max-width: 36ch;
-    margin: 0 0 var(--space-2);
+.story-empty-caret {
+    display: inline-block;
+    width: 1px;
+    height: 1.05em;
+    background: var(--plum);
+    vertical-align: -0.16em;
+    margin-left: 2px;
+    animation: story-caret-blink 1.6s steps(1) infinite;
 }
-.story-empty-actions {
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-    justify-content: flex-start;
+@keyframes story-caret-blink { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .story-empty-caret { animation: none; } }
+.story-empty-ln {
+    height: 1px;
+    background: var(--line);
+    margin: 26px 0;
 }
-.story-empty-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: var(--fs-caption);
-    font-weight: 600;
-    padding: 0.55rem 0.9rem;
-    border-radius: var(--radius-md);
-    border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
-    background: transparent;
-    color: var(--ink-muted);
-    cursor: pointer;
-    box-shadow: none;
-    transition: all 0.18s var(--ease);
+.story-empty-ln:nth-child(3) { opacity: 0.7; }
+.story-empty-ln:nth-child(4) { opacity: 0.45; }
+.story-empty-hint {
+    margin: 26px 0 0;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
 }
-.story-empty-btn:hover {
-    border-color: var(--line-strong);
-    background: color-mix(in srgb, var(--surface-2) 56%, transparent);
-    color: var(--ink);
-    transform: translateY(-1px);
-    box-shadow: none;
-}
-.story-empty-btn.primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--accent-ink);
-}
-.story-empty-btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+.story-empty-hint b { color: var(--plum); font-weight: 400; }
 
 /* Editor Styles */
 .edit-section {
@@ -1452,6 +1451,12 @@
     padding: 3rem 2rem;
     color: var(--text-tertiary);
 }
+.empty-highlights-glyph {
+    width: 30px;
+    height: 30px;
+    opacity: 0.8;
+    margin-bottom: 0.75rem;
+}
 
 .empty-highlights p {
     margin: 0;
@@ -1866,10 +1871,11 @@
     background: color-mix(in srgb, var(--surface-2) 60%, transparent);
     transform: translateY(-1px);
 }
-.composer-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.composer-btn.primary { background: var(--fill); border-color: var(--fill); color: var(--on-fill); }
 .composer-btn.primary:hover:not(:disabled) {
-    background: var(--accent-deep);
-    border-color: var(--accent-deep);
+    background: var(--fill);
+    border-color: var(--fill);
+    opacity: 0.92;
 }
 .composer-btn:disabled { opacity: 0.55; cursor: progress; }
 .composer-btn:focus-visible {

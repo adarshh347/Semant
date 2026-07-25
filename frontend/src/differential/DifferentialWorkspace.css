@@ -14,6 +14,10 @@
     --diff-wash-max: 0.35;
     --diff-veil-max: 0.2;
 
+    /* Ground-tint strength multiplier: the same 2–3% wash over a dark surface
+       reads as half, so dark multiplies every ground tint by 1.7 (Commit 3). */
+    --tint-mult: 1;
+
     position: absolute;
     inset: 0;
     z-index: 30;                     /* over the parked Chiasm shell */
@@ -28,6 +32,13 @@
    RegionSurface documents). */
 .diff-root button { box-sizing: border-box; }
 .diff-root button svg { flex: none; }
+
+/* Dark reads a 2–3% wash as half — lift every ground tint by 1.7 in dark. */
+[data-theme='dark'] .diff-root { --tint-mult: 1.7; }
+
+/* The Differential mark beside its title (loupe on a print). color:inherit
+   overrides the glyph's own #g-differential{color} so it follows the topbar. */
+.diff-identity-glyph { width: 18px; height: 18px; flex: none; opacity: 0.9; }
 
 /* ── top bar ─────────────────────────────────────────────────────────────── */
 .diff-topbar {
@@ -135,9 +146,25 @@
     gap: 0.2rem;
     padding: 0.7rem 0.35rem;
     align-items: stretch;
+    /* GROUND: amethyst tints the whole rail at 2.5% (a wash, never a fill), its
+       hairline carries a little indigo. The tint rides a ::before so it
+       composites over the paper rather than replacing the surface colour. */
+    position: relative;
+    isolation: isolate;
+    border-right: 1px solid color-mix(in srgb, var(--indigo) 24%, var(--line));
+}
+.diff-tools::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--amethyst);
+    opacity: calc(0.025 * var(--tint-mult));
+    pointer-events: none;
 }
 
 .diff-tool {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -150,11 +177,29 @@
     cursor: pointer;
     font-size: 0.58rem;
     letter-spacing: 0.02em;
+    /* The tick is the state: grey at 28% when idle. */
+    --tick: currentColor;
+    --tick-o: 0.28;
 }
-.diff-tool:hover:not(:disabled) { background: var(--surface-hover); color: var(--text-primary); }
+.diff-tool-glyph { width: 21px; height: 21px; display: block; }
+.diff-tool:hover:not(:disabled) { color: var(--text-primary); }
+/* Active tool: the tick goes full plum and a 2px plum bar sits on the rail's
+   left edge — replacing the old accent-soft fill highlight (the tick marks
+   where you are; the rail is not decorated). */
 .diff-tool.on {
-    color: var(--accent);
-    background: var(--accent-soft);
+    color: var(--text-primary);
+    --tick: var(--plum);
+    --tick-o: 1;
+}
+.diff-tool.on::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--plum);
+    border-radius: 0 2px 2px 0;
 }
 .diff-tool:disabled {
     opacity: 0.38;
@@ -173,7 +218,21 @@
     justify-content: center;
     gap: 0.55rem;
     padding: 0.9rem;
+    /* two graphite corner crop ticks — the stage reads as a plate on a bench. */
+    position: relative;
 }
+.diff-stage-col::before,
+.diff-stage-col::after {
+    content: "";
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    border: 0 solid var(--graphite);
+    opacity: 0.5;
+    pointer-events: none;
+}
+.diff-stage-col::before { top: 3px; left: 3px; border-top-width: 1px; border-left-width: 1px; }
+.diff-stage-col::after { bottom: 3px; right: 3px; border-bottom-width: 1px; border-right-width: 1px; }
 
 .diff-stage {
     position: relative;
@@ -186,10 +245,23 @@
     border-radius: var(--radius-lg);
     overflow: hidden;
     background: var(--surface-2);
+    /* GROUND: indigo tints the stage at 2.2% (a hairline-bordered sheet, not a
+       dot grid). The tint rides a ::before over the surface, under the image. */
+    border: 1px solid var(--line);
+    isolation: isolate;
     /* No native text-selection or image drag while working the stage — a press-drag
        is always a tool gesture, never a browser drag. */
     user-select: none;
     -webkit-user-select: none;
+}
+.diff-stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--indigo);
+    opacity: calc(0.022 * var(--tint-mult));
+    pointer-events: none;
 }
 .diff-stage img {
     display: block;
@@ -1162,10 +1234,17 @@
 .diff-layer-lock.on { color: var(--accent, #C08457); }
 /* Aesthetic pass — a quiet family lane-mark per layer (Working·Evidence·
    Suggestions·Recall). Plum, low-key: it names the lane, it doesn't shout. */
-.diff-layer-glyph { flex: none; color: var(--accent); opacity: 0.72; }
+/* GROUND hue per layer — the one place four hues sit together: Recall indigo,
+   Suggestions lilac, Evidence amethyst, Working (scratch) mulberry. Both the
+   lane mark and the opacity slider carry the layer's hue. */
+.diff-layer-row[data-layer="recall"]     { --lh: var(--indigo); }
+.diff-layer-row[data-layer="suggestion"] { --lh: var(--lilac); }
+.diff-layer-row[data-layer="evidence"]   { --lh: var(--amethyst); }
+.diff-layer-row[data-layer="scratch"]    { --lh: var(--mulberry); }
+.diff-layer-glyph { flex: none; color: var(--lh, var(--accent)); opacity: 0.72; }
 .diff-layer-row.is-hidden .diff-layer-glyph { opacity: 0.4; }
 .diff-layer-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.diff-layer-opacity { width: 44px; accent-color: var(--accent, #5E2B50); }
+.diff-layer-opacity { width: 44px; accent-color: var(--lh, var(--accent)); }
 .diff-layer-system { font-size: 9px; color: var(--diff-muted, #8a8276); opacity: 0.7; }
 
 /* ── CIRCUIT-001 P4-B — suggestion review surface ─────────────────────────────── */

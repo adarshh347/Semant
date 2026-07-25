@@ -133,7 +133,7 @@
 .rd-feed { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--ink-muted); cursor: pointer; margin-left: auto; }
 .rd-feed input { accent-color: var(--accent); }
 .rd-feed strong { color: var(--ink); }
-.rd-save { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--accent); border: 1px solid var(--accent); color: var(--accent-ink); border-radius: var(--radius-pill); padding: 0.55rem 1.2rem; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+.rd-save { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--fill); border: 1px solid var(--fill); color: var(--on-fill); border-radius: var(--radius-pill); padding: 0.55rem 1.2rem; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
 .rd-save:hover:not(:disabled) { background: var(--accent-deep); }
 .rd-save:disabled { opacity: 0.6; cursor: progress; }
 .rd-foot .rd-feed + .rd-save { margin-left: 0; }

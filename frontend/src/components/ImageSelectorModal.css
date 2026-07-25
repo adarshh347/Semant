@@ -198,13 +198,13 @@
 }
 
 .image-selector-modal .btn-primary {
-    background: var(--accent-primary);
-    color: #000;
+    background: var(--fill);
+    color: var(--on-fill);
 }
 
 .image-selector-modal .btn-primary:hover {
-    background: #e5c150;
-    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+    background: var(--fill);
+    opacity: 0.92;
 }
 
 .image-selector-modal .btn-secondary {

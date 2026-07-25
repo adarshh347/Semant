@@ -28,8 +28,8 @@
 }
 
 .create-btn {
-    background: var(--accent-primary);
-    color: #0f1115;
+    background: var(--fill);
+    color: var(--on-fill);
     border: none;
     padding: 0.8rem 1.8rem;
     border-radius: 50px;
