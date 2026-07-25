@@ -1898,6 +1898,69 @@ async def _produce_atmosphere(post_id, post, region, req, run_id):
     return await _produce_recession(post_id, post, region, req, run_id, role="atmosphere_field")
 
 
+# The light/shadow producer (P6-G). Its adapter is DEFERRED — Intrinsic is a GitHub-only install
+# — so this handler reports `unavailable` honestly rather than pretending. When the package lands,
+# `is_available()` flips and this path runs with no further wiring.
+_shading_mgr = None
+_shading_adapter = None
+
+
+async def _produce_shading(post_id, post, region, req, run_id, *, role="light_field"):
+    from backend.services import intrinsic_service as isvc
+    if not isvc.is_available():
+        return [], "unavailable", False
+    role = ((req.params or {}).get("role") if req.params else None) or role
+    if role not in suggestion_service.SHADING_ROLE_BANDS:
+        return [], "empty", True
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import IntrinsicShadingAdapter
+    global _shading_mgr, _shading_adapter
+    if _shading_mgr is None:
+        _reg = AdapterRegistry()
+        _shading_adapter = IntrinsicShadingAdapter()
+        _reg.register(_shading_adapter)
+        _shading_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _shading_mgr.run_adapter(_shading_adapter, {"image": image},
+                                         priority=int(Priority.INTERACTIVE),
+                                         cancel=CancelToken(), timeout_s=180.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        return [], "unavailable", False
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service._suggestion_from_shading(
+        job.artifact.data, role=role, run_id=run_id, region_id=(region or {}).get("id"),
+        model=isvc.MODEL_TAG, checkpoint=isvc.CHECKPOINT,
+        preprocessing_version=isvc.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+async def _produce_shadow(post_id, post, region, req, run_id):
+    return await _produce_shading(post_id, post, region, req, run_id, role="shadow_field")
+
+
 # The registry: producer name → handler. Extensible — a new producer plugs in here, not a new route.
 _FIELD_PRODUCERS = {
     "negative_space": _produce_negative_space,
@@ -1906,6 +1969,8 @@ _FIELD_PRODUCERS = {
     "pressure_zone": _produce_pressure_zone,
     "background_recession": _produce_recession,
     "atmosphere_field": _produce_atmosphere,
+    "light_field": _produce_shading,
+    "shadow_field": _produce_shadow,
 }
 
 

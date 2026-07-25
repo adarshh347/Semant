@@ -834,3 +834,59 @@ def test_intrinsic_service_is_unavailable_and_estimate_refuses_cleanly():
     assert isvc.estimate(object()) is None     # refuses without touching the image
     # the PyPI 0.0.1 stub must NOT satisfy availability — we probe intrinsic.pipeline + chrislib
     assert "intrinsic.pipeline" in isvc.is_available.__doc__
+
+
+def test_produce_field_light_reports_unavailable_while_the_weights_are_deferred(monkeypatch):
+    """The deferred model must surface HONESTLY through the generic endpoint: `unavailable`,
+    available=False, no suggestion — never an error and never a fabricated light field."""
+    post = {"_id": ObjectId(), "region_annotations": [{"id": "reg_w", "box": {"x": 0, "y": 0, "w": 1, "h": 1}}]}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+
+    resp = run(R.produce_field(str(posts.post["_id"]),
+                               R.ProduceFieldRequest(producer="light_field", region_id="reg_w")))
+    assert resp["status"] == "unavailable" and resp["available"] is False
+    assert resp["suggestions"] == []
+    assert posts.writes == []
+    proj = run(svc.get_run(resp["run_id"], collection=runs))
+    assert proj["operation"] == "produce" and proj["status"] == "unavailable"
+
+
+def test_produce_field_shading_runs_end_to_end_once_the_package_is_present(monkeypatch):
+    """The activation path: flip is_available() + stub the manager, and light/shadow flow through
+    the SAME surface with a full receipt — proving only the install is missing, not the wiring."""
+    post = {"_id": ObjectId(), "region_annotations": [{"id": "reg_w", "box": {"x": 0, "y": 0, "w": 1, "h": 1}}]}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import intrinsic_service as isvc
+
+    class _Img:
+        size = (100, 100)
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(isvc, "is_available", lambda: True)
+
+    class _Art:
+        data = _shading()
+    class _Job:
+        artifact = _Art()
+    async def _fake_run(adapter, payload, **kw):
+        return _Job()
+    import backend.routers.posts as RR
+    RR._shading_mgr = type("M", (), {"run_adapter": staticmethod(_fake_run)})()
+    RR._shading_adapter = object()
+    try:
+        for producer, role in (("light_field", "light_field"), ("shadow_field", "shadow_field")):
+            resp = run(R.produce_field(str(posts.post["_id"]),
+                                       R.ProduceFieldRequest(producer=producer, region_id="reg_w")))
+            assert resp["status"] == "ready", producer
+            sug = resp["suggestions"][0]
+            assert sug["role"] == role and sug["producer"] == "shading"
+            assert sug["provenance"]["model"] == isvc.MODEL_TAG      # full receipt
+    finally:
+        RR._shading_mgr = None; RR._shading_adapter = None
+    assert posts.writes == []

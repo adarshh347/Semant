@@ -123,6 +123,10 @@ const FIELD_PRODUCERS = [
       hint: 'What falls away behind — relative depth from Depth-Anything.' },
     { key: 'atmosphere_field', label: 'Atmosphere', needsSeed: false,
       hint: 'The condition the foreground sits in — the near band of the same depth reading.' },
+    { key: 'light_field', label: 'Light', needsSeed: false,
+      hint: 'Where the light lives — intrinsic shading. Needs the Intrinsic model installed.' },
+    { key: 'shadow_field', label: 'Shadow', needsSeed: false,
+      hint: 'Where the light is withheld — the same reading, read as absence.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface

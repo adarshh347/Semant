@@ -353,6 +353,7 @@ describe('contract v3 — region_ref (a naming reference, no mask authored)', ()
         expect(PRODUCERS).toContain('rhythm');          // P6-D: cpu_perceptual, no model at all
         expect(PRODUCERS).toContain('pressure_zone');   // P6-E: the same reading, coherence map
         expect(PRODUCERS).toContain('recession');       // P6-F: Depth-Anything near/far bands
+        expect(PRODUCERS).toContain('shading');         // P6-G: Intrinsic light/shadow (deferred)
         expect(PRODUCERS).toContain('fixture');
     });
 });
