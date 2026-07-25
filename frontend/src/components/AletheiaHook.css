@@ -99,7 +99,7 @@
     padding: 0.45rem 0.7rem;
     border-radius: var(--radius-md); cursor: pointer;
 }
-.hook-primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+.hook-primary { background: var(--fill); color: var(--on-fill); border: 1px solid var(--fill); }
 .hook-ghost { background: transparent; color: var(--ink-muted); border: 1px solid var(--line); }
 .hook-ghost:hover { color: var(--ink); background: var(--surface-hover); }
 

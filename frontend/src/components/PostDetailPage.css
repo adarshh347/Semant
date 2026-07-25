@@ -1866,10 +1866,11 @@
     background: color-mix(in srgb, var(--surface-2) 60%, transparent);
     transform: translateY(-1px);
 }
-.composer-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.composer-btn.primary { background: var(--fill); border-color: var(--fill); color: var(--on-fill); }
 .composer-btn.primary:hover:not(:disabled) {
-    background: var(--accent-deep);
-    border-color: var(--accent-deep);
+    background: var(--fill);
+    border-color: var(--fill);
+    opacity: 0.92;
 }
 .composer-btn:disabled { opacity: 0.55; cursor: progress; }
 .composer-btn:focus-visible {

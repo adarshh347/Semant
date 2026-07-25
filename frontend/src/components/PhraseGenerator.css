@@ -233,13 +233,13 @@
 }
 
 .phrase-actions .btn-primary {
-    background: var(--accent-primary);
-    color: #000;
+    background: var(--fill);
+    color: var(--on-fill);
 }
 
 .phrase-actions .btn-primary:hover:not(:disabled) {
-    background: #e5c150;
-    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+    background: var(--fill);
+    opacity: 0.92;
 }
 
 .phrase-actions .btn-secondary {

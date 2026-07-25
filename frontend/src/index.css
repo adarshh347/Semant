@@ -69,6 +69,19 @@
   --accent-ink: #FFFFFF;
   --info: #4A4A6A;
 
+  /* Filled-primary action — deep plum with warm-paper text, IDENTICAL in both
+     themes so a primary button never inverts between light and dark
+     (workspace restyle · PLAN §1). Distinct from --plum, which lifts in dark. */
+  --fill: #7B2D6B;
+  --on-fill: #F5EFEA;
+
+  /* The six-hue family (landing design system), brought into the app tokens for
+     the workspace restyle. Accents (plum, mulberry) mark; grounds (amethyst,
+     indigo, lilac) tint whole surfaces at 2–3.5%; clay sits between. Text/stroke
+     strength here — lifted in dark for legibility (grounds/fill do not move). */
+  --plum: #7B2D6B; --mulberry: #8E3F6A; --clay: #A66273;
+  --amethyst: #6B5391; --indigo: #4E5586; --lilac: #8E82A0;
+
   /* Text-selection highlight — bespoke pale-plum signal (v1.3). Site-wide via
      ::selection below. */
   --highlight: #E7D8E6;
@@ -117,19 +130,24 @@
 
 /* ============================ DARK — "Ink" ================================= */
 [data-theme='dark'] {
-  /* Clean plum-charcoal base (v1.3 §10) — replaces the old brown near-black. */
-  --bg: #191419;
-  --surface: #241D24;
-  --surface-2: #2C242C;
+  /* Toned violet near-black, not a neutral near-black — the identity everywhere
+     else is warm paper, so the dark is toned too and stays in the family
+     (workspace restyle · PLAN §1). Surfaces separate ~4%; hairlines do the rest. */
+  --bg: #17141A;
+  --surface: #1E1A23;
+  --surface-2: #262230;
   --surface-hover: #342B34;
 
-  --ink: #F0EAEF;
-  --ink-muted: #A093A0;
-  --ink-subtle: #7C737C;
-  --ink-inverse: #191419;
+  /* Text toned back from near-white so hierarchy returns instead of every line
+     shouting equally on the dark base. */
+  --ink: #EDE6E6;
+  --ink-muted: #B3A7B1;
+  --ink-subtle: #7E7482;
+  --ink-inverse: #17141A;
 
-  --line: #332B33;
-  --line-strong: #443B44;
+  /* Hairlines at ~10% / ~18% doing the separation work. */
+  --line: rgba(237, 230, 230, .10);
+  --line-strong: rgba(237, 230, 230, .18);
 
   /* Plum, lightened for legibility on the dark plum-charcoal (v1.3 §10). */
   --accent: #C08BB4;
@@ -137,6 +155,13 @@
   --accent-soft: #2A1F29;
   --accent-ink: #17121A;
   --info: #9C9CC4;
+
+  /* --fill / --on-fill do NOT move (identical in both themes). The six hues lift
+     for legibility on dark, FOR TEXT AND STROKES ONLY — never the filled plum. */
+  --fill: #7B2D6B;
+  --on-fill: #F5EFEA;
+  --plum: #9E4E85; --mulberry: #B2678C; --clay: #C08A92;
+  --amethyst: #9082B4; --indigo: #7C82AC; --lilac: #ADA3BC;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 12px 28px rgba(0, 0, 0, 0.4);
@@ -217,18 +242,20 @@ button:hover {
 button:active { transform: translateY(0); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
-/* Primary button — the ink pill (design language v1.3): --ink fill, --bg text,
-   in BOTH themes. The accent is never a bright button fill; it's reserved for
-   marks/links/emphasis. A non-primary button gets at most an accent-outlined pill. */
+/* Primary button — the filled plum pill (workspace restyle · PLAN §1):
+   --fill / --on-fill in BOTH themes, so the primary action never inverts (the
+   old ink pill went dark-on-light in light and light-on-dark in dark). The
+   accent stays reserved for marks/links/emphasis; a non-primary button gets at
+   most an accent-outlined pill. */
 button.primary, .btn-primary {
-  background: var(--ink);
-  color: var(--bg);
+  background: var(--fill);
+  color: var(--on-fill);
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
 }
 button.primary:hover, .btn-primary:hover {
-  background: var(--ink);
-  opacity: 0.9;
+  background: var(--fill);
+  opacity: 0.92;
   border-color: transparent;
 }
 
