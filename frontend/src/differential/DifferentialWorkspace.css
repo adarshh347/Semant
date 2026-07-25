@@ -138,6 +138,7 @@
 }
 
 .diff-tool {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -150,11 +151,29 @@
     cursor: pointer;
     font-size: 0.58rem;
     letter-spacing: 0.02em;
+    /* The tick is the state: grey at 28% when idle. */
+    --tick: currentColor;
+    --tick-o: 0.28;
 }
-.diff-tool:hover:not(:disabled) { background: var(--surface-hover); color: var(--text-primary); }
+.diff-tool-glyph { width: 21px; height: 21px; display: block; }
+.diff-tool:hover:not(:disabled) { color: var(--text-primary); }
+/* Active tool: the tick goes full plum and a 2px plum bar sits on the rail's
+   left edge — replacing the old accent-soft fill highlight (the tick marks
+   where you are; the rail is not decorated). */
 .diff-tool.on {
-    color: var(--accent);
-    background: var(--accent-soft);
+    color: var(--text-primary);
+    --tick: var(--plum);
+    --tick-o: 1;
+}
+.diff-tool.on::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--plum);
+    border-radius: 0 2px 2px 0;
 }
 .diff-tool:disabled {
     opacity: 0.38;

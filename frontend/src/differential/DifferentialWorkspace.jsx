@@ -52,10 +52,19 @@ import {
 import { SectionEyebrow } from '../components/brand/SectionEyebrow';
 import RegionMotif from '../components/brand/RegionMotif';
 import {
-    SelectGlyph, FieldGlyph, PathGlyph, ConstellationGlyph, RelationGlyph,
-    FrameGlyph, RefineGlyph, ReadingGlyph, SimilarGlyph,
-    RegionGlyph, PerceptMark, RecallGlyph,
+    FrameGlyph, RegionGlyph, PerceptMark, RecallGlyph,
 } from '../components/brand/glyphs';
+// The nine dedicated tool glyphs (svgr) — the verbs of the hand. Each exposes
+// --tick / --tick-o so the rail makes the Semant tick the active-tool signal.
+import { ReactComponent as SelectToolGlyph } from '@/assets/glyphs/22-tool-select.svg';
+import { ReactComponent as BrushToolGlyph } from '@/assets/glyphs/23-tool-brush.svg';
+import { ReactComponent as TraceToolGlyph } from '@/assets/glyphs/24-tool-trace.svg';
+import { ReactComponent as CollectToolGlyph } from '@/assets/glyphs/25-tool-collect.svg';
+import { ReactComponent as ConnectToolGlyph } from '@/assets/glyphs/26-tool-connect.svg';
+import { ReactComponent as FrameToolGlyph } from '@/assets/glyphs/27-tool-frame.svg';
+import { ReactComponent as RefineToolGlyph } from '@/assets/glyphs/28-tool-refine.svg';
+import { ReactComponent as ReadToolGlyph } from '@/assets/glyphs/29-tool-read.svg';
+import { ReactComponent as SimilarToolGlyph } from '@/assets/glyphs/30-tool-similar.svg';
 import './DifferentialWorkspace.css';
 
 // The role vocabularies the instruments offer (contract §2), from Lane A's
@@ -77,21 +86,22 @@ const RELATION_ROLES = RELATION_ROLE_KEYS;
  *    and an accumulative tray for composing one Percept from several Grounds.
  */
 
-// The tool rail speaks the Semant glyph family, not lucide: each tool wears the
-// mark of the ground it makes — Brush→Field, Trace→Path, Collect→Constellation,
-// Connect→Relation, Frame→Frame, Refine→Refine, Read→Reading. Select and Similar
-// are the two navigating tools (they ground nothing), so they keep their own
-// bespoke family marks. One alphabet with the inspector and the ground rows.
+// The tool rail speaks the dedicated Semant tool set — the verbs of the hand,
+// one nameable object each (a pointer, a loaded brush, a stylus on a half-drawn
+// edge, a tray, two pinned marks, two corners, an edge pulled tight, spectacles,
+// two prints side by side). Each carries the Semant tick, and the tick IS the
+// state: grey when idle, full plum when active — so the accent marks where you
+// are rather than decorating the rail.
 const TOOLS = [
-    { key: 'select', label: 'Select', icon: SelectGlyph, hint: 'Point at parts — ⇧ to gather several' },
-    { key: 'brush', label: 'Brush', icon: FieldGlyph, hint: 'Soft Field — paint where the light lives' },
-    { key: 'trace', label: 'Trace', icon: PathGlyph, hint: 'Path or Boundary — draw a line' },
-    { key: 'collect', label: 'Collect', icon: ConstellationGlyph, hint: 'Constellation — gather grounds and points' },
-    { key: 'connect', label: 'Connect', icon: RelationGlyph, hint: 'Relation — tie two grounds together' },
-    { key: 'frame', label: 'Frame', icon: FrameGlyph, hint: 'The whole image as evidence' },
-    { key: 'refine', label: 'Refine', icon: RefineGlyph, hint: 'Select a part, then click/drag to tighten it to an exact mask' },
-    { key: 'read', label: 'Read', icon: ReadingGlyph, hint: 'Ask the model to interpret the parts — name, qualify, relate; it never moves a mask' },
-    { key: 'similar', label: 'Similar', icon: SimilarGlyph, hint: 'Find a selected part\'s visual neighbours — research to inspect, never facts' },
+    { key: 'select', label: 'Select', icon: SelectToolGlyph, hint: 'Point at parts — ⇧ to gather several' },
+    { key: 'brush', label: 'Brush', icon: BrushToolGlyph, hint: 'Soft Field — paint where the light lives' },
+    { key: 'trace', label: 'Trace', icon: TraceToolGlyph, hint: 'Path or Boundary — draw a line' },
+    { key: 'collect', label: 'Collect', icon: CollectToolGlyph, hint: 'Constellation — gather grounds and points' },
+    { key: 'connect', label: 'Connect', icon: ConnectToolGlyph, hint: 'Relation — tie two grounds together' },
+    { key: 'frame', label: 'Frame', icon: FrameToolGlyph, hint: 'The whole image as evidence' },
+    { key: 'refine', label: 'Refine', icon: RefineToolGlyph, hint: 'Select a part, then click/drag to tighten it to an exact mask' },
+    { key: 'read', label: 'Read', icon: ReadToolGlyph, hint: 'Ask the model to interpret the parts — name, qualify, relate; it never moves a mask' },
+    { key: 'similar', label: 'Similar', icon: SimilarToolGlyph, hint: 'Find a selected part\'s visual neighbours — research to inspect, never facts' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface
@@ -1049,7 +1059,10 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             aria-pressed={tool === t.key}
                             title={`${t.label} — ${t.hint}`}
                             onClick={() => { if (t.key === 'frame') commitFrame(); else switchTool(t.key); }}>
-                            <t.icon size={16} />
+                            {/* color:inherit overrides each glyph's own #g-tool-*{color}
+                                default so the body follows the theme; the tick rides
+                                --tick / --tick-o set on .diff-tool(.on) below. */}
+                            <t.icon className="diff-tool-glyph" style={{ color: 'inherit' }} aria-hidden="true" />
                             <span className="diff-tool-label">{t.label}</span>
                         </button>
                     ))}
