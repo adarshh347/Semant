@@ -1,281 +1,176 @@
-/* frontend/src/pages/LandingPage.css */
-/* =============================================================================
-   Semant landing — motive-based front page, on the design language v1.3
-   (Paper + Plum).
-
-   Discipline: warm paper base + ONE plum *interactive* accent + muted pastel
-   diagram cards; nothing else. Primary action = the ink pill; emphasis =
-   italic Fraunces (never colour). Flat-on-paper, hairline borders only where
-   earned, section rhythm at --space-16+. No decorative gradients/glows.
-   Phase 2b reveal: [data-reveal] sections rise 12px + fade on --ease as they
-   enter (the hook in LandingPage.jsx); under prefers-reduced-motion the
-   transition never applies, so the static state is the fallback.
-   ============================================================================= */
+/*
+ * Semant landing — ported verbatim from `frontend skills/index.html`'s <style>,
+ * scoped under `.landing` so its bare element rules (section, p, h2, img…)
+ * cannot leak into the rest of the app. Tokens come from `.pe-scope` worn by
+ * the same root element. Two source rule-groups are intentionally NOT ported:
+ * the `.nav` chrome (the app's own nav stays — constraint #1) and the
+ * `#id{--sec}` hue assignments (moved to the <Section hue> prop). `.pill` and
+ * `.ghost` ARE kept — they style the hero CTAs, ported as-is.
+ */
 
 .landing {
-  width: 100%;
-  background: var(--bg);
+  background: var(--page);
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 15px;
+  line-height: 1.65;
+  min-height: 100vh;
+}
+.landing img, .landing object { display: block; max-width: 100%; }
+.landing a { color: inherit; }
+
+/* ── page ground — a sheet, not a blank ───────────────── */
+.landing .bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.landing .bg-grain { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .035; mix-blend-mode: multiply; }
+.landing .bg-guides { position: absolute; inset: 0; max-width: 1080px; margin: 0 auto; padding: 0 var(--gut); }
+.landing .bg-guides i { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--ink); opacity: .055; }
+.landing .bg-guides i:first-child { left: var(--gut); }
+.landing .bg-guides i:last-child { right: var(--gut); }
+.landing .bg-crop { position: absolute; width: 14px; height: 14px; border: 0 solid var(--ink); opacity: .14; }
+.landing .bg-crop.tl { top: 18px; left: 18px; border-top-width: 1px; border-left-width: 1px; }
+.landing .bg-crop.tr { top: 18px; right: 18px; border-top-width: 1px; border-right-width: 1px; }
+.landing .bg-crop.bl { bottom: 18px; left: 18px; border-bottom-width: 1px; border-left-width: 1px; }
+.landing .bg-crop.br { bottom: 18px; right: 18px; border-bottom-width: 1px; border-right-width: 1px; }
+.landing .bg-mark { position: absolute; opacity: .13; color: var(--ink); }
+@media (max-width: 860px) { .landing .bg-guides, .landing .bg-mark { display: none; } }
+.landing section, .landing footer, .landing .wrap { position: relative; z-index: 1; }
+
+.landing .wrap { max-width: 1080px; margin: 0 auto; padding: 0 var(--gut); }
+.landing section { padding: 96px 0; }
+@media (max-width: 720px) { .landing section { padding: 64px 0; } }
+
+/* ── type ─────────────────────────────────────────────── */
+.landing .mono { font-family: 'Spline Sans Mono', ui-monospace, monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--graphite); }
+.landing .eyebrow { display: flex; align-items: center; gap: 10px; margin: 0 0 22px; }
+.landing .eyebrow .tk { width: 10px; height: 10px; flex: 0 0 auto; background: var(--plum); opacity: .85; border-radius: 1px; clip-path: polygon(0 62%, 100% 0, 100% 38%, 0 100%); }
+.landing .eyebrow span { color: rgba(30, 26, 28, .5); font-weight: 500; }
+.landing .eyebrow .far { margin-left: auto; color: rgba(30, 26, 28, .28); }
+
+.landing h1, .landing h2, .landing h3 { font-family: 'Playfair Display', Georgia, serif; font-weight: 500; letter-spacing: -.012em; margin: 0; }
+.landing h1 { font-size: clamp(38px, 6.4vw, 66px); line-height: 1.04; }
+.landing h2 { font-size: clamp(28px, 3.6vw, 40px); line-height: 1.12; margin-bottom: 18px; }
+.landing h3 { font-size: 19px; line-height: 1.3; margin-bottom: 8px; }
+.landing .lede { font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-weight: 400; font-size: clamp(17px, 1.9vw, 21px); line-height: 1.5; color: rgba(30, 26, 28, .6); max-width: 56ch; margin: 0 0 18px; }
+.landing p { margin: 0 0 16px; max-width: 66ch; color: var(--ink-soft); }
+.landing p.tight { max-width: 60ch; }
+.landing .strong { color: var(--ink); }
+
+/* ── CTA buttons (kept: the hero + section CTAs, ported as-is) ── */
+.landing .pill { display: inline-flex; align-items: center; gap: 8px; background: var(--ink); color: #FFFCFA; text-decoration: none; border-radius: 999px; padding: 9px 16px; font-size: 12.5px; font-weight: 500; }
+.landing .pill:hover { background: #000; }
+.landing .ghost { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(30, 26, 28, .18); border-radius: 999px; padding: 9px 16px; font-size: 12.5px; text-decoration: none; color: var(--ink); }
+.landing .ghost:hover { border-color: rgba(30, 26, 28, .4); }
+
+/* ── rules ────────────────────────────────────────────── */
+.landing .rule { display: block; width: 100%; height: 12px; overflow: visible; }
+.landing .rule path { fill: none; stroke: var(--ink); stroke-width: 1; stroke-linecap: round; opacity: .13; }
+.landing .rule .a { stroke: var(--plum); opacity: .5; stroke-width: 1.5; }
+
+/* ── hero ─────────────────────────────────────────────── */
+.landing .hero { padding: clamp(48px, 7vw, 96px) 0 0; }
+.landing .heroText { max-width: 62ch; }
+.landing .hero h1 { max-width: 14ch; }
+.landing .hero .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
+/* the scene is the sheet, not a picture on it — full bleed, no frame */
+.landing .heroScene { margin: clamp(34px, 5vw, 58px) calc(50% - 50vw) 0; width: 100vw; border: 0; background: transparent; }
+.landing .heroScene svg { display: block; width: 100%; height: clamp(320px, 46vw, 580px); }
+.landing .heroScene .fields, .landing .heroScene .stars, .landing .heroScene .ink { transition: transform 1s cubic-bezier(.2, .6, .2, 1); will-change: transform; }
+.landing .heroScene figcaption { max-width: 1080px; margin: 10px auto 0; padding: 0 var(--gut); font-size: 9.5px; letter-spacing: .13em; color: rgba(30, 26, 28, .3); font-family: 'Spline Sans Mono', monospace; text-transform: uppercase; }
+
+/* ── section chromatics — one hue per section, in family order ──
+   Each section owns a hue (set on the <Section hue> prop as --sec) and states
+   it three ways: a torn wash behind the content, the eyebrow tick, and the card
+   strip dots. The three clip-path variants below rotate by position so no two
+   adjacent washes tear the same way. */
+.landing section { position: relative; }
+.landing section::before {
+  content: ""; position: absolute; inset: 0; background: var(--sec, var(--indigo)); opacity: .05;
+  pointer-events: none; z-index: -1;
+  clip-path: polygon(0 5%, 18% 1%, 42% 8%, 68% 2%, 100% 7%, 100% 94%, 72% 98%, 44% 92%, 20% 99%, 0 94%);
+}
+.landing section:nth-of-type(even)::before {
+  clip-path: polygon(0 8%, 22% 2%, 48% 9%, 74% 3%, 100% 6%, 100% 92%, 76% 99%, 50% 93%, 24% 98%, 0 91%);
+}
+.landing section:nth-of-type(3n)::before {
+  clip-path: polygon(0 3%, 16% 9%, 44% 2%, 70% 8%, 100% 4%, 100% 96%, 68% 91%, 40% 98%, 18% 92%, 0 97%);
+}
+.landing .eyebrow .tk { background: var(--sec, var(--plum)); }
+.landing .hero::before { display: none; }
+
+/* ── cards ────────────────────────────────────────────── */
+.landing .cards { display: grid; gap: 18px; }
+.landing .c2 { grid-template-columns: repeat(2, 1fr); }
+.landing .c3 { grid-template-columns: repeat(3, 1fr); }
+.landing .c4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 940px) { .landing .c3, .landing .c4 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .landing .cards { grid-template-columns: 1fr !important; } }
+.landing .card { background: var(--paper); border: 1px solid var(--hairline); border-radius: 16px; padding: 24px; transition: border-color .4s ease, box-shadow .4s ease, --wash-o .4s ease, --guide-o .4s ease; }
+.landing .card:hover { --wash-o: .27; --guide-o: .28; border-color: rgba(30, 26, 28, .15); box-shadow: 0 8px 26px -20px rgba(30, 26, 28, .4); }
+.landing .card .g { width: 52px; height: 52px; margin-bottom: 16px; }
+.landing .card .g.sm { width: 40px; height: 40px; }
+.landing .card h3 { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+.landing .card .claim { font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-size: 16px; line-height: 1.42; color: var(--ink); margin: 0 0 10px; }
+.landing .card p { font-size: 13.5px; line-height: 1.6; margin-bottom: 0; }
+.landing .card .strip { border-top: 1px solid var(--hairline); margin-top: 18px; padding-top: 11px; font-family: 'Spline Sans Mono', monospace; font-size: 9px; letter-spacing: .09em; color: rgba(30, 26, 28, .34); display: flex; align-items: center; gap: 8px; }
+.landing .card .strip .d { width: 5px; height: 5px; border-radius: 50%; flex: 0 0 auto; }
+.landing .card .mini { margin: 14px 0 0; width: 100%; max-width: 180px; opacity: .95; }
+.landing .door { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 20px; }
+.landing .door .lbl { font-family: 'Spline Sans Mono', monospace; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: rgba(30, 26, 28, .5); }
+
+/* ── panels ───────────────────────────────────────────── */
+.landing .panel { background: var(--paper); border: 1px solid var(--hairline); border-radius: 16px; padding: 26px; }
+.landing .panel .hd { font-family: 'Spline Sans Mono', monospace; font-size: 9.5px; letter-spacing: .15em; text-transform: uppercase; color: rgba(30, 26, 28, .34); margin-bottom: 16px; }
+.landing .quote { font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-size: 17px; line-height: 1.5; color: var(--ink); margin: 0 0 14px; }
+.landing .flow { font-family: 'Spline Sans Mono', monospace; font-size: 10px; letter-spacing: .1em; color: rgba(30, 26, 28, .44); line-height: 2.1; text-transform: none; }
+
+/* qualitative fault-line bars */
+.landing .bars { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 16px; }
+.landing .bar { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 14px; }
+.landing .bar .k { font-family: 'Spline Sans Mono', monospace; font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: rgba(30, 26, 28, .42); }
+.landing .bar .t { height: 9px; border-radius: 2px; background: rgba(30, 26, 28, .06); position: relative; overflow: hidden; }
+.landing .bar .t i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: 2px; opacity: .62; }
+.landing .axis { display: flex; justify-content: space-between; font-family: 'Spline Sans Mono', monospace; font-size: 9px; letter-spacing: .13em; text-transform: uppercase; color: rgba(30, 26, 28, .3); padding-left: 78px; }
+
+/* ── section diagram frame ────────────────────────────── */
+.landing .figure { background: var(--paper); border: 1px solid var(--hairline); border-radius: 18px; padding: clamp(16px, 3vw, 34px); margin-top: 26px; }
+.landing .figure object { width: 100%; height: auto; }
+.landing .figure figcaption { font-family: 'Spline Sans Mono', monospace; font-size: 9.5px; letter-spacing: .13em; text-transform: uppercase; color: rgba(30, 26, 28, .3); margin-top: 16px; }
+.landing .badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(123, 45, 107, .3); color: var(--plum); border-radius: 999px; padding: 5px 12px; font-family: 'Spline Sans Mono', monospace; font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; }
+
+/* ── questions ────────────────────────────────────────── */
+.landing .qs { display: grid; gap: 0; margin-top: 8px; }
+.landing .q { border-top: 1px solid var(--hairline); padding: 22px 0; display: grid; grid-template-columns: 34px 1fr; gap: 16px; align-items: start; }
+.landing .q:last-child { border-bottom: 1px solid var(--hairline); }
+.landing .q .n { font-family: 'Spline Sans Mono', monospace; font-size: 9.5px; letter-spacing: .14em; color: rgba(30, 26, 28, .26); padding-top: 5px; }
+.landing .q .t { font-family: 'Playfair Display', Georgia, serif; font-size: 19px; line-height: 1.42; color: var(--ink); }
+
+.landing .doors { display: flex; flex-wrap: wrap; gap: 14px; }
+
+/* ── articles ─────────────────────────────────────────── */
+.landing .artlist { margin-top: 26px; border-top: 1px solid var(--hairline); }
+.landing .art { display: grid; grid-template-columns: 38px 26px 1fr auto; gap: 18px; align-items: start; border-bottom: 1px solid var(--hairline); padding: 24px 4px; text-decoration: none; transition: background .35s ease, padding .35s ease; }
+.landing .art:hover { background: var(--paper); padding-left: 14px; padding-right: 14px; }
+.landing .art img { width: 30px; height: 30px; margin-top: 2px; }
+.landing .art .n { padding-top: 6px; color: rgba(30, 26, 28, .24); }
+.landing .art .body { display: block; max-width: 62ch; }
+.landing .art .t { display: block; font-family: 'Playfair Display', Georgia, serif; font-size: 21px; line-height: 1.28; color: var(--ink); margin-bottom: 6px; }
+.landing .art .s { display: block; font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); }
+.landing .art .k { font-family: 'Spline Sans Mono', monospace; font-size: 9.5px; letter-spacing: .13em; text-transform: uppercase; color: rgba(30, 26, 28, .32); padding-top: 8px; white-space: nowrap; }
+@media (max-width: 760px) {
+  .landing .art { grid-template-columns: 32px 1fr; gap: 14px; }
+  .landing .art .n, .landing .art .k { display: none; }
 }
 
-/* Phase 2b reveal — motion only for those who haven't opted out; everyone else
-   simply sees the static sections (no hidden state to rescue). */
-@media (prefers-reduced-motion: no-preference) {
-  .landing [data-reveal] {
-    opacity: 0;
-    transform: translateY(12px);
-    transition: opacity 0.55s var(--ease), transform 0.55s var(--ease);
-  }
-  .landing [data-reveal].is-revealed {
-    opacity: 1;
-    transform: none;
-  }
-}
+/* ── philosophy ───────────────────────────────────────── */
+.landing .creed { border-left: 1px solid rgba(123, 45, 107, .28); padding-left: clamp(20px, 4vw, 42px); margin-top: 10px; }
+.landing .creed p { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(19px, 2.4vw, 25px); line-height: 1.42; color: var(--ink); margin: 0 0 18px; max-width: 44ch; }
+.landing .creed p:nth-child(even) { font-style: italic; color: rgba(30, 26, 28, .55); }
+.landing .creed p:last-child { margin-bottom: 0; }
 
-/* Shared section rhythm — air is the material. */
-.landing-section {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: var(--space-16) clamp(1.5rem, 6vw, 4rem);
-}
+/* ── footer ───────────────────────────────────────────── */
+.landing footer { border-top: 1px solid var(--hairline); padding: 56px 0 72px; }
+.landing .after { display: flex; align-items: center; gap: 16px; justify-content: space-between; flex-wrap: wrap; }
+.landing .after .line { font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-size: 18px; color: rgba(30, 26, 28, .5); }
 
-/* One display + one body + one eyebrow per section. */
-.landing-eyebrow {
-  display: block;
-  font-family: var(--font-sans);
-  font-size: var(--fs-caption);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--ink-subtle);
-  margin-bottom: var(--space-5);
-}
-
-.landing-h2 {
-  font-family: var(--font-display);
-  font-optical-sizing: auto;
-  font-size: var(--fs-h1);
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: var(--tracking-tight);
-  color: var(--ink);
-  margin: 0 0 var(--space-6) 0;
-  max-width: 20ch;
-  text-wrap: balance;
-}
-
-.landing-h3 {
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--ink);
-  margin: var(--space-3) 0 var(--space-4) 0;
-}
-
-/* Body is muted, short measure — the elegance tell. */
-.landing-prose {
-  font-size: var(--fs-body-lg);
-  line-height: 1.6;
-  color: var(--ink-muted);
-  max-width: 60ch;
-  margin: 0;
-}
-.landing-prose em { color: var(--ink); font-style: italic; font-weight: 500; }
-
-/* Emphasis quote — italic Fraunces in plum: the section's single accent
-   (v1.3 identity — the accent carries emphasis + links + region marks). */
-.landing-pullquote {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: var(--fs-h3);
-  line-height: 1.35;
-  color: var(--accent);
-  max-width: 26ch;
-  margin: var(--space-6) 0 0 0;
-}
-
-/* ── The single primary action: the ink pill ──────────────────────────── */
-.landing-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.95rem 1.75rem;
-  background: var(--ink);
-  color: var(--bg);
-  text-decoration: none;
-  font-family: var(--font-sans);
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-radius: var(--radius-pill);
-  transition: transform 0.2s var(--ease), opacity 0.2s var(--ease);
-}
-.landing-pill:hover { transform: translateY(-2px); opacity: 0.9; }
-.landing-pill span { transition: transform 0.2s var(--ease); }
-.landing-pill:hover span { transform: translateX(3px); }
-.landing-pill--lg { padding: 1.1rem 2.25rem; font-size: 1.05rem; margin-top: var(--space-8); }
-
-/* Secondary = quiet text link; plum only on the hover underline
-   (the single interactive accent). */
-.landing-textlink {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--ink-muted);
-  text-decoration: none;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-bottom: 1px solid transparent;
-  padding-bottom: 2px;
-  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
-}
-.landing-textlink:hover { color: var(--ink); border-bottom-color: var(--accent); }
-
-.landing-cta-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  flex-wrap: wrap;
-  margin-top: var(--space-8);
-}
-
-/* ── Hero (asymmetric: text ~55% left, image right) ───────────────────── */
-.landing-hero {
-  max-width: 1280px;
-  margin: 0 auto;
-  /* dvh, not vh — vh over-measures under iOS Safari's collapsing chrome. */
-  min-height: calc(100dvh - 96px);
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: clamp(2rem, 6vw, 6rem);
-  align-items: center;
-  padding: var(--space-12) clamp(1.5rem, 6vw, 4rem);
-}
-.landing-hero-copy { max-width: 640px; }
-
-.landing-wedge {
-  font-family: var(--font-display);
-  font-optical-sizing: auto;
-  font-size: var(--fs-display);
-  font-weight: 500;
-  line-height: 1.05;
-  letter-spacing: var(--tracking-tight);
-  color: var(--ink);
-  margin: 0 0 var(--space-6) 0;
-  text-wrap: balance;
-}
-.landing-wedge em { font-style: italic; color: var(--accent); }
-
-.landing-lede {
-  font-size: var(--fs-body-lg);
-  line-height: 1.6;
-  color: var(--ink-muted);
-  max-width: 48ch;
-  margin: 0;
-}
-
-/* Register-1: the real editorial image + our thin region overlay only. */
-.landing-hero-figure { margin: 0; }
-.landing-hero-frame {
-  position: relative;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid var(--line);
-}
-.landing-hero-frame img { display: block; width: 100%; height: auto; object-fit: cover; }
-
-.landing-region {
-  position: absolute;
-  border: 1.5px solid var(--accent);
-  border-radius: 3px;
-}
-.landing-region-label {
-  position: absolute;
-  top: -1.55rem;
-  left: -1.5px;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.02em;
-  color: var(--accent-ink);
-  background: var(--accent);
-  padding: 0.1rem 0.45rem;
-  border-radius: 3px;
-  white-space: nowrap;
-}
-
-/* ── The spine (See · Read · Write) ───────────────────────────────────── */
-.landing-spine-head { margin-bottom: clamp(3rem, 7vw, 6rem); }
-
-.landing-panel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: clamp(2rem, 6vw, 5rem);
-  align-items: center;
-  padding: var(--space-12) 0;
-}
-.landing-panel + .landing-panel { border-top: 1px solid var(--line); }
-.landing-panel--reverse .landing-panel-copy { order: 2; }
-
-.landing-numeral {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--ink-subtle);
-  letter-spacing: var(--tracking-wide);
-}
-
-/* Register-2: one muted-pastel card holding a hand-drawn motif + 1-line reading.
-   Flat — no shadow. Pastel is illustration background only. */
-.landing-card {
-  margin: 0;
-  padding: clamp(1.75rem, 4vw, 2.75rem);
-  border-radius: var(--radius-lg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-5);
-}
-.landing-card--mauve { background: var(--pastel-mauve); }
-.landing-card--stone { background: var(--pastel-stone); }
-.landing-card--bluegrey { background: var(--pastel-bluegrey); }
-
-.motif { width: min(72%, 220px); height: auto; }
-
-.landing-card-reading {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: var(--fs-body-lg);
-  line-height: 1.4;
-  text-align: center;
-  color: var(--diagram-ink); /* stays dark on the pastel in both themes */
-  max-width: 34ch;
-}
-
-/* ── Close (centered announcement register, d.1 §7) ───────────────────── */
-.landing-close { text-align: center; padding-block: var(--space-24); }
-.landing-close-line { margin-left: auto; margin-right: auto; max-width: 24ch; }
-.landing-close-line em { font-style: italic; color: var(--accent); }
-.landing-close-sub { margin-left: auto; margin-right: auto; }
-
-/* ── Responsive ───────────────────────────────────────────────────────── */
-@media (max-width: 900px) {
-  .landing-hero {
-    grid-template-columns: 1fr;
-    min-height: auto;
-    gap: 2.5rem;
-  }
-  .landing-hero-copy { order: 2; }
-  .landing-hero-figure { order: 1; }
-
-  .landing-panel { grid-template-columns: 1fr; gap: 2rem; }
-  .landing-panel--reverse .landing-panel-copy { order: 0; }
-  .landing-card { order: 2; }
-}
-
-@media (max-width: 560px) {
-  .landing-cta-row { width: 100%; }
-  .landing-pill { flex: 1; justify-content: center; }
-  .landing-region-label { font-size: 0.6rem; }
-}
+.landing .todo { font-family: 'Spline Sans Mono', monospace; font-size: 9.5px; letter-spacing: .13em; text-transform: uppercase; color: rgba(30, 26, 28, .26); }
