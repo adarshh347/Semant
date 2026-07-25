@@ -1,0 +1,16 @@
+<svg id="g-tool-frame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Two corners deciding what is inside.">
+  <title>Semant — Tool: Frame</title>
+  <desc>Two corners deciding what is inside.</desc>
+  <style>
+    #g-tool-frame{color:#1E1A1C}
+    #g-tool-frame .mk{fill:none;stroke:var(--tick,currentColor);stroke-width:1.9;stroke-linecap:round;
+                opacity:var(--tick-o,.35)}
+  </style>
+
+  <path d="M6.4 13.8 C6.2 10.6 6.6 8.4 6.4 6.8 C9 6.6 11.4 7 13.6 6.8"
+        fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M25.6 18.4 C25.8 21.6 25.4 23.8 25.6 25.4 C23 25.6 20.6 25.2 18.4 25.4"
+        fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="13.6" cy="18.4" r="2.2" fill="currentColor"/>
+  <path class="mk" d="M15.2 16.8 C16.6 15.4 17.6 14.4 18.8 13.2"/>
+</svg>

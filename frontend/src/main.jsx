@@ -11,6 +11,10 @@ import RouteError from './components/RouteError.jsx';
 import NotFoundPage from './components/NotFoundPage.jsx';
 import PlaceholderPage from './components/PlaceholderPage.jsx';
 import './index.css';
+// Landing design-system tokens (six hues + two @property anim props), scoped to
+// `.pe-scope`. Imported once here so the whole app can reference them but only
+// the landing surfaces (which wear `.pe-scope`) actually adopt the palette.
+import './styles/tokens.css';
 
 // Route pages are code-split (React.lazy) so a navigation resolves its chunk
 // behind the branded RouteFallback (App.jsx) instead of loading the whole app
@@ -35,6 +39,13 @@ const UnconcealQueuePage = React.lazy(() => import('./pages/UnconcealQueuePage.j
 const AnatomyPage = React.lazy(() => import('./pages/AnatomyPage.jsx'));
 const BlockNoteLab = React.lazy(() => import('./pages/BlockNoteLab.jsx'));
 const ManuscriptLab = React.lazy(() => import('./pages/ManuscriptLab.jsx'));
+// DEV-ONLY · landing-migration checkpoint — the glyph contact sheet, proving the
+// 21 glyphs render identically once migrated into Semant (asset-layer fidelity).
+// Guarded so vite statically drops both the const and its dynamic-import chunk
+// from production builds (import.meta.env.DEV → false → dead branch eliminated).
+const GlyphContactSheet = import.meta.env.DEV
+  ? React.lazy(() => import('./routes/design/GlyphContactSheet.jsx'))
+  : null;
 
 const router = createBrowserRouter([
   {
@@ -47,6 +58,10 @@ const router = createBrowserRouter([
       // '/' is the motive See·Read·Write front door; its "Enter" CTA leads into
       // the app at /home, the curated bento dashboard.
       { index: true, element: <LandingPage /> },
+      // DEV-ONLY · landing-migration asset checkpoint (stripped from prod builds).
+      ...(import.meta.env.DEV
+        ? [{ path: "_design/glyphs", element: <GlyphContactSheet /> }]
+        : []),
       { path: "home", element: <HomePage /> },
       { path: "gallery", element: <GalleryPage /> },
       { path: "highlights", element: <HighlightsPage /> },

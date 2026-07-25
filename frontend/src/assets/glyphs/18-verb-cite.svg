@@ -1,0 +1,56 @@
+<svg id="g-verb-cite" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="A thread running from a mark on a print up into a chip in the text.">
+  <title>Semant — Cite</title>
+  <desc>A thread running from a mark on a print up into a chip in the text.</desc>
+  <style>
+    #g-verb-cite{color:#1E1A1C}
+    #g-verb-cite .gest{stroke-dasharray:100}
+    @media (prefers-reduced-motion: no-preference){
+      #g-verb-cite:hover .gest, #g-verb-cite:focus-within .gest, #g-verb-cite.play .gest{ animation:cite-draw .8s cubic-bezier(.6,.04,.28,1) }
+      #g-verb-cite:hover .late, #g-verb-cite:focus-within .late, #g-verb-cite.play .late{ animation:cite-land .42s ease-out .5s backwards }
+      @keyframes cite-draw{ from{stroke-dashoffset:100} to{stroke-dashoffset:0} }
+      @keyframes cite-land{ from{opacity:0} to{opacity:1} }
+    }
+  </style>
+  <defs>
+    <filter id="cite-bA" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="cite-bB" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.16" numOctaves="2" seed="21" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#A9A0A6" stroke-width="0.9" stroke-linecap="round" style="opacity:var(--guide-o, 0.16)">
+    <path d="M2 3.4 V6"/><path d="M2 3.4 H4.6"/>
+    <path d="M30 28.6 V26"/><path d="M30 28.6 H27.4"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.18)">
+    <path filter="url(#cite-bA)" fill="#4E5586"
+          d="M14.4 4.4 C20 3 27.4 4.2 29.6 6.6 C29.8 11 26.4 13.6 20.4 13.8 C14.6 14 12.6 8.8 14.4 4.4 Z"/>
+    <path filter="url(#cite-bB)" fill="#A66273"
+          d="M3.4 17.4 C8 16 13.6 17.2 14.8 20 C14.4 24.4 10.4 27.4 6.4 26 C3 24.8 2 19 3.4 17.4 Z"/>
+  </g>
+  <!-- the text -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.3" stroke-linecap="round">
+    <path d="M14.2 6.4 C15 6.3 15.8 6.4 16.4 6.3"/>
+    <path d="M23.8 6.2 C25.4 6.1 27.4 6.3 28.6 6.2"/>
+    <path d="M14.3 11.4 C18 11 23.4 11.6 28.5 11.2"/>
+    <path d="M14.4 14.6 C17.4 14.3 21.4 14.7 24.4 14.4"/>
+  </g>
+  <!-- the citation chip -->
+  <path d="M17.2 4.8 C19.2 4.5 21.4 4.8 22.8 4.7 C23.3 5.6 23.2 6.9 22.7 7.7 C20.9 8 18.8 7.7 17.2 7.8 C16.7 7 16.7 5.6 17.2 4.8 Z"
+        fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the print it came from -->
+  <path d="M3.8 17.6 C6.8 17 10.8 17.6 13.2 17.2 C13.6 20.4 13.2 24 13.4 25.8 C10.4 26.2 6.8 25.7 4 26.1 C3.5 23 4 19.4 3.8 17.6 Z"
+        fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the tether -->
+  <path class="gest" pathLength="100"
+        d="M17.4 8.2 C15 11.6 13.6 16.4 11.8 20.6 C10.8 22 9.8 22.6 8.9 22.5"
+        fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <g class="late">
+    <circle cx="7.4" cy="22.4" r="2.15" fill="currentColor"/>
+    <path d="M9 20.9 C9.9 20 10.5 19.4 11.2 18.7"
+          fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="1.9" stroke-linecap="round"/>
+  </g>
+</svg>
