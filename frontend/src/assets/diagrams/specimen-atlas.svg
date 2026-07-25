@@ -1,0 +1,79 @@
+<svg id="s-atlas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 130" width="200" height="130" role="img" aria-label="Prints pegged along a wire; the same mark is found again in a later print, and a thread runs between them beneath.">
+  <title>Semant — Atlas specimen</title>
+  <desc>Prints pegged along a wire; the same mark is found again in a later print, and a thread runs between them beneath.</desc>
+  <style>#s-atlas{color:#1E1A1C}</style>
+  <defs>
+    <filter id="sa-bA" x="-25%" y="-25%" width="150%" height="150%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="2" seed="5" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="sa-bB" x="-25%" y="-25%" width="150%" height="150%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.036" numOctaves="2" seed="23" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#A9A0A6" stroke-width="1" stroke-linecap="round" style="opacity:var(--guide-o, 0.15)">
+    <path d="M6 6 V16"/><path d="M6 6 H16"/>
+    <path d="M194 124 V114"/><path d="M194 124 H184"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.17)">
+    <path filter="url(#sa-bA)" fill="#4E5586"
+          d="M8 16 C60 4 140 12 194 22 C196 40 168 52 100 54 C30 56 4 38 8 16 Z"/>
+    <path filter="url(#sa-bB)" fill="#A66273"
+          d="M96 62 C130 52 176 62 190 78 C192 100 166 112 132 108 C98 104 86 76 96 62 Z"/>
+  </g>
+
+  <!-- the wire -->
+  <path d="M6 20 C50 17.4 118 23 194 18.4"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <!-- pegs -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.6" stroke-linecap="round">
+    <path d="M30 19 V27"/><path d="M84 21 V29"/><path d="M148 21.4 V29.4"/>
+  </g>
+
+  <!-- print one -->
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 27 C24 26 42 27.2 52 26.4 C53 44 52.4 66 53 78 C42 79 24 78 12.6 78.8 C11.4 62 12.4 38 12 27 Z"/>
+  </g>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M18 62 C26 52 34 58 44 48"/>
+    <path d="M24 38 C28 34 34 34 38 38"/>
+  </g>
+  <circle cx="32.6" cy="55.4" r="4.4" fill="currentColor"/>
+  <path d="M35.8 52.2 C39.4 48.6 41.6 46.4 44.6 43.4"
+        fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="2.4" stroke-linecap="round"/>
+
+  <!-- print two -->
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M66 29 C78 28 96 29.2 106 28.4 C107 44 106.4 62 107 72 C96 73 78 72 66.6 72.8 C65.4 58 66.4 38 66 29 Z"/>
+  </g>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M72 58 C80 50 88 56 100 46"/>
+  </g>
+  <g fill="#6B5A66" opacity=".7">
+    <circle cx="80" cy="40" r="2"/><circle cx="90" cy="44" r="1.7"/><circle cx="96" cy="38" r="1.7"/>
+  </g>
+
+  <!-- print three -->
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128 29.4 C142 28.4 166 29.6 178 28.8 C179 46 178.4 70 179 82 C166 83 142 82 128.6 82.8 C127.4 64 128.4 40 128 29.4 Z"/>
+  </g>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M134 66 C144 56 152 62 164 50 C170 44 174 46 177 43"/>
+    <path d="M146 42 C150 38 156 38 160 42"/>
+  </g>
+  <circle cx="154.6" cy="59.4" r="4.4" fill="currentColor"/>
+  <path d="M157.8 56.2 C161.4 52.6 163.6 50.4 166.6 47.4"
+        fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="2.4" stroke-linecap="round"/>
+
+  <!-- the same mark, found again -->
+  <path d="M32.6 84 C44 100 90 108 132 100 C144 97.6 150 90 154.4 66"
+        fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+        stroke-dasharray="6 5" opacity=".65"/>
+
+  <!-- time -->
+  <g fill="none" stroke="#A9A0A6" stroke-width="1.2" stroke-linecap="round" opacity=".55">
+    <path d="M12 120 H188"/>
+    <path d="M32 116 V124"/><path d="M86 116 V124"/><path d="M154 116 V124"/>
+  </g>
+</svg>

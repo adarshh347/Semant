@@ -1,0 +1,111 @@
+<svg id="x-runtime" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" width="720" height="300" role="img" aria-label="Four kinds of actor work through one bounded runtime onto a single chain of perceptual state, which the three working surfaces read.">
+  <title>Semant — The Perceptual Runtime</title>
+  <desc>Four kinds of actor work through one bounded runtime onto a single chain of perceptual state, which the three working surfaces read.</desc>
+  <style>
+    #x-runtime{color:#1E1A1C}
+    #x-runtime text{font-family:'Spline Sans Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+                    font-size:9px;letter-spacing:.14em;text-transform:uppercase;fill:#6B5A66}
+    #x-runtime .lo{fill:#A9A0A6;letter-spacing:.16em}
+    #x-runtime .hi{fill:#1E1A1C}
+  </style>
+  <defs>
+    <filter id="xr-bA" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.009" numOctaves="2" seed="5" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="22" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="xr-bB" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="23" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+
+  <g fill="none" stroke="#A9A0A6" stroke-width="1" stroke-linecap="round" style="opacity:var(--guide-o, 0.15)">
+    <path d="M10 12 V28"/><path d="M10 12 H26"/>
+    <path d="M710 288 V272"/><path d="M710 288 H694"/>
+    <path d="M360 8 V292"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.15)">
+    <path filter="url(#xr-bA)" fill="#6B5391"
+          d="M96 78 C240 58 500 66 626 84 C640 122 610 158 400 166 C180 174 82 140 96 78 Z"/>
+    <path filter="url(#xr-bB)" fill="#A66273"
+          d="M120 196 C260 182 480 190 600 202 C610 224 570 242 380 246 C180 250 110 226 120 196 Z"/>
+  </g>
+
+  <!-- the actors -->
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M104 22 C112 18 122 20 126 27 C122 34 112 36 104 32 C100 28 100 25 104 22 Z"/>
+    <path d="M258 20 C268 18 280 20 284 26 C284 32 278 36 268 35 C258 34 254 26 258 20 Z"/>
+    <path d="M420 20 C430 17 442 19 446 26"/>
+    <path d="M420 33 C430 36 442 34 446 27"/>
+    <path d="M578 20 C586 18 594 20 596 26 C596 32 590 35 582 34"/>
+    <path d="M578 34 C586 34 592 30 594 26"/>
+  </g>
+  <text x="98" y="52">Human</text>
+  <text x="252" y="52">Language model</text>
+  <text x="414" y="52">Vision model</text>
+  <text x="572" y="52">Specialist</text>
+
+  <!-- everything routes through the same door -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M116 60 C124 68 132 76 150 84"/>
+    <path d="M270 60 C272 70 274 76 278 84"/>
+    <path d="M432 60 C430 70 428 76 424 84"/>
+    <path d="M586 60 C578 68 568 76 552 84"/>
+  </g>
+
+  <!-- the runtime -->
+  <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M92 86 C220 82.6 460 87 628 84.4"/>
+    <path d="M627.6 84.8 C630 108 628.4 140 629 162"/>
+    <path d="M628.6 162.6 C460 165.6 220 161.4 92 164.6"/>
+    <path d="M93 164 C90.6 140 92.2 108 91.6 85"/>
+  </g>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.4" stroke-linecap="round" opacity=".55">
+    <path d="M270 92 C272 112 270 140 271 158"/>
+    <path d="M450 92 C452 112 450 140 451 158"/>
+    <path d="M96 124 C220 121 460 126 626 123"/>
+  </g>
+  <text class="hi" x="118" y="112">Inquiry state</text>
+  <text class="hi" x="296" y="112">Capability routing</text>
+  <text class="hi" x="476" y="112">Evidence transactions</text>
+  <text class="hi" x="118" y="150">Operation grammar</text>
+  <text class="hi" x="296" y="150">Conflict control</text>
+  <text class="hi" x="476" y="150">Replay &amp; rehearsal</text>
+
+  <path d="M360 166 C359 176 361 184 360 192"
+        fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- the chain it keeps -->
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M126 200 C134 199.2 144 200 150 199.4 C151 208 150.4 218 151 224 C142 224.8 132 224 126.6 224.6 C125.4 216 126.4 206 126 200 Z"/>
+    <path d="M228 206 C236 199 250 201.4 253 210 C256 220 247 230 238 227.6 C229 225.2 224 212 228 206 Z"/>
+    <path d="M340 202 C334 201.6 331.6 204 332 208 C332.6 214 332 220 332.4 223 C332.8 226 335 227.6 339 226.8"/>
+    <path d="M372 201.6 C378 201.4 380.4 203.6 380 207.6 C379.4 213.6 380 219.6 379.6 222.6 C379.2 225.6 377 227.2 373 226.4"/>
+  </g>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M152 212 C166 211 186 213 222 212"/>
+    <path d="M256 212 C272 211 296 213 328 212"/>
+    <path d="M382 212 C392 211.4 398 212.4 404 211.8"/>
+    <path d="M462 212 C480 211 500 213 524 212"/>
+    <path d="M528 206 C548 205 574 207 596 206"/>
+    <path d="M528 218 C544 217 564 219 582 218"/>
+  </g>
+  <circle cx="440" cy="211.6" r="7" fill="currentColor"/>
+  <path d="M445 206.6 C451 200.6 455 196.6 460 191.6"
+        fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="2.4" stroke-linecap="round"/>
+  <text class="lo" x="120" y="244">Source</text>
+  <text class="lo" x="222" y="244">Region</text>
+  <text class="lo" x="326" y="244">Ground</text>
+  <text class="lo" x="418" y="244">Percept</text>
+  <text class="lo" x="526" y="244">Mention</text>
+
+  <!-- the surfaces that read it -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M200 252 C202 262 204 268 208 274"/>
+    <path d="M360 252 C361 262 359 268 360 274"/>
+    <path d="M520 252 C518 262 516 268 512 274"/>
+  </g>
+  <text x="168" y="290">Differential</text>
+  <text x="330" y="290">Manuscript</text>
+  <text x="494" y="290">Atlas</text>
+</svg>

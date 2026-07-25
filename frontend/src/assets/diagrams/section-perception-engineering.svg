@@ -1,0 +1,95 @@
+<svg id="x-pe" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" width="720" height="300" role="img" aria-label="One arriving stroke threads through attunement, a chosen ground, an operation and bound evidence, composes, and leaves a mark that can be returned to.">
+  <title>Semant — Perception engineering</title>
+  <desc>One arriving stroke threads through attunement, a chosen ground, an operation and bound evidence, composes, and leaves a mark that can be returned to.</desc>
+  <style>
+    #x-pe{color:#1E1A1C}
+    #x-pe text{font-family:'Spline Sans Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+               font-size:9px;letter-spacing:.14em;text-transform:uppercase;fill:#6B5A66}
+    #x-pe .lo{fill:#A9A0A6;letter-spacing:.16em}
+    #x-pe .thread{stroke-dasharray:100}
+    @media (prefers-reduced-motion: no-preference){
+      #x-pe:hover .thread, #x-pe.play .thread{ animation:pe-draw 1.5s cubic-bezier(.5,.02,.22,1) }
+      #x-pe:hover .s1, #x-pe.play .s1{ animation:pe-in .4s ease-out .25s backwards }
+      #x-pe:hover .s2, #x-pe.play .s2{ animation:pe-in .4s ease-out .50s backwards }
+      #x-pe:hover .s3, #x-pe.play .s3{ animation:pe-in .4s ease-out .75s backwards }
+      #x-pe:hover .s4, #x-pe.play .s4{ animation:pe-in .4s ease-out 1.00s backwards }
+      #x-pe:hover .s5, #x-pe.play .s5{ animation:pe-in .5s ease-out 1.30s backwards }
+      @keyframes pe-draw{ from{stroke-dashoffset:100} to{stroke-dashoffset:0} }
+      @keyframes pe-in{ from{opacity:0} to{opacity:1} }
+    }
+  </style>
+  <defs>
+    <filter id="xp-bA" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.009" numOctaves="2" seed="13" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="22" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="xp-bB" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="37" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+
+  <g fill="none" stroke="#A9A0A6" stroke-width="1" stroke-linecap="round" style="opacity:var(--guide-o, 0.15)">
+    <path d="M10 12 V28"/><path d="M10 12 H26"/>
+    <path d="M710 288 V272"/><path d="M710 288 H694"/>
+    <path d="M14 150 H706"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.15)">
+    <path filter="url(#xp-bA)" fill="#6B5391"
+          d="M20 30 C160 10 340 48 420 96 C400 140 300 148 180 120 C60 92 6 60 20 30 Z"/>
+    <path filter="url(#xp-bB)" fill="#A66273"
+          d="M430 150 C540 128 660 152 700 190 C688 232 600 250 512 226 C424 202 412 172 430 150 Z"/>
+  </g>
+
+  <!-- the arrival, threading through -->
+  <path class="thread" pathLength="100"
+        d="M14 34 C90 46 150 66 196 92 C242 118 268 126 316 130 C368 134 402 148 436 172 C470 196 502 206 546 208"
+        fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+
+  <!-- attune -->
+  <g class="s1">
+    <path d="M186 74 C192 82 195 86 199 92 C204 87 208 82 214 74"
+          fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="168" y="64">Attune</text>
+  </g>
+
+  <!-- choose a ground -->
+  <g class="s2">
+    <path d="M300 112 C308 104 322 106 325 114 C328 123 319 132 310 130 C301 128 296 118 300 112 Z"
+          fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="284" y="100">Select a ground</text>
+  </g>
+
+  <!-- operate -->
+  <g class="s3">
+    <path d="M410 152 C404 151.6 401.6 154 402 158 C402.6 164 402 170 402.4 173 C402.8 176 405 177.6 409 176.8"
+          fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M442 151.6 C448 151.4 450.4 153.6 450 157.6 C449.4 163.6 450 169.6 449.6 172.6 C449.2 175.6 447 177.2 443 176.4"
+          fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    <text x="398" y="140">Operate</text>
+  </g>
+
+  <!-- bind evidence -->
+  <g class="s4">
+    <g fill="#6B5A66">
+      <circle cx="486" cy="192" r="2.6"/><circle cx="498" cy="186" r="2.2"/>
+      <circle cx="504" cy="196" r="2.6"/><circle cx="492" cy="200" r="2"/>
+    </g>
+    <path d="M478 208 C490 206 506 208 518 206"
+          fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="470" y="176">Bind evidence</text>
+  </g>
+
+  <!-- compose, and keep -->
+  <g class="s5">
+    <path d="M556 200 C574 194 604 198 616 210 C620 226 604 240 582 238 C558 236 546 212 556 200 Z"
+          fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="584" cy="216" r="7.5" fill="currentColor"/>
+    <path d="M589.4 210.6 C596 204 600.4 199.6 606 194"
+          fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M620 222 C640 226 656 240 650 254 C645 265 630 264 628 254 C627 247 634 243 639 247"
+          fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    <text x="548" y="188">Compose</text>
+    <text class="lo" x="614" y="284">A mark that can be returned to</text>
+  </g>
+</svg>

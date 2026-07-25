@@ -1,0 +1,46 @@
+<svg id="g-verb-challenge" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Two strokes crossing on paper; neither one erases the other.">
+  <title>Semant — Challenge</title>
+  <desc>Two strokes crossing on paper; neither one erases the other.</desc>
+  <style>
+    #g-verb-challenge{color:#1E1A1C}
+    #g-verb-challenge .gest{stroke-dasharray:100}
+    @media (prefers-reduced-motion: no-preference){
+      #g-verb-challenge:hover .gest, #g-verb-challenge:focus-within .gest, #g-verb-challenge.play .gest{ animation:chal-draw .68s cubic-bezier(.5,.02,.24,1) }
+      @keyframes chal-draw{ from{stroke-dashoffset:-100} to{stroke-dashoffset:0} }
+    }
+  </style>
+  <defs>
+    <filter id="challenge-bA" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="challenge-bB" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.16" numOctaves="2" seed="21" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#A9A0A6" stroke-width="0.9" stroke-linecap="round" style="opacity:var(--guide-o, 0.16)">
+    <path d="M13.6 12.4 L18.2 17"/><path d="M18.2 12.4 L13.6 17"/>
+    <path d="M2 5.4 V8"/><path d="M2 5.4 H4.6"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.18)">
+    <path filter="url(#challenge-bA)" fill="#8E3F6A"
+          d="M3.4 8.4 C11 6.6 23 7.8 30 9.6 C30.2 13 25.4 15.4 16.4 15.6 C7.4 15.8 2.4 12.8 3.4 8.4 Z"/>
+    <path filter="url(#challenge-bB)" fill="#4E5586"
+          d="M3.4 17.6 C11 15.8 23 17 30 18.8 C30.2 22.6 25.4 25.4 16.4 25.6 C7.4 25.8 2.4 22 3.4 17.6 Z"/>
+  </g>
+  <!-- the paper -->
+  <path d="M3.4 26.6 C11 25.8 23 26.8 29.6 26"
+        fill="none" stroke="#6B5A66" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>
+  <!-- the reading -->
+  <path d="M4.4 9.6 C11 11.4 19 15.6 26.4 19.8"
+        fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+  <!-- the counter-reading, arriving from the other side -->
+  <path class="gest" pathLength="100"
+        d="M27.2 9.2 C21 11.6 12.6 16 5.2 20.4"
+        fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+  <!-- what is kept regardless -->
+  <circle cx="11.4" cy="12.5" r="2.1" fill="currentColor"/>
+  <path d="M13 11 C14 10 14.7 9.3 15.5 8.5"
+        fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="1.9" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,49 @@
+<svg id="d-passage" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 40" width="88" height="40" role="img" aria-label="Three capabilities route into one manifest, cross a single slot, and leave one traceable mark.">
+  <title>Semant — Through the passage</title>
+  <desc>Three capabilities route into one manifest, cross a single slot, and leave one traceable mark.</desc>
+  <style>#d-passage{color:#1E1A1C}</style>
+  <defs>
+    <filter id="dp-b" x="-25%" y="-40%" width="150%" height="180%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="2" seed="26" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#A9A0A6" stroke-width="0.9" stroke-linecap="round" style="opacity:var(--guide-o, 0.16)">
+    <path d="M55.6 3 V37"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.16)">
+    <path filter="url(#dp-b)" fill="#6F5E90"
+          d="M22 12 C34 9 48 11 52 14 C51 22 44 28 32 27 C20 26 18 16 22 12 Z"/>
+    <path filter="url(#dp-b)" fill="#A9634A"
+          d="M60 14 C70 11 84 13 86 17 C85 25 76 30 66 28 C58 26.4 57 16 60 14 Z"/>
+  </g>
+  <!-- routed in -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M4 8 C10 10 16 14 21 17"/>
+    <path d="M4 20 C10 19.6 16 19.8 21 19.6"/>
+    <path d="M4 32 C10 30 16 26 21 22.4"/>
+  </g>
+  <!-- the manifest -->
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22.6 13.4 C28 12.8 38 13.6 44.6 13"/>
+    <path d="M44.4 13.2 C45 17 44.4 22 44.8 25.4"/>
+    <path d="M44.6 25.6 C38 26.2 28 25.4 22.6 26"/>
+    <path d="M23 25.8 C22.4 22 23 17 22.4 13.2"/>
+    <path d="M23 13.8 C28 17.6 31 19.6 33.6 20.6 C36 19.6 40 17 44.4 13.6"/>
+  </g>
+  <!-- the plate, broken by one slot -->
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+    <path d="M56 4.6 C55.4 8 56.2 11 55.7 13.4"/>
+    <path d="M55.7 25.6 C56.2 28.6 55.4 32 56 35.4"/>
+  </g>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M52.6 13.5 C53.8 13.4 57 13.5 58.6 13.4"/>
+    <path d="M52.6 25.5 C53.8 25.6 57 25.5 58.6 25.4"/>
+  </g>
+  <!-- and out -->
+  <path d="M58 19.6 C62 19.4 65 19.6 68 19.4"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="71.4" cy="19.4" r="3.5" fill="currentColor"/>
+  <path d="M74 16.8 C76 14.8 77.2 13.6 78.8 12"
+        fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,45 @@
+<svg id="d-state-chain" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 40" width="88" height="40" role="img" aria-label="A print becomes a region, is typed, becomes a mark, and is spoken of in a line of text.">
+  <title>Semant — State chain</title>
+  <desc>A print becomes a region, is typed as a ground, becomes a mark, and is spoken of in a line of text.</desc>
+  <style>#d-state-chain{color:#1E1A1C}</style>
+  <defs>
+    <filter id="dsc-b" x="-25%" y="-40%" width="150%" height="180%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="2" seed="6" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#A9A0A6" stroke-width="0.8" stroke-linecap="round" style="opacity:var(--guide-o, 0.16)">
+    <path d="M2 20.2 H86"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.16)">
+    <path filter="url(#dsc-b)" fill="#6B5391"
+          d="M5 11 C22 8 46 10 62 9 C64 15 60 20 42 21 C22 22 4 19 5 15 Z"/>
+    <path filter="url(#dsc-b)" fill="#A66273"
+          d="M52 22 C64 20 82 22 86 25 C85 30 74 33 62 31 C52 29 50 24 52 22 Z"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- the print -->
+    <path d="M6.4 11.6 C9.6 11.2 13.4 11.6 15.8 11.3 C16.2 16.4 15.8 24 16 28.2 C12.8 28.6 9.4 28.2 6.6 28.5 C6.1 23.4 6.6 15.8 6.4 11.6 Z"/>
+    <!-- the region taken from it -->
+    <path d="M27.2 15.4 C29.6 12.8 34.6 13.6 35.8 17.2 C37 21.2 33.4 25.6 29.6 24.6 C26 23.6 24.8 18.2 27.2 15.4 Z"/>
+    <!-- typed -->
+    <path d="M48.4 13.4 C46.2 13.2 45.4 14.2 45.6 15.9 C45.9 18.4 45.5 22.2 45.7 24.4 C45.9 26 46.8 26.9 48.6 26.5"/>
+    <path d="M55.4 13.2 C57.6 13.1 58.5 14 58.3 15.7 C58 18.2 58.4 22 58.2 24.2 C58 25.8 57.1 26.7 55.4 26.3"/>
+  </g>
+  <!-- the links -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.4" stroke-linecap="round">
+    <path d="M17.2 20 C19.4 19.6 21.6 20.3 24.4 19.9"/>
+    <path d="M37.4 20 C39.4 19.7 41.2 20.3 43.8 19.9"/>
+    <path d="M59.2 20 C60.2 19.8 60.8 20.1 61.6 19.9"/>
+    <path d="M68.6 20 C70.4 19.8 72 20.2 74.2 19.9"/>
+  </g>
+  <!-- the mark -->
+  <circle cx="65.4" cy="19.9" r="3.5" fill="currentColor"/>
+  <path d="M68 17.4 C70 15.4 71.2 14.2 72.8 12.6"
+        fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- spoken of -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.4" stroke-linecap="round">
+    <path d="M75.4 17.4 C78.4 17.1 82.4 17.5 85.6 17.2"/>
+    <path d="M75.6 22.6 C78 22.3 81 22.7 83.4 22.4"/>
+  </g>
+</svg>

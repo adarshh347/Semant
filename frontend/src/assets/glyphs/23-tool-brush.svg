@@ -1,0 +1,17 @@
+<svg id="g-tool-brush" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="A loaded brush laying a stroke.">
+  <title>Semant — Tool: Brush</title>
+  <desc>A loaded brush laying a stroke.</desc>
+  <style>
+    #g-tool-brush{color:#1E1A1C}
+    #g-tool-brush .mk{fill:none;stroke:var(--tick,currentColor);stroke-width:1.9;stroke-linecap:round;
+                opacity:var(--tick-o,.35)}
+  </style>
+
+  <path d="M5.8 5.4 C9 8.6 12.4 12 15.6 15.2"
+        fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+  <path d="M15.2 14.8 C17.6 15.6 19.2 17.4 19.6 20 C17 19.6 15.2 17.9 14.3 15.6 Z"
+        fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M20 20.6 C22.6 22.6 25 24.1 27.4 25.2"
+        fill="none" stroke="#6B5A66" stroke-width="1.4" stroke-linecap="round"/>
+  <path class="mk" d="M21.6 14.6 C23 13.2 24 12.2 25.2 11"/>
+</svg>

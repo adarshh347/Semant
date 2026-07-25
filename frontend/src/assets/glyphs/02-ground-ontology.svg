@@ -1,0 +1,57 @@
+<svg id="g-ground-ontology" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="A specimen tray of four compartments, each holding a differently shaped sample.">
+  <title>Semant — Ground Ontology</title>
+  <desc>A specimen tray of four compartments, each holding a differently shaped sample.</desc>
+  <style>#g-ground-ontology{color:#1E1A1C}</style>
+  <defs>
+    <filter id="ground-ontology-bA" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="ground-ontology-bB" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.16" numOctaves="2" seed="21" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+
+    <g fill="none" stroke="#A9A0A6" stroke-width="0.9" stroke-linecap="round" style="opacity:var(--guide-o, 0.16)">
+      <path d="M2.6 3.6 V6.2"/><path d="M2.6 3.6 H5.2"/>
+      <path d="M16.2 2.8 V29.2"/>
+    </g>
+    <g style="opacity:var(--wash-o, 0.18)">
+      <path filter="url(#ground-ontology-bA)" fill="#4E5586"
+            d="M4.4 7.4 C11 5.8 22 6.6 28.4 8.4 C28.6 12.4 24.4 15.4 16.4 15.6 C8.4 15.8 3.4 12.2 4.4 7.4 Z"/>
+      <path filter="url(#ground-ontology-bB)" fill="#8E3F6A"
+            d="M17.4 18.4 C22.4 17.0 27.8 18.2 29.2 20.6 C29.6 24.4 25.2 27.0 20.4 26.2 C16.4 25.5 15.8 20.8 17.4 18.4 Z"/>
+    </g>
+    <!-- the tray -->
+    <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.2 7.6 C11 6.9 21 7.7 27.9 7.1"/>
+      <path d="M27.8 7.2 C28.3 13 27.6 20.6 28.0 25.5"/>
+      <path d="M27.9 25.7 C21 26.4 11 25.6 4.2 26.2"/>
+      <path d="M4.5 26.0 C3.9 20.2 4.6 12.6 4.1 7.3"/>
+    </g>
+    <!-- compartment dividers -->
+    <g fill="none" stroke="#6B5A66" stroke-width="1.2" stroke-linecap="round">
+      <path d="M16.1 7.6 C15.7 13.4 16.4 20.4 16.0 25.8"/>
+      <path d="M4.4 16.8 C11 16.2 21 17.0 27.8 16.4"/>
+    </g>
+    <!-- sample: region -->
+    <path d="M7.8 11.6 C8.7 9.9 11.6 10.2 12.2 12.0 C12.9 14.0 10.7 15.5 9.0 14.8 C7.5 14.2 7.1 12.7 7.8 11.6 Z"
+          fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- sample: field -->
+    <g fill="currentColor">
+      <circle cx="20.4" cy="11.2" r="0.72"/><circle cx="23.2" cy="10.0" r="0.62"/>
+      <circle cx="24.8" cy="12.6" r="0.72"/><circle cx="21.6" cy="13.8" r="0.58"/>
+      <circle cx="24.0" cy="14.6" r="0.66"/><circle cx="19.4" cy="13.4" r="0.5"/>
+    </g>
+    <!-- sample: path -->
+    <path d="M7.2 22.8 C8.9 19.2 11.2 21.8 13.4 18.6"
+          fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    <!-- sample: relation, carrying the Semant mark -->
+    <path d="M19.6 23.6 C21.2 22.4 22.6 21.4 23.9 20.5"
+          fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="19.2" cy="23.9" r="1.05" fill="currentColor"/>
+    <circle cx="24.6" cy="20.0" r="1.85" fill="currentColor"/>
+    <path d="M25.8 18.6 C26.6 17.7 27.0 17.2 27.5 16.6"
+          fill="none" stroke="var(--tick,#7B2D6B)" stroke-width="1.9" stroke-linecap="round"/>
+</svg>

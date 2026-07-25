@@ -1,0 +1,51 @@
+<svg id="g-verb-notice" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="A scatter of small marks, one of them circled by hand.">
+  <title>Semant — Notice</title>
+  <desc>A scatter of small marks, one of them circled by hand.</desc>
+  <style>
+    #g-verb-notice{color:#1E1A1C}
+    #g-verb-notice .gest{stroke-dasharray:100}
+    @media (prefers-reduced-motion: no-preference){
+      #g-verb-notice:hover .gest, #g-verb-notice:focus-within .gest, #g-verb-notice.play .gest{ animation:notice-loop .78s cubic-bezier(.62,.05,.3,1) }
+      #g-verb-notice:hover .late, #g-verb-notice:focus-within .late, #g-verb-notice.play .late{ animation:notice-land .5s ease-out .34s backwards }
+      @keyframes notice-loop{ from{stroke-dashoffset:100} to{stroke-dashoffset:0} }
+      @keyframes notice-land{ from{opacity:0} to{opacity:1} }
+    }
+  </style>
+  <defs>
+    <filter id="notice-bA" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="notice-bB" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.16" numOctaves="2" seed="21" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#A9A0A6" stroke-width="0.9" stroke-linecap="round" style="opacity:var(--guide-o, 0.16)">
+    <path d="M2 4.6 V7.2"/><path d="M2 4.6 H4.6"/>
+    <path d="M30 27.4 V24.8"/><path d="M30 27.4 H27.4"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.18)">
+    <path filter="url(#notice-bA)" fill="#6B5391"
+          d="M12.4 8.4 C17.6 6.8 23.4 8.6 24.6 12.6 C25.4 17.6 21.4 21.6 16.4 21 C11.4 20.4 9.6 13 12.4 8.4 Z"/>
+    <path filter="url(#notice-bB)" fill="#8E3F6A"
+          d="M3.4 8.6 C7.6 7.2 12 8.6 12.8 11.4 C12.2 15 8 17.4 4.6 16 C2 14.9 2 10.2 3.4 8.6 Z"/>
+  </g>
+  <!-- everything else in the field -->
+  <g fill="#6B5A66" opacity=".6">
+    <circle cx="6.6" cy="10.2" r="0.75"/><circle cx="10.4" cy="7.4" r="0.62"/>
+    <circle cx="8.4" cy="14.6" r="0.7"/><circle cx="12.6" cy="23.4" r="0.66"/>
+    <circle cx="21.4" cy="24.2" r="0.72"/><circle cx="25.4" cy="18.6" r="0.6"/>
+    <circle cx="24.6" cy="8.4" r="0.66"/>
+  </g>
+  <!-- the hand-drawn circling, overshot -->
+  <path class="gest" pathLength="100"
+        d="M22.8 10 C24.6 13.2 23.2 18 19.6 19.6 C15.6 21.2 11.8 18.4 12 14.6 C12.2 10.8 15.8 8.4 19.4 9.2 C21.2 9.6 22.6 10.8 23.6 12.6"
+        fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  <!-- what was noticed -->
+  <g class="late">
+    <circle cx="17.2" cy="14.6" r="2.2" fill="currentColor"/>
+    <path d="M18.8 13 C19.9 11.9 20.6 11.2 21.4 10.4"
+          fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="1.9" stroke-linecap="round"/>
+  </g>
+</svg>
