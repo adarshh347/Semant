@@ -21,6 +21,9 @@ import { canCiteMark } from '../differential/suggestionQuarantine';
 import { crossPostReference } from '../differential/visualMarks';
 import { resolveCrossPost, crossPostNote, crossPostResolves } from '../differential/crossPost';
 import { emptyHandoff, requestHandoff, canFlush, completeHandoff, wasDelivered } from '../state/manuscriptHandoff';
+// Empty states carry an object from the glyph library, not a generic icon
+// (Mark verb — the nib — for the highlights an underline saves).
+import { ReactComponent as MarkGlyph } from '@/assets/glyphs/16-verb-mark.svg';
 import './PostDetailPage.css';
 
 // Convert plain AI text (paragraphs split by blank lines) into simple HTML blocks.
@@ -1413,18 +1416,17 @@ function PostDetailPage() {
                     </div>
                   </div>
                 ) : (!post.text_blocks || post.text_blocks.length === 0) ? (
-                  <div className="story-empty">
-                    <div className="story-empty-icon"><PenLine size={22} /></div>
-                    <h3 className="story-empty-title">No story yet</h3>
-                    <p className="story-empty-sub">
-                      This image is still silent. Write its story — then type
-                      <code>/</code> to let Sutradhar draft from what it sees.
-                    </p>
-                    <div className="story-empty-actions">
-                      <button className="story-empty-btn primary" onClick={startEditing}>
-                        <Edit size={15} /> Write the story
-                      </button>
-                    </div>
+                  // The unwritten page (lab option A): the panel itself is the
+                  // affordance — clicking (or Enter/Space) focuses the editor.
+                  <div className="story-empty" role="button" tabIndex={0}
+                    onClick={startEditing}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEditing(); } }}
+                    title="Write the story — or press / for Sutradhar">
+                    <p className="story-empty-first">This image is still silent.<span className="story-empty-caret" aria-hidden="true" /></p>
+                    <div className="story-empty-ln" aria-hidden="true" />
+                    <div className="story-empty-ln" aria-hidden="true" />
+                    <div className="story-empty-ln" aria-hidden="true" />
+                    <p className="story-empty-hint">Write &nbsp;·&nbsp; or press <b>/</b> for Sutradhar</p>
                   </div>
                 ) : (
                   <>
@@ -1483,7 +1485,7 @@ function PostDetailPage() {
 
                 {highlights.length === 0 ? (
                   <div className="empty-highlights">
-                    <Underline size={48} style={{ color: 'var(--border-medium)', marginBottom: '1rem' }} />
+                    <MarkGlyph className="empty-highlights-glyph" style={{ color: 'inherit' }} aria-hidden="true" />
                     <p>No highlights yet</p>
                     <p className="hint">Select text in the Story tab and click "Underline" to save passages here.</p>
                   </div>
