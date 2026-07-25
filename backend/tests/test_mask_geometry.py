@@ -255,3 +255,57 @@ def test_strokes_below_threshold_are_omitted():
     field, fh, fw = mg.soft_field_from_mask(rle)
     # a threshold above the field's max leaves nothing to draw
     assert mg.strokes_from_field(field, fh, fw, grid=4, threshold=1.01) == []
+
+
+# ── same-material cosine converter (CIRCUIT-001 P6-B) ────────────────────────
+# A seed patch feature vs a grid of patch features → a cosine "same material" field.
+
+def _grid_of(vectors):
+    """A flat row-major list of patch vectors; grid = sqrt(len)."""
+    import math as _m
+    g = int(round(_m.sqrt(len(vectors))))
+    return vectors, g
+
+
+def test_cosine_field_is_one_at_the_seed_and_normalized():
+    # 2×2 grid: two vectors point one way ("material A"), two another ("material B").
+    a, b = [1.0, 0.0], [0.0, 1.0]
+    vecs, g = _grid_of([a, a, b, b])
+    field, gh, gw = mg.cosine_field_from_features(vecs, g, seed_index=0)
+    assert (gh, gw) == (2, 2)
+    assert field[0] == pytest.approx(1.0, abs=1e-9)          # self-similarity is exactly 1
+    assert field[1] == pytest.approx(1.0, abs=1e-9)          # same material → 1
+    assert field[2] == pytest.approx(0.0, abs=1e-9)          # orthogonal material → floored to 0
+    assert all(0.0 <= v <= 1.0 for v in field)               # normalized
+
+
+def test_cosine_field_is_monotone_in_similarity():
+    seed = [1.0, 0.0]
+    near = [0.9, 0.1]        # close to the seed direction
+    far = [0.2, 1.0]         # far from it
+    vecs, g = _grid_of([seed, near, far, [0.0, 1.0]])
+    field, _, _ = mg.cosine_field_from_features(vecs, g, seed_index=0)
+    assert field[0] > field[1] > field[2]                    # closer material scores higher
+
+
+def test_cosine_field_l2_normalizes_so_magnitude_does_not_matter():
+    # a scaled copy of the seed is the SAME material (cosine ignores magnitude)
+    seed = [3.0, 4.0]                 # |v| = 5
+    scaled = [30.0, 40.0]            # same direction, 10× magnitude
+    vecs, g = _grid_of([seed, scaled, [4.0, -3.0], [0.0, 0.0]])
+    field, _, _ = mg.cosine_field_from_features(vecs, g, seed_index=0)
+    assert field[1] == pytest.approx(1.0, abs=1e-9)          # scale-invariant → still 1
+    assert field[2] == pytest.approx(0.0, abs=1e-9)          # perpendicular → 0
+    assert field[3] == pytest.approx(0.0, abs=1e-9)          # a zero vector never matches
+
+
+def test_cosine_field_degenerate_inputs_return_empty():
+    assert mg.cosine_field_from_features([], 0, 0)[0] == []
+    assert mg.cosine_field_from_features([[1.0]], 2, 0)[0] == []      # too few vectors for grid=2
+    assert mg.cosine_field_from_features([[1.0], [1.0], [1.0], [1.0]], 2, 9)[0] == []  # seed OOB
+
+
+def test_field_contrast_distinguishes_crisp_from_uniform():
+    assert mg.field_contrast([1.0, 1.0, 0.0, 0.0]) == pytest.approx(1.0)
+    assert mg.field_contrast([0.7, 0.71, 0.69, 0.7]) < 0.05             # near-uniform
+    assert mg.field_contrast([]) == 0.0

@@ -482,3 +482,51 @@ def strokes_from_field(field: Sequence[float], h: int, w: int, *, grid: int = 8,
                 "op": "add",
             })
     return strokes
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# same-material converter (CIRCUIT-001 P6-B) — a seed patch's DINOv2 feature vs the
+# shared patch grid → a cosine "same material" soft field. Pure (no torch, no numpy):
+# the caller hands over the already-computed patch tokens as plain vectors (the real
+# DINOv2 tensor is `.tolist()`-ed at the boundary), so the field logic is testable with
+# a synthetic grid and never needs a GPU. The field then reuses `strokes_from_field`.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def cosine_field_from_features(patch_vectors: Sequence[Sequence[float]], grid: int,
+                               seed_index: int, *, floor: float = 0.0
+                               ) -> Tuple[List[float], int, int]:
+    """A seed patch feature vs the whole patch grid → a same-material soft field.
+
+    `patch_vectors` is a flat, row-major sequence of ``grid*grid`` feature vectors (each a list of
+    floats — the RAW DINOv2 patch tokens; this fn L2-normalizes internally). `seed_index` is the
+    flat index of the tapped patch. Returns ``(field, grid, grid)`` with the field row-major in
+    [0, 1]: the cosine similarity of every patch to the seed, floored at 0 (a material field is a
+    STRENGTH — a patch of a different material is "not this material", not negatively so). The seed
+    against itself is exactly 1.0, so the field is already normalized with its peak at the tap.
+
+    Degenerate input (bad grid, too few vectors, out-of-range seed) → an empty field, which the
+    producer reads as a refusal rather than a field to draw."""
+    n = grid * grid
+    if grid <= 0 or len(patch_vectors) < n or not (0 <= seed_index < n):
+        return [], grid, grid
+
+    def _unit(v: Sequence[float]) -> List[float]:
+        s = math.sqrt(sum(x * x for x in v)) or 1.0
+        return [x / s for x in v]
+
+    seed = _unit(patch_vectors[seed_index])
+    field: List[float] = []
+    for i in range(n):
+        p = _unit(patch_vectors[i])
+        cos = sum(a * b for a, b in zip(seed, p))
+        field.append(cos if cos > floor else floor)
+    return field, grid, grid
+
+
+def field_contrast(field: Sequence[float]) -> float:
+    """Dynamic range of a field — max minus min. A crisp material extent has high contrast; a
+    near-uniform field (everything reads like the seed, so nothing is distinguished) has almost
+    none, and the producer refuses it rather than paint the whole frame."""
+    if not field:
+        return 0.0
+    return float(max(field) - min(field))

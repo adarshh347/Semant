@@ -349,6 +349,7 @@ describe('contract v3 — region_ref (a naming reference, no mask authored)', ()
         expect(PRODUCERS).toContain('semantic_read');
         expect(PRODUCERS).toContain('find_similar');    // P5-A: the crossing producer
         expect(PRODUCERS).toContain('negative_space');  // P6-A: the first brush_field producer
+        expect(PRODUCERS).toContain('material_field');  // P6-B: DINOv2 same-material field
         expect(PRODUCERS).toContain('fixture');
     });
 });

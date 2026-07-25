@@ -223,3 +223,78 @@ def test_negative_space_list_skips_maskless_regions_and_empty_input():
     assert [d["source_ref"] for d in out] == ["reg_a", "reg_c"]      # maskless reg_b skipped
     assert ss.suggestions_from_negative_space([], run_id="run_ns") == []
     assert ss.suggestions_from_negative_space(None, run_id="run_ns") == []
+
+
+# ─────────────── PURE: producer 5 (material_field — DINOv2 same-material) ───────────────
+# Fake-driven: a synthetic patch grid stands in for DINOv2 output, so no GPU is needed in CI.
+
+def _fake_features(grid=4):
+    """A grid×grid patch grid split top/bottom into two 'materials' (A up, B down)."""
+    a, b = [1.0, 0.0], [0.0, 1.0]
+    patches = []
+    for gy in range(grid):
+        for gx in range(grid):
+            patches.append(a if gy < grid // 2 else b)
+    return {"patches": patches, "grid": grid}
+
+
+def test_material_tap_becomes_a_run_linked_brush_field_with_a_full_receipt():
+    feats = _fake_features(4)
+    # tap the top-left → material A; A fills the top half of the frame
+    d = ss.suggestion_from_material(
+        feats, (0.1, 0.1), run_id="run_mat", region_id="reg_9",
+        model="facebook/dinov2-small", checkpoint="facebook/dinov2-small",
+        preprocessing_version="dino-v1", latency_ms=18.0, peak_vram_mib=104.0)
+    assert d is not None
+    assert d["producer"] == "material_field" and d["type"] == "brush_field"
+    assert d["role"] == "material_field"
+    assert d["geometry"]["kind"] == "soft_mask"
+    strokes = d["geometry"]["strokes"]
+    assert strokes and all(s["op"] == "add" for s in strokes)
+    # the receipt is FULL — this one really inferred
+    p = d["provenance"]
+    assert p["run_id"] == "run_mat" and p["producer"] == "material_field"
+    assert p["adapter"] == "dinov2_vits14" and p["model"] == "facebook/dinov2-small"
+    assert p["checkpoint"] == "facebook/dinov2-small" and p["preprocessing_version"] == "dino-v1"
+    assert p["latency_ms"] == 18.0 and p["peak_vram_mib"] == 104.0
+    # confidence NEVER rides on the mark's provenance (contract §6) — it lives on the descriptor
+    assert "confidence" not in p
+    assert 0.0 <= d["confidence"] <= 1.0
+    # idempotency key folds the tapped patch cell → a re-tap on the same cell replaces
+    assert d["source_ref"].startswith("reg_9@")
+
+
+def test_material_confidence_is_the_field_contrast_and_stays_off_the_mark():
+    d = ss.suggestion_from_material(_fake_features(4), (0.1, 0.1), run_id="r", region_id="x")
+    # a two-material grid has full contrast → confidence ≈ 1
+    assert d["confidence"] == pytest.approx(1.0, abs=1e-6)
+    assert "confidence" not in d["provenance"]
+
+
+def test_material_refuses_no_seed_and_out_of_frame_seed():
+    feats = _fake_features(4)
+    assert ss.suggestion_from_material(feats, None, run_id="r") is None
+    assert ss.suggestion_from_material(feats, (0.5,), run_id="r") is None       # malformed
+    assert ss.suggestion_from_material(feats, (1.5, 0.2), run_id="r") is None   # outside [0,1]
+
+
+def test_material_refuses_empty_or_malformed_features():
+    assert ss.suggestion_from_material(None, (0.5, 0.5), run_id="r") is None
+    assert ss.suggestion_from_material({}, (0.5, 0.5), run_id="r") is None
+    assert ss.suggestion_from_material({"grid": 0, "patches": []}, (0.5, 0.5), run_id="r") is None
+
+
+def test_material_refuses_a_near_uniform_field():
+    # every patch is the SAME material → cosine ≈ 1 everywhere → nothing distinguished → refuse
+    grid = 4
+    uniform = {"patches": [[1.0, 0.0]] * (grid * grid), "grid": grid}
+    assert ss.suggestion_from_material(uniform, (0.5, 0.5), run_id="r") is None
+
+
+def test_material_list_skips_refusing_seeds_and_empty_input():
+    feats = _fake_features(4)
+    seeds = [(0.1, 0.1), (1.9, 0.1), (0.1, 0.9)]      # middle seed is out-of-frame → skipped
+    out = ss.suggestions_from_material(feats, seeds, run_id="r", region_id="reg_9")
+    assert len(out) == 2
+    assert ss.suggestions_from_material(feats, [], run_id="r") == []
+    assert ss.suggestions_from_material(feats, None, run_id="r") == []

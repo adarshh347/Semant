@@ -82,8 +82,12 @@ export const STROKE_OPS = ['add', 'sub'];
 // border to another post (a cross-post `region_ref`).
 // P6-A adds `negative_space`: the first brush_field producer, and the first that names no model —
 // it inverts a mask already in the packet into a soft field, so its receipt is a run_id without a
-// model/adapter (nothing was inferred, only geometry complemented).
-export const PRODUCERS = ['sam_refine', 'semantic_read', 'planner', 'find_similar', 'negative_space', 'fixture'];
+// model/adapter (nothing was inferred, only geometry complemented). P6-B adds `material_field`:
+// the first brush_field producer on a REAL model (DINOv2 same-material cosine), so its receipt is
+// full — model/adapter/checkpoint/latency — everything but `confidence`, which a mark may not hold.
+export const PRODUCERS = [
+    'sam_refine', 'semantic_read', 'planner', 'find_similar', 'negative_space', 'material_field', 'fixture',
+];
 
 // ── role vocabularies ────────────────────────────────────────────────────────
 // The first three are P2B's, imported rather than retyped. `trace_role` adds the two the

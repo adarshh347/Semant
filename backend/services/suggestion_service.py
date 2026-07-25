@@ -21,7 +21,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from backend.services.mask_geometry import (rle_is_valid, soft_field_from_mask,
+from backend.services.mask_geometry import (cosine_field_from_features, field_contrast,
+                                            rle_is_valid, soft_field_from_mask,
                                             strokes_from_field)
 
 PRODUCER_SAM = "sam_refine"
@@ -37,6 +38,13 @@ PRODUCER_FIND_SIMILAR = "find_similar"
 # by the torch +cpu regression. It occupies the PERCEPTUAL capability conceptually but needs no
 # adapter — there is nothing to infer, only geometry to invert.
 PRODUCER_NEGATIVE_SPACE = "negative_space"
+# CIRCUIT-001 P6-B — the second brush_field producer, and the FIRST on a real model. A curator taps
+# one patch; DINOv2's shared patch grid (the SAME substrate find_similar/embeddings use, reached
+# through ModelManager's GPU slot — never a second embedding path) yields a cosine same-material
+# soft field. This one DID infer, so its receipt is full (model/adapter/checkpoint/preproc/latency),
+# with one honest exception: `confidence` may never ride onto a mark (contract §6), so the field's
+# contrast travels on the descriptor instead, visible to review but never laundered into evidence.
+PRODUCER_MATERIAL = "material_field"
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -258,6 +266,97 @@ def suggestions_from_negative_space(
     for region in (regions or []):
         d = suggestion_from_negative_space(region, run_id=run_id, grid=grid,
                                            threshold=threshold, radius=radius)
+        if d:
+            out.append(d)
+    return out
+
+
+# ── producer 5: material_field — DINOv2 same-material field (CIRCUIT-001 P6-B) ─────────────────
+
+def suggestion_from_material(
+    features: Optional[Dict[str, Any]], seed_point: Any, *, run_id: Optional[str],
+    region_id: Optional[str] = None, label: Optional[str] = None,
+    model: Optional[str] = None, adapter: str = "dinov2_vits14", checkpoint: Optional[str] = None,
+    preprocessing_version: Optional[str] = None, latency_ms: Optional[float] = None,
+    peak_vram_mib: Optional[float] = None, min_contrast: float = 0.08,
+    material_threshold: float = 0.5, radius: float = 0.05, grid_sample: int = 12,
+) -> Optional[Dict[str, Any]]:
+    """A tapped patch → DINOv2 cosine same-material soft field → a ``brush_field`` /
+    ``material_field`` suggestion carrying editable ``strokes[]``.
+
+    `features` is the SHARED DINOv2 patch grid — ``{"patches": <flat row-major list of grid*grid
+    feature vectors>, "grid": int}`` — obtained through the ModelManager GPU path (the same
+    substrate ``find_similar``/embeddings use; this producer re-encodes nothing). `seed_point` is a
+    normalized ``(x, y)`` in [0, 1]: the patch the curator tapped.
+
+    This DID infer, so ``provenance`` is a FULL receipt (model / adapter / checkpoint /
+    preprocessing_version / latency_ms / peak_vram_mib) — every field the caller measured. The one
+    receipt field withheld is ``confidence``: a mark may never carry a confidence score (contract
+    §6), so the field's contrast rides the descriptor as ``confidence`` (visible to the review UX)
+    but never reaches ``provenance`` and so never lands on the minted mark.
+
+    Refusal (fail-closed): no seed / seed outside the frame → None; empty or malformed features →
+    None; a near-uniform field (contrast below ``min_contrast`` — nothing distinguishes the seed's
+    material) → None; nothing clearing the same-material threshold → None. A field is never
+    fabricated from a flat one."""
+    if not isinstance(features, dict):
+        return None
+    grid = int(features.get("grid") or 0)
+    patches = features.get("patches")
+    if grid <= 0 or not patches:
+        return None
+    if not (isinstance(seed_point, (list, tuple)) and len(seed_point) == 2):
+        return None
+    try:
+        sx, sy = float(seed_point[0]), float(seed_point[1])
+    except (TypeError, ValueError):
+        return None
+    if not (0.0 <= sx <= 1.0 and 0.0 <= sy <= 1.0):
+        return None
+
+    gx = min(grid - 1, max(0, int(sx * grid)))
+    gy = min(grid - 1, max(0, int(sy * grid)))
+    field, gh, gw = cosine_field_from_features(patches, grid, gy * grid + gx)
+    if not field:
+        return None
+    contrast = round(field_contrast(field), 4)
+    if contrast < min_contrast:
+        return None                                     # near-uniform — nothing to distinguish
+    strokes = strokes_from_field(field, gh, gw, grid=min(grid_sample, grid),
+                                 threshold=material_threshold, radius=radius)
+    if not strokes:
+        return None                                     # nothing clears the same-material threshold
+
+    # The full inference receipt — every field the caller actually measured, `confidence` excepted.
+    receipt: Dict[str, Any] = {"run_id": run_id, "producer": PRODUCER_MATERIAL, "adapter": adapter}
+    for key, val in (("model", model), ("checkpoint", checkpoint),
+                     ("preprocessing_version", preprocessing_version),
+                     ("latency_ms", latency_ms), ("peak_vram_mib", peak_vram_mib)):
+        if val is not None:
+            receipt[key] = val
+    return {
+        "producer": PRODUCER_MATERIAL,
+        "type": "brush_field",
+        "role": "material_field",
+        "label": label or "same material",
+        # idempotency: a re-tap on the SAME region + SAME patch cell replaces, never duplicates.
+        "source_ref": f"{region_id or 'img'}@{gy}:{gx}",
+        "geometry": {"kind": "soft_mask", "strokes": strokes},
+        "linked_ground_ids": [],
+        "provenance": receipt,                          # FULL receipt — but never `confidence` (§6)
+        "confidence": contrast,                         # rides the descriptor, never the mark
+    }
+
+
+def suggestions_from_material(
+    features: Optional[Dict[str, Any]], seeds: Optional[List[Any]], *, run_id: Optional[str],
+    region_id: Optional[str] = None, **kw,
+) -> List[Dict[str, Any]]:
+    """One field per seed patch. Seeds that refuse (outside the frame, or a near-uniform field) are
+    skipped; empty or malformed input yields [] — never a fabricated field."""
+    out: List[Dict[str, Any]] = []
+    for seed in (seeds or []):
+        d = suggestion_from_material(features, seed, run_id=run_id, region_id=region_id, **kw)
         if d:
             out.append(d)
     return out
