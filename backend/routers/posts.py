@@ -1757,10 +1757,83 @@ async def _produce_material_field(post_id, post, region, req, run_id):
     return ([sug] if sug else []), ("ready" if sug else "empty"), True
 
 
+def _crop_to_box(image, box: Optional[dict]):
+    """Crop a PIL image to a region's normalized bbox (or return it whole). The perceptual
+    producers read a REGION's surface, so the measurement must be scoped to it — the producer
+    maps the resulting crop-space field back into image space."""
+    if not box:
+        return image, None
+    try:
+        w, h = image.size
+        x0 = max(0, int(float(box.get("x", 0.0)) * w))
+        y0 = max(0, int(float(box.get("y", 0.0)) * h))
+        x1 = min(w, x0 + max(1, int(float(box.get("w", 1.0)) * w)))
+        y1 = min(h, y0 + max(1, int(float(box.get("h", 1.0)) * h)))
+        if x1 <= x0 or y1 <= y0:
+            return image, None
+        return image.crop((x0, y0, x1, y1)), box
+    except Exception:
+        return image, None
+
+
+# One manager + adapter for the CPU producers: no weights, so this is only about routing the
+# work through the CPU_LIGHT pool (never the GPU semaphore) with the rest of the orchestration.
+_cpu_perceptual_mgr = None
+_cpu_perceptual_adapter = None
+
+# perceptual role → the producer that reads that map. P6-E adds pressure_zone here.
+_PERCEPTUAL_MAKERS = {"rhythm": "suggestion_from_rhythm"}
+
+
+async def _produce_cpu_perceptual(post_id, post, region, req, run_id, *, role: str):
+    """CPU producers (rhythm / pressure_zone) — Gabor energy + structure-tensor coherence.
+
+    Runs the `cpu_perceptual` adapter through ModelManager on the CPU_LIGHT pool, so it never
+    acquires the GPU semaphore and can read a surface while a GPU model stays resident. No
+    weights: nothing loads, nothing unloads. A flat surface is an honest refusal."""
+    from backend.services import cpu_perceptual_service as cps
+    if not cps.is_available():
+        return [], "unavailable", False
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+    box = (region or {}).get("box")
+    crop, used_box = _crop_to_box(image, box)
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import CpuPerceptualAdapter
+    global _cpu_perceptual_mgr, _cpu_perceptual_adapter
+    if _cpu_perceptual_mgr is None:
+        _reg = AdapterRegistry()
+        _cpu_perceptual_adapter = CpuPerceptualAdapter()
+        _reg.register(_cpu_perceptual_adapter)
+        _cpu_perceptual_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _cpu_perceptual_mgr.run_adapter(
+        _cpu_perceptual_adapter, {"image": crop}, priority=int(Priority.INTERACTIVE),
+        cancel=CancelToken(), timeout_s=60.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        return [], "unavailable", False
+
+    maker = getattr(suggestion_service, _PERCEPTUAL_MAKERS[role])
+    sug = maker(job.artifact.data, run_id=run_id, region_id=(region or {}).get("id"),
+                box=used_box, latency_ms=latency_ms)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+async def _produce_rhythm(post_id, post, region, req, run_id):
+    return await _produce_cpu_perceptual(post_id, post, region, req, run_id, role="rhythm")
+
+
 # The registry: producer name → handler. Extensible — a new producer plugs in here, not a new route.
 _FIELD_PRODUCERS = {
     "negative_space": _produce_negative_space,
     "material_field": _produce_material_field,
+    "rhythm": _produce_rhythm,
 }
 
 

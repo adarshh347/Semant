@@ -85,8 +85,11 @@ export const STROKE_OPS = ['add', 'sub'];
 // model/adapter (nothing was inferred, only geometry complemented). P6-B adds `material_field`:
 // the first brush_field producer on a REAL model (DINOv2 same-material cosine), so its receipt is
 // full — model/adapter/checkpoint/latency — everything but `confidence`, which a mark may not hold.
+// P6-D adds `rhythm`: the third archetype — pure signal processing (Gabor energy), no weights at
+// all, so its receipt names an adapter but no model, like negative_space's.
 export const PRODUCERS = [
-    'sam_refine', 'semantic_read', 'planner', 'find_similar', 'negative_space', 'material_field', 'fixture',
+    'sam_refine', 'semantic_read', 'planner', 'find_similar',
+    'negative_space', 'material_field', 'rhythm', 'fixture',
 ];
 
 // ── role vocabularies ────────────────────────────────────────────────────────

@@ -309,3 +309,34 @@ def test_field_contrast_distinguishes_crisp_from_uniform():
     assert mg.field_contrast([1.0, 1.0, 0.0, 0.0]) == pytest.approx(1.0)
     assert mg.field_contrast([0.7, 0.71, 0.69, 0.7]) < 0.05             # near-uniform
     assert mg.field_contrast([]) == 0.0
+
+
+# ── response-map converter (CIRCUIT-001 P6-D) ────────────────────────────────
+# Gabor energy / structure-tensor coherence / depth are all magnitudes → one normalizer.
+
+def test_soft_field_from_map_normalizes_to_unit_range():
+    vals = [0.0, 5.0, 10.0, 2.5]          # 2×2 grid
+    field, gh, gw = mg.soft_field_from_map(vals, 2)
+    assert (gh, gw) == (2, 2)
+    assert field[0] == pytest.approx(0.0)      # min → 0
+    assert field[2] == pytest.approx(1.0)      # max → 1
+    assert field[3] == pytest.approx(0.25)     # linear in between
+    assert all(0.0 <= v <= 1.0 for v in field)
+
+
+def test_soft_field_from_map_flat_input_draws_nothing():
+    # a flat surface has nothing standing out — the honest field is all-zero, not all-one
+    field, _, _ = mg.soft_field_from_map([3.0, 3.0, 3.0, 3.0], 2)
+    assert field == [0.0, 0.0, 0.0, 0.0]
+    assert mg.field_contrast(field) == 0.0
+
+
+def test_soft_field_from_map_degenerate_inputs_return_empty():
+    assert mg.soft_field_from_map([], 0)[0] == []
+    assert mg.soft_field_from_map([1.0, 2.0], 2)[0] == []      # too few values for grid=2
+
+
+def test_soft_field_from_map_is_monotone_in_the_measurement():
+    vals = [1.0, 2.0, 3.0, 4.0]
+    field, _, _ = mg.soft_field_from_map(vals, 2)
+    assert field[0] < field[1] < field[2] < field[3]

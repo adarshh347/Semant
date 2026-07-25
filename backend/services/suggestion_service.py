@@ -22,8 +22,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from backend.services.mask_geometry import (cosine_field_from_features, field_contrast,
-                                            rle_is_valid, soft_field_from_mask,
-                                            strokes_from_field)
+                                            rle_is_valid, soft_field_from_map,
+                                            soft_field_from_mask, strokes_from_field)
 
 PRODUCER_SAM = "sam_refine"
 PRODUCER_SEMANTIC = "semantic_read"
@@ -45,6 +45,12 @@ PRODUCER_NEGATIVE_SPACE = "negative_space"
 # with one honest exception: `confidence` may never ride onto a mark (contract §6), so the field's
 # contrast travels on the descriptor instead, visible to review but never laundered into evidence.
 PRODUCER_MATERIAL = "material_field"
+# CIRCUIT-001 P6-D — the third producer ARCHETYPE: pure signal processing. negative_space reads
+# a mask that already exists; material_field reads a learned embedding; rhythm reads the image
+# signal itself (Gabor energy over a region's crop). No weights, no GPU — so its receipt is
+# deterministic like negative_space's (adapter + latency, but NO model/checkpoint: nothing was
+# inferred, only measured).
+PRODUCER_RHYTHM = "rhythm"
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -360,3 +366,127 @@ def suggestions_from_material(
         if d:
             out.append(d)
     return out
+
+
+# ── producer 6: rhythm — cpu_perceptual, no model at all (CIRCUIT-001 P6-D) ────────────────────
+
+def _remap_strokes_into_box(strokes: List[Dict[str, Any]], box: Optional[Dict[str, Any]]
+                            ) -> List[Dict[str, Any]]:
+    """Strokes measured over a CROP are normalized to that crop; the mark lives in IMAGE space.
+
+    Rescale each point by the crop's normalized bbox so a field read inside a region lands on
+    that region rather than over the whole frame. `box` absent (or full-frame) → unchanged."""
+    if not box:
+        return strokes
+    bx, by = float(box.get("x", 0.0)), float(box.get("y", 0.0))
+    bw, bh = float(box.get("w", 1.0)), float(box.get("h", 1.0))
+    if bw <= 0 or bh <= 0:
+        return strokes
+    out: List[Dict[str, Any]] = []
+    for s in strokes:
+        pts = [[round(bx + px * bw, 4), round(by + py * bh, 4)] for px, py in s.get("points", [])]
+        out.append({**s, "points": pts,
+                    # a stroke painted into a crop covers a proportionally smaller slice of the
+                    # image, so its radius shrinks with the crop rather than staying frame-sized.
+                    "radius": round(float(s.get("radius", 0.05)) * max(bw, bh), 4)})
+    return out
+
+
+def _field_descriptor(*, producer: str, role: str, label: str, source_ref: str,
+                      strokes: List[Dict[str, Any]], run_id: Optional[str], adapter: str,
+                      latency_ms: Optional[float], confidence: Optional[float]) -> Dict[str, Any]:
+    """The shared shape every DETERMINISTIC field producer emits (P6-A/P6-D/P6-E).
+
+    The receipt names an adapter and a run but NO model/checkpoint — nothing was inferred, only
+    measured — and `confidence` rides the descriptor, never `provenance` (a mark may not carry a
+    confidence score, contract §6)."""
+    receipt: Dict[str, Any] = {"run_id": run_id, "producer": producer, "adapter": adapter}
+    if latency_ms is not None:
+        receipt["latency_ms"] = latency_ms
+    d: Dict[str, Any] = {
+        "producer": producer,
+        "type": "brush_field",
+        "role": role,
+        "label": label,
+        "source_ref": source_ref,
+        "geometry": {"kind": "soft_mask", "strokes": strokes},
+        "linked_ground_ids": [],
+        "provenance": receipt,
+    }
+    if confidence is not None:
+        d["confidence"] = confidence
+    return d
+
+
+def suggestion_from_rhythm(
+    analysis: Optional[Dict[str, Any]], *, run_id: Optional[str],
+    region_id: Optional[str] = None, box: Optional[Dict[str, Any]] = None,
+    label: Optional[str] = None, latency_ms: Optional[float] = None,
+    # relative relief, not normalized contrast — see `_from_perceptual_map`. Measured against
+    # real Gabor output: a hard-striped surface reads ≈0.18, a blank one 0.00, so 0.05 separates
+    # "something repeats here" from "this is a flat wall" without demanding a test pattern.
+    min_contrast: float = 0.05, threshold: float = 0.55, radius: float = 0.05,
+    grid_sample: int = 12,
+) -> Optional[Dict[str, Any]]:
+    """A cpu_perceptual reading → a ``brush_field`` / ``rhythm`` soft-field suggestion.
+
+    `analysis` is the adapter's output — ``{"energy": [...], "grid": n}`` — measured over the
+    region's crop. Gabor energy is high where something REPEATS, so the normalized field marks
+    where the repetition lives; `box` maps that crop-space field back onto the image.
+
+    Refusal (fail-closed): no analysis, an empty/short map, a flat surface (contrast below
+    ``min_contrast`` — nothing repeats, so there is no rhythm to claim), or nothing clearing the
+    threshold → None. Rhythm is never fabricated from a flat wall."""
+    return _from_perceptual_map(
+        analysis, key="energy", producer=PRODUCER_RHYTHM, role="rhythm",
+        default_label="rhythm — where something repeats", run_id=run_id, region_id=region_id,
+        box=box, label=label, latency_ms=latency_ms, min_contrast=min_contrast,
+        threshold=threshold, radius=radius, grid_sample=grid_sample)
+
+
+def _from_perceptual_map(
+    analysis: Optional[Dict[str, Any]], *, key: str, producer: str, role: str,
+    default_label: str, run_id: Optional[str], region_id: Optional[str],
+    box: Optional[Dict[str, Any]], label: Optional[str], latency_ms: Optional[float],
+    min_contrast: float, threshold: float, radius: float, grid_sample: int,
+) -> Optional[Dict[str, Any]]:
+    """Shared body for the cpu_perceptual producers — one map key per perceptual role."""
+    if not isinstance(analysis, dict):
+        return None
+    grid = int(analysis.get("grid") or 0)
+    values = analysis.get(key)
+    if grid <= 0 or not values or len(values) < grid * grid:
+        return None
+
+    # The degeneracy test must run on the RAW magnitudes, not the normalized field. Min-max
+    # normalization rescales whatever it is given to span [0,1], so a normalized field's contrast
+    # is ~1.0 for ANY input that is not exactly constant — including a blank wall with a whisper
+    # of sensor noise, which would then be painted as confident rhythm. The honest measure is
+    # RELATIVE RELIEF: how large the variation is against the magnitude it varies within.
+    raw = [float(v) for v in list(values)[:grid * grid]]
+    hi, lo = max(raw), min(raw)
+    relief = (hi - lo) / (abs(hi) + 1e-9)
+    if relief < min_contrast:
+        return None                                  # flat / near-uniform → nothing to say
+
+    field, gh, gw = soft_field_from_map(raw, grid)
+    if not field:
+        return None
+    strokes = strokes_from_field(field, gh, gw, grid=min(grid_sample, grid),
+                                 threshold=threshold, radius=radius)
+    if not strokes:
+        return None
+    strokes = _remap_strokes_into_box(strokes, box)
+    return _field_descriptor(
+        producer=producer, role=role, label=label or default_label,
+        source_ref=f"{region_id or 'img'}:{role}", strokes=strokes, run_id=run_id,
+        adapter="cpu_perceptual", latency_ms=latency_ms,
+        confidence=round(min(1.0, max(0.0, relief)), 4))
+
+
+def suggestions_from_rhythm(
+    analysis: Optional[Dict[str, Any]], *, run_id: Optional[str], **kw
+) -> List[Dict[str, Any]]:
+    """The list form — one rhythm field, or [] when the surface refuses to have one."""
+    d = suggestion_from_rhythm(analysis, run_id=run_id, **kw)
+    return [d] if d else []

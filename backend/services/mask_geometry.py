@@ -530,3 +530,32 @@ def field_contrast(field: Sequence[float]) -> float:
     if not field:
         return 0.0
     return float(max(field) - min(field))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# response-map converter (CIRCUIT-001 P6-D) — the generic "a measurement over the
+# image → a soft field" step. Gabor energy, structure-tensor coherence, and later a
+# depth map are all just per-cell magnitudes; normalizing them is one operation, so it
+# lives here once rather than once per producer. Pure: plain floats in, floats out — no
+# cv2, no numpy, so the field logic is testable without any of the CPU vision stack.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def soft_field_from_map(values: Sequence[float], grid: int) -> Tuple[List[float], int, int]:
+    """A raw response map (``grid*grid`` magnitudes, row-major) → a normalized [0,1] soft field.
+
+    Min-max scaled, so the strongest cell reads 1.0 and the weakest 0.0 — the field says
+    "strong HERE relative to the rest of what was read", which is the only claim a magnitude
+    can honestly support. Degenerate input (bad grid, wrong length) → an empty field, which the
+    producer reads as a refusal.
+
+    Note a flat map normalizes to all-zeros rather than all-ones: when nothing varies, nothing
+    stands out, and the honest field is empty rather than a wash over everything."""
+    n = grid * grid
+    if grid <= 0 or len(values) < n:
+        return [], grid, grid
+    vals = [float(v) for v in values[:n]]
+    lo, hi = min(vals), max(vals)
+    span = hi - lo
+    if span <= 1e-12:
+        return [0.0] * n, grid, grid           # nothing varies → nothing to draw
+    return [(v - lo) / span for v in vals], grid, grid

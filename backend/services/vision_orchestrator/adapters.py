@@ -483,3 +483,62 @@ class Dinov2FeatureAdapter:
         # the artifact carries the shared patch grid (in-memory tensors) — fanned out to poolers.
         return JobResult(JobStatus.SUCCEEDED,
                          artifact=VisionArtifact("feature", features, prov), provenance=prov)
+
+
+# ── P6-D: cpu_perceptual — the no-model adapter (CIRCUIT-001) ─────────────────────────────
+class CpuPerceptualAdapter:
+    """The `PERCEPTUAL` adapter — Gabor energy + structure-tensor coherence on the CPU_LIGHT
+    pool. It is the roster's only adapter with NO weights: nothing to download, nothing to
+    load, nothing to evict. That is the point — declaring `ResourceKind.CPU_LIGHT` means the
+    manager acquires the light CPU pool and NEVER the GPU semaphore, so a rhythm reading runs
+    alongside a resident DINOv2/SAM instead of taking the slot away from it.
+
+    This is the adapter `planner.py`'s `cheap_signals` job has always named; registering it
+    under exactly `cpu_perceptual` makes that existing reference resolve."""
+
+    def __init__(self) -> None:
+        from backend.services import cpu_perceptual_service
+        self._svc = cpu_perceptual_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="cpu_perceptual", capability=Capability.PERCEPTUAL,
+            resource=ResourceKind.CPU_LIGHT,          # ← never the GPU pool
+            model_id="opencv+numpy", license="BSD/Apache (OpenCV + numpy)",
+            preprocessing_version=cpu_perceptual_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import cpu_perceptual_service as c
+            return c.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        return 0.0            # no weights — loading is a no-op, and costs nothing
+
+    async def unload(self) -> None:
+        return None           # nothing resident to free
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        t0 = time.perf_counter()
+        maps = await asyncio.to_thread(self._svc.analyze, image)
+        prov = Provenance(adapter=self.spec.name, device="cpu",
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if maps is None:
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("perceptual", maps, prov), provenance=prov)

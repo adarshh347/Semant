@@ -407,3 +407,161 @@ def test_produce_field_material_without_a_seed_refuses_honestly(monkeypatch):
     resp = run(R.produce_field(str(posts.post["_id"]),
                                R.ProduceFieldRequest(producer="material_field", region_id="reg_m")))
     assert resp["status"] == "empty" and resp["suggestions"] == []   # no tap → honest nothing
+
+
+# ─────────── PURE: producer 6 (rhythm — cpu_perceptual, no model at all) ───────────
+# Synthetic maps stand in for the Gabor bank: the field logic needs no cv2 in CI.
+
+def _rhythm_analysis(grid=4, textured=True):
+    """A patterned energy map (alternating strong/weak) or a flat one."""
+    if not textured:
+        return {"energy": [0.5] * (grid * grid), "coherence": [0.5] * (grid * grid), "grid": grid}
+    energy = [(0.9 if (i % 2 == 0) else 0.05) for i in range(grid * grid)]
+    return {"energy": energy, "coherence": list(energy), "grid": grid}
+
+
+def test_rhythm_becomes_a_run_linked_brush_field_with_a_no_model_receipt():
+    d = ss.suggestion_from_rhythm(_rhythm_analysis(), run_id="run_r", region_id="reg_t",
+                                  latency_ms=12.5)
+    assert d is not None
+    assert d["producer"] == "rhythm" and d["type"] == "brush_field" and d["role"] == "rhythm"
+    assert d["geometry"]["kind"] == "soft_mask"
+    assert d["geometry"]["strokes"] and all(s["op"] == "add" for s in d["geometry"]["strokes"])
+    p = d["provenance"]
+    # deterministic receipt: an adapter + a run + latency, but NOTHING was inferred
+    assert p["run_id"] == "run_r" and p["producer"] == "rhythm"
+    assert p["adapter"] == "cpu_perceptual" and p["latency_ms"] == 12.5
+    assert "model" not in p and "checkpoint" not in p
+    assert "confidence" not in p                      # never on the mark (contract §6)
+    assert d["source_ref"] == "reg_t:rhythm"
+
+
+def test_rhythm_refuses_a_flat_surface():
+    # nothing repeats on a flat wall — no rhythm may be claimed
+    assert ss.suggestion_from_rhythm(_rhythm_analysis(textured=False), run_id="r") is None
+
+
+def test_rhythm_refuses_empty_or_malformed_analysis():
+    assert ss.suggestion_from_rhythm(None, run_id="r") is None
+    assert ss.suggestion_from_rhythm({}, run_id="r") is None
+    assert ss.suggestion_from_rhythm({"grid": 0, "energy": []}, run_id="r") is None
+    assert ss.suggestion_from_rhythm({"grid": 4, "energy": [1.0, 2.0]}, run_id="r") is None
+
+
+def test_rhythm_strokes_are_remapped_into_the_regions_box():
+    box = {"x": 0.5, "y": 0.5, "w": 0.25, "h": 0.25}
+    d = ss.suggestion_from_rhythm(_rhythm_analysis(), run_id="r", region_id="reg_t", box=box)
+    for s in d["geometry"]["strokes"]:
+        x, y = s["points"][0]
+        # a field measured inside the crop lands INSIDE that crop, not over the whole frame
+        assert 0.5 <= x <= 0.75 and 0.5 <= y <= 0.75
+        assert s["radius"] <= 0.05 * 0.25 + 1e-9      # radius scales with the crop
+
+
+def test_rhythm_list_form_is_empty_on_refusal():
+    assert ss.suggestions_from_rhythm(_rhythm_analysis(textured=False), run_id="r") == []
+    assert len(ss.suggestions_from_rhythm(_rhythm_analysis(), run_id="r", region_id="x")) == 1
+
+
+# ─────────── the cpu_perceptual ADAPTER: available, and never on the GPU pool ───────────
+
+def test_cpu_perceptual_adapter_is_available_and_never_takes_the_gpu_slot():
+    from backend.services.vision_orchestrator.adapters import CpuPerceptualAdapter
+    from backend.services.vision_orchestrator.contracts import Capability, ResourceKind
+    a = CpuPerceptualAdapter()
+    assert a.spec.name == "cpu_perceptual"            # the name planner.py already references
+    assert a.spec.capability is Capability.PERCEPTUAL
+    # THE load-bearing assertion: CPU_LIGHT, so ModelManager never acquires the GPU semaphore
+    assert a.spec.resource is ResourceKind.CPU_LIGHT
+    assert a.spec.resource is not ResourceKind.GPU
+    # no weights → available wherever cv2+numpy are, and nothing to download
+    assert a.is_available() is True and a.spec.deferred is False
+    assert "opencv" in a.spec.model_id
+
+
+def test_cpu_perceptual_load_and_unload_are_free_noops():
+    from backend.services.vision_orchestrator.adapters import CpuPerceptualAdapter
+    a = CpuPerceptualAdapter()
+    assert run(a.load()) == 0.0                        # nothing to load
+    assert run(a.unload()) is None                     # nothing resident to free
+
+
+def test_planner_cheap_signals_reference_now_resolves_to_a_real_adapter():
+    """planner.py has always named `cpu_perceptual`; P6-D makes that reference real."""
+    from backend.services.vision_orchestrator import AdapterRegistry
+    from backend.services.vision_orchestrator.adapters import CpuPerceptualAdapter
+    from backend.services.vision_orchestrator.contracts import Capability
+    reg = AdapterRegistry()
+    reg.register(CpuPerceptualAdapter())
+    assert reg.get("cpu_perceptual") is not None
+    assert "cpu_perceptual" in reg.by_capability(Capability.PERCEPTUAL)
+
+
+def test_produce_field_rhythm_dispatches_through_the_generic_surface(monkeypatch):
+    """rhythm reaches the frontend through the SAME P6-C endpoint — no new route."""
+    post = {"_id": ObjectId(),
+            "region_annotations": [{"id": "reg_t", "label": "drapery",
+                                    "box": {"x": 0.25, "y": 0.25, "w": 0.5, "h": 0.5}}]}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import cpu_perceptual_service as cps
+
+    class _Img:
+        size = (100, 100)
+        def crop(self, b): return self
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(cps, "is_available", lambda: True)
+    monkeypatch.setattr(cps, "analyze", lambda image, **kw: _rhythm_analysis())
+
+    resp = run(R.produce_field(str(posts.post["_id"]),
+                               R.ProduceFieldRequest(producer="rhythm", region_id="reg_t")))
+    assert resp["available"] is True and resp["status"] == "ready"
+    sug = resp["suggestions"][0]
+    assert sug["producer"] == "rhythm" and sug["role"] == "rhythm"
+    assert sug["provenance"]["adapter"] == "cpu_perceptual"
+    assert "model" not in sug["provenance"]           # no model was involved, and it says so
+    assert posts.writes == []                          # nothing persisted
+    proj = run(svc.get_run(resp["run_id"], collection=runs))
+    assert proj["operation"] == "produce" and proj["status"] == "succeeded"
+
+
+def test_produce_field_rhythm_flat_surface_refuses_honestly(monkeypatch):
+    post = {"_id": ObjectId(), "region_annotations": [{"id": "flat", "box": {"x": 0, "y": 0, "w": 1, "h": 1}}]}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import cpu_perceptual_service as cps
+
+    class _Img:
+        size = (100, 100)
+        def crop(self, b): return self
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(cps, "is_available", lambda: True)
+    monkeypatch.setattr(cps, "analyze", lambda image, **kw: _rhythm_analysis(textured=False))
+
+    resp = run(R.produce_field(str(posts.post["_id"]),
+                               R.ProduceFieldRequest(producer="rhythm", region_id="flat")))
+    assert resp["status"] == "empty" and resp["suggestions"] == []   # honest, not an error
+    assert resp["available"] is True
+
+
+def test_rhythm_refuses_a_near_flat_surface_with_only_noise():
+    """The regression the live cv2 run exposed: min-max normalization rescales ANY non-constant
+    input to span [0,1], so a blank wall with a whisper of noise would normalize to a full-range
+    field and be painted as confident rhythm. The refusal is judged on RELATIVE RELIEF instead."""
+    grid = 4
+    # a blank surface at magnitude ~20 with ±0.02 of noise → ~0.2% relief: nothing repeats
+    noisy_flat = [20.0 + (0.02 if i % 3 == 0 else -0.01) for i in range(grid * grid)]
+    analysis = {"energy": noisy_flat, "coherence": noisy_flat, "grid": grid}
+    assert ss.suggestion_from_rhythm(analysis, run_id="r") is None
+    # and the confidence reported for a real texture is that same relative relief
+    d = ss.suggestion_from_rhythm(_rhythm_analysis(), run_id="r", region_id="x")
+    assert d["confidence"] == pytest.approx((0.9 - 0.05) / 0.9, abs=1e-3)

@@ -115,6 +115,8 @@ const FIELD_PRODUCERS = [
       hint: 'What is shaped by NOT being the selected part — the complement of its mask.' },
     { key: 'material_field', label: 'Material', needsSeed: true,
       hint: 'Tap a point on the image; DINOv2 paints everything of the same material.' },
+    { key: 'rhythm', label: 'Rhythm', needsSeed: false,
+      hint: 'Where something repeats — Gabor energy over the part\'s surface. No model, no GPU.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface

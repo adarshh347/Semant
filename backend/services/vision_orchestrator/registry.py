@@ -46,8 +46,11 @@ def default_roster() -> List[AdapterSpec]:
                     "patrickjohncyh/fashion-clip", available=False, deferred=True),
         AdapterSpec("fashion_clip_router", Capability.DOMAIN_ROUTE, ResourceKind.CPU,
                     "patrickjohncyh/fashion-clip", available=False, deferred=True),
+        # P6-D: real as of CIRCUIT-001 — `CpuPerceptualAdapter` implements this row on
+        # OpenCV + numpy alone (no scikit-image). It carries no weights, so it is the one
+        # roster entry that is available wherever the backend runs.
         AdapterSpec("cpu_perceptual", Capability.PERCEPTUAL, ResourceKind.CPU_LIGHT,
-                    "opencv+numpy+skimage", available=False, deferred=True),
+                    "opencv+numpy", available=False, deferred=True),
         AdapterSpec("cloud_vlm", Capability.SEMANTIC_ANNOTATE, ResourceKind.REMOTE,
                     "cloud-vision-language-model", available=False, deferred=True),
     ]
