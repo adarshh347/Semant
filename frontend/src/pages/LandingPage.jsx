@@ -1,5 +1,12 @@
 import React from 'react';
 import NearArrival from '../components/scene/NearArrival.jsx';
+// Playfair Display — the landing's display serif, self-hosted and subset to
+// latin (it only ever appears at display sizes). Landing-only, so it rides in
+// the landing's lazy chunk rather than the app-wide bundle. Weights used: 400
+// (normal + italic) and 500 (normal).
+import '@fontsource/playfair-display/latin-400.css';
+import '@fontsource/playfair-display/latin-400-italic.css';
+import '@fontsource/playfair-display/latin-500.css';
 import './LandingPage.css';
 
 // Verb glyphs are INLINED as components — as <img> their scoped

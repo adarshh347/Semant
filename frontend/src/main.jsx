@@ -15,6 +15,15 @@ import './index.css';
 // `.pe-scope`. Imported once here so the whole app can reference them but only
 // the landing surfaces (which wear `.pe-scope`) actually adopt the palette.
 import './styles/tokens.css';
+// Self-hosted fonts (replaces Inter + Spline Sans Mono on the app's Google Fonts
+// link — both used app-wide, so imported globally, not just on the landing).
+// Playfair Display is landing-only and self-hosted in LandingPage.jsx.
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/spline-sans-mono/400.css';
+import '@fontsource/spline-sans-mono/500.css';
 
 // Route pages are code-split (React.lazy) so a navigation resolves its chunk
 // behind the branded RouteFallback (App.jsx) instead of loading the whole app
