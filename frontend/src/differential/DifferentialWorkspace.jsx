@@ -11,6 +11,7 @@ import useMaskRefine from './useMaskRefine';
 import useSemanticRead from './useSemanticRead';
 import SemanticReading from './SemanticReading';
 import useFindSimilar from './useFindSimilar';
+import useProduceField from './useProduceField';
 import FindSimilar from './FindSimilar';
 import SeeingConsole from './SeeingConsole';
 import PassageRail from './PassageRail';
@@ -104,6 +105,16 @@ const TOOLS = [
     { key: 'refine', label: 'Refine', icon: RefineToolGlyph, hint: 'Select a part, then click/drag to tighten it to an exact mask' },
     { key: 'read', label: 'Read', icon: ReadToolGlyph, hint: 'Ask the model to interpret the parts — name, qualify, relate; it never moves a mask' },
     { key: 'similar', label: 'Similar', icon: SimilarToolGlyph, hint: 'Find a selected part\'s visual neighbours — research to inspect, never facts' },
+    { key: 'field', label: 'Field', icon: BrushToolGlyph, hint: 'Ask a producer for a soft field — negative space around a part, or its same-material extent from a tap' },
+];
+
+// CIRCUIT-001 P6-C — the field producers reachable from the Field tool. `negative_space` inverts a
+// selected part's mask (no model); `material_field` needs a tap on the image to seed DINOv2.
+const FIELD_PRODUCERS = [
+    { key: 'negative_space', label: 'Negative space', needsSeed: false,
+      hint: 'What is shaped by NOT being the selected part — the complement of its mask.' },
+    { key: 'material_field', label: 'Material', needsSeed: true,
+      hint: 'Tap a point on the image; DINOv2 paints everything of the same material.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface
@@ -186,6 +197,17 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
 
     // ── Similar (VISION-E · E5) — a selected part's visual neighbours (research, not fact) ──
     const similar = useFindSimilar(postId, tool === 'similar' ? selectedId : null);
+
+    // ── Field (CIRCUIT-001 P6-C) — a producer paints a soft field; results enter quarantine ──
+    const fieldProducer = useProduceField(postId, store);
+    const [fieldKind, setFieldKind] = useState('negative_space');   // which field producer is armed
+    const fieldSpec = FIELD_PRODUCERS.find((p) => p.key === fieldKind) || FIELD_PRODUCERS[0];
+    // Run the armed field producer against the selected region (+ an optional tap seed). Results are
+    // ingested into the SAME quarantine the hook feeds — nothing is drawn on the canvas here.
+    const runField = useCallback((seedPoint = null) => {
+        if (!selectedId) return;
+        fieldProducer.produce({ producer: fieldKind, regionId: selectedId, seedPoint });
+    }, [selectedId, fieldKind, fieldProducer]);
 
     // ── Find parts (CIRCUIT-001 P2) — the operation, available where composing happens ──
     const findParts = useFindParts(postId, store);
@@ -600,6 +622,10 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         } else if (tool === 'collect' && e.target.tagName === 'IMG') {
             // an empty tap plants a raw point in the constellation
             setDraft((d) => (d?.kind === 'constellation' ? { ...d, points: [...(d.points || []), { x: p.x, y: p.y }] } : d));
+        } else if (tool === 'field' && fieldSpec.needsSeed && selectedId) {
+            // P6-C: material needs a seed — the tap on the image IS the seed patch; run the producer.
+            e.preventDefault();
+            runField([p.x, p.y]);
         }
     };
 
@@ -954,7 +980,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
 
     // ── region click (tool-aware) ───────────────────────────────────────────
     const handleRegionClick = useCallback((id, e) => {
-        if (tool === 'select' || tool === 'similar') {
+        if (tool === 'select' || tool === 'similar' || tool === 'field') {
             if (e?.shiftKey && tool === 'select') setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
             else setPicked(new Set([id]));
             selectRegion(id);
@@ -1163,6 +1189,44 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     className={`diff-subtool diff-role-chip${relationRole === rk ? ' on' : ''}`}
                                     onClick={() => setRelationRole(rk)}>{roleLabel('relation_mark', rk)}</button>
                             ))}
+                        </div>
+                    )}
+
+                    {/* P6-C — the Field tool: pick a producer, select a part, and (for material) tap
+                        the image. The producer proposes a soft field into quarantine; a refusal is
+                        surfaced honestly, never as an error and never as a fabricated mark. */}
+                    {tool === 'field' && !untouched && (
+                        <div className="diff-field-panel">
+                            <div className="diff-subtools diff-brush-roles" role="radiogroup" aria-label="Field producer">
+                                {FIELD_PRODUCERS.map((p) => (
+                                    <button key={p.key} type="button" role="radio" aria-checked={fieldKind === p.key}
+                                        className={`diff-subtool diff-role-chip${fieldKind === p.key ? ' on' : ''}`}
+                                        title={p.hint}
+                                        onClick={() => { setFieldKind(p.key); fieldProducer.clear(); }}>{p.label}</button>
+                                ))}
+                            </div>
+                            <p className="diff-field-hint">
+                                {!selectedId ? 'Select a part first.'
+                                    : fieldSpec.needsSeed ? 'Tap a point on the part to seed the material field.'
+                                        : fieldSpec.hint}
+                            </p>
+                            {!fieldSpec.needsSeed && (
+                                <button type="button" className="diff-primary diff-field-run"
+                                    disabled={!selectedId || fieldProducer.status === 'loading'}
+                                    onClick={() => runField()}>
+                                    {fieldProducer.status === 'loading' ? 'Producing…' : `Find ${fieldSpec.label.toLowerCase()}`}
+                                </button>
+                            )}
+                            {/* honest status — a producer that finds nothing SAYS nothing, it never invents */}
+                            {fieldProducer.status === 'loading' && <p className="diff-field-status">Producing…</p>}
+                            {fieldProducer.status === 'empty' && (
+                                <p className="diff-field-status diff-field-empty">Nothing here — no field to propose.</p>)}
+                            {fieldProducer.status === 'unavailable' && (
+                                <p className="diff-field-status diff-field-empty">That model isn’t available right now.</p>)}
+                            {fieldProducer.status === 'error' && (
+                                <p className="diff-field-status diff-field-empty">Couldn’t reach the producer.</p>)}
+                            {fieldProducer.status === 'ready' && fieldProducer.lastRun && (
+                                <p className="diff-field-status">Proposed {fieldProducer.lastRun.count} field{fieldProducer.lastRun.count === 1 ? '' : 's'} — review below.</p>)}
                         </div>
                     )}
 

@@ -298,3 +298,112 @@ def test_material_list_skips_refusing_seeds_and_empty_input():
     assert len(out) == 2
     assert ss.suggestions_from_material(feats, [], run_id="r") == []
     assert ss.suggestions_from_material(feats, None, run_id="r") == []
+
+
+# ─────────────── ROUTE: the generic producer-invocation surface (P6-C) ───────────────
+# One endpoint reaches every field producer. Fake-driven: negative_space is CPU (real mask);
+# material is exercised by monkeypatching the DINOv2 manager path so CI needs no GPU.
+
+def _masked_post(region_id="reg_ns", h=8, w=8):
+    bits = bytearray(h * w)
+    for r in range(h):
+        for c in range(w):
+            if 2 <= r <= 5 and 2 <= c <= 5:
+                bits[r * w + c] = 1
+    rle = mg.rle_encode(bits, h, w)
+    return {"_id": ObjectId(), "region_annotations": [{"id": region_id, "label": "figure", "mask_rle": rle}]}
+
+
+def test_produce_field_unknown_producer_is_a_400(monkeypatch):
+    posts, runs = _Posts(_masked_post()), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    import pytest as _pt
+    from fastapi import HTTPException
+    with _pt.raises(HTTPException) as ei:
+        run(R.produce_field(str(posts.post["_id"]),
+                            R.ProduceFieldRequest(producer="not_a_producer", region_id="reg_ns")))
+    assert ei.value.status_code == 400
+
+
+def test_produce_field_negative_space_returns_a_run_linked_quarantined_suggestion(monkeypatch):
+    posts, runs = _Posts(_masked_post()), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+
+    resp = run(R.produce_field(str(posts.post["_id"]),
+                               R.ProduceFieldRequest(producer="negative_space", region_id="reg_ns")))
+    assert resp["available"] is True and resp["status"] == "ready"
+    assert len(resp["suggestions"]) == 1
+    sug = resp["suggestions"][0]
+    assert sug["producer"] == "negative_space" and sug["type"] == "brush_field"
+    assert sug["provenance"]["run_id"] == resp["run_id"]
+    assert posts.writes == []                                       # a suggestion is never persisted
+    proj = run(svc.get_run(resp["run_id"], collection=runs))
+    assert proj["operation"] == "produce" and proj["status"] == "succeeded"
+
+
+def test_produce_field_refusal_is_honest_not_an_error(monkeypatch):
+    # a region with NO mask → nothing to invert → status 'empty', available True, no mark, no error
+    post = {"_id": ObjectId(), "region_annotations": [{"id": "bare", "label": "no mask"}]}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+
+    resp = run(R.produce_field(str(posts.post["_id"]),
+                               R.ProduceFieldRequest(producer="negative_space", region_id="bare")))
+    assert resp["available"] is True and resp["status"] == "empty"
+    assert resp["suggestions"] == []
+    proj = run(svc.get_run(resp["run_id"], collection=runs))
+    assert proj["operation"] == "produce" and proj["status"] == "succeeded"   # honest, not failed
+
+
+def test_produce_field_material_goes_through_the_manager_and_carries_a_full_receipt(monkeypatch):
+    posts, runs = _Posts(_masked_post("reg_m")), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+
+    # stub the DINOv2 manager path — a fake two-material patch grid; CI needs no GPU
+    from backend.services import dinov2_service as dsvc
+    from backend.services import evidence_embedding_service as ees
+    monkeypatch.setattr(dsvc, "is_available", lambda: True)
+
+    class _FakePatches:
+        def __init__(self, grid):
+            a, b = [1.0, 0.0], [0.0, 1.0]
+            self._rows = [(a if (i // grid) < grid // 2 else b) for i in range(grid * grid)]
+            self.grid = grid
+        def reshape(self, n, m):                                    # mimic tensor.reshape(...).tolist()
+            return self
+        def tolist(self):
+            return self._rows
+
+    async def _fake_features(image, image_hash):
+        return {"grid": 4, "patches": _FakePatches(4)}
+    monkeypatch.setattr(ees, "_features_via_manager", _fake_features)
+    monkeypatch.setattr(ees, "_pil", lambda b: object())            # the fake features ignore the image
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+
+    resp = run(R.produce_field(str(posts.post["_id"]),
+                               R.ProduceFieldRequest(producer="material_field", region_id="reg_m",
+                                                     seed_point=[0.1, 0.1])))
+    assert resp["available"] is True and resp["status"] == "ready"
+    sug = resp["suggestions"][0]
+    assert sug["producer"] == "material_field" and sug["role"] == "material_field"
+    p = sug["provenance"]
+    assert p["run_id"] == resp["run_id"] and p["adapter"] == "dinov2_vits14"
+    assert p["model"] == dsvc.CHECKPOINT and "latency_ms" in p
+    assert "confidence" not in p                                    # never on the mark (contract §6)
+    assert posts.writes == []
+
+
+def test_produce_field_material_without_a_seed_refuses_honestly(monkeypatch):
+    posts, runs = _Posts(_masked_post("reg_m")), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    from backend.services import dinov2_service as dsvc
+    monkeypatch.setattr(dsvc, "is_available", lambda: True)
+
+    resp = run(R.produce_field(str(posts.post["_id"]),
+                               R.ProduceFieldRequest(producer="material_field", region_id="reg_m")))
+    assert resp["status"] == "empty" and resp["suggestions"] == []   # no tap → honest nothing

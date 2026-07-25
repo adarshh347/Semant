@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form, BackgroundTasks
-from typing import Dict, Optional, List
+from typing import Any, Dict, Optional, List
 from pydantic import BaseModel
 import uuid
 import os
@@ -1677,6 +1677,155 @@ async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = N
     except Exception as e:
         await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
         raise
+
+
+# ── CIRCUIT-001 P6-C · the generic producer-invocation surface ────────────────────────────────
+# ONE endpoint reaches EVERY field producer. Each producer is a small handler in `_FIELD_PRODUCERS`;
+# a new producer becomes reachable by adding a row there — never a new route. GPU producers run
+# through ModelManager (single-GPU residency), CPU producers run inline; both return quarantined
+# `model_suggested` descriptors into the SAME `suggestionQuarantine` path every other producer uses.
+
+class ProduceFieldRequest(BaseModel):
+    producer: str                                    # 'negative_space' | 'material_field' | (future)
+    region_id: Optional[str] = None                  # the selected region (its mask / identity)
+    seed_point: Optional[List[float]] = None         # normalized [x, y] — material_field needs it
+    params: Optional[Dict[str, Any]] = None          # producer-specific knobs (optional)
+
+
+def _find_region_by_id(post: dict, region_id: Optional[str]) -> Optional[dict]:
+    if not region_id:
+        return None
+    for r in post.get("region_annotations", []) or []:
+        if str(r.get("id")) == str(region_id):
+            return r
+    return None
+
+
+async def _produce_negative_space(post_id, post, region, req, run_id):
+    """CPU producer — inverts a region's EXISTING mask into a soft field. No GPU, no image fetch.
+    A region with no valid mask is an honest refusal (status 'empty'), never an error."""
+    if region is None:
+        return [], "empty", True
+    sug = suggestion_service.suggestion_from_negative_space(region, run_id=run_id)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+async def _produce_material_field(post_id, post, region, req, run_id):
+    """GPU producer — DINOv2 same-material field. The whole-image encode goes through
+    ModelManager/ResourceKind.GPU (reused, single-GPU residency); a missing seed or an
+    unavailable model is an honest refusal, never a fabricated field."""
+    from backend.services import dinov2_service as dsvc
+    if not dsvc.is_available():
+        return [], "unavailable", False
+    seed = req.seed_point
+    if not (isinstance(seed, (list, tuple)) and len(seed) == 2):
+        return [], "empty", True                     # no tap → nothing to compute (honest)
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+    image_hash = region_embedding_service.content_hash(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    _t = time.perf_counter()
+    feats = await ees._features_via_manager(image, image_hash)   # ModelManager GPU slot
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not feats:
+        return [], "unavailable", False
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    grid = int(feats["grid"])
+    patch_list = feats["patches"].reshape(grid * grid, -1).tolist()
+    sug = suggestion_service.suggestion_from_material(
+        {"patches": patch_list, "grid": grid}, seed, run_id=run_id,
+        region_id=(region or {}).get("id"),
+        model=dsvc.CHECKPOINT, checkpoint=dsvc.CHECKPOINT,
+        preprocessing_version=dsvc.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+# The registry: producer name → handler. Extensible — a new producer plugs in here, not a new route.
+_FIELD_PRODUCERS = {
+    "negative_space": _produce_negative_space,
+    "material_field": _produce_material_field,
+}
+
+
+@router.post("/{post_id}/produce-field")
+async def produce_field(post_id: str, req: ProduceFieldRequest):
+    """CIRCUIT-001 P6-C · the ONE generic producer-invocation surface.
+
+    (producer, region_ref, seed/params) → look up the producer → run it (GPU producers through
+    ModelManager/ResourceKind.GPU) → return quarantined `model_suggested` suggestion descriptors the
+    frontend ingests through the SAME `suggestionQuarantine` path every other producer uses. Nothing
+    is persisted — a suggestion is a proposal until the curator accepts it. A refusal (no seed, no
+    mask, degenerate field, or an unavailable model) is HONEST: status 'empty'/'unavailable', never
+    an error and never a fabricated mark."""
+    handler = _FIELD_PRODUCERS.get(req.producer)
+    if handler is None:
+        raise HTTPException(status_code=400, detail=f"unknown producer '{req.producer}'")
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    region = _find_region_by_id(post, req.region_id)
+
+    rec = vision_run_service.VisionRunRecorder(
+        post_id=post_id, operation=vrc.OPERATION_PRODUCE, initiator="api",
+        requested_profile={"producer": req.producer, "region_id": req.region_id,
+                           "has_seed": bool(req.seed_point)})
+    await rec.start()
+    try:
+        await rec.event(vrc.STAGE_PRODUCE_RECEIVE, JobStatus.SUCCEEDED,
+                        detail={"producer": req.producer, "region_id": req.region_id})
+        _t = time.perf_counter()
+        suggestions, status, available = await handler(post_id, post, region, req, rec.run_id)
+        # A refusal is NOT a failure — the run succeeded at honestly reporting "nothing here"; only
+        # an unavailable model terminalizes UNAVAILABLE. Neither writes any post geometry.
+        job_status = JobStatus.SUCCEEDED if available else JobStatus.UNAVAILABLE
+        await rec.event(vrc.STAGE_PRODUCE_RUN, job_status, capability="produce",
+                        adapter=req.producer, latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                        input_refs=([{"region_id": req.region_id}] if req.region_id else []),
+                        output_refs=[{"suggested": len(suggestions)}], detail={"status": status})
+        await rec.event(vrc.STAGE_PRODUCE_COMPLETE, job_status,
+                        detail={"suggested": len(suggestions), "status": status})
+        await rec.finish(job_status, terminal_reason=status,
+                         result_summary={"producer": req.producer, "suggested": len(suggestions),
+                                         "region_id": req.region_id, "status": status})
+        return {"producer": req.producer, "suggestions": suggestions, "run_id": rec.run_id,
+                "available": available, "status": status}
+    except asyncio.CancelledError:
+        await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
+        raise
+    except Exception as e:
+        await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
+        raise
+
+
+@router.post("/produce-field/unload")
+async def produce_field_unload():
+    """Release GPU field producers' models (frees VRAM). Idempotent; mirrors /refine-region/unload.
+    Field producers keep their model resident for fast re-taps, so this is how the GPU slot is
+    handed back on demand."""
+    from backend.services import dinov2_service
+    dinov2_service.unload()
+    return {"unloaded": True}
 
 
 @router.get("/{post_id}/regions/{region_id}/crop")
