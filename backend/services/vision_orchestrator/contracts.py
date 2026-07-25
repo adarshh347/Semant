@@ -28,6 +28,7 @@ class Capability(str, Enum):
     SEMANTIC_ANNOTATE = "semantic_annotate"   # cloud VLM — never authors geometry
     PERCEPTUAL = "perceptual"           # CPU colour/edge/texture/pattern analyzers
     DEPTH = "depth"                     # relative depth (Depth-Anything)
+    SHADING = "shading"                 # intrinsic decomposition — light/shadow (Intrinsic)
 
 
 class ResourceKind(str, Enum):

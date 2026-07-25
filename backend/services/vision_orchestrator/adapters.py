@@ -603,3 +603,67 @@ class DepthAnythingAdapter:
             return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
         return JobResult(JobStatus.SUCCEEDED,
                          artifact=VisionArtifact("depth", depth, prov), provenance=prov)
+
+
+# ── P6-G: Intrinsic Ordinal Shading — light/shadow, SCAFFOLD (deferred) ────────────────────
+class IntrinsicShadingAdapter:
+    """The `SHADING` adapter — Careaga/Aksoy intrinsic decomposition on the GPU pool.
+
+    Ships as a SCAFFOLD: `intrinsic_service.is_available()` is False until the GitHub-only
+    package and its checkpoints are installed, so this registers DEFERRED and the manager will
+    never execute it (`run_adapter` returns UNAVAILABLE for an unavailable adapter). Everything
+    downstream — converters, producers, the review path — is built and tested against synthetic
+    shading, so activation is an install, not a build. See `intrinsic_service` for the exact
+    cost."""
+
+    def __init__(self) -> None:
+        from backend.services import intrinsic_service
+        self._svc = intrinsic_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="intrinsic_ordinal_shading", capability=Capability.SHADING,
+            resource=ResourceKind.GPU, model_id=intrinsic_service.MODEL_TAG,
+            checkpoint=intrinsic_service.CHECKPOINT,
+            license="see compphoto/Intrinsic (research; verify before commercial use)",
+            preprocessing_version=intrinsic_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import intrinsic_service as i
+            return i.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        import time as _t
+        t0 = _t.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (_t.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        t0 = time.perf_counter()
+        shading = await asyncio.to_thread(self._svc.estimate, image)
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if shading is None:
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("shading", shading, prov), provenance=prov)
