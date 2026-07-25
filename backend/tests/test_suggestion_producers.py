@@ -166,3 +166,60 @@ def test_semantic_read_returns_run_linked_suggestions_additively(monkeypatch):
         assert s["provenance"]["producer"] == "semantic_read"
     # geometry was never written (only semantics) — the producer authored no pixels
     assert posts.writes and all(set(w.keys()) == {"semantics"} for w in posts.writes)
+
+
+# ─────────────── PURE: producer 4 (negative_space — the first brush_field) ───────────────
+# Model-free: it inverts a mask ALREADY in the packet. No segmenter, no adapter, no GPU.
+
+from backend.services import mask_geometry as mg
+
+
+def _rect_region(region_id="reg_ns", label="figure", *, h=8, w=8):
+    """A region carrying a real central-rectangle figure mask (mask_rle)."""
+    bits = bytearray(h * w)
+    for r in range(h):
+        for c in range(w):
+            if 2 <= r <= 5 and 2 <= c <= 5:
+                bits[r * w + c] = 1
+    return {"id": region_id, "label": label, "mask_rle": mg.rle_encode(bits, h, w)}
+
+
+def test_negative_space_region_becomes_a_run_linked_brush_field_suggestion():
+    d = ss.suggestion_from_negative_space(_rect_region(), run_id="run_ns")
+    assert d is not None
+    assert d["producer"] == "negative_space" and d["type"] == "brush_field"
+    assert d["role"] == "negative_space"                      # a valid field role
+    assert d["source_ref"] == "reg_ns"                        # idempotency key part
+    # geometry is a soft field carrying EDITABLE strokes, never inline pixels
+    assert d["geometry"]["kind"] == "soft_mask"
+    strokes = d["geometry"]["strokes"]
+    assert strokes and all(s["op"] == "add" for s in strokes)
+    assert all(0.0 <= s["points"][0][0] <= 1.0 and 0.0 <= s["points"][0][1] <= 1.0 for s in strokes)
+    # the receipt: a run, a producer — but NO model/adapter/checkpoint (nothing was inferred)
+    p = d["provenance"]
+    assert p["run_id"] == "run_ns" and p["producer"] == "negative_space"
+    assert "model" not in p and "adapter" not in p and "checkpoint" not in p
+    # the label speaks about the figure it is the negative of
+    assert "negative space" in d["label"]
+
+
+def test_negative_space_refuses_a_region_with_no_mask():
+    # no mask_rle at all → nothing to invert → refuse (fail-closed), never fabricate a field
+    assert ss.suggestion_from_negative_space({"id": "reg_x", "label": "bare"}, run_id="run_ns") is None
+    # a region with no id cannot be referenced → refuse
+    assert ss.suggestion_from_negative_space({"mask_rle": _rect_region()["mask_rle"]}, run_id="run_ns") is None
+
+
+def test_negative_space_refuses_when_the_field_has_nothing_to_draw():
+    # an all-figure mask leaves no negative space; a full-frame figure → empty field → no strokes → refuse
+    h = w = 6
+    full = {"id": "reg_full", "mask_rle": mg.rle_encode(bytearray([1] * (h * w)), h, w)}
+    assert ss.suggestion_from_negative_space(full, run_id="run_ns") is None
+
+
+def test_negative_space_list_skips_maskless_regions_and_empty_input():
+    regions = [_rect_region("reg_a"), {"id": "reg_b"}, _rect_region("reg_c")]
+    out = ss.suggestions_from_negative_space(regions, run_id="run_ns")
+    assert [d["source_ref"] for d in out] == ["reg_a", "reg_c"]      # maskless reg_b skipped
+    assert ss.suggestions_from_negative_space([], run_id="run_ns") == []
+    assert ss.suggestions_from_negative_space(None, run_id="run_ns") == []

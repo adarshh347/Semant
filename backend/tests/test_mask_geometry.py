@@ -185,3 +185,73 @@ def test_mask_to_crops_alpha_and_context():
     # a corner of the (rectangular) alpha crop that lies inside the mask is opaque
     ac = crops["alpha_crop"]
     assert ac.getpixel((0, 0))[3] == 255
+
+
+# ── negative-space converter (CIRCUIT-001 P6-A) ──────────────────────────────
+# The first brush_field producer's geometry: a figure mask → complement → soft field → strokes.
+
+def test_mask_complement_flips_every_pixel_and_is_self_inverse():
+    h, w = 6, 8
+    fn = lambda r, c: 2 <= r <= 3 and 2 <= c <= 5     # a central rectangle figure
+    bits = make_bits(h, w, fn)
+    rle = mg.rle_encode(bits, h, w)
+    comp = mg.mask_complement(rle)
+    cbits, ch, cw = mg.rle_decode(comp)
+    assert (ch, cw) == (h, w)
+    # every pixel flipped
+    assert all((1 - (1 if b else 0)) == cbits[i] for i, b in enumerate(bits))
+    # self-inverse: complementing twice returns the original bit buffer exactly
+    again, _, _ = mg.rle_decode(mg.mask_complement(comp))
+    assert bytes(again) == bytes(bits)
+
+
+def test_soft_field_is_zero_on_figure_and_peaks_away_from_it():
+    h, w = 5, 5
+    fn = lambda r, c: r == 2 and c == 2               # a single figure pixel at the centre
+    rle = mg.rle_encode(make_bits(h, w, fn), h, w)
+    field, fh, fw = mg.soft_field_from_mask(rle)
+    assert (fh, fw) == (h, w)
+    # figure pixel draws nothing
+    assert field[2 * w + 2] == 0.0
+    # a corner (farthest from the figure) is the deepest negative space → normalized to 1.0
+    assert field[0] == pytest.approx(1.0, abs=1e-9)
+    # softness is monotone: an immediate neighbour of the figure is dimmer than a far corner
+    assert field[2 * w + 1] < field[0]
+    # every value is a valid intensity
+    assert all(0.0 <= v <= 1.0 for v in field)
+
+
+def test_soft_field_degenerate_masks_draw_nothing():
+    h, w = 4, 4
+    empty = mg.rle_encode(make_bits(h, w, lambda r, c: False), h, w)   # no figure
+    full = mg.rle_encode(make_bits(h, w, lambda r, c: True), h, w)     # all figure
+    for rle in (empty, full):
+        field, _, _ = mg.soft_field_from_mask(rle)
+        assert field == [0.0] * (h * w)                                # nothing to draw
+
+
+def test_strokes_from_field_synthesises_editable_normalized_strokes():
+    h, w = 8, 8
+    fn = lambda r, c: r == 0 and c == 0               # figure in the corner
+    rle = mg.rle_encode(make_bits(h, w, fn), h, w)
+    field, fh, fw = mg.soft_field_from_mask(rle)
+    strokes = mg.strokes_from_field(field, fh, fw, grid=4, threshold=0.1)
+    assert strokes, "a non-trivial negative space yields strokes"
+    for s in strokes:
+        assert s["op"] == "add"
+        assert len(s["points"]) == 1
+        x, y = s["points"][0]
+        assert 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0                     # normalized coords
+        assert 0.0 <= s["strength"] <= 1.0                             # strength ∝ intensity
+    # strength really does track the field value at the sampled pixel
+    deep = max(strokes, key=lambda s: s["strength"])
+    shallow = min(strokes, key=lambda s: s["strength"])
+    assert deep["strength"] >= shallow["strength"]
+
+
+def test_strokes_below_threshold_are_omitted():
+    h, w = 8, 8
+    rle = mg.rle_encode(make_bits(h, w, lambda r, c: r == 0 and c == 0), h, w)
+    field, fh, fw = mg.soft_field_from_mask(rle)
+    # a threshold above the field's max leaves nothing to draw
+    assert mg.strokes_from_field(field, fh, fw, grid=4, threshold=1.01) == []

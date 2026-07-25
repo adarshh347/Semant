@@ -370,3 +370,115 @@ def canonicalize_geometry(region: dict, *, default_mask_size: Optional[Tuple[int
         kind = "polygon" if (region.get("polygon") and len(region["polygon"]) >= 3) else "box"
         region["geometry_provenance"] = {"kind": f"legacy-{kind}", **prov_extra}
     return region
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# negative-space converter (CIRCUIT-001 P6-A) — the first brush_field producer's
+# geometry helper. A figure mask that ALREADY EXISTS → its complement → a soft field
+# → editable strokes[]. Pure, no I/O, no model: the negative space is what is shaped by
+# NOT being the figure, so it is derivable from the figure alone. Stays in this module
+# because that keeps `mask_geometry` the one owner of the RLE ↔ mask chain.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def mask_complement(rle: dict) -> dict:
+    """The complement of a mask: every pixel flipped (figure → ground, ground → figure).
+
+    Exact and self-inverse — `mask_complement(mask_complement(m)) == m` on the bit buffer —
+    because it rides the exact RLE round-trip. This is the whole geometric content of
+    "negative space": the part of the frame the figure is not."""
+    bits, h, w = rle_decode(rle)
+    comp = bytearray(1 - (1 if b else 0) for b in bits)
+    return rle_encode(comp, h, w)
+
+
+def soft_field_from_mask(rle: dict, *, _diag: float = math.sqrt(2)) -> Tuple[List[float], int, int]:
+    """A figure mask → a SOFT field over its negative space (a chamfer distance transform).
+
+    Returns `(field, h, w)` where `field` is a row-major list in [0, 1]: 0.0 on every figure
+    pixel, ramping up with distance INTO the negative space, normalized so the deepest point
+    is 1.0. "Soft" is literal — the falloff is the distance from the figure's edge, not a hard
+    complement. Pure Python (two-pass chamfer), no numpy.
+
+    Degenerate inputs return an all-zero field (nothing to draw): an empty mask has no figure
+    to define a negative space against, and a full mask leaves no negative space at all. The
+    producer treats "no field" as a refusal rather than fabricating one."""
+    bits, h, w = rle_decode(rle)
+    n = h * w
+    if n == 0:
+        return [], h, w
+    INF = float(h + w) * 2.0 + 1.0
+    dist = [0.0 if bits[i] else INF for i in range(n)]
+
+    # forward pass (raster order): each ground pixel takes the cheapest step from an
+    # already-visited neighbour (W, NW, N, NE).
+    for r in range(h):
+        base = r * w
+        for c in range(w):
+            i = base + c
+            if bits[i]:
+                continue
+            d = dist[i]
+            if c > 0:
+                d = min(d, dist[i - 1] + 1.0)
+            if r > 0:
+                d = min(d, dist[i - w] + 1.0)
+                if c > 0:
+                    d = min(d, dist[i - w - 1] + _diag)
+                if c < w - 1:
+                    d = min(d, dist[i - w + 1] + _diag)
+            dist[i] = d
+
+    # backward pass (reverse raster): relax against E, SE, S, SW.
+    for r in range(h - 1, -1, -1):
+        base = r * w
+        for c in range(w - 1, -1, -1):
+            i = base + c
+            if bits[i]:
+                continue
+            d = dist[i]
+            if c < w - 1:
+                d = min(d, dist[i + 1] + 1.0)
+            if r < h - 1:
+                d = min(d, dist[i + w] + 1.0)
+                if c < w - 1:
+                    d = min(d, dist[i + w + 1] + _diag)
+                if c > 0:
+                    d = min(d, dist[i + w - 1] + _diag)
+            dist[i] = d
+
+    mx = 0.0
+    for i in range(n):
+        if not bits[i] and dist[i] < INF and dist[i] > mx:
+            mx = dist[i]
+    if mx <= 0.0:
+        return [0.0] * n, h, w
+    field = [0.0 if bits[i] else min(1.0, dist[i] / mx) for i in range(n)]
+    return field, h, w
+
+
+def strokes_from_field(field: Sequence[float], h: int, w: int, *, grid: int = 8,
+                       threshold: float = 0.12, radius: float = 0.05) -> List[dict]:
+    """A soft field → editable `strokes[]` in the freehand-stroke shape the field tools already
+    consume: `{points:[[x,y]], radius, strength, op}` with NORMALIZED (0..1) points and
+    `strength ∝ value`. Samples a `grid`×`grid` lattice of cell centres and drops a stroke
+    wherever the field clears `threshold` — so a suggestion arrives as marks a curator can move,
+    reweight or erase, never as a baked-in wash. Deterministic (no randomness)."""
+    strokes: List[dict] = []
+    if h <= 0 or w <= 0 or not field:
+        return strokes
+    gy = max(1, min(grid, h))
+    gx = max(1, min(grid, w))
+    for gyi in range(gy):
+        r = min(h - 1, max(0, int((gyi + 0.5) * h / gy)))
+        for gxi in range(gx):
+            c = min(w - 1, max(0, int((gxi + 0.5) * w / gx)))
+            v = float(field[r * w + c])
+            if v < threshold:
+                continue
+            strokes.append({
+                "points": [[round((c + 0.5) / w, 4), round((r + 0.5) / h, 4)]],
+                "radius": radius,
+                "strength": round(v, 4),
+                "op": "add",
+            })
+    return strokes

@@ -21,6 +21,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from backend.services.mask_geometry import (rle_is_valid, soft_field_from_mask,
+                                            strokes_from_field)
+
 PRODUCER_SAM = "sam_refine"
 PRODUCER_SEMANTIC = "semantic_read"
 # CIRCUIT-001 P5-A — the crossing. A find-similar neighbour lives on ANOTHER post; it enters the
@@ -28,6 +31,12 @@ PRODUCER_SEMANTIC = "semantic_read"
 # cross-post `region_ref`: a REFERENCE across the border ({post_id, region_id, geometry_rev}),
 # never a copy of the neighbour's mask.
 PRODUCER_FIND_SIMILAR = "find_similar"
+# CIRCUIT-001 P6-A — the first brush_field producer, and the first that loads NO model. Negative
+# space is the complement of a figure that already exists in the packet, so this producer consumes
+# a committed region's mask and calls no segmenter: deterministic, CPU-only, ~0 VRAM, unaffected
+# by the torch +cpu regression. It occupies the PERCEPTUAL capability conceptually but needs no
+# adapter — there is nothing to infer, only geometry to invert.
+PRODUCER_NEGATIVE_SPACE = "negative_space"
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -187,4 +196,68 @@ def suggestions_from_similar(
             "provenance": _provenance(model=prov.get("model"), adapter=adapter, latency_ms=None,
                                       run_id=run_id, producer=PRODUCER_FIND_SIMILAR),
         })
+    return out
+
+
+# ── producer 4: negative_space — the first brush_field producer (CIRCUIT-001 P6-A) ────────────
+
+def suggestion_from_negative_space(
+    region: Dict[str, Any], *, run_id: Optional[str], label: Optional[str] = None,
+    base_id: Optional[str] = None, grid: int = 8, threshold: float = 0.12, radius: float = 0.05,
+) -> Optional[Dict[str, Any]]:
+    """A committed region's figure mask → a quarantined ``brush_field`` / ``negative_space``
+    soft-field suggestion, carrying editable ``strokes[]``.
+
+    CONSUMES the mask the region ALREADY carries (``mask_rle``). It calls no segmenter and loads no
+    model — the negative space is the complement of a figure that is already there — so the receipt
+    names a ``run_id`` and a ``producer`` but NO model/adapter/checkpoint: nothing was inferred, only
+    geometry inverted. The mark's ``geometry.kind`` is ``soft_mask`` (the mark-layer name for a soft
+    field; the action-layer ``geometry_mode`` for the same thing is ``soft_field``).
+
+    Refusal (fail-closed): a region with no id or no valid ``mask_rle`` → None; a mask whose
+    complement has nothing to draw (no figure, or all figure → an all-zero field → no strokes) →
+    None. A field is NEVER fabricated from absence."""
+    if not isinstance(region, dict):
+        return None
+    region_id = region.get("id")
+    rle = region.get("mask_rle")
+    if not region_id or not rle_is_valid(rle):
+        return None
+    field, h, w = soft_field_from_mask(rle)
+    strokes = strokes_from_field(field, h, w, grid=grid, threshold=threshold, radius=radius)
+    if not strokes:
+        return None                                     # no negative space to speak of — refuse
+    if label:
+        text = label
+    elif region.get("label"):
+        text = f"negative space around {region['label']}"
+    else:
+        text = "negative space"
+    return {
+        "producer": PRODUCER_NEGATIVE_SPACE,
+        "type": "brush_field",
+        "role": "negative_space",
+        "label": text,
+        "source_ref": str(region_id),                   # idempotency key part
+        "geometry": {"kind": "soft_mask", "strokes": strokes},
+        "linked_ground_ids": [],
+        # A deterministic producer carries a run receipt but names no model — there was none.
+        "provenance": {"run_id": run_id, "producer": PRODUCER_NEGATIVE_SPACE},
+        "base_id": base_id,
+    }
+
+
+def suggestions_from_negative_space(
+    regions: Optional[List[Dict[str, Any]]], *, run_id: Optional[str],
+    grid: int = 8, threshold: float = 0.12, radius: float = 0.05,
+) -> List[Dict[str, Any]]:
+    """Every mask-bearing region in the packet → its negative-space suggestion. Regions without a
+    usable mask are silently skipped (fail-closed); an empty or maskless input yields [] — never a
+    fabricated field. Mirrors the crossing producer's degraded-input discipline."""
+    out: List[Dict[str, Any]] = []
+    for region in (regions or []):
+        d = suggestion_from_negative_space(region, run_id=run_id, grid=grid,
+                                           threshold=threshold, radius=radius)
+        if d:
+            out.append(d)
     return out

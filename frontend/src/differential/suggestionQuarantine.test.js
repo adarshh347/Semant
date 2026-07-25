@@ -313,3 +313,66 @@ describe('the crossing — find-similar as a quarantined producer', () => {
         expect(accepted.geometry.mask_ref).toBeUndefined();
     });
 });
+
+// CIRCUIT-001 P6-A — negative_space: the first brush_field producer, and the first that names no
+// model. Its descriptor carries a soft field of editable strokes; its provenance is a run receipt
+// WITHOUT a model/adapter (nothing was inferred, only a mask complemented).
+const negativeSpaceDescriptor = (over = {}) => ({
+    producer: 'negative_space', type: 'brush_field', role: 'negative_space',
+    label: 'negative space around figure', source_ref: 'reg_ns',
+    geometry: {
+        kind: 'soft_mask',
+        strokes: [
+            { points: [[0.1, 0.1]], radius: 0.05, strength: 0.9, op: 'add' },
+            { points: [[0.8, 0.8]], radius: 0.05, strength: 0.4, op: 'add' },
+        ],
+    },
+    linked_ground_ids: [],
+    provenance: { run_id: 'run_ns', producer: 'negative_space' },
+    ...over,
+});
+
+describe('the negative space — the first brush_field producer, quarantined', () => {
+    beforeEach(() => _resetMarkIds());
+
+    it('ingests as an uncitable brush_field suggestion carrying editable strokes', () => {
+        const m = suggestionFromDescriptor(negativeSpaceDescriptor(), { now: 'T' });
+        expect(m).not.toBeNull();
+        expect(m.type).toBe('brush_field');
+        expect(m.role).toBe('negative_space');
+        expect(m.source).toBe('model_suggested');
+        expect(m.status).toBe('suggested');
+        expect(canCiteMark(m)).toBe(false);                          // quarantined until accepted
+        expect(m.geometry.kind).toBe('soft_mask');
+        expect(m.geometry.strokes).toHaveLength(2);
+        expect(m.geometry.strokes.every((s) => s.op === 'add')).toBe(true);
+        // a deterministic producer: a run receipt, but no model laundered onto the mark
+        expect(m.provenance.producer).toBe('negative_space');
+        expect(m.provenance.run_id).toBe('run_ns');
+        expect(m.provenance.model == null).toBe(true);
+    });
+
+    it('is idempotent by source: re-inverting the same region replaces, not duplicates', () => {
+        const a = suggestionFromDescriptor(negativeSpaceDescriptor(), { now: 'T1' });
+        const b = suggestionFromDescriptor(negativeSpaceDescriptor(), { now: 'T2' });
+        expect(a.id).toBe(b.id);
+        expect(a.id).toBe(suggestionId(negativeSpaceDescriptor()));
+    });
+
+    it('accepting mints a user_confirmed field mark; the strokes ride forward, editable', () => {
+        const suggestion = suggestionFromDescriptor(negativeSpaceDescriptor(), { now: 'T' });
+        const { accepted } = acceptSuggestion(suggestion, {}, { now: 'T2', idFn: () => 'vm_ns' });
+        expect(accepted.source).toBe('user_confirmed');
+        expect(accepted.derived_from).toBe(suggestion.id);
+        expect(canCiteMark(accepted)).toBe(true);
+        expect(accepted.type).toBe('brush_field');
+        expect(accepted.geometry.strokes).toHaveLength(2);           // the field survives acceptance
+    });
+
+    it('dismissing keeps the record but never cites it', () => {
+        const suggestion = suggestionFromDescriptor(negativeSpaceDescriptor(), { now: 'T' });
+        const dismissed = dismissSuggestion(suggestion, { now: 'T2' });
+        expect(dismissed.status).toBe('dismissed');
+        expect(canCiteMark(dismissed)).toBe(false);
+    });
+});
