@@ -196,7 +196,8 @@ def resolve(steps: Sequence[Step], memory: WorkingMemory, *,
         actuator = get_actuator(step.actuator)
         assert actuator is not None
         ordered.append(step)
-        projected = projected.evolve(actuator.produces, step_id=step.id or step.actuator)
+        projected = projected.evolve(actuator.projected_produces(),
+                                     step_id=step.id or step.actuator)
 
     # Whatever is still pending is unsatisfiable by this plan, on this memory.
     final_available = projected.available()

@@ -399,15 +399,21 @@ class TestRefusalPropagation:
         assert rec.blocked_by == ("f",)
         assert stubs["material_field"].calls == []     # it was never even called
 
-    def test_the_skip_names_the_root_cause_two_hops_down(self):
-        """A skip caused by a skip must report the original failure, not the symptom."""
+    def test_the_skip_names_every_step_that_would_have_supplied_the_input(self):
+        """A skip caused by a skip must report the failure, not just the symptom.
+
+        WIRE-002 made `find_parts` produce MARK as well as REGION, so when it goes down BOTH it
+        and the step after it are steps that would have supplied compose_percept's mark — and
+        naming both is strictly better than naming only the nearest one, which reads as though
+        the material_field step were the origin of the problem."""
         stubs = stub_registry(unavailable=["find_parts"])
         plan = resolve([step("find_parts", "f"), step("material_field", "m"),
                         step("compose_percept", "c", draft_text="x")], bare_memory())
         result = execute(plan, bare_memory(), stubs)
         statuses = [r.status for r in result.provenance.lineage]
         assert statuses == [UNAVAILABLE, SKIPPED, SKIPPED]
-        assert result.provenance.lineage[2].blocked_by == ("m",)
+        blocked = result.provenance.lineage[2].blocked_by
+        assert "f" in blocked and "m" in blocked          # the root AND the intermediate
 
     def test_an_empty_result_is_not_an_error_but_still_blocks_dependents(self):
         """EMPTY is an honest answer AND a real gap. Both facts survive."""

@@ -90,6 +90,26 @@ class Actuator:
     # ("needs a phrase") rather than generically ("bad inputs").
     param_keys: Tuple[str, ...] = ()
 
+    # WIRE-002 — this actuator yields an UNKNOWN number of each thing it produces, not exactly one.
+    # A finder returns however many parts are there; a field producer returns one field.
+    #
+    # It matters only for PLAN-TIME PROJECTION. Projecting one mark from `find_parts` made
+    # "find the parts, then relate two of them" unresolvable — the planner refused a step the
+    # runner would happily have fed, which is a worse failure than the one the refusal prevents.
+    #
+    # Projecting two is SAFE because it is not a claim. `execute()` re-checks every requirement
+    # against REAL memory immediately before dispatch, so if the finder actually returned one
+    # part, `connect_marks` is skipped there with an honest reason naming the step that came up
+    # short. The projection decides ORDER; reality still decides what runs.
+    plural: bool = False
+
+    def projected_produces(self) -> Tuple["Resource", ...]:
+        """What the PLANNER should assume this leaves behind. Two for a plural producer — the
+        smallest count that distinguishes 'one' from 'several', and exactly what a relation needs."""
+        if not self.plural:
+            return self.produces
+        return tuple(r for r in self.produces for _ in range(2))
+
 
 def _req(kind: Resource, n: int = 1) -> Requirement:
     return Requirement(kind=kind, min_count=n)
@@ -104,9 +124,14 @@ _ACTUATOR_LIST: List[Actuator] = [
         name="find_parts",
         summary="Propose parts of the image as regions.",
         requires=(_req(Resource.IMAGE),),
-        produces=(Resource.REGION,),
+        # WIRE-002: it produces BOTH. Each proposed region is also minted as a `region_mask`
+        # suggestion (that is what the runner does and always did), so a found part is a mark you
+        # can relate or compose from. Declaring only REGION made every chain that finds parts and
+        # then reasons about them unresolvable — the plan refused steps the runner would have fed.
+        produces=(Resource.REGION, Resource.MARK),
         capability="segmenter",
         authors_geometry=True,
+        plural=True,          # yields however many are there, not exactly one
     ),
     Actuator(
         name="grounded_sam_find_parts",
@@ -118,6 +143,7 @@ _ACTUATOR_LIST: List[Actuator] = [
         capability="grounding_detector",
         authors_geometry=True,
         param_keys=("phrase",),
+        plural=True,          # yields however many are there, not exactly one
     ),
     # -- fields: brushed evidence over the image or a region -------------------
     Actuator(
@@ -220,6 +246,7 @@ _ACTUATOR_LIST: List[Actuator] = [
         produces=(Resource.MARK,),
         capability="dinov2",
         param_keys=("seed_mark_id",),
+        plural=True,          # yields however many are there, not exactly one
     ),
     Actuator(
         name="connect_marks",

@@ -2492,49 +2492,18 @@ async def produce_field(post_id: str, req: ProduceFieldRequest):
 
 @router.post("/produce-field/unload")
 async def produce_field_unload():
-    """Release EVERY GPU field producer's model (frees VRAM). Idempotent; mirrors
-    /refine-region/unload. Field producers keep their model resident for fast re-taps, so this is
-    how the GPU slot is handed back on demand.
+    """Release EVERY model this process holds (frees VRAM). Idempotent.
 
-    P6-I: this must cover all of them, not just DINOv2. Intrinsic alone peaks near 1 GiB — on the
-    4 GB card, a stale resident model is the difference between the next producer running and it
-    failing to allocate. Each unload is independent so one failure cannot strand the others."""
-    released = []
-    for name, mod in (("dinov2_vits14", "dinov2_service"),
-                      ("depth_anything_v2_small", "depth_service"),
-                      ("intrinsic_ordinal_shading", "intrinsic_service"),
-                      # P8-A/P8-B: the grounding models. Teaching this list about every new GPU
-                      # model is the P6-I lesson — unload only ever released what it was told.
-                      ("florence2_base", "florence2_service"),
-                      ("grounding_dino_tiny", "grounding_detector_service"),
-                      # P8-C: the presence gate. Every new GPU model must be added here — this
-                      # list is the single point that has leaked twice already.
-                      ("clip_vit_b32", "clip_presence_service"),
-                      # TRACE-002: added in the SAME commit that registered the producer. Every
-                      # previous leak was a GPU model wired into _FIELD_PRODUCERS and forgotten
-                      # here; it is deferred today, which is exactly when it is easiest to omit.
-                      ("geocalib_pinhole", "perspective_service")):
-        try:
-            import importlib
-            importlib.import_module(f"backend.services.{mod}").unload()
-            released.append(name)
-        except Exception:
-            pass                       # a producer that was never loaded has nothing to release
-    # P8-B: SAM2 lives in its own long-lived refine_session, not behind an adapter, so the loop
-    # above cannot see it — and the Grounded-SAM producer leaves it resident (~494 MiB measured).
-    # Same leak, different door.
-    try:
-        from backend.services.vision_orchestrator.refine_session import refine_session
-        await refine_session.unload()
-        released.append("sam21_hiera_tiny")
-    except Exception:
-        pass
-    try:
-        import torch
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-    except Exception:
-        pass
+    WIRE-002: this used to be a hand-written roster of (name, module) pairs, and it was wrong four
+    times — DINOv2-only, then SAM2's refine_session which lives outside the adapter registry, then
+    CLIP, then sam2_auto_service and perspective_service. Each time the fix was "add the missing
+    row", which is what guaranteed the next miss.
+
+    It now delegates to `model_residency`, which DISCOVERS anything in backend.services exposing
+    `unload()`. There is no list here to fall behind the producers, and a test asserts no
+    model-holding service can be omitted."""
+    from backend.services import model_residency
+    released = await model_residency.release_all()
     return {"unloaded": True, "released": released}
 
 

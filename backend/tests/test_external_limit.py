@@ -223,14 +223,17 @@ class TestRegistrationAndResidency:
         from backend.routers.posts import _FIELD_PRODUCERS
         assert "external_limit" in _FIELD_PRODUCERS
 
-    def test_it_IS_in_the_unload_list_because_it_is_a_gpu_model(self):
-        """The list has leaked three times, always a GPU model registered as a producer and not
-        released. Deferred is exactly when it is easiest to forget, so it is wired now."""
-        import inspect
-        from backend.routers import posts
-        src = inspect.getsource(posts.produce_field_unload)
-        assert "perspective_service" in src
-        assert "geocalib_pinhole" in src
+    def test_it_IS_released_because_it_is_a_gpu_model(self):
+        """This used to assert the service's NAME appeared in the router's hand-written unload
+        roster. WIRE-002 abolished that roster — it was the thing that kept leaking — so the test
+        now asserts the OUTCOME instead: geocalib is discoverable and actually released. That is
+        the fact worth protecting; the mechanism was never the point."""
+        import asyncio
+        import importlib
+        from backend.services import model_residency as mr
+        importlib.import_module("backend.services.perspective_service")
+        assert "perspective_service" in mr.discover_all()
+        assert "geocalib_pinhole" in asyncio.run(mr.release_all())
 
     def test_unload_is_idempotent_and_safe_while_deferred(self):
         psvc.unload()

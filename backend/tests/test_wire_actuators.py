@@ -78,14 +78,24 @@ def test_unavailable_capability_yields_unavailable(monkeypatch):
     ctx.close()
 
 
-def test_unwired_actuator_is_honestly_unavailable():
-    # connect_marks has no in-process runner yet — it must say so, not pretend to run.
+def test_an_actuator_with_no_runner_is_honestly_unavailable():
+    """WIRE-002 wired the last four, so no REAL actuator is unwired any more — connect_marks, the
+    example this test used to use, now runs. The invariant it protects still matters though: an
+    actuator the dispatch table does not know must SAY so rather than pretend, because that is what
+    keeps the skip logic honest when a future actuator is declared before it is wired."""
     ctx = ra.ExecutionContext(post_id="p", post={"photo_url": "x"})
-    runner = ra.real_registry(ctx)["connect_marks"]
-    res = runner(Step(actuator="connect_marks", id="s1"), _mem(mark_ids=("m1", "m2")))
+    runner = ra.RealActuatorRunner("connect_marks", ctx)
+    runner.name = "not_yet_wired"                       # declared, no handler
+    res = runner(Step(actuator="not_yet_wired", id="s1"), _mem(mark_ids=("m1", "m2")))
     assert res.status == UNAVAILABLE
     assert "no in-process runner" in res.detail
     ctx.close()
+
+
+def test_every_real_actuator_now_has_a_runner():
+    """The other half of the same fact: WIRE-002 closed the gap the test above used to exercise."""
+    from backend.services.director.capabilities import known
+    assert sorted(set(known()) - set(ra._DISPATCH)) == []
 
 
 # ── 2. the memory-evolution chain (the crux) ───────────────────────────────────
@@ -122,7 +132,11 @@ def test_find_parts_produces_region_resource(faked):
     ctx = ra.ExecutionContext(post_id="post_1", post={"photo_url": "http://x/y.jpg"})
     res = ra.real_registry(ctx)["find_parts"](Step(actuator="find_parts", id="s1"), _mem())
     assert res.status == OK
-    assert res.produced == (Resource.REGION, Resource.REGION)   # two fake regions
+    # WIRE-002: a found part is ALSO a mark — the runner always minted a region_mask per region,
+    # and the capability map now declares it, which is what lets a chain find parts and then
+    # reason about them.
+    assert res.produced == (Resource.REGION, Resource.REGION,
+                            Resource.MARK, Resource.MARK)           # two fake regions
     assert len(ctx.regions) == 2
     ctx.close()
 
