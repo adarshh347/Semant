@@ -75,6 +75,7 @@ export function useRegionState(post, onPostChange) {
     const [mentions, setMentions] = useState([]);
     const [grounds, setGroundsState] = useState([]);          // Differential v1 evidence
     const [visualMarks, setVisualMarksState] = useState([]);  // CIRCUIT-001 P2E truth model
+    const [visualLayers, setVisualLayersState] = useState([]); // CIRCUIT-001 Q-C render layers
     const [selectedId, setSelectedId] = useState(null);
     const [hoveredId, setHoveredId] = useState(null);
     const [selectedGroundId, setSelectedGroundId] = useState(null);
@@ -95,6 +96,7 @@ export function useRegionState(post, onPostChange) {
     const groundsRef = useRef(grounds);
     const perceptsRef = useRef(percepts);
     const visualMarksRef = useRef(visualMarks);
+    const visualLayersRef = useRef(visualLayers);
     const saveTimer = useRef(null);
     const metaSaveTimer = useRef(null);
     const loadedFor = useRef(null);
@@ -112,6 +114,11 @@ export function useRegionState(post, onPostChange) {
     const setVisualMarks = useCallback((next) => {
         visualMarksRef.current = typeof next === 'function' ? next(visualMarksRef.current) : next;
         setVisualMarksState(visualMarksRef.current);
+    }, []);
+
+    const setVisualLayers = useCallback((next) => {
+        visualLayersRef.current = typeof next === 'function' ? next(visualLayersRef.current) : next;
+        setVisualLayersState(visualLayersRef.current);
     }, []);
 
     // The meta debounce reads percepts through a ref for the same stale-closure reason.
@@ -135,6 +142,9 @@ export function useRegionState(post, onPostChange) {
                 .map((m) => normalizeMark(m))
                 .filter((m) => m && PERSISTED_STATUSES.has(m.status)),
         );
+        // Q-C: the saved per-layer visibility/opacity. Opaque dicts — the deriver merges them
+        // onto the layers actually present, so a stale key for a now-absent producer is harmless.
+        setVisualLayers(Array.isArray(post.visual_layers) ? post.visual_layers : []);
         setAletheia(post.local_context?.aletheia || null);
         setSelectedId(null);
         setHoveredId(null);
@@ -155,7 +165,7 @@ export function useRegionState(post, onPostChange) {
                 .reduce((ps, r) => upsertPercept(ps, makePercept(r, { actor: 'creator' })), []),
             ...(post.percepts || []).filter(isExpressionPercept),
         ]);
-    }, [post, setRegions, setGrounds, setVisualMarks]);
+    }, [post, setRegions, setGrounds, setVisualMarks, setVisualLayers]);
 
     // A pending edit must not be lost because a pane unmounted.
     useEffect(() => () => { clearTimeout(saveTimer.current); clearTimeout(metaSaveTimer.current); }, []);
@@ -217,6 +227,8 @@ export function useRegionState(post, onPostChange) {
                     // Only committed/superseded marks are written — a suggestion never
                     // touches the database (contract v2 §7.3). The quarantine is session truth.
                     visual_marks: persistableMarks(visualMarksRef.current),
+                    // Q-C: the render layers' saved visibility/opacity (opaque dicts).
+                    visual_layers: visualLayersRef.current,
                 }),
             });
             if (!res.ok) throw new Error();
@@ -256,6 +268,13 @@ export function useRegionState(post, onPostChange) {
     const groundById = useCallback(
         (id) => groundsRef.current.find(g => g.id === id) || null, [],
     );
+
+    // ── CIRCUIT-001 Q-C — render-layer saved state (visibility/opacity per producer/role). ──
+    // Rides the same debounced meta-save as grounds/marks, so hiding a layer survives reload.
+    const saveVisualLayers = useCallback((layers, { save = true } = {}) => {
+        setVisualLayers(Array.isArray(layers) ? layers : []);
+        if (save) scheduleMetaSave();
+    }, [setVisualLayers, scheduleMetaSave]);
 
     // ── CIRCUIT-001 P2E — visual_marks store API (the surface Lane B2's tools call). ──
     // Marks ride the same debounced meta-save as grounds/percepts. The save FILTERS to
@@ -500,6 +519,8 @@ export function useRegionState(post, onPostChange) {
         // CIRCUIT-001 P2E — durable visual_marks (the API Lane B2's tools call at merge).
         visualMarks, addVisualMark, updateVisualMark, removeVisualMark,
         visualMarksForGround, visualMarkById,
+        // CIRCUIT-001 Q-C — durable render layers (saved visibility/opacity per producer/role).
+        visualLayers, saveVisualLayers,
         // CIRCUIT-001 P3-A — derived provenance on a ground (bridge reconciliation).
         groundProvenance,
         // CIRCUIT-001 P4-A — producer intake (SAM / semantic suggestions → quarantine layer).
@@ -519,6 +540,7 @@ export function useRegionState(post, onPostChange) {
         metaSaveState, persistMeta, scheduleMetaSave,
         visualMarks, addVisualMark, updateVisualMark, removeVisualMark,
         visualMarksForGround, visualMarkById, groundProvenance, ingestSuggestions,
+        visualLayers, saveVisualLayers,
         post,
     ]);
 }
