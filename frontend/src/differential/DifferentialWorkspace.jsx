@@ -12,6 +12,7 @@ import useSemanticRead from './useSemanticRead';
 import SemanticReading from './SemanticReading';
 import useFindSimilar from './useFindSimilar';
 import useProduceField from './useProduceField';
+import OrchestrationBar from './OrchestrationBar';
 import FindSimilar from './FindSimilar';
 import SeeingConsole from './SeeingConsole';
 import PassageRail from './PassageRail';
@@ -1534,6 +1535,13 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             </div>
                         </section>
                     )}
+
+                    {/* SURFACE-001 — the intention affordance. A plan's suggestions land in the
+                        SAME quarantine/review below, so orchestration reuses the review surface
+                        rather than building a new one. */}
+                    <section className="diff-insp-section diff-insp-orchestrate">
+                        <OrchestrationBar postId={postId} store={store} />
+                    </section>
 
                     {/* P4-B (2a) — the suggestion quarantine, now a REVIEW surface. When
                         the model proposes marks they wait here, uncitable and visibly the
