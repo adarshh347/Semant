@@ -100,6 +100,7 @@ def post_helper(post) -> dict:
         "grounds": post.get("grounds"),
         "percepts": post.get("percepts"),
         "visual_marks": post.get("visual_marks"),  # CIRCUIT-001 P2E — durable marks
+        "visual_layers": post.get("visual_layers"),  # CIRCUIT-001 Q-C — durable render layers
     }
 
 
