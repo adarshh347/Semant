@@ -20,16 +20,24 @@ const pct = (s) => (s == null ? '' : `${Math.round(s * 100)}%`);
 
 function ResultCard({ r, cropUrl }) {
   const [inSitu, setInSitu] = useState(false);
+  // The neighbour's natural pixel size, learned on image load. The mask's viewBox must carry
+  // the image's aspect so it letterboxes identically to `object-fit: contain` — the same
+  // alignment contract RegionOverlay proves (natural-pixel viewBox + `xMidYMid meet`). A square
+  // `0 0 1 1` viewBox stretched with `preserveAspectRatio="none"` over a `cover`-cropped image
+  // drifts whenever the neighbour is not square; matching the fits removes the drift.
+  const [nat, setNat] = useState(null);
   const rings = r.geometry?.polygons;
   return (
     <div className="es-card" onMouseEnter={() => setInSitu(true)} onMouseLeave={() => setInSitu(false)}>
       <div className="es-thumb">
         {inSitu && r.photo_url ? (
           <div className="es-insitu" title="the neighbour's exact mask in its source image">
-            <img src={r.photo_url} alt="" referrerPolicy="no-referrer" />
-            {rings && rings.length > 0 && (
-              <svg className="es-mask" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden>
-                <path d={ringsToPath(rings, 1, 1)} />
+            <img src={r.photo_url} alt="" referrerPolicy="no-referrer"
+                 onLoad={(e) => setNat({ w: e.target.naturalWidth, h: e.target.naturalHeight })} />
+            {rings && rings.length > 0 && nat && (
+              <svg className="es-mask" viewBox={`0 0 ${nat.w} ${nat.h}`}
+                   preserveAspectRatio="xMidYMid meet" aria-hidden>
+                <path d={ringsToPath(rings, nat.w, nat.h)} vectorEffect="non-scaling-stroke" />
               </svg>
             )}
           </div>
