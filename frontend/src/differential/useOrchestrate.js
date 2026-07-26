@@ -20,16 +20,24 @@ export default function useOrchestrate(postId, store) {
   const [plan, setPlan] = useState(null);          // { steps, refused, notes, ... }
   const [provenance, setProvenance] = useState(null);
   const reqSeq = useRef(0);
+  // FIX-UI-001 follow-up: an AbortController so an in-flight orchestrate (which runs real models
+  // for seconds) can be cancelled on unmount — leaving the workspace must not leave a request
+  // resolving against a torn-down tree. Mirrors useProduceField/useFindSimilar.
+  const abortRef = useRef(null);
 
   const orchestrate = useCallback(async (intention, { phrase = null } = {}) => {
     const text = (intention || '').trim();
     if (!postId || !text) return null;
     const seq = ++reqSeq.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setStatus('loading'); setError('');
     try {
       const res = await fetch(`${API_URL}/api/v1/posts/${postId}/orchestrate`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ intention: text, phrase }),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error(`orchestrate ${res.status}`);
       const data = await res.json();
@@ -46,14 +54,25 @@ export default function useOrchestrate(postId, store) {
       return data;
     } catch (e) {
       if (seq !== reqSeq.current) return null;
+      if (e.name === 'AbortError') { setStatus((s) => (s === 'loading' ? 'idle' : s)); return null; }
       setError(String(e.message || e)); setStatus('error');
       return null;
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }, [postId, store]);
+
+  // Abort an in-flight orchestrate and stop caring about its result (bump the seq).
+  const cancel = useCallback(() => {
+    reqSeq.current++;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStatus((s) => (s === 'loading' ? 'idle' : s));
+  }, []);
 
   const clear = useCallback(() => {
     reqSeq.current++; setStatus('idle'); setError(''); setPlan(null); setProvenance(null);
   }, []);
 
-  return { status, error, plan, provenance, orchestrate, clear };
+  return { status, error, plan, provenance, orchestrate, cancel, clear };
 }

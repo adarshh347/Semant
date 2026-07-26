@@ -9,6 +9,10 @@ import { API_URL } from '../config/api';
 import { fetchAllRuns, isTerminalActionStatus } from './visionActivity';
 
 const ACTIVE_POLL_MS = 3500; // bounded; scheduled only while some run is RUNNING (not stale)
+// FIX-UI-001 (G2): a hung backend request must not hold a connection indefinitely — after this
+// budget the batch aborts, releasing its sockets so the stage image (and the next entry) are not
+// starved by the 6-connections-per-origin cap.
+const FETCH_TIMEOUT_MS = 8000;
 
 export function useVisionActivity(postId, { actionStatus } = {}) {
   // results: { operation: { run: <run|null>, unreadable: bool } } — absence vs unreadability
@@ -25,6 +29,11 @@ export function useVisionActivity(postId, { actionStatus } = {}) {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    // FIX-UI-001 (G2): the four parallel reads must not hold connections indefinitely against a
+    // hung backend — that is what starves the stage image and freezes the workspace. Abort the
+    // batch after a bounded budget so its sockets are released (the honest collapsed read-state
+    // still renders; an unreadable op is shown as unreadable, never as absence).
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     setLoading(true);
     try {
       const map = await fetchAllRuns(API_URL, postId, { signal: controller.signal });
@@ -32,9 +41,10 @@ export function useVisionActivity(postId, { actionStatus } = {}) {
       setResults(map);
     } catch (e) {
       // Only AbortError reaches here (per-op failures are captured as {unreadable:true} in the
-      // map); a superseded/aborted fetch is silently dropped, not shown as an error.
+      // map); a superseded/aborted/timed-out fetch is silently dropped, not shown as an error.
       if (e.name !== 'AbortError') throw e;
     } finally {
+      clearTimeout(timeout);
       if (seq === seqRef.current) setLoading(false);
     }
   }, [postId]);

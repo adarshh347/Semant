@@ -1043,6 +1043,18 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // …and when the workspace unmounts.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- stable refine.release only
     useEffect(() => () => { refine.release(); }, [refine.release]);
+    // FIX-UI-001 (G1): on leaving the workspace, ABORT the in-flight producer requests so a
+    // request begun near exit cannot resolve against an unmounted tree, and clear any recall
+    // so the stage never re-enters `is-recalling` on the next mount. These hooks each hold an
+    // AbortController; nothing here calls their cancel on unmount otherwise. (useOrchestrate has
+    // no AbortController yet — see OrchestrationBar; aborting it is a follow-up.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable cancels only
+    useEffect(() => () => {
+        fieldProducer.cancel();
+        similar.cancel();
+        reading.cancel();
+        store.clearRecall();
+    }, [fieldProducer.cancel, similar.cancel, reading.cancel, store.clearRecall]);
 
     // ── region click (tool-aware) ───────────────────────────────────────────
     const handleRegionClick = useCallback((id, e) => {
@@ -1398,8 +1410,12 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         onPointerLeave={() => { endStroke(); setBrushCursor(null); }}
                         // Belt-and-braces against the native image drag stealing the gesture.
                         onDragStart={(e) => e.preventDefault()}>
+                        {/* FIX-UI-001 (G2): the stage image is the one request that must never
+                            queue behind telemetry. fetchpriority=high tells the browser to
+                            dispatch it ahead of the vision-runs/latest reads competing for the
+                            same origin's connections. */}
                         <img src={post.photo_url} alt="" referrerPolicy="no-referrer" onLoad={onImgLoad}
-                            draggable={false} />
+                            fetchpriority="high" draggable={false} />
                         {!untouched && (
                             <>
                                 <RegionOverlay

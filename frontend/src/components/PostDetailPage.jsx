@@ -600,6 +600,11 @@ function PostDetailPage() {
     setWorkspaceMode('chiasm');
     // Consume the prefill so opening Differential manually later starts blank.
     setFirstAttentionPrefill(null);
+    // FIX-UI-001 (G1): the store outlives the workspace, and its one-shot hydration guard
+    // (loadedFor) means re-entering the SAME post never re-runs the resets. A recall left
+    // playing therefore survives the leave and keeps the stage stuck in `is-recalling` on the
+    // next entry — a freeze with a clean console. Clear it on the way out.
+    regionStore.clearRecall();
   };
 
   const startEditing = ({ seed = true } = {}) => {
