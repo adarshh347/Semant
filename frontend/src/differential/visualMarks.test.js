@@ -355,6 +355,7 @@ describe('contract v3 — region_ref (a naming reference, no mask authored)', ()
         expect(PRODUCERS).toContain('recession');       // P6-F: Depth-Anything near/far bands
         expect(PRODUCERS).toContain('shading');         // P6-G: Intrinsic light/shadow (deferred)
         expect(PRODUCERS).toContain('florence_find_parts'); // P8-A: open-vocab find_parts
+        expect(PRODUCERS).toContain('grounded_sam_find_parts'); // P8-B: the one that runs
         expect(PRODUCERS).toContain('fixture');
     });
 });

@@ -740,3 +740,72 @@ class Florence2Adapter:
             return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
         return JobResult(JobStatus.SUCCEEDED,
                          artifact=VisionArtifact("grounding", data, prov), provenance=prov)
+
+
+# ── P8-B: GroundingDINO — the detector half of Grounded-SAM (CIRCUIT-001) ──────────────────
+class GroundingDinoAdapter:
+    """The open-vocab DETECTOR — a phrase grounds to boxes, which SAM2 then refines to a mask.
+
+    Chosen over Florence-2 for one decisive reason: it loads natively on transformers 5.13 with
+    NO remote code, where Florence-2 loads under neither the native nor the trust_remote_code
+    path. Apache-2.0, so no distribution constraint (unlike YOLO's AGPL).
+
+    It is half of a two-model verb, so `unload()` is not housekeeping here — the detector MUST
+    leave the card before SAM2 arrives. ModelManager's single-GPU residency enforces that."""
+
+    def __init__(self) -> None:
+        from backend.services import grounding_detector_service
+        self._svc = grounding_detector_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="grounding_dino_tiny", capability=Capability.GROUNDING, resource=ResourceKind.GPU,
+            model_id=grounding_detector_service.MODEL_TAG,
+            checkpoint=grounding_detector_service.CHECKPOINT,
+            revision=grounding_detector_service.REVISION, license="Apache-2.0",
+            preprocessing_version=grounding_detector_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import grounding_detector_service as g
+            return g.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        import time as _t
+        t0 = _t.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (_t.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        phrase = payload.get("phrase") or ""
+        t0 = time.perf_counter()
+        data = await asyncio.to_thread(
+            self._svc.detect, image, phrase,
+            box_threshold=payload.get("box_threshold", self._svc.DEFAULT_BOX_THRESHOLD),
+            text_threshold=payload.get("text_threshold", self._svc.DEFAULT_TEXT_THRESHOLD))
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if data is None:
+            # Grounding nothing is a real answer, not a failure.
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("grounding", data, prov), provenance=prov)

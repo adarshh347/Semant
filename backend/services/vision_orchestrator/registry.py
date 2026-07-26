@@ -71,6 +71,12 @@ def default_roster() -> List[AdapterSpec]:
                     "microsoft/Florence-2-base",
                     revision="5ca5edf5bd017b9919c05d08aebef5e4c7ac3bac",
                     license="MIT", available=False, deferred=True),
+        # P8-B: the detector half of Grounded-SAM. Native on transformers 5.13 (no remote code),
+        # Apache-2.0. Pairs with sam21_hiera_tiny — never co-resident with it.
+        AdapterSpec("grounding_dino_tiny", Capability.GROUNDING, ResourceKind.GPU,
+                    "IDEA-Research/grounding-dino-tiny",
+                    revision="a2bb814dd30d776dcf7e30523b00659f4f141c71",
+                    license="Apache-2.0", available=False, deferred=True),
         AdapterSpec("cloud_vlm", Capability.SEMANTIC_ANNOTATE, ResourceKind.REMOTE,
                     "cloud-vision-language-model", available=False, deferred=True),
     ]

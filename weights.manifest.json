@@ -229,6 +229,27 @@
         "model.safetensors"
       ],
       "status": "weights-provisioned; adapter deferred (transformers 5.13 incompatibility)"
+    },
+    {
+      "name": "grounding_dino_tiny",
+      "kind": "hf",
+      "id": "IDEA-Research/grounding-dino-tiny",
+      "revision": "a2bb814dd30d776dcf7e30523b00659f4f141c71",
+      "ignore_patterns": [
+        "pytorch_model.bin"
+      ],
+      "required_files": [
+        "config.json",
+        "model.safetensors"
+      ],
+      "size_human": "657 MB (safetensors; the repo also ships a redundant .bin)",
+      "license": "Apache-2.0",
+      "capability": "GROUNDING",
+      "used_by": [
+        "open-vocab find_parts (phrase → box → SAM2 mask)"
+      ],
+      "mirror_needed": false,
+      "notes": "Grounded-SAM's detector half: a phrase grounds to a BOX, which the already-live SAM2 refines into a mask. Chosen over Florence-2 because it loads NATIVELY on transformers 5.13 (GroundingDinoForObjectDetection, no remote code at all) — Florence-2 does not, either natively or via trust_remote_code. Apache-2.0, so unlike YOLO's AGPL it carries no distribution constraint."
     }
   ]
 }

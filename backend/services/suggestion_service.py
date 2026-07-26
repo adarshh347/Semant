@@ -64,6 +64,11 @@ PRODUCER_PRESSURE_ZONE = "pressure_zone"
 # `region_mask` suggestion the SAM refiner already mints, so a phrase-found part enters the
 # circuit through the identical quarantine → review path as every other proposed region.
 PRODUCER_FLORENCE_FIND = "florence_find_parts"
+# CIRCUIT-001 P8-B — the open-vocab find_parts that actually runs. Two models, sequenced:
+# GroundingDINO grounds the phrase to a BOX, then the already-live SAM2 refines that box into a
+# real mask. Each answers what it is good at — roughly where, then exactly what extent — and the
+# receipt names BOTH, because a mark produced by two models that credits one is a false receipt.
+PRODUCER_GROUNDED_SAM = "grounded_sam_find_parts"
 # CIRCUIT-001 P6-F — the second REAL-MODEL field (after material). Depth-Anything-V2-Small emits
 # relative depth, which is what recession is actually about: not distance in metres but what falls
 # away behind. Two roles from one reading — `background_recession` (the far band) and
@@ -801,4 +806,102 @@ def suggestions_from_phrase(
 ) -> List[Dict[str, Any]]:
     """The list form — one suggestion, or [] when the phrase grounds nothing here."""
     d = suggestion_from_phrase(grounding, phrase=phrase, run_id=run_id, **kw)
+    return [d] if d else []
+
+
+# ── producer 11: Grounded-SAM open-vocab find_parts (CIRCUIT-001 P8-B) ─────────────────────────
+
+def best_grounded_box(detection: Optional[Dict[str, Any]], *, min_score: float = 0.5
+                      ) -> Optional[Dict[str, Any]]:
+    """The highest-scoring grounded box, normalized — or None when nothing clears `min_score`.
+
+    Pure, so the threshold decision is testable without a GPU. The threshold is the honest
+    presence-check: below it the detector is guessing, and a guessed box handed to SAM2 comes back
+    as a confident-looking mask around nothing."""
+    if not isinstance(detection, dict):
+        return None
+    boxes = detection.get("boxes") or []
+    scores = detection.get("scores") or []
+    size = detection.get("image_size") or [0, 0]
+    w, h = int(size[0] or 0), int(size[1] or 0)
+    if not boxes or w <= 0 or h <= 0:
+        return None
+    best_i, best_score = None, -1.0
+    for i, b in enumerate(boxes):
+        sc = float(scores[i]) if i < len(scores) else 0.0
+        if sc >= min_score and sc > best_score:
+            best_i, best_score = i, sc
+    if best_i is None:
+        return None
+    x0, y0, x1, y1 = (float(v) for v in boxes[best_i][:4])
+    nx0, ny0 = max(0.0, min(1.0, x0 / w)), max(0.0, min(1.0, y0 / h))
+    nx1, ny1 = max(0.0, min(1.0, x1 / w)), max(0.0, min(1.0, y1 / h))
+    if (nx1 - nx0) <= 0.005 or (ny1 - ny0) <= 0.005:
+        return None                                  # a sliver is not a part
+    return {"box_xyxy": [round(nx0, 5), round(ny0, 5), round(nx1, 5), round(ny1, 5)],
+            "score": round(best_score, 4),
+            "label": (detection.get("labels") or [""])[best_i]
+                     if best_i < len(detection.get("labels") or []) else ""}
+
+
+def suggestion_from_grounded_phrase(
+    region: Optional[Dict[str, Any]], *, phrase: str, run_id: Optional[str],
+    score: Optional[float] = None,
+    detector_model: Optional[str] = None, detector_revision: Optional[str] = None,
+    segmenter_model: str = "sam2.1", detector_latency_ms: Optional[float] = None,
+    segmenter_latency_ms: Optional[float] = None, peak_vram_mib: Optional[float] = None,
+) -> Optional[Dict[str, Any]]:
+    """A SAM2-refined region (grounded from a phrase) → a ``region_mask`` find_parts suggestion.
+
+    `region` is what `refine_session.preview` already returns — the SAME shape the SAM refine
+    producer consumes — so a phrase-found part reaches the quarantine through the identical path
+    as a click-refined one. Nothing new is invented downstream.
+
+    The receipt names BOTH models. A two-model chain that credits one is a false receipt: the
+    extent came from SAM2, but *where to look* came from the detector, and a curator auditing the
+    mark later needs both to reproduce it.
+
+    Refusal: no region (the phrase grounded nothing, or SAM2 declined) → None."""
+    text = (phrase or "").strip()
+    if not text or not isinstance(region, dict) or not region.get("id"):
+        return None
+
+    receipt: Dict[str, Any] = {
+        "run_id": run_id, "producer": PRODUCER_GROUNDED_SAM,
+        # two adapters, named in the order they ran
+        "adapter": "grounding_dino_tiny+sam2",
+        "segmenter_model": segmenter_model,
+    }
+    for key, val in (("model", detector_model), ("revision", detector_revision),
+                     ("detector_latency_ms", detector_latency_ms),
+                     ("latency_ms", segmenter_latency_ms),
+                     ("peak_vram_mib", peak_vram_mib)):
+        if val is not None:
+            receipt[key] = val
+
+    d: Dict[str, Any] = {
+        "producer": PRODUCER_GROUNDED_SAM,
+        "type": "region_mask",
+        "role": None,                                # a found extent has no reading yet
+        "label": text,                               # the curator's words name it
+        "source_ref": f"phrase:{text.lower()}",      # same question → same suggestion
+        # SAM2 produced a real mask on a real region, so this REFERENCES it — no inline pixels,
+        # exactly like the click-refine producer.
+        "geometry": {"kind": "raster_mask",
+                     "mask_ref": {"region_id": region["id"],
+                                  "geometry_rev": region.get("geometry_rev", 0)}},
+        "linked_ground_ids": [],
+        "provenance": receipt,
+        "phrase": text,
+    }
+    if score is not None:
+        d["confidence"] = round(float(score), 4)     # descriptor only — never on the mark (§6)
+    return d
+
+
+def suggestions_from_grounded_phrase(
+    region: Optional[Dict[str, Any]], *, phrase: str, run_id: Optional[str], **kw
+) -> List[Dict[str, Any]]:
+    """The list form — one suggestion, or [] when the phrase grounds nothing here."""
+    d = suggestion_from_grounded_phrase(region, phrase=phrase, run_id=run_id, **kw)
     return [d] if d else []
