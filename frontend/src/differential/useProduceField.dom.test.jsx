@@ -102,3 +102,40 @@ describe('useProduceField — the field-producer trigger', () => {
         expect(fetchCalls[0].opts.method).toBe('POST');
     });
 });
+
+describe('useProduceField — P8-A: the phrase-driven producer', () => {
+    it('sends the phrase to the endpoint and ingests the grounded region', async () => {
+        const descriptor = {
+            producer: 'florence_find_parts', type: 'region_mask', role: null,
+            label: 'the folded cloth', source_ref: 'phrase:the folded cloth',
+            geometry: { kind: 'unresolved' },
+            proposed_geometry: { polygons: [[[0.1, 0.1], [0.9, 0.1], [0.9, 0.9]]], box: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 } },
+            linked_ground_ids: [],
+            provenance: { run_id: 'run_f', producer: 'florence_find_parts', adapter: 'florence2_base',
+                          model: 'florence2_base', revision: '5ca5edf5' },
+        };
+        stubFetch(() => ok({ producer: 'florence_find_parts', suggestions: [descriptor],
+                             run_id: 'run_f', available: true, status: 'ready' }));
+        const h = await mount();
+        await act(async () => {
+            await h.current.produce({ producer: 'florence_find_parts', phrase: 'the folded cloth' });
+        });
+        const body = JSON.parse(fetchCalls[0].opts.body);
+        expect(body.phrase).toBe('the folded cloth');       // the words actually travel
+        expect(body.producer).toBe('florence_find_parts');
+        expect(storeRef.ingestSuggestions).toHaveBeenCalledTimes(1);
+        expect(h.current.status).toBe('ready');
+    });
+
+    it('a phrase that grounds nothing is an honest empty, not an error', async () => {
+        stubFetch(() => ok({ producer: 'florence_find_parts', suggestions: [], run_id: 'r',
+                             available: true, status: 'empty' }));
+        const h = await mount();
+        await act(async () => {
+            await h.current.produce({ producer: 'florence_find_parts', phrase: 'a unicorn' });
+        });
+        expect(h.current.status).toBe('empty');
+        expect(h.current.error).toBe('');
+        expect(storeRef.ingestSuggestions).not.toHaveBeenCalled();
+    });
+});

@@ -27,7 +27,7 @@ walks it column-major, so sequence index `k` maps to `c = k // h`, `r = k % h`.
 """
 
 import math
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 MIN_SIZE = 1e-4  # a normalized extent below this is treated as degenerate
 
@@ -638,3 +638,74 @@ def shading_gradient(shading: Sequence[float], grid: int) -> Optional[Dict[str, 
     # light falls from lit toward unlit: the negative gradient, unitized.
     return {"dx": round(-gx / mag, 4), "dy": round(-gy / mag, 4),
             "strength": round(mag / (hi - lo), 4)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# grounding converter (CIRCUIT-001 P8-A) — a phrase-grounding result → this repo's
+# canonical geometry. Florence-2 emits PIXEL coordinates against the image it saw;
+# everything downstream speaks normalized [0,1] against the source image. Converting
+# exactly once, here, is the REGION-GEOMETRY-001 rule. Pure: numbers in, numbers out.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def normalize_polygon(flat_xy: Sequence[float], width: int, height: int
+                      ) -> List[List[float]]:
+    """Florence's flat ``[x1,y1,x2,y2,…]`` pixel ring → a normalized ``[[x,y],…]`` ring.
+
+    Values are clamped into the unit frame: a model may place a vertex a pixel outside the
+    image, and a ring that escapes [0,1] would break every consumer that assumes the contract."""
+    if not flat_xy or width <= 0 or height <= 0:
+        return []
+    pts: List[List[float]] = []
+    for i in range(0, len(flat_xy) - 1, 2):
+        x = min(1.0, max(0.0, float(flat_xy[i]) / width))
+        y = min(1.0, max(0.0, float(flat_xy[i + 1]) / height))
+        pts.append([round(x, 5), round(y, 5)])
+    return pts
+
+
+def normalize_box_xyxy(box: Sequence[float], width: int, height: int) -> Optional[Dict[str, float]]:
+    """Florence's pixel ``[x0,y0,x1,y1]`` → the canonical normalized ``{x,y,w,h}``.
+
+    Returns None for a degenerate box — a zero-area detection is not evidence of anything."""
+    if not box or len(box) < 4 or width <= 0 or height <= 0:
+        return None
+    x0, y0, x1, y1 = (float(v) for v in box[:4])
+    x0, x1 = min(x0, x1), max(x0, x1)
+    y0, y1 = min(y0, y1), max(y0, y1)
+    nx, ny = max(0.0, x0 / width), max(0.0, y0 / height)
+    nw, nh = min(1.0 - nx, (x1 - x0) / width), min(1.0 - ny, (y1 - y0) / height)
+    if nw <= MIN_SIZE or nh <= MIN_SIZE:
+        return None
+    return {"x": round(nx, 5), "y": round(ny, 5), "w": round(nw, 5), "h": round(nh, 5)}
+
+
+def region_geometry_from_grounding(grounding: Optional[Dict[str, Any]]
+                                   ) -> Optional[Dict[str, Any]]:
+    """A Florence grounding result → ``{"polygons": [...], "box": {...}}`` in normalized space.
+
+    Prefers polygons (a real extent) and falls back to the grounding box. Returns None when
+    nothing survives normalization — a phrase that grounds only a degenerate sliver has, honestly,
+    grounded nothing."""
+    if not isinstance(grounding, dict):
+        return None
+    size = grounding.get("image_size") or [0, 0]
+    w, h = int(size[0] or 0), int(size[1] or 0)
+    if w <= 0 or h <= 0:
+        return None
+
+    rings: List[List[List[float]]] = []
+    for poly_group in grounding.get("polygons") or []:
+        # Florence nests: one instance → a list of rings, each a flat pixel list.
+        groups = poly_group if isinstance(poly_group, (list, tuple)) else []
+        for ring in groups:
+            pts = normalize_polygon(ring, w, h) if isinstance(ring, (list, tuple)) else []
+            if len(pts) >= 3:                       # fewer than 3 points is not an extent
+                rings.append(pts)
+    if rings:
+        return {"polygons": rings, "box": bbox_from_polygons(rings)}
+
+    for box in grounding.get("boxes") or []:
+        nb = normalize_box_xyxy(box, w, h)
+        if nb:
+            return {"polygons": [], "box": nb}
+    return None

@@ -415,3 +415,53 @@ def test_shading_gradient_refuses_an_evenly_lit_or_too_small_field():
     assert mg.shading_gradient([5.0] * (grid * grid), grid) is None    # flat → no direction
     assert mg.shading_gradient([1.0, 2.0, 3.0, 4.0], 2) is None        # grid < 3
     assert mg.shading_gradient([1.0], 4) is None                        # too few values
+
+
+# ── grounding converter (CIRCUIT-001 P8-A) ───────────────────────────────────
+# Florence-2 emits PIXEL coordinates; everything downstream speaks normalized [0,1].
+
+def test_normalize_polygon_converts_and_clamps():
+    # a flat [x1,y1,x2,y2,...] pixel ring against a 200×100 image
+    pts = mg.normalize_polygon([0, 0, 200, 0, 200, 100, 0, 100], 200, 100)
+    assert pts == [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]
+    # a vertex a few pixels outside the frame is clamped, not propagated
+    out = mg.normalize_polygon([-10, -10, 220, 120], 200, 100)
+    assert all(0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 for x, y in out)
+    assert mg.normalize_polygon([], 200, 100) == []
+    assert mg.normalize_polygon([1, 2], 0, 0) == []
+
+
+def test_normalize_box_xyxy_and_degenerate_refusal():
+    b = mg.normalize_box_xyxy([10, 20, 110, 70], 200, 100)
+    assert b == {"x": 0.05, "y": 0.2, "w": 0.5, "h": 0.5}
+    # reversed corners still yield a sane box
+    assert mg.normalize_box_xyxy([110, 70, 10, 20], 200, 100) == b
+    # a zero-area detection is not evidence of anything
+    assert mg.normalize_box_xyxy([5, 5, 5, 5], 200, 100) is None
+    assert mg.normalize_box_xyxy([0, 0, 1, 1], 0, 0) is None
+
+
+def test_region_geometry_from_grounding_prefers_polygons():
+    g = {"polygons": [[[0, 0, 100, 0, 100, 100, 0, 100]]], "boxes": [[0, 0, 10, 10]],
+         "image_size": [200, 200]}
+    out = mg.region_geometry_from_grounding(g)
+    assert out["polygons"] and len(out["polygons"][0]) == 4      # the real extent won
+    assert out["box"]["w"] == pytest.approx(0.5)
+
+
+def test_region_geometry_from_grounding_falls_back_to_box():
+    out = mg.region_geometry_from_grounding(
+        {"polygons": [], "boxes": [[10, 20, 110, 140]], "image_size": [200, 200]})
+    assert out["polygons"] == []
+    assert out["box"] == {"x": 0.05, "y": 0.1, "w": 0.5, "h": 0.6}
+
+
+def test_region_geometry_from_grounding_refuses_nothing_useful():
+    assert mg.region_geometry_from_grounding(None) is None
+    assert mg.region_geometry_from_grounding({}) is None
+    # a 2-point "polygon" is not an extent, and a zero box is not a part
+    assert mg.region_geometry_from_grounding(
+        {"polygons": [[[1, 1, 2, 2]]], "boxes": [[5, 5, 5, 5]], "image_size": [200, 200]}) is None
+    # no image size → nothing can be normalized honestly
+    assert mg.region_geometry_from_grounding(
+        {"polygons": [], "boxes": [[1, 1, 50, 50]], "image_size": [0, 0]}) is None

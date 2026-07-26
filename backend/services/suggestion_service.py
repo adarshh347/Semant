@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from backend.services.mask_geometry import (cosine_field_from_features, depth_band_field,
+                                            region_geometry_from_grounding,
                                             field_contrast, rle_is_valid, shading_band_field,
                                             shading_gradient, soft_field_from_map,
                                             soft_field_from_mask, strokes_from_field)
@@ -57,6 +58,12 @@ PRODUCER_RHYTHM = "rhythm"
 # an axis" — drapery pulling one way, an architectural run, a directional strain. One adapter
 # call already produces both maps, so this producer is a second reading of work already done.
 PRODUCER_PRESSURE_ZONE = "pressure_zone"
+# CIRCUIT-001 P8-A — open-vocab find_parts. Every producer above answers a question Semant chose
+# in advance; this one answers the question the CURATOR asks, in words: "the folded cloth at her
+# knee" → a mask. Florence-2 grounds the phrase; this producer turns that into the same
+# `region_mask` suggestion the SAM refiner already mints, so a phrase-found part enters the
+# circuit through the identical quarantine → review path as every other proposed region.
+PRODUCER_FLORENCE_FIND = "florence_find_parts"
 # CIRCUIT-001 P6-F — the second REAL-MODEL field (after material). Depth-Anything-V2-Small emits
 # relative depth, which is what recession is actually about: not distance in metres but what falls
 # away behind. Two roles from one reading — `background_recession` (the far band) and
@@ -731,3 +738,67 @@ def suggestions_from_shading(
         if d:
             out.append(d)
     return out
+
+
+# ── producer 10: open-vocab find_parts — Florence-2 phrase → region (CIRCUIT-001 P8-A) ─────────
+
+def suggestion_from_phrase(
+    grounding: Optional[Dict[str, Any]], *, phrase: str, run_id: Optional[str],
+    model: Optional[str] = None, adapter: str = "florence2_base",
+    checkpoint: Optional[str] = None, revision: Optional[str] = None,
+    preprocessing_version: Optional[str] = None, latency_ms: Optional[float] = None,
+    peak_vram_mib: Optional[float] = None, region_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """A grounded phrase → a quarantined ``region_mask`` suggestion carrying real geometry.
+
+    Unlike the SAM refiner — which references a region the segmenter already persisted — a
+    phrase-found part does not exist yet, so the descriptor carries the geometry inline under
+    ``proposed_geometry`` (normalized polygons + box) for the acceptance path to mint a Region
+    from. The mark itself still authors no pixels: ``geometry.kind`` stays ``region_ref`` once a
+    Region exists. Until the curator accepts, this is a proposal about where something is.
+
+    The receipt is FULL and names the pinned revision — "which weights said this" is part of the
+    claim, not metadata about it.
+
+    Refusal (fail-closed): the phrase grounds nothing, or everything it grounds is degenerate →
+    None. A phrase that finds nothing must return nothing; a box covering the whole frame or a
+    two-point 'polygon' is not a part, and inventing one would be the model agreeing with the
+    curator rather than answering them."""
+    text = (phrase or "").strip()
+    if not text:
+        return None
+    geom = region_geometry_from_grounding(grounding)
+    if not geom:
+        return None
+
+    receipt: Dict[str, Any] = {"run_id": run_id, "producer": PRODUCER_FLORENCE_FIND,
+                               "adapter": adapter}
+    for key, val in (("model", model), ("checkpoint", checkpoint), ("revision", revision),
+                     ("preprocessing_version", preprocessing_version),
+                     ("latency_ms", latency_ms), ("peak_vram_mib", peak_vram_mib)):
+        if val is not None:
+            receipt[key] = val
+
+    return {
+        "producer": PRODUCER_FLORENCE_FIND,
+        "type": "region_mask",
+        "role": None,                       # a found extent has no perceptual reading yet
+        "label": text,                      # the curator's own words name it
+        # idempotency: the same phrase on the same image replaces rather than duplicates.
+        "source_ref": f"phrase:{text.lower()}",
+        # No Region exists yet, so nothing can be referenced. `unresolved` is the honest kind
+        # until acceptance mints one — the geometry rides alongside as a PROPOSAL.
+        "geometry": {"kind": "unresolved"},
+        "proposed_geometry": {"polygons": geom["polygons"], "box": geom["box"]},
+        "linked_ground_ids": [],
+        "provenance": receipt,
+        "phrase": text,
+    }
+
+
+def suggestions_from_phrase(
+    grounding: Optional[Dict[str, Any]], *, phrase: str, run_id: Optional[str], **kw
+) -> List[Dict[str, Any]]:
+    """The list form — one suggestion, or [] when the phrase grounds nothing here."""
+    d = suggestion_from_phrase(grounding, phrase=phrase, run_id=run_id, **kw)
+    return [d] if d else []

@@ -127,6 +127,10 @@ const FIELD_PRODUCERS = [
       hint: 'Where the light lives — intrinsic shading. Needs the Intrinsic model installed.' },
     { key: 'shadow_field', label: 'Shadow', needsSeed: false,
       hint: 'Where the light is withheld — the same reading, read as absence.' },
+    // P8-A: the first producer driven by WORDS. `needsPhrase` swaps the run button for a text
+    // field — the query is a phrase, not a selection or a tap.
+    { key: 'florence_find_parts', label: 'Name it', needsSeed: false, needsPhrase: true,
+      hint: 'Say what to find — "the folded cloth at her knee" — and Florence-2 grounds it as a part.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface
@@ -213,13 +217,21 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // ── Field (CIRCUIT-001 P6-C) — a producer paints a soft field; results enter quarantine ──
     const fieldProducer = useProduceField(postId, store);
     const [fieldKind, setFieldKind] = useState('negative_space');   // which field producer is armed
+    const [fieldPhrase, setFieldPhrase] = useState('');             // P8-A: open-vocab query
     const fieldSpec = FIELD_PRODUCERS.find((p) => p.key === fieldKind) || FIELD_PRODUCERS[0];
     // Run the armed field producer against the selected region (+ an optional tap seed). Results are
     // ingested into the SAME quarantine the hook feeds — nothing is drawn on the canvas here.
     const runField = useCallback((seedPoint = null) => {
+        const spec = FIELD_PRODUCERS.find((p) => p.key === fieldKind);
+        // A phrase producer asks about the whole image, so it needs no selected part — only words.
+        if (spec?.needsPhrase) {
+            if (!fieldPhrase.trim()) return;
+            fieldProducer.produce({ producer: fieldKind, regionId: selectedId, phrase: fieldPhrase.trim() });
+            return;
+        }
         if (!selectedId) return;
         fieldProducer.produce({ producer: fieldKind, regionId: selectedId, seedPoint });
-    }, [selectedId, fieldKind, fieldProducer]);
+    }, [selectedId, fieldKind, fieldPhrase, fieldProducer]);
 
     // ── Find parts (CIRCUIT-001 P2) — the operation, available where composing happens ──
     const findParts = useFindParts(postId, store);
@@ -1218,11 +1230,29 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                 ))}
                             </div>
                             <p className="diff-field-hint">
-                                {!selectedId ? 'Select a part first.'
-                                    : fieldSpec.needsSeed ? 'Tap a point on the part to seed the material field.'
-                                        : fieldSpec.hint}
+                                {fieldSpec.needsPhrase ? fieldSpec.hint
+                                    : !selectedId ? 'Select a part first.'
+                                        : fieldSpec.needsSeed ? 'Tap a point on the part to seed the material field.'
+                                            : fieldSpec.hint}
                             </p>
-                            {!fieldSpec.needsSeed && (
+                            {/* P8-A — the query is WORDS, so the run control is a text field.
+                                Enter submits; an empty phrase asks nothing and stays disabled. */}
+                            {fieldSpec.needsPhrase && (
+                                <div className="diff-field-phrase">
+                                    <input type="text" className="diff-field-phrase-input"
+                                        placeholder="name what to find — e.g. the folded cloth"
+                                        aria-label="Phrase to find"
+                                        value={fieldPhrase}
+                                        onChange={(e) => setFieldPhrase(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') runField(); }} />
+                                    <button type="button" className="diff-primary diff-field-run"
+                                        disabled={!fieldPhrase.trim() || fieldProducer.status === 'loading'}
+                                        onClick={() => runField()}>
+                                        {fieldProducer.status === 'loading' ? 'Looking…' : 'Find it'}
+                                    </button>
+                                </div>
+                            )}
+                            {!fieldSpec.needsSeed && !fieldSpec.needsPhrase && (
                                 <button type="button" className="diff-primary diff-field-run"
                                     disabled={!selectedId || fieldProducer.status === 'loading'}
                                     onClick={() => runField()}>

@@ -667,3 +667,76 @@ class IntrinsicShadingAdapter:
             return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
         return JobResult(JobStatus.SUCCEEDED,
                          artifact=VisionArtifact("shading", shading, prov), provenance=prov)
+
+
+# ── P8-A: Florence-2 — the Director's local eyes (CIRCUIT-001) ─────────────────────────────
+class Florence2Adapter:
+    """The `GROUNDING` adapter — Florence-2-base on the GPU pool through ModelManager.
+
+    The first roster entry that answers *what you ask it* rather than one fixed question:
+    `infer` takes a `task` (caption / detect / grounding / referring-expression segmentation)
+    and, for the phrase tasks, a `phrase`. P8-A ships one producer over it (open-vocab
+    find_parts); `enumerate` and `presence_check` are later verbs on this same adapter, which is
+    why the whole task surface is exposed now rather than a single grounding call.
+
+    It emits geometry in PIXEL space as Florence produces it — normalization into the repo's
+    canonical [0,1] contract happens exactly once, in `mask_geometry`."""
+
+    def __init__(self) -> None:
+        from backend.services import florence2_service
+        self._svc = florence2_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="florence2_base", capability=Capability.GROUNDING, resource=ResourceKind.GPU,
+            model_id=florence2_service.MODEL_TAG, checkpoint=florence2_service.CHECKPOINT,
+            revision=florence2_service.REVISION, license="MIT",
+            preprocessing_version=florence2_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import florence2_service as f
+            return f.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        import time as _t
+        t0 = _t.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (_t.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        task = payload.get("task") or self._svc.TASK_REFERRING_SEG
+        phrase = payload.get("phrase")
+
+        t0 = time.perf_counter()
+        if payload.get("ground_phrase"):
+            # the convenience path the find_parts producer uses: seg, falling back to boxes
+            data = await asyncio.to_thread(self._svc.ground_phrase, image, phrase or "")
+        else:
+            data = await asyncio.to_thread(self._svc.run_task, image, task, phrase=phrase)
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if data is None:
+            # No result is not a failure: a phrase that grounds nothing is an honest answer.
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("grounding", data, prov), provenance=prov)
