@@ -29,6 +29,7 @@ class Capability(str, Enum):
     PERCEPTUAL = "perceptual"           # CPU colour/edge/texture/pattern analyzers
     DEPTH = "depth"                     # relative depth (Depth-Anything)
     SHADING = "shading"                 # intrinsic decomposition — light/shadow (Intrinsic)
+    GROUNDING = "grounding"             # phrase → region, detect, caption (Florence-2: open-vocab)
 
 
 class ResourceKind(str, Enum):

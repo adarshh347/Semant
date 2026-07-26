@@ -64,6 +64,13 @@ def default_roster() -> List[AdapterSpec]:
         # the HF hub, so it cannot be fetched the way every other row here can.
         AdapterSpec("intrinsic_ordinal_shading", Capability.SHADING, ResourceKind.GPU,
                     "intrinsic_ordinal_shading", available=False, deferred=True),
+        # P8-A: the Director's local eyes — one small model for caption / detect / grounding /
+        # referring-expression segmentation. transformers implements Florence2 natively, so no
+        # trust_remote_code; weights are pinned + provisioned through WEIGHTS-001.
+        AdapterSpec("florence2_base", Capability.GROUNDING, ResourceKind.GPU,
+                    "microsoft/Florence-2-base",
+                    revision="5ca5edf5bd017b9919c05d08aebef5e4c7ac3bac",
+                    license="MIT", available=False, deferred=True),
         AdapterSpec("cloud_vlm", Capability.SEMANTIC_ANNOTATE, ResourceKind.REMOTE,
                     "cloud-vision-language-model", available=False, deferred=True),
     ]

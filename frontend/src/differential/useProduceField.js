@@ -30,7 +30,7 @@ export default function useProduceField(postId, store) {
     setStatus((s) => (s === 'loading' ? 'idle' : s));
   }, []);
 
-  const produce = useCallback(async ({ producer, regionId = null, seedPoint = null, params = null } = {}) => {
+  const produce = useCallback(async ({ producer, regionId = null, seedPoint = null, phrase = null, params = null } = {}) => {
     if (!postId || !producer) return null;
     const seq = ++reqSeq.current;
     const controller = new AbortController();
@@ -39,7 +39,7 @@ export default function useProduceField(postId, store) {
     try {
       const res = await fetch(`${API_URL}/api/v1/posts/${postId}/produce-field`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ producer, region_id: regionId, seed_point: seedPoint, params }),
+        body: JSON.stringify({ producer, region_id: regionId, seed_point: seedPoint, phrase, params }),
         signal: controller.signal,
       });
       if (!res.ok) {

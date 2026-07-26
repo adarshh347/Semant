@@ -1011,3 +1011,143 @@ def test_real_intrinsic_holds_single_gpu_residency_and_unloads_clean():
     run(mgr.unload("intrinsic_ordinal_shading"))
     assert mgr.resident() == []
     torch.cuda.empty_cache()
+
+
+# ─────────── P8-A: open-vocab find_parts (Florence-2 phrase → region) ───────────
+# Fake grounding results: CI needs neither GPU nor the 0.5 GB checkpoint.
+
+def _grounding(poly=True, size=(200, 200)):
+    if poly:
+        return {"polygons": [[[20, 20, 180, 20, 180, 180, 20, 180]]], "boxes": [],
+                "labels": [], "phrase": "the folded cloth", "image_size": list(size)}
+    return {"polygons": [], "boxes": [[20, 20, 180, 180]], "labels": ["cloth"],
+            "phrase": "the folded cloth", "image_size": list(size)}
+
+
+def test_phrase_becomes_a_region_suggestion_with_a_full_pinned_receipt():
+    d = ss.suggestion_from_phrase(
+        _grounding(), phrase="the folded cloth", run_id="run_f",
+        model="florence2_base", checkpoint="microsoft/Florence-2-base",
+        revision="5ca5edf5bd017b9919c05d08aebef5e4c7ac3bac",
+        preprocessing_version="florence2-base-v1", latency_ms=880.0, peak_vram_mib=730.0)
+    assert d is not None
+    assert d["producer"] == "florence_find_parts" and d["type"] == "region_mask"
+    assert d["label"] == "the folded cloth"          # the curator's own words name it
+    assert d["role"] is None                          # a found extent has no reading yet
+    # no Region exists yet, so the mark references nothing and authors no pixels
+    assert d["geometry"] == {"kind": "unresolved"}
+    # the geometry rides alongside as a PROPOSAL for the acceptance path
+    pg = d["proposed_geometry"]
+    assert pg["polygons"] and len(pg["polygons"][0]) == 4
+    assert 0.0 <= pg["box"]["x"] <= 1.0 and 0.0 < pg["box"]["w"] <= 1.0
+    p = d["provenance"]
+    assert p["adapter"] == "florence2_base" and p["model"] == "florence2_base"
+    assert p["revision"].startswith("5ca5edf5")       # WHICH weights said this
+    assert p["peak_vram_mib"] == 730.0 and p["run_id"] == "run_f"
+    assert "confidence" not in p                       # contract §6 holds here too
+
+
+def test_phrase_idempotency_key_is_the_phrase():
+    a = ss.suggestion_from_phrase(_grounding(), phrase="The Folded Cloth", run_id="r")
+    b = ss.suggestion_from_phrase(_grounding(), phrase="the folded cloth  ", run_id="r")
+    assert a["source_ref"] == b["source_ref"]         # same question → same suggestion
+
+
+def test_phrase_falls_back_to_the_grounding_box_when_no_polygon():
+    d = ss.suggestion_from_phrase(_grounding(poly=False), phrase="cloth", run_id="r")
+    assert d is not None
+    assert d["proposed_geometry"]["polygons"] == []
+    assert d["proposed_geometry"]["box"]["w"] == pytest.approx(0.8)
+
+
+def test_phrase_refuses_when_nothing_is_grounded():
+    """The honest counterpart to a presence head: a phrase that finds nothing returns nothing,
+    never the nearest thing the model can produce."""
+    assert ss.suggestion_from_phrase(None, phrase="a unicorn", run_id="r") is None
+    assert ss.suggestion_from_phrase({}, phrase="a unicorn", run_id="r") is None
+    assert ss.suggestion_from_phrase(
+        {"polygons": [], "boxes": [], "image_size": [200, 200]}, phrase="a unicorn", run_id="r") is None
+    # a grounded sliver is not a part
+    assert ss.suggestion_from_phrase(
+        {"polygons": [], "boxes": [[5, 5, 5, 5]], "image_size": [200, 200]}, phrase="x", run_id="r") is None
+
+
+def test_phrase_refuses_an_empty_question():
+    assert ss.suggestion_from_phrase(_grounding(), phrase="", run_id="r") is None
+    assert ss.suggestion_from_phrase(_grounding(), phrase="   ", run_id="r") is None
+    assert ss.suggestions_from_phrase(_grounding(), phrase="  ", run_id="r") == []
+    assert len(ss.suggestions_from_phrase(_grounding(), phrase="cloth", run_id="r")) == 1
+
+
+def test_florence_adapter_spec_and_task_surface():
+    from backend.services.vision_orchestrator.adapters import Florence2Adapter
+    from backend.services.vision_orchestrator.contracts import Capability, ResourceKind
+    from backend.services import florence2_service as f
+    a = Florence2Adapter()
+    assert a.spec.name == "florence2_base"
+    assert a.spec.capability is Capability.GROUNDING
+    assert a.spec.resource is ResourceKind.GPU          # single-GPU residency applies
+    assert a.spec.revision == f.REVISION                 # the pin reaches the receipt
+    assert a.is_available() is f.is_available()
+    # the reusable "eyes": the whole task surface, not just the one verb P8-A ships
+    assert set(f.TASKS) == {f.TASK_CAPTION, f.TASK_DETECT, f.TASK_GROUNDING, f.TASK_REFERRING_SEG}
+    assert f.PHRASE_TASKS == {f.TASK_GROUNDING, f.TASK_REFERRING_SEG}
+
+
+def test_florence_service_refuses_a_phrase_task_without_a_phrase(monkeypatch):
+    """"Find the thing I didn't name" has no honest answer — it must not silently become a
+    whole-image query."""
+    from backend.services import florence2_service as f
+    monkeypatch.setattr(f, "is_available", lambda: True)
+    assert f.run_task(object(), f.TASK_REFERRING_SEG, phrase="") is None
+    assert f.run_task(object(), f.TASK_GROUNDING, phrase=None) is None
+    assert f.run_task(object(), "<NOT_A_TASK>", phrase="x") is None
+
+
+def test_produce_field_phrase_dispatches_through_the_same_surface(monkeypatch):
+    post = {"_id": ObjectId(), "region_annotations": [{"id": "r1", "box": {"x": 0, "y": 0, "w": 1, "h": 1}}]}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import florence2_service as f
+
+    class _Img:
+        size = (200, 200)
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(f, "is_available", lambda: True)
+
+    class _Art: data = _grounding()
+    class _Job: artifact = _Art()
+    async def _fake_run(adapter, payload, **kw):
+        assert payload.get("phrase") == "the folded cloth"   # the words reach the model
+        return _Job()
+    import backend.routers.posts as RR
+    RR._florence_mgr = type("M", (), {"run_adapter": staticmethod(_fake_run)})()
+    RR._florence_adapter = object()
+    try:
+        resp = run(R.produce_field(str(posts.post["_id"]),
+                                   R.ProduceFieldRequest(producer="florence_find_parts",
+                                                         phrase="the folded cloth")))
+        assert resp["status"] == "ready"
+        sug = resp["suggestions"][0]
+        assert sug["producer"] == "florence_find_parts" and sug["label"] == "the folded cloth"
+        assert sug["provenance"]["revision"] == f.REVISION
+        assert posts.writes == []                            # a proposal is never a write
+    finally:
+        RR._florence_mgr = None; RR._florence_adapter = None
+
+
+def test_produce_field_phrase_with_no_words_refuses_honestly(monkeypatch):
+    post = {"_id": ObjectId(), "region_annotations": []}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    from backend.services import florence2_service as f
+    monkeypatch.setattr(f, "is_available", lambda: True)
+    resp = run(R.produce_field(str(posts.post["_id"]),
+                               R.ProduceFieldRequest(producer="florence_find_parts")))
+    assert resp["status"] == "empty" and resp["suggestions"] == []
+    assert resp["available"] is True

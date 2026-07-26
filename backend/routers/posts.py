@@ -1689,6 +1689,7 @@ class ProduceFieldRequest(BaseModel):
     producer: str                                    # 'negative_space' | 'material_field' | (future)
     region_id: Optional[str] = None                  # the selected region (its mask / identity)
     seed_point: Optional[List[float]] = None         # normalized [x, y] — material_field needs it
+    phrase: Optional[str] = None                     # P8-A: open-vocab find_parts takes WORDS
     params: Optional[Dict[str, Any]] = None          # producer-specific knobs (optional)
 
 
@@ -1961,6 +1962,70 @@ async def _produce_shadow(post_id, post, region, req, run_id):
     return await _produce_shading(post_id, post, region, req, run_id, role="shadow_field")
 
 
+# Florence-2 — the one producer driven by WORDS rather than a selection or a tap (P8-A).
+_florence_mgr = None
+_florence_adapter = None
+
+
+async def _produce_florence_find_parts(post_id, post, region, req, run_id):
+    """Open-vocab find_parts: a phrase → a grounded region suggestion.
+
+    Whole-image grounding: the curator is asking where something IS, so scoping the search to an
+    already-selected region would beg the question. A phrase that grounds nothing returns an
+    honest empty rather than the nearest thing the model can find."""
+    from backend.services import florence2_service as fsvc
+    if not fsvc.is_available():
+        return [], "unavailable", False
+    phrase = (req.phrase or (req.params or {}).get("phrase") or "").strip()
+    if not phrase:
+        return [], "empty", True                     # no words → nothing was asked
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import Florence2Adapter
+    global _florence_mgr, _florence_adapter
+    if _florence_mgr is None:
+        _reg = AdapterRegistry()
+        _florence_adapter = Florence2Adapter()
+        _reg.register(_florence_adapter)
+        _florence_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _florence_mgr.run_adapter(
+        _florence_adapter, {"image": image, "ground_phrase": True, "phrase": phrase},
+        priority=int(Priority.INTERACTIVE), cancel=CancelToken(), timeout_s=180.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        # UNAVAILABLE here means "the phrase grounded nothing", which is a real answer.
+        return [], "empty", True
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service.suggestion_from_phrase(
+        job.artifact.data, phrase=phrase, run_id=run_id,
+        model=fsvc.MODEL_TAG, checkpoint=fsvc.CHECKPOINT, revision=fsvc.REVISION,
+        preprocessing_version=fsvc.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram,
+        region_id=(region or {}).get("id"))
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
 # The registry: producer name → handler. Extensible — a new producer plugs in here, not a new route.
 _FIELD_PRODUCERS = {
     "negative_space": _produce_negative_space,
@@ -1971,6 +2036,7 @@ _FIELD_PRODUCERS = {
     "atmosphere_field": _produce_atmosphere,
     "light_field": _produce_shading,
     "shadow_field": _produce_shadow,
+    "florence_find_parts": _produce_florence_find_parts,
 }
 
 

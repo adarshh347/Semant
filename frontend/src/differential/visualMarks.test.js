@@ -354,6 +354,7 @@ describe('contract v3 — region_ref (a naming reference, no mask authored)', ()
         expect(PRODUCERS).toContain('pressure_zone');   // P6-E: the same reading, coherence map
         expect(PRODUCERS).toContain('recession');       // P6-F: Depth-Anything near/far bands
         expect(PRODUCERS).toContain('shading');         // P6-G: Intrinsic light/shadow (deferred)
+        expect(PRODUCERS).toContain('florence_find_parts'); // P8-A: open-vocab find_parts
         expect(PRODUCERS).toContain('fixture');
     });
 });

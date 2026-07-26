@@ -1285,3 +1285,12 @@
 .diff-field-run { align-self: flex-start; }
 .diff-field-status { font-size: 12px; margin: 0; color: var(--ink-soft, #6b6b6b); }
 .diff-field-empty { color: #8A7A5E; font-style: italic; }
+
+/* P8-A — the phrase input: the one producer you drive with words */
+.diff-field-phrase { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.diff-field-phrase-input {
+  flex: 1 1 260px; min-width: 200px; padding: 5px 9px;
+  border: 1px solid var(--rule, #d9d4cd); border-radius: 6px;
+  background: var(--paper, #fff); font: inherit; font-size: 12px;
+}
+.diff-field-phrase-input:focus { outline: none; border-color: var(--accent, #7a3b62); }

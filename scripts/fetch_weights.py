@@ -89,11 +89,20 @@ def provision_hf(entry: dict, *, check_only: bool) -> str:
     # network round-trips. Since the revision is a pinned commit sha, a local hit is by definition
     # the right bytes — there is nothing a network call could tell us that we don't already know.
     try:
-        snapshot_download(repo_id=repo_id, revision=revision, local_files_only=True, **kw)
+        local = snapshot_download(repo_id=repo_id, revision=revision, local_files_only=True, **kw)
+        # `local_files_only` is NOT a completeness check on its own: when the repo's file listing
+        # was never cached (e.g. only config.json was ever fetched), it happily returns the
+        # snapshot dir and reports success for a directory with no weights in it. Measured, not
+        # theoretical — florence2 reported "cached" holding config.json alone. So verify that the
+        # files we actually load are really there.
+        missing = [f for f in entry.get("required_files", [])
+                   if not (Path(local) / f).exists()]
+        if missing:
+            raise FileNotFoundError("missing " + ", ".join(missing))
         log(OK, entry["name"], f"cached @ {revision[:12]}")
         return OK
     except Exception:
-        pass                                  # not cached (or incomplete) → fall through
+        pass                                  # not cached, or missing a file we need → fetch
 
     if check_only:
         log(MISS, entry["name"], f"would fetch @ {revision[:12]} ({entry.get('size_human','?')})")
