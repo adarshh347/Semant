@@ -16,7 +16,7 @@
 //
 // Pure; no renderer, no store, no clock it does not accept.
 
-import { makeVisualMark, normalizeMark, validateMark } from './visualMarks';
+import { makeVisualMark, normalizeMark, validateMark, PRODUCERS } from './visualMarks';
 
 // ── reading provenance ───────────────────────────────────────────────────────
 
@@ -299,9 +299,26 @@ export function suggestionFromDescriptor(descriptor, { now = null } = {}) {
 
 /** A list of descriptors → the valid suggestion marks (invalid dropped). Order preserved. */
 export function suggestionsFromDescriptors(descriptors = [], opts = {}) {
-    return (Array.isArray(descriptors) ? descriptors : [])
-        .map((d) => suggestionFromDescriptor(d, opts))
-        .filter(Boolean);
+    const input = Array.isArray(descriptors) ? descriptors : [];
+    const out = input.map((d) => suggestionFromDescriptor(d, opts));
+    // FIX-UI-001 (G5): the drop is correct (fail-closed) but SILENT — a real model suggestion can
+    // vanish with no trace. In DEV, name each drop, and call out an unknown producer specifically
+    // (the recurring cause: a backend producer name absent from the frontend PRODUCERS vocabulary).
+    if (import.meta.env && import.meta.env.DEV) {
+        input.forEach((d, i) => {
+            if (out[i]) return;
+            const producer = d && d.provenance && d.provenance.producer;
+            if (producer && !PRODUCERS.includes(producer)) {
+                // eslint-disable-next-line no-console
+                console.warn(`[quarantine] dropped a suggestion from unknown producer "${producer}" — `
+                    + 'add it to PRODUCERS (visualMarks.js) or it can never render.');
+            } else {
+                // eslint-disable-next-line no-console
+                console.warn('[quarantine] dropped an invalid suggestion descriptor', d);
+            }
+        });
+    }
+    return out.filter(Boolean);
 }
 
 // Re-exported so a quarantine consumer has the constructors without a second import.
