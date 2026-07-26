@@ -1992,6 +1992,62 @@ async def _produce_shadow(post_id, post, region, req, run_id):
     return await _produce_shading(post_id, post, region, req, run_id, role="shadow_field")
 
 
+async def _produce_fall_of_light(post_id, post, region, req, run_id):
+    """GEOM-001 · the dense trace producer. Same Intrinsic reading as light/shadow, a different
+    geometry family: WHERE the light lands is a field; which WAY it travels is a flow_field.
+
+    Reuses the SHARED `_shading_mgr`/`_shading_adapter` singletons so Intrinsic is resident exactly
+    once regardless of which shading act runs — and the existing `/produce-field/unload` loop, which
+    already releases `intrinsic_ordinal_shading`, frees it with no new wiring. A flat or
+    non-directional surface is an honest refusal (status 'empty'), never a fabricated flow."""
+    from backend.services import intrinsic_service as isvc
+    if not isvc.is_available():
+        return [], "unavailable", False
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import IntrinsicShadingAdapter
+    global _shading_mgr, _shading_adapter
+    if _shading_mgr is None:
+        _reg = AdapterRegistry()
+        _shading_adapter = IntrinsicShadingAdapter()
+        _reg.register(_shading_adapter)
+        _shading_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _shading_mgr.run_adapter(_shading_adapter, {"image": image},
+                                         priority=int(Priority.INTERACTIVE),
+                                         cancel=CancelToken(), timeout_s=180.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        return [], "unavailable", False
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service.suggestion_from_fall_of_light(
+        job.artifact.data, run_id=run_id, region_id=(region or {}).get("id"),
+        model=isvc.MODEL_TAG, checkpoint=isvc.CHECKPOINT,
+        preprocessing_version=isvc.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
 # Florence-2 — the one producer driven by WORDS rather than a selection or a tap (P8-A).
 _florence_mgr = None
 _florence_adapter = None
@@ -2065,6 +2121,96 @@ _grounding_mgr = None
 _grounding_adapter = None
 _clip_mgr = None
 _clip_adapter = None
+
+
+async def _detect_and_verify(post_id, post, req, phrase):
+    """The shared detector→CLIP half of the P8-C pipeline, without SAM2.
+
+    Returned as (survivors, detection, timings) so the reading verbs can use exactly the same
+    two stages the find_parts producer does — same models, same thresholds, same sequencing —
+    and differ only in what they do with the answer. Raises nothing; a None survivors means
+    the pipeline could not run at all (as distinct from running and finding nothing)."""
+    from backend.services import grounding_detector_service as gd
+    from backend.services import clip_presence_service as cps
+    if not gd.is_available() or not cps.is_available():
+        return None, None, {}
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import (GroundingDinoAdapter,
+                                                               ClipPresenceAdapter)
+    global _grounding_mgr, _grounding_adapter, _clip_mgr, _clip_adapter
+    if _grounding_mgr is None:
+        _reg = AdapterRegistry(); _grounding_adapter = GroundingDinoAdapter()
+        _reg.register(_grounding_adapter); _grounding_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _grounding_mgr.run_adapter(
+        _grounding_adapter, {"image": image, "phrase": phrase},
+        priority=int(Priority.INTERACTIVE), cancel=CancelToken(), timeout_s=180.0)
+    det_ms = round((time.perf_counter() - _t) * 1000, 1)
+    detection = job.artifact.data if job.artifact else None
+    await _grounding_mgr.unload("grounding_dino_tiny")     # out before the gate arrives
+
+    if not (detection and detection.get("boxes")):
+        return [], None, {"detector_ms": det_ms}
+
+    if _clip_mgr is None:
+        _creg = AdapterRegistry(); _clip_adapter = ClipPresenceAdapter()
+        _creg.register(_clip_adapter); _clip_mgr = ModelManager(_creg)
+    _t = time.perf_counter()
+    cjob = await _clip_mgr.run_adapter(
+        _clip_adapter, {"image": image, "phrase": phrase, "detection": detection},
+        priority=int(Priority.INTERACTIVE), cancel=CancelToken(), timeout_s=180.0)
+    clip_ms = round((time.perf_counter() - _t) * 1000, 1)
+    survivors = cjob.artifact.data if cjob.artifact else []
+    await _clip_mgr.unload("clip_vit_b32")                 # and the gate leaves too
+    return survivors, detection, {"detector_ms": det_ms, "clip_ms": clip_ms}
+
+
+async def _produce_presence_check(post_id, post, region, req, run_id):
+    """"Is X here?" — the P8-C gate asked directly. A READING: no SAM2, no mark, and "no" is a
+    real answer rather than an error."""
+    from backend.services import grounding_detector_service as gd
+    from backend.services import clip_presence_service as cps
+    phrase = (req.phrase or (req.params or {}).get("phrase") or "").strip()
+    if not phrase:
+        return [], "empty", True
+    survivors, detection, t = await _detect_and_verify(post_id, post, req, phrase)
+    if survivors is None:
+        return [], "unavailable", False                    # fail closed: no guard, no verdict
+    verdict = suggestion_service.presence_verdict(
+        survivors, phrase=phrase, run_id=run_id,
+        detector_fired=bool(detection and detection.get("boxes")),
+        detector_model=gd.MODEL_TAG, detector_revision=gd.REVISION,
+        verifier_model=cps.MODEL_TAG, verifier_revision=cps.REVISION,
+        latency_ms=round(sum(t.values()), 1) or None)
+    # A verdict is always a result — "absent" is the answer, not an empty response.
+    return ([verdict] if verdict else []), ("ready" if verdict else "empty"), True
+
+
+async def _produce_enumerate(post_id, post, region, req, run_id):
+    """"How many X?" — counting as a reading. The count is of VERIFIED instances, so asking for
+    something absent counts 0 rather than counting the detector's guesses."""
+    from backend.services import grounding_detector_service as gd
+    from backend.services import clip_presence_service as cps
+    phrase = (req.phrase or (req.params or {}).get("phrase") or "").strip()
+    if not phrase:
+        return [], "empty", True
+    survivors, detection, t = await _detect_and_verify(post_id, post, req, phrase)
+    if survivors is None:
+        return [], "unavailable", False
+    reading = suggestion_service.enumerate_reading(
+        survivors, phrase=phrase, run_id=run_id,
+        detector_candidates=len((detection or {}).get("boxes") or []),
+        detector_model=gd.MODEL_TAG, detector_revision=gd.REVISION,
+        verifier_model=cps.MODEL_TAG, verifier_revision=cps.REVISION,
+        latency_ms=round(sum(t.values()), 1) or None)
+    return ([reading] if reading else []), ("ready" if reading else "empty"), True
 
 
 async def _produce_grounded_sam(post_id, post, region, req, run_id):
@@ -2194,8 +2340,11 @@ _FIELD_PRODUCERS = {
     "atmosphere_field": _produce_atmosphere,
     "light_field": _produce_shading,
     "shadow_field": _produce_shadow,
+    "fall_of_light": _produce_fall_of_light,
     "florence_find_parts": _produce_florence_find_parts,
     "grounded_sam_find_parts": _produce_grounded_sam,
+    "presence_check": _produce_presence_check,
+    "enumerate": _produce_enumerate,
 }
 
 

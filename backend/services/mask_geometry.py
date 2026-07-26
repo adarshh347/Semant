@@ -641,6 +641,93 @@ def shading_gradient(shading: Sequence[float], grid: int) -> Optional[Dict[str, 
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# flow-field converter (CIRCUIT-001 GEOM-001) — the DENSE sibling of shading_gradient.
+# Where shading_gradient reports the ONE mean direction light falls, this reports a
+# direction PER CELL: the fall of light is not uniform (light rounds a form, pools in a
+# recess, rakes across a wall), and a single arrow flattens exactly the structure a
+# curator wants to trace. A scalar soft field cannot hold this — a field is a magnitude
+# at each cell, a flow_field is a VECTOR at each cell. That is the whole reason the kind
+# exists. Pure: plain floats in, a serialisable grid of unit-vectors + magnitudes out.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def shading_flow_field(shading: Sequence[float], grid: int, *, out_grid: int = 14
+                       ) -> Tuple[List[List[float]], int, int]:
+    """A shading map → a DENSE flow field: the direction light falls, per cell.
+
+    Returns ``(cells, rows, cols)`` where ``cells`` is a row-major list of ``[dx, dy, m]``:
+    ``(dx, dy)`` is the UNIT direction light travels at that cell (the negative shading
+    gradient, unitized) in normalized image axes (x right, y down), and ``m`` is that cell's
+    gradient magnitude normalized to ``[0, 1]`` against the strongest cell in the grid. A cell
+    with no local gradient is ``[0.0, 0.0, 0.0]`` — a null cell, not a fabricated direction.
+
+    The lattice is sampled at ``out_grid × out_grid`` (capped by the native grid), so the field
+    is a bounded, legible arrow lattice regardless of the shading grid's resolution. Central
+    differences are taken in native-grid space at each sample, so the direction is the real local
+    fall, not an interpolation artefact.
+
+    Refuses (returns ``([], 0, 0)``) when nothing is directional — a flat or evenly-lit map has no
+    fall to trace, and a grid of invented arrows over a blank wall is the same lie ``shading_gradient``
+    refuses with ``None``. This is the geometry a ``fall_of_light`` trace mark carries."""
+    n = grid * grid
+    if grid < 3 or len(shading) < n:
+        return [], 0, 0
+    vals = [float(v) for v in shading[:n]]
+    lo, hi = min(vals), max(vals)
+    if hi - lo <= 1e-12:
+        return [], 0, 0                                # evenly lit — no fall to trace
+
+    cols = rows = max(2, min(out_grid, grid))
+    # Sample the interior so central differences always have both neighbours; map each output
+    # cell centre to a native-grid coordinate, then difference one native step either side.
+    raw: List[List[float]] = []                        # [dx, dy, mag] with dx,dy the raw gradient
+    mags: List[float] = []
+    for ri in range(rows):
+        for ci in range(cols):
+            # cell centre in native-grid coords, clamped so ±1 stays in range
+            fc = (ci + 0.5) * grid / cols
+            fr = (ri + 0.5) * grid / rows
+            c = min(grid - 2, max(1, int(fc)))
+            r = min(grid - 2, max(1, int(fr)))
+            gx = (vals[r * grid + c + 1] - vals[r * grid + c - 1]) / 2.0
+            gy = (vals[(r + 1) * grid + c] - vals[(r - 1) * grid + c]) / 2.0
+            mag = math.sqrt(gx * gx + gy * gy)
+            # store the FALL direction (negative gradient); unitize later against per-cell mag
+            raw.append([-gx, -gy, mag])
+            mags.append(mag)
+
+    peak = max(mags) if mags else 0.0
+    if peak <= 1e-12:
+        return [], 0, 0                                # no cell has a direction → refuse
+    cells: List[List[float]] = []
+    for dx_neg, dy_neg, mag in raw:
+        if mag <= 1e-12:
+            cells.append([0.0, 0.0, 0.0])              # null cell — honest absence
+        else:
+            cells.append([round(dx_neg / mag, 4), round(dy_neg / mag, 4),
+                          round(mag / peak, 4)])
+    return cells, rows, cols
+
+
+def flow_field_coherence(cells: Sequence[Sequence[float]]) -> float:
+    """How aligned a flow field is: the magnitude-weighted mean resultant length of its unit
+    directions, in ``[0, 1]``. 1.0 is a single raking light (every arrow parallel); near 0 is a
+    swirling or divergent field (light from many sides). It is the honest ``confidence`` a
+    ``fall_of_light`` mark can carry — not "is this right" but "is there one direction here" —
+    and it is a reading ABOUT the geometry, never painted into it."""
+    sx = sy = sw = 0.0
+    for cell in cells:
+        if len(cell) < 3:
+            continue
+        dx, dy, m = float(cell[0]), float(cell[1]), float(cell[2])
+        sx += dx * m
+        sy += dy * m
+        sw += m
+    if sw <= 1e-12:
+        return 0.0
+    return round(math.sqrt(sx * sx + sy * sy) / sw, 4)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # grounding converter (CIRCUIT-001 P8-A) — a phrase-grounding result → this repo's
 # canonical geometry. Florence-2 emits PIXEL coordinates against the image it saw;
 # everything downstream speaks normalized [0,1] against the source image. Converting

@@ -134,6 +134,12 @@ const FIELD_PRODUCERS = [
     // load on transformers 5.13.
     { key: 'grounded_sam_find_parts', label: 'Name it', needsSeed: false, needsPhrase: true,
       hint: 'Say what to find — "the drapery" — it is grounded, verified against the crop, then cut to an exact mask.' },
+    // P8-D: two READINGS. They answer a question about the image rather than marking it, so they
+    // mint nothing and their result is shown inline instead of entering review.
+    { key: 'presence_check', label: 'Is it there?', needsSeed: false, needsPhrase: true, isReading: true,
+      hint: 'Ask whether something is present — and get an honest no when it is not.' },
+    { key: 'enumerate', label: 'How many?', needsSeed: false, needsPhrase: true, isReading: true,
+      hint: 'Count what is verified, not what the detector guessed. Absent things count zero.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface
@@ -1270,7 +1276,23 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                 <p className="diff-field-status diff-field-empty">That model isn’t available right now.</p>)}
                             {fieldProducer.status === 'error' && (
                                 <p className="diff-field-status diff-field-empty">Couldn’t reach the producer.</p>)}
-                            {fieldProducer.status === 'ready' && fieldProducer.lastRun && (
+                            {/* P8-D — a reading is shown here and nowhere else: it is a sentence
+                                about the image, not evidence on it, so there is nothing to review. */}
+                            {fieldProducer.reading?.type === 'presence_reading' && (
+                                <p className={`diff-field-status diff-field-reading${fieldProducer.reading.present ? ' on' : ''}`}>
+                                    {fieldProducer.reading.present
+                                        ? `Yes — “${fieldProducer.reading.phrase}” is here (${fieldProducer.reading.instances} verified).`
+                                        : fieldProducer.reading.basis === 'detector_proposed_but_unverified'
+                                            ? `No — something was proposed for “${fieldProducer.reading.phrase}”, but it does not check out.`
+                                            : `No — “${fieldProducer.reading.phrase}” is not here.`}
+                                </p>)}
+                            {fieldProducer.reading?.type === 'count_reading' && (
+                                <p className="diff-field-status diff-field-reading on">
+                                    {fieldProducer.reading.count === 0
+                                        ? `None — nothing matching “${fieldProducer.reading.phrase}” verified (of ${fieldProducer.reading.considered} considered).`
+                                        : `${fieldProducer.reading.count} × “${fieldProducer.reading.phrase}” (of ${fieldProducer.reading.considered} considered).`}
+                                </p>)}
+                            {fieldProducer.status === 'ready' && !fieldProducer.reading && fieldProducer.lastRun && (
                                 <p className="diff-field-status">Proposed {fieldProducer.lastRun.count} field{fieldProducer.lastRun.count === 1 ? '' : 's'} — review below.</p>)}
                         </div>
                     )}
