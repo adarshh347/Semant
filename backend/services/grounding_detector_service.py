@@ -56,10 +56,15 @@ PREPROCESSING_VERSION = "grounding-dino-tiny-v1"
 # claim is that it never invents evidence, a missed part ("nothing here") costs far less than an
 # invented one — the curator can rephrase, but they cannot un-see a mask that was never real.
 #
-# LIMITS, stated plainly: one image, eleven phrases. Vague queries ("stone", "the pedestal") will
-# be refused. A proper fix is a second-stage presence check (CLIP similarity between the cropped
-# box and the phrase), which is a separate gate, not a threshold tweak.
-DEFAULT_BOX_THRESHOLD = 0.5
+# P8-C SUPERSEDES the 0.5 above. That number existed because the detector was the ONLY guard, so
+# it had to be set where absent phrases could not pass — costing ~1/3 of real queries. The CLIP
+# presence gate is now the guard, and it separates present from absent by ~75× where the detector
+# could not separate them at all. So the detector returns to being what it is good at — proposing
+# candidate locations — and 0.30 lets the weak-but-real ones through ("the drapery" 0.397,
+# "stone" 0.384) for CLIP to judge.
+#
+# The safety property is unchanged and now stronger: a fabrication must fool BOTH models.
+DEFAULT_BOX_THRESHOLD = 0.30
 DEFAULT_TEXT_THRESHOLD = 0.25
 
 _model = None

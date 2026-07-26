@@ -850,6 +850,8 @@ def suggestion_from_grounded_phrase(
     detector_model: Optional[str] = None, detector_revision: Optional[str] = None,
     segmenter_model: str = "sam2.1", detector_latency_ms: Optional[float] = None,
     segmenter_latency_ms: Optional[float] = None, peak_vram_mib: Optional[float] = None,
+    presence: Optional[float] = None, verifier_model: Optional[str] = None,
+    verifier_revision: Optional[str] = None, verifier_latency_ms: Optional[float] = None,
 ) -> Optional[Dict[str, Any]]:
     """A SAM2-refined region (grounded from a phrase) → a ``region_mask`` find_parts suggestion.
 
@@ -875,9 +877,16 @@ def suggestion_from_grounded_phrase(
     for key, val in (("model", detector_model), ("revision", detector_revision),
                      ("detector_latency_ms", detector_latency_ms),
                      ("latency_ms", segmenter_latency_ms),
-                     ("peak_vram_mib", peak_vram_mib)):
+                     ("peak_vram_mib", peak_vram_mib),
+                     # P8-C: the verifier is part of the claim. A mark that survived a presence
+                     # gate should say which model agreed it was there, and at what pin.
+                     ("verifier_model", verifier_model),
+                     ("verifier_revision", verifier_revision),
+                     ("verifier_latency_ms", verifier_latency_ms)):
         if val is not None:
             receipt[key] = val
+    if verifier_model:
+        receipt["adapter"] = "grounding_dino_tiny+clip_vit_b32+sam2"
 
     d: Dict[str, Any] = {
         "producer": PRODUCER_GROUNDED_SAM,
@@ -896,6 +905,10 @@ def suggestion_from_grounded_phrase(
     }
     if score is not None:
         d["confidence"] = round(float(score), 4)     # descriptor only — never on the mark (§6)
+    if presence is not None:
+        # The gate's verdict rides the descriptor too, for the same reason: it is a score, and a
+        # mark may not carry one (contract §6). Review can show it; evidence cannot claim it.
+        d["presence"] = round(float(presence), 4)
     return d
 
 
