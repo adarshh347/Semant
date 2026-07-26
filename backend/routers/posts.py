@@ -2369,6 +2369,54 @@ async def _produce_architectural_axis(post_id, post, region, req, run_id):
     return [sug], "ready", True
 
 
+async def _produce_external_limit(post_id, post, region, req, run_id):
+    """TRACE-002 · the projective trace. GeoCalib up-vector field → an external_limit flow_field.
+
+    DEFERRED: `perspective_service.is_available()` is False until the package is installed and
+    SEMANT_ENABLE_GEOCALIB=1 is set, so this reports 'unavailable' rather than pretending. The
+    wiring is complete and the producer needs no change when the weights arrive — see
+    `perspective_service.activation_cost()` for the exact steps.
+
+    GPU-resident when active, so it is sequenced by ModelManager and released by
+    /produce-field/unload (added there in the same commit — that list has leaked three times and
+    the leak has always been a model added here and not there)."""
+    from backend.services import perspective_service as psvc
+    if not psvc.is_available():
+        return [], "unavailable", False
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        pass
+
+    t0 = time.perf_counter()
+    reading = psvc.up_vector_field(image)
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    if reading is None:
+        return [], "unavailable", False
+
+    peak_vram = None
+    if torch is not None and torch.cuda.is_available():
+        peak_vram = round(torch.cuda.max_memory_allocated() / 1048576, 1)
+
+    sug = suggestion_service.suggestion_from_external_limit(
+        reading, run_id=run_id,
+        region_id=(region or {}).get("id") if isinstance(region, dict) else None,
+        adapter=psvc.ADAPTER, latency_ms=round(latency_ms, 2), peak_vram_mib=peak_vram,
+    )
+    if not sug:
+        return [], "empty", True                 # frontal — no projective frame to trace
+    return [sug], "ready", True
+
+
 _FIELD_PRODUCERS = {
     "negative_space": _produce_negative_space,
     "material_field": _produce_material_field,
@@ -2380,6 +2428,7 @@ _FIELD_PRODUCERS = {
     "shadow_field": _produce_shadow,
     "fall_of_light": _produce_fall_of_light,
     "architectural_axis": _produce_architectural_axis,
+    "external_limit": _produce_external_limit,
     "florence_find_parts": _produce_florence_find_parts,
     "grounded_sam_find_parts": _produce_grounded_sam,
     "presence_check": _produce_presence_check,
@@ -2460,7 +2509,11 @@ async def produce_field_unload():
                       ("grounding_dino_tiny", "grounding_detector_service"),
                       # P8-C: the presence gate. Every new GPU model must be added here — this
                       # list is the single point that has leaked twice already.
-                      ("clip_vit_b32", "clip_presence_service")):
+                      ("clip_vit_b32", "clip_presence_service"),
+                      # TRACE-002: added in the SAME commit that registered the producer. Every
+                      # previous leak was a GPU model wired into _FIELD_PRODUCERS and forgotten
+                      # here; it is deferred today, which is exactly when it is easiest to omit.
+                      ("geocalib_pinhole", "perspective_service")):
         try:
             import importlib
             importlib.import_module(f"backend.services.{mod}").unload()

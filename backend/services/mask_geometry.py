@@ -957,3 +957,99 @@ def flow_field_coverage(cells: Sequence[Sequence[float]]) -> float:
         return 0.0
     live = sum(1 for c in cells if len(c) >= 3 and float(c[2]) > 0.0)
     return round(live / len(cells), 4)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# horizon / projective converter (CIRCUIT-001 TRACE-002) — the second TRACE-lane converter.
+# Input is a per-cell UP-VECTOR field (where gravity points, projected into the image) as a
+# monocular calibration model emits it. Output is the same flow_field contract everything
+# else on this lane uses.
+#
+# THE LIMIT IS PERPENDICULAR TO UP. `external_limit` traces the horizon, and the local horizon
+# at a point is the line orthogonal to the local vertical. So this rotates the up-vector by 90°
+# rather than drawing it: an arrow pointing at the sky is not the limit, it is the thing the
+# limit is measured against.
+#
+# AND THE REFUSAL INVERTS relative to `architectural_axis`. There, high coherence meant "there
+# is an axis". Here it does not: a flat frontal wall has a PERFECTLY constant up-vector, so its
+# horizon field is perfectly coherent — and it has no projective structure whatsoever. The thing
+# that distinguishes a perspective view is that the up-vector VARIES across the frame as the
+# scene converges. So coherence scores the mark and SPREAD decides whether there is a mark at
+# all, and reusing coherence for both would accept exactly the images it should refuse.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def up_vector_spread(up_x: Sequence[float], up_y: Sequence[float], grid: int) -> float:
+    """How much the up-vector field VARIES across the frame, in ``[0, 1]``.
+
+    Circular variance of the up-vector angles: ``1 - R``, where R is the mean resultant length.
+    A frontal photograph of a wall has one up direction everywhere → R = 1 → spread 0.0. A
+    receding street or a nave shot down its length swings the up-vector as the scene converges
+    → spread rises.
+
+    This is the measure of "is there a projective frame here at all", and it is deliberately NOT
+    coherence — see the section note. Up-vectors are DIRECTIONAL (up and down are different), so
+    this uses plain circular statistics, unlike `axial_coherence` next door."""
+    n = grid * grid
+    if grid < 2 or len(up_x) < n or len(up_y) < n:
+        return 0.0
+    sx = sy = 0.0
+    count = 0
+    for i in range(n):
+        ux, uy = float(up_x[i]), float(up_y[i])
+        mag = math.hypot(ux, uy)
+        if mag <= 1e-9:
+            continue
+        sx += ux / mag
+        sy += uy / mag
+        count += 1
+    if count == 0:
+        return 0.0
+    r = math.sqrt(sx * sx + sy * sy) / count
+    return round(max(0.0, min(1.0, 1.0 - r)), 4)
+
+
+def horizon_flow_field(up_x: Sequence[float], up_y: Sequence[float], grid: int,
+                       *, out_grid: int = 14) -> Tuple[List[List[float]], int, int]:
+    """A per-cell up-vector field → the local HORIZON as a dense flow_field.
+
+    Returns ``(cells, rows, cols)`` on the `shading_flow_field` contract: row-major
+    ``[dx, dy, m]``, unit direction, magnitude peak-normalized, ``[0.0, 0.0, 0.0]`` for a cell the
+    model could not determine. Each direction is the up-vector rotated 90° — the local horizon —
+    and is canonicalised into the ``dx >= 0`` half-plane because a horizon is AXIAL: left-to-right
+    and right-to-left are the same line, and `axial_coherence` is the measure that matches.
+
+    ``m`` is the up-vector's own magnitude (how strongly the model determined the vertical there),
+    peak-normalized. A cell where the model is unsure is faint rather than absent, and a cell where
+    it returned nothing is null rather than invented.
+
+    Refuses (``([], 0, 0)``) when the field is empty or degenerate. It does NOT judge whether the
+    scene is projective — that needs `up_vector_spread`, and it is the producer's call."""
+    n = grid * grid
+    if grid < 2 or len(up_x) < n or len(up_y) < n:
+        return [], 0, 0
+    cols = rows = max(2, min(int(out_grid), grid))
+
+    raw: List[Tuple[float, float, float]] = []
+    mags: List[float] = []
+    for ri in range(rows):
+        for ci in range(cols):
+            c = min(grid - 1, max(0, int((ci + 0.5) * grid / cols)))
+            r = min(grid - 1, max(0, int((ri + 0.5) * grid / rows)))
+            ux, uy = float(up_x[r * grid + c]), float(up_y[r * grid + c])
+            mag = math.hypot(ux, uy)
+            # rotate 90°: the horizon is orthogonal to the local vertical
+            raw.append((-uy, ux, mag))
+            mags.append(mag)
+
+    peak = max(mags) if mags else 0.0
+    if peak <= 1e-12:
+        return [], 0, 0
+    cells: List[List[float]] = []
+    for hx, hy, mag in raw:
+        if mag <= 1e-12:
+            cells.append([0.0, 0.0, 0.0])                # the model said nothing here
+            continue
+        ux, uy = hx / mag, hy / mag
+        if ux < 0:                                       # axial: canonicalise the sign away
+            ux, uy = -ux, -uy
+        cells.append([round(ux, 4), round(uy, 4), round(mag / peak, 4)])
+    return cells, rows, cols
