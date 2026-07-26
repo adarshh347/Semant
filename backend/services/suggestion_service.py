@@ -644,7 +644,13 @@ def _suggestion_from_shading(
     label: Optional[str] = None, model: Optional[str] = None,
     adapter: str = "intrinsic_ordinal_shading", checkpoint: Optional[str] = None,
     preprocessing_version: Optional[str] = None, latency_ms: Optional[float] = None,
-    peak_vram_mib: Optional[float] = None, min_contrast: float = 0.05,
+    peak_vram_mib: Optional[float] = None,
+    # CALIBRATED against the real model (P6-I), not guessed. A neural decomposition does not
+    # return a constant map for a constant image — fed a flat gray it still reports relief 0.062,
+    # flat white 0.135, i.e. gentle invented structure. A real photograph reads 0.824. 0.25 sits
+    # in that gap with margin on both sides, so a blank wall refuses and a lit scene does not.
+    # (The 0.05 the scaffold shipped would have painted a confident light field onto blank gray.)
+    min_contrast: float = 0.25,
     threshold: float = 0.55, radius: float = 0.05, grid_sample: int = 12,
 ) -> Optional[Dict[str, Any]]:
     """Shared body: a shading reading → a lit or withheld ``brush_field``.

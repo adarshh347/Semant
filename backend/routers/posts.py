@@ -2030,12 +2030,30 @@ async def produce_field(post_id: str, req: ProduceFieldRequest):
 
 @router.post("/produce-field/unload")
 async def produce_field_unload():
-    """Release GPU field producers' models (frees VRAM). Idempotent; mirrors /refine-region/unload.
-    Field producers keep their model resident for fast re-taps, so this is how the GPU slot is
-    handed back on demand."""
-    from backend.services import dinov2_service
-    dinov2_service.unload()
-    return {"unloaded": True}
+    """Release EVERY GPU field producer's model (frees VRAM). Idempotent; mirrors
+    /refine-region/unload. Field producers keep their model resident for fast re-taps, so this is
+    how the GPU slot is handed back on demand.
+
+    P6-I: this must cover all of them, not just DINOv2. Intrinsic alone peaks near 1 GiB — on the
+    4 GB card, a stale resident model is the difference between the next producer running and it
+    failing to allocate. Each unload is independent so one failure cannot strand the others."""
+    released = []
+    for name, mod in (("dinov2_vits14", "dinov2_service"),
+                      ("depth_anything_v2_small", "depth_service"),
+                      ("intrinsic_ordinal_shading", "intrinsic_service")):
+        try:
+            import importlib
+            importlib.import_module(f"backend.services.{mod}").unload()
+            released.append(name)
+        except Exception:
+            pass                       # a producer that was never loaded has nothing to release
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+    return {"unloaded": True, "released": released}
 
 
 @router.get("/{post_id}/regions/{region_id}/crop")
