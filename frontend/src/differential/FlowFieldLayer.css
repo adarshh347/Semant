@@ -1,0 +1,26 @@
+/* CIRCUIT-001 GEOM-001 — the flow_field renderer.
+
+   A lattice of short arrows in the one --accent, so the fall of light reads as a single
+   instrument over the image rather than a rainbow of directions. Token grammar only; the
+   arrowheads are hairlines (non-scaling-stroke) so they hold at any zoom. */
+
+.ff-layer { color: var(--accent, #5E2B50); }
+.ff-layer.is-resting { opacity: 0.6; }
+
+.ff-shaft {
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  fill: none;
+}
+.ff-head {
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+/* A faint casing so the arrows separate from same-toned pixels the way a bordered ground does —
+   a defining edge, not a glow. */
+.ff-arrow { paint-order: stroke; }

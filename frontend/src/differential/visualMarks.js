@@ -60,6 +60,10 @@ export const GEOMETRY_KINDS = [
     // P4 contract v3: a label suggestion references a region WITHOUT authoring pixels — the
     // VLM's law (it never draws). `region_ref` points at an existing region's mask by id.
     'region_ref',
+    // GEOM-001: a DENSE direction grid — a unit vector + magnitude PER CELL. `vector` is one
+    // direction (from→to); `flow_field` is a direction at every cell, which a scalar `soft_mask`
+    // cannot hold. The geometry a `fall_of_light` (and later gaze/axis) trace mark carries.
+    'flow_field',
 ];
 
 // ── contract v3: first-class instrument fields (CIRCUIT-001 P4) ────────────────
@@ -90,6 +94,10 @@ export const STROKE_OPS = ['add', 'sub'];
 export const PRODUCERS = [
     'sam_refine', 'semantic_read', 'planner', 'find_similar',
     'negative_space', 'material_field', 'rhythm', 'pressure_zone', 'recession', 'shading',
+    // GEOM-001 adds `fall_of_light`: the first trace_mark producer, and the first to mint the
+    // dense `flow_field` kind. Same Intrinsic reading as `shading`, a direction rather than a
+    // field — so its receipt is full (model/adapter/checkpoint/latency), like shading's.
+    'fall_of_light',
     'florence_find_parts', 'grounded_sam_find_parts', 'fixture',
 ];
 
