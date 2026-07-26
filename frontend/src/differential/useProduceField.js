@@ -20,6 +20,7 @@ export default function useProduceField(postId, store) {
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   const [lastRun, setLastRun] = useState(null);   // { producer, run_id, count }
+  const [reading, setReading] = useState(null);   // P8-D: a presence/count reading, not a mark
   const reqSeq = useRef(0);
   const abortRef = useRef(null);
 
@@ -49,9 +50,15 @@ export default function useProduceField(postId, store) {
       const data = await res.json();
       if (seq !== reqSeq.current) return null;
       const suggestions = data.suggestions || [];
-      // the descriptors enter the SAME quarantine path every producer uses — no bespoke ingest
-      if (suggestions.length && store?.ingestSuggestions) store.ingestSuggestions(suggestions);
-      setLastRun({ producer: data.producer, run_id: data.run_id, count: suggestions.length });
+      // P8-D: presence_check and enumerate return READINGS, not marks. A reading has no extent to
+      // accept, so it must never reach the quarantine — it is shown and then it is gone. Routing
+      // it through ingestSuggestions would put a sentence about the image into the evidence layer.
+      const reading = suggestions.find(
+        (s) => s?.type === 'presence_reading' || s?.type === 'count_reading') || null;
+      const marks = reading ? [] : suggestions;
+      if (marks.length && store?.ingestSuggestions) store.ingestSuggestions(marks);
+      setReading(reading);
+      setLastRun({ producer: data.producer, run_id: data.run_id, count: marks.length });
       // an available run with no suggestions is an honest "nothing here", not a failure
       const next = data.available === false ? (data.status || 'unavailable')
         : (suggestions.length ? 'ready' : 'empty');
@@ -75,7 +82,7 @@ export default function useProduceField(postId, store) {
     } catch { /* best-effort — releasing VRAM must never surface an error to the curator */ }
   }, []);
 
-  const clear = useCallback(() => { reqSeq.current++; setStatus('idle'); setError(''); setLastRun(null); }, []);
+  const clear = useCallback(() => { reqSeq.current++; setStatus('idle'); setError(''); setLastRun(null); setReading(null); }, []);
 
-  return { status, error, lastRun, produce, unload, cancel, clear };
+  return { status, error, lastRun, reading, produce, unload, cancel, clear };
 }
