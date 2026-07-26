@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import posts, epics, phrases, research, personas, anatomy, taste
+from backend.routers import posts, epics, phrases, research, personas, anatomy, taste, taste_map
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
 from backend.services.taste_signal_service import ensure_indexes as ensure_taste_indexes
+from backend.services.taste_map_service import ensure_indexes as ensure_taste_map_indexes
 from backend.services.vision_run_service import ensure_indexes as ensure_vision_run_indexes
 from backend.database import post_collection
 from backend.schemas.post import PaginatedPosts
@@ -42,6 +43,8 @@ async def startup_event():
     await ensure_indexes()
     # Index the audience signal store (Track F)
     await ensure_taste_indexes()
+    # Index the taste-map projection sidecar (Layer-4 data-viz)
+    await ensure_taste_map_indexes()
     # Index the vision-run provenance store (CIRCULATION-SPINE-001 · P1)
     await ensure_vision_run_indexes()
     # Start the Research Article Agent background worker (drains the agent_runs queue)
@@ -100,6 +103,10 @@ app.include_router(anatomy.router, prefix="/api/v1/anatomy", tags=["Anatomy Cata
 # limit. The brand tier IS keyed: aggregate taste intelligence is the paid product.
 app.include_router(taste.router, prefix="/api/v1/taste", tags=["Taste Signals (audience)"])
 app.include_router(taste.brand_router, prefix="/api/v1/taste/brand", tags=["Taste Intelligence (brand)"], dependencies=[Depends(require_api_key)])
+# The taste MAP is the curator's own corpus laid out by similarity — studio data,
+# so it IS behind the API key (unlike the public audience surface above). Same
+# /api/v1/taste prefix, different trust level; paths don't collide (/map vs /consent).
+app.include_router(taste_map.router, prefix="/api/v1/taste", tags=["Taste Map (Anuraṇana)"], dependencies=[Depends(require_api_key)])
 app.include_router(phrases.router, dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
