@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { PRODUCERS } from './visualMarks';
 import {
-    FLOW_FIELD_KIND, isFlowField, normalizeFlowField, flowFieldCells, flowFieldStats, isAxialRole } from './flowField';
+    FLOW_FIELD_KIND, isFlowField, normalizeFlowField, flowFieldCells, flowFieldStats, isAxialRole, AXIAL_TRACE_ROLES } from './flowField';
 
 // A 2×2 flow_field: three live cells pointing right, one null cell.
 const RIGHT = [1, 0, 1.0];
@@ -97,5 +98,22 @@ describe('flowField — TRACE-002: axial vs directional roles', () => {
         // Defaulting to axial would silently drop arrowheads from a future directional trace.
         expect(isAxialRole('gaze_address')).toBe(false);
         expect(isAxialRole(undefined)).toBe(false);
+    });
+});
+
+describe('flowField — MOUNT-001: every flow_field producer is a known producer', () => {
+    it('a producer that mints flow_field marks must be in the mark vocabulary', () => {
+        // The bug this pins: validateMark REJECTS an unknown provenance.producer, so a producer
+        // missing from PRODUCERS can mint marks the store will never accept — invisible, with no
+        // loud failure anywhere between the backend producing it and the canvas not drawing it.
+        for (const producer of ['fall_of_light', 'architectural_axis', 'external_limit']) {
+            expect(PRODUCERS, `${producer} mints flow_field marks`).toContain(producer);
+        }
+    });
+
+    it('every axial role has a producer of the same name', () => {
+        // architectural_axis and external_limit are both role AND producer names; a mismatch
+        // would render nothing while looking correct in the capability map.
+        for (const role of AXIAL_TRACE_ROLES) expect(PRODUCERS).toContain(role);
     });
 });
