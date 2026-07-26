@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 from io import BytesIO
 from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
+from backend.services import sam2_auto_service
 from backend.services import fashion_segmentation_service
 from backend.services import architecture_segmentation_service
 from backend.services import region_embedding_service
@@ -752,8 +753,37 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             await rec.event(vrc.STAGE_SEGMENT_COARSE, JobStatus.FAILED, capability="segment",
                             error=str(e))
             anchors = None
-        if not anchors:
-            # No local model / nothing found — the vision detector becomes the anchor source.
+        # ── Q-A · QUALITY gate (art/general domain only) ─────────────────────────
+        # The old test was `if not anchors` — it only failed on ZERO anchors, so YOLO's single
+        # whole-figure blob on a sculpture passed as "success" and a coarse mislabeled anchor
+        # went to the VLM. On the art/general domain the quality gate treats a lone anchor (never
+        # a real decomposition) as FAILURE too, and gives the class-agnostic SAM2-auto proposer a
+        # turn BEFORE the VLM — so the vision-LLM is a genuine last resort, not the silent
+        # default. On
+        # fashion/architecture the specialist masks ARE the parts, so the original zero gate is
+        # kept there unchanged (this gate never fires for those domains).
+        is_general_domain = not (is_fashion or "fashion" in chosen) and "architecture" not in chosen
+        if is_general_domain:
+            # YOLO is trusted only when it already yields a real decomposition (≥2 non-dominant
+            # parts). Otherwise SAM2-auto — the art domain's DEFAULT proposer — gets a turn, and
+            # ANY structural masks it returns are its answer (a class-agnostic SAM2 mask, even a
+            # single one, is more honest than the COCO detector's mislabel or the VLM's guess).
+            proposed = anchors if sam2_auto_service.decomposition_adequate(anchors) else None
+            if proposed is None and sam2_auto_service.is_available():
+                _t = time.perf_counter()
+                auto = await asyncio.to_thread(sam2_auto_service.generate_masks, img_bytes)
+                await rec.event(vrc.STAGE_SEGMENT_AUTO, JobStatus.SUCCEEDED, capability="segment",
+                                adapter="sam2_auto",
+                                latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                                detail={"count": len(auto or []),
+                                        "adequate": sam2_auto_service.decomposition_adequate(auto)})
+                if auto:
+                    proposed, anchors, source = auto, auto, "sam2_auto"
+            need_vision = not proposed                     # VLM only when no proposer produced masks
+        else:
+            need_vision = not anchors                      # original zero gate, unchanged
+        if need_vision:
+            # Nothing produced a real decomposition — the vision detector is the last resort.
             _t = time.perf_counter()
             anchors = await vision_service.detect_regions(photo_url)
             source = "vision"
