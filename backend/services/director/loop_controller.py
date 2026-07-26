@@ -36,7 +36,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from .capabilities import Resource
 from .execution import EMPTY, OK, ActuatorRunner, ChainResult, execute
 from .memory import WorkingMemory
-from .plan import Plan, Step
+from .plan import Plan, Step, resolve
 from .planner import Director
 
 # Resources that count as EVIDENCE — the loop advances only on these. READING is a sentence about
@@ -50,12 +50,27 @@ STOP_NO_NEW_EVIDENCE = "no_new_evidence"  # a round ran but left nothing new in 
 STOP_ONLY_REFUSALS = "only_refusals_or_empties"  # nothing ran to OK-with-evidence
 STOP_NOTHING_PLANNED = "nothing_planned"  # the planner proposed no steps and refused none
 STOP_MAX_ROUNDS = "max_rounds"            # the backstop
+STOP_ONLY_CLOSED_DOORS = "only_closed_doors"  # the round proposed nothing but already-shut doors
 
 
 def _sig(step: Step) -> str:
     """A stable identity for a step by WHAT it asks, not which round asked it — so re-proposing
     the same actuator+params is recognised as already-done. Ids/notes are excluded (they vary)."""
     return json.dumps([step.actuator, step.params], sort_keys=True, default=str)
+
+
+def _door_still_closed(step: Step, memory: WorkingMemory) -> bool:
+    """Would this step STILL be refused, on the evidence that exists now?
+
+    Asked by re-running the real gate on the step alone, rather than by re-implementing the
+    requirement check — so "the reason still holds" means exactly what `resolve()` means by it,
+    and cannot drift from it.
+
+    A step refused for a MISSING INPUT re-opens the moment something produces that input: the
+    curator found the key, the door is no longer shut. A step refused for a missing param or an
+    unknown actuator never re-opens, because no amount of looking at the picture supplies it.
+    """
+    return bool(resolve([step], memory).refused)
 
 
 def _new_evidence(before: Dict[Resource, int], after: Dict[Resource, int]) -> Dict[str, int]:
@@ -69,19 +84,28 @@ def _new_evidence(before: Dict[Resource, int], after: Dict[Resource, int]) -> Di
 
 
 def _decide(plan: Plan, chain: ChainResult, added: Dict[str, int]) -> str:
-    """CONTINUE only on new evidence; otherwise say WHY the loop stops."""
+    """CONTINUE only on new evidence. Nothing else can continue the loop.
+
+    A1-FIX: a refusal no longer appears here at all, and that is the correction.
+
+    It used to. `if added: return CONTINUE` ran FIRST, so a round that both progressed and had a
+    step refused continued — and the planner was asked again in a world where that step had just
+    been refused. Measured: connect_marks refused in round 0, planner called twice more. A refusal
+    that does not change what happens next is advisory, which is not what a refusal is.
+
+    But stopping the whole loop on any refusal is the opposite error: one impossible step would
+    kill every legitimate continuation beside it. So refusal handling moved OUT of the verdict and
+    INTO the round itself, as closed-door suppression — a refused step is struck from all future
+    rounds while its reason holds, so the planner CANNOT re-propose it. The door is shut rather
+    than the building evacuated, and the verdict is left to answer the one question it should:
+    did this round get anywhere?
+    """
     if added:
         return CONTINUE
     lineage = chain.provenance.lineage
-    ran_ok = any(r.status == OK for r in lineage)
     only_empty = bool(lineage) and all(r.status == EMPTY for r in lineage)
-    if plan.refused or any(r.status not in (OK, EMPTY) for r in lineage) or only_empty:
-        # some branch refused/was unavailable/skipped, or every step honestly found nothing —
-        # a refusal ends here (never re-prompted), and an empty round is a real answer, not a retry.
-        return STOP_ONLY_REFUSALS
-    if ran_ok:
-        # steps ran OK but produced no evidence (e.g. only readings) — no ground to re-plan on.
-        return STOP_NO_NEW_EVIDENCE
+    if only_empty:
+        return STOP_NO_NEW_EVIDENCE          # every step ran and honestly found nothing
     return STOP_NO_NEW_EVIDENCE
 
 
@@ -96,10 +120,24 @@ class RoundRecord:
     new_evidence: Dict[str, int] = field(default_factory=dict)
     chain: Optional[Dict[str, Any]] = None           # chain.provenance.to_dict()
     weakest_link: Optional[float] = None
+    # A1-FIX audit trace. `refused` is what this round shut; `suppressed` is what the planner
+    # re-proposed and was struck before it could reach the gate; `reopened` is a door a later
+    # round unlocked by producing the missing prerequisite. Together these make
+    # "the planner was not re-prompted around a refusal" READABLE FROM THE RECEIPT rather than
+    # only provable by instrumenting a test.
+    refused: Tuple[Dict[str, Any], ...] = ()
+    suppressed: Tuple[Dict[str, Any], ...] = ()
+    reopened: Tuple[str, ...] = ()
+    closed_doors_at_start: Tuple[str, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         return {"round": self.index, "verdict": self.verdict, "new_evidence": dict(self.new_evidence),
-                "weakest_link": self.weakest_link, "plan": self.plan, "chain": self.chain}
+                "weakest_link": self.weakest_link,
+                "refused": [dict(r) for r in self.refused],
+                "suppressed": [dict(r) for r in self.suppressed],
+                "reopened": list(self.reopened),
+                "closed_doors_at_start": list(self.closed_doors_at_start),
+                "plan": self.plan, "chain": self.chain}
 
 
 @dataclass(frozen=True)
@@ -112,6 +150,10 @@ class LoopResult:
     rounds: Tuple[RoundRecord, ...]
     stop_reason: str
     memory: WorkingMemory
+    # A1-FIX: the count that makes the boundary checkable. One planner call per round, never a
+    # second about the same closed door.
+    planner_calls: int = 0
+    closed_doors: Tuple[Dict[str, Any], ...] = ()
 
     @property
     def executed_rounds(self) -> Tuple[RoundRecord, ...]:
@@ -132,11 +174,24 @@ class LoopResult:
                 out[k] = out.get(k, 0) + v
         return out
 
+    @property
+    def suppressed_total(self) -> int:
+        return sum(len(r.suppressed) for r in self.rounds)
+
+    @property
+    def re_proposed_closed_doors(self) -> Tuple[str, ...]:
+        """Every closed door the planner tried to walk back through. Non-empty is not a failure —
+        it is the record of the loop refusing to let it, which is the whole point."""
+        return tuple(str(x.get("step")) for r in self.rounds for x in r.suppressed)
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "loop_id": self.loop_id,
             "intention": self.intention,
             "stop_reason": self.stop_reason,
+            "planner_calls": self.planner_calls,
+            "closed_doors": [dict(d) for d in self.closed_doors],
+            "suppressed_total": self.suppressed_total,
             "rounds_total": len(self.rounds),
             "rounds_executed": len(self.executed_rounds),
             "weakest_link": self.weakest_link,
@@ -162,25 +217,79 @@ def run_loop(intention: str, memory: WorkingMemory,
     current = memory
     rounds: List[RoundRecord] = []
     executed_sigs: set = set()                         # step signatures that have actually run
+    # A1-FIX — the closed doors: signature → why it was shut. A refused step is struck from every
+    # later round WHILE its reason holds, so the planner cannot re-propose it. Finding the key
+    # re-opens the door; re-knocking never does.
+    closed: Dict[str, Dict[str, Any]] = {}
+    planner_calls = 0
     stop_reason = STOP_MAX_ROUNDS                       # holds if the loop exhausts its budget
 
     for i in range(max_rounds):
-        plan = director.plan(intention, current)
-        sigs = {_sig(s) for s in plan.steps}
+        doors_at_start = tuple(sorted(closed))
 
-        # Fixed point: the planner can only re-propose steps already run — there is nothing new to
-        # do, so stop BEFORE a pointless round rather than spin. (`<=` : every proposed step is
-        # one we have already executed.)
+        # ── propose (ONE call per round, always against the CURRENT evidence) ──────────────
+        planner_calls += 1
+        proposed = director.planner.propose(intention, current)
+        stamped = [st if st.id else st.with_id(f"{loop_id}:r{i}:{n}:{st.actuator}")
+                   for n, st in enumerate(proposed)]
+
+        # ── suppress closed doors BEFORE the gate sees them ───────────────────────────────
+        # This is the correction. Filtering here — rather than judging refusals after the round —
+        # is what makes a refused step unable to come back: it never reaches resolve(), so it can
+        # never be refused a second time, and the planner can never be answered about it again.
+        kept: List[Step] = []
+        suppressed: List[Dict[str, Any]] = []
+        reopened: List[str] = []
+        for st in stamped:
+            sig = _sig(st)
+            if sig in closed:
+                if _door_still_closed(st, current):
+                    suppressed.append({"step": sig, "actuator": st.actuator,
+                                       "reason": closed[sig].get("reason"),
+                                       "detail": closed[sig].get("detail")})
+                    continue
+                # the prerequisite arrived — the door opens and the step gets its chance
+                reopened.append(sig)
+                closed.pop(sig, None)
+            kept.append(st)
+
+        # ── a round that only re-knocks shut doors got nowhere ────────────────────────────
+        if not kept and suppressed:
+            rounds.append(RoundRecord(
+                index=i, verdict=STOP_ONLY_CLOSED_DOORS,
+                plan=resolve([], current, intention=intention).to_dict(),
+                suppressed=tuple(suppressed), reopened=tuple(reopened),
+                closed_doors_at_start=doors_at_start))
+            stop_reason = STOP_ONLY_CLOSED_DOORS
+            break
+
+        plan = resolve(kept, current, intention=intention)
+
+        # ── shut the door on anything refused this round ──────────────────────────────────
+        for r in plan.refused:
+            closed[_sig(r.step)] = {"actuator": r.step.actuator, "reason": r.reason,
+                                    "detail": r.detail, "round": i}
+        refused_trace = tuple({"round": i, **r.to_dict()} for r in plan.refused)
+
+        sigs = {_sig(st) for st in plan.steps}
+
+        # Fixed point: the planner can only re-propose steps already run — nothing new to do.
         if plan.steps and sigs <= executed_sigs:
-            rounds.append(RoundRecord(index=i, verdict=STOP_FIXED_POINT, plan=plan.to_dict()))
+            rounds.append(RoundRecord(
+                index=i, verdict=STOP_FIXED_POINT, plan=plan.to_dict(),
+                refused=refused_trace, suppressed=tuple(suppressed),
+                reopened=tuple(reopened), closed_doors_at_start=doors_at_start))
             stop_reason = STOP_FIXED_POINT
             break
 
-        # Nothing runnable: report the refusals (a refusal is a result, not an error) or, if the
-        # planner simply proposed nothing, say so. Either way the loop ends — never re-prompted.
+        # Nothing runnable survived the gate. The refusals are reported and their doors are now
+        # shut; the loop ends because there is no work, not because a refusal is fatal.
         if not plan.steps:
             reason = STOP_ONLY_REFUSALS if plan.refused else STOP_NOTHING_PLANNED
-            rounds.append(RoundRecord(index=i, verdict=reason, plan=plan.to_dict()))
+            rounds.append(RoundRecord(
+                index=i, verdict=reason, plan=plan.to_dict(), refused=refused_trace,
+                suppressed=tuple(suppressed), reopened=tuple(reopened),
+                closed_doors_at_start=doors_at_start))
             stop_reason = reason
             break
 
@@ -194,10 +303,13 @@ def run_loop(intention: str, memory: WorkingMemory,
         verdict = _decide(plan, chain, added)
         rounds.append(RoundRecord(
             index=i, verdict=verdict, plan=plan.to_dict(), new_evidence=added,
-            chain=chain.provenance.to_dict(), weakest_link=chain.provenance.weakest_link))
+            chain=chain.provenance.to_dict(), weakest_link=chain.provenance.weakest_link,
+            refused=refused_trace, suppressed=tuple(suppressed), reopened=tuple(reopened),
+            closed_doors_at_start=doors_at_start))
         if verdict != CONTINUE:
             stop_reason = verdict
             break
 
     return LoopResult(loop_id=loop_id, intention=intention, rounds=tuple(rounds),
-                      stop_reason=stop_reason, memory=current)
+                      stop_reason=stop_reason, memory=current, planner_calls=planner_calls,
+                      closed_doors=tuple({"step": k, **v} for k, v in sorted(closed.items())))

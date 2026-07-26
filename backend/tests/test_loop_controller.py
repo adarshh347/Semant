@@ -113,12 +113,19 @@ def test_a_refusal_that_new_evidence_unblocks_is_re_planned_not_re_prompted():
 
 def test_an_empty_round_terminates():
     # find_parts runs but honestly finds nothing → no evidence → stop (a real answer, not a retry).
+    #
+    # A1-FIX repointed the expected reason. It used to be STOP_ONLY_REFUSALS, whose value is
+    # "only_refusals_or_empties" — a single constant covering two unrelated situations, back when
+    # _decide() judged refusals. Refusals no longer reach _decide (closed-door suppression handles
+    # them), so nothing was refused here and saying so would be false. STOP_ONLY_REFUSALS still
+    # exists and is still reached, but now only where something actually WAS refused.
     planner = _RecordingPlanner(lambda m: [Step("find_parts", id="fp")])
     res = lc.run_loop("find parts", _mem(), stub_registry(empty=["find_parts"]),
                       director=Director(planner), max_rounds=5)
-    assert res.stop_reason == lc.STOP_ONLY_REFUSALS
-    assert res.rounds[0].verdict == lc.STOP_ONLY_REFUSALS
+    assert res.stop_reason == lc.STOP_NO_NEW_EVIDENCE
+    assert res.rounds[0].verdict == lc.STOP_NO_NEW_EVIDENCE
     assert res.rounds[0].new_evidence == {}
+    assert res.rounds[0].refused == ()            # nothing was refused — that is the point
 
 
 def test_a_round_that_runs_but_adds_no_evidence_terminates():
@@ -191,3 +198,146 @@ def test_weakest_link_is_the_minimum_across_rounds_or_none():
     res2 = lc.run_loop("read", _mem(), stub_registry(confidence=None),
                        director=Director(planner2), max_rounds=3)
     assert res2.weakest_link is None
+
+
+# ── 6. A1-FIX: closed-door refusal semantics ───────────────────────────────────
+#
+# The bug: _decide() returned CONTINUE on new evidence BEFORE looking at refusals, so a round that
+# progressed AND had a step refused kept going and the planner was asked again about a world where
+# that step had just been refused. Measured before the fix: connect_marks refused in round 0,
+# planner called 3 times.
+#
+# The ruling: a refused step ends THAT BRANCH — struck from later rounds while its reason holds —
+# while the loop itself continues on whatever else is legitimately moving. Shut the door, do not
+# evacuate the building.
+
+def _seeded(marks=0, regions=0):
+    return build_memory(image_ref="img", post_id="p",
+                        mark_ids=tuple(f"m{i}" for i in range(marks)),
+                        region_ids=tuple(f"r{i}" for i in range(regions)))
+
+
+def test_a_refused_step_is_suppressed_and_never_re_proposed():
+    """The core of the fix. `rhythm` progresses while `connect_marks` is refused for want of a
+    second mark; the planner keeps asking for it and it is struck every time.
+
+    (`find_parts` would NOT serve here — it is `plural=True`, so the planner projects two marks
+    from it and connect_marks is legitimately planned rather than refused.)"""
+    planner = _RecordingPlanner(lambda m: [Step("rhythm", id="rh"),
+                                           Step("connect_marks", {"relation_role": "x"}, id="cm")])
+    res = lc.run_loop("look and relate", _mem(), stub_registry(),
+                      director=Director(planner), max_rounds=4)
+    assert [r.index for r in res.rounds if r.refused] == [0]      # refused once, ever
+    assert res.rounds[0].refused[0]["actuator"] == "connect_marks"
+    for r in res.rounds[1:]:
+        assert r.refused == ()
+        assert "connect_marks" in [x["actuator"] for x in r.suppressed]
+
+
+def test_one_impossible_step_does_not_kill_legitimate_continuations():
+    """The other half of the ruling — the loop must NOT stop dead on a refusal."""
+    planner = _RecordingPlanner(lambda m: [Step("rhythm", id="rh"),
+                                           Step("connect_marks", {"relation_role": "x"}, id="cm")])
+    res = lc.run_loop("look and relate", _mem(), stub_registry(),
+                      director=Director(planner), max_rounds=4)
+    assert len(res.rounds) > 1                      # it kept going
+    assert res.rounds[0].new_evidence               # because rhythm was still working
+
+
+def test_a_door_re_opens_when_a_later_round_produces_the_prerequisite():
+    """Found the key → the door opens. The case suppression must NOT block."""
+    seen = {"n": 0}
+
+    def script(m):
+        seen["n"] += 1
+        if seen["n"] == 1:
+            # refused (only 1 mark projected) AND carries real work, so the loop survives the
+            # round — a refusal alongside progress is the exact case the fix is about.
+            return [Step("rhythm", id="rh"), Step("connect_marks", {"relation_role": "x"}, id="cm")]
+        if seen["n"] == 2:
+            return [Step("pressure_zone", id="pz")]                            # the second mark
+        return [Step("connect_marks", {"relation_role": "x"}, id="cm2")]       # now legal
+
+    res = lc.run_loop("relate", _mem(), stub_registry(),
+                      director=Director(_RecordingPlanner(script)), max_rounds=6)
+    assert any(r.reopened for r in res.rounds), [r.to_dict() for r in res.rounds]
+    ran = [s["actuator"] for r in res.rounds if r.chain for s in r.chain["lineage"]]
+    assert "connect_marks" in ran                   # it got its chance once two marks existed
+
+
+def test_a_round_that_only_re_knocks_a_closed_door_stops():
+    """No progress is possible, so the loop ends rather than spinning."""
+    seen = {"n": 0}
+
+    def script(m):
+        seen["n"] += 1
+        if seen["n"] == 1:
+            return [Step("rhythm", id="rh"), Step("connect_marks", {"relation_role": "x"}, id="cm")]
+        return [Step("connect_marks", {"relation_role": "x"}, id="cm")]   # only the shut door
+
+    res = lc.run_loop("relate", _mem(), stub_registry(),
+                      director=Director(_RecordingPlanner(script)), max_rounds=6)
+    assert res.stop_reason == lc.STOP_ONLY_CLOSED_DOORS
+    assert res.rounds[-1].suppressed
+    assert res.rounds[-1].chain is None             # nothing executed — there was nothing to run
+
+
+def test_the_bare_image_case_converges_without_re_asking_connect_marks():
+    """The exact scenario that exposed the bug, now terminating cleanly."""
+    planner = _RecordingPlanner(lambda m: [Step("rhythm", id="rh"),
+                                           Step("connect_marks", {"relation_role": "x"}, id="cm")])
+    res = lc.run_loop("look and relate", _mem(), stub_registry(),
+                      director=Director(planner), max_rounds=6)
+    assert res.stop_reason in (lc.STOP_FIXED_POINT, lc.STOP_ONLY_CLOSED_DOORS)
+    gate_hits = sum(len([x for x in r.refused if x["actuator"] == "connect_marks"])
+                    for r in res.rounds)
+    assert gate_hits == 1                           # reached the gate once, however often proposed
+
+
+def test_the_receipt_reports_planner_calls_and_matches_the_rounds():
+    """'The planner was not re-prompted around a refusal' must be readable from the receipt."""
+    planner = _RecordingPlanner(lambda m: [Step("rhythm", id="rh"),
+                                           Step("connect_marks", {"relation_role": "x"}, id="cm")])
+    res = lc.run_loop("look and relate", _mem(), stub_registry(),
+                      director=Director(planner), max_rounds=4)
+    d = res.to_dict()
+    assert d["planner_calls"] == len(planner.calls)          # the receipt matches reality
+    assert d["planner_calls"] == len(res.rounds)             # exactly one call per round
+    assert d["suppressed_total"] >= 1
+    assert any(c["actuator"] == "connect_marks" for c in d["closed_doors"])
+
+
+def test_the_trace_names_which_doors_were_shut_and_why():
+    planner = _RecordingPlanner(lambda m: [Step("connect_marks", {"relation_role": "x"}, id="cm")])
+    res = lc.run_loop("relate", _mem(), stub_registry(),
+                      director=Director(planner), max_rounds=3)
+    door = res.to_dict()["closed_doors"][0]
+    assert door["actuator"] == "connect_marks"
+    assert "2× mark" in door["detail"]
+    assert door["round"] == 0
+
+
+def test_a_permanently_closed_door_never_re_opens():
+    """A missing PARAM is not a missing prerequisite — no amount of looking supplies a phrase."""
+    seen = {"n": 0}
+
+    def script(m):
+        seen["n"] += 1
+        if seen["n"] == 1:
+            return [Step("rhythm", id="rh"), Step("presence_check", id="pc")]
+        return [Step("pressure_zone", id="pz"), Step("presence_check", id="pc2")]
+
+    res = lc.run_loop("is it there", _mem(), stub_registry(),
+                      director=Director(_RecordingPlanner(script)), max_rounds=4)
+    assert any(x["actuator"] == "presence_check" for r in res.rounds for x in r.refused)
+    assert not any(r.reopened for r in res.rounds)          # evidence cannot supply a phrase
+
+
+def test_suppression_happens_before_the_gate_not_after():
+    """Structural: a suppressed step must never reach a plan's refusals a second time, which is
+    only true if it was filtered BEFORE resolve() ever saw it."""
+    planner = _RecordingPlanner(lambda m: [Step("rhythm", id="rh"),
+                                           Step("connect_marks", {"relation_role": "x"}, id="cm")])
+    res = lc.run_loop("look and relate", _mem(), stub_registry(),
+                      director=Director(planner), max_rounds=5)
+    assert sum(len(r.refused) for r in res.rounds) == 1
