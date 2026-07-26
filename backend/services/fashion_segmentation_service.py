@@ -29,6 +29,9 @@ from backend.services import mask_geometry
 from typing import List, Optional
 
 _MODEL_NAME = "mattmdjaga/segformer_b2_clothes"
+# WEIGHTS-001 — pinned HF commit. Passed to every from_pretrained below so the pin is
+# ENFORCED at load, not merely recorded. Mirrors weights.manifest.json.
+REVISION = "584abc1e1d260e23c0fc627c5217a09b2b461046"
 _model = None
 _processor = None
 _load_failed = False
@@ -114,8 +117,8 @@ def _load():
         return None, None
     try:
         from transformers import AutoModelForSemanticSegmentation, SegformerImageProcessor
-        _processor = SegformerImageProcessor.from_pretrained(_MODEL_NAME)
-        _model = AutoModelForSemanticSegmentation.from_pretrained(_MODEL_NAME)
+        _processor = SegformerImageProcessor.from_pretrained(_MODEL_NAME, revision=REVISION)
+        _model = AutoModelForSemanticSegmentation.from_pretrained(_MODEL_NAME, revision=REVISION)
         _model.eval()
         return _model, _processor
     except Exception as e:

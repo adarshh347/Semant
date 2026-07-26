@@ -115,6 +115,10 @@ class AdapterSpec:
     resource: ResourceKind
     model_id: str
     checkpoint: Optional[str] = None
+    # WEIGHTS-001: the exact HF commit these weights come from. A pin, not a note — a floating
+    # `main` would silently swap the model under us and quietly falsify every provenance receipt
+    # already written. Mirrors weights.manifest.json; None for non-HF entries.
+    revision: Optional[str] = None
     preprocessing_version: str = "v1"
     license: Optional[str] = None
     available: bool = False          # False → deferred/not installed (fake in B1)

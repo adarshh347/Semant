@@ -21,6 +21,9 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 CHECKPOINT = "depth-anything/Depth-Anything-V2-Small-hf"
+# WEIGHTS-001 — pinned HF commit. Passed to every from_pretrained below so the pin is
+# ENFORCED at load, not merely recorded. Mirrors weights.manifest.json.
+REVISION = "5426e4f0f36572d16453bbda7a8389317b1bef99"
 MODEL_TAG = "depth_anything_v2_small"
 PREPROCESSING_VERSION = "depth-anything-v2-s-v1"
 GRID = 16                      # same coarse grid as DINOv2 patches / cpu_perceptual
@@ -51,8 +54,8 @@ def _load() -> None:
     try:
         import torch
         from transformers import AutoImageProcessor, AutoModelForDepthEstimation
-        proc = AutoImageProcessor.from_pretrained(CHECKPOINT)
-        model = AutoModelForDepthEstimation.from_pretrained(CHECKPOINT)
+        proc = AutoImageProcessor.from_pretrained(CHECKPOINT, revision=REVISION)
+        model = AutoModelForDepthEstimation.from_pretrained(CHECKPOINT, revision=REVISION)
         _processor = proc
         _model = model.to(_device()).to(torch.float32).eval()
     except Exception as e:  # pragma: no cover - depends on weights/hardware
