@@ -2538,6 +2538,95 @@ async def produce_field_unload():
     return {"unloaded": True, "released": released}
 
 
+# ── CIRCUIT-001 SURFACE-001 — intention → plan → review ────────────────────────────────────────
+# The last mile: a curator's intention is planned by the Director, executed by WIRE's real
+# actuators into an in-memory quarantine, and the resulting SUGGESTIONS are returned for the
+# EXISTING supervised review to Accept/Dismiss. This route produces suggestions ONLY — it never
+# writes to the post, commits a region, or accepts a mark.
+#
+# WIRE's runners drive their async producers with `loop.run_until_complete`, which cannot nest
+# inside the server's running loop. So the whole synchronous `run_plan` executes in ONE persistent
+# worker thread with its own reused event loop — ModelManager's semaphores bind to that loop once
+# and are reused across requests (a fresh per-request loop would rebind and fail), and the server
+# loop is never blocked. The single worker also serialises plans, which is correct for the 4 GB
+# single-GPU card.
+import concurrent.futures as _futures
+
+_orchestration_pool = _futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="director-orch")
+_orchestration_loop = None
+
+
+def _run_plan_in_worker(plan, memory, post: dict, post_id: str):
+    """Runs on the single orchestration worker thread. Builds the execution context on that
+    thread's persistent loop, runs the plan for real, and returns (chain, suggestions). Never
+    mutates `post`."""
+    global _orchestration_loop
+    import asyncio as _asyncio
+    from backend.services.director import real_actuators as ra
+    if _orchestration_loop is None:
+        _orchestration_loop = _asyncio.new_event_loop()
+    ctx = ra.ExecutionContext(post_id=post_id, post=post, loop=_orchestration_loop)
+    # Seed the real-data bridge with the post's committed regions, so a step needing a region can
+    # use one the curator already has (find_parts still runs when the plan asks for it).
+    ctx.regions = list(post.get("region_annotations") or [])
+    chain = ra.run_plan(plan, memory, ctx)
+    return chain, list(ctx.suggestions)
+
+
+class OrchestrateRequest(BaseModel):
+    intention: str                                   # the curator's words: "trace the light"
+    phrase: Optional[str] = None                     # open-vocab query, when an actuator needs one
+
+
+@router.post("/{post_id}/orchestrate")
+async def orchestrate(post_id: str, req: OrchestrateRequest):
+    """Intention → the Director plans + executes → quarantined suggestions for supervised review.
+
+    Returns the RESOLVED plan (steps + refused, each with its distinct reason), the produced
+    suggestions (never marks), and the chain provenance (per-step OK/EMPTY/UNAVAILABLE/SKIPPED,
+    the weakest link, and the honest gaps). No post is mutated; nothing is accepted."""
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    if not (req.intention or "").strip():
+        raise HTTPException(status_code=422, detail="An intention is required")
+
+    from backend.services.director.memory import build_memory
+    from backend.services.director.planner import Director
+    from backend.services.director.groq_planner import GroqPlanner
+
+    # Hydrate working memory from the REAL post — what the Director actually has to plan against.
+    def _ids(items):
+        return [str(x.get("id")) for x in (items or []) if isinstance(x, dict) and x.get("id")]
+    memory = build_memory(
+        image_ref=str(post.get("photo_url") or post_id), post_id=post_id,
+        region_ids=_ids(post.get("region_annotations")),
+        mark_ids=_ids(post.get("visual_marks")),
+        ground_ids=_ids(post.get("grounds")),
+        percept_ids=_ids(post.get("percepts")),
+        phrase=req.phrase)
+
+    plan = Director(GroqPlanner()).plan(req.intention, memory)
+
+    # Execute for real on the single orchestration worker thread (never blocks the server loop).
+    loop = asyncio.get_running_loop()
+    chain, suggestions = await loop.run_in_executor(
+        _orchestration_pool, _run_plan_in_worker, plan, memory, post, post_id)
+
+    return {
+        "intention": req.intention,
+        "plan": plan.to_dict(),                      # steps + refused (each with its reason) + notes
+        "suggestions": suggestions,                  # quarantined descriptors — never marks
+        "provenance": chain.provenance.to_dict(),    # per-step status + gaps + weakest_link
+        "weakest_link": chain.provenance.weakest_link,
+        "complete": chain.provenance.complete,
+    }
+
+
 @router.get("/{post_id}/regions/{region_id}/crop")
 async def region_crop(post_id: str, region_id: str, role: str = "identity"):
     """PNG of a Region's exact-mask evidence crop (identity | context) — the thumbnail the
