@@ -2033,6 +2033,8 @@ async def _produce_florence_find_parts(post_id, post, region, req, run_id):
 # the manager does not see. Sequencing here is what keeps that honest.
 _grounding_mgr = None
 _grounding_adapter = None
+_clip_mgr = None
+_clip_adapter = None
 
 
 async def _produce_grounded_sam(post_id, post, region, req, run_id):
@@ -2074,15 +2076,54 @@ async def _produce_grounded_sam(post_id, post, region, req, run_id):
     det_ms = round((time.perf_counter() - _t) * 1000, 1)
     detection = job.artifact.data if job.artifact else None
 
-    best = suggestion_service.best_grounded_box(detection)
-    if not best:
-        # Nothing cleared the threshold. Stop here — do NOT hand a guessed box to SAM2, which
-        # would return a confident-looking mask around nothing.
+    # The detector proposes; it does not decide. Its threshold is now permissive (P8-C) because
+    # CLIP, not the detector, is the guard against fabrication.
+    if not (detection and detection.get("boxes")):
         await _grounding_mgr.unload("grounding_dino_tiny")
         return [], "empty", True
 
-    # ── hand the card over: the detector leaves BEFORE the segmenter arrives ────────────────
+    # ── hand the card over: the detector leaves BEFORE the gate arrives ────────────────────
     await _grounding_mgr.unload("grounding_dino_tiny")
+    try:
+        if torch is not None and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+    # ── stage 2: the CLIP presence gate — is that crop actually the thing they asked for? ───
+    from backend.services import clip_presence_service as cps
+    if not cps.is_available():
+        return [], "unavailable", False
+    from backend.services.vision_orchestrator.adapters import ClipPresenceAdapter
+    global _clip_mgr, _clip_adapter
+    if _clip_mgr is None:
+        _creg = AdapterRegistry()
+        _clip_adapter = ClipPresenceAdapter()
+        _creg.register(_clip_adapter)
+        _clip_mgr = ModelManager(_creg)
+
+    _t = time.perf_counter()
+    cjob = await _clip_mgr.run_adapter(
+        _clip_adapter, {"image": image, "phrase": phrase, "detection": detection},
+        priority=int(Priority.INTERACTIVE), cancel=CancelToken(), timeout_s=180.0)
+    clip_ms = round((time.perf_counter() - _t) * 1000, 1)
+    survivors = cjob.artifact.data if cjob.artifact else []
+
+    # the gate leaves before the segmenter arrives
+    await _clip_mgr.unload("clip_vit_b32")
+    try:
+        if torch is not None and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+    if not survivors:
+        # The detector fired but nothing verified — "it guessed, and it is not really there".
+        # SAM2 is never called: a rejected box must not become a mask.
+        return [], "empty", True
+    best = {"box_xyxy": survivors[0]["box_xyxy"],
+            "score": survivors[0].get("detector_score"),
+            "presence": survivors[0].get("presence")}
     try:
         if torch is not None and torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -2107,7 +2148,9 @@ async def _produce_grounded_sam(post_id, post, region, req, run_id):
     sug = suggestion_service.suggestion_from_grounded_phrase(
         refined, phrase=phrase, run_id=run_id, score=best.get("score"),
         detector_model=gd.MODEL_TAG, detector_revision=gd.REVISION,
-        detector_latency_ms=det_ms, segmenter_latency_ms=sam_ms, peak_vram_mib=peak_vram)
+        detector_latency_ms=det_ms, segmenter_latency_ms=sam_ms, peak_vram_mib=peak_vram,
+        presence=best.get("presence"), verifier_model=cps.MODEL_TAG,
+        verifier_revision=cps.REVISION, verifier_latency_ms=clip_ms)
     return ([sug] if sug else []), ("ready" if sug else "empty"), True
 
 
@@ -2196,7 +2239,10 @@ async def produce_field_unload():
                       # P8-A/P8-B: the grounding models. Teaching this list about every new GPU
                       # model is the P6-I lesson — unload only ever released what it was told.
                       ("florence2_base", "florence2_service"),
-                      ("grounding_dino_tiny", "grounding_detector_service")):
+                      ("grounding_dino_tiny", "grounding_detector_service"),
+                      # P8-C: the presence gate. Every new GPU model must be added here — this
+                      # list is the single point that has leaked twice already.
+                      ("clip_vit_b32", "clip_presence_service")):
         try:
             import importlib
             importlib.import_module(f"backend.services.{mod}").unload()

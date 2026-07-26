@@ -1239,9 +1239,13 @@ def test_grounding_detector_adapter_spec_and_prompt_convention():
     assert g.detect(object(), "") is None               # empty phrase asks nothing
 
 
-def test_produce_field_grounded_sam_sequences_detector_then_sam2(monkeypatch):
-    """The two-model chain, and the ORDER that keeps a 4 GB card honest: the detector must be
-    unloaded before SAM2 is touched."""
+def test_produce_field_refuses_when_the_presence_gate_is_unavailable(monkeypatch):
+    """FAIL CLOSED when the guard is missing.
+
+    P8-C made CLIP the thing that stops fabrication, and the detector threshold was lowered to
+    0.30 on that basis. So if CLIP cannot run, the pipeline must NOT quietly fall back to the
+    detector alone — that combination (permissive detector, no verifier) is exactly the state
+    that cut a mask around a bicycle. It reports unavailable instead."""
     post = {"_id": ObjectId(), "region_annotations": [{"id": "r1", "box": {"x": 0, "y": 0, "w": 1, "h": 1}}]}
     posts, runs = _Posts(post), FakeCollection()
     monkeypatch.setattr(R, "post_collection", posts)
@@ -1254,8 +1258,10 @@ def test_produce_field_grounded_sam_sequences_detector_then_sam2(monkeypatch):
     class _Img:
         size = (200, 200)
         def convert(self, m): return self
+    from backend.services import clip_presence_service as cps
     monkeypatch.setattr(ees, "_pil", lambda b: _Img())
     monkeypatch.setattr(gd, "is_available", lambda: True)
+    monkeypatch.setattr(cps, "is_available", lambda: False)     # the guard is gone
 
     order = []
     class _Art: data = _detection(score=0.8)
@@ -1279,12 +1285,9 @@ def test_produce_field_grounded_sam_sequences_detector_then_sam2(monkeypatch):
         resp = run(R.produce_field(str(posts.post["_id"]),
                                    R.ProduceFieldRequest(producer="grounded_sam_find_parts",
                                                          phrase="the drapery")))
-        assert resp["status"] == "ready"
-        sug = resp["suggestions"][0]
-        assert sug["producer"] == "grounded_sam_find_parts"
-        assert sug["provenance"]["adapter"] == "grounding_dino_tiny+sam2"
-        # THE ordering guarantee: detector out before segmenter in — never co-resident
-        assert order == ["detect", "unload:grounding_dino_tiny", "sam2"], order
+        assert resp["status"] == "unavailable" and resp["available"] is False
+        assert resp["suggestions"] == []
+        assert "sam2" not in order, "SAM2 must not run unguarded"
         assert posts.writes == []
     finally:
         RR._grounding_mgr = None; RR._grounding_adapter = None
@@ -1327,3 +1330,190 @@ def test_produce_field_grounded_sam_refuses_a_phrase_that_grounds_nothing(monkey
         assert sam_called == [], "SAM2 must not run on a below-threshold box"
     finally:
         RR._grounding_mgr = None; RR._grounding_adapter = None
+
+
+# ─────────── P8-C: the CLIP presence gate ───────────
+
+def test_clip_crop_box_pads_and_clamps():
+    from backend.services import clip_presence_service as cp
+    class _Img:
+        size = (200, 100)
+        def __init__(self): self.crops = []
+        def crop(self, b): self.crops.append(b); return b
+    im = _Img()
+    out = cp.crop_box(im, [0.25, 0.25, 0.75, 0.75])
+    x0, y0, x1, y1 = out
+    assert x0 < 50 and x1 > 150                       # padded outward for context
+    assert 0 <= x0 and x1 <= 200 and 0 <= y0 and y1 <= 100   # clamped to the frame
+    assert cp.crop_box(im, [0.5, 0.5, 0.5, 0.5]) is None     # degenerate → nothing to judge
+
+
+def test_clip_verify_keeps_only_boxes_that_match_the_phrase(monkeypatch):
+    """The gate's whole job: the detector fired, but does the crop actually show it?"""
+    from backend.services import clip_presence_service as cp
+    det = {"boxes": [[10, 10, 100, 100], [110, 10, 190, 90]], "scores": [0.4, 0.9],
+           "labels": ["x", "y"], "image_size": [200, 200]}
+    # first box matches the phrase, second does not
+    monkeypatch.setattr(cp, "presence_score",
+                        lambda img, box, phrase, **kw: 0.91 if box[0] < 0.3 else 0.004)
+    out = cp.verify_boxes(object(), det, "the drapery")
+    assert len(out) == 1
+    assert out[0]["presence"] == 0.91
+    assert out[0]["detector_score"] == 0.4            # the LOWER-scoring box survived — the point
+
+
+def test_clip_verify_rejects_everything_when_nothing_matches(monkeypatch):
+    """The detector guessed and it is not really there — measured absent scores are ~0.005."""
+    from backend.services import clip_presence_service as cp
+    det = {"boxes": [[10, 10, 100, 100]], "scores": [0.471], "image_size": [200, 200]}
+    for absent in (0.0048, 0.0040, 0.0005, 0.0003, 0.0001):
+        monkeypatch.setattr(cp, "presence_score", lambda *a, **k: absent)
+        assert cp.verify_boxes(object(), det, "a purple bicycle") == [], absent
+
+
+def test_clip_verify_admits_the_present_phrases_the_detector_threshold_dropped(monkeypatch):
+    """P8-B's 0.5 detector cutoff refused "the drapery" (det 0.397). CLIP scores it 0.892, so the
+    gate recovers it — that recall is the entire point of this stage."""
+    from backend.services import clip_presence_service as cp
+    det = {"boxes": [[10, 10, 100, 100]], "scores": [0.397], "image_size": [200, 200]}
+    for present in (0.979, 0.961, 0.913, 0.892, 0.875, 0.613, 0.356):
+        monkeypatch.setattr(cp, "presence_score", lambda *a, **k: present)
+        assert cp.verify_boxes(object(), det, "the drapery"), present
+
+
+def test_clip_verify_treats_unjudgeable_as_refusal(monkeypatch):
+    """None means "could not judge" — it must never be read as a pass."""
+    from backend.services import clip_presence_service as cp
+    det = {"boxes": [[10, 10, 100, 100]], "scores": [0.9], "image_size": [200, 200]}
+    monkeypatch.setattr(cp, "presence_score", lambda *a, **k: None)
+    assert cp.verify_boxes(object(), det, "x") == []
+    assert cp.verify_boxes(object(), None, "x") == []
+    assert cp.verify_boxes(object(), {"boxes": [], "image_size": [200, 200]}, "x") == []
+
+
+def test_clip_presence_adapter_spec():
+    from backend.services.vision_orchestrator.adapters import ClipPresenceAdapter
+    from backend.services.vision_orchestrator.contracts import Capability, ResourceKind
+    from backend.services import clip_presence_service as cp
+    a = ClipPresenceAdapter()
+    assert a.spec.name == "clip_vit_b32" and a.spec.license == "MIT"
+    assert a.spec.capability is Capability.EMBED
+    assert a.spec.resource is ResourceKind.GPU
+    assert a.spec.revision == cp.REVISION
+    assert cp.DEFAULT_PRESENCE_THRESHOLD == 0.25      # calibrated, see the measured table
+
+
+def test_grounded_receipt_credits_all_three_models_when_verified():
+    d = ss.suggestion_from_grounded_phrase(
+        {"id": "r1", "geometry_rev": 1}, phrase="the drapery", run_id="r", score=0.397,
+        detector_model="grounding_dino_tiny", detector_revision="a2bb",
+        presence=0.8916, verifier_model="clip_vit_b32", verifier_revision="3d74")
+    p = d["provenance"]
+    assert p["adapter"] == "grounding_dino_tiny+clip_vit_b32+sam2"
+    assert p["verifier_model"] == "clip_vit_b32" and p["verifier_revision"] == "3d74"
+    # both scores stay OFF the mark (contract §6) and ride the descriptor
+    assert "presence" not in p and "confidence" not in p
+    assert d["presence"] == 0.8916 and d["confidence"] == 0.397
+
+
+def test_produce_field_grounded_sam_sequences_detector_clip_then_sam2(monkeypatch):
+    """Three models, one card: detector → CLIP → SAM2, each leaving before the next arrives."""
+    post = {"_id": ObjectId(), "region_annotations": [{"id": "r1", "box": {"x": 0, "y": 0, "w": 1, "h": 1}}]}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import grounding_detector_service as gd
+    from backend.services import clip_presence_service as cps
+    from backend.services.vision_orchestrator import refine_session as rs_mod
+
+    class _Img:
+        size = (200, 200)
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(gd, "is_available", lambda: True)
+    monkeypatch.setattr(cps, "is_available", lambda: True)
+
+    order = []
+    class _DArt: data = _detection(score=0.397)       # a score P8-B would have REFUSED
+    class _DJob: artifact = _DArt()
+    class _CArt: data = [{"box_xyxy": [0.1, 0.1, 0.9, 0.9], "detector_score": 0.397, "presence": 0.892}]
+    class _CJob: artifact = _CArt()
+
+    async def _det(adapter, payload, **kw): order.append("detect"); return _DJob()
+    async def _det_unload(name): order.append(f"unload:{name}")
+    async def _clip(adapter, payload, **kw): order.append("clip"); return _CJob()
+    async def _clip_unload(name): order.append(f"unload:{name}")
+    import backend.routers.posts as RR
+    RR._grounding_mgr = type("M", (), {"run_adapter": staticmethod(_det),
+                                       "unload": staticmethod(_det_unload)})()
+    RR._grounding_adapter = object()
+    RR._clip_mgr = type("M", (), {"run_adapter": staticmethod(_clip),
+                                  "unload": staticmethod(_clip_unload)})()
+    RR._clip_adapter = object()
+
+    async def _preview(image_bytes, prompt, base_id, base_rev):
+        order.append("sam2")
+        return {"id": "refine_z", "geometry_rev": 1, "mask_rle": {"size": [4, 4], "counts": "M"}}
+    monkeypatch.setattr(rs_mod.refine_session, "available", lambda: True)
+    monkeypatch.setattr(rs_mod.refine_session, "preview", _preview)
+    try:
+        resp = run(R.produce_field(str(posts.post["_id"]),
+                                   R.ProduceFieldRequest(producer="grounded_sam_find_parts",
+                                                         phrase="the drapery")))
+        assert resp["status"] == "ready"
+        sug = resp["suggestions"][0]
+        assert sug["provenance"]["adapter"] == "grounding_dino_tiny+clip_vit_b32+sam2"
+        assert sug["presence"] == 0.892
+        assert order == ["detect", "unload:grounding_dino_tiny",
+                         "clip", "unload:clip_vit_b32", "sam2"], order
+        assert posts.writes == []
+    finally:
+        RR._grounding_mgr = RR._clip_mgr = None
+        RR._grounding_adapter = RR._clip_adapter = None
+
+
+def test_produce_field_refuses_when_detector_fires_but_clip_rejects(monkeypatch):
+    """THE new refusal: the detector proposed a box, CLIP says the crop is not that thing, so
+    SAM2 is never called and no region is minted."""
+    post = {"_id": ObjectId(), "region_annotations": []}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import grounding_detector_service as gd
+    from backend.services import clip_presence_service as cps
+    from backend.services.vision_orchestrator import refine_session as rs_mod
+
+    class _Img:
+        size = (200, 200)
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(gd, "is_available", lambda: True)
+    monkeypatch.setattr(cps, "is_available", lambda: True)
+
+    sam_called = []
+    class _DArt: data = _detection(score=0.444)       # the purple-bicycle score, which the
+    class _DJob: artifact = _DArt()                    # detector alone could not reject
+    class _CJob: artifact = None                       # CLIP verified nothing
+    async def _det(adapter, payload, **kw): return _DJob()
+    async def _noop(name): pass
+    async def _clip(adapter, payload, **kw): return _CJob()
+    import backend.routers.posts as RR
+    RR._grounding_mgr = type("M", (), {"run_adapter": staticmethod(_det), "unload": staticmethod(_noop)})()
+    RR._grounding_adapter = object()
+    RR._clip_mgr = type("M", (), {"run_adapter": staticmethod(_clip), "unload": staticmethod(_noop)})()
+    RR._clip_adapter = object()
+    async def _never(*a, **k): sam_called.append(1); return {}
+    monkeypatch.setattr(rs_mod.refine_session, "preview", _never)
+    try:
+        resp = run(R.produce_field(str(posts.post["_id"]),
+                                   R.ProduceFieldRequest(producer="grounded_sam_find_parts",
+                                                         phrase="a purple bicycle")))
+        assert resp["status"] == "empty" and resp["suggestions"] == []
+        assert sam_called == [], "a CLIP-rejected box must never reach SAM2"
+    finally:
+        RR._grounding_mgr = RR._clip_mgr = None
+        RR._grounding_adapter = RR._clip_adapter = None

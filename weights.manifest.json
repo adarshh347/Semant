@@ -250,6 +250,30 @@
       ],
       "mirror_needed": false,
       "notes": "Grounded-SAM's detector half: a phrase grounds to a BOX, which the already-live SAM2 refines into a mask. Chosen over Florence-2 because it loads NATIVELY on transformers 5.13 (GroundingDinoForObjectDetection, no remote code at all) — Florence-2 does not, either natively or via trust_remote_code. Apache-2.0, so unlike YOLO's AGPL it carries no distribution constraint."
+    },
+    {
+      "name": "clip_vit_b32",
+      "kind": "hf",
+      "id": "openai/clip-vit-base-patch32",
+      "revision": "3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268",
+      "ignore_patterns": [
+        "flax_model.msgpack",
+        "tf_model.h5",
+        "*.onnx"
+      ],
+      "required_files": [
+        "config.json",
+        "pytorch_model.bin",
+        "preprocessor_config.json"
+      ],
+      "size_human": "577 MB (of ~1.7 GB in the repo — flax + TF duplicates we never load)",
+      "license": "MIT",
+      "capability": "EMBED",
+      "used_by": [
+        "P8-C presence gate: does the detector's crop actually match the phrase?"
+      ],
+      "mirror_needed": false,
+      "notes": "A GENERAL CLIP, deliberately distinct from fashion_clip: the presence gate judges arbitrary curator phrases on arbitrary images, and a fashion-tuned encoder would score a Pietà against 'the drapery' on the wrong manifold. Exists because GroundingDINO has no presence head (P8-B measured absent phrases outscoring present ones), so a second, independent opinion is what lets the detector threshold drop without letting fabrications through. WEIGHTS NOTE, inverted from every other entry here: this repo ships NO safetensors — pytorch_model.bin is the only usable weights file, and the flax/TF duplicates are 577 MB each. So `required_files` names the .bin and `ignore_patterns` drops flax/tf, the reverse of the fashion-clip case. Copying the usual pattern would have excluded the only weights and required a file that does not exist — caught by the required_files verification added in P8-A."
     }
   ]
 }

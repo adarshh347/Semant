@@ -809,3 +809,67 @@ class GroundingDinoAdapter:
             return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
         return JobResult(JobStatus.SUCCEEDED,
                          artifact=VisionArtifact("grounding", data, prov), provenance=prov)
+
+
+# ── P8-C: CLIP presence gate — the second opinion (CIRCUIT-001) ────────────────────────────
+class ClipPresenceAdapter:
+    """The `EMBED` adapter used as a PRESENCE GATE — does this crop actually show the phrase?
+
+    It exists because GroundingDINO has none: P8-B measured absent phrases outscoring present
+    ones, so the detector alone could only be made safe by refusing a third of real queries.
+    CLIP is a second, independent opinion, and a fabrication now has to fool both.
+
+    Middle of a three-model chain (detector → CLIP → SAM2), so `unload()` is load-bearing."""
+
+    def __init__(self) -> None:
+        from backend.services import clip_presence_service
+        self._svc = clip_presence_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="clip_vit_b32", capability=Capability.EMBED, resource=ResourceKind.GPU,
+            model_id=clip_presence_service.MODEL_TAG,
+            checkpoint=clip_presence_service.CHECKPOINT,
+            revision=clip_presence_service.REVISION, license="MIT",
+            preprocessing_version=clip_presence_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import clip_presence_service as c
+            return c.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        import time as _t
+        t0 = _t.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (_t.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        phrase = payload.get("phrase") or ""
+        detection = payload.get("detection")
+        t0 = time.perf_counter()
+        survivors = await asyncio.to_thread(
+            self._svc.verify_boxes, image, detection, phrase,
+            threshold=payload.get("threshold", self._svc.DEFAULT_PRESENCE_THRESHOLD))
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if not survivors:
+            # The detector fired but nothing verified — an answer, not a failure.
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("presence", survivors, prov), provenance=prov)

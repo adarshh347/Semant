@@ -77,6 +77,12 @@ def default_roster() -> List[AdapterSpec]:
                     "IDEA-Research/grounding-dino-tiny",
                     revision="a2bb814dd30d776dcf7e30523b00659f4f141c71",
                     license="Apache-2.0", available=False, deferred=True),
+        # P8-C: the presence gate. A GENERAL CLIP, distinct from fashion_clip — it judges
+        # arbitrary phrases on arbitrary images, where a fashion manifold would mislead.
+        AdapterSpec("clip_vit_b32", Capability.EMBED, ResourceKind.GPU,
+                    "openai/clip-vit-base-patch32",
+                    revision="3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268",
+                    license="MIT", available=False, deferred=True),
         AdapterSpec("cloud_vlm", Capability.SEMANTIC_ANNOTATE, ResourceKind.REMOTE,
                     "cloud-vision-language-model", available=False, deferred=True),
     ]

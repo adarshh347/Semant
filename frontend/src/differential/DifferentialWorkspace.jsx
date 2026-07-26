@@ -133,7 +133,7 @@ const FIELD_PRODUCERS = [
     // SAM2 refines it to a mask). Florence-2's producer stays registered but parked — it cannot
     // load on transformers 5.13.
     { key: 'grounded_sam_find_parts', label: 'Name it', needsSeed: false, needsPhrase: true,
-      hint: 'Say what to find — "the drapery" — and it is grounded, then cut to an exact mask.' },
+      hint: 'Say what to find — "the drapery" — it is grounded, verified against the crop, then cut to an exact mask.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface
