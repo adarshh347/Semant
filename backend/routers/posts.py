@@ -2332,6 +2332,43 @@ async def _produce_grounded_sam(post_id, post, region, req, run_id):
 
 
 # The registry: producer name → handler. Extensible — a new producer plugs in here, not a new route.
+async def _produce_architectural_axis(post_id, post, region, req, run_id):
+    """TRACE-001 · the first Orient/trace producer. OpenCV line segments → a flow_field axis.
+
+    CPU ONLY — and that is a property, not an accident. There is no adapter, no ModelManager, no
+    `ResourceKind.GPU` acquisition, so this never evicts a resident model and never waits behind
+    one. It is also why it is absent from `/produce-field/unload`: nothing is loaded, so nothing
+    can leak. (That list has sprung a leak three times; a producer that cannot appear on it is
+    one that cannot contribute to a fourth.)
+
+    An organic scene with no coherent linear structure is an honest refusal (status 'empty'),
+    never a lattice of invented axes."""
+    from backend.services import line_structure_service as lss
+    if not lss.is_available():
+        return [], "unavailable", False
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    t0 = time.perf_counter()
+    detection = lss.detect_segments(image)
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    if detection is None:
+        return [], "unavailable", False          # could not look — distinct from found-nothing
+
+    sug = suggestion_service.suggestion_from_architectural_axis(
+        detection, run_id=run_id,
+        region_id=(region or {}).get("id") if isinstance(region, dict) else None,
+        adapter=detection.get("adapter") or lss.ADAPTER_LSD,
+        preprocessing_version=lss.PREPROCESSING_VERSION,
+        latency_ms=round(latency_ms, 2),
+    )
+    if not sug:
+        return [], "empty", True                 # looked, found no coherent axis
+    return [sug], "ready", True
+
+
 _FIELD_PRODUCERS = {
     "negative_space": _produce_negative_space,
     "material_field": _produce_material_field,
@@ -2342,6 +2379,7 @@ _FIELD_PRODUCERS = {
     "light_field": _produce_shading,
     "shadow_field": _produce_shadow,
     "fall_of_light": _produce_fall_of_light,
+    "architectural_axis": _produce_architectural_axis,
     "florence_find_parts": _produce_florence_find_parts,
     "grounded_sam_find_parts": _produce_grounded_sam,
     "presence_check": _produce_presence_check,

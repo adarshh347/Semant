@@ -143,6 +143,10 @@ const FIELD_PRODUCERS = [
       hint: 'Ask whether something is present — and get an honest no when it is not.' },
     { key: 'enumerate', label: 'How many?', needsSeed: false, needsPhrase: true, isReading: true,
       hint: 'Count what is verified, not what the detector guessed. Absent things count zero.' },
+    // TRACE-001: the first TRACE-lane act. A trace is not a field — it carries a direction per
+    // cell (a flow_field), not a magnitude — so it is grouped apart from the brushed fields above.
+    { key: 'architectural_axis', label: 'Axis', needsSeed: false, isTrace: true,
+      hint: 'Where the built structure runs — OpenCV line segments, no model. An organic scene is refused.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface

@@ -21,9 +21,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from backend.services.mask_geometry import (cosine_field_from_features, depth_band_field,
+from backend.services.mask_geometry import (axial_coherence, cosine_field_from_features,
+                                            depth_band_field, flow_field_coverage,
                                             region_geometry_from_grounding,
-                                            field_contrast, flow_field_coherence, rle_is_valid,
+                                            field_contrast, flow_field_coherence,
+                                            line_orientation_flow_field, rle_is_valid,
                                             shading_band_field, shading_flow_field,
                                             shading_gradient, soft_field_from_map,
                                             soft_field_from_mask, strokes_from_field)
@@ -102,6 +104,8 @@ PRODUCER_SHADING = "shading"
 # carrying the dense flow_field kind). Same Intrinsic reading, a different geometry family: a
 # direction is not a field, and P6-G deliberately withheld this act until the kind existed.
 PRODUCER_FALL_OF_LIGHT = "fall_of_light"
+# TRACE-001 — the first Orient/trace producer. CPU, OpenCV, no model.
+PRODUCER_ARCHITECTURAL_AXIS = "architectural_axis"
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -824,6 +828,109 @@ def suggestion_from_fall_of_light(
         "linked_ground_ids": [],
         "provenance": receipt,
         "confidence": flow_field_coherence(cells),
+    }
+
+
+# ── producer 9.6: architectural_axis — the first TRACE-lane producer (CIRCUIT-001 TRACE-001) ────
+#
+# Reuses GEOM's flow_field kind wholesale. The trace lane adds converters and producers; it does
+# not add geometry kinds, and this one adds none.
+#
+# CALIBRATED BY MEASUREMENT on 18 corpus images (the P6-D/P8-C discipline: thresholds come from
+# measured distributions, never from a guess). The finding that set the threshold:
+#
+#   line DENSITY does not separate architecture from anything else.
+#     Gothic cathedral interior  density 43.92  coverage 1.00  axial coherence 0.912
+#     Hindu temple (ornate)      density  2.43  coverage 0.55  axial coherence 0.883
+#     sketchbook of anatomy      density  3.70  coverage 0.93  axial coherence 0.088
+#
+#   The temple is unambiguously architecture and is LESS dense than the sketchbook, which is
+#   unambiguously not — carved ornament and a sky half-frame produce few long lines, while pen
+#   hatching produces many short ones. Gating on density would have refused the temple and
+#   accepted the drawing. This is P8-B's lesson in a new costume: the obvious magnitude
+#   (detector score there, line length here) does not encode the property being asked about.
+#
+#   AXIAL COHERENCE does separate them, by an order of magnitude: 0.088 for the drawing against
+#   0.883/0.912 for the two buildings. Across all 18 images the sorted coherences are
+#   0.088 · 0.359 · 0.402 · 0.411 · 0.440 · 0.442 · 0.446 · 0.475 · 0.486 · 0.522 · 0.532 ·
+#   0.533 · 0.589 · 0.720 · 0.728 · 0.763 · 0.883 · 0.912 — one wide gap, between 0.088 and 0.359.
+#
+# 0.25 sits in that gap: ~2.8x above the organic sample, ~1.4x below the weakest pass. The 0.359
+# image is a tablet photographed on a desk, and its coherence comes from the SCREEN AND BEZEL —
+# rectilinear built structure genuinely in frame, so admitting it is correct rather than lucky.
+#
+# HONEST LIMIT ON THIS CALIBRATION: the corpus is art- and architecture-heavy and yielded exactly
+# ONE clearly organic image. The threshold is therefore anchored on a single negative sample and
+# should be re-measured against a proper set of landscapes/foliage before it is trusted at scale.
+MIN_AXIAL_COHERENCE = 0.25
+
+# Degenerate-pass guards. Two perfectly parallel lines score coherence 1.0, and a lamp post
+# against a sky is not an axis worth tracing. Both bars are deliberately low: they exclude the
+# degenerate, not the marginal, and the coherence gate above does the real work.
+MIN_AXIS_SEGMENTS = 8
+MIN_AXIS_COVERAGE = 0.10
+
+
+def suggestion_from_architectural_axis(
+    detection: Optional[Dict[str, Any]], *, run_id: Optional[str],
+    region_id: Optional[str] = None, label: Optional[str] = None,
+    adapter: str = "opencv_lsd", preprocessing_version: Optional[str] = None,
+    latency_ms: Optional[float] = None, out_grid: int = 14,
+    min_coherence: float = MIN_AXIAL_COHERENCE,
+) -> Optional[Dict[str, Any]]:
+    """A line-segment reading → an ``architectural_axis`` trace mark carrying a dense flow_field.
+
+    The sibling of ``suggestion_from_fall_of_light``, one lane over: that traces where light
+    travels, this traces where the built structure runs. Same geometry kind, same descriptor
+    shape, and a DETERMINISTIC receipt — OpenCV inferred nothing, so the provenance names an
+    adapter and carries no ``model``, ``checkpoint`` or ``revision``. Contract §6 holds:
+    ``confidence`` rides the descriptor and never the provenance.
+
+    The confidence is axial coherence — "is there a dominant orientation here", not "is this the
+    right axis". It is `axial_coherence`, not `flow_field_coherence`, because an axis has no
+    direction: measured on near-vertical lines splayed a few degrees either side of vertical, the
+    two disagree 0.997 against 0.175, and only the first is true of a line.
+
+    Refuses (returns None) a picture with no coherent linear structure — an organic or natural
+    scene. Refusing is the point: a lattice of invented axes over a landscape is the same lie the
+    field producers refuse, and the calibration note above is why the gate is coherence and not
+    the density it would have been natural to reach for."""
+    if not isinstance(detection, dict):
+        return None                                     # could not look — not a refusal
+    segments = detection.get("segments") or []
+    width = float(detection.get("width") or 0)
+    height = float(detection.get("height") or 0)
+    if len(segments) < MIN_AXIS_SEGMENTS or width <= 0 or height <= 0:
+        return None                                     # nothing linear enough to be an axis
+
+    cells, rows, cols = line_orientation_flow_field(segments, width, height, out_grid=out_grid)
+    if not cells:
+        return None
+
+    coherence = axial_coherence(cells)
+    coverage = flow_field_coverage(cells)
+    if coherence < min_coherence or coverage < MIN_AXIS_COVERAGE:
+        return None                                     # lines, but no axis — honest refusal
+
+    receipt: Dict[str, Any] = {"run_id": run_id, "producer": PRODUCER_ARCHITECTURAL_AXIS,
+                               "adapter": adapter}
+    for key, val in (("preprocessing_version", preprocessing_version),
+                     ("latency_ms", latency_ms)):
+        if val is not None:
+            receipt[key] = val
+    return {
+        "producer": PRODUCER_ARCHITECTURAL_AXIS,
+        "type": "trace_mark",
+        "role": "architectural_axis",
+        "label": label or "the architectural axis",
+        "source_ref": f"{region_id or 'img'}:architectural_axis",
+        "geometry": {"kind": "flow_field", "cols": cols, "rows": rows, "cells": cells},
+        "linked_ground_ids": [],
+        "provenance": receipt,
+        "confidence": coherence,
+        # Readings ABOUT the field, useful to review and never painted into the geometry.
+        "coverage": coverage,
+        "segment_count": len(segments),
     }
 
 

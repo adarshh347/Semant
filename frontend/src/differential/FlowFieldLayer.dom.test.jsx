@@ -75,3 +75,34 @@ describe('FlowFieldLayer — the kind validates as a real trace_mark', () => {
         expect(v.valid).toBe(true);
     });
 });
+
+describe('FlowFieldLayer — TRACE-001: axial rendering', () => {
+    // An architectural_axis field: every direction canonicalised to dx >= 0, because the sign
+    // of a wall edge carries no information.
+    const AXIS = field([[0, 1, 1], [0.7071, 0.7071, 0.6], [1, 0, 0.4], NULL]);
+
+    it('draws NO arrowhead in axial mode — a wall edge has no direction', async () => {
+        await mount(<FlowFieldLayer geometry={AXIS} natural={NAT} axial />);
+        expect(container.querySelectorAll('.ff-shaft')).toHaveLength(3);   // null cell drew nothing
+        expect(container.querySelectorAll('.ff-head')).toHaveLength(0);
+    });
+
+    it('still draws arrowheads by default — fall_of_light is unchanged by this prop', async () => {
+        await mount(<FlowFieldLayer geometry={AXIS} natural={NAT} />);
+        expect(container.querySelectorAll('.ff-head')).toHaveLength(3);
+    });
+
+    it('a null cell renders nothing in axial mode too — absence stays absence', async () => {
+        await mount(<FlowFieldLayer geometry={AXIS} natural={NAT} axial />);
+        expect(container.querySelectorAll('.ff-arrow')).toHaveLength(3);
+    });
+
+    it('the shaft stays centred on its cell, so an axis reads both ways', async () => {
+        await mount(<FlowFieldLayer geometry={field([[0, 1, 1]], 1, 1)} natural={NAT} axial />);
+        const line = container.querySelector('.ff-shaft');
+        const y1 = Number(line.getAttribute('y1'));
+        const y2 = Number(line.getAttribute('y2'));
+        expect((y1 + y2) / 2).toBeCloseTo(NAT.h / 2, 1);   // centred on the single cell
+        expect(Math.abs(y2 - y1)).toBeGreaterThan(1);      // and it has extent
+    });
+});

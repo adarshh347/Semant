@@ -22,6 +22,15 @@ export default function FlowFieldLayer({
     focused = true,
     opacity = 1,
     className = '',
+    // TRACE-001: draw each cell as a bare double-ended stroke instead of an arrow.
+    //
+    // Opt-in, default false — `fall_of_light` renders exactly as it did before this prop
+    // existed. It is here because an `architectural_axis` cell is AXIAL: a wall edge is the
+    // same edge read upward or downward, and the converter canonicalises every direction into
+    // the dx >= 0 half-plane precisely because the sign carries no information. An arrowhead
+    // on that would assert a direction the picture does not contain — the same fabrication
+    // this lane refuses everywhere else, committed by the renderer instead of the producer.
+    axial = false,
 }) {
     const geom = geometry || mark?.geometry || null;
     const cells = flowFieldCells(geom);
@@ -67,8 +76,10 @@ export default function FlowFieldLayer({
                            style={{ opacity: 0.3 + 0.7 * c.m }}>
                             <line className="ff-shaft" x1={x1} y1={y1} x2={x2} y2={y2}
                                   vectorEffect="non-scaling-stroke" />
-                            <path className="ff-head" d={`M ${x2} ${y2} L ${bx1} ${by1} M ${x2} ${y2} L ${bx2} ${by2}`}
-                                  vectorEffect="non-scaling-stroke" />
+                            {!axial && (
+                                <path className="ff-head" d={`M ${x2} ${y2} L ${bx1} ${by1} M ${x2} ${y2} L ${bx2} ${by2}`}
+                                      vectorEffect="non-scaling-stroke" />
+                            )}
                         </g>
                     );
                 })}
