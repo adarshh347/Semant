@@ -169,27 +169,53 @@ class Director:
     def __init__(self, planner: Optional[Planner] = None):
         self.planner: Planner = planner or RuleBasedPlanner()
 
+    def _planner_notes(self) -> Tuple[str, ...]:
+        """Whatever the planner wants said about how it produced this.
+
+        PLANNER-001: a model-backed planner that quietly fell back to rules would make the
+        model look like it was working for as long as nobody checked. `last_notes` is how it
+        speaks; the Protocol stays one method because reading this is optional.
+        """
+        notes = getattr(self.planner, "last_notes", ())
+        return tuple(str(n) for n in notes) if notes else ()
+
     def plan(self, intention: str, memory: WorkingMemory) -> Plan:
         proposed = self.planner.propose(intention, memory)
+        planner_notes = self._planner_notes()
         if not proposed:
             # An unrecognised intention is a refusal with a reason, not an empty plan
             # pretending to be a successful one with nothing in it.
+            #
+            # PLANNER-001: the reason must describe the planner that actually ran. "No way of
+            # looking matches" names KEYWORD MATCHING — true of the rule-based table, and a
+            # lie about a model that read the intention and judged that none of these
+            # actuators serve it. Same outcome, different fact, and a curator debugging an
+            # empty plan needs to know which one happened.
+            if self.planner.name == PLANNER_RULE_BASED:
+                why = (f"no way of looking matches '{intention}'; "
+                       f"nothing was planned and nothing was run")
+            else:
+                why = (f"the {self.planner.name} planner found nothing here that serves "
+                       f"'{intention}'; nothing was planned and nothing was run")
             return Plan(intention=intention, steps=(), refused=(),
                         planner=self.planner.name,
-                        notes=(f"no way of looking matches '{intention}'; "
-                               f"nothing was planned and nothing was run",))
+                        notes=(why, *planner_notes))
         # Ids are guaranteed here rather than trusted from the planner: a model-backed
         # planner will omit them, and provenance keys on them.
         stamped = [s if s.id else s.with_id(f"{self.planner.name}:{i}:{s.actuator}")
                    for i, s in enumerate(proposed)]
-        intent = match_intent(intention)
+        # Intent attribution belongs ONLY to the planner that used the intent table. A Groq
+        # chain that happens to contain the word "light" did not come from `trace_light`, and
+        # labelling it with that workflow name would put a false lineage on the receipt.
+        intent = match_intent(intention) if self.planner.name == PLANNER_RULE_BASED else None
         plan = resolve(stamped, memory, intention=intention,
                        workflow=intent.workflow if intent else None,
                        planner=self.planner.name)
-        if intent and intent.why:
+        notes = tuple([*( (intent.why,) if intent and intent.why else () ), *planner_notes])
+        if notes:
             plan = Plan(intention=plan.intention, steps=plan.steps, refused=plan.refused,
                         workflow=plan.workflow, planner=plan.planner,
-                        reordered=plan.reordered, notes=(intent.why,))
+                        reordered=plan.reordered, notes=notes)
         return plan
 
     def plan_workflow(self, name: str, memory: WorkingMemory) -> Plan:
@@ -202,25 +228,13 @@ class Director:
         return wf.plan_for(memory)
 
 
-# ── where Groq plugs in ──────────────────────────────────────────────────────
+# ── the model-backed planner ─────────────────────────────────────────────────
 #
-# class GroqPlanner:
-#     """A model proposes the chain; the Director still refuses what cannot run.
+# PLANNER-001 filled this seam: `groq_planner.GroqPlanner` implements the same one-method
+# Protocol and is passed to `Director(...)` like any other. It lives in its own module so
+# this one stays import-light — nothing here depends on the `groq` package.
 #
-#     Implementation notes for whoever builds this, in the order they will bite:
-#
-#     1. The prompt must carry `memory.summary()` — counts, phrase, constraints, unreadable
-#        — so the model plans against what EXISTS. A planner that cannot see there are zero
-#        marks will keep proposing `connect_marks`, and every one of those is a wasted call.
-#     2. Constrain output to `capabilities.known()`. Send the actual list; do not describe
-#        it in prose. An actuator name is a closed vocabulary and should be typed as one.
-#     3. Return `List[Step]` and NOTHING else. No confidence, no ordering guarantees, no
-#        commentary — `resolve()` handles ordering and the executor handles results.
-#     4. Do NOT catch refusals and re-prompt around them in a loop. A refused plan is
-#        information for the curator, and a model that retries until something passes is a
-#        model that will eventually find a chain that runs and means nothing.
-#     5. Failure of the API is UNAVAILABLE, which means fall back to `RuleBasedPlanner` and
-#        SAY SO in `plan.notes` — never silently, or nobody will notice the model is down.
-#     """
-#     name = "groq"
-#     def propose(self, intention: str, memory: WorkingMemory) -> List[Step]: ...
+# The asymmetry the seam exists to enforce, restated because it is the whole point: the model
+# gets to PROPOSE. It does not get to dispatch. `Director.plan()` above runs every planner's
+# output through the same `resolve()`, so a hallucinated actuator is refused by name and an
+# unsatisfiable chain is refused by missing input, whoever proposed it.
