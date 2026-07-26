@@ -1294,3 +1294,7 @@
   background: var(--paper, #fff); font: inherit; font-size: 12px;
 }
 .diff-field-phrase-input:focus { outline: none; border-color: var(--accent, #7a3b62); }
+
+/* P8-D — a reading is an answer, not evidence: stated plainly, never styled as a mark */
+.diff-field-reading { font-style: normal; color: var(--ink, #2a2a2a); }
+.diff-field-reading.on { font-weight: 500; }

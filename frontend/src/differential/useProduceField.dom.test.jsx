@@ -139,3 +139,59 @@ describe('useProduceField — P8-A: the phrase-driven producer', () => {
         expect(storeRef.ingestSuggestions).not.toHaveBeenCalled();
     });
 });
+
+describe('useProduceField — P8-D: readings are not marks', () => {
+    const presence = (present) => ({
+        producer: 'presence_check', type: 'presence_reading', phrase: 'a cross',
+        present, basis: present ? 'verified' : 'not_detected',
+        instances: present ? 1 : 0, confidence: present ? 0.93 : null,
+        provenance: { run_id: 'r', producer: 'presence_check' },
+    });
+    const count = (n) => ({
+        producer: 'enumerate', type: 'count_reading', phrase: 'the figures',
+        count: n, considered: 7, instances: [],
+        provenance: { run_id: 'r', producer: 'enumerate' },
+    });
+
+    it('a presence reading is surfaced but NEVER ingested as evidence', async () => {
+        stubFetch(() => ok({ producer: 'presence_check', suggestions: [presence(true)],
+                             run_id: 'r', available: true, status: 'ready' }));
+        const h = await mount();
+        await act(async () => { await h.current.produce({ producer: 'presence_check', phrase: 'a cross' }); });
+        // the whole point: a sentence about the image must not enter the evidence layer
+        expect(storeRef.ingestSuggestions).not.toHaveBeenCalled();
+        expect(h.current.reading.present).toBe(true);
+        expect(h.current.reading.type).toBe('presence_reading');
+        expect(h.current.lastRun.count).toBe(0);      // nothing was minted
+    });
+
+    it('an ABSENT verdict is a result, not an error', async () => {
+        stubFetch(() => ok({ producer: 'presence_check', suggestions: [presence(false)],
+                             run_id: 'r', available: true, status: 'ready' }));
+        const h = await mount();
+        await act(async () => { await h.current.produce({ producer: 'presence_check', phrase: 'a laptop' }); });
+        expect(h.current.status).toBe('ready');       // ready, not 'empty' or 'error'
+        expect(h.current.error).toBe('');
+        expect(h.current.reading.present).toBe(false);
+        expect(storeRef.ingestSuggestions).not.toHaveBeenCalled();
+    });
+
+    it('a count reading surfaces the count and mints nothing', async () => {
+        stubFetch(() => ok({ producer: 'enumerate', suggestions: [count(3)],
+                             run_id: 'r', available: true, status: 'ready' }));
+        const h = await mount();
+        await act(async () => { await h.current.produce({ producer: 'enumerate', phrase: 'the figures' }); });
+        expect(h.current.reading.count).toBe(3);
+        expect(h.current.reading.considered).toBe(7);
+        expect(storeRef.ingestSuggestions).not.toHaveBeenCalled();
+    });
+
+    it('a real mark producer still reaches the quarantine — readings are the exception', async () => {
+        stubFetch(() => ok({ producer: 'negative_space', suggestions: [descriptor()],
+                             run_id: 'r', available: true, status: 'ready' }));
+        const h = await mount();
+        await act(async () => { await h.current.produce({ producer: 'negative_space', regionId: 'reg_1' }); });
+        expect(storeRef.ingestSuggestions).toHaveBeenCalledTimes(1);
+        expect(h.current.reading).toBe(null);
+    });
+});
