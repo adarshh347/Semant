@@ -69,6 +69,21 @@ PRODUCER_FLORENCE_FIND = "florence_find_parts"
 # real mask. Each answers what it is good at — roughly where, then exactly what extent — and the
 # receipt names BOTH, because a mark produced by two models that credits one is a false receipt.
 PRODUCER_GROUNDED_SAM = "grounded_sam_find_parts"
+# CIRCUIT-001 P8-D — two verbs harvested from models already built, with no new weights.
+#
+# Everything above produces a MARK: something that goes on the image and can be cited. These two
+# produce a READING — a sentence about the image, not a region in it. That distinction is why
+# they do not run SAM2 and do not enter the quarantine: there is no extent to accept.
+#
+# `presence_check` is the P8-C gate turned around. The gate was a filter answering "should this
+# box survive"; asked directly it answers "is X here at all" — and it can say NO, which no
+# detector in this roster can honestly do alone.
+#
+# `enumerate` is counting as a reading, not as a number: "seven arches, one broken" is a
+# perceptual claim. The count is the CLIP-verified survivors, so it inherits the same refusal —
+# a phrase that is not there counts zero rather than counting the detector's guesses.
+PRODUCER_PRESENCE_CHECK = "presence_check"
+PRODUCER_ENUMERATE = "enumerate"
 # CIRCUIT-001 P6-F — the second REAL-MODEL field (after material). Depth-Anything-V2-Small emits
 # relative depth, which is what recession is actually about: not distance in metres but what falls
 # away behind. Two roles from one reading — `background_recession` (the far band) and
@@ -918,3 +933,97 @@ def suggestions_from_grounded_phrase(
     """The list form — one suggestion, or [] when the phrase grounds nothing here."""
     d = suggestion_from_grounded_phrase(region, phrase=phrase, run_id=run_id, **kw)
     return [d] if d else []
+
+
+# ── producers 12 & 13: presence_check + enumerate — READINGS, not marks (CIRCUIT-001 P8-D) ─────
+
+def presence_verdict(
+    survivors: Optional[List[Dict[str, Any]]], *, phrase: str, run_id: Optional[str],
+    detector_fired: bool = False, detector_model: Optional[str] = None,
+    detector_revision: Optional[str] = None, verifier_model: Optional[str] = None,
+    verifier_revision: Optional[str] = None, latency_ms: Optional[float] = None,
+) -> Optional[Dict[str, Any]]:
+    """A verified-box list → an honest present/absent VERDICT about the phrase.
+
+    This is a reading, not a mark: `type` is ``presence_reading``, there is no geometry, and
+    nothing here can be accepted onto the image. The circuit gains the ability to say "no".
+
+    `present: False` is a RESULT, not a failure — and the distinction between "the detector saw
+    nothing at all" and "the detector proposed something and the verifier rejected it" is kept,
+    because they mean different things to a curator: the first is absence, the second is a
+    near-miss worth rephrasing.
+
+    Returns None only when there was no question (empty phrase)."""
+    text = (phrase or "").strip()
+    if not text:
+        return None
+    verified = list(survivors or [])
+    present = len(verified) > 0
+    confidence = round(float(verified[0]["presence"]), 4) if present else None
+
+    receipt: Dict[str, Any] = {"run_id": run_id, "producer": PRODUCER_PRESENCE_CHECK,
+                               "adapter": "grounding_dino_tiny+clip_vit_b32"}
+    for key, val in (("model", detector_model), ("revision", detector_revision),
+                     ("verifier_model", verifier_model), ("verifier_revision", verifier_revision),
+                     ("latency_ms", latency_ms)):
+        if val is not None:
+            receipt[key] = val
+
+    if present:
+        basis = "verified"
+    elif detector_fired:
+        basis = "detector_proposed_but_unverified"    # a near miss, not plain absence
+    else:
+        basis = "not_detected"
+
+    return {
+        "producer": PRODUCER_PRESENCE_CHECK,
+        "type": "presence_reading",
+        "phrase": text,
+        "present": present,
+        "basis": basis,
+        "instances": len(verified),
+        "confidence": confidence,                     # descriptor only — a reading may report it
+        "provenance": receipt,
+    }
+
+
+def enumerate_reading(
+    survivors: Optional[List[Dict[str, Any]]], *, phrase: str, run_id: Optional[str],
+    detector_candidates: int = 0, detector_model: Optional[str] = None,
+    detector_revision: Optional[str] = None, verifier_model: Optional[str] = None,
+    verifier_revision: Optional[str] = None, latency_ms: Optional[float] = None,
+) -> Optional[Dict[str, Any]]:
+    """CLIP-verified boxes → a count-as-reading.
+
+    The count is of VERIFIED instances, never of detector candidates, so this inherits P8-C's
+    refusal: ask for something absent and the answer is 0, not "however many boxes the detector
+    guessed". `considered` records how many candidates were examined, because "0 of 14 considered"
+    and "0 of 0" are different statements about the image.
+
+    Instances keep their boxes so a later gate can turn a count into marks; this producer mints
+    none — counting is a reading."""
+    text = (phrase or "").strip()
+    if not text:
+        return None
+    verified = list(survivors or [])
+
+    receipt: Dict[str, Any] = {"run_id": run_id, "producer": PRODUCER_ENUMERATE,
+                               "adapter": "grounding_dino_tiny+clip_vit_b32"}
+    for key, val in (("model", detector_model), ("revision", detector_revision),
+                     ("verifier_model", verifier_model), ("verifier_revision", verifier_revision),
+                     ("latency_ms", latency_ms)):
+        if val is not None:
+            receipt[key] = val
+
+    return {
+        "producer": PRODUCER_ENUMERATE,
+        "type": "count_reading",
+        "phrase": text,
+        "count": len(verified),
+        "considered": int(detector_candidates),
+        # each survivor keeps where it was and how sure the verifier was
+        "instances": [{"box_xyxy": v.get("box_xyxy"), "presence": v.get("presence"),
+                       "detector_score": v.get("detector_score")} for v in verified],
+        "provenance": receipt,
+    }

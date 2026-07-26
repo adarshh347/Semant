@@ -1517,3 +1517,159 @@ def test_produce_field_refuses_when_detector_fires_but_clip_rejects(monkeypatch)
     finally:
         RR._grounding_mgr = RR._clip_mgr = None
         RR._grounding_adapter = RR._clip_adapter = None
+
+
+# ─────────── P8-D: presence_check + enumerate — READINGS, not marks ───────────
+
+def _verified(n=1, presence=0.93):
+    return [{"box_xyxy": [0.1, 0.1, 0.5, 0.5], "presence": presence, "detector_score": 0.5}
+            for _ in range(n)]
+
+
+def test_presence_verdict_says_yes_with_the_verifier_confidence():
+    v = ss.presence_verdict(_verified(2), phrase="a cross", run_id="r", detector_fired=True,
+                            detector_model="grounding_dino_tiny", verifier_model="clip_vit_b32")
+    assert v["type"] == "presence_reading"            # a reading, not a mark
+    assert v["present"] is True and v["basis"] == "verified"
+    assert v["instances"] == 2 and v["confidence"] == 0.93
+    assert "geometry" not in v                         # nothing to put on the image
+    assert v["provenance"]["adapter"] == "grounding_dino_tiny+clip_vit_b32"
+
+
+def test_presence_verdict_can_say_NO_which_no_detector_alone_can():
+    """The circuit gains the ability to answer 'not here' — and distinguishes plain absence from
+    a near miss, because they mean different things to a curator."""
+    near = ss.presence_verdict([], phrase="a laptop", run_id="r", detector_fired=True)
+    assert near["present"] is False
+    assert near["basis"] == "detector_proposed_but_unverified"
+    assert near["confidence"] is None
+
+    plain = ss.presence_verdict([], phrase="a laptop", run_id="r", detector_fired=False)
+    assert plain["present"] is False and plain["basis"] == "not_detected"
+
+
+def test_presence_verdict_needs_a_question():
+    assert ss.presence_verdict(_verified(), phrase="", run_id="r") is None
+    assert ss.presence_verdict(_verified(), phrase="   ", run_id="r") is None
+
+
+def test_enumerate_counts_the_VERIFIED_not_the_guessed():
+    r = ss.enumerate_reading(_verified(3), phrase="the figures", run_id="r",
+                             detector_candidates=9, detector_model="grounding_dino_tiny")
+    assert r["type"] == "count_reading"
+    assert r["count"] == 3 and r["considered"] == 9    # the gap IS the point
+    assert len(r["instances"]) == 3
+    assert all("box_xyxy" in i and "presence" in i for i in r["instances"])
+    assert "geometry" not in r                          # counting mints nothing
+
+
+def test_enumerate_zero_is_a_real_answer_and_records_what_was_considered():
+    """Ask for something absent and the count is 0 — not 'however many boxes fired'. "0 of 14"
+    and "0 of 0" are different statements about the image, so both are kept."""
+    z = ss.enumerate_reading([], phrase="bicycles", run_id="r", detector_candidates=14)
+    assert z["count"] == 0 and z["considered"] == 14 and z["instances"] == []
+    none = ss.enumerate_reading([], phrase="bicycles", run_id="r", detector_candidates=0)
+    assert none["count"] == 0 and none["considered"] == 0
+    assert ss.enumerate_reading(_verified(), phrase="  ", run_id="r") is None
+
+
+def _install_verify(monkeypatch, *, survivors, boxes=1, gd_ok=True, clip_ok=True):
+    """Stub the shared detector→CLIP half so the reading verbs are testable without a GPU."""
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import grounding_detector_service as gd
+    from backend.services import clip_presence_service as cps
+
+    class _Img:
+        size = (200, 200)
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(gd, "is_available", lambda: gd_ok)
+    monkeypatch.setattr(cps, "is_available", lambda: clip_ok)
+
+    det = {"boxes": [[10, 10, 100, 100]] * boxes, "scores": [0.5] * boxes,
+           "image_size": [200, 200]} if boxes else None
+    class _DArt: data = det
+    class _DJob: artifact = _DArt() if det else None
+    class _CArt: data = survivors
+    class _CJob: artifact = _CArt() if survivors else None
+    async def _run_det(adapter, payload, **kw): return _DJob()
+    async def _run_clip(adapter, payload, **kw): return _CJob()
+    async def _noop(name): pass
+    import backend.routers.posts as RR
+    RR._grounding_mgr = type("M", (), {"run_adapter": staticmethod(_run_det),
+                                       "unload": staticmethod(_noop)})()
+    RR._grounding_adapter = object()
+    RR._clip_mgr = type("M", (), {"run_adapter": staticmethod(_run_clip),
+                                  "unload": staticmethod(_noop)})()
+    RR._clip_adapter = object()
+    return RR
+
+
+def _reading_post(monkeypatch):
+    post = {"_id": ObjectId(), "region_annotations": []}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+    return posts, runs
+
+
+def test_produce_field_presence_check_present_and_absent(monkeypatch):
+    posts, runs = _reading_post(monkeypatch)
+    RR = _install_verify(monkeypatch, survivors=_verified(1))
+    try:
+        resp = run(R.produce_field(str(posts.post["_id"]),
+                                   R.ProduceFieldRequest(producer="presence_check", phrase="a cross")))
+        assert resp["status"] == "ready"
+        v = resp["suggestions"][0]
+        assert v["type"] == "presence_reading" and v["present"] is True
+    finally:
+        RR._grounding_mgr = RR._clip_mgr = None
+
+    RR = _install_verify(monkeypatch, survivors=[])
+    try:
+        resp = run(R.produce_field(str(posts.post["_id"]),
+                                   R.ProduceFieldRequest(producer="presence_check", phrase="a laptop")))
+        # "absent" is a RESULT — status ready, a verdict returned, present False
+        assert resp["status"] == "ready"
+        v = resp["suggestions"][0]
+        assert v["present"] is False and v["basis"] == "detector_proposed_but_unverified"
+        assert posts.writes == []
+    finally:
+        RR._grounding_mgr = RR._clip_mgr = None
+
+
+def test_produce_field_enumerate_counts_survivors(monkeypatch):
+    posts, runs = _reading_post(monkeypatch)
+    RR = _install_verify(monkeypatch, survivors=_verified(3), boxes=7)
+    try:
+        resp = run(R.produce_field(str(posts.post["_id"]),
+                                   R.ProduceFieldRequest(producer="enumerate", phrase="the figures")))
+        assert resp["status"] == "ready"
+        r = resp["suggestions"][0]
+        assert r["type"] == "count_reading" and r["count"] == 3 and r["considered"] == 7
+        assert posts.writes == []
+    finally:
+        RR._grounding_mgr = RR._clip_mgr = None
+
+
+def test_reading_verbs_fail_closed_without_the_presence_gate(monkeypatch):
+    """Same rule as P8-C: with the verifier gone, a permissive detector must not answer alone."""
+    posts, runs = _reading_post(monkeypatch)
+    for producer in ("presence_check", "enumerate"):
+        RR = _install_verify(monkeypatch, survivors=_verified(1), clip_ok=False)
+        try:
+            resp = run(R.produce_field(str(posts.post["_id"]),
+                                       R.ProduceFieldRequest(producer=producer, phrase="a cross")))
+            assert resp["status"] == "unavailable", producer
+            assert resp["available"] is False and resp["suggestions"] == []
+        finally:
+            RR._grounding_mgr = RR._clip_mgr = None
+
+
+def test_reading_verbs_need_a_phrase(monkeypatch):
+    posts, runs = _reading_post(monkeypatch)
+    for producer in ("presence_check", "enumerate"):
+        resp = run(R.produce_field(str(posts.post["_id"]),
+                                   R.ProduceFieldRequest(producer=producer)))
+        assert resp["status"] == "empty" and resp["suggestions"] == []
