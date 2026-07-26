@@ -30,6 +30,14 @@ const FIELD_ROLE_NAMES = {
     light_field: 'Light', shadow_field: 'Shadow', background_recession: 'Recession',
 };
 
+// MOUNT-001: the direction producers. Traces split by role exactly as fields do — three
+// producers now mint flow_field marks, and one shared 'Traces' layer would put light, structure
+// and horizon on the same switch, which is the pile the grouping exists to prevent.
+const TRACE_ROLE_NAMES = {
+    fall_of_light: 'Fall of light', architectural_axis: 'Axis', external_limit: 'Limit',
+    gaze_address: 'Gaze', gesture: 'Gesture', movement: 'Movement',
+};
+
 const titleCase = (s) => String(s || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 /**
@@ -48,7 +56,25 @@ export function groundLayerKey(ground) {
     return 'other';
 }
 
+/**
+ * The layer a committed MARK belongs on. MOUNT-001.
+ *
+ * Only dense direction marks route here — a `flow_field` is the one mark geometry that has its
+ * own renderer (`FlowFieldLayer`) rather than being drawn as a ground. Everything else returns
+ * null and is left exactly where it already renders; this function adds a lane, it does not
+ * take one over.
+ */
+export function markLayerKey(mark) {
+    if (!mark || typeof mark !== 'object') return null;
+    if (mark.geometry?.kind !== 'flow_field') return null;
+    return mark.role ? `trace:${mark.role}` : 'trace';
+}
+
 function layerName(key) {
+    if (key.startsWith('trace:')) {
+        const role = key.slice('trace:'.length);
+        return TRACE_ROLE_NAMES[role] || titleCase(role);
+    }
     if (key.startsWith('field:')) {
         const role = key.slice('field:'.length);
         return FIELD_ROLE_NAMES[role] || titleCase(role);
@@ -57,6 +83,10 @@ function layerName(key) {
 }
 
 function layerOrder(key) {
+    if (key.startsWith('trace:')) {
+        // trace roles sort together just after the base 'trace' slot
+        return LAYER_META.trace.order + 1;
+    }
     if (key.startsWith('field:')) {
         // field roles sort together after the base 'field' slot, alphabetically & stably
         return LAYER_META.field.order + 1;
@@ -75,13 +105,21 @@ function clamp01(v, fallback) {
  * layers that actually have grounds appear — an empty layer never clutters the panel. Each
  * descriptor: `{ key, name, order, visibility, opacity, count }`.
  */
-export function deriveLayers(grounds = [], saved = []) {
+export function deriveLayers(grounds = [], saved = [], marks = []) {
     const savedByKey = Object.fromEntries(
         (Array.isArray(saved) ? saved : []).filter((s) => s && s.key).map((s) => [s.key, s]));
     const counts = new Map();
     for (const g of grounds || []) {
         const k = groundLayerKey(g);
         counts.set(k, (counts.get(k) || 0) + 1);
+    }
+    // MOUNT-001: flow_field marks contribute their own trace layers. Marks that route nowhere
+    // (markLayerKey → null) are ignored here rather than swept into 'other', because they are
+    // already rendered elsewhere and a duplicate layer entry would offer a switch that controls
+    // nothing.
+    for (const m of marks || []) {
+        const k = markLayerKey(m);
+        if (k) counts.set(k, (counts.get(k) || 0) + 1);
     }
     const layers = [...counts.keys()].map((key) => {
         const s = savedByKey[key] || {};

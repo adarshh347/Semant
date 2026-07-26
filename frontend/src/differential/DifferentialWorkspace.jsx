@@ -316,7 +316,9 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // Q-C: the render layers actually present — committed grounds grouped by producer/role,
     // with each layer's saved visibility/opacity merged from the persisted `visual_layers`.
     const groundLayers = useMemo(
-        () => deriveLayers(grounds, visualLayers), [grounds, visualLayers]);
+        // MOUNT-001: marks join the derivation so flow_field traces get their own layer rows
+        // (one per role) with the same show/hide/opacity as every other layer.
+        () => deriveLayers(grounds, visualLayers, marks), [grounds, visualLayers, marks]);
     const saveGroundLayers = useCallback((next) => {
         saveVisualLayers?.(persistableLayers(next));
     }, [saveVisualLayers]);
@@ -1429,6 +1431,8 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     evidenceOpacity={evidenceLayer?.opacity ?? 1}
                                     // Q-C: per-producer/role render layers (grouped SVG <g>).
                                     layers={groundLayers}
+                                    // MOUNT-001: committed marks, so flow_field traces render.
+                                    marks={marks}
                                 />
                                 {/* P2E-B (2e) — pending suggestions render as a distinct dashed
                                     ghost: model-proposed, uncitable, never mistaken for evidence.

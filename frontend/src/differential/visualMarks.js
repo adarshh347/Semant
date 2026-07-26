@@ -98,6 +98,11 @@ export const PRODUCERS = [
     // dense `flow_field` kind. Same Intrinsic reading as `shading`, a direction rather than a
     // field — so its receipt is full (model/adapter/checkpoint/latency), like shading's.
     'fall_of_light',
+    // TRACE-001/002 + MOUNT-001: the other two direction producers. Their absence here was not
+    // cosmetic — `validateMark` rejects an unknown producer, so an architectural_axis mark could
+    // never be committed and therefore could never render, no matter what the renderer did. The
+    // producers shipped, the vocabulary did not, and nothing failed loudly in between.
+    'architectural_axis', 'external_limit',
     'florence_find_parts', 'grounded_sam_find_parts', 'fixture',
 ];
 
