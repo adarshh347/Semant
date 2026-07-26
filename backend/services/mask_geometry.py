@@ -796,3 +796,164 @@ def region_geometry_from_grounding(grounding: Optional[Dict[str, Any]]
         if nb:
             return {"polygons": [], "box": nb}
     return None
+
+# ─────────────────────────────────────────────────────────────────────────────
+# line-orientation flow field (CIRCUIT-001 TRACE-001) — the first TRACE-lane converter.
+# Same output contract as `shading_flow_field`, different physics: where that reads a
+# continuous scalar map and differentiates it, this reads discrete LINE SEGMENTS and asks
+# what orientation dominates near each cell. Detection (OpenCV) lives in
+# `line_structure_service`; this stays pure so a synthetic segment list can test it.
+#
+# THE ONE THING THAT MAKES THIS DIFFERENT FROM EVERY OTHER FLOW FIELD: a line has an
+# ORIENTATION, not a direction. A wall edge is the same edge read upward or downward — 179°
+# and 1° are nearly the same axis, but their plain mean is 90°, i.e. exactly perpendicular
+# to both. Averaging raw angles here does not degrade gracefully, it inverts. So every
+# accumulation below is done in DOUBLED-ANGLE space (cos2θ, sin2θ), summed, and halved at
+# the end — the standard treatment for axial data, and the reason this file gets its own
+# coherence function instead of reusing `flow_field_coherence`.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def line_orientation_flow_field(segments: Sequence[Sequence[float]], width: float, height: float,
+                                *, out_grid: int = 14, influence: float = 1.6
+                                ) -> Tuple[List[List[float]], int, int]:
+    """Line segments → a DENSE flow field: the dominant structural orientation, per cell.
+
+    `segments` is ``[(x0, y0, x1, y1), …]`` in PIXEL coordinates; `width`/`height` size the
+    image those pixels came from. Returns ``(cells, rows, cols)`` on exactly the contract
+    `shading_flow_field` established: row-major ``[dx, dy, m]``, unit orientation in normalized
+    image axes (x right, y down), ``m`` the cell's line density normalized to ``[0, 1]`` against
+    the densest cell, and ``[0.0, 0.0, 0.0]`` for a cell with no lines near it — a null cell, not
+    a fabricated axis.
+
+    `(dx, dy)` is AXIAL and canonicalised to the half-plane ``dx >= 0``. There is no arrowhead to
+    put on it: the sign carries no information and a consumer that draws one is asserting a
+    direction the picture does not contain.
+
+    Each segment is walked at sub-cell steps and deposits its length into the cells it crosses, so
+    a long wall edge counts for more than a short window mullion — weighting by length is what
+    makes "dominant" mean structurally dominant rather than merely numerous. Cells then gather
+    from neighbours within `influence` cells with a ``1/(1+d²)`` falloff, which is the "nearby line
+    density" that keeps a single cell between two parallel edges from reading as empty.
+
+    Refuses (``([], 0, 0)``) only when there is nothing to measure — no segments, or no cell
+    accumulating any length. Whether the lines that DO exist amount to architecture is a
+    judgement about the scene, and it belongs to the producer, not to the geometry."""
+    if width <= 0 or height <= 0:
+        return [], 0, 0
+    cols = rows = max(2, int(out_grid))
+    cell_w = float(width) / cols
+    cell_h = float(height) / rows
+    step = max(1e-6, min(cell_w, cell_h) / 2.0)          # sub-cell walk: never skip a cell
+
+    acc_c2 = [0.0] * (rows * cols)
+    acc_s2 = [0.0] * (rows * cols)
+    acc_w = [0.0] * (rows * cols)
+    total_length = 0.0
+
+    for seg in segments or ():
+        if seg is None or len(seg) < 4:
+            continue
+        x0, y0, x1, y1 = (float(seg[0]), float(seg[1]), float(seg[2]), float(seg[3]))
+        dx, dy = x1 - x0, y1 - y0
+        length = math.hypot(dx, dy)
+        if length <= 1e-9:
+            continue
+        total_length += length
+        theta = math.atan2(dy, dx)
+        c2, s2 = math.cos(2.0 * theta), math.sin(2.0 * theta)
+        n = max(1, int(length / step))
+        w = length / n                                   # each sample carries its share of length
+        for i in range(n + 1):
+            t = i / n
+            px, py = x0 + dx * t, y0 + dy * t
+            ci = int(px / cell_w)
+            ri = int(py / cell_h)
+            if ci < 0 or ci >= cols or ri < 0 or ri >= rows:
+                continue
+            k = ri * cols + ci
+            acc_c2[k] += w * c2
+            acc_s2[k] += w * s2
+            acc_w[k] += w
+
+    if total_length <= 1e-9 or max(acc_w) <= 1e-12:
+        return [], 0, 0                                  # nothing linear to report
+
+    # Neighbourhood gather — density, not just incidence.
+    radius = max(0, int(math.ceil(influence)))
+    cells: List[List[float]] = []
+    gathered_c2: List[float] = []
+    gathered_s2: List[float] = []
+    gathered_w: List[float] = []
+    for ri in range(rows):
+        for ci in range(cols):
+            gc2 = gs2 = gw = 0.0
+            for dr in range(-radius, radius + 1):
+                for dc in range(-radius, radius + 1):
+                    rr, cc = ri + dr, ci + dc
+                    if rr < 0 or rr >= rows or cc < 0 or cc >= cols:
+                        continue
+                    d2 = float(dr * dr + dc * dc)
+                    if d2 > influence * influence:
+                        continue
+                    fall = 1.0 / (1.0 + d2)
+                    k = rr * cols + cc
+                    gc2 += acc_c2[k] * fall
+                    gs2 += acc_s2[k] * fall
+                    gw += acc_w[k] * fall
+            gathered_c2.append(gc2)
+            gathered_s2.append(gs2)
+            gathered_w.append(gw)
+
+    peak = max(gathered_w) if gathered_w else 0.0
+    if peak <= 1e-12:
+        return [], 0, 0
+    for gc2, gs2, gw in zip(gathered_c2, gathered_s2, gathered_w):
+        if gw <= 1e-12:
+            cells.append([0.0, 0.0, 0.0])                # null cell — honest absence
+            continue
+        # Halve the doubled angle to recover the axis, then canonicalise to dx >= 0.
+        theta = math.atan2(gs2, gc2) / 2.0
+        ux, uy = math.cos(theta), math.sin(theta)
+        if ux < 0:
+            ux, uy = -ux, -uy
+        cells.append([round(ux, 4), round(uy, 4), round(gw / peak, 4)])
+    return cells, rows, cols
+
+
+def axial_coherence(cells: Sequence[Sequence[float]]) -> float:
+    """How aligned an AXIAL flow field is, in ``[0, 1]``. 1.0 is one dominant orientation.
+
+    A separate function from `flow_field_coherence` for the reason stated at the top of this
+    section, and it is not a stylistic preference: two cells at 89° and −89° are nearly the same
+    axis, but as raw unit vectors they very nearly cancel, so `flow_field_coherence` would report
+    a strongly-aligned field as incoherent. Doubling the angles before summing makes antiparallel
+    directions agree, which for a line is the truth.
+
+    This is the honest ``confidence`` an ``architectural_axis`` mark carries — not "is this the
+    right axis" but "is there a dominant axis here at all"."""
+    sc = ss = sw = 0.0
+    for cell in cells:
+        if len(cell) < 3:
+            continue
+        dx, dy, m = float(cell[0]), float(cell[1]), float(cell[2])
+        if m <= 0:
+            continue
+        theta = math.atan2(dy, dx)
+        sc += math.cos(2.0 * theta) * m
+        ss += math.sin(2.0 * theta) * m
+        sw += m
+    if sw <= 1e-12:
+        return 0.0
+    return round(math.sqrt(sc * sc + ss * ss) / sw, 4)
+
+
+def flow_field_coverage(cells: Sequence[Sequence[float]]) -> float:
+    """Fraction of cells carrying any magnitude, in ``[0, 1]``.
+
+    Distinguishes "lines everywhere" from "one strong line in a corner". A producer deciding
+    whether a scene is structurally linear needs both this and the total density: a single lamp
+    post against a sky is coherent and dense at one cell, and it is not architecture."""
+    if not cells:
+        return 0.0
+    live = sum(1 for c in cells if len(c) >= 3 and float(c[2]) > 0.0)
+    return round(live / len(cells), 4)
