@@ -1246,6 +1246,10 @@
 .diff-layer-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .diff-layer-opacity { width: 44px; accent-color: var(--lh, var(--accent)); }
 .diff-layer-system { font-size: 9px; color: var(--diff-muted, #8a8276); opacity: 0.7; }
+/* Q-C — the render-layer (producer/role) panel; reuses the layer-row chrome. */
+.diff-layers--render { margin-top: 6px; }
+.diff-layer-count { font-size: 9px; color: var(--diff-muted, #8a8276); opacity: 0.7;
+    font-variant-numeric: tabular-nums; min-width: 12px; text-align: right; }
 
 /* ── CIRCUIT-001 P4-B — suggestion review surface ─────────────────────────────── */
 .diff-review-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

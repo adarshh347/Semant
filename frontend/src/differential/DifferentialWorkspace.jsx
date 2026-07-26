@@ -41,6 +41,9 @@ import { draftMarkFromAction } from './markStaging';
 import {
     createDefaultLayers, toggleLayerVisibility, setLayerOpacity, lockLayer, unlockLayer, isSystemLayer,
 } from './visualLayers';
+// CIRCUIT-001 Q-C — render-grouping: committed grounds partitioned into layers by producer/role,
+// with saved visibility/opacity. Finishes the SVG-group renderer Lane B never built.
+import { deriveLayers, persistableLayers } from './layerGrouping';
 // CIRCUIT-001 P2E-B/P3-B — production instrument mechanics: editable anchors on
 // normalized geometry, endpoint ref-anchoring, and the perfect-freehand ribbon.
 import {
@@ -207,6 +210,8 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         // now persist alongside grounds; the commit is the write (a draft never thrashes
         // the network — the store filters to committed/superseded, its contract).
         visualMarks, addVisualMark, updateVisualMark, visualMarksForGround,
+        // CIRCUIT-001 Q-C — durable render layers (per producer/role visibility/opacity).
+        visualLayers, saveVisualLayers,
     } = store;
 
     const recallPlayer = useRecallPlayer(store);
@@ -298,6 +303,22 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     const evidenceLayer = layerByType.evidence;
     const suggestionLayer = layerByType.suggestion;
     const evidenceLocked = !!evidenceLayer?.locked;
+
+    // Q-C: the render layers actually present — committed grounds grouped by producer/role,
+    // with each layer's saved visibility/opacity merged from the persisted `visual_layers`.
+    const groundLayers = useMemo(
+        () => deriveLayers(grounds, visualLayers), [grounds, visualLayers]);
+    const saveGroundLayers = useCallback((next) => {
+        saveVisualLayers?.(persistableLayers(next));
+    }, [saveVisualLayers]);
+    const onToggleGroundLayer = useCallback((key) => {
+        saveGroundLayers(groundLayers.map((l) =>
+            l.key === key ? { ...l, visibility: !(l.visibility !== false) } : l));
+    }, [groundLayers, saveGroundLayers]);
+    const onGroundLayerOpacity = useCallback((key, v) => {
+        saveGroundLayers(groundLayers.map((l) =>
+            l.key === key ? { ...l, opacity: Math.min(1, Math.max(0, v)) } : l));
+    }, [groundLayers, saveGroundLayers]);
     // The layer controls, wired to Lane A3's immutable mutators (never reimplemented).
     const onToggleLayer = useCallback((id) => setLayers((ls) => toggleLayerVisibility(ls, id)), []);
     const onLayerOpacity = useCallback((id, v) => setLayers((ls) => setLayerOpacity(ls, id, v)), []);
@@ -1164,6 +1185,31 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             );
                         })}
                     </div>
+                    {/* Q-C — the render layers: committed grounds grouped by producer/role, so
+                        the masks stop piling onto one flat surface. Minimal controls (show/hide +
+                        opacity); only layers that actually have grounds appear. Persists via the
+                        store, so a hidden layer stays hidden across reload. */}
+                    {groundLayers.length > 0 && (
+                        <div className="diff-layers diff-layers--render" aria-label="Render layers">
+                            <span className="diff-layers-title">Groups</span>
+                            {groundLayers.map((l) => (
+                                <div key={l.key} data-layer-key={l.key}
+                                    className={`diff-layer-row${l.visibility === false ? ' is-hidden' : ''}`}>
+                                    <button type="button" className="diff-layer-eye"
+                                        aria-pressed={l.visibility !== false}
+                                        title={l.visibility === false ? 'Show' : 'Hide'}
+                                        onClick={() => onToggleGroundLayer(l.key)}>
+                                        {l.visibility === false ? <EyeOff size={12} /> : <Eye size={12} />}
+                                    </button>
+                                    <span className="diff-layer-name">{l.name}</span>
+                                    <span className="diff-layer-count" aria-hidden="true">{l.count}</span>
+                                    <input type="range" className="diff-layer-opacity" min="0" max="1" step="0.05"
+                                        value={l.opacity ?? 1} aria-label={`${l.name} opacity`}
+                                        onChange={(e) => onGroundLayerOpacity(l.key, Number(e.target.value))} />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </nav>
 
                 {/* ── stage ── */}
@@ -1372,6 +1418,8 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     // P3-B (2d): the evidence layer's visibility/opacity controls.
                                     evidenceVisible={evidenceLayer?.visibility !== false}
                                     evidenceOpacity={evidenceLayer?.opacity ?? 1}
+                                    // Q-C: per-producer/role render layers (grouped SVG <g>).
+                                    layers={groundLayers}
                                 />
                                 {/* P2E-B (2e) — pending suggestions render as a distinct dashed
                                     ghost: model-proposed, uncitable, never mistaken for evidence.
