@@ -2026,6 +2026,91 @@ async def _produce_florence_find_parts(post_id, post, region, req, run_id):
     return ([sug] if sug else []), ("ready" if sug else "empty"), True
 
 
+# P8-B — Grounded-SAM: the two-model producer. GroundingDINO grounds the phrase to a box, then
+# SAM2 refines that box into a mask. They must NEVER be co-resident on the 4 GB card, so the
+# detector is explicitly unloaded before SAM2 is touched — ModelManager enforces single-GPU
+# residency for adapters it owns, but SAM2 runs through its own long-lived refine_session, which
+# the manager does not see. Sequencing here is what keeps that honest.
+_grounding_mgr = None
+_grounding_adapter = None
+
+
+async def _produce_grounded_sam(post_id, post, region, req, run_id):
+    from backend.services import grounding_detector_service as gd
+    if not gd.is_available():
+        return [], "unavailable", False
+    phrase = (req.phrase or (req.params or {}).get("phrase") or "").strip()
+    if not phrase:
+        return [], "empty", True                     # no words → nothing was asked
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    # ── stage 1: the detector grounds the phrase to boxes ──────────────────────────────────
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import GroundingDinoAdapter
+    global _grounding_mgr, _grounding_adapter
+    if _grounding_mgr is None:
+        _reg = AdapterRegistry()
+        _grounding_adapter = GroundingDinoAdapter()
+        _reg.register(_grounding_adapter)
+        _grounding_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _grounding_mgr.run_adapter(
+        _grounding_adapter, {"image": image, "phrase": phrase},
+        priority=int(Priority.INTERACTIVE), cancel=CancelToken(), timeout_s=180.0)
+    det_ms = round((time.perf_counter() - _t) * 1000, 1)
+    detection = job.artifact.data if job.artifact else None
+
+    best = suggestion_service.best_grounded_box(detection)
+    if not best:
+        # Nothing cleared the threshold. Stop here — do NOT hand a guessed box to SAM2, which
+        # would return a confident-looking mask around nothing.
+        await _grounding_mgr.unload("grounding_dino_tiny")
+        return [], "empty", True
+
+    # ── hand the card over: the detector leaves BEFORE the segmenter arrives ────────────────
+    await _grounding_mgr.unload("grounding_dino_tiny")
+    try:
+        if torch is not None and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+    # ── stage 2: SAM2 refines the box into a real extent (the already-live path) ───────────
+    from backend.services.vision_orchestrator.refine_session import refine_session
+    if not refine_session.available():
+        return [], "unavailable", False
+    _t = time.perf_counter()
+    refined = await refine_session.preview(img_bytes, {"box": best["box_xyxy"]},
+                                           (region or {}).get("id"),
+                                           int((region or {}).get("geometry_rev") or 0))
+    sam_ms = round((time.perf_counter() - _t) * 1000, 1)
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service.suggestion_from_grounded_phrase(
+        refined, phrase=phrase, run_id=run_id, score=best.get("score"),
+        detector_model=gd.MODEL_TAG, detector_revision=gd.REVISION,
+        detector_latency_ms=det_ms, segmenter_latency_ms=sam_ms, peak_vram_mib=peak_vram)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
 # The registry: producer name → handler. Extensible — a new producer plugs in here, not a new route.
 _FIELD_PRODUCERS = {
     "negative_space": _produce_negative_space,
@@ -2037,6 +2122,7 @@ _FIELD_PRODUCERS = {
     "light_field": _produce_shading,
     "shadow_field": _produce_shadow,
     "florence_find_parts": _produce_florence_find_parts,
+    "grounded_sam_find_parts": _produce_grounded_sam,
 }
 
 
@@ -2106,13 +2192,26 @@ async def produce_field_unload():
     released = []
     for name, mod in (("dinov2_vits14", "dinov2_service"),
                       ("depth_anything_v2_small", "depth_service"),
-                      ("intrinsic_ordinal_shading", "intrinsic_service")):
+                      ("intrinsic_ordinal_shading", "intrinsic_service"),
+                      # P8-A/P8-B: the grounding models. Teaching this list about every new GPU
+                      # model is the P6-I lesson — unload only ever released what it was told.
+                      ("florence2_base", "florence2_service"),
+                      ("grounding_dino_tiny", "grounding_detector_service")):
         try:
             import importlib
             importlib.import_module(f"backend.services.{mod}").unload()
             released.append(name)
         except Exception:
             pass                       # a producer that was never loaded has nothing to release
+    # P8-B: SAM2 lives in its own long-lived refine_session, not behind an adapter, so the loop
+    # above cannot see it — and the Grounded-SAM producer leaves it resident (~494 MiB measured).
+    # Same leak, different door.
+    try:
+        from backend.services.vision_orchestrator.refine_session import refine_session
+        await refine_session.unload()
+        released.append("sam21_hiera_tiny")
+    except Exception:
+        pass
     try:
         import torch
         if torch.cuda.is_available():

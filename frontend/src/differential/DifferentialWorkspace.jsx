@@ -129,8 +129,11 @@ const FIELD_PRODUCERS = [
       hint: 'Where the light is withheld — the same reading, read as absence.' },
     // P8-A: the first producer driven by WORDS. `needsPhrase` swaps the run button for a text
     // field — the query is a phrase, not a selection or a tap.
-    { key: 'florence_find_parts', label: 'Name it', needsSeed: false, needsPhrase: true,
-      hint: 'Say what to find — "the folded cloth at her knee" — and Florence-2 grounds it as a part.' },
+    // P8-B: the phrase field now drives Grounded-SAM (GroundingDINO grounds the words to a box,
+    // SAM2 refines it to a mask). Florence-2's producer stays registered but parked — it cannot
+    // load on transformers 5.13.
+    { key: 'grounded_sam_find_parts', label: 'Name it', needsSeed: false, needsPhrase: true,
+      hint: 'Say what to find — "the drapery" — and it is grounded, then cut to an exact mask.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface

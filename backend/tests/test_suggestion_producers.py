@@ -1151,3 +1151,179 @@ def test_produce_field_phrase_with_no_words_refuses_honestly(monkeypatch):
                                R.ProduceFieldRequest(producer="florence_find_parts")))
     assert resp["status"] == "empty" and resp["suggestions"] == []
     assert resp["available"] is True
+
+
+# ─────────── P8-B: Grounded-SAM open-vocab find_parts (detector → SAM2) ───────────
+
+def _detection(score=0.82, box=(20, 20, 180, 180), size=(200, 200), label="the drapery"):
+    return {"boxes": [list(box)], "scores": [score], "labels": [label],
+            "image_size": list(size), "phrase": label}
+
+
+def test_best_grounded_box_normalizes_and_picks_the_highest_score():
+    det = {"boxes": [[10, 10, 100, 100], [0, 0, 200, 200]], "scores": [0.6, 0.9],
+           "labels": ["a", "b"], "image_size": [200, 200]}
+    b = ss.best_grounded_box(det)
+    assert b["score"] == 0.9 and b["label"] == "b"
+    assert b["box_xyxy"] == [0.0, 0.0, 1.0, 1.0]      # pixel → normalized, exactly once
+
+
+def test_best_grounded_box_enforces_the_calibrated_threshold():
+    """The threshold is the honest presence-check. Measured on a real photograph, absent phrases
+    score up to 0.471 ("a traffic light") while "a purple bicycle" (0.444) OUTSCORED a real
+    "the drapery" (0.397) — GroundingDINO has no presence head, it always returns its best guess.
+    0.5 rejects every absent phrase in that sample; below it, the detector is guessing and SAM2
+    would cut a confident mask around nothing."""
+    for absent_score in (0.471, 0.444, 0.440, 0.339, 0.286):
+        assert ss.best_grounded_box(_detection(score=absent_score)) is None, absent_score
+    for present_score in (0.792, 0.582, 0.575, 0.555):
+        assert ss.best_grounded_box(_detection(score=present_score)) is not None, present_score
+
+
+def test_best_grounded_box_refuses_slivers_and_malformed_input():
+    assert ss.best_grounded_box(None) is None
+    assert ss.best_grounded_box({}) is None
+    assert ss.best_grounded_box({"boxes": [], "scores": [], "image_size": [200, 200]}) is None
+    # a high-scoring degenerate box is still not a part
+    assert ss.best_grounded_box(_detection(score=0.99, box=(5, 5, 5, 5))) is None
+    # no image size → nothing can be normalized honestly
+    assert ss.best_grounded_box(_detection(size=(0, 0))) is None
+
+
+def test_grounded_suggestion_references_the_sam_region_and_credits_BOTH_models():
+    region = {"id": "refine_abc", "geometry_rev": 2, "mask_rle": {"size": [8, 8], "counts": "M"}}
+    d = ss.suggestion_from_grounded_phrase(
+        region, phrase="the drapery", run_id="run_g", score=0.79,
+        detector_model="grounding_dino_tiny", detector_revision="a2bb814dd30d",
+        detector_latency_ms=6000.0, segmenter_latency_ms=1100.0, peak_vram_mib=1691.0)
+    assert d["producer"] == "grounded_sam_find_parts" and d["type"] == "region_mask"
+    assert d["label"] == "the drapery"
+    # SAM2 made a real mask on a real region, so the mark REFERENCES it — no inline pixels,
+    # exactly like the click-refine producer it reuses.
+    assert d["geometry"]["kind"] == "raster_mask"
+    assert d["geometry"]["mask_ref"] == {"region_id": "refine_abc", "geometry_rev": 2}
+    p = d["provenance"]
+    # a two-model chain crediting one model is a false receipt
+    assert p["adapter"] == "grounding_dino_tiny+sam2"
+    assert p["model"] == "grounding_dino_tiny" and p["segmenter_model"] == "sam2.1"
+    assert p["revision"] == "a2bb814dd30d"
+    assert p["detector_latency_ms"] == 6000.0 and p["latency_ms"] == 1100.0
+    assert "confidence" not in p                       # contract §6
+    assert d["confidence"] == 0.79                      # descriptor only
+    assert d["source_ref"] == "phrase:the drapery"      # idempotent on the question
+
+
+def test_grounded_suggestion_refuses_without_a_region_or_a_phrase():
+    region = {"id": "refine_abc"}
+    assert ss.suggestion_from_grounded_phrase(None, phrase="x", run_id="r") is None
+    assert ss.suggestion_from_grounded_phrase({}, phrase="x", run_id="r") is None
+    assert ss.suggestion_from_grounded_phrase(region, phrase="  ", run_id="r") is None
+    assert ss.suggestions_from_grounded_phrase(None, phrase="x", run_id="r") == []
+    assert len(ss.suggestions_from_grounded_phrase(region, phrase="x", run_id="r")) == 1
+
+
+def test_grounding_detector_adapter_spec_and_prompt_convention():
+    from backend.services.vision_orchestrator.adapters import GroundingDinoAdapter
+    from backend.services.vision_orchestrator.contracts import Capability, ResourceKind
+    from backend.services import grounding_detector_service as g
+    a = GroundingDinoAdapter()
+    assert a.spec.name == "grounding_dino_tiny"
+    assert a.spec.capability is Capability.GROUNDING
+    assert a.spec.resource is ResourceKind.GPU
+    assert a.spec.license == "Apache-2.0"               # unlike YOLO's AGPL
+    assert a.spec.revision == g.REVISION
+    # GroundingDINO's text convention, normalized in one place so it cannot silently degrade
+    assert g.normalize_prompt("The Drapery") == "the drapery."
+    assert g.normalize_prompt("already done.") == "already done."
+    assert g.normalize_prompt("   ") == ""
+    assert g.detect(object(), "") is None               # empty phrase asks nothing
+
+
+def test_produce_field_grounded_sam_sequences_detector_then_sam2(monkeypatch):
+    """The two-model chain, and the ORDER that keeps a 4 GB card honest: the detector must be
+    unloaded before SAM2 is touched."""
+    post = {"_id": ObjectId(), "region_annotations": [{"id": "r1", "box": {"x": 0, "y": 0, "w": 1, "h": 1}}]}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import grounding_detector_service as gd
+    from backend.services.vision_orchestrator import refine_session as rs_mod
+
+    class _Img:
+        size = (200, 200)
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(gd, "is_available", lambda: True)
+
+    order = []
+    class _Art: data = _detection(score=0.8)
+    class _Job: artifact = _Art()
+    async def _fake_detect(adapter, payload, **kw):
+        order.append("detect"); return _Job()
+    async def _fake_unload(name):
+        order.append(f"unload:{name}")
+    import backend.routers.posts as RR
+    RR._grounding_mgr = type("M", (), {"run_adapter": staticmethod(_fake_detect),
+                                       "unload": staticmethod(_fake_unload)})()
+    RR._grounding_adapter = object()
+
+    async def _fake_preview(image_bytes, prompt, base_id, base_rev):
+        order.append("sam2")
+        assert "box" in prompt                          # SAM2 got a BOX prompt, not points
+        return {"id": "refine_xyz", "geometry_rev": 1, "mask_rle": {"size": [4, 4], "counts": "M"}}
+    monkeypatch.setattr(rs_mod.refine_session, "available", lambda: True)
+    monkeypatch.setattr(rs_mod.refine_session, "preview", _fake_preview)
+    try:
+        resp = run(R.produce_field(str(posts.post["_id"]),
+                                   R.ProduceFieldRequest(producer="grounded_sam_find_parts",
+                                                         phrase="the drapery")))
+        assert resp["status"] == "ready"
+        sug = resp["suggestions"][0]
+        assert sug["producer"] == "grounded_sam_find_parts"
+        assert sug["provenance"]["adapter"] == "grounding_dino_tiny+sam2"
+        # THE ordering guarantee: detector out before segmenter in — never co-resident
+        assert order == ["detect", "unload:grounding_dino_tiny", "sam2"], order
+        assert posts.writes == []
+    finally:
+        RR._grounding_mgr = None; RR._grounding_adapter = None
+
+
+def test_produce_field_grounded_sam_refuses_a_phrase_that_grounds_nothing(monkeypatch):
+    """Below threshold, SAM2 is never even called — a guessed box must not become a mask."""
+    post = {"_id": ObjectId(), "region_annotations": []}
+    posts, runs = _Posts(post), FakeCollection()
+    monkeypatch.setattr(R, "post_collection", posts)
+    monkeypatch.setattr(svc, "vision_run_collection", runs)
+    monkeypatch.setattr(R, "_fetch_post_image_cached", _img)
+    from backend.services import evidence_embedding_service as ees
+    from backend.services import grounding_detector_service as gd
+    from backend.services.vision_orchestrator import refine_session as rs_mod
+
+    class _Img:
+        size = (200, 200)
+        def convert(self, m): return self
+    monkeypatch.setattr(ees, "_pil", lambda b: _Img())
+    monkeypatch.setattr(gd, "is_available", lambda: True)
+
+    sam_called = []
+    class _Art: data = _detection(score=0.44)          # a real absent-phrase score
+    class _Job: artifact = _Art()
+    async def _fake_detect(adapter, payload, **kw): return _Job()
+    async def _fake_unload(name): pass
+    import backend.routers.posts as RR
+    RR._grounding_mgr = type("M", (), {"run_adapter": staticmethod(_fake_detect),
+                                       "unload": staticmethod(_fake_unload)})()
+    RR._grounding_adapter = object()
+    async def _never(*a, **k):
+        sam_called.append(1); return {}
+    monkeypatch.setattr(rs_mod.refine_session, "preview", _never)
+    try:
+        resp = run(R.produce_field(str(posts.post["_id"]),
+                                   R.ProduceFieldRequest(producer="grounded_sam_find_parts",
+                                                         phrase="a purple bicycle")))
+        assert resp["status"] == "empty" and resp["suggestions"] == []
+        assert sam_called == [], "SAM2 must not run on a below-threshold box"
+    finally:
+        RR._grounding_mgr = None; RR._grounding_adapter = None

@@ -90,7 +90,7 @@ export const STROKE_OPS = ['add', 'sub'];
 export const PRODUCERS = [
     'sam_refine', 'semantic_read', 'planner', 'find_similar',
     'negative_space', 'material_field', 'rhythm', 'pressure_zone', 'recession', 'shading',
-    'florence_find_parts', 'fixture',
+    'florence_find_parts', 'grounded_sam_find_parts', 'fixture',
 ];
 
 // ── role vocabularies ────────────────────────────────────────────────────────
