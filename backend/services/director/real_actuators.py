@@ -89,36 +89,15 @@ def _semantic_available() -> bool:
 # so only one model is ever resident and the card returns to baseline after the plan. Mirrors the
 # canonical list in POST /{post_id}/produce-field/unload.
 _GPU_CAPABILITIES = {"segmenter", "dinov2", "depth", "intrinsic", "grounding_detector"}
-_GPU_UNLOAD_MODULES = (
-    ("dinov2_vits14", "dinov2_service"), ("depth_anything_v2_small", "depth_service"),
-    ("intrinsic_ordinal_shading", "intrinsic_service"), ("florence2_base", "florence2_service"),
-    ("grounding_dino_tiny", "grounding_detector_service"), ("clip_vit_b32", "clip_presence_service"),
-)
-
-
+# WIRE-002: the hand-maintained list is GONE. It was wrong four times running — DINOv2-only,
+# then SAM2's refine_session, then CLIP, and most recently sam2_auto_service (which `find_parts`
+# calls on every plan) plus perspective_service. `model_residency` discovers every service holding
+# a model instead of remembering them, so a newly-wired GPU producer is released with no edit here.
 async def unload_models() -> List[str]:
-    """Release every GPU field-producer model + the SAM2 refine session, then empty the cache.
-    Idempotent — a model that was never loaded has nothing to release. Returns what it freed."""
-    released: List[str] = []
-    for name, mod in _GPU_UNLOAD_MODULES:
-        try:
-            _svc(mod).unload()
-            released.append(name)
-        except Exception:
-            pass
-    try:
-        from backend.services.vision_orchestrator.refine_session import refine_session
-        await refine_session.unload()
-        released.append("sam21_hiera_tiny")
-    except Exception:
-        pass
-    try:
-        import torch
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-    except Exception:
-        pass
-    return released
+    """Release every model this process could be holding, via the discovery registry.
+    Idempotent — a service that never loaded has nothing to free. Returns what it freed."""
+    from backend.services import model_residency
+    return await model_residency.release_all()
 
 
 # ── the execution context — the real-data bridge across steps ──────────────────────────────────
@@ -232,8 +211,11 @@ async def _run_find_parts(step: Step, memory: WorkingMemory, ctx: ExecutionConte
                                                adapter="find_parts")
         if sug:
             ctx.suggestions.append(sug)
+    # Each region is ALSO a quarantined region_mask suggestion, so the packet advances on both
+    # axes — this is what lets compose_percept/connect_marks follow find_parts in one chain.
     return ActuatorResult(
-        status=OK, produced=tuple([Resource.REGION] * len(regions)),
+        status=OK,
+        produced=tuple([Resource.REGION] * len(regions) + [Resource.MARK] * len(regions)),
         model="yolo11n_seg+sam2_auto", adapter="find_parts", confidence=None,
         detail=f"proposed {len(regions)} region(s)", payload={"regions": len(regions)})
 
@@ -286,6 +268,247 @@ def _result_from_producer(actuator: Actuator, suggestions: List[Dict[str, Any]],
                           detail=f"'{actuator.name}' found nothing")
 
 
+
+# ── WIRE-002: the four remaining actuators ─────────────────────────────────────────────────────
+# WIRE-001 wired the pixel producers — the ones that read the image. These four read the EVIDENCE
+# instead: what has been gathered, and what it means together. That is why they come last and why
+# they are the ones that make a rich plan possible: a chain is only interesting when a later step
+# consumes what an earlier one produced.
+
+
+def _llm_available() -> bool:
+    """Groq, for the two actuators that need language. Declared capability is None for these
+    (they author no pixels), so availability is probed here rather than by `_capability_available`."""
+    try:
+        from backend.config import settings
+        return bool(getattr(settings, "GROQ_API_KEY", None))
+    except Exception:
+        return False
+
+
+def _quarantined_marks(ctx: "ExecutionContext") -> List[Dict[str, Any]]:
+    """Suggestions produced SO FAR in this plan that are real marks (not readings).
+
+    This is the real-data bridge for evidence, exactly as `ctx.regions` is for geometry: working
+    memory carries counts, and a step that must actually cite two marks needs the marks."""
+    return [s for s in ctx.suggestions
+            if isinstance(s, dict) and s.get("type") in ("region_mask", "brush_field",
+                                                         "trace_mark", "relation_mark")]
+
+
+async def _run_semantic_read(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
+                             actuator: Actuator) -> ActuatorResult:
+    """The cloud VLM reads what has been gathered. Never authors geometry (schema-forbidden);
+    every assertion is bound to a region id that already exists, and one about an unknown id is
+    dropped rather than honoured."""
+    import base64
+    posts = importlib.import_module("backend.routers.posts")
+    sp = _svc("semantic_provider")
+    provider = sp.SemanticProvider()
+    if not provider.available():
+        return ActuatorResult(status=UNAVAILABLE, produced=(), adapter="semantic_read",
+                              detail=f"semantic provider unavailable: {provider.state().get('reason')}")
+
+    regions = list(ctx.regions or [])
+    if not regions:
+        return ActuatorResult(status=EMPTY, produced=(), adapter="semantic_read",
+                              detail="no regions to read")
+    allowed = [str(r.get("id")) for r in regions if r.get("id")]
+    img_bytes = await posts._fetch_post_image_cached(ctx.post_id, ctx.post)
+    b64 = base64.b64encode(img_bytes).decode("ascii")
+    question = (step.params or {}).get("question") or "What is here, and how do these parts relate?"
+
+    result = await asyncio.to_thread(
+        provider.interpret, image_b64=b64, allowed_ids=allowed, prompt=question)
+    payload = result.as_dict() if hasattr(result, "as_dict") else {}
+    if payload.get("status") not in ("ok", "succeeded", "success"):
+        # A degraded provider is UNAVAILABLE, never a silent empty reading.
+        return ActuatorResult(status=UNAVAILABLE, produced=(), adapter="semantic_read",
+                              model=getattr(provider, "model", None),
+                              detail=f"semantic read {payload.get('status')}")
+
+    from backend.services import suggestion_service as ss
+    sugs = ss.suggestions_from_semantics(payload.get("response") or payload,
+                                         run_id=ctx.run_id) or []
+    ctx.suggestions.extend(sugs)
+    if not sugs:
+        return ActuatorResult(status=EMPTY, produced=(), adapter="semantic_read",
+                              model=getattr(provider, "model", None),
+                              detail="read returned nothing citable")
+    return ActuatorResult(status=OK, produced=tuple(actuator.produces),
+                          model=getattr(provider, "model", None), adapter="semantic_read",
+                          detail=f"read {len(sugs)} assertion(s)")
+
+
+async def _run_find_similar(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
+                            actuator: Actuator) -> ActuatorResult:
+    """DINOv2 neighbours for a seed region, as CROSS-POST references.
+
+    Each neighbour becomes a `region_ref` pointing across the border — a reference with receipts,
+    never a copy of the neighbour's pixels. Produces MARKs, which is what lets `connect_marks`
+    become satisfiable in a chain that started with nothing but an image."""
+    posts = importlib.import_module("backend.routers.posts")
+    fss = _svc("find_similar_service")
+    res_svc = _svc("region_embedding_service")
+    retrieval = _svc("retrieval_service")
+
+    seed_id = (step.params or {}).get("seed_mark_id")
+    region = None
+    if seed_id:
+        region = next((r for r in ctx.regions if str(r.get("id")) == str(seed_id)), None)
+    if region is None:
+        region = ctx.regions[0] if ctx.regions else None
+    if region is None or not region.get("id"):
+        return ActuatorResult(status=EMPTY, produced=(), adapter="find_similar",
+                              detail="no seed region to match against")
+
+    img_bytes = await posts._fetch_post_image_cached(ctx.post_id, ctx.post)
+    # `find_similar_for_region` resolves its seed out of the POST's region_annotations, but the
+    # regions `find_parts` proposed live only in ctx.regions — WIRE never writes them to the post,
+    # by design. Without this the chain could only ever match against parts a curator had already
+    # committed, which defeats "find the motif and its echoes" on a fresh image.
+    #
+    # So it gets a SHALLOW COPY of the post carrying the proposed regions. ctx.post is not
+    # mutated, nothing is persisted, and the copy dies with the step.
+    seed_post = dict(ctx.post)
+    seed_post["region_annotations"] = list(ctx.post.get("region_annotations") or []) + list(ctx.regions)
+    try:
+        domain = fss._domain_of(seed_post)
+        routed = retrieval.route(query_kind="evidence", domain=domain, context_sensitive=False)
+        model = retrieval._SPACES[routed["space"]]["model"]
+        scope = list(await res_svc.region_embeddings_collection.distinct("post_id", {"model": model}))
+        if ctx.post_id not in scope:
+            scope.append(ctx.post_id)
+    except Exception as e:
+        return ActuatorResult(status=UNAVAILABLE, produced=(), adapter="find_similar",
+                              detail=f"retrieval scope unavailable: {type(e).__name__}")
+
+    result = await fss.find_similar_for_region(
+        seed_post, str(region["id"]), img_bytes, mode="identity", top_k=int(
+            (step.params or {}).get("top_k") or 6),
+        exclude_self_post=False, reindex=False, scope_post_ids=scope)
+
+    from backend.services import suggestion_service as ss
+    sugs = ss.suggestions_from_similar(result, run_id=ctx.run_id) or []
+    ctx.suggestions.extend(sugs)
+    status = (result or {}).get("status")
+    if status in ("error", "unavailable"):
+        return ActuatorResult(status=UNAVAILABLE, produced=(), adapter="find_similar",
+                              model="dinov2_vits14", detail=f"find_similar {status}")
+    if not sugs:
+        return ActuatorResult(status=EMPTY, produced=(), adapter="find_similar",
+                              model="dinov2_vits14", detail="no neighbours found")
+    return ActuatorResult(status=OK, produced=tuple(Resource.MARK for _ in sugs),
+                          model="dinov2_vits14", adapter="find_similar",
+                          detail=f"found {len(sugs)} neighbour(s)")
+
+
+async def _run_connect_marks(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
+                             actuator: Actuator) -> ActuatorResult:
+    """Name the relation between two gathered marks. DINOv2 gathered them; Groq names the kind.
+
+    Refuses on fewer than two marks even though `resolve()` already checked the COUNT — the plan
+    proved two marks would exist, this proves two marks DO exist, and those differ exactly when an
+    upstream step returned empty. The relation_role is mapped through the frozen vocabulary, so a
+    model that invents a relation name cannot put an unknown role on a mark."""
+    marks = _quarantined_marks(ctx)
+    if len(marks) < 2:
+        return ActuatorResult(status=EMPTY, produced=(), adapter="connect_marks",
+                              detail=f"needs 2 marks, {len(marks)} available")
+
+    a, b = marks[-2], marks[-1]
+    role_hint = (step.params or {}).get("relation_role")
+    model_name = None
+    relation_text = role_hint or ""
+    if not relation_text and _llm_available():
+        try:
+            llm = _svc("llm_service").LLMService()
+            model_name = llm.model
+            prompt = (f'Two visual marks on one image: "{a.get("label") or a.get("role")}" and '
+                      f'"{b.get("label") or b.get("role")}". In ONE short phrase, name the '
+                      f'relation between them. JSON: {{"relation": "..."}}')
+            out = await asyncio.to_thread(
+                lambda: llm.client.chat.completions.create(
+                    messages=[{"role": "system", "content": "You output JSON."},
+                              {"role": "user", "content": prompt}],
+                    model=llm.model, response_format={"type": "json_object"}))
+            import json as _json
+            relation_text = (_json.loads(out.choices[0].message.content) or {}).get("relation", "")
+        except Exception:
+            relation_text = ""                 # a failed naming is not a failed relation
+
+    from backend.services import suggestion_service as ss
+    role = ss.relation_role_for(relation_text)
+    sug = {
+        "producer": "semantic_read",           # the frozen producer vocabulary's relation minter
+        "type": "relation_mark",
+        "role": role,
+        "label": relation_text or role.replace("_", " "),
+        "source_ref": f"{a.get('source_ref') or a.get('id')}→{b.get('source_ref') or b.get('id')}",
+        "geometry": {"kind": "derived", "endpoints": [a.get("source_ref"), b.get("source_ref")]},
+        "linked_ground_ids": [],
+        "provenance": {"run_id": ctx.run_id, "producer": "connect_marks",
+                       "adapter": "connect_marks", **({"model": model_name} if model_name else {})},
+    }
+    ctx.suggestions.append(sug)
+    return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
+                          adapter="connect_marks", detail=f"related as '{role}'")
+
+
+async def _run_compose_percept(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
+                               actuator: Actuator) -> ActuatorResult:
+    """Draft a percept that RESTS ON the marks gathered so far.
+
+    The draft is a proposal, never a commitment: it enters the same quarantine as every other
+    suggestion and a curator writes the real sentence. `ground_refs` names what it rests on, so a
+    percept resting on two marks cannot later be mistaken for one resting on five."""
+    marks = _quarantined_marks(ctx)
+    if not marks:
+        return ActuatorResult(status=EMPTY, produced=(), adapter="compose_percept",
+                              detail="nothing gathered to compose from")
+
+    draft = (step.params or {}).get("draft_text") or ""
+    model_name = None
+    if not draft and _llm_available():
+        try:
+            llm = _svc("llm_service").LLMService()
+            model_name = llm.model
+            names = ", ".join(str(m.get("label") or m.get("role")) for m in marks[:6])
+            prompt = (f"A curator gathered these marks on one image: {names}. Write ONE sentence "
+                      f"of close reading that rests only on them. Claim nothing you cannot see. "
+                      f'JSON: {{"percept": "..."}}')
+            out = await asyncio.to_thread(
+                lambda: llm.client.chat.completions.create(
+                    messages=[{"role": "system", "content": "You output JSON."},
+                              {"role": "user", "content": prompt}],
+                    model=llm.model, response_format={"type": "json_object"}))
+            import json as _json
+            draft = (_json.loads(out.choices[0].message.content) or {}).get("percept", "")
+        except Exception:
+            draft = ""
+    if not draft:
+        return ActuatorResult(status=UNAVAILABLE, produced=(), adapter="compose_percept",
+                              detail="no draft available (language model unavailable)")
+
+    sug = {
+        "producer": "planner",
+        "type": "percept_draft",
+        "role": None,
+        "label": draft[:120],
+        "draft_text": draft,
+        "source_ref": f"{ctx.run_id}:percept:{len(ctx.suggestions)}",
+        "ground_refs": [m.get("source_ref") for m in marks if m.get("source_ref")],
+        "geometry": None,                      # a percept has no extent — it rests on ones that do
+        "linked_ground_ids": [],
+        "provenance": {"run_id": ctx.run_id, "producer": "compose_percept",
+                       "adapter": "compose_percept",
+                       **({"model": model_name} if model_name else {})},
+    }
+    ctx.suggestions.append(sug)
+    return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
+                          adapter="compose_percept", detail=f"drafted from {len(marks)} mark(s)")
+
+
 # actuator name → the async handler that runs it. Field producers share one handler; find_parts
 # has its own (it calls segmentation, not a produce-field row). Actuators absent here have no
 # in-process runner yet and report UNAVAILABLE — honest, and it flows through the skip logic.
@@ -294,7 +517,14 @@ _FIELD_PRODUCER_NAMES = (
     "background_recession", "atmosphere_field", "light_field", "shadow_field",
     "grounded_sam_find_parts", "presence_check", "enumerate",
 )
-_DISPATCH: Dict[str, Callable] = {"find_parts": _run_find_parts}
+_DISPATCH: Dict[str, Callable] = {
+    "find_parts": _run_find_parts,
+    # WIRE-002 — the evidence-reading four.
+    "semantic_read": _run_semantic_read,
+    "find_similar": _run_find_similar,
+    "connect_marks": _run_connect_marks,
+    "compose_percept": _run_compose_percept,
+}
 for _n in _FIELD_PRODUCER_NAMES:
     _DISPATCH[_n] = _run_field_producer
 
