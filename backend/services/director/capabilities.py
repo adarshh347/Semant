@@ -1,0 +1,269 @@
+"""
+CIRCUIT-001 ORCH-001 — the actuator capability map.
+
+Layer 3's ground truth: what each actuator NEEDS before it can fire, and what it LEAVES
+BEHIND once it has. Everything else in this package is a consequence of this table —
+the dependency graph reads `requires`, the planner reads `produces` to decide ordering,
+the executor reads `capability` to know what a stub is standing in for.
+
+WHY A SECOND CAPABILITY TABLE. `vision_capabilities.py` maps *recovery actions* to the
+models they need (is SAM up?). This maps *actuators* to the EVIDENCE they need (is there
+a region to work on?). Those are different failure modes and they refuse for different
+reasons: a model being down is transient and retryable, a missing region means the plan
+was built wrong. Collapsing them would make "SAM is offline" and "you have not selected
+anything" the same message, which helps nobody.
+
+VOCABULARY DISCIPLINE. Actuator names here are the SAME strings the runtime uses —
+`_FIELD_PRODUCERS` keys in `routers/posts.py` and `ACTION_TYPES` in the frontend's
+`perceptualActions.js`. This table does not invent a parallel naming scheme; a name that
+drifts from the runtime is a bug this module cannot detect, so the names must be copied,
+not paraphrased. `test_director.py` pins the field-producer half against the live registry.
+
+This module is PURE: no torch, no fetch, no database, no model import. It is a table.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Optional, Tuple
+
+
+class Resource(str, Enum):
+    """A kind of evidence an actuator can consume or leave behind.
+
+    Deliberately coarse. This is not the mark contract — it is the smallest vocabulary
+    that lets the planner answer "can this step run yet?" without understanding geometry.
+    """
+    IMAGE = "image"          # the picture itself — the only resource always present
+    REGION = "region"        # a committed extent (a part) on the image
+    PHRASE = "phrase"        # a curator's words — an open-vocabulary query
+    MARK = "mark"            # committed evidence: a field, a trace, a naming
+    GROUND = "ground"        # a mark promoted into a named ground
+    PERCEPT = "percept"      # a composed reading resting on grounds
+    READING = "reading"      # a sentence ABOUT the image (P8-D) — never evidence IN it
+
+
+@dataclass(frozen=True)
+class Requirement:
+    """One input condition. `min_count` is the whole reason this is not just a set.
+
+    `connect_marks` needs TWO marks, not one — a relation between a thing and itself is
+    not a relation. A plain "needs marks" requirement would happily fire it on a single
+    mark and produce a degenerate edge, so the count is part of the requirement.
+    """
+    kind: Resource
+    min_count: int = 1
+
+    def satisfied_by(self, available: Dict[Resource, int]) -> bool:
+        return available.get(self.kind, 0) >= self.min_count
+
+    def describe(self) -> str:
+        if self.min_count > 1:
+            return f"{self.min_count}× {self.kind.value}"
+        return self.kind.value
+
+
+@dataclass(frozen=True)
+class Actuator:
+    """One thing the Director can ask for.
+
+    `produces` is what the step ADDS to working memory when it succeeds. It is what makes
+    reordering possible: a step needing a region can follow a step that produces regions,
+    even though the region does not exist when the plan is first written down.
+
+    `capability` names the runtime dependency (a model family, or None for pure-python).
+    ORCH-001 never checks it — the executor is handed stubs — but the field is here so the
+    real-actuator gate has somewhere to put the availability probe without a migration.
+
+    `authors_geometry` marks the actuators that put NEW extent on the image. It is not used
+    for scheduling; it is here because the review path treats those differently and a
+    planner that forgets which steps are consequential is a planner that will eventually
+    chain five of them together unattended.
+    """
+    name: str
+    summary: str
+    requires: Tuple[Requirement, ...] = ()
+    produces: Tuple[Resource, ...] = ()
+    capability: Optional[str] = None
+    authors_geometry: bool = False
+    # Params the actuator reads off the step. Used to explain a refusal precisely
+    # ("needs a phrase") rather than generically ("bad inputs").
+    param_keys: Tuple[str, ...] = ()
+
+
+def _req(kind: Resource, n: int = 1) -> Requirement:
+    return Requirement(kind=kind, min_count=n)
+
+
+# ── the map ──────────────────────────────────────────────────────────────────
+# Grouped by archetype, matching how the producers were actually built (P6/P8).
+
+_ACTUATOR_LIST: List[Actuator] = [
+    # -- finders: they create the regions everything else stands on ------------
+    Actuator(
+        name="find_parts",
+        summary="Propose parts of the image as regions.",
+        requires=(_req(Resource.IMAGE),),
+        produces=(Resource.REGION,),
+        capability="segmenter",
+        authors_geometry=True,
+    ),
+    Actuator(
+        name="grounded_sam_find_parts",
+        summary="Find the named thing and cut it exactly.",
+        # The phrase is not optional here — an open-vocabulary finder with nothing to
+        # look for is the exact shape of the P8-B fabrication.
+        requires=(_req(Resource.IMAGE), _req(Resource.PHRASE)),
+        produces=(Resource.REGION,),
+        capability="grounding_detector",
+        authors_geometry=True,
+        param_keys=("phrase",),
+    ),
+    # -- fields: brushed evidence over the image or a region -------------------
+    Actuator(
+        name="negative_space",
+        summary="The space the subject leaves behind.",
+        requires=(_req(Resource.IMAGE), _req(Resource.REGION)),
+        produces=(Resource.MARK,),
+        capability=None,                       # pure geometry — mask complement
+        authors_geometry=True,
+    ),
+    Actuator(
+        name="material_field",
+        summary="Where the same material recurs.",
+        requires=(_req(Resource.IMAGE), _req(Resource.REGION)),
+        produces=(Resource.MARK,),
+        capability="dinov2",
+        authors_geometry=True,
+    ),
+    Actuator(
+        name="rhythm",
+        summary="Repetition and interval across the surface.",
+        requires=(_req(Resource.IMAGE),),
+        produces=(Resource.MARK,),
+        capability=None,                       # cpu_perceptual
+        authors_geometry=True,
+    ),
+    Actuator(
+        name="pressure_zone",
+        summary="Where the composition concentrates.",
+        requires=(_req(Resource.IMAGE),),
+        produces=(Resource.MARK,),
+        capability=None,
+        authors_geometry=True,
+    ),
+    Actuator(
+        name="background_recession",
+        summary="How far back the picture goes.",
+        requires=(_req(Resource.IMAGE),),
+        produces=(Resource.MARK,),
+        capability="depth",
+        authors_geometry=True,
+    ),
+    Actuator(
+        name="atmosphere_field",
+        summary="The haze that softens distance.",
+        requires=(_req(Resource.IMAGE),),
+        produces=(Resource.MARK,),
+        capability="depth",
+        authors_geometry=True,
+    ),
+    Actuator(
+        name="light_field",
+        summary="Where the light lives.",
+        requires=(_req(Resource.IMAGE),),
+        produces=(Resource.MARK,),
+        capability="intrinsic",
+        authors_geometry=True,
+    ),
+    Actuator(
+        name="shadow_field",
+        summary="Where the light is withheld.",
+        requires=(_req(Resource.IMAGE),),
+        produces=(Resource.MARK,),
+        capability="intrinsic",
+        authors_geometry=True,
+    ),
+    # -- readings: they answer ABOUT the image and mint nothing ----------------
+    # P8-D's distinction, carried into Layer 3: these produce READING, never MARK, so a
+    # plan can never satisfy a mark-hungry step with a sentence.
+    Actuator(
+        name="presence_check",
+        summary="Is the named thing actually there?",
+        requires=(_req(Resource.IMAGE), _req(Resource.PHRASE)),
+        produces=(Resource.READING,),
+        capability="grounding_detector",
+        param_keys=("phrase",),
+    ),
+    Actuator(
+        name="enumerate",
+        summary="How many of the named thing are verified.",
+        requires=(_req(Resource.IMAGE), _req(Resource.PHRASE)),
+        produces=(Resource.READING,),
+        capability="grounding_detector",
+        param_keys=("phrase",),
+    ),
+    Actuator(
+        name="semantic_read",
+        summary="Ask a reading of what has been gathered.",
+        # A semantic pass with no regions is a caption, which is not what this is for.
+        requires=(_req(Resource.IMAGE), _req(Resource.REGION)),
+        produces=(Resource.READING,),
+        capability="semantic_provider",
+        param_keys=("question",),
+    ),
+    # -- circulation: they work on evidence, not pixels ------------------------
+    Actuator(
+        name="find_similar",
+        summary="Find this again in other images.",
+        requires=(_req(Resource.MARK),),       # the seed — you must have something to match
+        produces=(Resource.MARK,),
+        capability="dinov2",
+        param_keys=("seed_mark_id",),
+    ),
+    Actuator(
+        name="connect_marks",
+        summary="Name the relation between two marks.",
+        requires=(_req(Resource.MARK, 2),),    # the count that makes this a relation
+        produces=(Resource.GROUND,),
+        capability=None,
+        param_keys=("relation_role",),
+    ),
+    Actuator(
+        name="compose_percept",
+        summary="Compose a reading that rests on what was gathered.",
+        requires=(_req(Resource.MARK),),
+        produces=(Resource.PERCEPT,),
+        capability=None,
+        param_keys=("draft_text",),
+    ),
+]
+
+ACTUATORS: Dict[str, Actuator] = {a.name: a for a in _ACTUATOR_LIST}
+
+# The subset that reaches `POST /{post_id}/produce-field`. Pinned by test against the live
+# `_FIELD_PRODUCERS` registry so this table cannot silently fall behind the runtime.
+FIELD_PRODUCER_ACTUATORS: Tuple[str, ...] = (
+    "negative_space", "material_field", "rhythm", "pressure_zone",
+    "background_recession", "atmosphere_field", "light_field", "shadow_field",
+    "grounded_sam_find_parts", "presence_check", "enumerate",
+)
+
+
+def get(name: str) -> Optional[Actuator]:
+    """Look up an actuator, or None. None is a REFUSAL upstream, never a default.
+
+    This matters most for the planner seam: when a language model eventually proposes the
+    steps, it will sooner or later invent an actuator that sounds plausible. Returning None
+    (rather than a permissive stub) is what makes that hallucination a refusal.
+    """
+    return ACTUATORS.get(name)
+
+
+def known() -> Tuple[str, ...]:
+    return tuple(ACTUATORS.keys())
+
+
+def producers_of(kind: Resource) -> Tuple[str, ...]:
+    """Every actuator that leaves `kind` behind — how the planner repairs an ordering."""
+    return tuple(a.name for a in _ACTUATOR_LIST if kind in a.produces)
