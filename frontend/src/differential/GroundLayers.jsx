@@ -4,7 +4,9 @@ import { resolveGround, groundCenter } from './grounds';
 import { taperedRibbon, centerlinePath, endChevron } from './freehandTaper';
 import { perfectFreehandRibbon } from './freehandStroke';
 import { hasMaskPolygons, ringsToPath } from '../lib/maskGeometry';
-import { groundLayerKey } from './layerGrouping';
+import { groundLayerKey, markLayerKey } from './layerGrouping';
+import FlowFieldLayer from './FlowFieldLayer';
+import { isAxialRole } from './flowField';
 
 // CIRCUIT-001 P2E-B (2d): the freehand ribbon generator, chosen at render.
 // perfect-freehand when the toggle is on (smoother, pressure-expressive), the
@@ -254,6 +256,12 @@ export default function GroundLayers({
     // field washes on the canvas honour their layer's visibility/opacity — so masks stop piling
     // onto one flat surface. When null, the single `gl-evidence` group renders as before.
     layers = null,
+    // MOUNT-001: committed visual marks. Only those whose geometry.kind is 'flow_field' are
+    // touched — they are the one mark geometry with its own renderer rather than a ground
+    // drawing. GEOM shipped FlowFieldLayer and never mounted it, so fall_of_light,
+    // architectural_axis and external_limit all minted marks that nothing drew: three producers,
+    // zero pixels. This prop is the caller that was missing.
+    marks = [],
 }) {
     const canvasRef = useRef(null);
     const layerList = (Array.isArray(layers) && layers.length) ? layers : null;
@@ -284,6 +292,15 @@ export default function GroundLayers({
     }, [grounds, content, focusGroundIds, recall, recallOnly, draft, layerList]);
 
     if (!content || !natural) return null;
+
+    // ── flow_field marks → FlowFieldLayer, one SVG per mark ─────────────────
+    // Rendered as SIBLINGS of the ground <svg> rather than inside it, because FlowFieldLayer
+    // owns its own <svg>. That is not a compromise on alignment: it declares the SAME
+    // `viewBox="0 0 natural.w natural.h"` with `preserveAspectRatio="xMidYMid meet"` and the same
+    // inset-0/100% box, so it letterboxes identically to the image and to the grounds above it —
+    // the stage-geometry contract RegionOverlay and FIX-COORD hold to.
+    const flowMarks = (marks || []).filter(
+        (m) => m?.geometry?.kind === 'flow_field' && m.status === 'committed');
 
     // ── svg layer: Path · Boundary · Frame · Region ─────────────────────────
     const svgGrounds = grounds.filter((g) => g.ground_type !== 'field');
@@ -387,6 +404,27 @@ export default function GroundLayers({
                         : null
                 ))}
             </svg>
+
+            {/* MOUNT-001: the direction producers, made visible. Each mark honours its own
+                trace layer's visibility/opacity AND the evidence layer's, multiplied — a mark is
+                inside the evidence group conceptually even though it renders in its own svg, so
+                hiding evidence must hide it too. `axial` comes from isAxialRole: an axis or a
+                horizon draws arrowhead-off, because their sign is a canonicalisation convention
+                rather than a measured direction, while fall_of_light keeps its arrowheads. */}
+            {flowMarks.map((m) => {
+                const ls = styleForLayer(markLayerKey(m));
+                if (!ls.visible || !evidenceVisible) return null;
+                return (
+                    <FlowFieldLayer
+                        key={m.id}
+                        geometry={m.geometry}
+                        natural={natural}
+                        axial={isAxialRole(m.role)}
+                        opacity={ls.opacity * evidenceOpacity}
+                        className={`gl-flow gl-flow--${m.role || 'unknown'}`}
+                    />
+                );
+            })}
         </>
     );
 }
