@@ -21,6 +21,9 @@ import io
 from typing import List, Optional, Tuple
 
 _MODEL_NAME = "patrickjohncyh/fashion-clip"
+# WEIGHTS-001 — pinned HF commit. Passed to every from_pretrained below so the pin is
+# ENFORCED at load, not merely recorded. Mirrors weights.manifest.json.
+REVISION = "7e3ba62ce16b379a1ab479346b66f192e76f51b7"
 _model = None
 _processor = None
 _load_failed = False
@@ -75,9 +78,9 @@ def _load():
         return None, None
     try:
         from transformers import CLIPModel, CLIPProcessor
-        _model = CLIPModel.from_pretrained(_MODEL_NAME)
+        _model = CLIPModel.from_pretrained(_MODEL_NAME, revision=REVISION)
         _model.eval()
-        _processor = CLIPProcessor.from_pretrained(_MODEL_NAME)
+        _processor = CLIPProcessor.from_pretrained(_MODEL_NAME, revision=REVISION)
         return _model, _processor
     except Exception as e:
         print(f"⚠️ FashionCLIP unavailable ({e}); embeddings/labels skipped.")

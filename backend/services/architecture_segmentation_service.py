@@ -20,6 +20,9 @@ from typing import List, Optional
 from backend.services import mask_geometry
 
 _MODEL_NAME = "nvidia/segformer-b0-finetuned-ade-512-512"
+# WEIGHTS-001 — pinned HF commit. Passed to every from_pretrained below so the pin is
+# ENFORCED at load, not merely recorded. Mirrors weights.manifest.json.
+REVISION = "489d5cd81a0b59fab9b7ea758d3548ebe99677da"
 DETECTOR = "segformer_ade"
 _model = None
 _processor = None
@@ -84,8 +87,8 @@ def _load():
         return None, None
     try:
         from transformers import SegformerForSemanticSegmentation, SegformerImageProcessor
-        _processor = SegformerImageProcessor.from_pretrained(_MODEL_NAME)
-        _model = SegformerForSemanticSegmentation.from_pretrained(_MODEL_NAME)
+        _processor = SegformerImageProcessor.from_pretrained(_MODEL_NAME, revision=REVISION)
+        _model = SegformerForSemanticSegmentation.from_pretrained(_MODEL_NAME, revision=REVISION)
         _model.eval()
         return _model, _processor
     except Exception as e:

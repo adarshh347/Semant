@@ -45,3 +45,16 @@ showcase/
 
 # Vision model checkpoints (large; download via requirements-ml.txt notes)
 models/*.pt
+
+# WEIGHTS-001 — model weights never enter git.
+# A binary committed once lives in history forever and can only be removed by rewriting it,
+# so the policy is to never add one. git holds weights.manifest.json; scripts/fetch_weights.py
+# provisions the actual bytes into ~/.cache (HF / torch hub) and models/.
+# `*.pt` is already covered above; these close the remaining formats.
+*.pth
+*.safetensors
+*.onnx
+*.ckpt
+models/
+# NOT a blanket `*.bin` — that extension is not exclusively weights, and nothing in this repo
+# tracks one today. Add specific paths if a .bin weight ever appears.

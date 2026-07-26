@@ -23,6 +23,9 @@ from typing import Any, Dict, List, Optional
 from backend.services import mask_geometry as mg
 
 CHECKPOINT = "facebook/dinov2-small"     # DINOv2 ViT-S/14, Apache-2.0
+# WEIGHTS-001 — pinned HF commit. Passed to every from_pretrained below so the pin is
+# ENFORCED at load, not merely recorded. Mirrors weights.manifest.json.
+REVISION = "ed25f3a31f01632728cabb09d1542f84ab7b0056"
 MODEL_TAG = "dinov2_vits14"
 PREPROCESSING_VERSION = "dino-v1"        # resize-224-square, no center-crop
 DIM = 384
@@ -54,8 +57,8 @@ def _load() -> None:
     try:
         import torch
         from transformers import AutoImageProcessor, AutoModel
-        proc = AutoImageProcessor.from_pretrained(CHECKPOINT)
-        model = AutoModel.from_pretrained(CHECKPOINT).to(_device()).to(torch.float32).eval()
+        proc = AutoImageProcessor.from_pretrained(CHECKPOINT, revision=REVISION)
+        model = AutoModel.from_pretrained(CHECKPOINT, revision=REVISION).to(_device()).to(torch.float32).eval()
         _processor, _model = proc, model
     except Exception as e:  # pragma: no cover - depends on weights/hardware
         _load_failed = True
