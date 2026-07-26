@@ -1962,6 +1962,62 @@ async def _produce_shadow(post_id, post, region, req, run_id):
     return await _produce_shading(post_id, post, region, req, run_id, role="shadow_field")
 
 
+async def _produce_fall_of_light(post_id, post, region, req, run_id):
+    """GEOM-001 · the dense trace producer. Same Intrinsic reading as light/shadow, a different
+    geometry family: WHERE the light lands is a field; which WAY it travels is a flow_field.
+
+    Reuses the SHARED `_shading_mgr`/`_shading_adapter` singletons so Intrinsic is resident exactly
+    once regardless of which shading act runs — and the existing `/produce-field/unload` loop, which
+    already releases `intrinsic_ordinal_shading`, frees it with no new wiring. A flat or
+    non-directional surface is an honest refusal (status 'empty'), never a fabricated flow."""
+    from backend.services import intrinsic_service as isvc
+    if not isvc.is_available():
+        return [], "unavailable", False
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import IntrinsicShadingAdapter
+    global _shading_mgr, _shading_adapter
+    if _shading_mgr is None:
+        _reg = AdapterRegistry()
+        _shading_adapter = IntrinsicShadingAdapter()
+        _reg.register(_shading_adapter)
+        _shading_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _shading_mgr.run_adapter(_shading_adapter, {"image": image},
+                                         priority=int(Priority.INTERACTIVE),
+                                         cancel=CancelToken(), timeout_s=180.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        return [], "unavailable", False
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service.suggestion_from_fall_of_light(
+        job.artifact.data, run_id=run_id, region_id=(region or {}).get("id"),
+        model=isvc.MODEL_TAG, checkpoint=isvc.CHECKPOINT,
+        preprocessing_version=isvc.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
 # Florence-2 — the one producer driven by WORDS rather than a selection or a tap (P8-A).
 _florence_mgr = None
 _florence_adapter = None
@@ -2254,6 +2310,7 @@ _FIELD_PRODUCERS = {
     "atmosphere_field": _produce_atmosphere,
     "light_field": _produce_shading,
     "shadow_field": _produce_shadow,
+    "fall_of_light": _produce_fall_of_light,
     "florence_find_parts": _produce_florence_find_parts,
     "grounded_sam_find_parts": _produce_grounded_sam,
     "presence_check": _produce_presence_check,

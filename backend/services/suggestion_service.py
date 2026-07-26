@@ -23,7 +23,8 @@ from typing import Any, Dict, List, Optional
 
 from backend.services.mask_geometry import (cosine_field_from_features, depth_band_field,
                                             region_geometry_from_grounding,
-                                            field_contrast, rle_is_valid, shading_band_field,
+                                            field_contrast, flow_field_coherence, rle_is_valid,
+                                            shading_band_field, shading_flow_field,
                                             shading_gradient, soft_field_from_map,
                                             soft_field_from_mask, strokes_from_field)
 
@@ -96,6 +97,11 @@ PRODUCER_RECESSION = "recession"
 # the same one read as absence. A real model, so the receipt is full; DEFERRED until the
 # GitHub-only package is installed (see intrinsic_service), which the producer never has to know.
 PRODUCER_SHADING = "shading"
+# CIRCUIT-001 GEOM-001 — the trace the P6-G converter was built for. `shading` reads WHERE the
+# light lands (a brush_field); `fall_of_light` reads which WAY it travels, per cell (a trace_mark
+# carrying the dense flow_field kind). Same Intrinsic reading, a different geometry family: a
+# direction is not a field, and P6-G deliberately withheld this act until the kind existed.
+PRODUCER_FALL_OF_LIGHT = "fall_of_light"
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -758,6 +764,67 @@ def suggestions_from_shading(
         if d:
             out.append(d)
     return out
+
+
+# ── producer 9.5: fall_of_light — the dense trace P6-G's converter was built for (GEOM-001) ─────
+
+def suggestion_from_fall_of_light(
+    shading: Optional[Dict[str, Any]], *, run_id: Optional[str],
+    region_id: Optional[str] = None, label: Optional[str] = None,
+    model: Optional[str] = None, adapter: str = "intrinsic_ordinal_shading",
+    checkpoint: Optional[str] = None, preprocessing_version: Optional[str] = None,
+    latency_ms: Optional[float] = None, peak_vram_mib: Optional[float] = None,
+    # Same calibration guard as _suggestion_from_shading: a neural decomposition invents gentle
+    # relief on a blank surface, so a lit scene must clear the same 0.25 gap a light FIELD does
+    # before we claim it has a DIRECTION. Under it there is nothing to trace.
+    min_contrast: float = 0.25, out_grid: int = 14,
+) -> Optional[Dict[str, Any]]:
+    """A shading reading → a ``fall_of_light`` trace mark carrying a dense ``flow_field``.
+
+    The sibling of ``suggestion_from_light``: that one asks WHERE the light lands (a brush_field),
+    this asks which WAY it travels at every cell (a trace_mark, geometry kind ``flow_field``). Full
+    model receipt — it inferred — with ``confidence`` = directional coherence on the descriptor only
+    (contract §6 forbids confidence on the mark itself). Coherence is a reading ABOUT the field ("is
+    there one direction of light here") and never geometry painted into it.
+
+    Refuses (returns None) an evenly-lit or non-directional surface: a flat studio wash has no fall
+    to trace, and a grid of invented arrows over a blank wall is the exact lie the field producers
+    refuse. This is the act P6-G withheld until the flow_field kind existed."""
+    if not isinstance(shading, dict):
+        return None
+    grid = int(shading.get("grid") or 0)
+    values = shading.get("shading")
+    if grid <= 0 or not values or len(values) < grid * grid:
+        return None
+
+    raw = [float(v) for v in list(values)[:grid * grid]]
+    hi, lo = max(raw), min(raw)
+    relief = (hi - lo) / (abs(hi) + 1e-9)
+    if relief < min_contrast:
+        return None                                  # evenly lit → no fall to trace
+
+    cells, rows, cols = shading_flow_field(raw, grid, out_grid=out_grid)
+    if not cells:
+        return None                                  # non-directional → honest refusal
+
+    receipt: Dict[str, Any] = {"run_id": run_id, "producer": PRODUCER_FALL_OF_LIGHT,
+                               "adapter": adapter}
+    for key, val in (("model", model), ("checkpoint", checkpoint),
+                     ("preprocessing_version", preprocessing_version),
+                     ("latency_ms", latency_ms), ("peak_vram_mib", peak_vram_mib)):
+        if val is not None:
+            receipt[key] = val
+    return {
+        "producer": PRODUCER_FALL_OF_LIGHT,
+        "type": "trace_mark",
+        "role": "fall_of_light",
+        "label": label or "the fall of light",
+        "source_ref": f"{region_id or 'img'}:fall_of_light",
+        "geometry": {"kind": "flow_field", "cols": cols, "rows": rows, "cells": cells},
+        "linked_ground_ids": [],
+        "provenance": receipt,
+        "confidence": flow_field_coherence(cells),
+    }
 
 
 # ── producer 10: open-vocab find_parts — Florence-2 phrase → region (CIRCUIT-001 P8-A) ─────────
