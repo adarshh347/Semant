@@ -27,7 +27,7 @@ walks it column-major, so sequence index `k` maps to `c = k // h`, `r = k % h`.
 """
 
 import math
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 MIN_SIZE = 1e-4  # a normalized extent below this is treated as degenerate
 
@@ -370,3 +370,271 @@ def canonicalize_geometry(region: dict, *, default_mask_size: Optional[Tuple[int
         kind = "polygon" if (region.get("polygon") and len(region["polygon"]) >= 3) else "box"
         region["geometry_provenance"] = {"kind": f"legacy-{kind}", **prov_extra}
     return region
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# negative-space converter (CIRCUIT-001 P6-A) — the first brush_field producer's
+# geometry helper. A figure mask that ALREADY EXISTS → its complement → a soft field
+# → editable strokes[]. Pure, no I/O, no model: the negative space is what is shaped by
+# NOT being the figure, so it is derivable from the figure alone. Stays in this module
+# because that keeps `mask_geometry` the one owner of the RLE ↔ mask chain.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def mask_complement(rle: dict) -> dict:
+    """The complement of a mask: every pixel flipped (figure → ground, ground → figure).
+
+    Exact and self-inverse — `mask_complement(mask_complement(m)) == m` on the bit buffer —
+    because it rides the exact RLE round-trip. This is the whole geometric content of
+    "negative space": the part of the frame the figure is not."""
+    bits, h, w = rle_decode(rle)
+    comp = bytearray(1 - (1 if b else 0) for b in bits)
+    return rle_encode(comp, h, w)
+
+
+def soft_field_from_mask(rle: dict, *, _diag: float = math.sqrt(2)) -> Tuple[List[float], int, int]:
+    """A figure mask → a SOFT field over its negative space (a chamfer distance transform).
+
+    Returns `(field, h, w)` where `field` is a row-major list in [0, 1]: 0.0 on every figure
+    pixel, ramping up with distance INTO the negative space, normalized so the deepest point
+    is 1.0. "Soft" is literal — the falloff is the distance from the figure's edge, not a hard
+    complement. Pure Python (two-pass chamfer), no numpy.
+
+    Degenerate inputs return an all-zero field (nothing to draw): an empty mask has no figure
+    to define a negative space against, and a full mask leaves no negative space at all. The
+    producer treats "no field" as a refusal rather than fabricating one."""
+    bits, h, w = rle_decode(rle)
+    n = h * w
+    if n == 0:
+        return [], h, w
+    INF = float(h + w) * 2.0 + 1.0
+    dist = [0.0 if bits[i] else INF for i in range(n)]
+
+    # forward pass (raster order): each ground pixel takes the cheapest step from an
+    # already-visited neighbour (W, NW, N, NE).
+    for r in range(h):
+        base = r * w
+        for c in range(w):
+            i = base + c
+            if bits[i]:
+                continue
+            d = dist[i]
+            if c > 0:
+                d = min(d, dist[i - 1] + 1.0)
+            if r > 0:
+                d = min(d, dist[i - w] + 1.0)
+                if c > 0:
+                    d = min(d, dist[i - w - 1] + _diag)
+                if c < w - 1:
+                    d = min(d, dist[i - w + 1] + _diag)
+            dist[i] = d
+
+    # backward pass (reverse raster): relax against E, SE, S, SW.
+    for r in range(h - 1, -1, -1):
+        base = r * w
+        for c in range(w - 1, -1, -1):
+            i = base + c
+            if bits[i]:
+                continue
+            d = dist[i]
+            if c < w - 1:
+                d = min(d, dist[i + 1] + 1.0)
+            if r < h - 1:
+                d = min(d, dist[i + w] + 1.0)
+                if c < w - 1:
+                    d = min(d, dist[i + w + 1] + _diag)
+                if c > 0:
+                    d = min(d, dist[i + w - 1] + _diag)
+            dist[i] = d
+
+    mx = 0.0
+    for i in range(n):
+        if not bits[i] and dist[i] < INF and dist[i] > mx:
+            mx = dist[i]
+    if mx <= 0.0:
+        return [0.0] * n, h, w
+    field = [0.0 if bits[i] else min(1.0, dist[i] / mx) for i in range(n)]
+    return field, h, w
+
+
+def strokes_from_field(field: Sequence[float], h: int, w: int, *, grid: int = 8,
+                       threshold: float = 0.12, radius: float = 0.05) -> List[dict]:
+    """A soft field → editable `strokes[]` in the freehand-stroke shape the field tools already
+    consume: `{points:[[x,y]], radius, strength, op}` with NORMALIZED (0..1) points and
+    `strength ∝ value`. Samples a `grid`×`grid` lattice of cell centres and drops a stroke
+    wherever the field clears `threshold` — so a suggestion arrives as marks a curator can move,
+    reweight or erase, never as a baked-in wash. Deterministic (no randomness)."""
+    strokes: List[dict] = []
+    if h <= 0 or w <= 0 or not field:
+        return strokes
+    gy = max(1, min(grid, h))
+    gx = max(1, min(grid, w))
+    for gyi in range(gy):
+        r = min(h - 1, max(0, int((gyi + 0.5) * h / gy)))
+        for gxi in range(gx):
+            c = min(w - 1, max(0, int((gxi + 0.5) * w / gx)))
+            v = float(field[r * w + c])
+            if v < threshold:
+                continue
+            strokes.append({
+                "points": [[round((c + 0.5) / w, 4), round((r + 0.5) / h, 4)]],
+                "radius": radius,
+                "strength": round(v, 4),
+                "op": "add",
+            })
+    return strokes
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# same-material converter (CIRCUIT-001 P6-B) — a seed patch's DINOv2 feature vs the
+# shared patch grid → a cosine "same material" soft field. Pure (no torch, no numpy):
+# the caller hands over the already-computed patch tokens as plain vectors (the real
+# DINOv2 tensor is `.tolist()`-ed at the boundary), so the field logic is testable with
+# a synthetic grid and never needs a GPU. The field then reuses `strokes_from_field`.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def cosine_field_from_features(patch_vectors: Sequence[Sequence[float]], grid: int,
+                               seed_index: int, *, floor: float = 0.0
+                               ) -> Tuple[List[float], int, int]:
+    """A seed patch feature vs the whole patch grid → a same-material soft field.
+
+    `patch_vectors` is a flat, row-major sequence of ``grid*grid`` feature vectors (each a list of
+    floats — the RAW DINOv2 patch tokens; this fn L2-normalizes internally). `seed_index` is the
+    flat index of the tapped patch. Returns ``(field, grid, grid)`` with the field row-major in
+    [0, 1]: the cosine similarity of every patch to the seed, floored at 0 (a material field is a
+    STRENGTH — a patch of a different material is "not this material", not negatively so). The seed
+    against itself is exactly 1.0, so the field is already normalized with its peak at the tap.
+
+    Degenerate input (bad grid, too few vectors, out-of-range seed) → an empty field, which the
+    producer reads as a refusal rather than a field to draw."""
+    n = grid * grid
+    if grid <= 0 or len(patch_vectors) < n or not (0 <= seed_index < n):
+        return [], grid, grid
+
+    def _unit(v: Sequence[float]) -> List[float]:
+        s = math.sqrt(sum(x * x for x in v)) or 1.0
+        return [x / s for x in v]
+
+    seed = _unit(patch_vectors[seed_index])
+    field: List[float] = []
+    for i in range(n):
+        p = _unit(patch_vectors[i])
+        cos = sum(a * b for a, b in zip(seed, p))
+        field.append(cos if cos > floor else floor)
+    return field, grid, grid
+
+
+def field_contrast(field: Sequence[float]) -> float:
+    """Dynamic range of a field — max minus min. A crisp material extent has high contrast; a
+    near-uniform field (everything reads like the seed, so nothing is distinguished) has almost
+    none, and the producer refuses it rather than paint the whole frame."""
+    if not field:
+        return 0.0
+    return float(max(field) - min(field))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# response-map converter (CIRCUIT-001 P6-D) — the generic "a measurement over the
+# image → a soft field" step. Gabor energy, structure-tensor coherence, and later a
+# depth map are all just per-cell magnitudes; normalizing them is one operation, so it
+# lives here once rather than once per producer. Pure: plain floats in, floats out — no
+# cv2, no numpy, so the field logic is testable without any of the CPU vision stack.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def soft_field_from_map(values: Sequence[float], grid: int) -> Tuple[List[float], int, int]:
+    """A raw response map (``grid*grid`` magnitudes, row-major) → a normalized [0,1] soft field.
+
+    Min-max scaled, so the strongest cell reads 1.0 and the weakest 0.0 — the field says
+    "strong HERE relative to the rest of what was read", which is the only claim a magnitude
+    can honestly support. Degenerate input (bad grid, wrong length) → an empty field, which the
+    producer reads as a refusal.
+
+    Note a flat map normalizes to all-zeros rather than all-ones: when nothing varies, nothing
+    stands out, and the honest field is empty rather than a wash over everything."""
+    n = grid * grid
+    if grid <= 0 or len(values) < n:
+        return [], grid, grid
+    vals = [float(v) for v in values[:n]]
+    lo, hi = min(vals), max(vals)
+    span = hi - lo
+    if span <= 1e-12:
+        return [0.0] * n, grid, grid           # nothing varies → nothing to draw
+    return [(v - lo) / span for v in vals], grid, grid
+
+
+def depth_band_field(depth: Sequence[float], grid: int, *, band: str = "far"
+                     ) -> Tuple[List[float], int, int]:
+    """A relative-depth map → the NEAR or FAR band as a normalized [0,1] soft field.
+
+    Depth-Anything emits INVERSE depth (larger = nearer), so after min-max normalization the
+    near band is the map itself and the far band is its complement. `background_recession` is
+    the far band — what falls away behind — and `atmosphere_field` the near one, the condition
+    the foreground sits in.
+
+    A scene with no depth relief (a flat wall, a copy shot) normalizes to all-zeros and yields
+    an empty far band, which the producer reads as a refusal rather than inventing distance."""
+    field, gh, gw = soft_field_from_map(depth, grid)
+    if not field:
+        return [], gh, gw
+    if band == "near":
+        return field, gh, gw
+    return [1.0 - v for v in field], gh, gw
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# shading converters (CIRCUIT-001 P6-G) — light, its withholding, and its direction.
+# Intrinsic decomposition hands back a shading map (larger = more lit). Light and
+# shadow are then one normalization and one inversion; the FALL of light is the
+# map's gradient, which is a direction rather than a field. Pure — plain floats in.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def shading_band_field(shading: Sequence[float], grid: int, *, band: str = "light"
+                       ) -> Tuple[List[float], int, int]:
+    """A shading map → the LIT or the WITHHELD band as a normalized [0,1] soft field.
+
+    `light` is the normalized shading itself — where the light lands. `shadow` is its exact
+    complement: shadow is not a separate measurement but the same one read as absence, which is
+    the honest way to put it (nothing measures "shadow"; it is where light is not).
+
+    An evenly-lit surface normalizes to all-zeros and yields no band, which the producer reads as
+    a refusal — a flat studio wash has no light field worth marking."""
+    field, gh, gw = soft_field_from_map(shading, grid)
+    if not field:
+        return [], gh, gw
+    if band == "light":
+        return field, gh, gw
+    return [1.0 - v for v in field], gh, gw
+
+
+def shading_gradient(shading: Sequence[float], grid: int) -> Optional[Dict[str, float]]:
+    """A shading map → the direction light FALLS across it, as a unit vector + strength.
+
+    Central differences over the coarse grid give a mean gradient; light falls from bright toward
+    dark, so the fall direction is the NEGATIVE gradient. Returns
+    ``{"dx", "dy", "strength"}`` in normalized image axes (x right, y down), or None when the
+    field is too flat for a direction to mean anything.
+
+    This is the geometry a `fall_of_light` TRACE mark would carry. P6-G ships the converter and
+    the two field producers; the trace producer is a separate act — a direction is a different
+    mark family (`trace_mark`/vector), not a brush_field, and inventing that surface unattended
+    would be exactly the overreach this gate's guard is about."""
+    n = grid * grid
+    if grid < 3 or len(shading) < n:
+        return None
+    vals = [float(v) for v in shading[:n]]
+    lo, hi = min(vals), max(vals)
+    if hi - lo <= 1e-12:
+        return None                                    # evenly lit — no direction to report
+    gx_sum = 0.0
+    gy_sum = 0.0
+    for r in range(1, grid - 1):
+        for c in range(1, grid - 1):
+            gx_sum += (vals[r * grid + c + 1] - vals[r * grid + c - 1]) / 2.0
+            gy_sum += (vals[(r + 1) * grid + c] - vals[(r - 1) * grid + c]) / 2.0
+    inner = max(1, (grid - 2) * (grid - 2))
+    gx, gy = gx_sum / inner, gy_sum / inner
+    mag = math.sqrt(gx * gx + gy * gy)
+    if mag <= 1e-12:
+        return None                                    # symmetric lighting — no net fall
+    # light falls from lit toward unlit: the negative gradient, unitized.
+    return {"dx": round(-gx / mag, 4), "dy": round(-gy / mag, 4),
+            "strength": round(mag / (hi - lo), 4)}

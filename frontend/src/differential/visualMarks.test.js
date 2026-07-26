@@ -347,7 +347,13 @@ describe('contract v3 — region_ref (a naming reference, no mask authored)', ()
     it('PRODUCERS is the published producer vocabulary', () => {
         expect(PRODUCERS).toContain('sam_refine');
         expect(PRODUCERS).toContain('semantic_read');
-        expect(PRODUCERS).toContain('find_similar');   // P5-A: the crossing producer
+        expect(PRODUCERS).toContain('find_similar');    // P5-A: the crossing producer
+        expect(PRODUCERS).toContain('negative_space');  // P6-A: the first brush_field producer
+        expect(PRODUCERS).toContain('material_field');  // P6-B: DINOv2 same-material field
+        expect(PRODUCERS).toContain('rhythm');          // P6-D: cpu_perceptual, no model at all
+        expect(PRODUCERS).toContain('pressure_zone');   // P6-E: the same reading, coherence map
+        expect(PRODUCERS).toContain('recession');       // P6-F: Depth-Anything near/far bands
+        expect(PRODUCERS).toContain('shading');         // P6-G: Intrinsic light/shadow (deferred)
         expect(PRODUCERS).toContain('fixture');
     });
 });

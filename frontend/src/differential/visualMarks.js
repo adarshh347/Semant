@@ -80,7 +80,17 @@ export const STROKE_OPS = ['add', 'sub'];
 // a curator's own mark names no producer. The suggestion-provenance shape (contract v3 §P4).
 // P5-A adds `find_similar`: a visual-neighbour search is a producer whose suggestions cross the
 // border to another post (a cross-post `region_ref`).
-export const PRODUCERS = ['sam_refine', 'semantic_read', 'planner', 'find_similar', 'fixture'];
+// P6-A adds `negative_space`: the first brush_field producer, and the first that names no model —
+// it inverts a mask already in the packet into a soft field, so its receipt is a run_id without a
+// model/adapter (nothing was inferred, only geometry complemented). P6-B adds `material_field`:
+// the first brush_field producer on a REAL model (DINOv2 same-material cosine), so its receipt is
+// full — model/adapter/checkpoint/latency — everything but `confidence`, which a mark may not hold.
+// P6-D adds `rhythm`: the third archetype — pure signal processing (Gabor energy), no weights at
+// all, so its receipt names an adapter but no model, like negative_space's.
+export const PRODUCERS = [
+    'sam_refine', 'semantic_read', 'planner', 'find_similar',
+    'negative_space', 'material_field', 'rhythm', 'pressure_zone', 'recession', 'shading', 'fixture',
+];
 
 // ── role vocabularies ────────────────────────────────────────────────────────
 // The first three are P2B's, imported rather than retyped. `trace_role` adds the two the

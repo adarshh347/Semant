@@ -313,3 +313,196 @@ describe('the crossing — find-similar as a quarantined producer', () => {
         expect(accepted.geometry.mask_ref).toBeUndefined();
     });
 });
+
+// CIRCUIT-001 P6-A — negative_space: the first brush_field producer, and the first that names no
+// model. Its descriptor carries a soft field of editable strokes; its provenance is a run receipt
+// WITHOUT a model/adapter (nothing was inferred, only a mask complemented).
+const negativeSpaceDescriptor = (over = {}) => ({
+    producer: 'negative_space', type: 'brush_field', role: 'negative_space',
+    label: 'negative space around figure', source_ref: 'reg_ns',
+    geometry: {
+        kind: 'soft_mask',
+        strokes: [
+            { points: [[0.1, 0.1]], radius: 0.05, strength: 0.9, op: 'add' },
+            { points: [[0.8, 0.8]], radius: 0.05, strength: 0.4, op: 'add' },
+        ],
+    },
+    linked_ground_ids: [],
+    provenance: { run_id: 'run_ns', producer: 'negative_space' },
+    ...over,
+});
+
+describe('the negative space — the first brush_field producer, quarantined', () => {
+    beforeEach(() => _resetMarkIds());
+
+    it('ingests as an uncitable brush_field suggestion carrying editable strokes', () => {
+        const m = suggestionFromDescriptor(negativeSpaceDescriptor(), { now: 'T' });
+        expect(m).not.toBeNull();
+        expect(m.type).toBe('brush_field');
+        expect(m.role).toBe('negative_space');
+        expect(m.source).toBe('model_suggested');
+        expect(m.status).toBe('suggested');
+        expect(canCiteMark(m)).toBe(false);                          // quarantined until accepted
+        expect(m.geometry.kind).toBe('soft_mask');
+        expect(m.geometry.strokes).toHaveLength(2);
+        expect(m.geometry.strokes.every((s) => s.op === 'add')).toBe(true);
+        // a deterministic producer: a run receipt, but no model laundered onto the mark
+        expect(m.provenance.producer).toBe('negative_space');
+        expect(m.provenance.run_id).toBe('run_ns');
+        expect(m.provenance.model == null).toBe(true);
+    });
+
+    it('is idempotent by source: re-inverting the same region replaces, not duplicates', () => {
+        const a = suggestionFromDescriptor(negativeSpaceDescriptor(), { now: 'T1' });
+        const b = suggestionFromDescriptor(negativeSpaceDescriptor(), { now: 'T2' });
+        expect(a.id).toBe(b.id);
+        expect(a.id).toBe(suggestionId(negativeSpaceDescriptor()));
+    });
+
+    it('accepting mints a user_confirmed field mark; the strokes ride forward, editable', () => {
+        const suggestion = suggestionFromDescriptor(negativeSpaceDescriptor(), { now: 'T' });
+        const { accepted } = acceptSuggestion(suggestion, {}, { now: 'T2', idFn: () => 'vm_ns' });
+        expect(accepted.source).toBe('user_confirmed');
+        expect(accepted.derived_from).toBe(suggestion.id);
+        expect(canCiteMark(accepted)).toBe(true);
+        expect(accepted.type).toBe('brush_field');
+        expect(accepted.geometry.strokes).toHaveLength(2);           // the field survives acceptance
+    });
+
+    it('dismissing keeps the record but never cites it', () => {
+        const suggestion = suggestionFromDescriptor(negativeSpaceDescriptor(), { now: 'T' });
+        const dismissed = dismissSuggestion(suggestion, { now: 'T2' });
+        expect(dismissed.status).toBe('dismissed');
+        expect(canCiteMark(dismissed)).toBe(false);
+    });
+});
+
+// CIRCUIT-001 P6-B — material_field: the first brush_field producer on a REAL model (DINOv2). Its
+// descriptor carries a full model receipt in provenance — but NOT confidence (a mark may never hold
+// a confidence score, contract §6); the field's contrast rides the descriptor's own `confidence`.
+const materialDescriptor = (over = {}) => ({
+    producer: 'material_field', type: 'brush_field', role: 'material_field',
+    label: 'same material', source_ref: 'reg_9@1:1',
+    geometry: {
+        kind: 'soft_mask',
+        strokes: [
+            { points: [[0.2, 0.2]], radius: 0.05, strength: 1.0, op: 'add' },
+            { points: [[0.4, 0.3]], radius: 0.05, strength: 0.8, op: 'add' },
+        ],
+    },
+    linked_ground_ids: [],
+    provenance: {
+        model: 'facebook/dinov2-small', adapter: 'dinov2_vits14',
+        checkpoint: 'facebook/dinov2-small', preprocessing_version: 'dino-v1',
+        latency_ms: 18, peak_vram_mib: 104, run_id: 'run_mat', producer: 'material_field',
+    },
+    confidence: 0.87,     // rides the descriptor; the mapper drops it, never onto the mark
+    ...over,
+});
+
+describe('the material field — first brush_field producer on a real model, quarantined', () => {
+    beforeEach(() => _resetMarkIds());
+
+    it('ingests as an uncitable brush_field suggestion carrying the FULL model receipt', () => {
+        const m = suggestionFromDescriptor(materialDescriptor(), { now: 'T' });
+        expect(m).not.toBeNull();
+        expect(m.type).toBe('brush_field');
+        expect(m.role).toBe('material_field');
+        expect(m.source).toBe('model_suggested');
+        expect(canCiteMark(m)).toBe(false);                         // quarantined until accepted
+        expect(m.geometry.kind).toBe('soft_mask');
+        expect(m.geometry.strokes).toHaveLength(2);
+        // the receipt is real and rides through
+        expect(m.provenance.model).toBe('facebook/dinov2-small');
+        expect(m.provenance.adapter).toBe('dinov2_vits14');
+        expect(m.provenance.latency_ms).toBe(18);
+        expect(m.provenance.run_id).toBe('run_mat');
+        // confidence never lands on the mark (contract §6) — the mapper copies provenance only
+        expect('confidence' in m.provenance).toBe(false);
+        expect(m.confidence).toBeUndefined();
+    });
+
+    it('rejects a descriptor that tries to launder confidence onto the mark', () => {
+        // a malformed producer that put confidence INSIDE provenance must fail closed
+        const bad = materialDescriptor({
+            provenance: { ...materialDescriptor().provenance, confidence: 0.9 },
+        });
+        expect(suggestionFromDescriptor(bad, { now: 'T' })).toBeNull();
+    });
+
+    it('accepting mints a user_confirmed field mark; the strokes ride forward, editable', () => {
+        const suggestion = suggestionFromDescriptor(materialDescriptor(), { now: 'T' });
+        const { accepted } = acceptSuggestion(suggestion, {}, { now: 'T2', idFn: () => 'vm_mat' });
+        expect(accepted.source).toBe('user_confirmed');
+        expect(accepted.derived_from).toBe(suggestion.id);
+        expect(canCiteMark(accepted)).toBe(true);
+        expect(accepted.type).toBe('brush_field');
+        expect(accepted.geometry.strokes).toHaveLength(2);
+        expect('confidence' in accepted.provenance).toBe(false);    // still no confidence, ever
+    });
+
+    it('dismissing keeps the record but never cites it', () => {
+        const suggestion = suggestionFromDescriptor(materialDescriptor(), { now: 'T' });
+        const dismissed = dismissSuggestion(suggestion, { now: 'T2' });
+        expect(dismissed.status).toBe('dismissed');
+        expect(canCiteMark(dismissed)).toBe(false);
+    });
+});
+
+// CIRCUIT-001 P6-D/P6-E — the cpu_perceptual fields. No model at all: the receipt names an adapter
+// and a run, never a model/checkpoint. Both roles come from ONE adapter reading and must stay
+// distinct marks in the quarantine.
+const perceptualDescriptor = (role, over = {}) => ({
+    producer: role, type: 'brush_field', role,
+    label: role === 'rhythm' ? 'rhythm — where something repeats' : 'pressure — where the surface pulls',
+    source_ref: `reg_d:${role}`,
+    geometry: {
+        kind: 'soft_mask',
+        strokes: [{ points: [[0.3, 0.3]], radius: 0.02, strength: 0.9, op: 'add' }],
+    },
+    linked_ground_ids: [],
+    provenance: { run_id: 'run_cpu', producer: role, adapter: 'cpu_perceptual', latency_ms: 14 },
+    confidence: 0.61,
+    ...over,
+});
+
+describe('the cpu_perceptual fields — rhythm + pressure, quarantined', () => {
+    beforeEach(() => _resetMarkIds());
+
+    it.each(['rhythm', 'pressure_zone'])('%s ingests as an uncitable brush_field with a no-model receipt', (role) => {
+        const m = suggestionFromDescriptor(perceptualDescriptor(role), { now: 'T' });
+        expect(m).not.toBeNull();
+        expect(m.type).toBe('brush_field');
+        expect(m.role).toBe(role);
+        expect(m.source).toBe('model_suggested');
+        expect(canCiteMark(m)).toBe(false);
+        expect(m.geometry.kind).toBe('soft_mask');
+        expect(m.provenance.adapter).toBe('cpu_perceptual');
+        expect(m.provenance.run_id).toBe('run_cpu');
+        expect(m.provenance.model == null).toBe(true);      // nothing was inferred, and it says so
+        expect('confidence' in m.provenance).toBe(false);   // never on the mark (contract §6)
+    });
+
+    it('rhythm and pressure from one reading stay two distinct marks', () => {
+        const r = suggestionFromDescriptor(perceptualDescriptor('rhythm'), { now: 'T' });
+        const p = suggestionFromDescriptor(perceptualDescriptor('pressure_zone'), { now: 'T' });
+        expect(r.id).not.toBe(p.id);                        // distinct source_ref → distinct ids
+    });
+
+    it.each(['rhythm', 'pressure_zone'])('accepting %s mints a derived user_confirmed field mark', (role) => {
+        const s = suggestionFromDescriptor(perceptualDescriptor(role), { now: 'T' });
+        const { accepted } = acceptSuggestion(s, {}, { now: 'T2', idFn: () => `vm_${role}` });
+        expect(accepted.source).toBe('user_confirmed');
+        expect(accepted.derived_from).toBe(s.id);
+        expect(canCiteMark(accepted)).toBe(true);
+        expect(accepted.role).toBe(role);
+        expect(accepted.geometry.strokes).toHaveLength(1);
+    });
+
+    it.each(['rhythm', 'pressure_zone'])('dismissing %s discards it and never cites it', (role) => {
+        const s = suggestionFromDescriptor(perceptualDescriptor(role), { now: 'T' });
+        const d = dismissSuggestion(s, { now: 'T2' });
+        expect(d.status).toBe('dismissed');
+        expect(canCiteMark(d)).toBe(false);
+    });
+});
