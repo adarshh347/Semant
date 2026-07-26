@@ -147,6 +147,11 @@ const FIELD_PRODUCERS = [
     // cell (a flow_field), not a magnitude — so it is grouped apart from the brushed fields above.
     { key: 'architectural_axis', label: 'Axis', needsSeed: false, isTrace: true,
       hint: 'Where the built structure runs — OpenCV line segments, no model. An organic scene is refused.' },
+    // TRACE-002: the projective sibling. Axis reads the lines that ARE there; this reads the
+    // frame they imply. Learned + GPU, and DEFERRED — it reports unavailable until GeoCalib is
+    // installed, which the chip states rather than failing silently.
+    { key: 'external_limit', label: 'Limit', needsSeed: false, isTrace: true, deferred: true,
+      hint: 'The horizon the scene recedes toward. Needs GeoCalib installed; a flat frontal image is refused.' },
 ];
 
 // Each system layer wears the family mark of what it holds: the working surface

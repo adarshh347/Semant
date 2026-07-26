@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-    FLOW_FIELD_KIND, isFlowField, normalizeFlowField, flowFieldCells, flowFieldStats,
-} from './flowField';
+    FLOW_FIELD_KIND, isFlowField, normalizeFlowField, flowFieldCells, flowFieldStats, isAxialRole } from './flowField';
 
 // A 2×2 flow_field: three live cells pointing right, one null cell.
 const RIGHT = [1, 0, 1.0];
@@ -81,5 +80,22 @@ describe('flowField — stats (a reading, not geometry)', () => {
 
     it('is safe on a bad field', () => {
         expect(flowFieldStats(null)).toEqual({ cells: 0, active: 0, meanMagnitude: 0, coherence: 0 });
+    });
+});
+
+describe('flowField — TRACE-002: axial vs directional roles', () => {
+    it('both trace-lane orientation roles are axial', () => {
+        expect(isAxialRole('architectural_axis')).toBe(true);
+        expect(isAxialRole('external_limit')).toBe(true);
+    });
+
+    it('fall_of_light stays directional — the arrowhead is its content', () => {
+        expect(isAxialRole('fall_of_light')).toBe(false);
+    });
+
+    it('an unknown or absent role is not assumed axial', () => {
+        // Defaulting to axial would silently drop arrowheads from a future directional trace.
+        expect(isAxialRole('gaze_address')).toBe(false);
+        expect(isAxialRole(undefined)).toBe(false);
     });
 });

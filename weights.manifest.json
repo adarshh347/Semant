@@ -1,17 +1,17 @@
 {
   "$comment": [
-    "WEIGHTS-001 — the manifest git DOES hold, describing the weights git does NOT.",
+    "WEIGHTS-001 \u2014 the manifest git DOES hold, describing the weights git does NOT.",
     "",
     "Rule: no binary weight ever enters this repository. Binaries are immortal in git history",
     "and cannot be removed without rewriting it, so the only safe policy is to never add one.",
     "This file plus scripts/fetch_weights.py is what makes a fresh machine reproducible.",
     "",
     "`kind` tells the fetcher how to provision an entry:",
-    "  hf        — huggingface_hub snapshot_download at a PINNED revision (a commit sha, never a",
+    "  hf        \u2014 huggingface_hub snapshot_download at a PINNED revision (a commit sha, never a",
     "              branch: 'main' is a moving target and would silently change which weights run)",
-    "  url       — direct download to `dest`, verified against `sha256`",
-    "  pip-git   — installed by requirements-ml.txt; the fetcher only reports, never installs",
-    "  torch-hub — pulled by torch.hub at load time into TORCH_HOME; the fetcher pre-warms it and,",
+    "  url       \u2014 direct download to `dest`, verified against `sha256`",
+    "  pip-git   \u2014 installed by requirements-ml.txt; the fetcher only reports, never installs",
+    "  torch-hub \u2014 pulled by torch.hub at load time into TORCH_HOME; the fetcher pre-warms it and,",
     "              where the upstream call omits trust_repo, pre-seeds the trusted_list so a fresh",
     "              box never blocks on an interactive y/N prompt",
     "",
@@ -21,8 +21,8 @@
   "version": 1,
   "updated": "2026-07-26",
   "caches": {
-    "hf_home": "~/.cache/huggingface (HF_HOME unset — default)",
-    "torch_home": "~/.cache/torch (TORCH_HOME unset — default)",
+    "hf_home": "~/.cache/huggingface (HF_HOME unset \u2014 default)",
+    "torch_home": "~/.cache/torch (TORCH_HOME unset \u2014 default)",
     "repo_local": "models/ and the repo root (gitignored)",
     "measured_total_bytes": 2038431744,
     "measured_total_human": "~1.9 GB"
@@ -72,7 +72,7 @@
       "id": "nvidia/segformer-b0-finetuned-ade-512-512",
       "revision": "489d5cd81a0b59fab9b7ea758d3548ebe99677da",
       "size_human": "15 MB",
-      "license": "NVIDIA source-code license (non-commercial research — verify before commercial use)",
+      "license": "NVIDIA source-code license (non-commercial research \u2014 verify before commercial use)",
       "capability": "ARCH_PARSE",
       "used_by": [
         "architecture_segmentation_service"
@@ -93,7 +93,7 @@
         "onnx/*",
         "pytorch_model.bin"
       ],
-      "size_human": "581 MB (of ~1.2 GB in the repo — the rest is ONNX we never load)",
+      "size_human": "581 MB (of ~1.2 GB in the repo \u2014 the rest is ONNX we never load)",
       "license": "MIT",
       "capability": "EMBED / DOMAIN_ROUTE",
       "used_by": [
@@ -101,7 +101,7 @@
         "fashion region embeddings"
       ],
       "mirror_needed": false,
-      "notes": "Largest HF entry. `ignore_patterns` is load-bearing, not an optimisation: the repo ships an onnx/ variant directory that this codebase never touches (fashion_clip_service uses CLIPModel/CLIPProcessor on safetensors; nothing in backend/ imports onnx). Without it a full snapshot pulls ~600 MB of dead weight AND the cache check never passes — the local cache here has 8 abandoned .incomplete ONNX blobs from exactly that. `pytorch_model.bin` is excluded for the same reason: the repo ships both formats, transformers loads safetensors, and demanding the .bin too made every run report an IncompleteSnapshotError and re-attempt a download that would never be used.",
+      "notes": "Largest HF entry. `ignore_patterns` is load-bearing, not an optimisation: the repo ships an onnx/ variant directory that this codebase never touches (fashion_clip_service uses CLIPModel/CLIPProcessor on safetensors; nothing in backend/ imports onnx). Without it a full snapshot pulls ~600 MB of dead weight AND the cache check never passes \u2014 the local cache here has 8 abandoned .incomplete ONNX blobs from exactly that. `pytorch_model.bin` is excluded for the same reason: the repo ships both formats, transformers loads safetensors, and demanding the .bin too made every run report an IncompleteSnapshotError and re-attempt a download that would never be used.",
       "required_files": [
         "config.json",
         "model.safetensors"
@@ -119,7 +119,7 @@
         "fashion_segmentation_service"
       ],
       "mirror_needed": false,
-      "notes": "Surfaced by the WEIGHTS-001 audit — it was cached and in use but absent from the roster narrative.",
+      "notes": "Surfaced by the WEIGHTS-001 audit \u2014 it was cached and in use but absent from the roster narrative.",
       "required_files": [
         "config.json",
         "model.safetensors"
@@ -140,7 +140,7 @@
         "segmentation_service (Dissect anchors)"
       ],
       "mirror_needed": true,
-      "notes": "Ultralytics auto-downloads this on first use if absent, but the version it picks is not pinned — hence the explicit URL + sha256. AGPL: check before any closed distribution."
+      "notes": "Ultralytics auto-downloads this on first use if absent, but the version it picks is not pinned \u2014 hence the explicit URL + sha256. AGPL: check before any closed distribution."
     },
     {
       "name": "sam21_hiera_tiny",
@@ -157,14 +157,14 @@
         "refine-region preview/confirm/suggest"
       ],
       "mirror_needed": true,
-      "notes": "Benchmarked on the GTX 1650: peak ~597 MiB, warm prompts 11–166 ms."
+      "notes": "Benchmarked on the GTX 1650: peak ~597 MiB, warm prompts 11\u2013166 ms."
     },
     {
       "name": "intrinsic_ordinal_shading",
       "kind": "pip-git",
       "id": "git+https://github.com/compphoto/Intrinsic",
       "revision": "unpinned (tracks default branch)",
-      "license": "see compphoto/Intrinsic — research use; verify before commercial use",
+      "license": "see compphoto/Intrinsic \u2014 research use; verify before commercial use",
       "capability": "SHADING",
       "used_by": [
         "light_field / shadow_field producers"
@@ -182,7 +182,7 @@
           "dest": "$TORCH_HOME/hub/checkpoints/final_weights.pt",
           "size_human": "485 MB",
           "mirror_needed": true,
-          "notes": "A GitHub RELEASE ASSET, not a package artifact — upstream can retag or delete it. The single most fragile weight we depend on."
+          "notes": "A GitHub RELEASE ASSET, not a package artifact \u2014 upstream can retag or delete it. The single most fragile weight we depend on."
         },
         {
           "name": "ig_resnext101_32x8-c38310e5.pth",
@@ -196,7 +196,7 @@
       "torch_hub_repos": [
         {
           "repo": "rwightman/gen-efficientnet-pytorch",
-          "ref": "master (UNPINNED — a branch tip, so a fresh box gets whatever it says that day)",
+          "ref": "master (UNPINNED \u2014 a branch tip, so a fresh box gets whatever it says that day)",
           "trust_required": true,
           "notes": "altered_midas calls torch.hub.load WITHOUT trust_repo, so first load blocks on an interactive y/N prompt. The fetcher pre-seeds torch's trusted_list. This is EXECUTED CODE, not weights."
         },
@@ -206,7 +206,7 @@
           "trust_required": false
         }
       ],
-      "notes": "GRAYSCALE ONLY: `paper_weights` is the V1 ordinal-shading release and load_models forces stage=1, so the entry point is run_gray_pipeline and the shading key is `gry_shd`. Heaviest producer in the roster — peak ~984 MiB."
+      "notes": "GRAYSCALE ONLY: `paper_weights` is the V1 ordinal-shading release and load_models forces stage=1, so the entry point is run_gray_pipeline and the shading key is `gry_shd`. Heaviest producer in the roster \u2014 peak ~984 MiB."
     },
     {
       "name": "florence2_base",
@@ -220,10 +220,10 @@
       "license": "MIT",
       "capability": "GROUNDING",
       "used_by": [
-        "open-vocab find_parts (phrase → region)"
+        "open-vocab find_parts (phrase \u2192 region)"
       ],
       "mirror_needed": false,
-      "notes": "The Director's local eyes: one model covering caption / detect / grounding / referring-expression segmentation. STATUS: weights provisioned, adapter DEFERRED — this checkpoint does not load under transformers 5.13. Natively it fails 'RobertaTokenizer has no attribute image_token' (the native Florence2Processor targets a converted checkpoint format this repo predates); with trust_remote_code=True it fails \"'Florence2LanguageConfig' object has no attribute 'forced_bos_token_id'\" (the repo's remote code was written for transformers 4.x). No native conversion exists on the hub. Activation therefore needs a decision, not a flag — see the P8-A report. `ignore_patterns` excludes pytorch_model.bin for the fashion-clip reason: the repo ships both formats and demanding the redundant one makes the snapshot permanently 'incomplete'.",
+      "notes": "The Director's local eyes: one model covering caption / detect / grounding / referring-expression segmentation. STATUS: weights provisioned, adapter DEFERRED \u2014 this checkpoint does not load under transformers 5.13. Natively it fails 'RobertaTokenizer has no attribute image_token' (the native Florence2Processor targets a converted checkpoint format this repo predates); with trust_remote_code=True it fails \"'Florence2LanguageConfig' object has no attribute 'forced_bos_token_id'\" (the repo's remote code was written for transformers 4.x). No native conversion exists on the hub. Activation therefore needs a decision, not a flag \u2014 see the P8-A report. `ignore_patterns` excludes pytorch_model.bin for the fashion-clip reason: the repo ships both formats and demanding the redundant one makes the snapshot permanently 'incomplete'.",
       "required_files": [
         "config.json",
         "model.safetensors"
@@ -246,10 +246,10 @@
       "license": "Apache-2.0",
       "capability": "GROUNDING",
       "used_by": [
-        "open-vocab find_parts (phrase → box → SAM2 mask)"
+        "open-vocab find_parts (phrase \u2192 box \u2192 SAM2 mask)"
       ],
       "mirror_needed": false,
-      "notes": "Grounded-SAM's detector half: a phrase grounds to a BOX, which the already-live SAM2 refines into a mask. Chosen over Florence-2 because it loads NATIVELY on transformers 5.13 (GroundingDinoForObjectDetection, no remote code at all) — Florence-2 does not, either natively or via trust_remote_code. Apache-2.0, so unlike YOLO's AGPL it carries no distribution constraint."
+      "notes": "Grounded-SAM's detector half: a phrase grounds to a BOX, which the already-live SAM2 refines into a mask. Chosen over Florence-2 because it loads NATIVELY on transformers 5.13 (GroundingDinoForObjectDetection, no remote code at all) \u2014 Florence-2 does not, either natively or via trust_remote_code. Apache-2.0, so unlike YOLO's AGPL it carries no distribution constraint."
     },
     {
       "name": "clip_vit_b32",
@@ -266,14 +266,30 @@
         "pytorch_model.bin",
         "preprocessor_config.json"
       ],
-      "size_human": "577 MB (of ~1.7 GB in the repo — flax + TF duplicates we never load)",
+      "size_human": "577 MB (of ~1.7 GB in the repo \u2014 flax + TF duplicates we never load)",
       "license": "MIT",
       "capability": "EMBED",
       "used_by": [
         "P8-C presence gate: does the detector's crop actually match the phrase?"
       ],
       "mirror_needed": false,
-      "notes": "A GENERAL CLIP, deliberately distinct from fashion_clip: the presence gate judges arbitrary curator phrases on arbitrary images, and a fashion-tuned encoder would score a Pietà against 'the drapery' on the wrong manifold. Exists because GroundingDINO has no presence head (P8-B measured absent phrases outscoring present ones), so a second, independent opinion is what lets the detector threshold drop without letting fabrications through. WEIGHTS NOTE, inverted from every other entry here: this repo ships NO safetensors — pytorch_model.bin is the only usable weights file, and the flax/TF duplicates are 577 MB each. So `required_files` names the .bin and `ignore_patterns` drops flax/tf, the reverse of the fashion-clip case. Copying the usual pattern would have excluded the only weights and required a file that does not exist — caught by the required_files verification added in P8-A."
+      "notes": "A GENERAL CLIP, deliberately distinct from fashion_clip: the presence gate judges arbitrary curator phrases on arbitrary images, and a fashion-tuned encoder would score a Piet\u00e0 against 'the drapery' on the wrong manifold. Exists because GroundingDINO has no presence head (P8-B measured absent phrases outscoring present ones), so a second, independent opinion is what lets the detector threshold drop without letting fabrications through. WEIGHTS NOTE, inverted from every other entry here: this repo ships NO safetensors \u2014 pytorch_model.bin is the only usable weights file, and the flax/TF duplicates are 577 MB each. So `required_files` names the .bin and `ignore_patterns` drops flax/tf, the reverse of the fashion-clip case. Copying the usual pattern would have excluded the only weights and required a file that does not exist \u2014 caught by the required_files verification added in P8-A."
+    },
+    {
+      "name": "geocalib_pinhole",
+      "kind": "torch_hub",
+      "id": "cvg/GeoCalib",
+      "revision": "97b8968e7798a66bf04fcf791fb535624241bda7",
+      "size_human": "116 MB",
+      "license": "Apache-2.0",
+      "capability": "PERSPECTIVE",
+      "used_by": [
+        "external_limit producer"
+      ],
+      "mirror_needed": true,
+      "deferred": true,
+      "notes": "TRACE-002. NOT provisionable by fetch_weights: kind is torch_hub, not hf, so the WEIGHTS-001 mechanism (a pinned HF commit enforced at from_pretrained) cannot reach it. The repo COMMIT is pinned above; the weight artifact (geocalib-pinhole.tar, GitHub release v1.0) is not checksummed. Activate with pip install git+https://github.com/cvg/GeoCalib@<revision> and SEMANT_ENABLE_GEOCALIB=1. PerspectiveFields was rejected: Adobe Research License (non-commercial), and it pins torch 1.10.0 against this project's 2.13.",
+      "required_files": []
     }
   ]
 }

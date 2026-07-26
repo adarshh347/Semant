@@ -109,3 +109,26 @@ export function flowFieldStats(geometry) {
 }
 
 const round4 = (v) => Math.round(v * 1e4) / 1e4;
+
+/**
+ * Which trace roles are AXIAL — an orientation with no direction, to be drawn without an
+ * arrowhead (`<FlowFieldLayer axial />`).
+ *
+ * This lives in code rather than in a reviewer's memory because the distinction is invisible at
+ * the data level: every flow_field cell is a unit vector, and nothing about `[0.7, 0.7, 1]` says
+ * whether the 0.7s mean "toward" or merely "along". Get it wrong and the renderer asserts a
+ * direction the producer never claimed — silently, and convincingly, because a lattice of
+ * confident little arrows looks like a result.
+ *
+ *   architectural_axis — a wall edge is the same edge read up or down.        AXIAL
+ *   external_limit     — a horizon is a line; it has no near end.             AXIAL
+ *   fall_of_light      — light travels one way. The arrowhead is the point.   DIRECTIONAL
+ *
+ * Both axial producers canonicalise their cells into the dx >= 0 half-plane, so their sign is a
+ * convention rather than a measurement — which is exactly why it must not be drawn.
+ */
+export const AXIAL_TRACE_ROLES = ['architectural_axis', 'external_limit'];
+
+export function isAxialRole(role) {
+    return AXIAL_TRACE_ROLES.includes(role);
+}

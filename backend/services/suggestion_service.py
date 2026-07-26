@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from backend.services.mask_geometry import (axial_coherence, cosine_field_from_features,
+                                            horizon_flow_field, up_vector_spread,
                                             depth_band_field, flow_field_coverage,
                                             region_geometry_from_grounding,
                                             field_contrast, flow_field_coherence,
@@ -106,6 +107,9 @@ PRODUCER_SHADING = "shading"
 PRODUCER_FALL_OF_LIGHT = "fall_of_light"
 # TRACE-001 — the first Orient/trace producer. CPU, OpenCV, no model.
 PRODUCER_ARCHITECTURAL_AXIS = "architectural_axis"
+# TRACE-002 — the projective sibling. architectural_axis reads the lines that ARE in the
+# picture; external_limit reads the frame those lines imply. Learned, GPU, deferred.
+PRODUCER_EXTERNAL_LIMIT = "external_limit"
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -931,6 +935,97 @@ def suggestion_from_architectural_axis(
         # Readings ABOUT the field, useful to review and never painted into the geometry.
         "coverage": coverage,
         "segment_count": len(segments),
+    }
+
+
+# ── producer 9.7: external_limit — the projective frame (CIRCUIT-001 TRACE-002) ─────────────────
+#
+# The complement of architectural_axis. That one traces the lines that ARE in the picture; this
+# traces the frame they imply — the horizon, the limit the scene recedes toward. Same geometry
+# kind, same lane, opposite epistemics: one measures what is drawn, the other what is inferred.
+#
+# THE REFUSAL INVERTS, AND THAT IS THE WHOLE DESIGN. For architectural_axis, high axial coherence
+# meant "there is an axis here" and low meant "organic, refuse". Here coherence says nothing of
+# the sort: a flat frontal wall has a CONSTANT up-vector, so its horizon field is perfectly
+# coherent — measured 1.0 on a synthetic frontal field — while having no projective structure at
+# all. Gating on coherence would accept most confidently the exact images with no limit to trace.
+#
+# What distinguishes a perspective view is that the up-vector VARIES as the scene converges.
+# So: SPREAD decides whether there is a mark, coherence only scores it.
+#
+#   synthetic frontal field      spread 0.0000   axial coherence 1.0000
+#   synthetic converging field   spread 0.0211   axial coherence 0.9171
+#
+# UNCALIBRATED — SAY SO LOUDLY. Those two numbers are synthetic, because no real up-vector field
+# can be produced until GeoCalib installs (see perspective_service.activation_cost). The
+# threshold below is a PLACEHOLDER chosen to sit above an exactly-frontal field and below the
+# synthetic convergence, and it has none of the standing of architectural_axis's 0.25, which was
+# measured on 18 real images. Activation MUST re-measure it on real frontal vs receding
+# photographs before the refusal is trusted. Shipping it unmeasured and unlabelled would be the
+# quiet kind of dishonesty this lane exists to avoid.
+MIN_PROJECTIVE_SPREAD = 0.005
+
+
+def suggestion_from_external_limit(
+    reading: Optional[Dict[str, Any]], *, run_id: Optional[str],
+    region_id: Optional[str] = None, label: Optional[str] = None,
+    model: Optional[str] = None, adapter: str = "geocalib",
+    revision: Optional[str] = None, preprocessing_version: Optional[str] = None,
+    latency_ms: Optional[float] = None, peak_vram_mib: Optional[float] = None,
+    out_grid: int = 14, min_spread: float = MIN_PROJECTIVE_SPREAD,
+) -> Optional[Dict[str, Any]]:
+    """An up-vector reading → an ``external_limit`` trace mark carrying a dense flow_field.
+
+    FULL model receipt — unlike architectural_axis, this one inferred, so ``model``,
+    ``revision`` and ``preprocessing_version`` all ride the provenance. Contract §6 still holds:
+    ``confidence`` is on the descriptor and never in the receipt.
+
+    The confidence is `axial_coherence`, because a horizon is a line and has no direction — the
+    same reason the renderer draws this arrowhead-off. The REFUSAL is `up_vector_spread`, for the
+    inverted reason set out above.
+
+    Refuses (returns None) a flat or frontal image: one with a constant vertical has no projective
+    frame to trace, and a lattice of horizon strokes across a flat wall would assert a recession
+    the picture does not have."""
+    if not isinstance(reading, dict):
+        return None                                      # could not look — not a refusal
+    grid = int(reading.get("grid") or 0)
+    up_x, up_y = reading.get("up_x"), reading.get("up_y")
+    if grid < 2 or not up_x or not up_y:
+        return None
+    if len(up_x) < grid * grid or len(up_y) < grid * grid:
+        return None
+
+    spread = up_vector_spread(up_x, up_y, grid)
+    if spread < min_spread:
+        return None                                      # frontal — no limit to trace
+
+    cells, rows, cols = horizon_flow_field(up_x, up_y, grid, out_grid=out_grid)
+    if not cells:
+        return None
+
+    receipt: Dict[str, Any] = {"run_id": run_id, "producer": PRODUCER_EXTERNAL_LIMIT,
+                               "adapter": adapter}
+    for key, val in (("model", model or reading.get("model")),
+                     ("revision", revision or reading.get("revision")),
+                     ("preprocessing_version",
+                      preprocessing_version or reading.get("preprocessing_version")),
+                     ("latency_ms", latency_ms), ("peak_vram_mib", peak_vram_mib)):
+        if val is not None:
+            receipt[key] = val
+    return {
+        "producer": PRODUCER_EXTERNAL_LIMIT,
+        "type": "trace_mark",
+        "role": "external_limit",
+        "label": label or "the external limit",
+        "source_ref": f"{region_id or 'img'}:external_limit",
+        "geometry": {"kind": "flow_field", "cols": cols, "rows": rows, "cells": cells},
+        "linked_ground_ids": [],
+        "provenance": receipt,
+        "confidence": axial_coherence(cells),
+        # Readings ABOUT the field. `projective_spread` is the number the refusal turned on, kept
+        # visible so a reviewer can see how close to the edge this mark was.
+        "projective_spread": spread,
     }
 
 
