@@ -806,20 +806,30 @@ def test_shading_list_form_emits_both_bands_and_refuses_flat():
     assert ss.suggestions_from_shading(_shading(flat=True), run_id="r") == []
 
 
-def test_intrinsic_adapter_is_registered_but_DEFERRED_and_never_executes():
-    """The guard's whole point: the wiring ships, the weights do not, and an unavailable
-    adapter can never silently produce a field."""
+def test_intrinsic_adapter_spec_is_correct_and_tracks_installation_state():
+    """The adapter's identity is fixed; its AVAILABILITY tracks whether the GitHub-only package
+    is installed. P6-G shipped it deferred; P6-I installs it. Both are valid states, so the test
+    asserts the invariant (spec) always and the state (available/deferred) consistently."""
     from backend.services.vision_orchestrator.adapters import IntrinsicShadingAdapter
     from backend.services.vision_orchestrator.contracts import Capability, ResourceKind
+    from backend.services import intrinsic_service as isvc
     a = IntrinsicShadingAdapter()
     assert a.spec.name == "intrinsic_ordinal_shading"
     assert a.spec.capability is Capability.SHADING
-    assert a.spec.resource is ResourceKind.GPU
-    assert a.is_available() is False and a.spec.deferred is True
+    assert a.spec.resource is ResourceKind.GPU        # heaviest producer — residency matters
+    # available and deferred are always each other's inverse, and follow the real install
+    assert a.is_available() is isvc.is_available()
+    assert a.spec.deferred is (not a.is_available())
 
-    # ModelManager refuses to execute an unavailable adapter — UNAVAILABLE, never a blank field
+
+def test_an_unavailable_intrinsic_adapter_can_never_produce_a_field():
+    """The load-bearing guarantee, asserted regardless of what is installed on this box:
+    ModelManager refuses to execute an unavailable adapter — UNAVAILABLE, never a blank field."""
+    from backend.services.vision_orchestrator.adapters import IntrinsicShadingAdapter
     from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
                                                       Priority, JobStatus)
+    a = IntrinsicShadingAdapter()
+    a.spec.available = False                          # force the deferred state deterministically
     reg = AdapterRegistry(); reg.register(a)
     job = run(ModelManager(reg).run_adapter(a, {"image": None},
                                             priority=int(Priority.BACKGROUND),
@@ -828,17 +838,31 @@ def test_intrinsic_adapter_is_registered_but_DEFERRED_and_never_executes():
     assert job.artifact is None
 
 
-def test_intrinsic_service_is_unavailable_and_estimate_refuses_cleanly():
+def test_intrinsic_service_refuses_cleanly_when_the_package_is_absent(monkeypatch):
+    """With the package absent, `estimate` refuses WITHOUT touching the image — asserted by
+    forcing the absent state, so this holds whether or not the box has Intrinsic installed."""
     from backend.services import intrinsic_service as isvc
-    assert isvc.is_available() is False        # GitHub-only package absent on this box
-    assert isvc.estimate(object()) is None     # refuses without touching the image
-    # the PyPI 0.0.1 stub must NOT satisfy availability — we probe intrinsic.pipeline + chrislib
-    assert "intrinsic.pipeline" in isvc.is_available.__doc__
+    monkeypatch.setattr(isvc, "is_available", lambda: False)
+    assert isvc.estimate(object()) is None
 
 
-def test_produce_field_light_reports_unavailable_while_the_weights_are_deferred(monkeypatch):
-    """The deferred model must surface HONESTLY through the generic endpoint: `unavailable`,
-    available=False, no suggestion — never an error and never a fabricated light field."""
+def test_intrinsic_availability_probes_the_real_module_not_the_name():
+    """A version check could not tell the real package from the PyPI stub — both are 0.0.1 — so
+    availability must be decided by importing `intrinsic.pipeline` + `chrislib`."""
+    from backend.services import intrinsic_service as isvc
+    doc = isvc.is_available.__doc__ or ""
+    assert "intrinsic.pipeline" in doc and "chrislib" in doc
+    assert isvc.SHADING_KEY == "gry_shd"        # P6-I: confirmed against a real run, pinned
+
+
+def test_produce_field_light_reports_unavailable_when_the_package_is_absent(monkeypatch):
+    """An absent model must surface HONESTLY through the generic endpoint: `unavailable`,
+    available=False, no suggestion — never an error and never a fabricated light field.
+
+    The absent state is FORCED rather than assumed, so this keeps testing the refusal path on a
+    box where Intrinsic is installed (P6-I) as well as one where it is not (P6-G)."""
+    from backend.services import intrinsic_service as isvc
+    monkeypatch.setattr(isvc, "is_available", lambda: False)
     post = {"_id": ObjectId(), "region_annotations": [{"id": "reg_w", "box": {"x": 0, "y": 0, "w": 1, "h": 1}}]}
     posts, runs = _Posts(post), FakeCollection()
     monkeypatch.setattr(R, "post_collection", posts)
@@ -890,3 +914,100 @@ def test_produce_field_shading_runs_end_to_end_once_the_package_is_present(monke
     finally:
         RR._shading_mgr = None; RR._shading_adapter = None
     assert posts.writes == []
+
+
+# ── P6-I: the REAL Intrinsic path, when the GitHub-only package is installed ──────────────────
+# Skipped on a box without it (CI stays fake-driven); asserted for real where it exists. This is
+# the test that would have caught P6-G's two wrong guesses: the `intrinsic.model_util` import and
+# `run_pipeline` (which raises KeyError 'col_model' on the grayscale-only paper_weights).
+
+def _intrinsic_absent():
+    from backend.services import intrinsic_service as isvc
+    return not isvc.is_available()
+
+
+@pytest.mark.skipif(_intrinsic_absent(), reason="Intrinsic (GitHub-only) not installed")
+def test_real_intrinsic_returns_the_pinned_gry_shd_key_and_feeds_light_and_shadow():
+    from PIL import Image
+    from backend.services import intrinsic_service as isvc
+
+    # a synthetic left-lit gradient: cheap, deterministic, and genuinely non-uniform
+    w = h = 256
+    img = Image.new("RGB", (w, h))
+    px = img.load()
+    for y in range(h):
+        for x in range(w):
+            v = int(235 - (x / w) * 200)
+            px[x, y] = (v, v, v)
+
+    sh = isvc.estimate(img)
+    assert sh is not None, "the real pipeline returned nothing"
+    assert sh["grid"] == isvc.GRID
+    vals = sh["shading"]
+    assert len(vals) == isvc.GRID * isvc.GRID
+    assert max(vals) > min(vals), "a gradient must not read as uniform shading"
+
+    # both bands come off ONE reading, with a full model receipt
+    light = ss.suggestion_from_light(sh, run_id="run_real", region_id="reg_r",
+                                     model=isvc.MODEL_TAG, checkpoint=isvc.CHECKPOINT,
+                                     preprocessing_version=isvc.PREPROCESSING_VERSION,
+                                     latency_ms=1.0, peak_vram_mib=1.0)
+    shadow = ss.suggestion_from_shadow(sh, run_id="run_real", region_id="reg_r",
+                                       model=isvc.MODEL_TAG, checkpoint=isvc.CHECKPOINT)
+    assert light is not None and shadow is not None
+    assert light["role"] == "light_field" and shadow["role"] == "shadow_field"
+    assert light["geometry"]["strokes"] and shadow["geometry"]["strokes"]
+    assert light["provenance"]["model"] == isvc.MODEL_TAG
+    assert light["provenance"]["checkpoint"] == isvc.CHECKPOINT
+    assert "confidence" not in light["provenance"]        # contract §6, even on a real run
+    isvc.unload()
+
+
+@pytest.mark.skipif(_intrinsic_absent(), reason="Intrinsic (GitHub-only) not installed")
+def test_real_intrinsic_evenly_lit_surface_still_refuses():
+    """The refusal must survive contact with the REAL model, which is harder than it sounds: a
+    neural decomposition does not return a constant map for a constant image. Measured, a flat
+    gray reads relief 0.062 and a flat white 0.135 — invented structure, well above the 0.05 the
+    P6-G scaffold shipped. The threshold is calibrated to 0.25 against those numbers and a real
+    photograph's 0.824, so this test pins the calibration, not just the code path."""
+    from PIL import Image
+    from backend.services import intrinsic_service as isvc
+    for shade in ((128, 128, 128), (240, 240, 240)):
+        sh = isvc.estimate(Image.new("RGB", (256, 256), shade))
+        assert sh is not None                              # the model ran and returned a map
+        vals = sh["shading"]
+        relief = (max(vals) - min(vals)) / abs(max(vals))
+        assert relief < 0.25, f"flat {shade} read relief {relief:.3f} — recalibrate"
+        assert ss.suggestion_from_light(sh, run_id="r", region_id="x") is None
+        assert ss.suggestion_from_shadow(sh, run_id="r", region_id="x") is None
+    isvc.unload()
+
+
+@pytest.mark.skipif(_intrinsic_absent(), reason="Intrinsic (GitHub-only) not installed")
+def test_real_intrinsic_holds_single_gpu_residency_and_unloads_clean():
+    """The heaviest producer in the roster (~984 MiB peak). Loading it must evict any other
+    resident GPU model, and unloading must release — otherwise it eats the 4 GB card."""
+    import torch
+    from backend.services.vision_orchestrator import AdapterRegistry, ModelManager
+    from backend.services.vision_orchestrator.adapters import (Dinov2FeatureAdapter,
+                                                               IntrinsicShadingAdapter)
+    if not torch.cuda.is_available():
+        pytest.skip("no CUDA on this box")
+
+    reg = AdapterRegistry()
+    dino, shade = Dinov2FeatureAdapter(), IntrinsicShadingAdapter()
+    reg.register(dino); reg.register(shade)
+    mgr = ModelManager(reg)
+
+    run(mgr.ensure_loaded(dino))
+    assert mgr.resident() == ["dinov2_vits14"]
+    run(mgr.ensure_loaded(shade))
+    # single-GPU residency: the heavy one evicted the light one rather than stacking
+    assert "dinov2_vits14" not in mgr.resident()
+    assert "intrinsic_ordinal_shading" in mgr.resident()
+    peak = torch.cuda.max_memory_allocated() / 1048576
+    assert peak < 1400, f"peak VRAM {peak:.0f}MiB — too heavy for the 4GB card"
+
+    run(mgr.unload("intrinsic_ordinal_shading"))
+    assert mgr.resident() == []
+    torch.cuda.empty_cache()

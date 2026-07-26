@@ -1,0 +1,9 @@
+# venv snapshot BEFORE Intrinsic install — 2026-07-26T10:04:36+05:30
+# rollback: ./venv/bin/pip install <pkg>==<version> for anything that moved
+numpy==2.4.4
+opencv-python==5.0.0.93
+opencv-python-headless==5.0.0.93
+pillow==12.2.0
+torch==2.13.0
+torchvision==0.28.0
+transformers==5.13.0

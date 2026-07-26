@@ -42,3 +42,14 @@ sam2==1.1.0
 # Phase 2b+ (gated — not installed): the real Fashionpedia stack (Attribute-Mask-RCNN /
 # Fashionformer) for the 19 fine apparel parts + 294 attributes. Wants a bigger GPU —
 # waits for the M4 or a serverless endpoint, per B1/B2 and VISION-MODEL-MATRIX-001.
+
+# CIRCUIT-001 P6-I — Intrinsic (Careaga/Aksoy Ordinal Shading): light_field / shadow_field.
+# GitHub-only. DO NOT `pip install intrinsic` — PyPI carries an unrelated stub that is ALSO
+# version 0.0.1, so the version string cannot tell them apart (this is why
+# `intrinsic_service.is_available()` probes `intrinsic.pipeline` + `chrislib`, not the name).
+# This ONE url pulls chrislib and altered_midas (a MiDaS fork) transitively, and additionally
+# installs scipy / scikit-image / timm / kornia — none of which downgrade torch, numpy or
+# transformers (verified with `pip install --dry-run` before installing).
+# Checkpoints are NOT on the HF hub: `load_models('paper_weights')` fetches a 485 MB
+# final_weights.pt from the project's GitHub releases into ~/.cache/torch/hub/checkpoints/.
+git+https://github.com/compphoto/Intrinsic
