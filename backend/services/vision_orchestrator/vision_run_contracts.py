@@ -51,6 +51,7 @@ STAGE_ROUTE_DOMAIN    = "dissect.route_domain"
 STAGE_SEGMENT_FASHION = "dissect.segment.fashion"
 STAGE_SEGMENT_ARCH    = "dissect.segment.architecture"
 STAGE_SEGMENT_GENERAL = "dissect.segment.general"
+STAGE_SEGMENT_AUTO    = "dissect.segment.auto"        # Q-A: SAM2-auto part proposer (art domain)
 STAGE_SEGMENT_COARSE  = "dissect.segment.coarse"      # block-level failure marker only
 STAGE_MERGE_ANCHORS   = "dissect.merge_anchors"
 STAGE_FALLBACK_DETECT = "dissect.fallback.detect"
