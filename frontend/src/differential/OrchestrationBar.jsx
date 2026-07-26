@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import useOrchestrate from './useOrchestrate';
 import './OrchestrationBar.css';
@@ -20,7 +20,11 @@ const STATUS_WORD = {
 
 export default function OrchestrationBar({ postId, store }) {
   const [intention, setIntention] = useState('');
-  const { status, error, plan, provenance, orchestrate } = useOrchestrate(postId, store);
+  const { status, error, plan, provenance, orchestrate, cancel } = useOrchestrate(postId, store);
+
+  // FIX-UI-001 follow-up: abort an in-flight orchestrate when this bar unmounts (i.e. on leaving
+  // the workspace), so a seconds-long real-model run never resolves against a torn-down tree.
+  useEffect(() => () => { cancel(); }, [cancel]);
 
   const run = () => { if (intention.trim() && status !== 'loading') orchestrate(intention); };
 
