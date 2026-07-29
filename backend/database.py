@@ -87,6 +87,23 @@ region_embeddings_collection = database.get_collection("region_embeddings")
 taste_signals_collection = database.get_collection("taste_signals")
 taste_consent_collection = database.get_collection("taste_consent")
 
+# --- Manuscript-Oriented Writing Studio (WS-0A · the sacred manuscript) ---
+# The writing studio is a second application on the same orchestration kernel. Its
+# canon lives in three plain collections, deliberately separate from the vision
+# `posts` world:
+#   manuscript_collection:    one doc per work — metadata + the chapter hierarchy
+#                             (ordered chapters, each an ordered list of scene ids).
+#                             Structure is a single atomic source of truth here.
+#   scene_collection:         one doc per scene — the body as `text_blocks` (the same
+#                             {id,type,content,color,origin} shape the editor uses),
+#                             plus title + word_count.
+#   scene_version_collection: immutable snapshots of a scene's blocks. Never edited by
+#                             normal flows; a restore copies a snapshot FORWARD into
+#                             the live scene rather than rewriting history.
+manuscript_collection = database.get_collection("manuscripts")
+scene_collection = database.get_collection("scenes")
+scene_version_collection = database.get_collection("scene_versions")
+
 # --- Vision runtime provenance (CIRCULATION-SPINE-001 · P1) ---
 # vision_run_collection: one poll-friendly document per vision operation attempt, with
 # its stage events embedded (mirrors the agent_runs run+step-ledger pattern). This is a
