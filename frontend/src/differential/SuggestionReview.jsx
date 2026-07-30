@@ -66,6 +66,18 @@ export default function SuggestionReview({
             <div className="diff-review-card">
                 <div className="diff-review-provrow">
                     <span className="diff-chip diff-mark-prov-chip is-model">{d.provenance}</span>
+                    {/* CIRCUIT-003 M5 — the kind of knowing, next to who made it. The two
+                        answer different questions and a reviewer needs both: "a model
+                        proposed this" says nothing about whether it is an extent in the
+                        picture, a number off the signal, or a sentence inferred about it.
+                        The tag is the producer's classification, never editable here —
+                        Accept says "keep this", not "call it something better". */}
+                    {d.epistemic_status && (
+                        <span className={`diff-chip diff-epistemic-chip is-${d.epistemic_status}`}
+                            title={d.epistemic_hint} data-epistemic={d.epistemic_status}>
+                            {d.epistemic_label}
+                        </span>
+                    )}
                     <span className="diff-review-status">{d.status_label}</span>
                 </div>
                 <div className="diff-review-meta">

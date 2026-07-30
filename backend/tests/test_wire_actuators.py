@@ -48,10 +48,15 @@ def faked(monkeypatch):
     async def _fake_material(post_id, post, region, req, run_id):
         seen["material_region"] = region
         seen["calls"].append(req.producer)
-        sug = {"producer": "material_field", "type": "brush_field", "role": "material_field",
-               "geometry": {"kind": "soft_mask", "strokes": [{"points": [[0.5, 0.5]], "radius": 0.05}]},
-               "provenance": {"model": "dinov2", "adapter": "dinov2_vits14", "run_id": run_id},
-               "confidence": 0.42}
+        # M5: stamped like a real producer. The quarantine guard refuses an untagged
+        # descriptor on every path now, and a fake that skipped the tag would be standing in
+        # for a producer that cannot exist.
+        from backend.services import epistemics
+        sug = epistemics.stamp(
+            {"producer": "material_field", "type": "brush_field", "role": "material_field",
+             "geometry": {"kind": "soft_mask", "strokes": [{"points": [[0.5, 0.5]], "radius": 0.05}]},
+             "provenance": {"model": "dinov2", "adapter": "dinov2_vits14", "run_id": run_id},
+             "confidence": 0.42})
         return [sug], "ready", True
     monkeypatch.setitem(posts._FIELD_PRODUCERS, "material_field", _fake_material)
     return seen

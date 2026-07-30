@@ -46,10 +46,14 @@ def _fake_shading(monkeypatch):
 
     def _mk(role):
         async def _handler(post_id, post, region, req, run_id):
-            return [{"producer": role, "type": "brush_field", "role": role,
-                     "geometry": {"kind": "soft_mask", "strokes": [{"points": [[0.5, 0.5]], "radius": 0.05}]},
-                     "provenance": {"model": "intrinsic_ordinal_shading", "adapter": "intrinsic", "run_id": run_id},
-                     "confidence": 0.65}], "ready", True
+            # M5: stamped like a real producer — the quarantine guard refuses untagged claims.
+            from backend.services import epistemics
+            return [epistemics.stamp(
+                {"producer": role, "type": "brush_field", "role": role,
+                 "geometry": {"kind": "soft_mask", "strokes": [{"points": [[0.5, 0.5]], "radius": 0.05}]},
+                 "provenance": {"model": "intrinsic_ordinal_shading", "adapter": "intrinsic",
+                                "run_id": run_id},
+                 "confidence": 0.65})], "ready", True
         return _handler
     monkeypatch.setitem(R._FIELD_PRODUCERS, "light_field", _mk("light_field"))
     monkeypatch.setitem(R._FIELD_PRODUCERS, "shadow_field", _mk("shadow_field"))

@@ -98,12 +98,54 @@ def _coerce(status: Any) -> Optional[EpistemicStatus]:
         return None
 
 
+def permitted_statuses(producer: Optional[str]) -> frozenset:
+    """The statuses a given producer's output is allowed to carry.
+
+    THE WHOLE RULE, in one place: a producer may claim what its table entry says, or it may
+    claim `uncertain`. Nothing else.
+
+    That asymmetry is the generalized wall. `uncertain` is the only move available because it
+    is the only one that makes a claim WEAKER — a producer is always entitled to say it is not
+    sure, and never entitled to promote its own output. Without the asymmetry the guard would
+    be a spell-checker: it would catch `visble` and wave through a semantic reading arriving
+    tagged `measured`, which is the crossing that actually matters.
+
+    A WALLED default (`sourced`) admits no alternative at all, not even `uncertain`. A
+    quotation whose relevance is thin is still a quotation; its weakness belongs in
+    `confidence`, and moving it to `uncertain` would put it in the image-status family it can
+    never belong to.
+    """
+    default = default_status_for(producer)
+    if default in WALLED_STATUSES:
+        return frozenset({default})
+    return frozenset({default, EpistemicStatus.UNCERTAIN})
+
+
+def declare(producer: Optional[str], status: Any) -> EpistemicStatus:
+    """A producer declaring the kind of its own output. Refuses an unpermitted claim.
+
+    This is the write-side twin of `guard`'s read-side check, and they consult the same
+    `permitted_statuses` so they cannot drift into disagreeing about what is legal.
+    """
+    target = _coerce(status)
+    if target is None:
+        raise EpistemicViolation(f"'{status}' is not an epistemic status")
+    allowed = permitted_statuses(producer)
+    if target not in allowed:
+        raise EpistemicViolation(
+            f"producer '{producer}' may not claim '{target.value}' — it is classified "
+            f"'{default_status_for(producer).value}' and may only weaken that to "
+            f"'{EpistemicStatus.UNCERTAIN.value}'")
+    return target
+
+
 def retag(descriptor: Dict[str, Any], status: EpistemicStatus) -> Dict[str, Any]:
     """Change an item's epistemic status. The ONLY supported way to do so.
 
-    Refuses to move a walled status (`sourced`) to anything else. Returns a NEW descriptor —
-    the original is left alone, so a caller holding the pre-edit item still holds the truth
-    about what the producer actually claimed.
+    Enforces the same rule `guard` reads: a claim may be weakened to `uncertain` or restated as
+    its producer's classification, and a walled (`sourced`) claim may not be moved at all.
+    Returns a NEW descriptor — the original is left alone, so a caller holding the pre-edit item
+    still holds the truth about what the producer actually claimed.
     """
     target = _coerce(status)
     if target is None:
@@ -113,33 +155,58 @@ def retag(descriptor: Dict[str, Any], status: EpistemicStatus) -> Dict[str, Any]
         raise EpistemicViolation(
             f"cannot retag a '{current.value}' claim as '{target.value}': a claim from outside "
             f"the image can never become one the image shows")
+    if target not in permitted_statuses(descriptor.get("producer")):
+        raise EpistemicViolation(
+            f"cannot retag a '{descriptor.get('producer')}' claim as '{target.value}': "
+            f"a producer's output may only be weakened to "
+            f"'{EpistemicStatus.UNCERTAIN.value}', never promoted")
     return {**descriptor, STATUS_KEY: target.value}
 
 
 def guard(descriptors: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Verify a batch of descriptors before it enters the quarantine. Returns them unchanged.
 
-    Catches the bypass `retag` cannot: a plain dict whose status key was edited in place. Three
-    ways a descriptor fails, all of them the same underlying error — a claim presenting itself
-    as better-founded than it is:
+    M5 widens this from research output to EVERYTHING. In M6 it ran on one producer's
+    descriptors, where it was redundant by construction — the only thing that built them always
+    wrote `sourced`. Called on every producer it stops being redundant: it becomes the single
+    place where a claim's stated kind is checked against the kind its producer is classified as,
+    on every path into the quarantine.
 
-      1. a `sourced_statement` carrying any status other than `sourced`
-      2. a `sourced_statement` with no citation (see `external_source_service`: no source, no
-         claim — the research twin of "no ground → no mark")
-      3. any descriptor carrying an unrecognised status string
+    Five ways a descriptor fails, all of them the same underlying error — a claim presenting
+    itself as better-founded than it is:
+
+      1. no status at all. An untagged descriptor reaching review is indistinguishable from a
+         `visible` one to anyone reading the surface, so silence is not permitted.
+      2. an unrecognised status string.
+      3. a status its producer may not claim — the improper crossing (see `permitted_statuses`).
+         This is the generalized wall: not just sourced→visible, but interpretive→measured,
+         uncertain→visible, and every other promotion.
+      4. a `sourced_statement` carrying any status other than `sourced`.
+      5. a `sourced_statement` with no citation (`external_source_service`: no source, no
+         claim — the research twin of "no ground → no mark").
 
     Raising rather than filtering is deliberate. A silently dropped laundered claim is a bug
     nobody investigates; a raised one is a bug someone fixes.
     """
     out: List[Dict[str, Any]] = []
     for d in descriptors:
-        status = _coerce(d.get(STATUS_KEY))
-        if d.get(STATUS_KEY) is not None and status is None:
-            raise EpistemicViolation(f"unknown epistemic status {d.get(STATUS_KEY)!r}")
+        raw = d.get(STATUS_KEY)
+        if raw is None:
+            raise EpistemicViolation(
+                f"descriptor from producer '{d.get('producer')}' carries no epistemic status — "
+                f"an untagged claim reads as a confident one")
+        status = _coerce(raw)
+        if status is None:
+            raise EpistemicViolation(f"unknown epistemic status {raw!r}")
+        if status not in permitted_statuses(d.get("producer")):
+            raise EpistemicViolation(
+                f"producer '{d.get('producer')}' published a '{status.value}' claim — it is "
+                f"classified '{default_status_for(d.get('producer')).value}' and may only "
+                f"weaken that to '{EpistemicStatus.UNCERTAIN.value}'")
         if d.get("type") == SOURCED_STATEMENT_TYPE:
             if status is not EpistemicStatus.SOURCED:
                 raise EpistemicViolation(
-                    f"a sourced statement is tagged '{d.get(STATUS_KEY)}' — it may only be "
+                    f"a sourced statement is tagged '{raw}' — it may only be "
                     f"'{EpistemicStatus.SOURCED.value}'")
             if not (d.get("citation") or {}).get("url"):
                 raise EpistemicViolation("a sourced statement with no citation is not sourced")
@@ -169,7 +236,18 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
     "shading": EpistemicStatus.MEASURED,
     "fall_of_light": EpistemicStatus.MEASURED,
     "architectural_axis": EpistemicStatus.MEASURED,
-    "external_limit": EpistemicStatus.MEASURED,
+    # M5 — NOT measured, and this is the entry that keeps `uncertain` from being decorative.
+    #
+    # `external_limit`'s refusal turns on `MIN_PROJECTIVE_SPREAD`, which the producer itself
+    # labels UNCALIBRATED: a placeholder picked to sit between a synthetic frontal field and a
+    # synthetic converging one, with none of the standing of `architectural_axis`'s 0.25 (that
+    # one was measured on 18 real images). A gate whose threshold is admittedly synthetic can
+    # let through a limit that is not there, so what comes out the other side is not a
+    # measurement — it is a reading that has not been checked. Calling it `measured` would let
+    # the calibration debt disappear behind a confident-sounding word. When activation
+    # re-measures the threshold on real frontal vs receding photographs, this moves to MEASURED
+    # and the change is one line.
+    "external_limit": EpistemicStatus.UNCERTAIN,
     # -- readings: a claim ABOUT the picture, resting on it ---------------------
     # `semantic_read` mints both label proposals and relations, and both are the VLM's reading
     # rather than the image's testimony — a naming is an interpretation even when the extent
@@ -202,9 +280,70 @@ def stamp(descriptor: Dict[str, Any], *,
     Unlike `retag` this is a first write, so there is nothing to launder: it refuses to
     overwrite an existing status at all, walled or not. A producer that has already declared
     its epistemic kind is not second-guessed by the plumbing.
+
+    An EXPLICIT status still goes through `declare`, so "the producer said so" is not a way
+    around the classification — a producer may weaken its own claim, never promote it.
     """
     if descriptor.get(STATUS_KEY) is not None:
         return descriptor
-    chosen = status or default_status_for(descriptor.get("producer"))
+    producer = descriptor.get("producer")
+    chosen = declare(producer, status) if status is not None else default_status_for(producer)
     descriptor[STATUS_KEY] = EpistemicStatus(chosen).value
     return descriptor
+
+
+# ── degradation: when a producer's own numbers say "only just" ────────────────
+
+#: How far above its refusal threshold a reading must sit before it counts as measured rather
+#: than marginal.
+#:
+#: UNCALIBRATED — say so, in the voice the producers themselves use for such numbers. Two is a
+#: conservative round choice, not a measured one: it says "clear the bar by the height of the
+#: bar again". It is deliberately on the cautious side, because the failure it prevents (a
+#: barely-there field presented as a measurement) is worse than the one it causes (a real field
+#: labelled uncertain, which a reviewer can still accept). Re-measuring the producers' own
+#: thresholds is what would let this be set rather than picked.
+MARGINAL_FACTOR = 2.0
+
+
+def is_marginal(value: Optional[float], threshold: Optional[float], *,
+                factor: float = MARGINAL_FACTOR) -> bool:
+    """Did this reading only just clear its own refusal gate?
+
+    The producers already refuse below `threshold` — that half is settled, and this does not
+    touch it. This is about the band just ABOVE the line, where a producer currently returns a
+    field with the same confident shape as one from an unmistakable surface. A rhythm at relief
+    0.051 against a 0.05 gate and a rhythm at 0.4 are not the same kind of claim, and until now
+    nothing downstream could tell them apart.
+
+    Returns False when either number is missing: an unknown confidence is not evidence of
+    marginality, and inventing one to be safe would put `uncertain` on producers that never
+    reported a number at all (the deterministic geometry operators), which is the decorative
+    use of the word this whole entry exists to avoid.
+    """
+    if value is None or threshold is None:
+        return False
+    try:
+        return float(value) < float(threshold) * float(factor)
+    except (TypeError, ValueError):
+        return False
+
+
+def status_for(producer: Optional[str], *, confidence: Optional[float] = None,
+               threshold: Optional[float] = None, degraded: bool = False) -> EpistemicStatus:
+    """The rigorous classification for one produced item: the table, weakened by the run.
+
+    Two ways a producer lands on `uncertain`:
+      STRUCTURAL — its table entry says so, because something about the producer is unresolved
+                   for every run it will ever do (`external_limit`'s uncalibrated gate).
+      PER-RUN    — this particular reading only just cleared its own threshold, or the caller
+                   knows the run took a degraded path (a fallback, a partial input).
+
+    A walled (`sourced`) producer is unaffected by either: see `permitted_statuses`.
+    """
+    default = default_status_for(producer)
+    if default in WALLED_STATUSES:
+        return default
+    if degraded or is_marginal(confidence, threshold):
+        return EpistemicStatus.UNCERTAIN
+    return default
