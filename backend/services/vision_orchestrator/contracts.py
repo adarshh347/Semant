@@ -30,6 +30,17 @@ class Capability(str, Enum):
     DEPTH = "depth"                     # relative depth (Depth-Anything)
     SHADING = "shading"                 # intrinsic decomposition — light/shadow (Intrinsic)
     GROUNDING = "grounding"             # phrase → region, detect, caption (Florence-2: open-vocab)
+    # CIRCUIT-003 M6 — the one capability in this enum that does not read the image.
+    #
+    # Every row above answers a question ABOUT PIXELS, which is why they can share a scheduler,
+    # a residency policy, and a cache keyed on the image. This one answers a question about the
+    # SUBJECT, from documents. It holds no weights, has no adapter in the roster, and never
+    # occupies the GPU slot — it is a call to a library, not to a model.
+    #
+    # It is declared here anyway so a capability question cannot be answered by a table that has
+    # never heard of research. Everything it yields is tagged `sourced` (services/epistemics.py)
+    # and can never be laundered into visible or measured evidence.
+    EXTERNAL_SOURCE = "external_source"
 
 
 class ResourceKind(str, Enum):

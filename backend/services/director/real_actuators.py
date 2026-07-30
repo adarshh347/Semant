@@ -65,6 +65,10 @@ def _capability_available(capability: Optional[str]) -> bool:
         "intrinsic": lambda: _svc("intrinsic_service").is_available(),
         "grounding_detector": lambda: _svc("grounding_detector_service").is_available(),
         "semantic_provider": lambda: _semantic_available(),
+        # M6 — the library, not a model. Available means "a provider is configured and its
+        # client library imports", never a live reachability probe: a network round trip in
+        # front of every plan would make availability the slowest question the planner asks.
+        "external_source": lambda: _svc("external_source_service").default_provider().is_available(),
     }
     probe = probes.get(capability)
     if probe is None:
@@ -290,7 +294,13 @@ def _quarantined_marks(ctx: "ExecutionContext") -> List[Dict[str, Any]]:
     """Suggestions produced SO FAR in this plan that are real marks (not readings).
 
     This is the real-data bridge for evidence, exactly as `ctx.regions` is for geometry: working
-    memory carries counts, and a step that must actually cite two marks needs the marks."""
+    memory carries counts, and a step that must actually cite two marks needs the marks.
+
+    M6 makes this allowlist load-bearing rather than merely tidy. It names the four MARK types,
+    so a `sourced_statement` sitting in the same quarantine is invisible to `connect_marks` and
+    `compose_percept`: a plan cannot relate a citation to a mask, and a percept cannot come to
+    rest on a quotation. An allowlist and not a denylist, so a type added later is excluded
+    until someone decides otherwise — the safe direction to fail."""
     return [s for s in ctx.suggestions
             if isinstance(s, dict) and s.get("type") in ("region_mask", "brush_field",
                                                          "trace_mark", "relation_mark")]
@@ -450,6 +460,8 @@ async def _run_connect_marks(step: Step, memory: WorkingMemory, ctx: "ExecutionC
         "provenance": {"run_id": ctx.run_id, "producer": "connect_marks",
                        "adapter": "connect_marks", **({"model": model_name} if model_name else {})},
     }
+    from backend.services import epistemics
+    epistemics.stamp(sug)                      # interpretive: a named relation is a reading
     ctx.suggestions.append(sug)
     return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
                           adapter="connect_marks", detail=f"related as '{role}'")
@@ -504,9 +516,65 @@ async def _run_compose_percept(step: Step, memory: WorkingMemory, ctx: "Executio
                        "adapter": "compose_percept",
                        **({"model": model_name} if model_name else {})},
     }
+    from backend.services import epistemics
+    epistemics.stamp(sug)                      # interpretive: a draft percept is a reading
     ctx.suggestions.append(sug)
     return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
                           adapter="compose_percept", detail=f"drafted from {len(marks)} mark(s)")
+
+
+async def _run_historical_source(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
+                                 actuator: Actuator) -> ActuatorResult:
+    """CIRCUIT-003 M6 — retrieve what is DOCUMENTED about a topic, and quarantine it as sourced.
+
+    The one runner in this module that never touches `ctx.post` or the image bytes. It cannot:
+    the whole point of the actuator is that its answer comes from somewhere the picture is not,
+    and a runner holding the image would eventually be tempted to check its claims against it —
+    which is precisely the laundering the `sourced` status exists to prevent.
+
+    Three outcomes, mapped to the executor's existing vocabulary rather than a new one:
+      UNAVAILABLE — no provider, or the lookup failed. Retry is sensible.
+      EMPTY       — searched, found nothing citable. An honest answer; retry is not sensible.
+      OK          — statements, each carrying a citation that was checked before it got here.
+
+    `epistemics.guard()` runs on the descriptors before they enter the quarantine. It is
+    redundant here by construction — `to_descriptor()` is the only thing that built them and it
+    always writes `sourced` — and it is called anyway, because the day someone adds a second
+    path into this list is the day redundant becomes load-bearing.
+    """
+    from backend.services import epistemics
+    ess = _svc("external_source_service")
+
+    topic = str((step.params or {}).get("phrase")
+                or (step.params or {}).get("topic")
+                or memory.phrase or "").strip()
+    if not topic:
+        # `resolve()` already refused a topic-less step at plan time; this is the execution-time
+        # twin, for the same reason `connect_marks` re-counts its marks — the plan proved a topic
+        # WOULD exist, this proves one DOES.
+        return ActuatorResult(status=EMPTY, produced=(), adapter="historical_source",
+                              detail="no topic to research")
+
+    result = await asyncio.to_thread(ess.retrieve, topic)
+    if result.status == ess.RETRIEVAL_UNAVAILABLE:
+        return ActuatorResult(status=UNAVAILABLE, produced=(), adapter=result.provider,
+                              detail=result.detail)
+    if not result.ok:
+        return ActuatorResult(status=EMPTY, produced=(), adapter=result.provider,
+                              detail=result.detail)
+
+    descriptors = epistemics.guard([s.to_descriptor(run_id=ctx.run_id, provider=result.provider)
+                                    for s in result.statements])
+    ctx.suggestions.extend(descriptors)
+    # `confidence` here is retrieval relevance, not a claim about whether the source is right.
+    # The weakest-link summary treats it like any other, which is correct: a chain resting on a
+    # barely-relevant quotation IS the weaker for it.
+    weakest = min((s.confidence for s in result.statements), default=None)
+    return ActuatorResult(
+        status=OK, produced=tuple(actuator.produces) * len(result.statements),
+        confidence=weakest, model=None, adapter=result.provider,
+        detail=f"{len(result.statements)} sourced statement(s) from {result.documents_seen} source(s)",
+        payload={"topic": topic, "documents_seen": result.documents_seen})
 
 
 # actuator name → the async handler that runs it. Field producers share one handler; find_parts
@@ -524,6 +592,8 @@ _DISPATCH: Dict[str, Callable] = {
     "find_similar": _run_find_similar,
     "connect_marks": _run_connect_marks,
     "compose_percept": _run_compose_percept,
+    # CIRCUIT-003 M6 — the library.
+    "historical_source": _run_historical_source,
 }
 for _n in _FIELD_PRODUCER_NAMES:
     _DISPATCH[_n] = _run_field_producer

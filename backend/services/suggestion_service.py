@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from backend.services import epistemics
 from backend.services.mask_geometry import (axial_coherence, cosine_field_from_features,
                                             horizon_flow_field, up_vector_spread,
                                             depth_band_field, flow_field_coverage,
@@ -143,6 +144,20 @@ def _provenance(*, model: Optional[str], adapter: Optional[str], latency_ms: Opt
             "run_id": run_id, "producer": producer}
 
 
+def _epistemic(producer: str) -> Dict[str, Any]:
+    """CIRCUIT-003 M6 — the epistemic-status fragment every descriptor below opens with.
+
+    Spread into the literal (`**_epistemic(PRODUCER_X)`) rather than written out, so the
+    mapping from producer to kind-of-knowing lives in ONE table (`epistemics._DEFAULTS`) and a
+    producer cannot drift from what it claims to know. `provenance` says which model ran;
+    this says what kind of claim came out, which is the question M5's layer is built on.
+
+    Every producer in this module reads the IMAGE, so none of them can land on `sourced` — that
+    status has exactly one producer and it lives in `external_source_service`.
+    """
+    return {epistemics.STATUS_KEY: epistemics.default_status_for(producer).value}
+
+
 def suggestion_from_refine_region(
     region: Dict[str, Any], *, run_id: Optional[str], latency_ms: Optional[float] = None,
     model: str = "sam2.1", adapter: str = "sam2", base_id: Optional[str] = None,
@@ -155,6 +170,7 @@ def suggestion_from_refine_region(
     if not region_id:
         return None
     return {
+        **_epistemic(PRODUCER_SAM),
         "producer": PRODUCER_SAM,
         "type": "region_mask",
         "role": None,                                   # a segmented extent has no reading yet
@@ -195,6 +211,7 @@ def suggestions_from_semantics(
             continue
         label = a.get("curator_label") or a.get("label") or ""
         out.append({
+            **_epistemic(PRODUCER_SEMANTIC),
             "producer": PRODUCER_SEMANTIC,
             "type": "region_mask",
             "role": None,
@@ -213,6 +230,7 @@ def suggestions_from_semantics(
             continue
         rel = r.get("relation") or ""
         out.append({
+            **_epistemic(PRODUCER_SEMANTIC),
             "producer": PRODUCER_SEMANTIC,
             "type": "relation_mark",
             "role": relation_role_for(rel),
@@ -258,6 +276,7 @@ def suggestions_from_similar(
         if grev is not None:
             region_ref["geometry_rev"] = grev           # rev-at-citation → staleness detectable
         out.append({
+            **_epistemic(PRODUCER_FIND_SIMILAR),
             "producer": PRODUCER_FIND_SIMILAR,
             "type": "region_mask",
             "role": None,                               # a neighbour is evidence, not a reading
@@ -307,6 +326,7 @@ def suggestion_from_negative_space(
     else:
         text = "negative space"
     return {
+        **_epistemic(PRODUCER_NEGATIVE_SPACE),
         "producer": PRODUCER_NEGATIVE_SPACE,
         "type": "brush_field",
         "role": "negative_space",
@@ -400,6 +420,7 @@ def suggestion_from_material(
         if val is not None:
             receipt[key] = val
     return {
+        **_epistemic(PRODUCER_MATERIAL),
         "producer": PRODUCER_MATERIAL,
         "type": "brush_field",
         "role": "material_field",
@@ -463,6 +484,7 @@ def _field_descriptor(*, producer: str, role: str, label: str, source_ref: str,
     if latency_ms is not None:
         receipt["latency_ms"] = latency_ms
     d: Dict[str, Any] = {
+        **_epistemic(producer),
         "producer": producer,
         "type": "brush_field",
         "role": role,
@@ -647,6 +669,7 @@ def suggestion_from_recession(
     default_label = ("recession — what falls away behind" if band == "far"
                      else "atmosphere — the condition the foreground sits in")
     return {
+        **_epistemic(PRODUCER_RECESSION),
         "producer": PRODUCER_RECESSION,
         "type": "brush_field",
         "role": role,
@@ -733,6 +756,7 @@ def _suggestion_from_shading(
     default_label = ("light — where the light lives" if band == "light"
                      else "shadow — where it is withheld")
     d: Dict[str, Any] = {
+        **_epistemic(PRODUCER_SHADING),
         "producer": PRODUCER_SHADING,
         "type": "brush_field",
         "role": role,
@@ -823,6 +847,7 @@ def suggestion_from_fall_of_light(
         if val is not None:
             receipt[key] = val
     return {
+        **_epistemic(PRODUCER_FALL_OF_LIGHT),
         "producer": PRODUCER_FALL_OF_LIGHT,
         "type": "trace_mark",
         "role": "fall_of_light",
@@ -923,6 +948,7 @@ def suggestion_from_architectural_axis(
         if val is not None:
             receipt[key] = val
     return {
+        **_epistemic(PRODUCER_ARCHITECTURAL_AXIS),
         "producer": PRODUCER_ARCHITECTURAL_AXIS,
         "type": "trace_mark",
         "role": "architectural_axis",
@@ -1014,6 +1040,7 @@ def suggestion_from_external_limit(
         if val is not None:
             receipt[key] = val
     return {
+        **_epistemic(PRODUCER_EXTERNAL_LIMIT),
         "producer": PRODUCER_EXTERNAL_LIMIT,
         "type": "trace_mark",
         "role": "external_limit",
@@ -1069,6 +1096,7 @@ def suggestion_from_phrase(
             receipt[key] = val
 
     return {
+        **_epistemic(PRODUCER_FLORENCE_FIND),
         "producer": PRODUCER_FLORENCE_FIND,
         "type": "region_mask",
         "role": None,                       # a found extent has no perceptual reading yet
@@ -1173,6 +1201,7 @@ def suggestion_from_grounded_phrase(
         receipt["adapter"] = "grounding_dino_tiny+clip_vit_b32+sam2"
 
     d: Dict[str, Any] = {
+        **_epistemic(PRODUCER_GROUNDED_SAM),
         "producer": PRODUCER_GROUNDED_SAM,
         "type": "region_mask",
         "role": None,                                # a found extent has no reading yet
@@ -1246,6 +1275,7 @@ def presence_verdict(
         basis = "not_detected"
 
     return {
+        **_epistemic(PRODUCER_PRESENCE_CHECK),
         "producer": PRODUCER_PRESENCE_CHECK,
         "type": "presence_reading",
         "phrase": text,
@@ -1286,6 +1316,7 @@ def enumerate_reading(
             receipt[key] = val
 
     return {
+        **_epistemic(PRODUCER_ENUMERATE),
         "producer": PRODUCER_ENUMERATE,
         "type": "count_reading",
         "phrase": text,
