@@ -8,3 +8,8 @@ cloudinary
 gunicorn
 groq
 pymongo
+# CIRCUIT-003 M6 — the external-source retriever's HTTP client. Present transitively already
+# (cloudinary and groq both pull it in), declared here because `external_source_service` imports
+# it directly and a direct dependency that rides in on someone else's coattails is one upgrade
+# away from disappearing.
+requests
