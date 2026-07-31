@@ -2946,11 +2946,15 @@ async def add_tag_and_story_to_post(post_id: str, request: AddTagAndStoryRequest
     
     # Create a new text block for the story
     # Use 'paragraph' type for the story, or you could use a custom type like 'story'
+    # PROV-001 Seam 5 — authorship is recorded, from the only party that knows it. See
+    # AddTagAndStoryRequest.origin: this route's text may be the curator's or a model's, so the
+    # caller declares it and the server stops silently asserting "human" via the schema default.
     new_story_block = {
         "id": f"block_{uuid.uuid4()}",
         "type": "paragraph",
         "content": request.story,
-        "color": None
+        "color": None,
+        "origin": request.origin,
     }
     
     # Add the story block to the text blocks
