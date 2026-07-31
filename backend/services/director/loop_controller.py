@@ -31,12 +31,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .capabilities import Resource
 from .execution import EMPTY, OK, ActuatorRunner, ChainResult, execute
 from .memory import WorkingMemory
 from .plan import Plan, Step, resolve
+from .questions import (Proposal, Question, is_question_able,
+                        missing_param_of, question_for)
 from .planner import Director
 
 # Resources that count as EVIDENCE — the loop advances only on these. READING is a sentence about
@@ -51,6 +53,9 @@ STOP_ONLY_REFUSALS = "only_refusals_or_empties"  # nothing ran to OK-with-eviden
 STOP_NOTHING_PLANNED = "nothing_planned"  # the planner proposed no steps and refused none
 STOP_MAX_ROUNDS = "max_rounds"            # the backstop
 STOP_ONLY_CLOSED_DOORS = "only_closed_doors"  # the round proposed nothing but already-shut doors
+# A2 — the terminal state that is not a dead end. The loop stopped because it needs something only
+# a human can supply, and it says exactly what. Resume is A3; A2 emits and returns.
+AWAITING_ANSWER = "awaiting_answer"
 
 
 def _sig(step: Step) -> str:
@@ -109,6 +114,34 @@ def _decide(plan: Plan, chain: ChainResult, added: Dict[str, int]) -> str:
     return STOP_NO_NEW_EVIDENCE
 
 
+def _askable_door(closed: Dict[str, Dict[str, Any]], memory: WorkingMemory,
+                  labels: Optional[Sequence[str]] = None) -> Optional[Question]:
+    """A2 — is the only thing standing between us and progress something a person could say?
+
+    Called at a stop point, never during a productive round: while the loop is still making
+    progress there is nothing to ask about, and interrupting to ask would be the assistant that
+    talks instead of working.
+
+    Only a MISSING PARAM qualifies (`is_question_able`). A missing-INPUT door is the loop's own
+    work — it has the models to produce marks, and turning that into a question would hand the
+    curator a job the machine is standing next to.
+    """
+    for sig, entry in sorted(closed.items()):
+        if not is_question_able(entry.get("reason", "")):
+            continue
+        step = entry.get("step")
+        if step is None:
+            continue
+        param = missing_param_of(step, memory)
+        if not param:
+            continue                    # the packet has since supplied it — nothing to ask
+        q = question_for(step, memory, missing_param=param, labels=labels,
+                         round_index=int(entry.get("round", 0)), step_id=sig)
+        if q is not None:
+            return q
+    return None
+
+
 @dataclass(frozen=True)
 class RoundRecord:
     """One turn of the loop. `chain` is None only for a round that STOPPED before executing
@@ -154,6 +187,9 @@ class LoopResult:
     # second about the same closed door.
     planner_calls: int = 0
     closed_doors: Tuple[Dict[str, Any], ...] = ()
+    # A2: set when the loop stopped needing something only a human can supply. Its presence is
+    # exactly equivalent to stop_reason == AWAITING_ANSWER.
+    question: Optional[Question] = None
 
     @property
     def executed_rounds(self) -> Tuple[RoundRecord, ...]:
@@ -190,6 +226,7 @@ class LoopResult:
             "intention": self.intention,
             "stop_reason": self.stop_reason,
             "planner_calls": self.planner_calls,
+            "question": self.question.to_dict() if self.question else None,
             "closed_doors": [dict(d) for d in self.closed_doors],
             "suppressed_total": self.suppressed_total,
             "rounds_total": len(self.rounds),
@@ -204,7 +241,8 @@ class LoopResult:
 def run_loop(intention: str, memory: WorkingMemory,
              actuators: Dict[str, ActuatorRunner], *,
              director: Optional[Director] = None, max_rounds: int = 4,
-             loop_id: str = "loop") -> LoopResult:
+             loop_id: str = "loop",
+             labels: Optional[Sequence[str]] = None) -> LoopResult:
     """propose → resolve → execute → evolve → decide → repeat.
 
     `actuators` is the registry every round executes against — `stub_registry()` (offline,
@@ -222,6 +260,7 @@ def run_loop(intention: str, memory: WorkingMemory,
     # re-opens the door; re-knocking never does.
     closed: Dict[str, Dict[str, Any]] = {}
     planner_calls = 0
+    volunteered: Optional[Question] = None      # a question the planner raised itself
     stop_reason = STOP_MAX_ROUNDS                       # holds if the loop exhausts its budget
 
     for i in range(max_rounds):
@@ -229,9 +268,13 @@ def run_loop(intention: str, memory: WorkingMemory,
 
         # ── propose (ONE call per round, always against the CURRENT evidence) ──────────────
         planner_calls += 1
-        proposed = director.planner.propose(intention, current)
+        # A2: a planner may return a bare list (the pre-A2 contract) or a Proposal carrying a
+        # question it already knows it is blocked on. Both normalise here so no existing planner
+        # has to change.
+        proposal = Proposal.of(director.planner.propose(intention, current))
+        volunteered = proposal.question
         stamped = [st if st.id else st.with_id(f"{loop_id}:r{i}:{n}:{st.actuator}")
-                   for n, st in enumerate(proposed)]
+                   for n, st in enumerate(proposal.steps)]
 
         # ── suppress closed doors BEFORE the gate sees them ───────────────────────────────
         # This is the correction. Filtering here — rather than judging refusals after the round —
@@ -268,7 +311,7 @@ def run_loop(intention: str, memory: WorkingMemory,
         # ── shut the door on anything refused this round ──────────────────────────────────
         for r in plan.refused:
             closed[_sig(r.step)] = {"actuator": r.step.actuator, "reason": r.reason,
-                                    "detail": r.detail, "round": i}
+                                    "detail": r.detail, "round": i, "step": r.step}
         refused_trace = tuple({"round": i, **r.to_dict()} for r in plan.refused)
 
         sigs = {_sig(st) for st in plan.steps}
@@ -310,6 +353,25 @@ def run_loop(intention: str, memory: WorkingMemory,
             stop_reason = verdict
             break
 
+    # ── A2: ask, rather than dead-end ────────────────────────────────────────────────────
+    # Applied once, at whatever stop point the loop reached. NOT while it is still working: a
+    # productive loop has nothing to ask about, and interrupting to ask would be the assistant
+    # that talks instead of works.
+    #
+    # STOP_MAX_ROUNDS is deliberately excluded. There, progress was still being made when the
+    # backstop fired — so the closed door is not what is blocking us, and the honest report is
+    # "I ran out of rounds", not a question implying the curator is the bottleneck.
+    question: Optional[Question] = volunteered
+    if question is None and stop_reason in (STOP_ONLY_CLOSED_DOORS, STOP_ONLY_REFUSALS,
+                                            STOP_NOTHING_PLANNED, STOP_NO_NEW_EVIDENCE,
+                                            STOP_FIXED_POINT):
+        question = _askable_door(closed, current, labels)
+    if question is not None:
+        stop_reason = AWAITING_ANSWER
+
     return LoopResult(loop_id=loop_id, intention=intention, rounds=tuple(rounds),
                       stop_reason=stop_reason, memory=current, planner_calls=planner_calls,
-                      closed_doors=tuple({"step": k, **v} for k, v in sorted(closed.items())))
+                      closed_doors=tuple({"step": k,
+                                          **{kk: vv for kk, vv in v.items() if kk != "step"}}
+                                         for k, v in sorted(closed.items())),
+                      question=question)

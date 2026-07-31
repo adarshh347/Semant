@@ -83,6 +83,10 @@ class WorkingMemory:
             Resource.GROUND: len(self.ground_ids),
             Resource.PERCEPT: len(self.percept_ids),
             Resource.READING: 0,     # readings are never carried in as prior evidence
+            # M6: nor are sources. A citation retrieved during one plan does not become part of
+            # what the image is known to contain, so it is never carried IN and — because
+            # `evolve()` has no bucket for it — never accumulates either.
+            Resource.SOURCE: 0,
         }
         counts[Resource.PHRASE] = 1 if (self.phrase or "").strip() else 0
         return counts
@@ -106,7 +110,7 @@ class WorkingMemory:
         for kind in produced:
             target = bucket.get(kind)
             if target is None:
-                continue            # READING and IMAGE add nothing to the evidence layer
+                continue            # READING, SOURCE and IMAGE add nothing to the evidence layer
             target.append(f"{step_id}#{kind.value}@{len(target)}")
         return replace(self, region_ids=tuple(regions), mark_ids=tuple(marks),
                        ground_ids=tuple(grounds), percept_ids=tuple(percepts))

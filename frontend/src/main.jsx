@@ -37,6 +37,7 @@ const ReadDeeperPage = React.lazy(() => import('./pages/ReadDeeperPage.jsx'));
 const RegionSurfaceLab = React.lazy(() => import('./pages/RegionSurfaceLab.jsx'));
 const RefineLab = React.lazy(() => import('./pages/RefineLab.jsx'));
 const DifferentialLab = React.lazy(() => import('./pages/DifferentialLab.jsx')); // DEV-ONLY · CIRCUIT-001 P2E-B harness
+const ArticleLab = React.lazy(() => import('./pages/ArticleLab.jsx')); // DEV-ONLY · CIRCUIT-003 M4 harness
 const HighlightsPage = React.lazy(() => import('./pages/HighlightsPage.jsx'));
 const TextFeedPage = React.lazy(() => import('./pages/TextFeedPage.jsx'));
 const EpicsPage = React.lazy(() => import('./pages/EpicsPage.jsx'));
@@ -91,6 +92,8 @@ const router = createBrowserRouter([
       { path: "lab/refine/:postId", element: <RefineLab /> },
       // DEV-ONLY · CIRCUIT-001 P2E-B — offline Differential harness (fixture post).
       { path: "lab/differential", element: <DifferentialLab /> },
+      // DEV-ONLY · CIRCUIT-003 M4 — the perceptual article over an offline fixture draft.
+      { path: "lab/article", element: <ArticleLab /> },
       { path: "feed", element: <TextFeedPage /> },
       { path: "epics", element: <EpicsPage /> },
       { path: "epics/:id", element: <EpicEditorPage /> },

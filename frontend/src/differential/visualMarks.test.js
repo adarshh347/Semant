@@ -55,12 +55,15 @@ describe('a normalized mark carries the full contract shape', () => {
     it('has every §1 field, with a null run_id slot', () => {
         const m = good('brush_field', { role: 'light_field', geometry: { kind: 'soft_mask' } });
         expect(Object.keys(m).sort()).toEqual([
-            'created_at', 'derived_from', 'geometry', 'id', 'label', 'linked_action_ids',
-            'linked_ground_ids', 'linked_percept_ids', 'provenance', 'role', 'source',
-            'status', 'style', 'type', 'updated_at', 'warnings',
+            'created_at', 'derived_from', 'epistemic_status', 'geometry', 'id', 'label',
+            'linked_action_ids', 'linked_ground_ids', 'linked_percept_ids', 'provenance',
+            'role', 'source', 'status', 'style', 'type', 'updated_at', 'warnings',
         ]);
         expect(m.provenance.run_id).toBe(null);
         expect(m.derived_from).toBe(null);
+        // M5: the slot exists on every mark, and defaults to null — a curator's own mark
+        // claims no epistemic kind, and absent is not the same as `uncertain`.
+        expect(m.epistemic_status).toBe(null);
     });
 
     it('mints monotonic vm_ ids', () => {

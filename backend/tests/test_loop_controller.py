@@ -341,3 +341,153 @@ def test_suppression_happens_before_the_gate_not_after():
     res = lc.run_loop("look and relate", _mem(), stub_registry(),
                       director=Director(planner), max_rounds=5)
     assert sum(len(r.refused) for r in res.rounds) == 1
+
+
+# ── 7. A2: questions as an honest planner output ───────────────────────────────
+#
+# A1-FIX leaves a MISSING-PARAM door permanently shut: no amount of looking supplies a phrase the
+# curator never gave. The loop knows exactly what it needs and that no further work will produce
+# it — and used to say nothing. A2 makes it ask.
+#
+# The guard that matters is NOT that questions are well-formed. It is that an unanswered question
+# yields a refusal and never a fabricated param: a planner that needs a phrase can always invent
+# a plausible one, and every downstream receipt would look immaculate while answering a question
+# nobody asked.
+
+from backend.services.director import questions as qs
+
+
+def _asks(steps, memory=None, labels=None, max_rounds=4):
+    planner = _RecordingPlanner(lambda m: list(steps))
+    return lc.run_loop("look", memory or _mem(), stub_registry(),
+                       director=Director(planner), max_rounds=max_rounds, labels=labels)
+
+
+def test_a_missing_param_door_emits_a_grounded_question():
+    res = _asks([Step("rhythm", id="rh"), Step("presence_check", id="pc")],
+                labels=["the wall", "the figure"])
+    assert res.stop_reason == lc.AWAITING_ANSWER
+    q = res.question
+    assert q is not None and q.is_grounded
+    assert q.actuator == "presence_check"
+    assert q.missing_param == "phrase"
+    assert q.options == ("the wall", "the figure")       # REAL options, from what was found
+    assert "the wall" in q.text and "the figure" in q.text
+
+
+def test_a_question_is_grounded_never_open_ended_fishing():
+    """It names the act it is blocking and points at things that exist. 'What would you like me
+    to look for?' moves the whole burden back to the curator while appearing helpful."""
+    res = _asks([Step("presence_check", id="pc")], labels=["the drapery"])
+    q = res.question
+    assert "Is the named thing actually there?" in q.text   # names the blocked act
+    assert "the drapery" in q.text                          # points at something real
+    assert q.grounded_in["options_from"] == "labels"
+
+
+def test_memory_that_supplies_the_param_asks_NOTHING():
+    """A question about something already known teaches the curator to ignore questions."""
+    res = _asks([Step("rhythm", id="rh"), Step("presence_check", id="pc")],
+                memory=build_memory(image_ref="img", post_id="p", phrase="a cross"))
+    assert res.question is None
+    assert res.stop_reason != lc.AWAITING_ANSWER
+
+
+def test_an_unanswered_question_refuses_and_NEVER_fabricates_the_param():
+    """The load-bearing guard. A2 stops; it does not invent a phrase to proceed."""
+    reg = stub_registry()
+    res = lc.run_loop("look", _mem(), reg, director=Director(
+        _RecordingPlanner(lambda m: [Step("presence_check", id="pc")])), max_rounds=4)
+    assert res.stop_reason == lc.AWAITING_ANSWER
+    assert reg["presence_check"].calls == []              # never ran
+    # and the step still carries no phrase — nothing was filled in on the way out
+    for r in res.rounds:
+        for ref in r.refused:
+            assert ref["reason"] == "missing_param"
+    assert res.question.missing_param == "phrase"
+
+
+def test_a_missing_EVIDENCE_door_is_not_question_able():
+    """The loop has the models to produce marks. Asking would hand the curator a job the machine
+    is standing next to."""
+    res = _asks([Step("rhythm", id="rh"),
+                 Step("connect_marks", {"relation_role": "x"}, id="cm")])
+    assert res.question is None
+    assert res.stop_reason != lc.AWAITING_ANSWER
+    assert any(c["reason"] == "missing_input" for c in res.to_dict()["closed_doors"])
+
+
+def test_is_question_able_admits_only_missing_param():
+    assert qs.is_question_able("missing_param") is True
+    assert qs.is_question_able("missing_input") is False
+    assert qs.is_question_able("unknown_actuator") is False
+
+
+def test_the_question_is_on_the_receipt_with_its_trigger():
+    res = _asks([Step("presence_check", id="pc")], labels=["the wall"])
+    d = res.to_dict()
+    assert d["stop_reason"] == lc.AWAITING_ANSWER
+    q = d["question"]
+    assert q["actuator"] == "presence_check"            # which step
+    assert q["missing_param"] == "phrase"               # which param
+    assert q["options"] == ["the wall"]
+    assert q["round"] == 0
+    assert q["text"]
+
+
+def test_a_productive_loop_is_never_interrupted_to_ask():
+    """While work is still going, there is nothing to ask about."""
+    seen = {"n": 0}
+
+    def script(m):
+        seen["n"] += 1
+        return [Step("rhythm", id="rh")] if seen["n"] == 1 else [Step("pressure_zone", id="pz")]
+
+    res = lc.run_loop("look", _mem(), stub_registry(),
+                      director=Director(_RecordingPlanner(script)), max_rounds=2)
+    assert res.question is None                          # it was busy, not stuck
+
+
+def test_the_backstop_reports_running_out_of_rounds_not_a_question():
+    """At max_rounds progress was still being made, so the closed door is not the blocker and
+    saying 'I need you' would be false."""
+    planner = _RecordingPlanner(lambda m: [Step("find_parts", id=f"fp{id(m)}"),
+                                           Step("presence_check", id="pc")])
+    res = lc.run_loop("look", _mem(), stub_registry(),
+                      director=Director(planner), max_rounds=1)
+    assert res.stop_reason == lc.STOP_MAX_ROUNDS
+    assert res.question is None
+
+
+def test_a_planner_may_volunteer_its_own_question():
+    """A planner that already knows it is stuck can say so instead of proposing what it cannot
+    run — and the loop honours that without deriving one."""
+    q = qs.Question(step_id="s", actuator="presence_check", missing_param="phrase",
+                    text="which one?", options=("a",))
+
+    class Volunteer:
+        name = "volunteer"
+
+        def propose(self, intention, memory):
+            return qs.Proposal(steps=[], question=q)
+
+    res = lc.run_loop("look", _mem(), stub_registry(),
+                      director=Director(Volunteer()), max_rounds=3)
+    assert res.stop_reason == lc.AWAITING_ANSWER
+    assert res.question is q
+
+
+def test_a_bare_list_from_propose_still_works():
+    """The pre-A2 contract is untouched — no existing planner has to change."""
+    assert qs.Proposal.of([Step("rhythm", id="r")]).steps
+    assert qs.Proposal.of([]).question is None
+    assert qs.Proposal.of(None).steps == []
+
+
+def test_options_are_never_invented_when_nothing_has_been_found():
+    """An invented option is a suggestion with no basis that the curator cannot tell apart from
+    a found one."""
+    res = _asks([Step("presence_check", id="pc")])        # bare image, no labels
+    q = res.question
+    assert q.options == ()
+    assert "nothing to point at" in q.text.lower()

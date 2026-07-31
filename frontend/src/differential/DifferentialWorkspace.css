@@ -465,6 +465,61 @@
 }
 .diff-chip--dim { background: transparent; color: var(--text-tertiary); }
 
+/* ── CIRCUIT-003 M5 — the epistemic-status chip ──────────────────────────────
+   The five-way legend, shown beside provenance. It answers "what KIND of claim
+   is this", which provenance ("Model suggestion") cannot: a segmented extent
+   and an inferred sentence are both the model's, and are not the same thing.
+
+   Colour alone would be the wrong signal — a reviewer with a colour deficiency,
+   or anyone reading a greyscale screenshot in a report, has to get the meaning.
+   So the WORD always carries it and the hue only makes the families scannable.
+   `uncertain` additionally gets a DASHED border and no fill: a hedge that looks
+   as solid as a measurement is a hedge nobody reads. Shape and text are the
+   message; hue is decoration. */
+.diff-epistemic-chip {
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+}
+.diff-epistemic-chip.is-visible {
+    background: color-mix(in srgb, #4E7A6B 14%, transparent);
+    color: #33604F; border-color: color-mix(in srgb, #4E7A6B 32%, transparent);
+}
+.diff-epistemic-chip.is-measured {
+    background: color-mix(in srgb, #4E5586 14%, transparent);
+    color: #3B4270; border-color: color-mix(in srgb, #4E5586 32%, transparent);
+}
+.diff-epistemic-chip.is-interpretive {
+    background: color-mix(in srgb, #7B2D6B 13%, transparent);
+    color: #6A2A5C; border-color: color-mix(in srgb, #7B2D6B 30%, transparent);
+}
+.diff-epistemic-chip.is-sourced {
+    background: color-mix(in srgb, #A66273 15%, transparent);
+    color: #8A4353; border-color: color-mix(in srgb, #A66273 34%, transparent);
+}
+.diff-epistemic-chip.is-uncertain {
+    background: transparent;
+    color: var(--text-tertiary, #8a8276);
+    border: 1px dashed color-mix(in srgb, currentColor 45%, transparent);
+    font-style: italic;
+}
+
+[data-theme='dark'] .diff-epistemic-chip.is-visible {
+    background: rgba(127, 179, 168, .16); color: #8FC4B5; border-color: rgba(127, 179, 168, .34);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-measured {
+    background: rgba(142, 150, 200, .16); color: #A7ADD8; border-color: rgba(142, 150, 200, .34);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-interpretive {
+    background: rgba(192, 139, 180, .16); color: #D3A6C8; border-color: rgba(192, 139, 180, .34);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-sourced {
+    background: rgba(198, 138, 152, .17); color: #DCA3AE; border-color: rgba(198, 138, 152, .36);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-uncertain { color: #9A9089; }
+
 .diff-insp-note {
     margin: 0.65rem 0 0;
     font-size: 0.8rem;
