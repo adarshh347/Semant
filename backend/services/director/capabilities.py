@@ -41,6 +41,18 @@ class Resource(str, Enum):
     GROUND = "ground"        # a mark promoted into a named ground
     PERCEPT = "percept"      # a composed reading resting on grounds
     READING = "reading"      # a sentence ABOUT the image (P8-D) — never evidence IN it
+    # CIRCUIT-003 M6 — a quotation from OUTSIDE the image, carrying a citation.
+    #
+    # It sits beside READING rather than beside MARK, and for the same reason: neither is
+    # evidence IN the picture. But they are not the same kind either — a reading is what a
+    # model made of the pixels, a source is what a document says about the subject, and the
+    # second cannot be checked by looking harder.
+    #
+    # Nothing in this table REQUIRES a source, which is deliberate for M6. Because
+    # `WorkingMemory.evolve()` never files SOURCE into an evidence bucket (exactly as it never
+    # files READING), a research step cannot make a mark-hungry step satisfiable. That is the
+    # epistemic wall expressed in the planner: no chain can reach a mark by way of a citation.
+    SOURCE = "source"
 
 
 @dataclass(frozen=True)
@@ -270,6 +282,23 @@ _ACTUATOR_LIST: List[Actuator] = [
         produces=(Resource.GROUND,),
         capability=None,
         param_keys=("relation_role",),
+    ),
+    # -- research: it reads the library, not the picture ------------------------
+    # CIRCUIT-003 M6. The only actuator that does not take IMAGE, and the omission is the
+    # design: it has no access to the picture, so it cannot accidentally describe it. What it
+    # needs is a TOPIC — the curator's words — and it refuses without one through the same
+    # `_missing_param` path that stops `grounded_sam_find_parts` from grounding an empty
+    # phrase. No topic → no lookup → no claim, which is the research twin of "no ground → no
+    # mark" enforced before anything runs.
+    Actuator(
+        name="historical_source",
+        summary="Retrieve what is documented about a named topic, with citations.",
+        requires=(_req(Resource.PHRASE),),
+        produces=(Resource.SOURCE,),
+        capability="external_source",
+        authors_geometry=False,        # it authors no extent, and could not: it never sees the image
+        param_keys=("phrase",),        # the topic, in the curator's own words
+        plural=True,                   # a lookup yields however many statements the sources carry
     ),
     Actuator(
         name="compose_percept",
