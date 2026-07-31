@@ -1243,6 +1243,40 @@ class RefineRequest(BaseModel):
     mark_id: Optional[str] = None
 
 
+def _merge_refined_region(prev: dict, region: dict) -> dict:
+    """A refined region laid OVER the region it refines — meaning preserved, geometry replaced.
+
+    PROV-001 Seam 4. This used to be `regions[idx] = region`, and it destroyed meaning. The
+    refiner mints a region carrying geometry plus Region's own field DEFAULTS; only `prioritised`,
+    `weight`, `user_note`, `depth` and `parent_id` were rescued. Everything else the curator or an
+    earlier model had established — label, category, material, description, part, attributes,
+    embedding_id, block_id — was silently dropped while the id stayed the same. A prose chip
+    pointing at a refined region therefore found its meaning deleted underneath it, and the region
+    came back nameless. The corpus shows the damage: all six creator regions read `label: null`.
+
+    MERGING prev-under-region is safe precisely because of what `canonicalize_geometry` does on
+    this path. `mask_rle` is always valid here, so it takes the mask branch and rewrites the
+    ENTIRE derived geometry set — box, polygon, polygons, geometry_rev, geometry_provenance —
+    while `confidence`, `detector` and `actor` come from this run. Every field the refinement owns
+    is therefore present in `region` and wins the merge; no stale geometry can survive from prev.
+    What survives is only what the refinement never spoke about.
+
+    The three curator fields are handled explicitly and BEFORE the merge, because they are the one
+    place where the refiner does carry a key — a schema default (`False`/`0`/`""`), not knowledge.
+    Left to the merge those defaults would win and quietly erase a curator's weighting, which is
+    the same class of loss this function exists to stop.
+    """
+    merged_curator = dict(region)
+    for k in ("prioritised", "weight", "user_note"):         # keep curator meaning
+        if prev.get(k) is not None:                          # never overwrite the
+            merged_curator[k] = prev[k]                      # region's valid default with None
+    merged_curator["depth"] = (prev.get("depth") if prev.get("depth") is not None
+                               else region.get("depth", 0))
+    if prev.get("parent_id") is not None:
+        merged_curator["parent_id"] = prev["parent_id"]
+    return {**prev, **merged_curator}
+
+
 async def _fetch_post_image(post: dict) -> bytes:
     photo_url = post.get("photo_url")
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
@@ -1335,13 +1369,9 @@ async def refine_region_confirm(post_id: str, req: RefineRequest):
         regions = list(post.get("region_annotations") or [])
         idx = next((i for i, r in enumerate(regions) if r.get("id") == region["id"]), None)
         if idx is not None:
-            prev = regions[idx]
-            for k in ("prioritised", "weight", "user_note"):         # keep curator meaning
-                if prev.get(k) is not None:                          # never overwrite the
-                    region[k] = prev[k]                              # region's valid default with None
-            region["depth"] = prev.get("depth") if prev.get("depth") is not None else region.get("depth", 0)
-            if prev.get("parent_id") is not None:
-                region["parent_id"] = prev["parent_id"]
+            # Rebound, not just stored: the response echoes `region`, and a response that
+            # disagreed with the persisted document would be its own provenance defect.
+            region = _merge_refined_region(regions[idx], region)
             regions[idx] = region                                    # upgrade in place
         else:
             regions.append(region)
