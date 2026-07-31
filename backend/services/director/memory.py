@@ -34,6 +34,10 @@ from .capabilities import Resource
 
 PACKET_VERSION = 1
 
+# A3 — the value `phrase_source` carries when the phrase came back as the answer to a question the
+# loop asked, rather than on the packet the run started from.
+PHRASE_FROM_ANSWER = "curator_answer"
+
 
 @dataclass(frozen=True)
 class WorkingMemory:
@@ -54,6 +58,12 @@ class WorkingMemory:
     # -- what the curator brought ------------------------------------------------
     phrase: Optional[str] = None            # their words, when they gave any
     first_attention: Optional[str] = None   # what caught them, verbatim
+    # A3 — HOW the phrase arrived. None means the packet carried it: the curator typed it into
+    # the workspace before anything ran. `PHRASE_FROM_ANSWER` means it arrived mid-loop, as the
+    # answer to a question the loop asked. Both are the curator's words and neither is invented,
+    # but they are not the same event, and anything produced from the phrase should be able to
+    # say which one it was rather than have a reader assume the first.
+    phrase_source: Optional[str] = None
 
     # -- discipline, as data -----------------------------------------------------
     # Carried as DATA and not prose, so it cannot be quietly edited by whoever writes
@@ -118,6 +128,23 @@ class WorkingMemory:
     def with_unreadable(self, *what: str) -> "WorkingMemory":
         return replace(self, unreadable=tuple([*self.unreadable, *what]))
 
+    def with_phrase(self, phrase: str, *, source: Optional[str] = None) -> "WorkingMemory":
+        """The curator's words, arriving on the packet. A3's injection point.
+
+        Structurally incapable of adding EVIDENCE, and that is the point rather than an accident
+        of implementation: it touches two fields, both of them words. A phrase is the one thing a
+        param may supply (`plan.availability_for`) precisely because it is the one thing that is
+        the curator's to say; a region, mark, ground or percept arriving this way would be the
+        fabrication the whole layer exists to prevent.
+
+        A blank phrase is not stored. `available()` would not count it anyway, so storing it would
+        put a claim on the packet that satisfies nothing — the emptiness has to stay visible.
+        """
+        text = (phrase or "").strip()
+        if not text:
+            return self
+        return replace(self, phrase=text, phrase_source=source)
+
     def summary(self) -> Dict[str, Any]:
         """A compact, loggable view. What a step is handed as context."""
         return {
@@ -126,6 +153,7 @@ class WorkingMemory:
             "post_id": self.post_id,
             "counts": {k.value: v for k, v in self.available().items()},
             "phrase": self.phrase,
+            "phrase_source": self.phrase_source,
             "first_attention": self.first_attention,
             "constraints": dict(self.constraints),
             "unreadable": list(self.unreadable),
@@ -149,6 +177,7 @@ def build_memory(*, image_ref: str, post_id: Optional[str] = None,
                  region_ids: Sequence[str] = (), mark_ids: Sequence[str] = (),
                  ground_ids: Sequence[str] = (), percept_ids: Sequence[str] = (),
                  phrase: Optional[str] = None, first_attention: Optional[str] = None,
+                 phrase_source: Optional[str] = None,
                  unreadable: Sequence[str] = (),
                  constraints: Optional[Dict[str, Any]] = None) -> WorkingMemory:
     """Assemble a packet. The only supported constructor — keeps tuple coercion in one place."""
@@ -156,7 +185,7 @@ def build_memory(*, image_ref: str, post_id: Optional[str] = None,
         image_ref=image_ref, post_id=post_id,
         region_ids=tuple(region_ids), mark_ids=tuple(mark_ids),
         ground_ids=tuple(ground_ids), percept_ids=tuple(percept_ids),
-        phrase=phrase, first_attention=first_attention,
+        phrase=phrase, first_attention=first_attention, phrase_source=phrase_source,
         unreadable=tuple(unreadable),
         constraints={**DEFAULT_CONSTRAINTS, **(constraints or {})},
     )
