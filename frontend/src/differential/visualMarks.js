@@ -39,6 +39,46 @@ export const MARK_SOURCES = [
 ];
 
 /**
+ * CIRCUIT-003 M5 — HOW a mark is known, as opposed to WHO made it.
+ *
+ * `source` already answers "did a model or a person put this here". This answers a different
+ * question that `source` cannot: two marks can both come from a model and still be entirely
+ * different kinds of claim — a segmented extent you can point at, and a sentence the VLM
+ * inferred about it. The backend classifies every producer (`services/epistemics.py`); this
+ * vocabulary is the frontend half, kept identical string-for-string so the two cannot drift.
+ *
+ *   visible       the extent is present in the picture — you can point at it
+ *   measured      computed from the image signal — a number, not an opinion
+ *   interpretive  a reading ABOUT the image, resting on what was gathered
+ *   sourced       from OUTSIDE the image, carrying a citation
+ *   uncertain     produced, but the producer will not vouch for which of the above
+ *
+ * NULL IS LEGITIMATE and is the default. A curator's own mark carries no epistemic tag: the
+ * vocabulary classifies what a PRODUCER claims, and stamping `visible` on a stroke somebody
+ * drew would be this layer inventing a claim on their behalf — the exact move it exists to
+ * prevent. Absent means "no producer said anything", not "unknown kind".
+ */
+export const EPISTEMIC_STATUSES = ['visible', 'measured', 'interpretive', 'sourced', 'uncertain'];
+
+/** Short human labels for the review surface. Number-free, like every other honest label here. */
+export const EPISTEMIC_LABEL = {
+    visible: 'visible',
+    measured: 'measured',
+    interpretive: 'interpretive',
+    sourced: 'sourced',
+    uncertain: 'uncertain',
+};
+
+/** One line on what the tag means — the benchmark's legend, shown as a tooltip. */
+export const EPISTEMIC_HINT = {
+    visible: 'The extent is in the picture — you can point at it.',
+    measured: 'Computed from the image signal, not interpreted.',
+    interpretive: 'A reading about the image, resting on what was gathered.',
+    sourced: 'From outside the image — it carries a citation.',
+    uncertain: 'Produced, but the producer will not vouch for the kind.',
+};
+
+/**
  * Mark statuses are their OWN vocabulary — a mark's life is not an action's life.
  *   draft      being made right now
  *   staged     made or armed, not committed
@@ -197,6 +237,11 @@ export function makeVisualMark(type, fields = {}, { now = null, idFn = markId } 
         // Lineage points BACK. Acceptance and refinement mint a new mark; they never
         // overwrite the one they came from (contract §4.2).
         derived_from: fields.derived_from ?? null,
+        // M5 — the kind of knowing, carried from the producer's descriptor. Null for a
+        // curator's own mark (see EPISTEMIC_STATUSES): absent means "no producer claimed a
+        // kind", which is not the same as `uncertain`, and conflating them would put a hedge
+        // on every hand-drawn stroke.
+        epistemic_status: fields.epistemic_status ?? null,
         provenance: {
             planner: null, prompt_excerpt: null, model: null, matched: [],
             // P4 contract v3: run identity is now REAL. The CIRCULATION-SPINE run substrate
@@ -268,6 +313,12 @@ export function validateMark(mark) {
     if (!MARK_SOURCES.includes(mark.source)) errors.push(`unknown source: ${String(mark.source)}`);
     if (!MARK_STATUSES.includes(mark.status)) errors.push(`unknown status: ${String(mark.status)}`);
     if (!isStr(mark.label)) errors.push('label must be a string (may be empty)');
+    // M5: null is legitimate (a curator's mark claims no kind), but a NON-null value outside
+    // the vocabulary is an ERROR, not a coercion — the same rule `role` follows, for the same
+    // reason: a vocabulary is only worth having if a word outside it fails loudly.
+    if (mark.epistemic_status != null && !EPISTEMIC_STATUSES.includes(mark.epistemic_status)) {
+        errors.push(`unknown epistemic status: ${String(mark.epistemic_status)}`);
+    }
 
     // An unknown role is an ERROR, not a coercion. A vocabulary is only worth having if a
     // word outside it fails — otherwise a planner's mistake becomes invisible. `region_mask`
