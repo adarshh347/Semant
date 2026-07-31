@@ -27,6 +27,52 @@ class RegionBox(BaseModel):
     h: float
 
 
+class MarkProvenance(BaseModel):
+    """The receipt on a produced mark: which run, which plan step, which producer.
+
+    CIRCUIT-002 PROV-001 Seam 2. Seam 1 stamps `step_id` onto every suggestion at the produce
+    chokepoint, and the client carries a suggestion's provenance onto the mark it mints. But it
+    carried it only through an undeclared `...(fields.provenance || {})` spread, and the server
+    stored `visual_marks` as bare `List[dict]` — so nothing anywhere DECLARED that `step_id` is
+    part of the record. Undeclared is undefended: any future edit that replaces the spread with an
+    explicit pick, or any schema that validates marks, drops it silently. That is precisely how
+    `TextBlock.origin` was lost — the frontend stamped it for a whole lane while Pydantic dropped
+    it on every save, because the field was not declared here.
+
+    So this type exists to make the four provenance facts first-class and defended, not to
+    restrict what a mark may carry.
+
+    `extra="allow"` is LOAD-BEARING, not laxity. A mark's provenance also carries `planner`,
+    `prompt_excerpt`, `model`, `matched` and `latency_ms`, and P4/P5/P6 keep adding to it. A
+    strict model here would silently delete every undeclared one on the next PATCH — trading the
+    hole this closes for a bigger one. `model` in particular is left undeclared deliberately: it
+    collides with Pydantic's protected `model_` namespace, and `extra="allow"` carries it safely
+    without the rename that would break the wire contract.
+
+    Every field is Optional and defaults to None because a curator's own mark HAS no producer.
+    None means "no producer said anything", which is the honest record — never a synthesized id.
+    """
+    model_config = ConfigDict(extra="allow")
+
+    run_id: Optional[str] = None      # the vision_runs run that produced this
+    step_id: Optional[str] = None     # PROV-001 — the plan step, the key M4's resolver joins on
+    producer: Optional[str] = None    # one of PRODUCERS, or None for a curator's mark
+    adapter: Optional[str] = None     # the concrete transport, e.g. 'sam2'
+
+
+class Mark(BaseModel):
+    """A durable visual_mark. Declares ONLY its provenance; everything else rides `extra`.
+
+    Deliberately minimal. The mark contract (geometry, role, epistemic_status, warnings, …) lives
+    in `frontend/src/differential/visualMarks.js` and is validated there by `validateMark`; the
+    aim here is not to restate it — a second copy would be one more thing to drift, which is the
+    same failure this seam is closing. The aim is that provenance cannot be dropped in transit.
+    """
+    model_config = ConfigDict(extra="allow")
+
+    provenance: Optional[MarkProvenance] = None
+
+
 class Region(BaseModel):
     # Strict/typed, but permissive to unknown keys so Track B/C can evolve producer
     # shapes (new attributes, embeddings) without a schema war.
@@ -126,7 +172,9 @@ class Post(BaseModel):
     # beside grounds/percepts; only committed/superseded marks are ever written (the client
     # filters — a suggestion never reaches here). Rides the same exclude_unset PATCH, so a
     # re-dissect that replaces region_annotations can never wipe them.
-    visual_marks: Optional[List[dict]] = None
+    # PROV-001 Seam 2 — typed so provenance is DECLARED and cannot be dropped in transit.
+    # Mark/MarkProvenance both allow extras, so the rest of the mark contract is untouched.
+    visual_marks: Optional[List[Mark]] = None
     # CIRCUIT-001 Q-C — durable visual_layers: the per-producer/role render layers' saved
     # visibility/opacity/order. Additive, PATCH-persisted like visual_marks, so a layer a curator
     # hides stays hidden across reload. Opaque dicts (`{key, visibility, opacity, order}`).
@@ -139,7 +187,10 @@ class PostUpdate(BaseModel):
     highlights: Optional[List[Highlight]] = None  # NEW: Can update highlights
     grounds: Optional[List[dict]] = None   # Differential v1
     percepts: Optional[List[dict]] = None  # Differential v1
-    visual_marks: Optional[List[dict]] = None  # CIRCUIT-001 P2E — durable marks
+    # PROV-001 Seam 2 — typed on the WRITE model too, and that is the half that matters. This is
+    # the model the wholesale PATCH validates against (`update_post`), so a bare List[dict] here
+    # would leave provenance undefended on exactly the path marks are persisted by.
+    visual_marks: Optional[List[Mark]] = None  # CIRCUIT-001 P2E — durable marks
     visual_layers: Optional[List[dict]] = None  # CIRCUIT-001 Q-C — durable render layers
     domain_profile: Optional[dict] = None  # VISION-C domain profile
     semantics: Optional[dict] = None       # VISION-D semantic assertions

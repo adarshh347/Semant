@@ -249,6 +249,15 @@ export function makeVisualMark(type, fields = {}, { now = null, idFn = markId } 
             // of the run that made it. `null` still means "no producer / a curator's own mark".
             // The deliberate `run_id: null` of P2D ends here (see contract §P4).
             run_id: null,
+            // CIRCUIT-002 PROV-001 Seam 2 — the plan step that produced this mark, DECLARED
+            // rather than merely inherited. Seam 1 stamps it onto every suggestion at the
+            // produce chokepoint and the spread below already carried it here — but only by
+            // accident of spreading. Undeclared is undefended: an edit replacing the spread
+            // with an explicit pick drops it and nothing fails, which is precisely how
+            // `TextBlock.origin` was lost for a whole lane. Naming it makes it contract, and
+            // it is the key M4's resolver joins on to stop refusing ambiguous citations.
+            // `null` means no producer / a curator's own mark — never a fabricated id.
+            step_id: null,
             producer: null,     // one of PRODUCERS, or null for a curator's mark
             adapter: null,      // e.g. 'sam2', 'semantic_pass' — the concrete transport
             latency_ms: null,   // wall time the producer took, when known
