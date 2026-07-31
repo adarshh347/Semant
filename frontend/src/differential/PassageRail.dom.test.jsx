@@ -2,7 +2,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import PassageRail from './PassageRail';
+import PassageRail from './PassageRail.jsx';
 
 /**
  * CIRCUIT-001 P5-B — the Passage Rail surface. jsdom has no layout, so this mounts the rail in

@@ -3,7 +3,7 @@ import { Sparkles, Star, Eye, Check, AlertCircle, Expand } from 'lucide-react';
 import { API_URL } from '../config/api';
 import RegionOverlay from './RegionOverlay';
 import RegionLightbox from './RegionLightbox';
-import SeeingConsole from '../differential/SeeingConsole';
+import SeeingConsole from '../differential/SeeingConsole.jsx';
 import { EMPTY_TITLE, EMPTY_BODY, LOOKING_CAPTION, FIND_PARTS_FAILED } from '../differential/seeingConsole';
 import GroundLayers from '../differential/GroundLayers';
 import { useRecallPlayer } from '../differential/recall';
