@@ -1,0 +1,49 @@
+<svg id="g-form-agent" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="A plug entering a wall socket; the Semant mark sits inside the plate.">
+  <title>Semant — Form: Agent</title>
+  <desc>A plug entering a wall socket; the Semant mark sits inside the plate.</desc>
+  <style>#g-form-agent{color:#1E1A1C}</style>
+  <defs>
+    <filter id="agent-bA" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="agent-bB" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.16" numOctaves="2" seed="21" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#A9A0A6" stroke-width="0.9" stroke-linecap="round" style="opacity:var(--guide-o, 0.16)">
+    <path d="M30.2 4.6 V7.2"/><path d="M30.2 4.6 H27.6"/>
+    <path d="M1.8 28 V25.4"/><path d="M1.8 28 H4.4"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.18)">
+    <path filter="url(#agent-bA)" fill="#6F5E90"
+          d="M15.4 8 C21 6.4 28.4 7.4 30.4 10 C30.6 15.4 27.4 19.4 21.4 19.6 C15.6 19.8 13.6 12.4 15.4 8 Z"/>
+    <path filter="url(#agent-bB)" fill="#8E3F6A"
+          d="M4.4 12.4 C8.6 11 13.6 12 14.8 14.4 C14.4 18 10.4 20.4 6.6 19.4 C3.6 18.6 3 14 4.4 12.4 Z"/>
+  </g>
+  <!-- the plate -->
+  <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15.4 8.6 C19.6 7.9 24.6 8.7 28.6 8.1"/>
+    <path d="M28.5 8.2 C29 12.4 28.3 19 28.7 23.4"/>
+    <path d="M28.6 23.6 C24.6 24.3 19.6 23.5 15.4 24.1"/>
+    <path d="M15.7 23.9 C15.1 19.4 15.8 12.8 15.3 8.3"/>
+  </g>
+  <!-- the socket face -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.3" stroke-linecap="round">
+    <path d="M17.6 13.4 V15.4"/><path d="M17.6 17.2 V19.2"/>
+  </g>
+  <!-- the plug -->
+  <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6.6 12.4 C8.6 12 11.4 12.4 12.8 12.2 C13.2 14.8 12.8 17.4 13 19 C11 19.4 8.4 19 6.7 19.2 C6.2 16.8 6.6 14 6.6 12.4 Z"/>
+    <path d="M12.9 14.4 C13.9 14.3 14.8 14.4 15.5 14.3"/>
+    <path d="M12.9 17.2 C13.9 17.3 14.8 17.2 15.5 17.1"/>
+  </g>
+  <!-- the cable, leaving -->
+  <path d="M6.7 15.8 C4.4 16.2 2.8 18.6 3.4 21.6 C3.8 23.8 5.4 24.8 7.2 24.6"
+        fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  <!-- the same mark, inside this door -->
+  <circle cx="22.4" cy="17.6" r="2.25" fill="currentColor"/>
+  <path d="M24 16 C25.2 14.8 26.2 13.8 27.4 12.6"
+        fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="1.9" stroke-linecap="round"/>
+</svg>

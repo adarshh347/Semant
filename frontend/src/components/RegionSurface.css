@@ -163,8 +163,21 @@
 .rs-shape.is-sel { stroke: var(--accent); stroke-width: 3; fill: color-mix(in srgb, var(--accent) 26%, transparent); }
 /* the keyboard cursor, visible on the polygon itself */
 .rs-shape.is-active { stroke: #fff; stroke-width: 3; stroke-dasharray: 5 3; }
-/* a creator's own mark reads as deliberate, never mistaken for a detection */
-.rs-shape--creator { stroke-dasharray: 5 3; stroke: var(--accent); }
+/* a creator's own mark reads as deliberate, never mistaken for a detection.
+   Aesthetic pass — a softer plum march than a hard 5/3 dash. */
+.rs-shape--creator { stroke-dasharray: 4 3.5; stroke: color-mix(in srgb, var(--accent) 88%, transparent); }
+
+/* Aesthetic pass (Differential) — the signature attention treatment. A part
+   under attention (selected, hovered, or lit by a row/chip hover) gains a soft
+   plum halo, so the eye lands on it without the stroke having to shout. Purely
+   presentational; the reduced-motion block below already stills any transition. */
+.rs-shape.is-sel,
+.rs-shape.is-lit,
+.rs-shape--quiet:hover,
+.rs-shape--outline:hover,
+.rs-shape--focus:not(.is-dim):hover {
+    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 60%, transparent));
+}
 
 .rs-draft { fill: color-mix(in srgb, var(--accent) 14%, transparent); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4 3; }
 

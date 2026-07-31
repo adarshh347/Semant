@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { SectionEyebrow } from '../components/brand/SectionEyebrow';
 import './MotivePage.css';
 
 /**
@@ -402,7 +403,7 @@ export default function MotivePage() {
   return (
     <article className="motive-page">
       <header className="motive-hero">
-        <span className="eyebrow">{article.eyebrow}</span>
+        <SectionEyebrow className="eyebrow">{article.eyebrow}</SectionEyebrow>
         <h1 className="motive-title">{article.title}</h1>
         <p className="motive-motto">{article.motto}</p>
       </header>

@@ -1,0 +1,94 @@
+<svg id="x-rehearsal" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" width="720" height="300" role="img" aria-label="One inquiry run three ways; one run is quarantined, two are retained, and the disagreement is what revises the grammar.">
+  <title>Semant — Rehearsal</title>
+  <desc>One inquiry run three ways; one run is quarantined, two are retained, and the disagreement is what revises the grammar.</desc>
+  <style>
+    #x-rehearsal{color:#1E1A1C}
+    #x-rehearsal text{font-family:'Spline Sans Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+                      font-size:9px;letter-spacing:.14em;text-transform:uppercase;fill:#6B5A66}
+    #x-rehearsal .lo{fill:#A9A0A6;letter-spacing:.16em}
+    #x-rehearsal .hi{fill:#1E1A1C}
+  </style>
+  <defs>
+    <filter id="xh-bA" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.009" numOctaves="2" seed="9" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="22" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="xh-bB" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="31" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+
+  <g fill="none" stroke="#A9A0A6" stroke-width="1" stroke-linecap="round" style="opacity:var(--guide-o, 0.15)">
+    <path d="M10 12 V28"/><path d="M10 12 H26"/>
+    <path d="M710 288 V272"/><path d="M710 288 H694"/>
+    <path d="M150 60 V196" stroke-dasharray="2 4"/>
+    <path d="M360 60 V196" stroke-dasharray="2 4"/>
+    <path d="M570 60 V196" stroke-dasharray="2 4"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.15)">
+    <path filter="url(#xh-bA)" fill="#8E82A0"
+          d="M96 86 C180 74 220 78 236 92 C242 128 226 160 176 164 C118 168 86 128 96 86 Z"/>
+    <path filter="url(#xh-bB)" fill="#4E5586"
+          d="M490 86 C570 74 630 80 646 96 C652 132 626 162 576 166 C512 170 480 128 490 86 Z"/>
+  </g>
+
+  <!-- the inquiry -->
+  <text class="hi" x="316" y="22">One inquiry</text>
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+    <path d="M360 30 C359 38 361 44 360 50"/>
+  </g>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M360 52 C300 54 200 56 152 66"/>
+    <path d="M360 52 C360 58 360 62 360 66"/>
+    <path d="M360 52 C420 54 520 56 568 66"/>
+  </g>
+
+  <!-- run 01 — a fixed pipeline -->
+  <text class="lo" x="118" y="88">Run 01</text>
+  <path d="M104 100 C124 98.6 176 100.4 198 99"
+        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <text x="104" y="120">Fixed sequence</text>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M150 128 C149 136 151 142 150 148"/>
+  </g>
+  <circle cx="150" cy="164" r="13" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-dasharray="4 5.4" opacity=".7"/>
+  <circle cx="150" cy="164" r="4" fill="#6B5A66" opacity=".75"/>
+  <text x="112" y="196">Quarantined</text>
+
+  <!-- run 02 — chosen operations -->
+  <text class="lo" x="328" y="88">Run 02</text>
+  <path d="M312 100 C332 98.6 388 100.4 410 99"
+        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <text x="308" y="120">Region → path</text>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M360 128 C359 136 361 142 360 148"/>
+  </g>
+  <circle cx="360" cy="163" r="7" fill="currentColor"/>
+  <text x="322" y="196">Retained</text>
+
+  <!-- run 03 — an alternate ground -->
+  <text class="lo" x="538" y="88">Run 03</text>
+  <path d="M522 100 C542 98.6 598 100.4 620 99"
+        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <text x="512" y="120">Field → path → relation</text>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M570 128 C569 136 571 142 570 148"/>
+  </g>
+  <circle cx="570" cy="163" r="7" fill="currentColor"/>
+  <path d="M575 158 C581 152 585 148 590 143"
+        fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="2.4" stroke-linecap="round"/>
+  <text x="528" y="196">Retained</text>
+
+  <!-- two survive, and disagree -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.5" stroke-linecap="round">
+    <path d="M360 206 C400 214 500 216 566 208"/>
+    <path d="M360 206 C359 216 361 224 360 232"/>
+  </g>
+  <text class="hi" x="300" y="250">Human challenge</text>
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+    <path d="M360 258 C359 266 361 272 360 278"/>
+  </g>
+  <text class="hi" x="278" y="294">Revise the operation grammar</text>
+</svg>

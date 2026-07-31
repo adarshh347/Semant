@@ -483,3 +483,393 @@ class Dinov2FeatureAdapter:
         # the artifact carries the shared patch grid (in-memory tensors) — fanned out to poolers.
         return JobResult(JobStatus.SUCCEEDED,
                          artifact=VisionArtifact("feature", features, prov), provenance=prov)
+
+
+# ── P6-D: cpu_perceptual — the no-model adapter (CIRCUIT-001) ─────────────────────────────
+class CpuPerceptualAdapter:
+    """The `PERCEPTUAL` adapter — Gabor energy + structure-tensor coherence on the CPU_LIGHT
+    pool. It is the roster's only adapter with NO weights: nothing to download, nothing to
+    load, nothing to evict. That is the point — declaring `ResourceKind.CPU_LIGHT` means the
+    manager acquires the light CPU pool and NEVER the GPU semaphore, so a rhythm reading runs
+    alongside a resident DINOv2/SAM instead of taking the slot away from it.
+
+    This is the adapter `planner.py`'s `cheap_signals` job has always named; registering it
+    under exactly `cpu_perceptual` makes that existing reference resolve."""
+
+    def __init__(self) -> None:
+        from backend.services import cpu_perceptual_service
+        self._svc = cpu_perceptual_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="cpu_perceptual", capability=Capability.PERCEPTUAL,
+            resource=ResourceKind.CPU_LIGHT,          # ← never the GPU pool
+            model_id="opencv+numpy", license="BSD/Apache (OpenCV + numpy)",
+            preprocessing_version=cpu_perceptual_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import cpu_perceptual_service as c
+            return c.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        return 0.0            # no weights — loading is a no-op, and costs nothing
+
+    async def unload(self) -> None:
+        return None           # nothing resident to free
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        t0 = time.perf_counter()
+        maps = await asyncio.to_thread(self._svc.analyze, image)
+        prov = Provenance(adapter=self.spec.name, device="cpu",
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if maps is None:
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("perceptual", maps, prov), provenance=prov)
+
+
+# ── P6-F: Depth-Anything-V2-Small — relative depth on the GPU pool (CIRCUIT-001) ───────────
+class DepthAnythingAdapter:
+    """The `DEPTH` adapter — Depth-Anything-V2-Small (24.8M params, ~100 MB, Apache-2.0) on the
+    GPU pool through ModelManager, so loading it evicts DINOv2/SAM and vice versa (single-GPU
+    residency on the 4 GB card). `transformers` supports it natively; there is no extra package.
+
+    It emits a coarse RELATIVE depth grid and never geometry — the near/far banding into a soft
+    field is the pure converter's job, exactly as DINOv2's patch grid is banded by the material
+    producer. This class implements the roster's long-standing `depth_anything_v2_small` spec."""
+
+    def __init__(self) -> None:
+        from backend.services import depth_service
+        self._svc = depth_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="depth_anything_v2_small", capability=Capability.DEPTH, resource=ResourceKind.GPU,
+            model_id=depth_service.MODEL_TAG, checkpoint=depth_service.CHECKPOINT,
+            license="Apache-2.0", preprocessing_version=depth_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import depth_service as d
+            return d.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        import time as _t
+        t0 = _t.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (_t.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        t0 = time.perf_counter()
+        depth = await asyncio.to_thread(self._svc.estimate, image)
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if depth is None:
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("depth", depth, prov), provenance=prov)
+
+
+# ── P6-G: Intrinsic Ordinal Shading — light/shadow, SCAFFOLD (deferred) ────────────────────
+class IntrinsicShadingAdapter:
+    """The `SHADING` adapter — Careaga/Aksoy intrinsic decomposition on the GPU pool.
+
+    Ships as a SCAFFOLD: `intrinsic_service.is_available()` is False until the GitHub-only
+    package and its checkpoints are installed, so this registers DEFERRED and the manager will
+    never execute it (`run_adapter` returns UNAVAILABLE for an unavailable adapter). Everything
+    downstream — converters, producers, the review path — is built and tested against synthetic
+    shading, so activation is an install, not a build. See `intrinsic_service` for the exact
+    cost."""
+
+    def __init__(self) -> None:
+        from backend.services import intrinsic_service
+        self._svc = intrinsic_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="intrinsic_ordinal_shading", capability=Capability.SHADING,
+            resource=ResourceKind.GPU, model_id=intrinsic_service.MODEL_TAG,
+            checkpoint=intrinsic_service.CHECKPOINT,
+            license="see compphoto/Intrinsic (research; verify before commercial use)",
+            preprocessing_version=intrinsic_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import intrinsic_service as i
+            return i.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        import time as _t
+        t0 = _t.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (_t.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        t0 = time.perf_counter()
+        shading = await asyncio.to_thread(self._svc.estimate, image)
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if shading is None:
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("shading", shading, prov), provenance=prov)
+
+
+# ── P8-A: Florence-2 — the Director's local eyes (CIRCUIT-001) ─────────────────────────────
+class Florence2Adapter:
+    """The `GROUNDING` adapter — Florence-2-base on the GPU pool through ModelManager.
+
+    The first roster entry that answers *what you ask it* rather than one fixed question:
+    `infer` takes a `task` (caption / detect / grounding / referring-expression segmentation)
+    and, for the phrase tasks, a `phrase`. P8-A ships one producer over it (open-vocab
+    find_parts); `enumerate` and `presence_check` are later verbs on this same adapter, which is
+    why the whole task surface is exposed now rather than a single grounding call.
+
+    It emits geometry in PIXEL space as Florence produces it — normalization into the repo's
+    canonical [0,1] contract happens exactly once, in `mask_geometry`."""
+
+    def __init__(self) -> None:
+        from backend.services import florence2_service
+        self._svc = florence2_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="florence2_base", capability=Capability.GROUNDING, resource=ResourceKind.GPU,
+            model_id=florence2_service.MODEL_TAG, checkpoint=florence2_service.CHECKPOINT,
+            revision=florence2_service.REVISION, license="MIT",
+            preprocessing_version=florence2_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import florence2_service as f
+            return f.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        import time as _t
+        t0 = _t.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (_t.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        task = payload.get("task") or self._svc.TASK_REFERRING_SEG
+        phrase = payload.get("phrase")
+
+        t0 = time.perf_counter()
+        if payload.get("ground_phrase"):
+            # the convenience path the find_parts producer uses: seg, falling back to boxes
+            data = await asyncio.to_thread(self._svc.ground_phrase, image, phrase or "")
+        else:
+            data = await asyncio.to_thread(self._svc.run_task, image, task, phrase=phrase)
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if data is None:
+            # No result is not a failure: a phrase that grounds nothing is an honest answer.
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("grounding", data, prov), provenance=prov)
+
+
+# ── P8-B: GroundingDINO — the detector half of Grounded-SAM (CIRCUIT-001) ──────────────────
+class GroundingDinoAdapter:
+    """The open-vocab DETECTOR — a phrase grounds to boxes, which SAM2 then refines to a mask.
+
+    Chosen over Florence-2 for one decisive reason: it loads natively on transformers 5.13 with
+    NO remote code, where Florence-2 loads under neither the native nor the trust_remote_code
+    path. Apache-2.0, so no distribution constraint (unlike YOLO's AGPL).
+
+    It is half of a two-model verb, so `unload()` is not housekeeping here — the detector MUST
+    leave the card before SAM2 arrives. ModelManager's single-GPU residency enforces that."""
+
+    def __init__(self) -> None:
+        from backend.services import grounding_detector_service
+        self._svc = grounding_detector_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="grounding_dino_tiny", capability=Capability.GROUNDING, resource=ResourceKind.GPU,
+            model_id=grounding_detector_service.MODEL_TAG,
+            checkpoint=grounding_detector_service.CHECKPOINT,
+            revision=grounding_detector_service.REVISION, license="Apache-2.0",
+            preprocessing_version=grounding_detector_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import grounding_detector_service as g
+            return g.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        import time as _t
+        t0 = _t.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (_t.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        if image is None:
+            import io
+            from PIL import Image
+            image = Image.open(io.BytesIO(payload.get("image_bytes"))).convert("RGB")
+        phrase = payload.get("phrase") or ""
+        t0 = time.perf_counter()
+        data = await asyncio.to_thread(
+            self._svc.detect, image, phrase,
+            box_threshold=payload.get("box_threshold", self._svc.DEFAULT_BOX_THRESHOLD),
+            text_threshold=payload.get("text_threshold", self._svc.DEFAULT_TEXT_THRESHOLD))
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if data is None:
+            # Grounding nothing is a real answer, not a failure.
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("grounding", data, prov), provenance=prov)
+
+
+# ── P8-C: CLIP presence gate — the second opinion (CIRCUIT-001) ────────────────────────────
+class ClipPresenceAdapter:
+    """The `EMBED` adapter used as a PRESENCE GATE — does this crop actually show the phrase?
+
+    It exists because GroundingDINO has none: P8-B measured absent phrases outscoring present
+    ones, so the detector alone could only be made safe by refusing a third of real queries.
+    CLIP is a second, independent opinion, and a fabrication now has to fool both.
+
+    Middle of a three-model chain (detector → CLIP → SAM2), so `unload()` is load-bearing."""
+
+    def __init__(self) -> None:
+        from backend.services import clip_presence_service
+        self._svc = clip_presence_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="clip_vit_b32", capability=Capability.EMBED, resource=ResourceKind.GPU,
+            model_id=clip_presence_service.MODEL_TAG,
+            checkpoint=clip_presence_service.CHECKPOINT,
+            revision=clip_presence_service.REVISION, license="MIT",
+            preprocessing_version=clip_presence_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import clip_presence_service as c
+            return c.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        return self.spec.available
+
+    async def load(self) -> float:
+        import time as _t
+        t0 = _t.perf_counter()
+        await __import__("asyncio").to_thread(self._svc._load)
+        return (_t.perf_counter() - t0) * 1000.0
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image")
+        phrase = payload.get("phrase") or ""
+        detection = payload.get("detection")
+        t0 = time.perf_counter()
+        survivors = await asyncio.to_thread(
+            self._svc.verify_boxes, image, detection, phrase,
+            threshold=payload.get("threshold", self._svc.DEFAULT_PRESENCE_THRESHOLD))
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          latency_ms=(time.perf_counter() - t0) * 1000.0)
+        if not survivors:
+            # The detector fired but nothing verified — an answer, not a failure.
+            return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("presence", survivors, prov), provenance=prov)

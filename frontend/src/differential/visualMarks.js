@@ -39,6 +39,46 @@ export const MARK_SOURCES = [
 ];
 
 /**
+ * CIRCUIT-003 M5 — HOW a mark is known, as opposed to WHO made it.
+ *
+ * `source` already answers "did a model or a person put this here". This answers a different
+ * question that `source` cannot: two marks can both come from a model and still be entirely
+ * different kinds of claim — a segmented extent you can point at, and a sentence the VLM
+ * inferred about it. The backend classifies every producer (`services/epistemics.py`); this
+ * vocabulary is the frontend half, kept identical string-for-string so the two cannot drift.
+ *
+ *   visible       the extent is present in the picture — you can point at it
+ *   measured      computed from the image signal — a number, not an opinion
+ *   interpretive  a reading ABOUT the image, resting on what was gathered
+ *   sourced       from OUTSIDE the image, carrying a citation
+ *   uncertain     produced, but the producer will not vouch for which of the above
+ *
+ * NULL IS LEGITIMATE and is the default. A curator's own mark carries no epistemic tag: the
+ * vocabulary classifies what a PRODUCER claims, and stamping `visible` on a stroke somebody
+ * drew would be this layer inventing a claim on their behalf — the exact move it exists to
+ * prevent. Absent means "no producer said anything", not "unknown kind".
+ */
+export const EPISTEMIC_STATUSES = ['visible', 'measured', 'interpretive', 'sourced', 'uncertain'];
+
+/** Short human labels for the review surface. Number-free, like every other honest label here. */
+export const EPISTEMIC_LABEL = {
+    visible: 'visible',
+    measured: 'measured',
+    interpretive: 'interpretive',
+    sourced: 'sourced',
+    uncertain: 'uncertain',
+};
+
+/** One line on what the tag means — the benchmark's legend, shown as a tooltip. */
+export const EPISTEMIC_HINT = {
+    visible: 'The extent is in the picture — you can point at it.',
+    measured: 'Computed from the image signal, not interpreted.',
+    interpretive: 'A reading about the image, resting on what was gathered.',
+    sourced: 'From outside the image — it carries a citation.',
+    uncertain: 'Produced, but the producer will not vouch for the kind.',
+};
+
+/**
  * Mark statuses are their OWN vocabulary — a mark's life is not an action's life.
  *   draft      being made right now
  *   staged     made or armed, not committed
@@ -60,6 +100,10 @@ export const GEOMETRY_KINDS = [
     // P4 contract v3: a label suggestion references a region WITHOUT authoring pixels — the
     // VLM's law (it never draws). `region_ref` points at an existing region's mask by id.
     'region_ref',
+    // GEOM-001: a DENSE direction grid — a unit vector + magnitude PER CELL. `vector` is one
+    // direction (from→to); `flow_field` is a direction at every cell, which a scalar `soft_mask`
+    // cannot hold. The geometry a `fall_of_light` (and later gaze/axis) trace mark carries.
+    'flow_field',
 ];
 
 // ── contract v3: first-class instrument fields (CIRCUIT-001 P4) ────────────────
@@ -78,7 +122,29 @@ export const STROKE_OPS = ['add', 'sub'];
 
 // Who produced a mark. Only a real producer (or a fixture, in tests) may carry a run_id;
 // a curator's own mark names no producer. The suggestion-provenance shape (contract v3 §P4).
-export const PRODUCERS = ['sam_refine', 'semantic_read', 'planner', 'fixture'];
+// P5-A adds `find_similar`: a visual-neighbour search is a producer whose suggestions cross the
+// border to another post (a cross-post `region_ref`).
+// P6-A adds `negative_space`: the first brush_field producer, and the first that names no model —
+// it inverts a mask already in the packet into a soft field, so its receipt is a run_id without a
+// model/adapter (nothing was inferred, only geometry complemented). P6-B adds `material_field`:
+// the first brush_field producer on a REAL model (DINOv2 same-material cosine), so its receipt is
+// full — model/adapter/checkpoint/latency — everything but `confidence`, which a mark may not hold.
+// P6-D adds `rhythm`: the third archetype — pure signal processing (Gabor energy), no weights at
+// all, so its receipt names an adapter but no model, like negative_space's.
+export const PRODUCERS = [
+    'sam_refine', 'semantic_read', 'planner', 'find_similar',
+    'negative_space', 'material_field', 'rhythm', 'pressure_zone', 'recession', 'shading',
+    // GEOM-001 adds `fall_of_light`: the first trace_mark producer, and the first to mint the
+    // dense `flow_field` kind. Same Intrinsic reading as `shading`, a direction rather than a
+    // field — so its receipt is full (model/adapter/checkpoint/latency), like shading's.
+    'fall_of_light',
+    // TRACE-001/002 + MOUNT-001: the other two direction producers. Their absence here was not
+    // cosmetic — `validateMark` rejects an unknown producer, so an architectural_axis mark could
+    // never be committed and therefore could never render, no matter what the renderer did. The
+    // producers shipped, the vocabulary did not, and nothing failed loudly in between.
+    'architectural_axis', 'external_limit',
+    'florence_find_parts', 'grounded_sam_find_parts', 'fixture',
+];
 
 // ── role vocabularies ────────────────────────────────────────────────────────
 // The first three are P2B's, imported rather than retyped. `trace_role` adds the two the
@@ -171,6 +237,11 @@ export function makeVisualMark(type, fields = {}, { now = null, idFn = markId } 
         // Lineage points BACK. Acceptance and refinement mint a new mark; they never
         // overwrite the one they came from (contract §4.2).
         derived_from: fields.derived_from ?? null,
+        // M5 — the kind of knowing, carried from the producer's descriptor. Null for a
+        // curator's own mark (see EPISTEMIC_STATUSES): absent means "no producer claimed a
+        // kind", which is not the same as `uncertain`, and conflating them would put a hedge
+        // on every hand-drawn stroke.
+        epistemic_status: fields.epistemic_status ?? null,
         provenance: {
             planner: null, prompt_excerpt: null, model: null, matched: [],
             // P4 contract v3: run identity is now REAL. The CIRCULATION-SPINE run substrate
@@ -242,6 +313,12 @@ export function validateMark(mark) {
     if (!MARK_SOURCES.includes(mark.source)) errors.push(`unknown source: ${String(mark.source)}`);
     if (!MARK_STATUSES.includes(mark.status)) errors.push(`unknown status: ${String(mark.status)}`);
     if (!isStr(mark.label)) errors.push('label must be a string (may be empty)');
+    // M5: null is legitimate (a curator's mark claims no kind), but a NON-null value outside
+    // the vocabulary is an ERROR, not a coercion — the same rule `role` follows, for the same
+    // reason: a vocabulary is only worth having if a word outside it fails loudly.
+    if (mark.epistemic_status != null && !EPISTEMIC_STATUSES.includes(mark.epistemic_status)) {
+        errors.push(`unknown epistemic status: ${String(mark.epistemic_status)}`);
+    }
 
     // An unknown role is an ERROR, not a coercion. A vocabulary is only worth having if a
     // word outside it fails — otherwise a planner's mistake becomes invisible. `region_mask`
@@ -275,8 +352,25 @@ export function validateMark(mark) {
                 errors.push('region_mask (raster_mask) requires geometry.mask_ref.region_id');
             }
         } else if (geom.kind === 'region_ref') {
-            if (!geom.region_ref || !nonEmpty(geom.region_ref.region_id)) {
+            const rr = geom.region_ref;
+            // A naming reference authors NO mask — carrying a mask_ref here is a copy across the
+            // border (P5-A: a crossing is a reference, never a copy). raster_mask is the ONLY
+            // mode that owns a mask_ref.
+            if (geom.mask_ref != null) {
+                errors.push('region_ref geometry may not carry a mask_ref — it references, never copies');
+            }
+            if (!rr || !nonEmpty(rr.region_id)) {
                 errors.push('region_mask (region_ref) requires geometry.region_ref.region_id');
+            } else {
+                // P5-A · the crossing. A region_ref MAY name a region on ANOTHER post — a
+                // cross-post reference `{region_id, post_id, geometry_rev}`. Still no pixels
+                // (a crossing is a reference, never a copy); only the border coordinates.
+                if (rr.post_id != null && !nonEmpty(rr.post_id)) {
+                    errors.push('region_ref.post_id must be a non-empty post id or absent');
+                }
+                if (rr.geometry_rev != null && !isNum(rr.geometry_rev)) {
+                    errors.push('region_ref.geometry_rev must be a number (the rev at citation) or absent');
+                }
             }
         } else {
             errors.push('region_mask geometry must be raster_mask or region_ref');
@@ -463,7 +557,13 @@ export function regionRefMark({
     regionId, source = 'model_suggested', status = 'suggested', role = null, label = '',
     model = null, runId = null, producer = 'semantic_read', adapter = null, latencyMs = null,
     derivedFrom = null, linkedGroundIds = [],
+    // P5-A · the crossing. A region_ref may name a region on ANOTHER post — the reference then
+    // carries the border coordinates `{post_id, geometry_rev}`. Same-post refs omit both.
+    postId = null, geometryRev = null,
 } = {}, { now = null, idFn = markId } = {}) {
+    const region_ref = { region_id: regionId };
+    if (postId != null) region_ref.post_id = postId;
+    if (geometryRev != null) region_ref.geometry_rev = geometryRev;
     return normalizeMark({
         type: 'region_mask',
         role,
@@ -471,11 +571,34 @@ export function regionRefMark({
         source,
         status,
         derived_from: derivedFrom,
-        geometry: { kind: 'region_ref', region_ref: { region_id: regionId } },
+        geometry: { kind: 'region_ref', region_ref },
         linked_ground_ids: arr(linkedGroundIds),
         provenance: { model, run_id: runId, producer, adapter, latency_ms: latencyMs },
     }, { now, idFn });
 }
+
+// ── the crossing (CIRCUIT-001 P5-A) ────────────────────────────────────────────
+// A cross-post mark is a REFERENCE, never a copy: a `region_ref` whose `region_ref` carries a
+// `post_id` naming another post. These readers are the one place that recognises the border, so
+// a chip, a recall, and a staleness check all agree on what "across the border" means.
+
+/**
+ * The border reference a cross-post `region_ref` mark carries, or **null** for a same-post mark.
+ * `{ post_id, region_id, geometry_rev }` — the rev is the value AT CITATION, so a later drift on
+ * the source is detectable (never hidden). Pure; reads only the mark.
+ */
+export function crossPostReference(mark) {
+    const rr = mark?.geometry?.region_ref;
+    if (!rr || !nonEmpty(rr.post_id)) return null;
+    return {
+        post_id: rr.post_id,
+        region_id: rr.region_id ?? null,
+        geometry_rev: isNum(rr.geometry_rev) ? rr.geometry_rev : null,
+    };
+}
+
+/** True when a mark points across the border (references a region on another post). */
+export const isCrossPostMark = (m) => !!crossPostReference(m);
 
 // ── persistence policy (contract v2 §7.3) ─────────────────────────────────────
 // Only committed and superseded marks persist. `superseded` because recoverability is the

@@ -5,6 +5,7 @@ import TextPostCard from '../components/TextPostCard'; // Use the feed card
 import { API_URL } from '../config/api';
 import EmptyState from '../components/brand/EmptyState';
 import { FeedSkeleton } from '../components/brand/Skeleton';
+import { SectionEyebrow } from '../components/brand/SectionEyebrow';
 
 function TextFeedPage() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,6 +29,7 @@ function TextFeedPage() {
   return (
     <div className="main-content-card"> {/* Wrap in the standard card for consistent padding/background */}
       <div className="page-header">
+        <SectionEyebrow className="eyebrow">Read</SectionEyebrow>
         <h1>Latest Stories</h1>
         <p>Explore posts with rich descriptions.</p>
       </div>

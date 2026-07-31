@@ -21,6 +21,18 @@ export function RegionGlyph(props) {
   );
 }
 
+// region tick — the compact region mark used as the section-eyebrow tell: a tiny
+// tilted plum lozenge set before every uppercase eyebrow/kicker so each section
+// reads as *Semant* at a glance. Decorative by default (no forced title): it is
+// a brand accent before a label the reader already sees, not new information.
+export function RegionTick(props) {
+  return (
+    <Glyph className="region-tick" {...props}>
+      <rect x="5.4" y="8.4" width="13.2" height="7.2" rx="2.2" transform="rotate(-8 12 12)" fill="currentColor" stroke="none" />
+    </Glyph>
+  );
+}
+
 // field — soft, diffuse light pooling on one side (the old ◐, in the family).
 export function FieldGlyph(props) {
   return (

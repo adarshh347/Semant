@@ -1,0 +1,31 @@
+/*
+ * Semant landing — design tokens (ported from the finished design system).
+ *
+ * Source: `frontend skills/index.html` :root block + the two @property decls.
+ * Six hues, five neutrals, two animation properties. Nothing else in the
+ * landing declares a colour literal — components reference these via var().
+ *
+ * SCOPING NOTE (deliberate deviation from "put these on :root"):
+ * the app's own index.css defines --ink as a THEME-SWITCHED token
+ * (#17121A light / #F0EAEF dark) used in ~232 places. Emitting the landing's
+ * fixed --ink:#1E1A1C onto :root globally would override the app's --ink and
+ * break dark mode app-wide. So the palette is scoped to `.pe-scope`, worn by
+ * the landing route root and the /_design/glyphs route root. Landing surfaces
+ * live inside that wrapper; the rest of the app is untouched.
+ *
+ * The @property declarations MUST stay document-global — they register how
+ * --wash-o / --guide-o animate and inherit, which is what lets the card hover
+ * transition (breathe) the washes instead of switching them instantly.
+ */
+
+@property --wash-o { syntax: '<number>'; inherits: true; initial-value: .18 }
+@property --guide-o { syntax: '<number>'; inherits: true; initial-value: .16 }
+
+.pe-scope {
+  --page: #F6F1EC; --paper: #FFFCFA; --ink: #1E1A1C; --ink-2: #6B5A66;
+  --ink-soft: rgba(30, 26, 28, .62); --graphite: #A9A0A6; --hairline: rgba(30, 26, 28, .09);
+  --plum: #7B2D6B; --mulberry: #8E3F6A; --clay: #A66273;
+  --amethyst: #6B5391; --indigo: #4E5586; --lilac: #8E82A0;
+  --wash-o: .18; --guide-o: .16;
+  --gut: clamp(20px, 5vw, 64px);
+}

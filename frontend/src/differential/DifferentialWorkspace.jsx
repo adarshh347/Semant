@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ArrowLeft, MousePointer2, Brush, PenTool, Group, Waypoints, Frame, Eye, EyeOff, Check,
-    Undo2, X, Plus, Scan, Sparkles, Search, Lock, Unlock,
+    ArrowLeft, Brush, PenTool, Frame, Eye, EyeOff, Check,
+    Undo2, X, Plus, Lock, Unlock,
 } from 'lucide-react';
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
@@ -11,14 +11,20 @@ import useMaskRefine from './useMaskRefine';
 import useSemanticRead from './useSemanticRead';
 import SemanticReading from './SemanticReading';
 import useFindSimilar from './useFindSimilar';
+import useProduceField from './useProduceField';
+import OrchestrationBar from './OrchestrationBar';
 import FindSimilar from './FindSimilar';
 import SeeingConsole from './SeeingConsole';
+import PassageRail from './PassageRail';
+import { acceptedMarksForRun } from './passageRail';
 import PerceptWorkshop from './PerceptWorkshop';
 import AttunementPanel from './AttunementPanel';
+import SuggestionReview from './SuggestionReview';
 import useFindParts from './useFindParts';
 import { makeGround, groundFromRegion, resolveGround, groundCenter } from './grounds';
 import { useRecallPlayer } from './recall';
 import { CORE_ROLES } from './groundRoles';
+import { hasMaskPolygons, ringsToPath } from '../lib/maskGeometry';
 // CIRCUIT-001 P2D-A — the renderer-independent truth model. Marks emitted here are the
 // canonical record of what an instrument produced; grounds stay the persisted surface.
 import {
@@ -36,12 +42,36 @@ import { draftMarkFromAction } from './markStaging';
 import {
     createDefaultLayers, toggleLayerVisibility, setLayerOpacity, lockLayer, unlockLayer, isSystemLayer,
 } from './visualLayers';
+// CIRCUIT-001 Q-C — render-grouping: committed grounds partitioned into layers by producer/role,
+// with saved visibility/opacity. Finishes the SVG-group renderer Lane B never built.
+import { deriveLayers, persistableLayers } from './layerGrouping';
 // CIRCUIT-001 P2E-B/P3-B — production instrument mechanics: editable anchors on
 // normalized geometry, endpoint ref-anchoring, and the perfect-freehand ribbon.
 import {
-    editablePoints, moveAnchor, insertAnchor, removeAnchor, applyPointEdit, isEditableGround,
-    anchorForEndpoint,
+    editablePoints, withEditedPoints, moveAnchor, insertAnchor, removeAnchor, applyPointEdit,
+    isEditableGround, anchorForEndpoint,
 } from './handleEditing';
+// Aesthetic pass — the section tell, a quiet waiting motif for the empty
+// inspector, and the bespoke plum tool-rail set (one family, replacing the
+// lucide mismatches). Presentational only; no behaviour rides on these.
+import { SectionEyebrow } from '../components/brand/SectionEyebrow';
+import RegionMotif from '../components/brand/RegionMotif';
+import {
+    FrameGlyph, RegionGlyph, PerceptMark, RecallGlyph,
+} from '../components/brand/glyphs';
+// The nine dedicated tool glyphs (svgr) — the verbs of the hand. Each exposes
+// --tick / --tick-o so the rail makes the Semant tick the active-tool signal.
+import { ReactComponent as SelectToolGlyph } from '@/assets/glyphs/22-tool-select.svg';
+import { ReactComponent as BrushToolGlyph } from '@/assets/glyphs/23-tool-brush.svg';
+import { ReactComponent as TraceToolGlyph } from '@/assets/glyphs/24-tool-trace.svg';
+import { ReactComponent as CollectToolGlyph } from '@/assets/glyphs/25-tool-collect.svg';
+import { ReactComponent as ConnectToolGlyph } from '@/assets/glyphs/26-tool-connect.svg';
+import { ReactComponent as FrameToolGlyph } from '@/assets/glyphs/27-tool-frame.svg';
+import { ReactComponent as RefineToolGlyph } from '@/assets/glyphs/28-tool-refine.svg';
+import { ReactComponent as ReadToolGlyph } from '@/assets/glyphs/29-tool-read.svg';
+import { ReactComponent as SimilarToolGlyph } from '@/assets/glyphs/30-tool-similar.svg';
+// The Differential workbench mark (loupe on a print), worn beside its title.
+import { ReactComponent as DifferentialMark } from '@/assets/glyphs/07-differential.svg';
 import './DifferentialWorkspace.css';
 
 // The role vocabularies the instruments offer (contract §2), from Lane A's
@@ -63,17 +93,77 @@ const RELATION_ROLES = RELATION_ROLE_KEYS;
  *    and an accumulative tray for composing one Percept from several Grounds.
  */
 
+// The tool rail speaks the dedicated Semant tool set — the verbs of the hand,
+// one nameable object each (a pointer, a loaded brush, a stylus on a half-drawn
+// edge, a tray, two pinned marks, two corners, an edge pulled tight, spectacles,
+// two prints side by side). Each carries the Semant tick, and the tick IS the
+// state: grey when idle, full plum when active — so the accent marks where you
+// are rather than decorating the rail.
 const TOOLS = [
-    { key: 'select', label: 'Select', icon: MousePointer2, hint: 'Point at parts — ⇧ to gather several' },
-    { key: 'brush', label: 'Brush', icon: Brush, hint: 'Soft Field — paint where the light lives' },
-    { key: 'trace', label: 'Trace', icon: PenTool, hint: 'Path or Boundary — draw a line' },
-    { key: 'collect', label: 'Collect', icon: Group, hint: 'Constellation — gather grounds and points' },
-    { key: 'connect', label: 'Connect', icon: Waypoints, hint: 'Relation — tie two grounds together' },
-    { key: 'frame', label: 'Frame', icon: Frame, hint: 'The whole image as evidence' },
-    { key: 'refine', label: 'Refine', icon: Scan, hint: 'Select a part, then click/drag to tighten it to an exact mask' },
-    { key: 'read', label: 'Read', icon: Sparkles, hint: 'Ask the model to interpret the parts — name, qualify, relate; it never moves a mask' },
-    { key: 'similar', label: 'Similar', icon: Search, hint: 'Find a selected part\'s visual neighbours — research to inspect, never facts' },
+    { key: 'select', label: 'Select', icon: SelectToolGlyph, hint: 'Point at parts — ⇧ to gather several' },
+    { key: 'brush', label: 'Brush', icon: BrushToolGlyph, hint: 'Soft Field — paint where the light lives' },
+    { key: 'trace', label: 'Trace', icon: TraceToolGlyph, hint: 'Path or Boundary — draw a line' },
+    { key: 'collect', label: 'Collect', icon: CollectToolGlyph, hint: 'Constellation — gather grounds and points' },
+    { key: 'connect', label: 'Connect', icon: ConnectToolGlyph, hint: 'Relation — tie two grounds together' },
+    { key: 'frame', label: 'Frame', icon: FrameToolGlyph, hint: 'The whole image as evidence' },
+    { key: 'refine', label: 'Refine', icon: RefineToolGlyph, hint: 'Select a part, then click/drag to tighten it to an exact mask' },
+    { key: 'read', label: 'Read', icon: ReadToolGlyph, hint: 'Ask the model to interpret the parts — name, qualify, relate; it never moves a mask' },
+    { key: 'similar', label: 'Similar', icon: SimilarToolGlyph, hint: 'Find a selected part\'s visual neighbours — research to inspect, never facts' },
+    { key: 'field', label: 'Field', icon: BrushToolGlyph, hint: 'Ask a producer for a soft field — negative space around a part, or its same-material extent from a tap' },
 ];
+
+// CIRCUIT-001 P6-C — the field producers reachable from the Field tool. `negative_space` inverts a
+// selected part's mask (no model); `material_field` needs a tap on the image to seed DINOv2.
+const FIELD_PRODUCERS = [
+    { key: 'negative_space', label: 'Negative space', needsSeed: false,
+      hint: 'What is shaped by NOT being the selected part — the complement of its mask.' },
+    { key: 'material_field', label: 'Material', needsSeed: true,
+      hint: 'Tap a point on the image; DINOv2 paints everything of the same material.' },
+    { key: 'rhythm', label: 'Rhythm', needsSeed: false,
+      hint: 'Where something repeats — Gabor energy over the part\'s surface. No model, no GPU.' },
+    { key: 'pressure_zone', label: 'Pressure', needsSeed: false,
+      hint: 'Where the surface pulls one way — structure-tensor coherence. Same reading as Rhythm.' },
+    { key: 'background_recession', label: 'Recession', needsSeed: false,
+      hint: 'What falls away behind — relative depth from Depth-Anything.' },
+    { key: 'atmosphere_field', label: 'Atmosphere', needsSeed: false,
+      hint: 'The condition the foreground sits in — the near band of the same depth reading.' },
+    { key: 'light_field', label: 'Light', needsSeed: false,
+      hint: 'Where the light lives — intrinsic shading. Needs the Intrinsic model installed.' },
+    { key: 'shadow_field', label: 'Shadow', needsSeed: false,
+      hint: 'Where the light is withheld — the same reading, read as absence.' },
+    // P8-A: the first producer driven by WORDS. `needsPhrase` swaps the run button for a text
+    // field — the query is a phrase, not a selection or a tap.
+    // P8-B: the phrase field now drives Grounded-SAM (GroundingDINO grounds the words to a box,
+    // SAM2 refines it to a mask). Florence-2's producer stays registered but parked — it cannot
+    // load on transformers 5.13.
+    { key: 'grounded_sam_find_parts', label: 'Name it', needsSeed: false, needsPhrase: true,
+      hint: 'Say what to find — "the drapery" — it is grounded, verified against the crop, then cut to an exact mask.' },
+    // P8-D: two READINGS. They answer a question about the image rather than marking it, so they
+    // mint nothing and their result is shown inline instead of entering review.
+    { key: 'presence_check', label: 'Is it there?', needsSeed: false, needsPhrase: true, isReading: true,
+      hint: 'Ask whether something is present — and get an honest no when it is not.' },
+    { key: 'enumerate', label: 'How many?', needsSeed: false, needsPhrase: true, isReading: true,
+      hint: 'Count what is verified, not what the detector guessed. Absent things count zero.' },
+    // TRACE-001: the first TRACE-lane act. A trace is not a field — it carries a direction per
+    // cell (a flow_field), not a magnitude — so it is grouped apart from the brushed fields above.
+    { key: 'architectural_axis', label: 'Axis', needsSeed: false, isTrace: true,
+      hint: 'Where the built structure runs — OpenCV line segments, no model. An organic scene is refused.' },
+    // TRACE-002: the projective sibling. Axis reads the lines that ARE there; this reads the
+    // frame they imply. Learned + GPU, and DEFERRED — it reports unavailable until GeoCalib is
+    // installed, which the chip states rather than failing silently.
+    { key: 'external_limit', label: 'Limit', needsSeed: false, isTrace: true, deferred: true,
+      hint: 'The horizon the scene recedes toward. Needs GeoCalib installed; a flat frontal image is refused.' },
+];
+
+// Each system layer wears the family mark of what it holds: the working surface
+// is a region in the making, evidence is the framed image, a suggestion is a
+// proposed percept, and recall is the return arc. Aesthetic only.
+const LAYER_GLYPHS = {
+    scratch: RegionGlyph,
+    evidence: FrameGlyph,
+    suggestion: PerceptMark,
+    recall: RecallGlyph,
+};
 
 const PERCEPT_PROPERTIES = [
     'light', 'colour', 'material', 'movement', 'composition',
@@ -124,12 +214,14 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         grounds, percepts, saveState, metaSaveState,
         addGround, updateGround, removeGround, groundById, selectedGroundId, selectGround,
         setHoveredGroundId, focusGroundIds,
-        addExpressionPercept, playRecall, clearRecall, recall,
+        addExpressionPercept, playRecall, playMarkRecall, clearRecall, recall,
         updateRegion, addRegion,
         // CIRCUIT-001 P3-B Debt 1 — the visual_mark store API landed in P2E-A. Marks
         // now persist alongside grounds; the commit is the write (a draft never thrashes
         // the network — the store filters to committed/superseded, its contract).
         visualMarks, addVisualMark, updateVisualMark, visualMarksForGround,
+        // CIRCUIT-001 Q-C — durable render layers (per producer/role visibility/opacity).
+        visualLayers, saveVisualLayers,
     } = store;
 
     const recallPlayer = useRecallPlayer(store);
@@ -145,6 +237,25 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
 
     // ── Similar (VISION-E · E5) — a selected part's visual neighbours (research, not fact) ──
     const similar = useFindSimilar(postId, tool === 'similar' ? selectedId : null);
+
+    // ── Field (CIRCUIT-001 P6-C) — a producer paints a soft field; results enter quarantine ──
+    const fieldProducer = useProduceField(postId, store);
+    const [fieldKind, setFieldKind] = useState('negative_space');   // which field producer is armed
+    const [fieldPhrase, setFieldPhrase] = useState('');             // P8-A: open-vocab query
+    const fieldSpec = FIELD_PRODUCERS.find((p) => p.key === fieldKind) || FIELD_PRODUCERS[0];
+    // Run the armed field producer against the selected region (+ an optional tap seed). Results are
+    // ingested into the SAME quarantine the hook feeds — nothing is drawn on the canvas here.
+    const runField = useCallback((seedPoint = null) => {
+        const spec = FIELD_PRODUCERS.find((p) => p.key === fieldKind);
+        // A phrase producer asks about the whole image, so it needs no selected part — only words.
+        if (spec?.needsPhrase) {
+            if (!fieldPhrase.trim()) return;
+            fieldProducer.produce({ producer: fieldKind, regionId: selectedId, phrase: fieldPhrase.trim() });
+            return;
+        }
+        if (!selectedId) return;
+        fieldProducer.produce({ producer: fieldKind, regionId: selectedId, seedPoint });
+    }, [selectedId, fieldKind, fieldPhrase, fieldProducer]);
 
     // ── Find parts (CIRCUIT-001 P2) — the operation, available where composing happens ──
     const findParts = useFindParts(postId, store);
@@ -202,6 +313,24 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     const evidenceLayer = layerByType.evidence;
     const suggestionLayer = layerByType.suggestion;
     const evidenceLocked = !!evidenceLayer?.locked;
+
+    // Q-C: the render layers actually present — committed grounds grouped by producer/role,
+    // with each layer's saved visibility/opacity merged from the persisted `visual_layers`.
+    const groundLayers = useMemo(
+        // MOUNT-001: marks join the derivation so flow_field traces get their own layer rows
+        // (one per role) with the same show/hide/opacity as every other layer.
+        () => deriveLayers(grounds, visualLayers, marks), [grounds, visualLayers, marks]);
+    const saveGroundLayers = useCallback((next) => {
+        saveVisualLayers?.(persistableLayers(next));
+    }, [saveVisualLayers]);
+    const onToggleGroundLayer = useCallback((key) => {
+        saveGroundLayers(groundLayers.map((l) =>
+            l.key === key ? { ...l, visibility: !(l.visibility !== false) } : l));
+    }, [groundLayers, saveGroundLayers]);
+    const onGroundLayerOpacity = useCallback((key, v) => {
+        saveGroundLayers(groundLayers.map((l) =>
+            l.key === key ? { ...l, opacity: Math.min(1, Math.max(0, v)) } : l));
+    }, [groundLayers, saveGroundLayers]);
     // The layer controls, wired to Lane A3's immutable mutators (never reimplemented).
     const onToggleLayer = useCallback((id) => setLayers((ls) => toggleLayerVisibility(ls, id)), []);
     const onLayerOpacity = useCallback((id, v) => setLayers((ls) => setLayerOpacity(ls, id, v)), []);
@@ -252,6 +381,14 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         // component's setState from inside a setEditing updater (React runs the
         // updater during render, and doing so warns "setState while rendering").
         if (!editing) return;
+        if (editing.target === '__suggestion__') {
+            // P4-B (2b): editing a suggestion's shape STAGES the points into the review
+            // edit — it never mutates the suggestion; acceptance folds them into the
+            // derived mark, leaving the original proposal intact in lineage.
+            setReview((rv) => (rv ? { ...rv, edit: { ...rv.edit, points: editing.points } } : rv));
+            setEditing(null);
+            return;
+        }
         if (editing.target === '__draft__') {
             setDraft((d) => (d && (d.kind === 'path' || d.kind === 'boundary')
                 ? { ...d, points: editing.points } : d));
@@ -305,6 +442,94 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         if (d) updateVisualMark(sugg.id, { status: d.status, warnings: d.warnings });
     }, [updateVisualMark]);
 
+    // ── CIRCUIT-001 P4-B — the suggestion review surface. ──────────────────────────
+    // `review` is `{ index, edit, dismissReason } | null`. When on, the review surface
+    // cycles the pending suggestions one at a time; `edit` STAGES role/label/geometry
+    // corrections (never mutating the suggestion) that acceptance folds into the derived
+    // mark (Label Studio edit-before-accept). Accepting many is the a-rhythm — there is
+    // deliberately no function that commits more than one suggestion per call.
+    const [review, setReview] = useState(null);
+    const wrapIndex = (n) => ((n % Math.max(1, pendingSuggestions.length)) + pendingSuggestions.length) % Math.max(1, pendingSuggestions.length);
+    const startReview = useCallback(() => {
+        if (pendingSuggestions.length) setReview({ index: 0, edit: {}, dismissReason: null });
+    }, [pendingSuggestions.length]);
+    const endReview = useCallback(() => setReview(null), []);
+    const reviewNext = useCallback(() => setReview((rv) => (rv ? { ...rv, index: wrapIndex(rv.index + 1), edit: {}, dismissReason: null } : rv)), [pendingSuggestions.length]);   // eslint-disable-line react-hooks/exhaustive-deps
+    const reviewPrev = useCallback(() => setReview((rv) => (rv ? { ...rv, index: wrapIndex(rv.index - 1), edit: {}, dismissReason: null } : rv)), [pendingSuggestions.length]);   // eslint-disable-line react-hooks/exhaustive-deps
+    const stageReviewRole = useCallback((role) => setReview((rv) => (rv ? { ...rv, edit: { ...rv.edit, role } } : rv)), []);
+    const stageReviewLabel = useCallback((label) => setReview((rv) => (rv ? { ...rv, edit: { ...rv.edit, label } } : rv)), []);
+    const setReviewDismissReason = useCallback((reason) => setReview((rv) => (rv ? { ...rv, dismissReason: reason } : rv)), []);
+
+    const currentSuggestion = useCallback(
+        () => pendingSuggestions[Math.min(review?.index ?? 0, pendingSuggestions.length - 1)] || null,
+        [pendingSuggestions, review],
+    );
+
+    // Open the stage handles on the CURRENT suggestion's geometry (a special edit
+    // target that stages back into review.edit rather than committing to a ground).
+    const editReviewGeometry = useCallback(() => {
+        const s = currentSuggestion();
+        const pts = s && editablePoints(s);
+        if (pts && pts.length) setEditing({ target: '__suggestion__', points: pts.map((p) => [...p]) });
+    }, [currentSuggestion]);
+
+    // Accept the current suggestion WITH the staged edits. `acceptSuggestion` mints a
+    // NEW mark (user_confirmed when the geometry KIND is unchanged — which the edits
+    // always keep, so the accepted mark stays citable), `derived_from` the suggestion,
+    // which is returned untouched. One suggestion per call — accepting many is N presses.
+    const acceptCurrentSuggestion = useCallback(() => {
+        if (!review) return;
+        const s = currentSuggestion();
+        if (!s) return;
+        const edits = {};
+        if (review.edit.role != null) edits.role = review.edit.role;
+        if (review.edit.label != null) edits.label = review.edit.label;
+        if (review.edit.points) edits.geometry = withEditedPoints(s, review.edit.points).geometry;
+        const out = acceptSuggestion(s, edits);
+        if (!out) return;
+        // A field suggestion carries strokes — promote them to a ground so the accepted
+        // mark cites real evidence (as the one-at-a-time flow already did).
+        let accepted = out.accepted;
+        const strokes = out.accepted.geometry?.strokes;
+        if (Array.isArray(strokes) && strokes.length) {
+            const g = addGround(makeGround('field', { strokes, label: out.accepted.label || '', instrument_role: out.accepted.role }));
+            accepted = { ...out.accepted, linked_ground_ids: [...(out.accepted.linked_ground_ids || []), g.id] };
+        }
+        addVisualMark(accepted);
+        // The accepted suggestion drops out of pendingSuggestions (it now has a
+        // descendant), so staying at this index lands on the next one; clear the edit.
+        setReview((rv) => (rv ? { ...rv, edit: {}, dismissReason: null } : rv));
+    }, [review, currentSuggestion, addGround, addVisualMark]);
+
+    const dismissCurrentSuggestion = useCallback(() => {
+        if (!review) return;
+        const s = currentSuggestion();
+        if (!s) return;
+        const d = dismissSuggestion(s);
+        // P4F: the quarantine's dismissSuggestion takes no reason; until it does, the
+        // reason rides as an additive session field on the dismissed (non-persisted) mark.
+        if (d) updateVisualMark(s.id, { status: d.status, warnings: d.warnings, ...(review.dismissReason ? { dismiss_reason: review.dismissReason } : {}) });
+        setReview((rv) => (rv ? { ...rv, edit: {}, dismissReason: null } : rv));
+    }, [review, currentSuggestion, updateVisualMark]);
+
+    // Dismiss-all is one button — refusal needs no ceremony (2d).
+    const dismissAllSuggestions = useCallback(() => {
+        for (const s of pendingSuggestions) {
+            const d = dismissSuggestion(s);
+            if (d) updateVisualMark(s.id, { status: d.status, warnings: d.warnings });
+        }
+        setReview(null);
+    }, [pendingSuggestions, updateVisualMark]);
+
+    // Keep review in range as the queue shrinks; leave review when it empties.
+    useEffect(() => {
+        if (!review) return;
+        if (pendingSuggestions.length === 0) { setReview(null); return; }
+        if (review.index >= pendingSuggestions.length) {
+            setReview((rv) => (rv ? { ...rv, index: pendingSuggestions.length - 1, edit: {}, dismissReason: null } : rv));
+        }
+    }, [review, pendingSuggestions.length]);
+
     // ── CIRCUIT-001 P3-B Debt 2 — the real suggestion source. ──────────────────────
     // A model_suggested (or, for tests, `fixture`-source) action arriving through the
     // attunement/action path becomes a quarantined draft via Lane A3's real staging
@@ -339,6 +564,27 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         () => (percepts || []).filter((p) => String(p.id || '').startsWith('pctx_')),
         [percepts],
     );
+
+    // ── CIRCUIT-001 P5-B — the Passage Rail follows the operation under the hand. The tool the
+    // curator is holding is the run they want to watch; idle, the passage is the primary dissect.
+    // (A single `latest` poll per operation — a cross-operation runs-list would let the rail show
+    // the single most-recent run regardless of tool. See the // P5F: marker below.)
+    const passageOperation = tool === 'refine' ? 'refine'
+        : tool === 'similar' ? 'find_similar'
+            : tool === 'read' ? 'semantic_read'
+                : 'dissect';
+    // 2b — tapping a run event highlights the marks that run produced and the curator accepted.
+    // Highlight == the existing read-only recall channel (P3-A): performing the mark IS the
+    // highlight, and it then reappears in the rail as a session recall event — a closed loop.
+    const highlightRunMarks = useCallback((runId) => {
+        const accepted = acceptedMarksForRun(runId, visualMarks);
+        if (accepted.length) playMarkRecall(accepted[0].id);
+        // P5F: with one recall channel only the first accepted mark performs; a multi-mark
+        // highlight (focus every accepted mark from a run at once) wants a store `focusMarks(ids)`.
+    }, [visualMarks, playMarkRecall]);
+    const highlightMark = useCallback((markId) => {
+        if (markId) playMarkRecall(markId);
+    }, [playMarkRecall]);
 
     const composing = tool === 'collect' || tool === 'connect';
 
@@ -442,6 +688,10 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         } else if (tool === 'collect' && e.target.tagName === 'IMG') {
             // an empty tap plants a raw point in the constellation
             setDraft((d) => (d?.kind === 'constellation' ? { ...d, points: [...(d.points || []), { x: p.x, y: p.y }] } : d));
+        } else if (tool === 'field' && fieldSpec.needsSeed && selectedId) {
+            // P6-C: material needs a seed — the tap on the image IS the seed patch; run the producer.
+            e.preventDefault();
+            runField([p.x, p.y]);
         }
     };
 
@@ -793,10 +1043,22 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     // …and when the workspace unmounts.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- stable refine.release only
     useEffect(() => () => { refine.release(); }, [refine.release]);
+    // FIX-UI-001 (G1): on leaving the workspace, ABORT the in-flight producer requests so a
+    // request begun near exit cannot resolve against an unmounted tree, and clear any recall
+    // so the stage never re-enters `is-recalling` on the next mount. These hooks each hold an
+    // AbortController; nothing here calls their cancel on unmount otherwise. (useOrchestrate has
+    // no AbortController yet — see OrchestrationBar; aborting it is a follow-up.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable cancels only
+    useEffect(() => () => {
+        fieldProducer.cancel();
+        similar.cancel();
+        reading.cancel();
+        store.clearRecall();
+    }, [fieldProducer.cancel, similar.cancel, reading.cancel, store.clearRecall]);
 
     // ── region click (tool-aware) ───────────────────────────────────────────
     const handleRegionClick = useCallback((id, e) => {
-        if (tool === 'select' || tool === 'similar') {
+        if (tool === 'select' || tool === 'similar' || tool === 'field') {
             if (e?.shiftKey && tool === 'select') setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
             else setPicked(new Set([id]));
             selectRegion(id);
@@ -814,6 +1076,15 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     useEffect(() => {
         const down = (e) => {
             if (e.target.closest?.('input, textarea, [contenteditable="true"]')) return;
+            // P4-B (2a): review shortcuts take precedence while reviewing (but not while
+            // the geometry handles are open — then Escape/Enter belong to the reshape).
+            if (review && !editing) {
+                if (e.key === 'n' || e.key === 'ArrowRight') { e.preventDefault(); reviewNext(); return; }
+                if (e.key === 'p' || e.key === 'ArrowLeft') { e.preventDefault(); reviewPrev(); return; }
+                if (e.key === 'a') { e.preventDefault(); acceptCurrentSuggestion(); return; }
+                if (e.key === 'd') { e.preventDefault(); dismissCurrentSuggestion(); return; }
+                if (e.key === 'Escape') { e.preventDefault(); endReview(); return; }
+            }
             if (tool === 'refine') {
                 if (e.key === 'Enter') { e.preventDefault(); confirmRefine(); return; }
                 if (e.key === 'Escape') { refine.clear(); return; }
@@ -841,7 +1112,8 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         window.addEventListener('keyup', up);
         return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
         // eslint-disable-next-line react-hooks/exhaustive-deps -- stable refine.clear only
-    }, [recall, clearRecall, composer, hasDrawDraft, hasCompDraft, picked, tray, clearDraft, undoStroke, switchTool, tool, traceSub, selectRegion, selectGround, setHoveredId, confirmRefine, refine.clear, editing, cancelEdit]);
+    }, [recall, clearRecall, composer, hasDrawDraft, hasCompDraft, picked, tray, clearDraft, undoStroke, switchTool, tool, traceSub, selectRegion, selectGround, setHoveredId, confirmRefine, refine.clear, editing, cancelEdit,
+        review, reviewNext, reviewPrev, acceptCurrentSuggestion, dismissCurrentSuggestion, endReview]);
 
     const saving = saveState === 'saving' || metaSaveState === 'saving';
     const saved = saveState === 'saved' || metaSaveState === 'saved';
@@ -869,6 +1141,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                     <ArrowLeft size={15} /> Chiasm
                 </button>
                 <div className="diff-identity">
+                    <DifferentialMark className="diff-identity-glyph" style={{ color: 'inherit' }} aria-hidden="true" />
                     <span className="diff-eyebrow">Differential</span>
                     {post?.instagram_handle && <span className="diff-handle">@{post.instagram_handle}</span>}
                 </div>
@@ -893,7 +1166,10 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             aria-pressed={tool === t.key}
                             title={`${t.label} — ${t.hint}`}
                             onClick={() => { if (t.key === 'frame') commitFrame(); else switchTool(t.key); }}>
-                            <t.icon size={16} />
+                            {/* color:inherit overrides each glyph's own #g-tool-*{color}
+                                default so the body follows the theme; the tick rides
+                                --tick / --tick-o set on .diff-tool(.on) below. */}
+                            <t.icon className="diff-tool-glyph" style={{ color: 'inherit' }} aria-hidden="true" />
                             <span className="diff-tool-label">{t.label}</span>
                         </button>
                     ))}
@@ -904,14 +1180,16 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         <span className="diff-layers-title">Layers</span>
                         {[...layers].sort((a, b) => b.order - a.order).map((l) => {
                             const system = isSystemLayer(l);
+                            const LaneGlyph = LAYER_GLYPHS[l.layer_type] || RegionGlyph;
                             return (
-                                <div key={l.id} className={`diff-layer-row${l.visibility === false ? ' is-hidden' : ''}`}>
+                                <div key={l.id} data-layer={l.layer_type} className={`diff-layer-row${l.visibility === false ? ' is-hidden' : ''}`}>
                                     <button type="button" className="diff-layer-eye"
                                         aria-pressed={l.visibility !== false} disabled={system}
                                         title={system ? 'System layer' : (l.visibility === false ? 'Show' : 'Hide')}
                                         onClick={() => { if (!system) onToggleLayer(l.id); }}>
                                         {l.visibility === false ? <EyeOff size={12} /> : <Eye size={12} />}
                                     </button>
+                                    <LaneGlyph size={12} className="diff-layer-glyph" aria-hidden="true" />
                                     <span className="diff-layer-name">{l.name}</span>
                                     {system ? (
                                         <span className="diff-layer-system" title="System layer — no controls">sys</span>
@@ -931,6 +1209,31 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             );
                         })}
                     </div>
+                    {/* Q-C — the render layers: committed grounds grouped by producer/role, so
+                        the masks stop piling onto one flat surface. Minimal controls (show/hide +
+                        opacity); only layers that actually have grounds appear. Persists via the
+                        store, so a hidden layer stays hidden across reload. */}
+                    {groundLayers.length > 0 && (
+                        <div className="diff-layers diff-layers--render" aria-label="Render layers">
+                            <span className="diff-layers-title">Groups</span>
+                            {groundLayers.map((l) => (
+                                <div key={l.key} data-layer-key={l.key}
+                                    className={`diff-layer-row${l.visibility === false ? ' is-hidden' : ''}`}>
+                                    <button type="button" className="diff-layer-eye"
+                                        aria-pressed={l.visibility !== false}
+                                        title={l.visibility === false ? 'Show' : 'Hide'}
+                                        onClick={() => onToggleGroundLayer(l.key)}>
+                                        {l.visibility === false ? <EyeOff size={12} /> : <Eye size={12} />}
+                                    </button>
+                                    <span className="diff-layer-name">{l.name}</span>
+                                    <span className="diff-layer-count" aria-hidden="true">{l.count}</span>
+                                    <input type="range" className="diff-layer-opacity" min="0" max="1" step="0.05"
+                                        value={l.opacity ?? 1} aria-label={`${l.name} opacity`}
+                                        onChange={(e) => onGroundLayerOpacity(l.key, Number(e.target.value))} />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </nav>
 
                 {/* ── stage ── */}
@@ -992,6 +1295,78 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         </div>
                     )}
 
+                    {/* P6-C — the Field tool: pick a producer, select a part, and (for material) tap
+                        the image. The producer proposes a soft field into quarantine; a refusal is
+                        surfaced honestly, never as an error and never as a fabricated mark. */}
+                    {tool === 'field' && !untouched && (
+                        <div className="diff-field-panel">
+                            <div className="diff-subtools diff-brush-roles" role="radiogroup" aria-label="Field producer">
+                                {FIELD_PRODUCERS.map((p) => (
+                                    <button key={p.key} type="button" role="radio" aria-checked={fieldKind === p.key}
+                                        className={`diff-subtool diff-role-chip${fieldKind === p.key ? ' on' : ''}`}
+                                        title={p.hint}
+                                        onClick={() => { setFieldKind(p.key); fieldProducer.clear(); }}>{p.label}</button>
+                                ))}
+                            </div>
+                            <p className="diff-field-hint">
+                                {fieldSpec.needsPhrase ? fieldSpec.hint
+                                    : !selectedId ? 'Select a part first.'
+                                        : fieldSpec.needsSeed ? 'Tap a point on the part to seed the material field.'
+                                            : fieldSpec.hint}
+                            </p>
+                            {/* P8-A — the query is WORDS, so the run control is a text field.
+                                Enter submits; an empty phrase asks nothing and stays disabled. */}
+                            {fieldSpec.needsPhrase && (
+                                <div className="diff-field-phrase">
+                                    <input type="text" className="diff-field-phrase-input"
+                                        placeholder="name what to find — e.g. the folded cloth"
+                                        aria-label="Phrase to find"
+                                        value={fieldPhrase}
+                                        onChange={(e) => setFieldPhrase(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') runField(); }} />
+                                    <button type="button" className="diff-primary diff-field-run"
+                                        disabled={!fieldPhrase.trim() || fieldProducer.status === 'loading'}
+                                        onClick={() => runField()}>
+                                        {fieldProducer.status === 'loading' ? 'Looking…' : 'Find it'}
+                                    </button>
+                                </div>
+                            )}
+                            {!fieldSpec.needsSeed && !fieldSpec.needsPhrase && (
+                                <button type="button" className="diff-primary diff-field-run"
+                                    disabled={!selectedId || fieldProducer.status === 'loading'}
+                                    onClick={() => runField()}>
+                                    {fieldProducer.status === 'loading' ? 'Producing…' : `Find ${fieldSpec.label.toLowerCase()}`}
+                                </button>
+                            )}
+                            {/* honest status — a producer that finds nothing SAYS nothing, it never invents */}
+                            {fieldProducer.status === 'loading' && <p className="diff-field-status">Producing…</p>}
+                            {fieldProducer.status === 'empty' && (
+                                <p className="diff-field-status diff-field-empty">Nothing here — no field to propose.</p>)}
+                            {fieldProducer.status === 'unavailable' && (
+                                <p className="diff-field-status diff-field-empty">That model isn’t available right now.</p>)}
+                            {fieldProducer.status === 'error' && (
+                                <p className="diff-field-status diff-field-empty">Couldn’t reach the producer.</p>)}
+                            {/* P8-D — a reading is shown here and nowhere else: it is a sentence
+                                about the image, not evidence on it, so there is nothing to review. */}
+                            {fieldProducer.reading?.type === 'presence_reading' && (
+                                <p className={`diff-field-status diff-field-reading${fieldProducer.reading.present ? ' on' : ''}`}>
+                                    {fieldProducer.reading.present
+                                        ? `Yes — “${fieldProducer.reading.phrase}” is here (${fieldProducer.reading.instances} verified).`
+                                        : fieldProducer.reading.basis === 'detector_proposed_but_unverified'
+                                            ? `No — something was proposed for “${fieldProducer.reading.phrase}”, but it does not check out.`
+                                            : `No — “${fieldProducer.reading.phrase}” is not here.`}
+                                </p>)}
+                            {fieldProducer.reading?.type === 'count_reading' && (
+                                <p className="diff-field-status diff-field-reading on">
+                                    {fieldProducer.reading.count === 0
+                                        ? `None — nothing matching “${fieldProducer.reading.phrase}” verified (of ${fieldProducer.reading.considered} considered).`
+                                        : `${fieldProducer.reading.count} × “${fieldProducer.reading.phrase}” (of ${fieldProducer.reading.considered} considered).`}
+                                </p>)}
+                            {fieldProducer.status === 'ready' && !fieldProducer.reading && fieldProducer.lastRun && (
+                                <p className="diff-field-status">Proposed {fieldProducer.lastRun.count} field{fieldProducer.lastRun.count === 1 ? '' : 's'} — review below.</p>)}
+                        </div>
+                    )}
+
                     {/* P2E-B (2e) — the semantic brush: a field role is the whole point of
                         the brush. Draw with a role and it mints a contract-shaped brush_field.
                         P3-B (2c): an Erase toggle paints strokes[].op:'sub' — erase as DATA. */}
@@ -1035,8 +1410,12 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         onPointerLeave={() => { endStroke(); setBrushCursor(null); }}
                         // Belt-and-braces against the native image drag stealing the gesture.
                         onDragStart={(e) => e.preventDefault()}>
+                        {/* FIX-UI-001 (G2): the stage image is the one request that must never
+                            queue behind telemetry. fetchpriority=high tells the browser to
+                            dispatch it ahead of the vision-runs/latest reads competing for the
+                            same origin's connections. */}
                         <img src={post.photo_url} alt="" referrerPolicy="no-referrer" onLoad={onImgLoad}
-                            draggable={false} />
+                            fetchpriority="high" draggable={false} />
                         {!untouched && (
                             <>
                                 <RegionOverlay
@@ -1046,7 +1425,11 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     onActivate={(tool === 'select' || tool === 'similar') ? setHoveredId : undefined}
                                     className="diff-svg"
                                     interactive={tool !== 'refine'}
-                                    proposal={tool === 'refine' ? refine.proposal : null}
+                                    // P4-B (2c): the mask preview no longer rides RegionOverlay's
+                                    // ad-hoc `rs-proposal` — it renders on the SUGGESTION layer
+                                    // (RefineProposalGhost below), visibly distinct and uncitable.
+                                    // RegionOverlay keeps only the fg/bg point + box PROMPT.
+                                    proposal={null}
                                     prompt={tool === 'refine' ? { points: refine.points, box: refineBox || refine.box } : null}
                                 />
                                 <GroundLayers
@@ -1063,12 +1446,23 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     // P3-B (2d): the evidence layer's visibility/opacity controls.
                                     evidenceVisible={evidenceLayer?.visibility !== false}
                                     evidenceOpacity={evidenceLayer?.opacity ?? 1}
+                                    // Q-C: per-producer/role render layers (grouped SVG <g>).
+                                    layers={groundLayers}
+                                    // MOUNT-001: committed marks, so flow_field traces render.
+                                    marks={marks}
                                 />
                                 {/* P2E-B (2e) — pending suggestions render as a distinct dashed
                                     ghost: model-proposed, uncitable, never mistaken for evidence.
                                     P3-B (2d): honors the suggestion layer's visibility control. */}
                                 {suggestionLayer?.visibility !== false && (
                                     <SuggestionGhosts marks={pendingSuggestions} natural={natural} usePF={usePerfectFreehand} />
+                                )}
+                                {/* P4-B (2c) — the SAM refine PREVIEW lives on the suggestion
+                                    layer: a distinct dashed teal mask, uncitable, never mistaken
+                                    for a committed segment. Correction (add/remove fg/bg points,
+                                    re-preview) happens under it; Accept persists via confirmRefine. */}
+                                {tool === 'refine' && suggestionLayer?.visibility !== false && (
+                                    <RefineProposalGhost proposal={refine.proposal} natural={natural} />
                                 )}
                                 {/* P2E-B (2c) — editable anchors on the geometry being reshaped */}
                                 {editing && natural && (
@@ -1158,26 +1552,58 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         </section>
                     )}
 
-                    {/* P2E-B (2e) — the suggestion quarantine, live. Model-proposed marks
-                        wait here: uncitable, never counted, visibly the model's until a human
-                        Accepts (mints a user_confirmed mark, lineage back) or Dismisses. */}
-                    {pendingSuggestions.length > 0 && (
+                    {/* SURFACE-001 — the intention affordance. A plan's suggestions land in the
+                        SAME quarantine/review below, so orchestration reuses the review surface
+                        rather than building a new one. */}
+                    <section className="diff-insp-section diff-insp-orchestrate">
+                        <OrchestrationBar postId={postId} store={store} />
+                    </section>
+
+                    {/* P4-B (2a) — the suggestion quarantine, now a REVIEW surface. When
+                        the model proposes marks they wait here, uncitable and visibly the
+                        model's. Not reviewing yet → an entry with the count and a Review
+                        button (a single suggestion still gets quick Accept/Dismiss). While
+                        reviewing → the full surface: cycle, edit, accept/dismiss, bulk. */}
+                    {pendingSuggestions.length > 0 && !review && (
                         <section className="diff-insp-section diff-insp-suggestions">
-                            <span className="diff-eyebrow">Model suggestions · {pendingSuggestions.length}</span>
-                            {pendingSuggestions.map((s) => (
-                                <div key={s.id} className="diff-suggestion">
+                            <div className="diff-review-head">
+                                <span className="diff-eyebrow">Model suggestions · {pendingSuggestions.length}</span>
+                                <button type="button" className="diff-primary diff-review-start" onClick={startReview}>
+                                    Review {pendingSuggestions.length}
+                                </button>
+                            </div>
+                            {pendingSuggestions.length === 1 && (
+                                <div className="diff-suggestion">
                                     <div className="diff-suggestion-head">
-                                        <span className="diff-chip diff-mark-prov-chip is-model">{summarizeProvenance(s)}</span>
-                                        <span className="diff-suggestion-role">{roleLabel(s.type, s.role)}</span>
+                                        <span className="diff-chip diff-mark-prov-chip is-model">{summarizeProvenance(pendingSuggestions[0])}</span>
+                                        <span className="diff-suggestion-role">{roleLabel(pendingSuggestions[0].type, pendingSuggestions[0].role)}</span>
                                     </div>
-                                    {s.label && <p className="diff-insp-hint">“{s.label}”</p>}
+                                    {pendingSuggestions[0].label && <p className="diff-insp-hint">“{pendingSuggestions[0].label}”</p>}
                                     <div className="diff-insp-row-actions">
-                                        <button type="button" className="diff-primary" onClick={() => acceptBrushSuggestion(s)}>Accept</button>
-                                        <button type="button" className="diff-quiet" onClick={() => dismissBrushSuggestion(s)}>Dismiss</button>
+                                        <button type="button" className="diff-primary" onClick={() => acceptBrushSuggestion(pendingSuggestions[0])}>Accept</button>
+                                        <button type="button" className="diff-quiet" onClick={() => dismissBrushSuggestion(pendingSuggestions[0])}>Dismiss</button>
                                     </div>
                                 </div>
-                            ))}
+                            )}
                         </section>
+                    )}
+                    {review && pendingSuggestions.length > 0 && (
+                        <SuggestionReview
+                            suggestions={pendingSuggestions}
+                            index={review.index}
+                            edit={review.edit}
+                            dismissReason={review.dismissReason}
+                            geometryEditing={editing?.target === '__suggestion__'}
+                            onPrev={reviewPrev}
+                            onNext={reviewNext}
+                            onAccept={acceptCurrentSuggestion}
+                            onDismiss={dismissCurrentSuggestion}
+                            onDismissAll={dismissAllSuggestions}
+                            onSetRole={stageReviewRole}
+                            onSetLabel={stageReviewLabel}
+                            onEditGeometry={editReviewGeometry}
+                            onSetDismissReason={setReviewDismissReason}
+                        />
                     )}
 
                     {/* 2 — SEEING. Find parts stays one keystroke away, but it is now one
@@ -1202,6 +1628,18 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         {findParts.error && (
                             <p className="diff-insp-hint" role="alert">{findParts.error}</p>
                         )}
+                        {/* CIRCUIT-001 P5-B — the Passage: the real run under the hand + this
+                            session's circulation, honestly rendered. A witness, not a narrator.
+                            P5F: mounted inside the Differential tool column for v1; spanning
+                            Field ↔ Manuscript is a recorded future promotion (A5 owns those seams). */}
+                        <PassageRail
+                            postId={postId}
+                            operation={passageOperation}
+                            marks={visualMarks}
+                            recall={recall}
+                            onHighlightRun={highlightRunMarks}
+                            onHighlightMark={highlightMark}
+                        />
                     </section>
 
                     {/* 3 — the working area: whatever is under the hand right now. */}
@@ -1455,7 +1893,8 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
 
                     {!composer && !hasDrawDraft && !composing && picked.size === 0 && !selectedGround && !selected && grounds.length === 0 && tray.size === 0 && (
                         <div className="diff-insp-empty">
-                            <span className="diff-eyebrow">Inspector</span>
+                            <RegionMotif variant="seed" size={72} className="diff-insp-motif" />
+                            <SectionEyebrow className="diff-eyebrow">Inspector</SectionEyebrow>
                             <p>Nothing under attention. Select parts, take the Brush (<kbd>B</kbd>) or Trace
                                 (<kbd>T</kbd>), or press <kbd>O</kbd> for the untouched photograph.</p>
                         </div>
@@ -1528,6 +1967,28 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                 </aside>
             </div>
         </div>
+    );
+}
+
+/**
+ * P4-B (2c) — the SAM refine proposal, rendered on the suggestion layer as a
+ * DISTINCT dashed teal mask: a preview, visibly the model's, uncitable, never
+ * mistaken for a committed segment. Same natural-pixel viewBox as the marks, so
+ * it registers exactly with the image. The prompt points (fg/bg) render through
+ * RegionOverlay; this is only the mask preview.
+ */
+export function RefineProposalGhost({ proposal, natural }) {
+    if (!natural || !proposal || !hasMaskPolygons(proposal)) return null;
+    return (
+        <svg className="diff-refine-ghost"
+            viewBox={`0 0 ${natural.w} ${natural.h}`} preserveAspectRatio="xMidYMid meet"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 5 }}
+            aria-hidden="true">
+            <path d={ringsToPath(proposal.polygons, natural.w, natural.h)} fillRule="evenodd"
+                fill="#7FB3A8" fillOpacity={0.16} stroke="#7FB3A8" strokeOpacity={0.85}
+                strokeWidth={Math.max(1.5, 0.003 * natural.w)} strokeDasharray="7 5"
+                vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+        </svg>
     );
 }
 

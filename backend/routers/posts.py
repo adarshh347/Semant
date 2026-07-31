@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form, BackgroundTasks
-from typing import Dict, Optional, List
+from typing import Any, Dict, Optional, List
 from pydantic import BaseModel
 import uuid
 import os
@@ -14,12 +14,14 @@ from urllib.parse import urlparse
 from io import BytesIO
 from backend.services.vision_service import vision_service
 from backend.services import segmentation_service
+from backend.services import sam2_auto_service
 from backend.services import fashion_segmentation_service
 from backend.services import architecture_segmentation_service
 from backend.services import region_embedding_service
 from backend.services import region_geometry
 from backend.services import mask_geometry
 from backend.services import vision_run_service
+from backend.services import epistemics
 from backend.services import suggestion_service
 from backend.services.vision_orchestrator.contracts import JobStatus
 from backend.services.vision_orchestrator import vision_run_contracts as vrc
@@ -99,6 +101,7 @@ def post_helper(post) -> dict:
         "grounds": post.get("grounds"),
         "percepts": post.get("percepts"),
         "visual_marks": post.get("visual_marks"),  # CIRCUIT-001 P2E — durable marks
+        "visual_layers": post.get("visual_layers"),  # CIRCUIT-001 Q-C — durable render layers
     }
 
 
@@ -751,8 +754,37 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
             await rec.event(vrc.STAGE_SEGMENT_COARSE, JobStatus.FAILED, capability="segment",
                             error=str(e))
             anchors = None
-        if not anchors:
-            # No local model / nothing found — the vision detector becomes the anchor source.
+        # ── Q-A · QUALITY gate (art/general domain only) ─────────────────────────
+        # The old test was `if not anchors` — it only failed on ZERO anchors, so YOLO's single
+        # whole-figure blob on a sculpture passed as "success" and a coarse mislabeled anchor
+        # went to the VLM. On the art/general domain the quality gate treats a lone anchor (never
+        # a real decomposition) as FAILURE too, and gives the class-agnostic SAM2-auto proposer a
+        # turn BEFORE the VLM — so the vision-LLM is a genuine last resort, not the silent
+        # default. On
+        # fashion/architecture the specialist masks ARE the parts, so the original zero gate is
+        # kept there unchanged (this gate never fires for those domains).
+        is_general_domain = not (is_fashion or "fashion" in chosen) and "architecture" not in chosen
+        if is_general_domain:
+            # YOLO is trusted only when it already yields a real decomposition (≥2 non-dominant
+            # parts). Otherwise SAM2-auto — the art domain's DEFAULT proposer — gets a turn, and
+            # ANY structural masks it returns are its answer (a class-agnostic SAM2 mask, even a
+            # single one, is more honest than the COCO detector's mislabel or the VLM's guess).
+            proposed = anchors if sam2_auto_service.decomposition_adequate(anchors) else None
+            if proposed is None and sam2_auto_service.is_available():
+                _t = time.perf_counter()
+                auto = await asyncio.to_thread(sam2_auto_service.generate_masks, img_bytes)
+                await rec.event(vrc.STAGE_SEGMENT_AUTO, JobStatus.SUCCEEDED, capability="segment",
+                                adapter="sam2_auto",
+                                latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                                detail={"count": len(auto or []),
+                                        "adequate": sam2_auto_service.decomposition_adequate(auto)})
+                if auto:
+                    proposed, anchors, source = auto, auto, "sam2_auto"
+            need_vision = not proposed                     # VLM only when no proposer produced masks
+        else:
+            need_vision = not anchors                      # original zero gate, unchanged
+        if need_vision:
+            # Nothing produced a real decomposition — the vision detector is the last resort.
             _t = time.perf_counter()
             anchors = await vision_service.detect_regions(photo_url)
             source = "vision"
@@ -1370,7 +1402,9 @@ async def refine_region_suggest(post_id: str, req: RefineRequest):
                         detail={"geometry_rev": region.get("geometry_rev")})
         suggestion = suggestion_service.suggestion_from_refine_region(
             region, run_id=rec.run_id, latency_ms=propose_ms, base_id=req.base_id)
-        suggestions = [suggestion] if suggestion else []
+        # M5: every path into the quarantine is checked. `guard` raises on an untagged or
+        # improperly-crossed claim rather than letting it reach review looking confident.
+        suggestions = epistemics.guard([suggestion] if suggestion else [])
         # A proposal, not a persist — the run terminalizes without a persist stage.
         await rec.finish(JobStatus.SUCCEEDED, terminal_reason="suggested",
                          result_summary={"suggested": len(suggestions),
@@ -1539,7 +1573,8 @@ async def semantic_read(post_id: str, req: SemanticReadRequest = None):
         # `semantics` is unchanged; `suggestions` is the same assertions/relations projected as
         # quarantined `model_suggested` descriptors, run-linked, that the frontend circuit ingests.
         # Geometry is never authored here — a label is a region_ref, a relation is `derived`.
-        suggestions = suggestion_service.suggestions_from_semantics(merged, run_id=rec.run_id)
+        suggestions = epistemics.guard(
+            suggestion_service.suggestions_from_semantics(merged, run_id=rec.run_id))
         return {"semantics": merged, "status": (merged.get("meta") or {}).get("status"),
                 "run_id": rec.run_id, "suggestions": suggestions}
     except asyncio.CancelledError:
@@ -1663,6 +1698,13 @@ async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = N
                                          "neighbours": n, "status": status})
         if isinstance(result, dict):
             result.setdefault("run_id", rec.run_id)          # additive; never overwrites
+            # P5-A · the crossing: neighbours enter the circuit as evidence-suggestions, not
+            # assertions. Additive `suggestions` — cross-post `region_ref` descriptors the
+            # frontend feeds through `ingestSuggestions` into the same review rhythm. The
+            # persisted post is untouched; a suggestion is a proposal, never a write.
+            from backend.services import suggestion_service
+            result.setdefault("suggestions", epistemics.guard(
+                suggestion_service.suggestions_from_similar(result, run_id=rec.run_id)))
         return result
     except asyncio.CancelledError:
         await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
@@ -1670,6 +1712,893 @@ async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = N
     except Exception as e:
         await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
         raise
+
+
+# ── CIRCUIT-001 P6-C · the generic producer-invocation surface ────────────────────────────────
+# ONE endpoint reaches EVERY field producer. Each producer is a small handler in `_FIELD_PRODUCERS`;
+# a new producer becomes reachable by adding a row there — never a new route. GPU producers run
+# through ModelManager (single-GPU residency), CPU producers run inline; both return quarantined
+# `model_suggested` descriptors into the SAME `suggestionQuarantine` path every other producer uses.
+
+class ProduceFieldRequest(BaseModel):
+    producer: str                                    # 'negative_space' | 'material_field' | (future)
+    region_id: Optional[str] = None                  # the selected region (its mask / identity)
+    seed_point: Optional[List[float]] = None         # normalized [x, y] — material_field needs it
+    phrase: Optional[str] = None                     # P8-A: open-vocab find_parts takes WORDS
+    params: Optional[Dict[str, Any]] = None          # producer-specific knobs (optional)
+
+
+def _find_region_by_id(post: dict, region_id: Optional[str]) -> Optional[dict]:
+    if not region_id:
+        return None
+    for r in post.get("region_annotations", []) or []:
+        if str(r.get("id")) == str(region_id):
+            return r
+    return None
+
+
+async def _produce_negative_space(post_id, post, region, req, run_id):
+    """CPU producer — inverts a region's EXISTING mask into a soft field. No GPU, no image fetch.
+    A region with no valid mask is an honest refusal (status 'empty'), never an error."""
+    if region is None:
+        return [], "empty", True
+    sug = suggestion_service.suggestion_from_negative_space(region, run_id=run_id)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+async def _produce_material_field(post_id, post, region, req, run_id):
+    """GPU producer — DINOv2 same-material field. The whole-image encode goes through
+    ModelManager/ResourceKind.GPU (reused, single-GPU residency); a missing seed or an
+    unavailable model is an honest refusal, never a fabricated field."""
+    from backend.services import dinov2_service as dsvc
+    if not dsvc.is_available():
+        return [], "unavailable", False
+    seed = req.seed_point
+    if not (isinstance(seed, (list, tuple)) and len(seed) == 2):
+        return [], "empty", True                     # no tap → nothing to compute (honest)
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+    image_hash = region_embedding_service.content_hash(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    _t = time.perf_counter()
+    feats = await ees._features_via_manager(image, image_hash)   # ModelManager GPU slot
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not feats:
+        return [], "unavailable", False
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    grid = int(feats["grid"])
+    patch_list = feats["patches"].reshape(grid * grid, -1).tolist()
+    sug = suggestion_service.suggestion_from_material(
+        {"patches": patch_list, "grid": grid}, seed, run_id=run_id,
+        region_id=(region or {}).get("id"),
+        model=dsvc.CHECKPOINT, checkpoint=dsvc.CHECKPOINT,
+        preprocessing_version=dsvc.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+def _crop_to_box(image, box: Optional[dict]):
+    """Crop a PIL image to a region's normalized bbox (or return it whole). The perceptual
+    producers read a REGION's surface, so the measurement must be scoped to it — the producer
+    maps the resulting crop-space field back into image space."""
+    if not box:
+        return image, None
+    try:
+        w, h = image.size
+        x0 = max(0, int(float(box.get("x", 0.0)) * w))
+        y0 = max(0, int(float(box.get("y", 0.0)) * h))
+        x1 = min(w, x0 + max(1, int(float(box.get("w", 1.0)) * w)))
+        y1 = min(h, y0 + max(1, int(float(box.get("h", 1.0)) * h)))
+        if x1 <= x0 or y1 <= y0:
+            return image, None
+        return image.crop((x0, y0, x1, y1)), box
+    except Exception:
+        return image, None
+
+
+# One manager + adapter for the CPU producers: no weights, so this is only about routing the
+# work through the CPU_LIGHT pool (never the GPU semaphore) with the rest of the orchestration.
+_cpu_perceptual_mgr = None
+_cpu_perceptual_adapter = None
+
+# perceptual role → the producer that reads that map. Both come from ONE adapter call.
+_PERCEPTUAL_MAKERS = {"rhythm": "suggestion_from_rhythm",
+                      "pressure_zone": "suggestion_from_pressure_zone"}
+
+
+async def _produce_cpu_perceptual(post_id, post, region, req, run_id, *, role: str):
+    """CPU producers (rhythm / pressure_zone) — Gabor energy + structure-tensor coherence.
+
+    Runs the `cpu_perceptual` adapter through ModelManager on the CPU_LIGHT pool, so it never
+    acquires the GPU semaphore and can read a surface while a GPU model stays resident. No
+    weights: nothing loads, nothing unloads. A flat surface is an honest refusal."""
+    from backend.services import cpu_perceptual_service as cps
+    if not cps.is_available():
+        return [], "unavailable", False
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+    box = (region or {}).get("box")
+    crop, used_box = _crop_to_box(image, box)
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import CpuPerceptualAdapter
+    global _cpu_perceptual_mgr, _cpu_perceptual_adapter
+    if _cpu_perceptual_mgr is None:
+        _reg = AdapterRegistry()
+        _cpu_perceptual_adapter = CpuPerceptualAdapter()
+        _reg.register(_cpu_perceptual_adapter)
+        _cpu_perceptual_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _cpu_perceptual_mgr.run_adapter(
+        _cpu_perceptual_adapter, {"image": crop}, priority=int(Priority.INTERACTIVE),
+        cancel=CancelToken(), timeout_s=60.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        return [], "unavailable", False
+
+    maker = getattr(suggestion_service, _PERCEPTUAL_MAKERS[role])
+    sug = maker(job.artifact.data, run_id=run_id, region_id=(region or {}).get("id"),
+                box=used_box, latency_ms=latency_ms)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+async def _produce_rhythm(post_id, post, region, req, run_id):
+    return await _produce_cpu_perceptual(post_id, post, region, req, run_id, role="rhythm")
+
+
+async def _produce_pressure_zone(post_id, post, region, req, run_id):
+    return await _produce_cpu_perceptual(post_id, post, region, req, run_id, role="pressure_zone")
+
+
+# One manager + adapter for the GPU depth producer — ModelManager enforces single-GPU residency,
+# so loading depth evicts DINOv2/SAM and vice versa. Reused, never hand-rolled.
+_depth_mgr = None
+_depth_adapter = None
+
+
+async def _produce_recession(post_id, post, region, req, run_id, *, role="background_recession"):
+    """Depth-Anything-V2-Small → a recession/atmosphere field. Whole-image depth (a scene recedes
+    against the frame, not against a crop); the region only anchors the mark."""
+    from backend.services import depth_service as ds
+    if not ds.is_available():
+        return [], "unavailable", False
+    role = ((req.params or {}).get("role") if req.params else None) or role
+    if role not in suggestion_service.DEPTH_ROLE_BANDS:
+        return [], "empty", True
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import DepthAnythingAdapter
+    global _depth_mgr, _depth_adapter
+    if _depth_mgr is None:
+        _reg = AdapterRegistry()
+        _depth_adapter = DepthAnythingAdapter()
+        _reg.register(_depth_adapter)
+        _depth_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _depth_mgr.run_adapter(_depth_adapter, {"image": image},
+                                       priority=int(Priority.INTERACTIVE),
+                                       cancel=CancelToken(), timeout_s=180.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        return [], "unavailable", False
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service.suggestion_from_recession(
+        job.artifact.data, run_id=run_id, role=role, region_id=(region or {}).get("id"),
+        model=ds.MODEL_TAG, checkpoint=ds.CHECKPOINT,
+        preprocessing_version=ds.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+async def _produce_atmosphere(post_id, post, region, req, run_id):
+    return await _produce_recession(post_id, post, region, req, run_id, role="atmosphere_field")
+
+
+# The light/shadow producer (P6-G). Its adapter is DEFERRED — Intrinsic is a GitHub-only install
+# — so this handler reports `unavailable` honestly rather than pretending. When the package lands,
+# `is_available()` flips and this path runs with no further wiring.
+_shading_mgr = None
+_shading_adapter = None
+
+
+async def _produce_shading(post_id, post, region, req, run_id, *, role="light_field"):
+    from backend.services import intrinsic_service as isvc
+    if not isvc.is_available():
+        return [], "unavailable", False
+    role = ((req.params or {}).get("role") if req.params else None) or role
+    if role not in suggestion_service.SHADING_ROLE_BANDS:
+        return [], "empty", True
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import IntrinsicShadingAdapter
+    global _shading_mgr, _shading_adapter
+    if _shading_mgr is None:
+        _reg = AdapterRegistry()
+        _shading_adapter = IntrinsicShadingAdapter()
+        _reg.register(_shading_adapter)
+        _shading_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _shading_mgr.run_adapter(_shading_adapter, {"image": image},
+                                         priority=int(Priority.INTERACTIVE),
+                                         cancel=CancelToken(), timeout_s=180.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        return [], "unavailable", False
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service._suggestion_from_shading(
+        job.artifact.data, role=role, run_id=run_id, region_id=(region or {}).get("id"),
+        model=isvc.MODEL_TAG, checkpoint=isvc.CHECKPOINT,
+        preprocessing_version=isvc.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+async def _produce_shadow(post_id, post, region, req, run_id):
+    return await _produce_shading(post_id, post, region, req, run_id, role="shadow_field")
+
+
+async def _produce_fall_of_light(post_id, post, region, req, run_id):
+    """GEOM-001 · the dense trace producer. Same Intrinsic reading as light/shadow, a different
+    geometry family: WHERE the light lands is a field; which WAY it travels is a flow_field.
+
+    Reuses the SHARED `_shading_mgr`/`_shading_adapter` singletons so Intrinsic is resident exactly
+    once regardless of which shading act runs — and the existing `/produce-field/unload` loop, which
+    already releases `intrinsic_ordinal_shading`, frees it with no new wiring. A flat or
+    non-directional surface is an honest refusal (status 'empty'), never a fabricated flow."""
+    from backend.services import intrinsic_service as isvc
+    if not isvc.is_available():
+        return [], "unavailable", False
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import IntrinsicShadingAdapter
+    global _shading_mgr, _shading_adapter
+    if _shading_mgr is None:
+        _reg = AdapterRegistry()
+        _shading_adapter = IntrinsicShadingAdapter()
+        _reg.register(_shading_adapter)
+        _shading_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _shading_mgr.run_adapter(_shading_adapter, {"image": image},
+                                         priority=int(Priority.INTERACTIVE),
+                                         cancel=CancelToken(), timeout_s=180.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        return [], "unavailable", False
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service.suggestion_from_fall_of_light(
+        job.artifact.data, run_id=run_id, region_id=(region or {}).get("id"),
+        model=isvc.MODEL_TAG, checkpoint=isvc.CHECKPOINT,
+        preprocessing_version=isvc.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+# Florence-2 — the one producer driven by WORDS rather than a selection or a tap (P8-A).
+_florence_mgr = None
+_florence_adapter = None
+
+
+async def _produce_florence_find_parts(post_id, post, region, req, run_id):
+    """Open-vocab find_parts: a phrase → a grounded region suggestion.
+
+    Whole-image grounding: the curator is asking where something IS, so scoping the search to an
+    already-selected region would beg the question. A phrase that grounds nothing returns an
+    honest empty rather than the nearest thing the model can find."""
+    from backend.services import florence2_service as fsvc
+    if not fsvc.is_available():
+        return [], "unavailable", False
+    phrase = (req.phrase or (req.params or {}).get("phrase") or "").strip()
+    if not phrase:
+        return [], "empty", True                     # no words → nothing was asked
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import Florence2Adapter
+    global _florence_mgr, _florence_adapter
+    if _florence_mgr is None:
+        _reg = AdapterRegistry()
+        _florence_adapter = Florence2Adapter()
+        _reg.register(_florence_adapter)
+        _florence_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _florence_mgr.run_adapter(
+        _florence_adapter, {"image": image, "ground_phrase": True, "phrase": phrase},
+        priority=int(Priority.INTERACTIVE), cancel=CancelToken(), timeout_s=180.0)
+    latency_ms = round((time.perf_counter() - _t) * 1000, 1)
+    if not job.artifact:
+        # UNAVAILABLE here means "the phrase grounded nothing", which is a real answer.
+        return [], "empty", True
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service.suggestion_from_phrase(
+        job.artifact.data, phrase=phrase, run_id=run_id,
+        model=fsvc.MODEL_TAG, checkpoint=fsvc.CHECKPOINT, revision=fsvc.REVISION,
+        preprocessing_version=fsvc.PREPROCESSING_VERSION,
+        latency_ms=latency_ms, peak_vram_mib=peak_vram,
+        region_id=(region or {}).get("id"))
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+# P8-B — Grounded-SAM: the two-model producer. GroundingDINO grounds the phrase to a box, then
+# SAM2 refines that box into a mask. They must NEVER be co-resident on the 4 GB card, so the
+# detector is explicitly unloaded before SAM2 is touched — ModelManager enforces single-GPU
+# residency for adapters it owns, but SAM2 runs through its own long-lived refine_session, which
+# the manager does not see. Sequencing here is what keeps that honest.
+_grounding_mgr = None
+_grounding_adapter = None
+_clip_mgr = None
+_clip_adapter = None
+
+
+async def _detect_and_verify(post_id, post, req, phrase):
+    """The shared detector→CLIP half of the P8-C pipeline, without SAM2.
+
+    Returned as (survivors, detection, timings) so the reading verbs can use exactly the same
+    two stages the find_parts producer does — same models, same thresholds, same sequencing —
+    and differ only in what they do with the answer. Raises nothing; a None survivors means
+    the pipeline could not run at all (as distinct from running and finding nothing)."""
+    from backend.services import grounding_detector_service as gd
+    from backend.services import clip_presence_service as cps
+    if not gd.is_available() or not cps.is_available():
+        return None, None, {}
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import (GroundingDinoAdapter,
+                                                               ClipPresenceAdapter)
+    global _grounding_mgr, _grounding_adapter, _clip_mgr, _clip_adapter
+    if _grounding_mgr is None:
+        _reg = AdapterRegistry(); _grounding_adapter = GroundingDinoAdapter()
+        _reg.register(_grounding_adapter); _grounding_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _grounding_mgr.run_adapter(
+        _grounding_adapter, {"image": image, "phrase": phrase},
+        priority=int(Priority.INTERACTIVE), cancel=CancelToken(), timeout_s=180.0)
+    det_ms = round((time.perf_counter() - _t) * 1000, 1)
+    detection = job.artifact.data if job.artifact else None
+    await _grounding_mgr.unload("grounding_dino_tiny")     # out before the gate arrives
+
+    if not (detection and detection.get("boxes")):
+        return [], None, {"detector_ms": det_ms}
+
+    if _clip_mgr is None:
+        _creg = AdapterRegistry(); _clip_adapter = ClipPresenceAdapter()
+        _creg.register(_clip_adapter); _clip_mgr = ModelManager(_creg)
+    _t = time.perf_counter()
+    cjob = await _clip_mgr.run_adapter(
+        _clip_adapter, {"image": image, "phrase": phrase, "detection": detection},
+        priority=int(Priority.INTERACTIVE), cancel=CancelToken(), timeout_s=180.0)
+    clip_ms = round((time.perf_counter() - _t) * 1000, 1)
+    survivors = cjob.artifact.data if cjob.artifact else []
+    await _clip_mgr.unload("clip_vit_b32")                 # and the gate leaves too
+    return survivors, detection, {"detector_ms": det_ms, "clip_ms": clip_ms}
+
+
+async def _produce_presence_check(post_id, post, region, req, run_id):
+    """"Is X here?" — the P8-C gate asked directly. A READING: no SAM2, no mark, and "no" is a
+    real answer rather than an error."""
+    from backend.services import grounding_detector_service as gd
+    from backend.services import clip_presence_service as cps
+    phrase = (req.phrase or (req.params or {}).get("phrase") or "").strip()
+    if not phrase:
+        return [], "empty", True
+    survivors, detection, t = await _detect_and_verify(post_id, post, req, phrase)
+    if survivors is None:
+        return [], "unavailable", False                    # fail closed: no guard, no verdict
+    verdict = suggestion_service.presence_verdict(
+        survivors, phrase=phrase, run_id=run_id,
+        detector_fired=bool(detection and detection.get("boxes")),
+        detector_model=gd.MODEL_TAG, detector_revision=gd.REVISION,
+        verifier_model=cps.MODEL_TAG, verifier_revision=cps.REVISION,
+        latency_ms=round(sum(t.values()), 1) or None)
+    # A verdict is always a result — "absent" is the answer, not an empty response.
+    return ([verdict] if verdict else []), ("ready" if verdict else "empty"), True
+
+
+async def _produce_enumerate(post_id, post, region, req, run_id):
+    """"How many X?" — counting as a reading. The count is of VERIFIED instances, so asking for
+    something absent counts 0 rather than counting the detector's guesses."""
+    from backend.services import grounding_detector_service as gd
+    from backend.services import clip_presence_service as cps
+    phrase = (req.phrase or (req.params or {}).get("phrase") or "").strip()
+    if not phrase:
+        return [], "empty", True
+    survivors, detection, t = await _detect_and_verify(post_id, post, req, phrase)
+    if survivors is None:
+        return [], "unavailable", False
+    reading = suggestion_service.enumerate_reading(
+        survivors, phrase=phrase, run_id=run_id,
+        detector_candidates=len((detection or {}).get("boxes") or []),
+        detector_model=gd.MODEL_TAG, detector_revision=gd.REVISION,
+        verifier_model=cps.MODEL_TAG, verifier_revision=cps.REVISION,
+        latency_ms=round(sum(t.values()), 1) or None)
+    return ([reading] if reading else []), ("ready" if reading else "empty"), True
+
+
+async def _produce_grounded_sam(post_id, post, region, req, run_id):
+    from backend.services import grounding_detector_service as gd
+    if not gd.is_available():
+        return [], "unavailable", False
+    phrase = (req.phrase or (req.params or {}).get("phrase") or "").strip()
+    if not phrase:
+        return [], "empty", True                     # no words → nothing was asked
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        torch = None
+
+    # ── stage 1: the detector grounds the phrase to boxes ──────────────────────────────────
+    from backend.services.vision_orchestrator import (AdapterRegistry, CancelToken, ModelManager,
+                                                      Priority)
+    from backend.services.vision_orchestrator.adapters import GroundingDinoAdapter
+    global _grounding_mgr, _grounding_adapter
+    if _grounding_mgr is None:
+        _reg = AdapterRegistry()
+        _grounding_adapter = GroundingDinoAdapter()
+        _reg.register(_grounding_adapter)
+        _grounding_mgr = ModelManager(_reg)
+
+    _t = time.perf_counter()
+    job = await _grounding_mgr.run_adapter(
+        _grounding_adapter, {"image": image, "phrase": phrase},
+        priority=int(Priority.INTERACTIVE), cancel=CancelToken(), timeout_s=180.0)
+    det_ms = round((time.perf_counter() - _t) * 1000, 1)
+    detection = job.artifact.data if job.artifact else None
+
+    # The detector proposes; it does not decide. Its threshold is now permissive (P8-C) because
+    # CLIP, not the detector, is the guard against fabrication.
+    if not (detection and detection.get("boxes")):
+        await _grounding_mgr.unload("grounding_dino_tiny")
+        return [], "empty", True
+
+    # ── hand the card over: the detector leaves BEFORE the gate arrives ────────────────────
+    await _grounding_mgr.unload("grounding_dino_tiny")
+    try:
+        if torch is not None and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+    # ── stage 2: the CLIP presence gate — is that crop actually the thing they asked for? ───
+    from backend.services import clip_presence_service as cps
+    if not cps.is_available():
+        return [], "unavailable", False
+    from backend.services.vision_orchestrator.adapters import ClipPresenceAdapter
+    global _clip_mgr, _clip_adapter
+    if _clip_mgr is None:
+        _creg = AdapterRegistry()
+        _clip_adapter = ClipPresenceAdapter()
+        _creg.register(_clip_adapter)
+        _clip_mgr = ModelManager(_creg)
+
+    _t = time.perf_counter()
+    cjob = await _clip_mgr.run_adapter(
+        _clip_adapter, {"image": image, "phrase": phrase, "detection": detection},
+        priority=int(Priority.INTERACTIVE), cancel=CancelToken(), timeout_s=180.0)
+    clip_ms = round((time.perf_counter() - _t) * 1000, 1)
+    survivors = cjob.artifact.data if cjob.artifact else []
+
+    # the gate leaves before the segmenter arrives
+    await _clip_mgr.unload("clip_vit_b32")
+    try:
+        if torch is not None and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+    if not survivors:
+        # The detector fired but nothing verified — "it guessed, and it is not really there".
+        # SAM2 is never called: a rejected box must not become a mask.
+        return [], "empty", True
+    best = {"box_xyxy": survivors[0]["box_xyxy"],
+            "score": survivors[0].get("detector_score"),
+            "presence": survivors[0].get("presence")}
+    try:
+        if torch is not None and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+    # ── stage 2: SAM2 refines the box into a real extent (the already-live path) ───────────
+    from backend.services.vision_orchestrator.refine_session import refine_session
+    if not refine_session.available():
+        return [], "unavailable", False
+    _t = time.perf_counter()
+    refined = await refine_session.preview(img_bytes, {"box": best["box_xyxy"]},
+                                           (region or {}).get("id"),
+                                           int((region or {}).get("geometry_rev") or 0))
+    sam_ms = round((time.perf_counter() - _t) * 1000, 1)
+    try:
+        peak_vram = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) \
+            if (torch is not None and torch.cuda.is_available()) else None
+    except Exception:
+        peak_vram = None
+
+    sug = suggestion_service.suggestion_from_grounded_phrase(
+        refined, phrase=phrase, run_id=run_id, score=best.get("score"),
+        detector_model=gd.MODEL_TAG, detector_revision=gd.REVISION,
+        detector_latency_ms=det_ms, segmenter_latency_ms=sam_ms, peak_vram_mib=peak_vram,
+        presence=best.get("presence"), verifier_model=cps.MODEL_TAG,
+        verifier_revision=cps.REVISION, verifier_latency_ms=clip_ms)
+    return ([sug] if sug else []), ("ready" if sug else "empty"), True
+
+
+# The registry: producer name → handler. Extensible — a new producer plugs in here, not a new route.
+async def _produce_architectural_axis(post_id, post, region, req, run_id):
+    """TRACE-001 · the first Orient/trace producer. OpenCV line segments → a flow_field axis.
+
+    CPU ONLY — and that is a property, not an accident. There is no adapter, no ModelManager, no
+    `ResourceKind.GPU` acquisition, so this never evicts a resident model and never waits behind
+    one. It is also why it is absent from `/produce-field/unload`: nothing is loaded, so nothing
+    can leak. (That list has sprung a leak three times; a producer that cannot appear on it is
+    one that cannot contribute to a fourth.)
+
+    An organic scene with no coherent linear structure is an honest refusal (status 'empty'),
+    never a lattice of invented axes."""
+    from backend.services import line_structure_service as lss
+    if not lss.is_available():
+        return [], "unavailable", False
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    t0 = time.perf_counter()
+    detection = lss.detect_segments(image)
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    if detection is None:
+        return [], "unavailable", False          # could not look — distinct from found-nothing
+
+    sug = suggestion_service.suggestion_from_architectural_axis(
+        detection, run_id=run_id,
+        region_id=(region or {}).get("id") if isinstance(region, dict) else None,
+        adapter=detection.get("adapter") or lss.ADAPTER_LSD,
+        preprocessing_version=lss.PREPROCESSING_VERSION,
+        latency_ms=round(latency_ms, 2),
+    )
+    if not sug:
+        return [], "empty", True                 # looked, found no coherent axis
+    return [sug], "ready", True
+
+
+async def _produce_external_limit(post_id, post, region, req, run_id):
+    """TRACE-002 · the projective trace. GeoCalib up-vector field → an external_limit flow_field.
+
+    DEFERRED: `perspective_service.is_available()` is False until the package is installed and
+    SEMANT_ENABLE_GEOCALIB=1 is set, so this reports 'unavailable' rather than pretending. The
+    wiring is complete and the producer needs no change when the weights arrive — see
+    `perspective_service.activation_cost()` for the exact steps.
+
+    GPU-resident when active, so it is sequenced by ModelManager and released by
+    /produce-field/unload (added there in the same commit — that list has leaked three times and
+    the leak has always been a model added here and not there)."""
+    from backend.services import perspective_service as psvc
+    if not psvc.is_available():
+        return [], "unavailable", False
+
+    img_bytes = await _fetch_post_image_cached(post_id, post)
+    from backend.services import evidence_embedding_service as ees
+    image = ees._pil(img_bytes)
+
+    torch = None
+    try:
+        import torch as _torch
+        torch = _torch
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        pass
+
+    t0 = time.perf_counter()
+    reading = psvc.up_vector_field(image)
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    if reading is None:
+        return [], "unavailable", False
+
+    peak_vram = None
+    if torch is not None and torch.cuda.is_available():
+        peak_vram = round(torch.cuda.max_memory_allocated() / 1048576, 1)
+
+    sug = suggestion_service.suggestion_from_external_limit(
+        reading, run_id=run_id,
+        region_id=(region or {}).get("id") if isinstance(region, dict) else None,
+        adapter=psvc.ADAPTER, latency_ms=round(latency_ms, 2), peak_vram_mib=peak_vram,
+    )
+    if not sug:
+        return [], "empty", True                 # frontal — no projective frame to trace
+    return [sug], "ready", True
+
+
+_FIELD_PRODUCERS = {
+    "negative_space": _produce_negative_space,
+    "material_field": _produce_material_field,
+    "rhythm": _produce_rhythm,
+    "pressure_zone": _produce_pressure_zone,
+    "background_recession": _produce_recession,
+    "atmosphere_field": _produce_atmosphere,
+    "light_field": _produce_shading,
+    "shadow_field": _produce_shadow,
+    "fall_of_light": _produce_fall_of_light,
+    "architectural_axis": _produce_architectural_axis,
+    "external_limit": _produce_external_limit,
+    "florence_find_parts": _produce_florence_find_parts,
+    "grounded_sam_find_parts": _produce_grounded_sam,
+    "presence_check": _produce_presence_check,
+    "enumerate": _produce_enumerate,
+}
+
+
+@router.post("/{post_id}/produce-field")
+async def produce_field(post_id: str, req: ProduceFieldRequest):
+    """CIRCUIT-001 P6-C · the ONE generic producer-invocation surface.
+
+    (producer, region_ref, seed/params) → look up the producer → run it (GPU producers through
+    ModelManager/ResourceKind.GPU) → return quarantined `model_suggested` suggestion descriptors the
+    frontend ingests through the SAME `suggestionQuarantine` path every other producer uses. Nothing
+    is persisted — a suggestion is a proposal until the curator accepts it. A refusal (no seed, no
+    mask, degenerate field, or an unavailable model) is HONEST: status 'empty'/'unavailable', never
+    an error and never a fabricated mark."""
+    handler = _FIELD_PRODUCERS.get(req.producer)
+    if handler is None:
+        raise HTTPException(status_code=400, detail=f"unknown producer '{req.producer}'")
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    region = _find_region_by_id(post, req.region_id)
+
+    rec = vision_run_service.VisionRunRecorder(
+        post_id=post_id, operation=vrc.OPERATION_PRODUCE, initiator="api",
+        requested_profile={"producer": req.producer, "region_id": req.region_id,
+                           "has_seed": bool(req.seed_point)})
+    await rec.start()
+    try:
+        await rec.event(vrc.STAGE_PRODUCE_RECEIVE, JobStatus.SUCCEEDED,
+                        detail={"producer": req.producer, "region_id": req.region_id})
+        _t = time.perf_counter()
+        suggestions, status, available = await handler(post_id, post, region, req, rec.run_id)
+        suggestions = epistemics.guard(suggestions or [])
+        # A refusal is NOT a failure — the run succeeded at honestly reporting "nothing here"; only
+        # an unavailable model terminalizes UNAVAILABLE. Neither writes any post geometry.
+        job_status = JobStatus.SUCCEEDED if available else JobStatus.UNAVAILABLE
+        await rec.event(vrc.STAGE_PRODUCE_RUN, job_status, capability="produce",
+                        adapter=req.producer, latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                        input_refs=([{"region_id": req.region_id}] if req.region_id else []),
+                        output_refs=[{"suggested": len(suggestions)}], detail={"status": status})
+        await rec.event(vrc.STAGE_PRODUCE_COMPLETE, job_status,
+                        detail={"suggested": len(suggestions), "status": status})
+        await rec.finish(job_status, terminal_reason=status,
+                         result_summary={"producer": req.producer, "suggested": len(suggestions),
+                                         "region_id": req.region_id, "status": status})
+        return {"producer": req.producer, "suggestions": suggestions, "run_id": rec.run_id,
+                "available": available, "status": status}
+    except asyncio.CancelledError:
+        await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
+        raise
+    except Exception as e:
+        await rec.finish(JobStatus.FAILED, terminal_reason="route_exception", error=str(e))
+        raise
+
+
+@router.post("/produce-field/unload")
+async def produce_field_unload():
+    """Release EVERY model this process holds (frees VRAM). Idempotent.
+
+    WIRE-002: this used to be a hand-written roster of (name, module) pairs, and it was wrong four
+    times — DINOv2-only, then SAM2's refine_session which lives outside the adapter registry, then
+    CLIP, then sam2_auto_service and perspective_service. Each time the fix was "add the missing
+    row", which is what guaranteed the next miss.
+
+    It now delegates to `model_residency`, which DISCOVERS anything in backend.services exposing
+    `unload()`. There is no list here to fall behind the producers, and a test asserts no
+    model-holding service can be omitted."""
+    from backend.services import model_residency
+    released = await model_residency.release_all()
+    return {"unloaded": True, "released": released}
+
+
+# ── CIRCUIT-001 SURFACE-001 — intention → plan → review ────────────────────────────────────────
+# The last mile: a curator's intention is planned by the Director, executed by WIRE's real
+# actuators into an in-memory quarantine, and the resulting SUGGESTIONS are returned for the
+# EXISTING supervised review to Accept/Dismiss. This route produces suggestions ONLY — it never
+# writes to the post, commits a region, or accepts a mark.
+#
+# WIRE's runners drive their async producers with `loop.run_until_complete`, which cannot nest
+# inside the server's running loop. So the whole synchronous `run_plan` executes in ONE persistent
+# worker thread with its own reused event loop — ModelManager's semaphores bind to that loop once
+# and are reused across requests (a fresh per-request loop would rebind and fail), and the server
+# loop is never blocked. The single worker also serialises plans, which is correct for the 4 GB
+# single-GPU card.
+import concurrent.futures as _futures
+
+_orchestration_pool = _futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="director-orch")
+_orchestration_loop = None
+
+
+def _run_plan_in_worker(plan, memory, post: dict, post_id: str):
+    """Runs on the single orchestration worker thread. Builds the execution context on that
+    thread's persistent loop, runs the plan for real, and returns (chain, suggestions). Never
+    mutates `post`."""
+    global _orchestration_loop
+    import asyncio as _asyncio
+    from backend.services.director import real_actuators as ra
+    if _orchestration_loop is None:
+        _orchestration_loop = _asyncio.new_event_loop()
+    ctx = ra.ExecutionContext(post_id=post_id, post=post, loop=_orchestration_loop)
+    # Seed the real-data bridge with the post's committed regions, so a step needing a region can
+    # use one the curator already has (find_parts still runs when the plan asks for it).
+    ctx.regions = list(post.get("region_annotations") or [])
+    chain = ra.run_plan(plan, memory, ctx)
+    return chain, list(ctx.suggestions)
+
+
+class OrchestrateRequest(BaseModel):
+    intention: str                                   # the curator's words: "trace the light"
+    phrase: Optional[str] = None                     # open-vocab query, when an actuator needs one
+
+
+@router.post("/{post_id}/orchestrate")
+async def orchestrate(post_id: str, req: OrchestrateRequest):
+    """Intention → the Director plans + executes → quarantined suggestions for supervised review.
+
+    Returns the RESOLVED plan (steps + refused, each with its distinct reason), the produced
+    suggestions (never marks), and the chain provenance (per-step OK/EMPTY/UNAVAILABLE/SKIPPED,
+    the weakest link, and the honest gaps). No post is mutated; nothing is accepted."""
+    try:
+        obj_id = ObjectId(post_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format")
+    post = await post_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail=f"Post with id {post_id} not found")
+    if not (req.intention or "").strip():
+        raise HTTPException(status_code=422, detail="An intention is required")
+
+    from backend.services.director.memory import build_memory
+    from backend.services.director.planner import Director
+    from backend.services.director.groq_planner import GroqPlanner
+
+    # Hydrate working memory from the REAL post — what the Director actually has to plan against.
+    def _ids(items):
+        return [str(x.get("id")) for x in (items or []) if isinstance(x, dict) and x.get("id")]
+    memory = build_memory(
+        image_ref=str(post.get("photo_url") or post_id), post_id=post_id,
+        region_ids=_ids(post.get("region_annotations")),
+        mark_ids=_ids(post.get("visual_marks")),
+        ground_ids=_ids(post.get("grounds")),
+        percept_ids=_ids(post.get("percepts")),
+        phrase=req.phrase)
+
+    plan = Director(GroqPlanner()).plan(req.intention, memory)
+
+    # Execute for real on the single orchestration worker thread (never blocks the server loop).
+    loop = asyncio.get_running_loop()
+    chain, suggestions = await loop.run_in_executor(
+        _orchestration_pool, _run_plan_in_worker, plan, memory, post, post_id)
+
+    return {
+        "intention": req.intention,
+        "plan": plan.to_dict(),                      # steps + refused (each with its reason) + notes
+        "suggestions": suggestions,                  # quarantined descriptors — never marks
+        "provenance": chain.provenance.to_dict(),    # per-step status + gaps + weakest_link
+        "weakest_link": chain.provenance.weakest_link,
+        "complete": chain.provenance.complete,
+    }
 
 
 @router.get("/{post_id}/regions/{region_id}/crop")

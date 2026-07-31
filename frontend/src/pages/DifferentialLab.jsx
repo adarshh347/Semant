@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { RegionStoreContext, useRegionState } from '../state/regionStore';
 import DifferentialWorkspace from '../differential/DifferentialWorkspace';
 import { makeVisualMark } from '../differential/visualMarks';
@@ -70,23 +71,60 @@ export default function DifferentialLab() {
 
     const store = useRegionState(post, () => {});
 
-    // Seed one quarantined suggestion (a model-proposed field) so the Accept/Dismiss
-    // flow is visible on load — the fixture producer, not a workspace DEV fork.
+    // CIRCUIT-001 P5-B — the Passage Rail reads `vision-runs/latest` from the backend, which the
+    // offline harness has none of. Seed ONE fixture VisionRunOut into the query cache so the rail
+    // renders a full real-shaped run timeline offline — the same fixture-producer honesty the
+    // suggestion seed uses. This is the ONLY offline stand-in; against a live backend the rail
+    // reads the actual run doc and this seed is never reached. A terminal `dissect` run (the idle
+    // passage) with real-shaped stage events, latency and provenance on some, absent on others.
+    const queryClient = useQueryClient();
+    useEffect(() => {
+        queryClient.setQueryData(['passage-run', post._id, 'dissect'], {
+            run_id: 'fixture_run_ab12', operation: 'dissect', status: 'succeeded', stale: false,
+            initiator: 'curator', actual_source: 'live',
+            started_at: '2026-07-24T09:59:58.000Z', completed_at: '2026-07-24T10:00:03.400Z',
+            events: [
+                { event_id: 'fe1', run_id: 'fixture_run_ab12', stage_id: 'dissect.receive', status: 'succeeded', latency_ms: 6.2, adapter: 'router', observed_at: '2026-07-24T09:59:58.100Z' },
+                { event_id: 'fe2', run_id: 'fixture_run_ab12', stage_id: 'dissect.fetch_image', status: 'succeeded', latency_ms: 214.7, observed_at: '2026-07-24T09:59:58.400Z' },
+                { event_id: 'fe3', run_id: 'fixture_run_ab12', stage_id: 'dissect.segment.general', status: 'succeeded', latency_ms: 1880.0, adapter: 'sam21_hiera_tiny', observed_at: '2026-07-24T10:00:00.300Z', provenance: { model: 'sam21_hiera_tiny' } },
+                { event_id: 'fe4', run_id: 'fixture_run_ab12', stage_id: 'dissect.merge_curator_state', status: 'succeeded', observed_at: '2026-07-24T10:00:03.000Z' }, // no latency recorded → "—"
+                { event_id: 'fe5', run_id: 'fixture_run_ab12', stage_id: 'dissect.complete', status: 'succeeded', latency_ms: 3.1, observed_at: '2026-07-24T10:00:03.400Z' },
+            ],
+        });
+    }, [queryClient, post._id]);
+
+    // Seed a 20-suggestion fixture BATCH so the P4-B review surface (cycle, edit,
+    // accept/dismiss, bulk) can be exercised end-to-end — the fixture producer, not a
+    // workspace DEV fork. Mix of trace (point-editable) and brush (stroke) families,
+    // varied roles, so edit-before-accept and provenance rows are all reachable.
     const seeded = useRef(false);
     useEffect(() => {
         if (seeded.current || !store?.addVisualMark) return;
         seeded.current = true;
-        store.addVisualMark(quarantineSuggestion(makeVisualMark('brush_field', {
-            role: 'gaze_field', label: 'a field the model proposes', source: 'model_suggested',
-            geometry: {
-                kind: 'freehand_path',
-                strokes: [{
-                    points: [[0.55, 0.30, 0.6], [0.62, 0.34, 0.9], [0.68, 0.42, 0.8], [0.66, 0.52, 0.5], [0.60, 0.58, 0.3]],
-                    radius: 0.06, strength: 0.7, op: 'add',
-                }],
-            },
-            provenance: { planner: 'fixture', model: 'demo' },
-        })));
+        const traceRoles = ['gaze_address', 'gesture', 'fall_of_light', 'movement', 'architectural_axis'];
+        const fieldRoles = ['gaze_field', 'light_field', 'shadow_field', 'atmosphere_field', 'pressure_zone'];
+        for (let i = 0; i < 20; i++) {
+            const isTrace = i % 2 === 0;
+            const t = i / 19;
+            const y = 0.2 + 0.55 * ((i % 5) / 4);
+            const mark = isTrace
+                ? makeVisualMark('trace_mark', {
+                    role: traceRoles[i % traceRoles.length],
+                    label: `proposed line ${i + 1}`, source: 'model_suggested',
+                    geometry: { kind: 'polyline', points: [[0.15 + 0.1 * t, y], [0.45 + 0.2 * t, y - 0.05], [0.7, y + 0.05]] },
+                    provenance: { planner: 'fixture', model: 'planner-x' },
+                })
+                : makeVisualMark('brush_field', {
+                    role: fieldRoles[i % fieldRoles.length],
+                    label: `proposed field ${i + 1}`, source: 'model_suggested',
+                    geometry: { kind: 'freehand_path', strokes: [{
+                        points: [[0.5 + 0.03 * (i % 4), y, 0.6], [0.58, y + 0.04, 0.9], [0.64, y + 0.1, 0.5]],
+                        radius: 0.05, strength: 0.7, op: 'add',
+                    }] },
+                    provenance: { planner: 'fixture', model: 'planner-x' },
+                });
+            store.addVisualMark(quarantineSuggestion(mark));
+        }
     }, [store]);
 
     return (

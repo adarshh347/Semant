@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import RegionMotif from './brand/RegionMotif';
+import { SectionEyebrow } from './brand/SectionEyebrow';
 import './PlaceholderPage.css';
 
 /**
@@ -15,7 +16,7 @@ export default function PlaceholderPage({ eyebrow, title, lede, cta, links, moti
     <div className="placeholder">
       <div className="placeholder-inner">
         {motif && <RegionMotif variant={motif} size={84} className="placeholder-motif" />}
-        {eyebrow && <span className="placeholder-eyebrow">{eyebrow}</span>}
+        {eyebrow && <SectionEyebrow className="placeholder-eyebrow">{eyebrow}</SectionEyebrow>}
         <h1 className="placeholder-title">{title}</h1>
         {lede && <p className="placeholder-lede">{lede}</p>}
 

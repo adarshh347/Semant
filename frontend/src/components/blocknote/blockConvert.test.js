@@ -23,7 +23,7 @@ beforeAll(() => {
   engine = ServerBlockNoteEditor.create();
   // Mirrors regionRefInline's markup contract (core spec — server-util is DOM-only).
   const regionRef = createInlineContentSpec(
-    { type: 'regionRef', propSchema: { refKind: { default: 'part' }, regionIds: { default: '' }, perceptId: { default: '' }, mentionId: { default: '' }, markId: { default: '' }, label: { default: '' } }, content: 'none' },
+    { type: 'regionRef', propSchema: { refKind: { default: 'part' }, regionIds: { default: '' }, perceptId: { default: '' }, mentionId: { default: '' }, markId: { default: '' }, postId: { default: '' }, label: { default: '' } }, content: 'none' },
     {
       render: (ic) => {
         const p = ic.props;
@@ -37,6 +37,7 @@ beforeAll(() => {
         if (p.perceptId) s.setAttribute('data-percept-id', p.perceptId);
         if (p.mentionId) s.setAttribute('data-mention-id', p.mentionId);
         if (p.markId) s.setAttribute('data-mark-id', p.markId);
+        if (p.postId) s.setAttribute('data-post-id', p.postId);
         s.setAttribute('data-label', p.label);
         s.className = `ref-chip ref-chip--${p.refKind}`;
         s.textContent = p.label;
@@ -49,6 +50,7 @@ beforeAll(() => {
             perceptId: el.getAttribute('data-percept-id') || '',
             mentionId: el.getAttribute('data-mention-id') || '',
             markId: el.getAttribute('data-mark-id') || '',
+            postId: el.getAttribute('data-post-id') || '',
             label: el.getAttribute('data-label') || el.textContent || '',
           }
         : undefined),
@@ -249,6 +251,24 @@ describe('region-ref chips (Phase 3 — no data loss on edit)', () => {
     expect(html).toContain('data-mention-id="men_vm_block_m_ic1"');
     expect(html).toContain('mark');                          // refKind class/attr present
     expect(out[0].id).toBe('block_m');
+  });
+
+  it('preserves a CROSS-POST chip (CIRCUIT-001 P5-A — data-post-id survives edit+save)', async () => {
+    // A crossing: the chip cites a mark whose reference reaches another post. data-post-id is
+    // the border marker — it MUST round-trip, or the crossing is silently flattened to a
+    // same-post citation on the next edit.
+    const story = [
+      { id: 'block_cross', type: 'paragraph', origin: 'human', color: null,
+        content: '<p>Echoes the <span data-region-ref data-inline-type="mark" data-ref-kind="mark" '
+          + 'data-mark-id="vm_cross_0" data-post-id="post_B" '
+          + 'data-mention-id="men_vm_cross_0_block_cross_ic1" '
+          + 'data-label="lapel elsewhere" class="ref-chip ref-chip--mark">lapel elsewhere</span> on another figure.</p>' },
+    ];
+    const out = await chipRoundTrip(story);
+    const html = out[0].content;
+    expect(html).toContain('data-post-id="post_B"');    // the border survived serialization
+    expect(html).toContain('data-mark-id="vm_cross_0"');
+    expect(out[0].id).toBe('block_cross');
   });
 
   it('under the DEFAULT (chip-less) schema the span would flatten — proves the spec is load-bearing', async () => {

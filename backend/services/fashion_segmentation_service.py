@@ -29,6 +29,10 @@ from backend.services import mask_geometry
 from typing import List, Optional
 
 _MODEL_NAME = "mattmdjaga/segformer_b2_clothes"
+# WEIGHTS-001 — pinned HF commit. Passed to every from_pretrained below so the pin is
+# ENFORCED at load, not merely recorded. Mirrors weights.manifest.json.
+REVISION = "584abc1e1d260e23c0fc627c5217a09b2b461046"
+MODEL_TAG = "fashionpedia_r50fpn"
 _model = None
 _processor = None
 _load_failed = False
@@ -114,8 +118,8 @@ def _load():
         return None, None
     try:
         from transformers import AutoModelForSemanticSegmentation, SegformerImageProcessor
-        _processor = SegformerImageProcessor.from_pretrained(_MODEL_NAME)
-        _model = AutoModelForSemanticSegmentation.from_pretrained(_MODEL_NAME)
+        _processor = SegformerImageProcessor.from_pretrained(_MODEL_NAME, revision=REVISION)
+        _model = AutoModelForSemanticSegmentation.from_pretrained(_MODEL_NAME, revision=REVISION)
         _model.eval()
         return _model, _processor
     except Exception as e:
@@ -354,3 +358,24 @@ def merge_with_precedence(primary: List[dict], secondary: List[dict],
 
     kept.sort(key=lambda r: r["box"]["w"] * r["box"]["h"], reverse=True)
     return kept
+
+
+def unload() -> None:
+    """Release the model + its GPU memory. WIRE-002.
+
+    This service held a module-level `_model` and advertised no way to free it, so
+    `model_residency` — which discovers releasable services by looking for `unload()` — could not
+    see it. Measured: a plan that ran the fashion parser
+    left 32 MiB resident that a full release could not reclaim.
+
+    Idempotent; a model that was never loaded has nothing to free."""
+    global _model
+    _model = None
+    try:
+        import gc
+        import torch
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass

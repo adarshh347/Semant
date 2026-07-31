@@ -1,0 +1,13 @@
+/*
+ * The Near Arrival scene fills whatever the hero gives it. The SVG's own
+ * preserveAspectRatio="xMidYMid slice" does the cropping (which is why, on a
+ * very wide monitor, the top-right entry hairline can fall outside the frame —
+ * that is expected; the fix, if ever wanted, is to move the entry section
+ * inward in the SVG, not to change the crop).
+ */
+.na-root { display: block; width: 100%; }
+/* Height is left to the consumer: the hero pins it with
+   `.heroScene svg{height:clamp(...)}` and slice-crops; elsewhere the svg's
+   own 1200:760 viewBox ratio drives an auto height. Forcing height here would
+   fight the hero and collapse anywhere without an explicit parent height. */
+.na-root svg { display: block; width: 100%; }

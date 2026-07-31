@@ -12,6 +12,11 @@ import { API_URL } from '../config/api';
  */
 export default function useFindSimilar(postId, regionId) {
   const [results, setResults] = useState([]);
+  // CIRCUIT-001 P5-A · the crossing. The backend now returns, additively, `suggestions`: each
+  // neighbour projected to a cross-post `region_ref` suggestion descriptor (contract v3 §8.4).
+  // These are RESEARCH become an evidence-suggestion — feed them through `store.ingestSuggestions`
+  // to enter B4's review rhythm; accepting one mints a `user_confirmed` cross-post reference.
+  const [suggestions, setSuggestions] = useState([]);
   const [meta, setMeta] = useState(null);   // {space, mode, indexed, was_stale, domain}
   // idle | loading | ready | empty | unavailable | error
   const [status, setStatus] = useState('idle');
@@ -43,14 +48,15 @@ export default function useFindSimilar(postId, regionId) {
       if (seq !== reqSeq.current) return;
       setMeta({ space: data.space, mode: data.mode, indexed: data.indexed,
                 was_stale: data.was_stale, domain: data.domain });
-      if (data.status === 'unavailable') { setStatus('unavailable'); setError(data.reason || ''); setResults([]); return; }
-      if (data.status === 'error') { setStatus('error'); setError(data.reason || ''); setResults([]); return; }
+      if (data.status === 'unavailable') { setStatus('unavailable'); setError(data.reason || ''); setResults([]); setSuggestions([]); return; }
+      if (data.status === 'error') { setStatus('error'); setError(data.reason || ''); setResults([]); setSuggestions([]); return; }
       setResults(data.results || []);
+      setSuggestions(data.suggestions || []);
       setStatus((data.results || []).length ? 'ready' : 'empty');
     } catch (e) {
       if (seq !== reqSeq.current) return;
       if (e.name === 'AbortError') { setStatus('idle'); return; }
-      setError(String(e.message || e)); setStatus('error'); setResults([]);
+      setError(String(e.message || e)); setStatus('error'); setResults([]); setSuggestions([]);
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
@@ -59,10 +65,10 @@ export default function useFindSimilar(postId, regionId) {
   const find = useCallback((mode) => run({ mode }), [run]);
   const reindex = useCallback((mode) => run({ mode, reindex: true }), [run]);
 
-  const clear = useCallback(() => { reqSeq.current++; setResults([]); setStatus('idle'); setError(''); setMeta(null); }, []);
+  const clear = useCallback(() => { reqSeq.current++; setResults([]); setSuggestions([]); setStatus('idle'); setError(''); setMeta(null); }, []);
 
   const cropUrl = useCallback(
     (pid, rid, role = 'identity') => `${API_URL}/api/v1/posts/${pid}/regions/${rid}/crop?role=${role}`, []);
 
-  return { results, meta, status, error, find, reindex, cancel, clear, cropUrl };
+  return { results, suggestions, meta, status, error, find, reindex, cancel, clear, cropUrl };
 }

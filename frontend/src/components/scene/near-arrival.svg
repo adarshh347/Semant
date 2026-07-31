@@ -1,0 +1,348 @@
+<svg id="scene-near-arrival" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760"
+     preserveAspectRatio="xMidYMid slice" role="img"
+     aria-label="Something enters at the upper right, gathers, sheds grain, splits into filaments that scatter, reaches toward a clearing without touching it, and sends one trace back that curls and stays.">
+  <title>The Near Arrival</title>
+  <desc>Something enters at the upper right, gathers, sheds grain, splits into filaments that scatter, reaches toward a clearing without touching it, and sends one trace back that curls and stays.</desc>
+
+<style>
+  #scene-near-arrival{ color:#1E1A1C; --tick:#7B2D6B; }
+
+  /* ── stage gates ── */
+  #scene-near-arrival.stage-1 .fields,
+  #scene-near-arrival.stage-1 .grain,
+  #scene-near-arrival.stage-1 .hatch,
+  #scene-near-arrival.stage-1 .stars,
+  #scene-near-arrival.stage-1 .constr,
+  #scene-near-arrival.stage-2 .fields,
+  #scene-near-arrival.stage-2 .grain,
+  #scene-near-arrival.stage-2 .hatch,
+  #scene-near-arrival.stage-2 .stars,
+  #scene-near-arrival.stage-3 .grain,
+  #scene-near-arrival.stage-3 .hatch,
+  #scene-near-arrival.stage-3 .stars{ display:none }
+  #scene-near-arrival.stage-4 .keptTick{ stroke:#1E1A1C }
+  #scene-near-arrival.stage-1 .paper{ fill:#FFFFFF }
+  #scene-near-arrival.stage-1 .ink *{ stroke:#000 !important; fill:#000 }
+
+  .draw{ stroke-dasharray:100; stroke-dashoffset:0 }
+  .sweepG, .sweepR{ transform:none }
+
+  @media (prefers-reduced-motion: no-preference){
+    /* 1 · entry */
+    #scene-near-arrival.play .s1{ animation:na-draw 1.1s cubic-bezier(.4,0,.3,1) 1.2s backwards }
+    /* 2 · gather */
+    #scene-near-arrival.play .sweepG{ animation:na-sweepG 1.3s cubic-bezier(.42,0,.3,1) 2.2s backwards }
+    #scene-near-arrival.play .s2a{ animation:na-draw 1.0s cubic-bezier(.4,0,.3,1) 2.3s backwards }
+    #scene-near-arrival.play .s2b{ animation:na-draw 1.0s cubic-bezier(.4,0,.3,1) 2.5s backwards }
+    #scene-near-arrival.play .s2c{ animation:na-draw .9s cubic-bezier(.4,0,.3,1) 2.7s backwards }
+    /* 3 · grain */
+    #scene-near-arrival.play .g1{ animation:na-fade .7s ease-out 3.0s backwards }
+    #scene-near-arrival.play .g2{ animation:na-fade .7s ease-out 3.4s backwards }
+    #scene-near-arrival.play .g3{ animation:na-fade .7s ease-out 3.8s backwards }
+    /* 4 · split */
+    #scene-near-arrival.play .s4{ animation:na-draw .8s cubic-bezier(.35,0,.3,1) 4.2s backwards }
+    #scene-near-arrival.play .tick4{ animation:na-fade .5s ease-out 4.5s backwards }
+    /* 5 · dispersal */
+    #scene-near-arrival.play .d1{ animation:na-draw 1.5s cubic-bezier(.4,.02,.3,1) 5.0s backwards }
+    #scene-near-arrival.play .d2{ animation:na-draw 1.2s cubic-bezier(.4,.02,.3,1) 5.3s backwards }
+    #scene-near-arrival.play .d3{ animation:na-draw 1.0s cubic-bezier(.4,.02,.3,1) 5.6s backwards }
+    #scene-near-arrival.play .d4{ animation:na-draw 1.4s cubic-bezier(.4,.02,.3,1) 5.9s backwards }
+    #scene-near-arrival.play .d5{ animation:na-draw .9s cubic-bezier(.4,.02,.3,1) 6.2s backwards }
+    /* 6 · reach, then the hold */
+    #scene-near-arrival.play .reach{ animation:na-draw 1.3s cubic-bezier(.5,.02,.18,1) 7.0s backwards }
+    /* 7 · return */
+    #scene-near-arrival.play .sweepR{ animation:na-sweepR 1.7s cubic-bezier(.42,.02,.28,1) 9.8s backwards }
+    #scene-near-arrival.play .keptCurl{ animation:na-draw .7s cubic-bezier(.5,.02,.24,1) 10.8s backwards }
+    #scene-near-arrival.play .keptDot{ animation:na-fade .5s ease-out 11.1s backwards }
+    #scene-near-arrival.play .keptTick{ animation:na-draw .45s ease-out 11.3s backwards }
+    /* the field is already there; only the stars breathe in */
+    #scene-near-arrival.play .st{ animation:na-fade 1.0s ease-out backwards }
+    #scene-near-arrival.play .st:nth-of-type(3n){ animation-delay:.2s }
+    #scene-near-arrival.play .st:nth-of-type(3n+1){ animation-delay:.55s }
+    #scene-near-arrival.play .st:nth-of-type(3n+2){ animation-delay:.9s }
+
+    @keyframes na-sweepG{ from{transform:translateX(300px)} to{transform:none} }
+    @keyframes na-sweepR{ from{transform:translate(-230px,-330px)} to{transform:none} }
+    @keyframes na-draw{ from{stroke-dashoffset:100} to{stroke-dashoffset:0} }
+    @keyframes na-fade{ from{opacity:0} to{opacity:1} }
+  }
+</style>
+
+<defs>
+  <filter id="na-tear" x="-14%" y="-24%" width="128%" height="148%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.013 0.028" numOctaves="3" seed="41" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="R" yChannelSelector="G"/>
+    <feGaussianBlur stdDeviation="0.9"/>
+  </filter>
+  <filter id="na-soft" x="-14%" y="-14%" width="128%" height="128%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.006" numOctaves="3" seed="7" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="R" yChannelSelector="G"/>
+    <feGaussianBlur stdDeviation="1.5"/>
+  </filter>
+  <filter id="na-mottle" x="-14%" y="-14%" width="128%" height="128%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="4" seed="53" result="n"/>
+    <feColorMatrix in="n" type="matrix"
+      values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1.5 0 0 0 -0.35" result="m"/>
+    <feComposite in="SourceGraphic" in2="m" operator="in"/>
+  </filter>
+  <filter id="na-dry" x="-12%" y="-12%" width="124%" height="124%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.85 0.05" numOctaves="3" seed="13" result="n"/>
+    <feColorMatrix in="n" type="matrix"
+      values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  2.0 0 0 0 -0.48" result="m"/>
+    <feComposite in="SourceGraphic" in2="m" operator="in" result="c"/>
+    <feDisplacementMap in="c" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="na-grain">
+    <feTurbulence type="fractalNoise" baseFrequency="0.62" numOctaves="3" stitchTiles="stitch"/>
+    <feColorMatrix type="saturate" values="0"/>
+  </filter>
+  <filter id="na-laid">
+    <feTurbulence type="fractalNoise" baseFrequency="0.008 0.9" numOctaves="2" stitchTiles="stitch"/>
+    <feColorMatrix type="saturate" values="0"/>
+  </filter>
+
+  <clipPath id="na-clipG"><rect class="sweepG" x="740" y="100" width="330" height="180"/></clipPath>
+  <clipPath id="na-clipR"><rect class="sweepR" x="640" y="320" width="280" height="360"/></clipPath>
+</defs>
+
+<rect class="paper" x="0" y="0" width="1200" height="760" fill="#F6F1EC"/>
+
+<!-- ══ FIELD — five regions, one hue each ══════════════════
+     Variation inside a region comes only from repeating that
+     region's own unit at stepped opacity. No region borrows a
+     neighbour's colour. The event has no region of its own. -->
+<g class="fields">
+
+  <!-- REGION 1 · STRATA — indigo, torn bands -->
+  <g filter="url(#na-tear)" fill="#4E5586">
+    <path opacity=".30" d="M0 0 H1200 V56 C1040 76 880 40 700 58 C520 76 320 36 160 54 C100 62 40 52 0 60 Z"/>
+    <path opacity=".24" d="M0 52 C120 40 300 70 460 54 C640 36 820 66 1000 50 C1080 42 1140 54 1200 46 V92
+                           C1020 110 800 80 600 98 C400 116 180 88 0 106 Z"/>
+    <path opacity=".18" d="M0 90 C140 78 320 104 480 90 C660 74 840 100 1010 86 C1090 80 1146 90 1200 84 V126
+                           C1020 144 800 116 600 132 C400 148 180 122 0 140 Z"/>
+    <path opacity=".13" d="M0 124 C160 114 340 136 500 124 C680 110 860 134 1030 122 C1100 116 1150 124 1200 120 V158
+                           C1020 174 800 148 600 164 C400 180 180 156 0 172 Z"/>
+    <path opacity=".08" d="M0 156 C160 148 360 168 520 158 C700 146 880 166 1050 156 C1110 152 1156 158 1200 154 V192
+                           C1020 208 800 184 600 198 C400 212 180 190 0 206 Z"/>
+  </g>
+
+  <!-- REGION 2 · OPEN — amethyst, one flat field -->
+  <path filter="url(#na-soft)" fill="#6B5391" opacity=".1"
+        d="M0 190 C160 180 380 202 560 190 C760 176 960 198 1200 184 V412
+           C1000 428 780 408 560 422 C360 434 180 418 0 430 Z"/>
+
+  <!-- REGION 3 · SHELF — lilac, thin lenses on one baseline -->
+  <g filter="url(#na-soft)" fill="#8E82A0">
+    <path opacity=".16" d="M96 424 C240 410 400 418 502 430 C400 446 238 450 96 436 Z"/>
+    <path opacity=".13" d="M528 420 C650 408 786 416 866 428 C786 442 648 446 528 434 Z"/>
+    <path opacity=".11" d="M292 452 C412 442 550 450 630 460 C550 472 410 476 292 464 Z"/>
+    <path opacity=".09" d="M660 448 C760 438 880 446 950 456 C880 468 758 472 660 460 Z"/>
+  </g>
+
+  <!-- REGION 4 · MASS — clay, scallops -->
+  <g filter="url(#na-mottle)" fill="#A66273">
+    <path opacity=".16" d="M898 558 C892 510 926 488 956 498 C956 462 992 446 1020 464 C1030 428 1074 418 1098 442
+                           C1120 422 1158 434 1166 462 C1194 468 1204 490 1200 520 L1200 558 Z"/>
+    <path opacity=".11" d="M916 556 C910 508 942 484 972 494 C972 458 1008 442 1036 460 C1046 424 1090 414 1114 438
+                           C1136 418 1174 430 1182 458 C1210 464 1220 486 1216 516 L1216 556 Z"/>
+    <path opacity=".07" d="M952 556 C948 520 972 502 996 510 C998 484 1024 472 1046 486 C1056 460 1090 454 1108 472
+                           C1126 458 1154 468 1160 490 L1164 556 Z"/>
+  </g>
+
+  <!-- REGION 5 · EARTH — mulberry, hard edge -->
+  <g filter="url(#na-mottle)" fill="#8E3F6A">
+    <path opacity=".18" d="M0 556 C180 540 380 566 560 548 C760 528 960 558 1200 538 V760 H0 Z"/>
+    <path opacity=".1"  d="M0 654 C200 640 420 662 620 648 C820 634 1000 654 1200 642 V760 H0 Z"/>
+  </g>
+</g>
+
+<!-- ══ TEXTURE ═════════════════════════════════════════════ -->
+<g class="grain">
+  <rect x="0" y="0" width="1200" height="760" filter="url(#na-grain)" opacity=".05" style="mix-blend-mode:multiply"/>
+  <rect x="0" y="0" width="1200" height="760" filter="url(#na-laid)" opacity=".025" style="mix-blend-mode:multiply"/>
+</g>
+
+<g class="hatch" stroke="#6B5A66" fill="none" stroke-linecap="round">
+  <!-- shelf region: short horizontals only -->
+  <g stroke-width="1.2" opacity=".28">
+    <path d="M120 438 C154 435 190 440 224 437"/>
+    <path d="M560 434 C594 431 630 436 664 433"/>
+    <path d="M330 466 C364 463 398 468 432 465"/>
+    <path d="M700 462 C734 459 770 464 804 461"/>
+  </g>
+  <!-- horizon band -->
+  <g stroke-width="1.2" opacity=".3">
+    <path d="M52 512 C86 509 128 514 164 511"/>
+    <path d="M228 502 C262 499 300 504 336 501"/>
+    <path d="M404 518 C438 515 472 520 506 517"/>
+    <path d="M690 500 C724 497 762 502 798 499"/>
+    <path d="M1040 504 C1074 501 1112 506 1148 503"/>
+  </g>
+  <!-- earth region: broken verticals, parting around the clearing (x 800–960) -->
+  <g stroke-width="1.2" opacity=".3">
+    <path d="M64 616 C62 604 66 596 64 586"/><path d="M108 636 C106 622 110 612 108 600"/>
+    <path d="M152 610 C150 598 154 590 152 580"/><path d="M196 646 C194 632 198 620 196 608"/>
+    <path d="M244 618 C242 606 246 596 244 586"/><path d="M292 654 C290 640 294 628 292 616"/>
+    <path d="M344 620 C342 608 346 598 344 588"/><path d="M396 660 C394 646 398 634 396 622"/>
+    <path d="M448 624 C446 612 450 602 448 592"/><path d="M504 664 C502 650 506 638 504 626"/>
+    <path d="M560 626 C558 614 562 604 560 594"/><path d="M618 668 C616 654 620 642 618 630"/>
+    <path d="M676 630 C674 618 678 608 676 598"/><path d="M736 672 C734 658 738 646 736 634"/>
+    <path d="M1002 634 C1000 622 1004 612 1002 602"/><path d="M1058 676 C1056 662 1060 650 1058 638"/>
+    <path d="M1114 638 C1112 626 1116 616 1114 606"/><path d="M1166 680 C1164 666 1168 654 1166 642"/>
+    <path d="M120 716 C118 702 122 690 120 678"/><path d="M330 722 C328 708 332 696 330 684"/>
+    <path d="M556 726 C554 712 558 700 556 688"/><path d="M1102 724 C1100 710 1104 698 1102 686"/>
+    <path d="M228 700 C226 686 230 674 228 662"/><path d="M960 706 C958 692 962 680 960 668"/>
+    <path d="M700 712 C698 698 702 686 700 674"/>
+  </g>
+</g>
+
+<!-- ══ STARS — open region only ════════════════════════════ -->
+<g class="stars" stroke="#1E1A1C" fill="#1E1A1C" stroke-linecap="round">
+  <g stroke-width="1.4" fill="none" opacity=".42">
+    <path class="st" d="M148 246 L158 238"/><path class="st" d="M402 218 L412 210"/>
+    <path class="st" d="M258 376 L268 368"/><path class="st" d="M1044 258 L1054 250"/>
+  </g>
+  <g stroke-width="1.3" fill="none" opacity=".38">
+    <path class="st" d="M340 300 H352"/><path class="st" d="M346 294 V306"/>
+    <path class="st" d="M212 342 H224"/><path class="st" d="M218 336 V348"/>
+  </g>
+  <g opacity=".45">
+    <circle class="st" cx="82" cy="216" r="2"/><circle class="st" cx="220" cy="282" r="1.7"/>
+    <circle class="st" cx="474" cy="196" r="2.1"/><circle class="st" cx="120" cy="330" r="1.8"/>
+    <circle class="st" cx="392" cy="392" r="1.5"/><circle class="st" cx="1096" cy="330" r="1.6"/>
+  </g>
+</g>
+
+<!-- ══ CONSTRUCTION ════════════════════════════════════════ -->
+<g class="constr" stroke="#A9A0A6" fill="none" stroke-width="1" stroke-linecap="round" opacity=".14">
+  <path d="M40 220 V250"/><path d="M40 220 H70"/>
+  <path d="M1160 720 V690"/><path d="M1160 720 H1130"/>
+  <path d="M866 630 L882 646"/><path d="M882 630 L866 646"/>
+  <path d="M0 552 H1200"/>
+</g>
+
+<!-- ══ HORIZON ═════════════════════════════════════════════ -->
+<g stroke="#1E1A1C" fill="none" stroke-linecap="round" opacity=".42">
+  <path stroke-width="1.4" d="M0 552 C96 546 188 556 272 550"/>
+  <path stroke-width="1.4" d="M320 549 C420 543 520 553 604 547"/>
+  <path stroke-width="1.4" d="M652 546 C760 540 880 550 968 544"/>
+  <path stroke-width="1.4" d="M1010 543 C1090 538 1150 546 1200 542"/>
+</g>
+
+<!-- ══ THE TRAJECTORY — seven sections ═════════════════════ -->
+<g class="ink">
+
+  <!-- 1 · ENTRY — it was already happening -->
+  <path class="s1 draw" pathLength="100" fill="none" stroke="#1E1A1C" stroke-width="0.9"
+        stroke-linecap="round" opacity=".8"
+        d="M1212 30 C1160 48 1116 66 1072 84"/>
+
+  <!-- 2 · GATHER — a bundle running tight -->
+  <g clip-path="url(#na-clipG)">
+    <path filter="url(#na-dry)" fill="#1E1A1C"
+          d="M1064 86 C1010 110 958 134 906 158 C866 176 826 196 788 216
+             L792 224 C830 204 870 184 910 166 C962 142 1014 118 1068 94 Z"/>
+  </g>
+  <path class="s2a draw" pathLength="100" fill="none" stroke="#1E1A1C" stroke-width="1" opacity=".5"
+        stroke-linecap="round" d="M1066 78 C1012 102 960 126 908 150 C868 168 830 188 792 208"/>
+  <path class="s2b draw" pathLength="100" fill="none" stroke="#1E1A1C" stroke-width="0.9" opacity=".4"
+        stroke-linecap="round" d="M1060 98 C1006 122 954 146 902 170 C864 188 828 206 794 226"/>
+  <path class="s2c draw" pathLength="100" fill="none" stroke="#1E1A1C" stroke-width="0.8" opacity=".3"
+        stroke-linecap="round" d="M1044 108 C998 128 950 150 906 176 C876 194 848 210 822 226"/>
+
+  <!-- 3 · GRAIN — it begins to shed -->
+  <g fill="#1E1A1C">
+    <g class="g1">
+      <circle cx="1042" cy="106" r="1.5" opacity=".5"/><circle cx="1008" cy="98" r="1.1" opacity=".35"/>
+      <circle cx="998" cy="128" r="1.6" opacity=".45"/><circle cx="972" cy="118" r="1" opacity=".3"/>
+      <circle cx="962" cy="146" r="1.4" opacity=".4"/><circle cx="936" cy="136" r="1.1" opacity=".3"/>
+      <circle cx="928" cy="166" r="1.7" opacity=".5"/><circle cx="900" cy="152" r="1.2" opacity=".35"/>
+      <circle cx="1024" cy="132" r="1.2" opacity=".3"/><circle cx="954" cy="176" r="1.1" opacity=".28"/>
+    </g>
+    <g class="g2">
+      <circle cx="894" cy="184" r="1.6" opacity=".5"/><circle cx="866" cy="170" r="1.2" opacity=".35"/>
+      <circle cx="860" cy="200" r="1.8" opacity=".52"/><circle cx="832" cy="186" r="1.1" opacity=".32"/>
+      <circle cx="828" cy="216" r="1.5" opacity=".45"/><circle cx="800" cy="202" r="1.2" opacity=".34"/>
+      <circle cx="886" cy="214" r="1.3" opacity=".3"/><circle cx="850" cy="232" r="1.2" opacity=".3"/>
+      <circle cx="818" cy="248" r="1.1" opacity=".26"/><circle cx="908" cy="196" r="1" opacity=".26"/>
+      <g stroke="#1E1A1C" fill="none" stroke-linecap="round" stroke-width="1.2">
+        <path d="M878 178 L886 172" opacity=".4"/><path d="M842 196 L850 190" opacity=".42"/>
+        <path d="M812 212 L820 206" opacity=".4"/>
+      </g>
+    </g>
+    <g class="g3">
+      <circle cx="796" cy="230" r="1.7" opacity=".5"/><circle cx="768" cy="218" r="1.2" opacity=".35"/>
+      <circle cx="778" cy="252" r="1.4" opacity=".42"/><circle cx="750" cy="240" r="1.1" opacity=".3"/>
+      <circle cx="806" cy="256" r="1.1" opacity=".28"/><circle cx="762" cy="266" r="1.2" opacity=".3"/>
+      <circle cx="740" cy="212" r="1" opacity=".26"/>
+      <g stroke="#1E1A1C" fill="none" stroke-linecap="round" stroke-width="1.2">
+        <path d="M786 240 L794 234" opacity=".4"/><path d="M756 228 L764 222" opacity=".38"/>
+      </g>
+      <g fill="#8E3F6A" opacity=".5">
+        <circle cx="982" cy="140" r="1.4"/><circle cx="872" cy="196" r="1.5"/><circle cx="784" cy="244" r="1.3"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- 4 · SPLIT — six filaments come apart -->
+  <g fill="none" stroke="#1E1A1C" stroke-linecap="round">
+    <path class="s4 draw" pathLength="100" stroke-width="1.5" d="M790 220 C756 234 722 250 686 266"/>
+    <path class="s4 draw" pathLength="100" stroke-width="1.3" opacity=".8" d="M790 222 C758 242 728 264 694 286"/>
+    <path class="s4 draw" pathLength="100" stroke-width="1.1" opacity=".6" d="M788 218 C754 220 720 226 684 234"/>
+    <path class="s4 draw" pathLength="100" stroke-width="1.3" opacity=".75" d="M790 224 C760 252 734 282 706 312"/>
+    <path class="s4 draw" pathLength="100" stroke-width="1"   opacity=".5" d="M792 220 C764 218 734 216 702 216"/>
+    <path class="s4 draw" pathLength="100" stroke-width="1.2" opacity=".65" d="M788 226 C756 258 730 296 710 338"/>
+  </g>
+  <g class="tick4" stroke="#1E1A1C" fill="none" stroke-width="1.1" stroke-linecap="round" opacity=".4">
+    <path d="M800 206 L806 198"/><path d="M812 220 L822 218"/><path d="M804 240 L810 248"/>
+    <path d="M782 204 L784 194"/><path d="M776 246 L772 254"/><path d="M818 232 L828 234"/>
+  </g>
+
+  <!-- 5 · DISPERSAL — five fates -->
+  <g fill="none" stroke="#1E1A1C" stroke-linecap="round">
+    <path class="d1 draw" pathLength="100" stroke-width="1.4"
+          d="M686 266 C606 292 500 322 396 344 C312 362 226 374 142 380"/>
+    <path class="d2 draw" pathLength="100" stroke-width="1.1" opacity=".5"
+          d="M694 286 C628 312 556 334 494 346 C462 352 438 356 418 358"/>
+    <path class="d3 draw" pathLength="100" stroke-width="1" opacity=".38"
+          d="M684 234 C626 226 568 222 518 226 C494 228 476 232 462 236"/>
+    <path class="d4 draw" pathLength="100" stroke-width="1.3" opacity=".85"
+          d="M706 312 C692 372 678 448 668 520 C664 556 662 588 660 616"/>
+    <path class="d5 draw" pathLength="100" stroke-width="0.9" opacity=".34"
+          d="M702 216 C670 212 642 210 620 212"/>
+  </g>
+
+  <!-- 6 · REACH — direct, and it stops -->
+  <path class="reach draw" pathLength="100" fill="none" stroke="#1E1A1C" stroke-width="0.9"
+        stroke-linecap="round" opacity=".85"
+        d="M760 238 C796 288 830 342 856 394 C868 418 876 434 882 448"/>
+
+  <!-- 7 · RETURN — the wide slow arc that arrives -->
+  <g clip-path="url(#na-clipR)">
+    <path filter="url(#na-dry)" fill="#1E1A1C"
+          d="M710 340 C716 414 734 490 770 550 C806 610 846 640 872 646
+             L871 652 C842 646 800 616 763 554 C726 493 709 415 704 342 Z"/>
+  </g>
+  <path class="keptCurl draw" pathLength="100" fill="none" stroke="#1E1A1C" stroke-width="2"
+        stroke-linecap="round"
+        d="M872 648 C892 650 908 648 917 656 C926 664 920 675 909 673 C900 671 896 662 902 655"/>
+  <circle class="keptDot" cx="880" cy="646" r="7.4" fill="#1E1A1C"/>
+  <path class="keptTick draw" pathLength="100" fill="none" stroke="var(--tick,#7B2D6B)" stroke-width="3"
+        stroke-linecap="round"
+        d="M886 640 C898 628 906 620 916 610"/>
+</g>
+
+<script><![CDATA[
+(function(){
+  var s = document.getElementById('scene-near-arrival');
+  if (!s || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var play = function(){ s.classList.add('play'); };
+  if ('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if (e.isIntersecting){ play(); io.disconnect(); } });
+    }, {threshold:.3});
+    io.observe(s);
+  } else { play(); }
+})();
+]]></script>
+</svg>

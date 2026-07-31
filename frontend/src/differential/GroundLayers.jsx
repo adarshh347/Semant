@@ -4,6 +4,9 @@ import { resolveGround, groundCenter } from './grounds';
 import { taperedRibbon, centerlinePath, endChevron } from './freehandTaper';
 import { perfectFreehandRibbon } from './freehandStroke';
 import { hasMaskPolygons, ringsToPath } from '../lib/maskGeometry';
+import { groundLayerKey, markLayerKey } from './layerGrouping';
+import FlowFieldLayer from './FlowFieldLayer';
+import { isAxialRole } from './flowField';
 
 // CIRCUIT-001 P2E-B (2d): the freehand ribbon generator, chosen at render.
 // perfect-freehand when the toggle is on (smoother, pressure-expressive), the
@@ -248,8 +251,25 @@ export default function GroundLayers({
     editingGroundId = null,       // hide the hit-path for the ground currently being edited
     evidenceVisible = true,       // P3-B (2d): the evidence layer's visibility control
     evidenceOpacity = 1,          // P3-B (2d): the evidence layer's opacity control
+    // Q-C: per-producer/role render layers. An array of `{ key, visibility, opacity }` (from
+    // `deriveLayers`). When present, committed grounds render into one SVG `<g>` PER LAYER and
+    // field washes on the canvas honour their layer's visibility/opacity — so masks stop piling
+    // onto one flat surface. When null, the single `gl-evidence` group renders as before.
+    layers = null,
+    // MOUNT-001: committed visual marks. Only those whose geometry.kind is 'flow_field' are
+    // touched — they are the one mark geometry with its own renderer rather than a ground
+    // drawing. GEOM shipped FlowFieldLayer and never mounted it, so fall_of_light,
+    // architectural_axis and external_limit all minted marks that nothing drew: three producers,
+    // zero pixels. This prop is the caller that was missing.
+    marks = [],
 }) {
     const canvasRef = useRef(null);
+    const layerList = (Array.isArray(layers) && layers.length) ? layers : null;
+    const styleForLayer = (key) => {
+        const l = layerList && layerList.find((x) => x.key === key);
+        if (!l) return { visible: true, opacity: 1 };
+        return { visible: l.visibility !== false, opacity: typeof l.opacity === 'number' ? l.opacity : 1 };
+    };
 
     // ── canvas layer: Soft Field ────────────────────────────────────────────
     useEffect(() => {
@@ -258,16 +278,29 @@ export default function GroundLayers({
         const fields = [];
         for (const g of grounds) {
             if (g.ground_type !== 'field') continue;
+            // a hidden field-role layer drops its washes entirely; a dimmed one scales alpha.
+            const ls = styleForLayer(groundLayerKey(g));
+            if (!ls.visible) continue;
             const s = groundAlpha(g, { focusGroundIds, recall, recallOnly });
-            if (s.on) fields.push({ ground: g, alpha: s.dim ?? 1, progress: s.progress });
+            if (s.on) fields.push({ ground: g, alpha: (s.dim ?? 1) * ls.opacity, progress: s.progress });
         }
         if (draft?.kind === 'field' && draft.strokes?.length) {
             fields.push({ ground: { strokes: draft.strokes }, alpha: 1, progress: 1 });
         }
         paintFields(canvas, fields, content);
-    }, [grounds, content, focusGroundIds, recall, recallOnly, draft]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [grounds, content, focusGroundIds, recall, recallOnly, draft, layerList]);
 
     if (!content || !natural) return null;
+
+    // ── flow_field marks → FlowFieldLayer, one SVG per mark ─────────────────
+    // Rendered as SIBLINGS of the ground <svg> rather than inside it, because FlowFieldLayer
+    // owns its own <svg>. That is not a compromise on alignment: it declares the SAME
+    // `viewBox="0 0 natural.w natural.h"` with `preserveAspectRatio="xMidYMid meet"` and the same
+    // inset-0/100% box, so it letterboxes identically to the image and to the grounds above it —
+    // the stage-geometry contract RegionOverlay and FIX-COORD hold to.
+    const flowMarks = (marks || []).filter(
+        (m) => m?.geometry?.kind === 'flow_field' && m.status === 'committed');
 
     // ── svg layer: Path · Boundary · Frame · Region ─────────────────────────
     const svgGrounds = grounds.filter((g) => g.ground_type !== 'field');
@@ -300,29 +333,56 @@ export default function GroundLayers({
                     </filter>
                 </defs>
                 {/* P3-B (2d): committed grounds are the evidence layer — its
-                    visibility/opacity controls wrap them as one group. The draft and
-                    hit-paths sit OUTSIDE (scratch / interaction), so hiding evidence
-                    never hides the line under your hand. */}
+                    visibility/opacity controls wrap them as one group. Q-C: WITHIN that group,
+                    each producer/role is its own `<g>` so hiding a layer hides only its masks.
+                    The draft and hit-paths sit OUTSIDE (scratch / interaction), so hiding
+                    evidence never hides the line under your hand. */}
                 <g className="gl-evidence" style={{ opacity: evidenceVisible ? evidenceOpacity : 0,
                     pointerEvents: evidenceVisible ? undefined : 'none' }}>
-                {svgGrounds.map((g) => {
-                    const state = groundAlpha(g, { focusGroundIds, recall, recallOnly });
-                    if (!state.on) return null;
-                    if (g.ground_type === 'path') return <PathGround key={g.id} g={g} natural={natural} state={state} usePF={usePerfectFreehand} />;
-                    if (g.ground_type === 'boundary') return <BoundaryGround key={g.id} g={g} natural={natural} state={state} />;
-                    if (g.ground_type === 'frame') return <FrameGround key={g.id} natural={natural} state={state} />;
-                    if (g.ground_type === 'region') {
-                        const region = resolveGround(g, { regions, grounds })?.region;
-                        return <RegionGround key={g.id} region={region} natural={natural} state={state} />;
+                {(() => {
+                    const renderGround = (g) => {
+                        const state = groundAlpha(g, { focusGroundIds, recall, recallOnly });
+                        if (!state.on) return null;
+                        if (g.ground_type === 'path') return <PathGround key={g.id} g={g} natural={natural} state={state} usePF={usePerfectFreehand} />;
+                        if (g.ground_type === 'boundary') return <BoundaryGround key={g.id} g={g} natural={natural} state={state} />;
+                        if (g.ground_type === 'frame') return <FrameGround key={g.id} natural={natural} state={state} />;
+                        if (g.ground_type === 'region') {
+                            const region = resolveGround(g, { regions, grounds })?.region;
+                            return <RegionGround key={g.id} region={region} natural={natural} state={state} />;
+                        }
+                        if (g.ground_type === 'constellation') {
+                            return <ConstellationGround key={g.id} g={g} natural={natural} ctx={{ regions, grounds }} state={state} />;
+                        }
+                        if (g.ground_type === 'relation') {
+                            return <RelationGround key={g.id} g={g} natural={natural} ctx={{ regions, grounds }} state={state} />;
+                        }
+                        return null;
+                    };
+                    // No layer set → the original single flat pass (back-compat).
+                    if (!layerList) return svgGrounds.map(renderGround);
+                    // Layered: one <g> per layer, in the layers' order; grounds whose key is not
+                    // in the set fall into a trailing default group so nothing is ever dropped.
+                    const keys = layerList.map((l) => l.key);
+                    const buckets = new Map(keys.map((k) => [k, []]));
+                    const orphans = [];
+                    for (const g of svgGrounds) {
+                        const k = groundLayerKey(g);
+                        (buckets.has(k) ? buckets.get(k) : orphans).push(g);
                     }
-                    if (g.ground_type === 'constellation') {
-                        return <ConstellationGround key={g.id} g={g} natural={natural} ctx={{ regions, grounds }} state={state} />;
-                    }
-                    if (g.ground_type === 'relation') {
-                        return <RelationGround key={g.id} g={g} natural={natural} ctx={{ regions, grounds }} state={state} />;
-                    }
-                    return null;
-                })}
+                    const groups = layerList.map((l) => {
+                        const items = buckets.get(l.key) || [];
+                        if (!items.length) return null;
+                        return (
+                            <g key={l.key} className="gl-layer" data-layer-key={l.key}
+                               style={{ opacity: l.visibility === false ? 0 : (typeof l.opacity === 'number' ? l.opacity : 1),
+                                        pointerEvents: l.visibility === false ? 'none' : undefined }}>
+                                {items.map(renderGround)}
+                            </g>
+                        );
+                    });
+                    if (orphans.length) groups.push(<g key="__orphans" className="gl-layer" data-layer-key="other">{orphans.map(renderGround)}</g>);
+                    return groups;
+                })()}
                 </g>
 
                 {/* the in-progress trace draft */}
@@ -344,6 +404,27 @@ export default function GroundLayers({
                         : null
                 ))}
             </svg>
+
+            {/* MOUNT-001: the direction producers, made visible. Each mark honours its own
+                trace layer's visibility/opacity AND the evidence layer's, multiplied — a mark is
+                inside the evidence group conceptually even though it renders in its own svg, so
+                hiding evidence must hide it too. `axial` comes from isAxialRole: an axis or a
+                horizon draws arrowhead-off, because their sign is a canonicalisation convention
+                rather than a measured direction, while fall_of_light keeps its arrowheads. */}
+            {flowMarks.map((m) => {
+                const ls = styleForLayer(markLayerKey(m));
+                if (!ls.visible || !evidenceVisible) return null;
+                return (
+                    <FlowFieldLayer
+                        key={m.id}
+                        geometry={m.geometry}
+                        natural={natural}
+                        axial={isAxialRole(m.role)}
+                        opacity={ls.opacity * evidenceOpacity}
+                        className={`gl-flow gl-flow--${m.role || 'unknown'}`}
+                    />
+                );
+            })}
         </>
     );
 }

@@ -1,0 +1,58 @@
+<svg id="g-verb-orchestrate" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="A brace gathering three separate runs into one outcome.">
+  <title>Semant — Orchestrate</title>
+  <desc>A brace gathering three separate runs into one outcome.</desc>
+  <style>
+    #g-verb-orchestrate{color:#1E1A1C}
+    #g-verb-orchestrate .gest{stroke-dasharray:100}
+    @media (prefers-reduced-motion: no-preference){
+      #g-verb-orchestrate:hover .gest, #g-verb-orchestrate:focus-within .gest, #g-verb-orchestrate.play .gest{ animation:orch-draw .72s cubic-bezier(.6,.04,.28,1) }
+      #g-verb-orchestrate:hover .r1, #g-verb-orchestrate:focus-within .r1, #g-verb-orchestrate.play .r1{ animation:orch-in .38s ease-out .30s backwards }
+      #g-verb-orchestrate:hover .r2, #g-verb-orchestrate:focus-within .r2, #g-verb-orchestrate.play .r2{ animation:orch-in .38s ease-out .40s backwards }
+      #g-verb-orchestrate:hover .r3, #g-verb-orchestrate:focus-within .r3, #g-verb-orchestrate.play .r3{ animation:orch-in .38s ease-out .50s backwards }
+      #g-verb-orchestrate:hover .late, #g-verb-orchestrate:focus-within .late, #g-verb-orchestrate.play .late{ animation:orch-in .42s ease-out .64s backwards }
+      @keyframes orch-draw{ from{stroke-dashoffset:100} to{stroke-dashoffset:0} }
+      @keyframes orch-in{ from{opacity:0;transform:translateX(-1.6px)} to{opacity:1;transform:none} }
+    }
+  </style>
+  <defs>
+    <filter id="orchestrate-bA" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="orchestrate-bB" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.16" numOctaves="2" seed="21" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#A9A0A6" stroke-width="0.9" stroke-linecap="round" style="opacity:var(--guide-o, 0.16)">
+    <path d="M2 4.4 V7"/><path d="M2 4.4 H4.6"/>
+    <path d="M30 27.6 V25"/><path d="M30 27.6 H27.4"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.18)">
+    <path filter="url(#orchestrate-bA)" fill="#6F5E90"
+          d="M3.4 7.6 C7.6 6.2 11.4 7.6 12.2 11.4 C12.6 17.6 10.4 23.6 6.4 24.6 C3 25.4 2 14 3.4 7.6 Z"/>
+    <path filter="url(#orchestrate-bB)" fill="#8E3F6A"
+          d="M18.4 12.4 C23.6 11 29.4 12.4 30.4 15.6 C29.8 19.6 25.4 22 20.4 20.6 C16.6 19.5 16.6 14 18.4 12.4 Z"/>
+  </g>
+  <!-- the brace -->
+  <path class="gest" pathLength="100"
+        d="M10.4 6.2 C8.4 6.6 8.8 9.4 8.4 12.4 C8.1 14.6 7.2 15.6 5.8 16.1 C7.2 16.6 8.1 17.6 8.4 19.8 C8.8 22.8 8.4 25.6 10.4 26"
+        fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the runs it gathers -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.3" stroke-linecap="round">
+    <path class="r1" d="M12.6 9.4 C15.4 9 18.6 9.6 21.4 9.2"/>
+    <path class="r2" d="M12.6 16.1 C15.4 15.7 18.6 16.3 21.4 15.9"/>
+    <path class="r3" d="M12.6 22.8 C15.4 22.4 18.6 23 21.4 22.6"/>
+  </g>
+  <g fill="#6B5A66">
+    <circle class="r1" cx="22.8" cy="9.1" r="0.9"/>
+    <circle class="r2" cx="22.8" cy="15.8" r="0.9"/>
+    <circle class="r3" cx="22.8" cy="22.5" r="0.9"/>
+  </g>
+  <!-- one outcome -->
+  <g class="late">
+    <circle cx="26" cy="15.9" r="2.15" fill="currentColor"/>
+    <path d="M27.6 14.4 C28.5 13.5 29 13 29.6 12.4"
+          fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="1.9" stroke-linecap="round"/>
+  </g>
+</svg>

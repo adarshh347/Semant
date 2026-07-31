@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Sparkle, X, Eye } from 'lucide-react';
+import { X, Eye } from 'lucide-react';
+import { SectionEyebrow } from '../components/brand/SectionEyebrow';
+import { ActGlyph, SuggestGlyph } from '../components/brand/glyphs';
 import { planFromPrompt, quickAction, QUICK_CHIPS } from './attunementPlanner';
 import { draftMarkFromAction, markDisplay } from './markStaging';
 import {
@@ -244,7 +246,7 @@ export default function AttunementPanel({
     return (
         <section className="ap" aria-label="First attention">
             <div className="ap-first">
-                <span className="ap-eyebrow">First attention</span>
+                <SectionEyebrow className="ap-eyebrow">First attention</SectionEyebrow>
                 <label className="ap-prompt-wrap">
                     <span className="ap-sr">What catches you here?</span>
                     <textarea
@@ -270,7 +272,7 @@ export default function AttunementPanel({
                         type="button" className="ap-suggest"
                         disabled={!prompt.trim()} onClick={() => suggest()}
                     >
-                        <Sparkle size={14} /> Suggest acts
+                        <SuggestGlyph size={14} /> Suggest acts
                     </button>
                 </div>
                 <div className="ap-chips">
@@ -279,6 +281,7 @@ export default function AttunementPanel({
                             key={c.key} type="button" className="ap-chip"
                             data-chip={c.key} onClick={() => addQuick(c.key)}
                         >
+                            <ActGlyph act={c.key} size={13} className="ap-chip-glyph" aria-hidden="true" />
                             {c.label}
                         </button>
                     ))}
@@ -290,7 +293,7 @@ export default function AttunementPanel({
                     <div className="ap-suggested-head">
                         {/* "Suggested acts", never "detected". The planner keys on words the
                             curator typed; it has no access to the image at all. */}
-                        <span className="ap-eyebrow">Suggested acts</span>
+                        <SectionEyebrow className="ap-eyebrow">Suggested acts</SectionEyebrow>
                         <span className="ap-summary">{summarizeActions(live)}</span>
                     </div>
 

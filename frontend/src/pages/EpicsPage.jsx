@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { epicService } from '../services/epicService';
 import EmptyState from '../components/brand/EmptyState';
 import { CardGridSkeleton } from '../components/brand/Skeleton';
+import { SectionEyebrow } from '../components/brand/SectionEyebrow';
 import './EpicsPage.css';
 
 const EpicsPage = () => {
@@ -33,6 +34,7 @@ const EpicsPage = () => {
         <div className="epics-page">
             <div className="epics-header">
                 <div className="header-content">
+                    <SectionEyebrow className="eyebrow">Epics</SectionEyebrow>
                     <h1>Epic Stories</h1>
                     <p>Generate and curate long-form narratives from your visual journey.</p>
                 </div>

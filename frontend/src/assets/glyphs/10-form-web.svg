@@ -1,0 +1,42 @@
+<svg id="g-form-web" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="A browser window with one tab, holding the Semant mark.">
+  <title>Semant — Form: Web</title>
+  <desc>A browser window with one tab, holding the Semant mark.</desc>
+  <style>#g-form-web{color:#1E1A1C}</style>
+  <defs>
+    <filter id="web-bA" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="web-bB" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.16" numOctaves="2" seed="21" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#A9A0A6" stroke-width="0.9" stroke-linecap="round" style="opacity:var(--guide-o, 0.16)">
+    <path d="M1.8 3.6 V6.2"/><path d="M1.8 3.6 H4.4"/>
+    <path d="M30.2 28.4 V25.8"/><path d="M30.2 28.4 H27.6"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.18)">
+    <path filter="url(#web-bA)" fill="#6B5391"
+          d="M3.4 6.4 C11 4.8 23 5.6 29.4 7.6 C29.6 11 26.4 13.2 17.4 13.4 C8.4 13.6 2.4 10.8 3.4 6.4 Z"/>
+    <path filter="url(#web-bB)" fill="#A66273"
+          d="M4.4 16.6 C12 15 24 16.2 30 18.4 C30.2 22.6 25 26 16.4 25.8 C7.6 25.6 3.4 21.4 4.4 16.6 Z"/>
+  </g>
+  <!-- the tab -->
+  <path d="M5.6 6.8 C5.8 4.6 6.8 3.8 8.6 3.8 C10.6 3.8 11.6 4.6 11.8 6.8"
+        fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the window -->
+  <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.4 6.9 C10 6.2 21 7 28.6 6.4"/>
+    <path d="M28.5 6.5 C29 11 28.3 19.4 28.7 24.8"/>
+    <path d="M28.6 25 C21 25.7 10 24.9 3.4 25.5"/>
+    <path d="M3.7 25.3 C3.1 19.8 3.8 11.6 3.3 6.6"/>
+  </g>
+  <!-- the chrome rule -->
+  <path d="M3.6 11.2 C10.2 10.6 21 11.4 28.4 10.8"
+        fill="none" stroke="#6B5A66" stroke-width="1.3" stroke-linecap="round"/>
+  <!-- the same mark, inside this door -->
+  <circle cx="14.4" cy="18.6" r="2.25" fill="currentColor"/>
+  <path d="M16 17 C17.5 15.5 18.6 14.4 20 13"
+        fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="1.9" stroke-linecap="round"/>
+</svg>

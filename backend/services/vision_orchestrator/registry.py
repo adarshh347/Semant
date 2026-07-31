@@ -37,17 +37,52 @@ def default_roster() -> List[AdapterSpec]:
         AdapterSpec("fashionpedia_r50fpn", Capability.FASHION_PARSE, ResourceKind.GPU,
                     "fashionpedia-attribute-mask-rcnn-r50-fpn", available=False, deferred=True),
         AdapterSpec("segformer_b0_ade", Capability.ARCH_PARSE, ResourceKind.GPU,
-                    "nvidia/segformer-b0-finetuned-ade-512-512", available=False, deferred=True),
+                    "nvidia/segformer-b0-finetuned-ade-512-512",
+                    revision="489d5cd81a0b59fab9b7ea758d3548ebe99677da",
+                    available=False, deferred=True),
         AdapterSpec("dinov2_vits14", Capability.FEATURE, ResourceKind.GPU,
-                    "dinov2_vits14", available=False, deferred=True),
+                    "dinov2_vits14", revision="ed25f3a31f01632728cabb09d1542f84ab7b0056",
+                    available=False, deferred=True),
         AdapterSpec("depth_anything_v2_small", Capability.DEPTH, ResourceKind.GPU,
-                    "Depth-Anything-V2-Small", available=False, deferred=True),
+                    "Depth-Anything-V2-Small", revision="5426e4f0f36572d16453bbda7a8389317b1bef99",
+                    available=False, deferred=True),
         AdapterSpec("fashion_clip", Capability.EMBED, ResourceKind.CPU,
-                    "patrickjohncyh/fashion-clip", available=False, deferred=True),
+                    "patrickjohncyh/fashion-clip",
+                    revision="7e3ba62ce16b379a1ab479346b66f192e76f51b7",
+                    available=False, deferred=True),
         AdapterSpec("fashion_clip_router", Capability.DOMAIN_ROUTE, ResourceKind.CPU,
-                    "patrickjohncyh/fashion-clip", available=False, deferred=True),
+                    "patrickjohncyh/fashion-clip",
+                    revision="7e3ba62ce16b379a1ab479346b66f192e76f51b7",
+                    available=False, deferred=True),
+        # P6-D: real as of CIRCUIT-001 — `CpuPerceptualAdapter` implements this row on
+        # OpenCV + numpy alone (no scikit-image). It carries no weights, so it is the one
+        # roster entry that is available wherever the backend runs.
         AdapterSpec("cpu_perceptual", Capability.PERCEPTUAL, ResourceKind.CPU_LIGHT,
-                    "opencv+numpy+skimage", available=False, deferred=True),
+                    "opencv+numpy", available=False, deferred=True),
+        # P6-G: the light/shadow row. DEFERRED for a real reason — Intrinsic is a GitHub-only
+        # install (compphoto/Intrinsic + chrislib + altered_midas) whose checkpoints are not on
+        # the HF hub, so it cannot be fetched the way every other row here can.
+        AdapterSpec("intrinsic_ordinal_shading", Capability.SHADING, ResourceKind.GPU,
+                    "intrinsic_ordinal_shading", available=False, deferred=True),
+        # P8-A: the Director's local eyes — one small model for caption / detect / grounding /
+        # referring-expression segmentation. transformers implements Florence2 natively, so no
+        # trust_remote_code; weights are pinned + provisioned through WEIGHTS-001.
+        AdapterSpec("florence2_base", Capability.GROUNDING, ResourceKind.GPU,
+                    "microsoft/Florence-2-base",
+                    revision="5ca5edf5bd017b9919c05d08aebef5e4c7ac3bac",
+                    license="MIT", available=False, deferred=True),
+        # P8-B: the detector half of Grounded-SAM. Native on transformers 5.13 (no remote code),
+        # Apache-2.0. Pairs with sam21_hiera_tiny — never co-resident with it.
+        AdapterSpec("grounding_dino_tiny", Capability.GROUNDING, ResourceKind.GPU,
+                    "IDEA-Research/grounding-dino-tiny",
+                    revision="a2bb814dd30d776dcf7e30523b00659f4f141c71",
+                    license="Apache-2.0", available=False, deferred=True),
+        # P8-C: the presence gate. A GENERAL CLIP, distinct from fashion_clip — it judges
+        # arbitrary phrases on arbitrary images, where a fashion manifold would mislead.
+        AdapterSpec("clip_vit_b32", Capability.EMBED, ResourceKind.GPU,
+                    "openai/clip-vit-base-patch32",
+                    revision="3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268",
+                    license="MIT", available=False, deferred=True),
         AdapterSpec("cloud_vlm", Capability.SEMANTIC_ANNOTATE, ResourceKind.REMOTE,
                     "cloud-vision-language-model", available=False, deferred=True),
     ]

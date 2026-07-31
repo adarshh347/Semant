@@ -127,6 +127,10 @@ class Post(BaseModel):
     # filters — a suggestion never reaches here). Rides the same exclude_unset PATCH, so a
     # re-dissect that replaces region_annotations can never wipe them.
     visual_marks: Optional[List[dict]] = None
+    # CIRCUIT-001 Q-C — durable visual_layers: the per-producer/role render layers' saved
+    # visibility/opacity/order. Additive, PATCH-persisted like visual_marks, so a layer a curator
+    # hides stays hidden across reload. Opaque dicts (`{key, visibility, opacity, order}`).
+    visual_layers: Optional[List[dict]] = None
 
 class PostUpdate(BaseModel):
     # bounding_box_tags removed (Track A): the manual pixel-rect write path is retired.
@@ -136,6 +140,7 @@ class PostUpdate(BaseModel):
     grounds: Optional[List[dict]] = None   # Differential v1
     percepts: Optional[List[dict]] = None  # Differential v1
     visual_marks: Optional[List[dict]] = None  # CIRCUIT-001 P2E — durable marks
+    visual_layers: Optional[List[dict]] = None  # CIRCUIT-001 Q-C — durable render layers
     domain_profile: Optional[dict] = None  # VISION-C domain profile
     semantics: Optional[dict] = None       # VISION-D semantic assertions
 

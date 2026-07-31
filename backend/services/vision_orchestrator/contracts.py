@@ -28,6 +28,19 @@ class Capability(str, Enum):
     SEMANTIC_ANNOTATE = "semantic_annotate"   # cloud VLM — never authors geometry
     PERCEPTUAL = "perceptual"           # CPU colour/edge/texture/pattern analyzers
     DEPTH = "depth"                     # relative depth (Depth-Anything)
+    SHADING = "shading"                 # intrinsic decomposition — light/shadow (Intrinsic)
+    GROUNDING = "grounding"             # phrase → region, detect, caption (Florence-2: open-vocab)
+    # CIRCUIT-003 M6 — the one capability in this enum that does not read the image.
+    #
+    # Every row above answers a question ABOUT PIXELS, which is why they can share a scheduler,
+    # a residency policy, and a cache keyed on the image. This one answers a question about the
+    # SUBJECT, from documents. It holds no weights, has no adapter in the roster, and never
+    # occupies the GPU slot — it is a call to a library, not to a model.
+    #
+    # It is declared here anyway so a capability question cannot be answered by a table that has
+    # never heard of research. Everything it yields is tagged `sourced` (services/epistemics.py)
+    # and can never be laundered into visible or measured evidence.
+    EXTERNAL_SOURCE = "external_source"
 
 
 class ResourceKind(str, Enum):
@@ -114,6 +127,10 @@ class AdapterSpec:
     resource: ResourceKind
     model_id: str
     checkpoint: Optional[str] = None
+    # WEIGHTS-001: the exact HF commit these weights come from. A pin, not a note — a floating
+    # `main` would silently swap the model under us and quietly falsify every provenance receipt
+    # already written. Mirrors weights.manifest.json; None for non-HF entries.
+    revision: Optional[str] = None
     preprocessing_version: str = "v1"
     license: Optional[str] = None
     available: bool = False          # False → deferred/not installed (fake in B1)

@@ -21,6 +21,10 @@ import io
 from typing import List, Optional, Tuple
 
 _MODEL_NAME = "patrickjohncyh/fashion-clip"
+# WEIGHTS-001 — pinned HF commit. Passed to every from_pretrained below so the pin is
+# ENFORCED at load, not merely recorded. Mirrors weights.manifest.json.
+REVISION = "7e3ba62ce16b379a1ab479346b66f192e76f51b7"
+MODEL_TAG = "fashion_clip"
 _model = None
 _processor = None
 _load_failed = False
@@ -75,9 +79,9 @@ def _load():
         return None, None
     try:
         from transformers import CLIPModel, CLIPProcessor
-        _model = CLIPModel.from_pretrained(_MODEL_NAME)
+        _model = CLIPModel.from_pretrained(_MODEL_NAME, revision=REVISION)
         _model.eval()
-        _processor = CLIPProcessor.from_pretrained(_MODEL_NAME)
+        _processor = CLIPProcessor.from_pretrained(_MODEL_NAME, revision=REVISION)
         return _model, _processor
     except Exception as e:
         print(f"⚠️ FashionCLIP unavailable ({e}); embeddings/labels skipped.")
@@ -213,3 +217,24 @@ def cosine(a: List[float], b: List[float]) -> float:
     if not a or not b or len(a) != len(b):
         return 0.0
     return float(sum(x * y for x, y in zip(a, b)))
+
+
+def unload() -> None:
+    """Release the model + its GPU memory. WIRE-002.
+
+    This service held a module-level `_model` and advertised no way to free it, so
+    `model_residency` — which discovers releasable services by looking for `unload()` — could not
+    see it. Measured: a plan that ran the fashion embedding space
+    left 32 MiB resident that a full release could not reclaim.
+
+    Idempotent; a model that was never loaded has nothing to free."""
+    global _model
+    _model = None
+    try:
+        import gc
+        import torch
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass

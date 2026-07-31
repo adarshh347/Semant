@@ -3,7 +3,7 @@ import {
   makePercept, upsertPercept, perceptForRegion, perceptId,
   makeExpressionPercept, isExpressionPercept, perceptsForGround,
   makeMention, addMention, removeMentionsForBlock,
-  mentionsForBlock, mentionsForRegion, mentionsForPercept, mentionsForMark,
+  mentionsForBlock, mentionsForRegion, mentionsForPercept, mentionsForMark, mentionsForPost,
   blockIdsForRegion, mentionsFromBlocks, blockIdsForPercept,
 } from './perceptMentions.js';
 
@@ -242,5 +242,39 @@ describe('Mention — the mark edge (P3-A)', () => {
     expect(men.regionId).toBeNull(); // a mark chip is NOT split into region edges
     expect(men.refKind).toBe('mark');
     expect(men.label).toBe('the light gathers');
+  });
+});
+
+// ── CIRCUIT-001 P5-A: the crossing — a mention carries the source-post edge ───
+describe('Mention — the crossing edge (P5-A)', () => {
+  it('makeMention carries a postId WITHOUT changing the id grammar (the slot keeps it unique)', () => {
+    const men = makeMention({ markId: 'vm_1', postId: 'post_B', blockId: 'block_a', inlineContentId: 'ic_1', form: 'inline' });
+    expect(men.postId).toBe('post_B');
+    // id grammar is untouched — postId does not enter it, so no existing edge is invalidated
+    expect(men.id).toBe('men_vm_1_block_a_ic_1');
+    // a same-post mark mention leaves postId null (byte-identical to before)
+    expect(makeMention({ markId: 'vm_2', blockId: 'b', inlineContentId: 's' }).postId).toBeNull();
+  });
+
+  it('mentionsFromBlocks reconstructs the source-post edge from data-post-id', () => {
+    const blocks = [{
+      id: 'block_x',
+      content: '<p><span data-region-ref data-inline-type="mark" data-mark-id="vm_cross_0" '
+        + 'data-post-id="post_B" data-mention-id="men_vm_cross_0_block_x_ic1" '
+        + 'data-label="lapel" class="ref-chip ref-chip--mark">lapel</span></p>',
+    }];
+    const [men] = mentionsFromBlocks(blocks);
+    expect(men.markId).toBe('vm_cross_0');
+    expect(men.postId).toBe('post_B');   // the crossing survived the markup round-trip
+  });
+
+  it('mentionsForPost finds only the crossings reaching that source', () => {
+    const ms = [
+      makeMention({ markId: 'vm_1', postId: 'post_B', blockId: 'b1' }),
+      makeMention({ markId: 'vm_2', postId: 'post_C', blockId: 'b2' }),
+      makeMention({ markId: 'vm_3', blockId: 'b3' }),          // same-post, no crossing
+    ].reduce(addMention, []);
+    expect(mentionsForPost(ms, 'post_B').map((m) => m.markId)).toEqual(['vm_1']);
+    expect(mentionsForPost(ms, 'post_none')).toEqual([]);
   });
 });

@@ -13,6 +13,7 @@ vision-LLM detector.
 import io
 from typing import List, Optional
 
+MODEL_TAG = "yolo11n_seg"
 _model = None
 _MODEL_NAME = "yolo11n-seg.pt"   # small, fast; auto-downloads (~6MB) on first use
 _MAX_POLY_POINTS = 48            # downsample polygons to keep payloads small
@@ -85,3 +86,24 @@ def segment_image_bytes(data: bytes, conf: float = 0.30, max_regions: int = 12) 
     except Exception as e:
         print(f"❌ Segmentation error: {e}")
         return None
+
+
+def unload() -> None:
+    """Release the model + its GPU memory. WIRE-002.
+
+    This service held a module-level `_model` and advertised no way to free it, so
+    `model_residency` — which discovers releasable services by looking for `unload()` — could not
+    see it. Measured: a plan that ran the YOLO part proposer `find_parts` calls on EVERY plan
+    left 32 MiB resident that a full release could not reclaim.
+
+    Idempotent; a model that was never loaded has nothing to free."""
+    global _model
+    _model = None
+    try:
+        import gc
+        import torch
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass

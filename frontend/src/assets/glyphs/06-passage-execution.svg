@@ -1,0 +1,50 @@
+<svg id="g-passage-execution" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="A sealed manifest entering a slot cut in a plate, with a mark emerging beyond it.">
+  <title>Semant — Passage Execution</title>
+  <desc>A sealed manifest entering a slot cut in a plate, with a mark emerging beyond it.</desc>
+  <style>#g-passage-execution{color:#1E1A1C}</style>
+  <defs>
+    <filter id="passage-execution-bA" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="passage-execution-bB" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.16" numOctaves="2" seed="21" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+
+    <g fill="none" stroke="#A9A0A6" stroke-width="0.9" stroke-linecap="round" style="opacity:var(--guide-o, 0.16)">
+      <path d="M2.4 8.6 C6.4 9.4 9.4 10.6 12.4 12.0" stroke-dasharray="1.4 2"/>
+      <path d="M2.4 24.4 C6.4 23.6 9.4 22.4 12.4 21.0" stroke-dasharray="1.4 2"/>
+      <path d="M29.6 4.4 V7"/><path d="M29.6 4.4 H27"/>
+    </g>
+    <g style="opacity:var(--wash-o, 0.18)">
+      <path filter="url(#passage-execution-bA)" fill="#6B5391"
+            d="M3.4 13.0 C8 11.6 14 12.4 16.6 14.2 C16.4 17.8 13.4 20.0 8.6 19.8 C4.4 19.6 2.4 16.4 3.4 13.0 Z"/>
+      <path filter="url(#passage-execution-bB)" fill="#A66273"
+            d="M19.6 12.6 C24 11.4 29.4 12.6 30.4 15.2 C29.8 18.8 25.4 20.8 21.4 19.6 C18.4 18.7 18.2 14.0 19.6 12.6 Z"/>
+    </g>
+    <!-- the plate, broken by a slot -->
+    <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+      <path d="M17.4 4.4 C16.8 7.6 17.6 10.4 17.1 12.6"/>
+      <path d="M17.1 19.6 C17.6 22.4 16.8 25.2 17.4 27.6"/>
+    </g>
+    <g fill="none" stroke="#6B5A66" stroke-width="1.3" stroke-linecap="round">
+      <path d="M15.4 12.7 C16.2 12.6 17.6 12.7 18.6 12.6"/>
+      <path d="M15.4 19.5 C16.2 19.6 17.6 19.5 18.6 19.4"/>
+    </g>
+    <!-- the manifest entering -->
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.4 13.4 C7.4 12.9 11.4 13.5 14.4 13.0"/>
+      <path d="M14.4 13.2 C14.7 15.0 14.3 17.2 14.5 18.8"/>
+      <path d="M14.4 19.0 C11.4 19.5 7.4 18.9 4.4 19.4"/>
+      <path d="M4.5 19.2 C4.2 17.4 4.6 15.2 4.4 13.2"/>
+      <path d="M4.6 13.6 C7.0 15.4 8.4 16.4 9.4 16.9 C10.4 16.4 12.0 15.2 14.3 13.4"/>
+    </g>
+    <!-- what comes out the far side -->
+    <path d="M18.4 16.2 C20.0 16.1 21.2 16.2 22.4 16.1"
+          fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    <circle cx="24.4" cy="16.0" r="2.15" fill="currentColor"/>
+    <path d="M25.9 14.5 C27.1 13.4 27.9 12.6 28.8 11.8"
+          fill="none" stroke="var(--tick,#7B2D6B)" stroke-width="1.9" stroke-linecap="round"/>
+</svg>

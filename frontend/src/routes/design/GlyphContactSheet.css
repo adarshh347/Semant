@@ -1,0 +1,47 @@
+/*
+ * Glyph contact sheet — dev-only checkpoint route (/_design/glyphs).
+ *
+ * Ported verbatim from `frontend skills/glyph-contact-sheet.html`'s <style>,
+ * scoped under `.gcs` so it cannot leak into the app. The sheet's own :root
+ * (--page/--ink/--graphite/--hairline/--plum) is dropped — those tokens come
+ * from the enclosing `.pe-scope`. Every glyph here is loaded as `<img src=…>`,
+ * the harshest way to use an SVG (no inherited colour, no cascade, no host CSS):
+ * if a glyph reads here, the asset layer migrated clean.
+ */
+
+.gcs {
+  padding: 64px 28px 96px;
+  background: var(--page);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+.gcs .sheet { max-width: 1060px; margin: 0 auto; }
+.gcs .mono { font-family: 'Spline Sans Mono', ui-monospace, monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--graphite); }
+.gcs .eyebrow { display: flex; align-items: center; gap: 9px; margin: 0 0 20px; }
+.gcs .eyebrow .tk { width: 9px; height: 9px; background: var(--plum); opacity: .85; border-radius: 1px; clip-path: polygon(0 62%, 100% 0, 100% 38%, 0 100%); }
+.gcs .eyebrow span { color: rgba(30, 26, 28, .5); font-weight: 500; }
+.gcs h1 { font-family: 'Playfair Display', Georgia, serif; font-weight: 500; font-size: 42px; line-height: 1.1; letter-spacing: -.015em; margin: 0 0 14px; }
+.gcs .lede { font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-size: 18px; color: rgba(30, 26, 28, .6); max-width: 56ch; margin: 0 0 12px; }
+.gcs .note { font-size: 13.5px; line-height: 1.66; color: rgba(30, 26, 28, .5); max-width: 64ch; margin: 0; }
+
+.gcs .rule { display: block; width: 100%; height: 12px; margin: 52px 0 38px; overflow: visible; }
+.gcs .rule path { fill: none; stroke: var(--ink); stroke-width: 1; stroke-linecap: round; opacity: .13; }
+.gcs .rule .a { stroke: var(--plum); opacity: .55; stroke-width: 1.5; }
+
+.gcs .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 22px; }
+@media (max-width: 900px) { .gcs .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .gcs .grid { grid-template-columns: 1fr; } }
+.gcs .card { background: var(--paper); border: 1px solid var(--hairline); border-radius: 16px; padding: 22px 22px 16px; transition: border-color .4s ease, box-shadow .4s ease; }
+.gcs .card:hover { border-color: rgba(30, 26, 28, .15); box-shadow: 0 8px 24px -18px rgba(30, 26, 28, .35); }
+.gcs .row { display: flex; align-items: flex-end; gap: 16px; height: 60px; margin-bottom: 16px; }
+.gcs .row img { display: block; }
+.gcs .i20 { width: 20px; height: 20px; } .gcs .i32 { width: 32px; height: 32px; } .gcs .i56 { width: 56px; height: 56px; }
+.gcs .card h2 { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 6px; }
+.gcs .card .anch { font-family: 'Spline Sans Mono', monospace; font-size: 9px; letter-spacing: .08em; color: rgba(30, 26, 28, .3); margin: 0 0 12px; }
+.gcs .card .path { border-top: 1px solid var(--hairline); padding-top: 10px; font-family: 'Spline Sans Mono', monospace; font-size: 9px; letter-spacing: .04em; color: rgba(30, 26, 28, .34); word-break: break-all; }
+.gcs .set { font-family: 'Spline Sans Mono', monospace; font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--plum); opacity: .75; margin: 0 0 10px; }
+
+.gcs pre { background: var(--paper); border: 1px solid var(--hairline); border-radius: 12px; padding: 18px 20px; overflow: auto; font-family: 'Spline Sans Mono', monospace; font-size: 11.5px; line-height: 1.75; color: rgba(30, 26, 28, .72); margin: 20px 0 0; }
+.gcs pre b { color: var(--plum); font-weight: 500; }

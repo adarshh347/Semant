@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { SemantMark } from './brand/SemantMark';
+import { SectionEyebrow } from './brand/SectionEyebrow';
 import './PlaceholderPage.css';
 
 /**
@@ -13,7 +14,7 @@ export default function NotFoundPage() {
     <div className="placeholder">
       <div className="placeholder-inner">
         <SemantMark size={52} color="var(--accent)" title="" aria-hidden="true" style={{ marginBottom: '1.25rem' }} />
-        <span className="placeholder-eyebrow">404 — off the ground</span>
+        <SectionEyebrow className="placeholder-eyebrow">404 — off the ground</SectionEyebrow>
         <h1 className="placeholder-title">Nothing to read here</h1>
         <p className="placeholder-lede">
           This region isn't on the ground — the page may have moved, or the link

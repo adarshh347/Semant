@@ -55,12 +55,15 @@ describe('a normalized mark carries the full contract shape', () => {
     it('has every §1 field, with a null run_id slot', () => {
         const m = good('brush_field', { role: 'light_field', geometry: { kind: 'soft_mask' } });
         expect(Object.keys(m).sort()).toEqual([
-            'created_at', 'derived_from', 'geometry', 'id', 'label', 'linked_action_ids',
-            'linked_ground_ids', 'linked_percept_ids', 'provenance', 'role', 'source',
-            'status', 'style', 'type', 'updated_at', 'warnings',
+            'created_at', 'derived_from', 'epistemic_status', 'geometry', 'id', 'label',
+            'linked_action_ids', 'linked_ground_ids', 'linked_percept_ids', 'provenance',
+            'role', 'source', 'status', 'style', 'type', 'updated_at', 'warnings',
         ]);
         expect(m.provenance.run_id).toBe(null);
         expect(m.derived_from).toBe(null);
+        // M5: the slot exists on every mark, and defaults to null — a curator's own mark
+        // claims no epistemic kind, and absent is not the same as `uncertain`.
+        expect(m.epistemic_status).toBe(null);
     });
 
     it('mints monotonic vm_ ids', () => {
@@ -263,6 +266,7 @@ describe('reading a mark', () => {
 // v3 promotes them to validated schema. The gate: what P3-B persisted must still validate.
 import {
     ANCHOR_KINDS, STROKE_OPS, PRODUCERS, anchorError, regionRefMark, regionMaskMark,
+    crossPostReference, isCrossPostMark,
 } from './visualMarks';
 
 describe('contract v3 — trace anchors', () => {
@@ -346,6 +350,62 @@ describe('contract v3 — region_ref (a naming reference, no mask authored)', ()
     it('PRODUCERS is the published producer vocabulary', () => {
         expect(PRODUCERS).toContain('sam_refine');
         expect(PRODUCERS).toContain('semantic_read');
+        expect(PRODUCERS).toContain('find_similar');    // P5-A: the crossing producer
+        expect(PRODUCERS).toContain('negative_space');  // P6-A: the first brush_field producer
+        expect(PRODUCERS).toContain('material_field');  // P6-B: DINOv2 same-material field
+        expect(PRODUCERS).toContain('rhythm');          // P6-D: cpu_perceptual, no model at all
+        expect(PRODUCERS).toContain('pressure_zone');   // P6-E: the same reading, coherence map
+        expect(PRODUCERS).toContain('recession');       // P6-F: Depth-Anything near/far bands
+        expect(PRODUCERS).toContain('shading');         // P6-G: Intrinsic light/shadow (deferred)
+        expect(PRODUCERS).toContain('florence_find_parts'); // P8-A: open-vocab find_parts
+        expect(PRODUCERS).toContain('grounded_sam_find_parts'); // P8-B: the one that runs
         expect(PRODUCERS).toContain('fixture');
+    });
+});
+
+// ── the crossing (CIRCUIT-001 P5-A) ────────────────────────────────────────────
+describe('contract v3 — cross-post region_ref (a reference across the border, never a copy)', () => {
+    it('a region_ref may name a region on ANOTHER post with a rev-at-citation', () => {
+        const m = regionRefMark({
+            regionId: 'reg_9', postId: 'post_B', geometryRev: 3, label: 'lapel',
+            producer: 'find_similar', runId: 'run_fs', model: 'dinov2',
+        });
+        expect(m).toBeTruthy();
+        const ref = crossPostReference(m);
+        expect(ref).toEqual({ post_id: 'post_B', region_id: 'reg_9', geometry_rev: 3 });
+        expect(isCrossPostMark(m)).toBe(true);
+    });
+
+    it('a same-post region_ref is NOT a crossing (no post_id → null reference)', () => {
+        const m = regionRefMark({ regionId: 'reg_1', producer: 'fixture' });
+        expect(crossPostReference(m)).toBeNull();
+        expect(isCrossPostMark(m)).toBe(false);
+    });
+
+    it('the crossing carries NO geometry across the border — a reference, not a copy', () => {
+        // pixels/mask alongside a cross-post region_ref is refused, exactly as a same-post ref.
+        expect(good('region_mask', {
+            source: 'model_suggested', status: 'suggested', provenance: { producer: 'fixture' },
+            geometry: { kind: 'region_ref', region_ref: { region_id: 'r', post_id: 'p', geometry_rev: 2 },
+                mask_ref: { region_id: 'r' } },
+        })).toBe(null);
+        expect(good('region_mask', {
+            source: 'model_suggested', status: 'suggested', provenance: { producer: 'fixture' },
+            geometry: { kind: 'region_ref', region_ref: { region_id: 'r', post_id: 'p' }, pixels: [[1]] },
+        })).toBe(null);
+    });
+
+    it('rejects a broken border reference (empty post_id / non-numeric rev)', () => {
+        const base = { source: 'model_suggested', status: 'suggested', provenance: { producer: 'fixture' } };
+        expect(good('region_mask', { ...base,
+            geometry: { kind: 'region_ref', region_ref: { region_id: 'r', post_id: '   ' } } })).toBe(null);
+        expect(good('region_mask', { ...base,
+            geometry: { kind: 'region_ref', region_ref: { region_id: 'r', post_id: 'p', geometry_rev: 'nope' } } })).toBe(null);
+    });
+
+    it('find_similar is a real producer — a run_id is its receipt', () => {
+        // producer find_similar with no run_id has lost its receipt → refused.
+        expect(regionRefMark({ regionId: 'r', postId: 'p', producer: 'find_similar', runId: null })).toBeNull();
+        expect(regionRefMark({ regionId: 'r', postId: 'p', producer: 'find_similar', runId: 'run_fs' })).toBeTruthy();
     });
 });

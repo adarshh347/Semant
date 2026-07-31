@@ -122,8 +122,11 @@
 .ap-chips { display: flex; flex-wrap: wrap; gap: 0.28rem; }
 
 .ap-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
   min-height: 1.7rem;
-  padding: 0 0.55rem;
+  padding: 0 0.55rem 0 0.4rem;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-pill, 999px);
   background: var(--surface);
@@ -132,7 +135,11 @@
   font-size: 0.68rem;
   cursor: pointer;
 }
+/* The act mark carries the plum tell; it stays plum while the label rests muted,
+   and deepens with the label on hover (inherits currentColor). */
+.ap-chip-glyph { color: var(--accent); }
 .ap-chip:hover { border-color: var(--accent); color: var(--accent-deep); background: var(--accent-soft); }
+.ap-chip:hover .ap-chip-glyph { color: currentColor; }
 .ap-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ── suggested acts ───────────────────────────────────────────────────────── */

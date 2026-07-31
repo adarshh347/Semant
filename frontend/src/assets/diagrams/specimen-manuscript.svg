@@ -1,0 +1,60 @@
+<svg id="s-manuscript" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 130" width="200" height="130" role="img" aria-label="A column of writing with a citation chip, tethered across to the print the claim came from.">
+  <title>Semant — Manuscript specimen</title>
+  <desc>A column of writing with a citation chip, tethered across to the print the claim came from.</desc>
+  <style>#s-manuscript{color:#1E1A1C}</style>
+  <defs>
+    <filter id="sm-bA" x="-25%" y="-25%" width="150%" height="150%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="2" seed="5" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="sm-bB" x="-25%" y="-25%" width="150%" height="150%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.036" numOctaves="2" seed="23" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#A9A0A6" stroke-width="1" stroke-linecap="round" style="opacity:var(--guide-o, 0.15)">
+    <path d="M6 6 V16"/><path d="M6 6 H16"/>
+    <path d="M22 10 V120"/>
+    <path d="M194 124 V114"/><path d="M194 124 H184"/>
+  </g>
+  <g style="opacity:var(--wash-o, 0.17)">
+    <path filter="url(#sm-bA)" fill="#8E82A0"
+          d="M14 14 C40 6 84 10 104 20 C106 42 88 54 58 56 C26 58 8 40 14 14 Z"/>
+    <path filter="url(#sm-bB)" fill="#8E3F6A"
+          d="M126 58 C152 48 188 58 196 78 C196 102 172 116 148 112 C122 108 118 74 126 58 Z"/>
+  </g>
+  <!-- the writing -->
+  <g fill="none" stroke="#6B5A66" stroke-width="1.8" stroke-linecap="round">
+    <path d="M14 20 C36 18.6 76 20.4 106 19"/>
+    <path d="M14 30 C36 28.6 76 30.4 106 29"/>
+    <path d="M14 40 C32 38.8 60 40.2 82 39"/>
+    <path d="M14 68 C36 66.6 76 68.4 106 67"/>
+    <path d="M14 78 C36 76.6 76 78.4 106 77"/>
+    <path d="M14 88 C36 86.6 76 88.4 106 87"/>
+    <path d="M14 98 C30 97 52 98.4 70 97.2"/>
+  </g>
+  <!-- the citation chip, interrupting the line -->
+  <path d="M18 48.6 C36 47.2 62 48.4 76 47.8 C79 51.4 78.6 56.8 75.6 60 C58 61.4 34 60.2 18.4 60.8 C15.2 57.4 15.4 51.8 18 48.6 Z"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.6" stroke-linecap="round">
+    <path d="M24 54.6 C32 53.8 44 54.6 52 54"/>
+  </g>
+  <circle cx="66" cy="54.2" r="3.2" fill="currentColor"/>
+  <!-- the tether -->
+  <path d="M78 55.6 C96 56.4 112 62 124 74"
+        fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- the print it came from -->
+  <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M130 62 C146 60.8 172 62.2 190 61"/>
+    <path d="M189.6 61.2 C191 74 190 96 190.6 110"/>
+    <path d="M190.2 110.4 C172 111.6 146 110.2 130 111.4"/>
+    <path d="M130.6 111 C129.2 98 130.2 76 129.6 61.6"/>
+  </g>
+  <g fill="none" stroke="#6B5A66" stroke-width="1.6" stroke-linecap="round">
+    <path d="M136 96 C146 86 156 92 168 80 C174 74 180 76 186 72"/>
+    <path d="M152 70 C154 68 158 68 160 70"/>
+  </g>
+  <circle cx="157.4" cy="88.6" r="4.4" fill="currentColor"/>
+  <path d="M160.6 85.4 C164.2 81.8 166.4 79.6 169.4 76.6"
+        fill="none" stroke="var(--tick, #7B2D6B)" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

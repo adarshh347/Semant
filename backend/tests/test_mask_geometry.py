@@ -185,3 +185,283 @@ def test_mask_to_crops_alpha_and_context():
     # a corner of the (rectangular) alpha crop that lies inside the mask is opaque
     ac = crops["alpha_crop"]
     assert ac.getpixel((0, 0))[3] == 255
+
+
+# ── negative-space converter (CIRCUIT-001 P6-A) ──────────────────────────────
+# The first brush_field producer's geometry: a figure mask → complement → soft field → strokes.
+
+def test_mask_complement_flips_every_pixel_and_is_self_inverse():
+    h, w = 6, 8
+    fn = lambda r, c: 2 <= r <= 3 and 2 <= c <= 5     # a central rectangle figure
+    bits = make_bits(h, w, fn)
+    rle = mg.rle_encode(bits, h, w)
+    comp = mg.mask_complement(rle)
+    cbits, ch, cw = mg.rle_decode(comp)
+    assert (ch, cw) == (h, w)
+    # every pixel flipped
+    assert all((1 - (1 if b else 0)) == cbits[i] for i, b in enumerate(bits))
+    # self-inverse: complementing twice returns the original bit buffer exactly
+    again, _, _ = mg.rle_decode(mg.mask_complement(comp))
+    assert bytes(again) == bytes(bits)
+
+
+def test_soft_field_is_zero_on_figure_and_peaks_away_from_it():
+    h, w = 5, 5
+    fn = lambda r, c: r == 2 and c == 2               # a single figure pixel at the centre
+    rle = mg.rle_encode(make_bits(h, w, fn), h, w)
+    field, fh, fw = mg.soft_field_from_mask(rle)
+    assert (fh, fw) == (h, w)
+    # figure pixel draws nothing
+    assert field[2 * w + 2] == 0.0
+    # a corner (farthest from the figure) is the deepest negative space → normalized to 1.0
+    assert field[0] == pytest.approx(1.0, abs=1e-9)
+    # softness is monotone: an immediate neighbour of the figure is dimmer than a far corner
+    assert field[2 * w + 1] < field[0]
+    # every value is a valid intensity
+    assert all(0.0 <= v <= 1.0 for v in field)
+
+
+def test_soft_field_degenerate_masks_draw_nothing():
+    h, w = 4, 4
+    empty = mg.rle_encode(make_bits(h, w, lambda r, c: False), h, w)   # no figure
+    full = mg.rle_encode(make_bits(h, w, lambda r, c: True), h, w)     # all figure
+    for rle in (empty, full):
+        field, _, _ = mg.soft_field_from_mask(rle)
+        assert field == [0.0] * (h * w)                                # nothing to draw
+
+
+def test_strokes_from_field_synthesises_editable_normalized_strokes():
+    h, w = 8, 8
+    fn = lambda r, c: r == 0 and c == 0               # figure in the corner
+    rle = mg.rle_encode(make_bits(h, w, fn), h, w)
+    field, fh, fw = mg.soft_field_from_mask(rle)
+    strokes = mg.strokes_from_field(field, fh, fw, grid=4, threshold=0.1)
+    assert strokes, "a non-trivial negative space yields strokes"
+    for s in strokes:
+        assert s["op"] == "add"
+        assert len(s["points"]) == 1
+        x, y = s["points"][0]
+        assert 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0                     # normalized coords
+        assert 0.0 <= s["strength"] <= 1.0                             # strength ∝ intensity
+    # strength really does track the field value at the sampled pixel
+    deep = max(strokes, key=lambda s: s["strength"])
+    shallow = min(strokes, key=lambda s: s["strength"])
+    assert deep["strength"] >= shallow["strength"]
+
+
+def test_strokes_below_threshold_are_omitted():
+    h, w = 8, 8
+    rle = mg.rle_encode(make_bits(h, w, lambda r, c: r == 0 and c == 0), h, w)
+    field, fh, fw = mg.soft_field_from_mask(rle)
+    # a threshold above the field's max leaves nothing to draw
+    assert mg.strokes_from_field(field, fh, fw, grid=4, threshold=1.01) == []
+
+
+# ── same-material cosine converter (CIRCUIT-001 P6-B) ────────────────────────
+# A seed patch feature vs a grid of patch features → a cosine "same material" field.
+
+def _grid_of(vectors):
+    """A flat row-major list of patch vectors; grid = sqrt(len)."""
+    import math as _m
+    g = int(round(_m.sqrt(len(vectors))))
+    return vectors, g
+
+
+def test_cosine_field_is_one_at_the_seed_and_normalized():
+    # 2×2 grid: two vectors point one way ("material A"), two another ("material B").
+    a, b = [1.0, 0.0], [0.0, 1.0]
+    vecs, g = _grid_of([a, a, b, b])
+    field, gh, gw = mg.cosine_field_from_features(vecs, g, seed_index=0)
+    assert (gh, gw) == (2, 2)
+    assert field[0] == pytest.approx(1.0, abs=1e-9)          # self-similarity is exactly 1
+    assert field[1] == pytest.approx(1.0, abs=1e-9)          # same material → 1
+    assert field[2] == pytest.approx(0.0, abs=1e-9)          # orthogonal material → floored to 0
+    assert all(0.0 <= v <= 1.0 for v in field)               # normalized
+
+
+def test_cosine_field_is_monotone_in_similarity():
+    seed = [1.0, 0.0]
+    near = [0.9, 0.1]        # close to the seed direction
+    far = [0.2, 1.0]         # far from it
+    vecs, g = _grid_of([seed, near, far, [0.0, 1.0]])
+    field, _, _ = mg.cosine_field_from_features(vecs, g, seed_index=0)
+    assert field[0] > field[1] > field[2]                    # closer material scores higher
+
+
+def test_cosine_field_l2_normalizes_so_magnitude_does_not_matter():
+    # a scaled copy of the seed is the SAME material (cosine ignores magnitude)
+    seed = [3.0, 4.0]                 # |v| = 5
+    scaled = [30.0, 40.0]            # same direction, 10× magnitude
+    vecs, g = _grid_of([seed, scaled, [4.0, -3.0], [0.0, 0.0]])
+    field, _, _ = mg.cosine_field_from_features(vecs, g, seed_index=0)
+    assert field[1] == pytest.approx(1.0, abs=1e-9)          # scale-invariant → still 1
+    assert field[2] == pytest.approx(0.0, abs=1e-9)          # perpendicular → 0
+    assert field[3] == pytest.approx(0.0, abs=1e-9)          # a zero vector never matches
+
+
+def test_cosine_field_degenerate_inputs_return_empty():
+    assert mg.cosine_field_from_features([], 0, 0)[0] == []
+    assert mg.cosine_field_from_features([[1.0]], 2, 0)[0] == []      # too few vectors for grid=2
+    assert mg.cosine_field_from_features([[1.0], [1.0], [1.0], [1.0]], 2, 9)[0] == []  # seed OOB
+
+
+def test_field_contrast_distinguishes_crisp_from_uniform():
+    assert mg.field_contrast([1.0, 1.0, 0.0, 0.0]) == pytest.approx(1.0)
+    assert mg.field_contrast([0.7, 0.71, 0.69, 0.7]) < 0.05             # near-uniform
+    assert mg.field_contrast([]) == 0.0
+
+
+# ── response-map converter (CIRCUIT-001 P6-D) ────────────────────────────────
+# Gabor energy / structure-tensor coherence / depth are all magnitudes → one normalizer.
+
+def test_soft_field_from_map_normalizes_to_unit_range():
+    vals = [0.0, 5.0, 10.0, 2.5]          # 2×2 grid
+    field, gh, gw = mg.soft_field_from_map(vals, 2)
+    assert (gh, gw) == (2, 2)
+    assert field[0] == pytest.approx(0.0)      # min → 0
+    assert field[2] == pytest.approx(1.0)      # max → 1
+    assert field[3] == pytest.approx(0.25)     # linear in between
+    assert all(0.0 <= v <= 1.0 for v in field)
+
+
+def test_soft_field_from_map_flat_input_draws_nothing():
+    # a flat surface has nothing standing out — the honest field is all-zero, not all-one
+    field, _, _ = mg.soft_field_from_map([3.0, 3.0, 3.0, 3.0], 2)
+    assert field == [0.0, 0.0, 0.0, 0.0]
+    assert mg.field_contrast(field) == 0.0
+
+
+def test_soft_field_from_map_degenerate_inputs_return_empty():
+    assert mg.soft_field_from_map([], 0)[0] == []
+    assert mg.soft_field_from_map([1.0, 2.0], 2)[0] == []      # too few values for grid=2
+
+
+def test_soft_field_from_map_is_monotone_in_the_measurement():
+    vals = [1.0, 2.0, 3.0, 4.0]
+    field, _, _ = mg.soft_field_from_map(vals, 2)
+    assert field[0] < field[1] < field[2] < field[3]
+
+
+# ── depth banding (CIRCUIT-001 P6-F) ─────────────────────────────────────────
+# Depth-Anything emits INVERSE depth (larger = nearer), so far = the complement of near.
+
+def test_depth_band_field_far_is_the_complement_of_near():
+    depth = [10.0, 8.0, 4.0, 2.0]        # 2×2, larger = nearer
+    near, _, _ = mg.depth_band_field(depth, 2, band="near")
+    far, _, _ = mg.depth_band_field(depth, 2, band="far")
+    assert near[0] == pytest.approx(1.0) and near[3] == pytest.approx(0.0)   # nearest / farthest
+    assert far[0] == pytest.approx(0.0) and far[3] == pytest.approx(1.0)     # inverted
+    for n, f in zip(near, far):
+        assert n + f == pytest.approx(1.0)
+
+
+def test_depth_band_field_defaults_to_far():
+    depth = [10.0, 8.0, 4.0, 2.0]
+    assert mg.depth_band_field(depth, 2)[0] == mg.depth_band_field(depth, 2, band="far")[0]
+
+
+def test_depth_band_field_flat_scene_has_no_far_band():
+    # a copy shot / flat wall: nothing recedes, so the band must be empty-or-zero, never invented
+    far, _, _ = mg.depth_band_field([5.0, 5.0, 5.0, 5.0], 2, band="far")
+    assert far == [1.0, 1.0, 1.0, 1.0] or far == [0.0, 0.0, 0.0, 0.0]
+    # (the producer's relief test is what refuses this case — see the producer suite)
+
+
+def test_depth_band_field_degenerate_input_is_empty():
+    assert mg.depth_band_field([], 0)[0] == []
+    assert mg.depth_band_field([1.0], 2)[0] == []
+
+
+# ── shading converters (CIRCUIT-001 P6-G) ────────────────────────────────────
+# Intrinsic hands back shading (larger = more lit): light is that map, shadow its complement,
+# and the FALL of light is its gradient — a direction, not a field.
+
+def test_shading_band_shadow_is_the_exact_complement_of_light():
+    shading = [9.0, 6.0, 3.0, 0.0]         # 2×2, larger = more lit
+    light, _, _ = mg.shading_band_field(shading, 2, band="light")
+    shadow, _, _ = mg.shading_band_field(shading, 2, band="shadow")
+    assert light[0] == pytest.approx(1.0) and light[3] == pytest.approx(0.0)
+    assert shadow[0] == pytest.approx(0.0) and shadow[3] == pytest.approx(1.0)
+    for a, b in zip(light, shadow):
+        assert a + b == pytest.approx(1.0)      # shadow IS light's absence, not a 2nd measurement
+
+
+def test_shading_band_defaults_to_light_and_refuses_nothing_by_itself():
+    shading = [9.0, 6.0, 3.0, 0.0]
+    assert mg.shading_band_field(shading, 2)[0] == mg.shading_band_field(shading, 2, band="light")[0]
+    assert mg.shading_band_field([], 0)[0] == []
+    assert mg.shading_band_field([1.0], 2)[0] == []
+
+
+def test_shading_gradient_points_the_way_light_falls():
+    # a 4×4 lit on the LEFT, dark on the right → light falls to the RIGHT (+x)
+    grid = 4
+    left_lit = [float(grid - c) for r in range(grid) for c in range(grid)]
+    g = mg.shading_gradient(left_lit, grid)
+    assert g is not None
+    assert g["dx"] == pytest.approx(1.0, abs=1e-6)     # falls toward the dark side
+    assert abs(g["dy"]) < 1e-6
+    assert g["strength"] > 0
+
+    # lit at the TOP → light falls DOWNWARD (+y, screen axes)
+    top_lit = [float(grid - r) for r in range(grid) for c in range(grid)]
+    g2 = mg.shading_gradient(top_lit, grid)
+    assert g2["dy"] == pytest.approx(1.0, abs=1e-6)
+    assert abs(g2["dx"]) < 1e-6
+
+
+def test_shading_gradient_refuses_an_evenly_lit_or_too_small_field():
+    grid = 4
+    assert mg.shading_gradient([5.0] * (grid * grid), grid) is None    # flat → no direction
+    assert mg.shading_gradient([1.0, 2.0, 3.0, 4.0], 2) is None        # grid < 3
+    assert mg.shading_gradient([1.0], 4) is None                        # too few values
+
+
+# ── grounding converter (CIRCUIT-001 P8-A) ───────────────────────────────────
+# Florence-2 emits PIXEL coordinates; everything downstream speaks normalized [0,1].
+
+def test_normalize_polygon_converts_and_clamps():
+    # a flat [x1,y1,x2,y2,...] pixel ring against a 200×100 image
+    pts = mg.normalize_polygon([0, 0, 200, 0, 200, 100, 0, 100], 200, 100)
+    assert pts == [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]
+    # a vertex a few pixels outside the frame is clamped, not propagated
+    out = mg.normalize_polygon([-10, -10, 220, 120], 200, 100)
+    assert all(0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 for x, y in out)
+    assert mg.normalize_polygon([], 200, 100) == []
+    assert mg.normalize_polygon([1, 2], 0, 0) == []
+
+
+def test_normalize_box_xyxy_and_degenerate_refusal():
+    b = mg.normalize_box_xyxy([10, 20, 110, 70], 200, 100)
+    assert b == {"x": 0.05, "y": 0.2, "w": 0.5, "h": 0.5}
+    # reversed corners still yield a sane box
+    assert mg.normalize_box_xyxy([110, 70, 10, 20], 200, 100) == b
+    # a zero-area detection is not evidence of anything
+    assert mg.normalize_box_xyxy([5, 5, 5, 5], 200, 100) is None
+    assert mg.normalize_box_xyxy([0, 0, 1, 1], 0, 0) is None
+
+
+def test_region_geometry_from_grounding_prefers_polygons():
+    g = {"polygons": [[[0, 0, 100, 0, 100, 100, 0, 100]]], "boxes": [[0, 0, 10, 10]],
+         "image_size": [200, 200]}
+    out = mg.region_geometry_from_grounding(g)
+    assert out["polygons"] and len(out["polygons"][0]) == 4      # the real extent won
+    assert out["box"]["w"] == pytest.approx(0.5)
+
+
+def test_region_geometry_from_grounding_falls_back_to_box():
+    out = mg.region_geometry_from_grounding(
+        {"polygons": [], "boxes": [[10, 20, 110, 140]], "image_size": [200, 200]})
+    assert out["polygons"] == []
+    assert out["box"] == {"x": 0.05, "y": 0.1, "w": 0.5, "h": 0.6}
+
+
+def test_region_geometry_from_grounding_refuses_nothing_useful():
+    assert mg.region_geometry_from_grounding(None) is None
+    assert mg.region_geometry_from_grounding({}) is None
+    # a 2-point "polygon" is not an extent, and a zero box is not a part
+    assert mg.region_geometry_from_grounding(
+        {"polygons": [[[1, 1, 2, 2]]], "boxes": [[5, 5, 5, 5]], "image_size": [200, 200]}) is None
+    # no image size → nothing can be normalized honestly
+    assert mg.region_geometry_from_grounding(
+        {"polygons": [], "boxes": [[1, 1, 50, 50]], "image_size": [0, 0]}) is None

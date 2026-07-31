@@ -4,6 +4,7 @@ import { Menu, ChevronDown, Upload as UploadIcon, Command as CommandIcon } from 
 import ThemeToggle from './ThemeToggle';
 import { Tooltip } from './ui';
 import { SemantLogo } from './brand/SemantMark';
+import { SectionDivider } from './brand/SectionEyebrow';
 import './Navbar.css';
 
 // Ask the shell-level CommandPalette (App.jsx) to open. Decoupled via event so
@@ -149,7 +150,7 @@ function Navbar() {
                     {label}
                   </NavLink>
                 ))}
-                <div className="nav-menu-sep" />
+                <SectionDivider className="nav-menu-sep" markSize={11} />
                 {TOOLS_LINKS.map(([to, label]) => (
                   <NavLink
                     key={to}
@@ -161,7 +162,7 @@ function Navbar() {
                     {label}
                   </NavLink>
                 ))}
-                <div className="nav-menu-sep" />
+                <SectionDivider className="nav-menu-sep" markSize={11} />
                 <NavLink
                   to="/gallery"
                   role="menuitem"

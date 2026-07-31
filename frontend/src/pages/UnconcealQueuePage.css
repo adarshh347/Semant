@@ -56,7 +56,7 @@
 .rq-action-btns { display: flex; gap: var(--space-3); margin-left: auto; }
 .rq-skip { background: transparent; border: 1px solid var(--line-strong); color: var(--ink-muted); border-radius: var(--radius-pill); padding: 0.6rem 1.1rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
 .rq-skip:hover:not(:disabled) { border-color: var(--ink-subtle); color: var(--ink); }
-.rq-save { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--accent); border: 1px solid var(--accent); color: var(--accent-ink); border-radius: var(--radius-pill); padding: 0.6rem 1.3rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.18s var(--ease); }
+.rq-save { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--fill); border: 1px solid var(--fill); color: var(--on-fill); border-radius: var(--radius-pill); padding: 0.6rem 1.3rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.18s var(--ease); }
 .rq-save:hover:not(:disabled) { background: var(--accent-deep); transform: translateY(-1px); }
 .rq-save:disabled, .rq-skip:disabled { opacity: 0.5; cursor: not-allowed; }
 

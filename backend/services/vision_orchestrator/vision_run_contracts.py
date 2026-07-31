@@ -51,6 +51,7 @@ STAGE_ROUTE_DOMAIN    = "dissect.route_domain"
 STAGE_SEGMENT_FASHION = "dissect.segment.fashion"
 STAGE_SEGMENT_ARCH    = "dissect.segment.architecture"
 STAGE_SEGMENT_GENERAL = "dissect.segment.general"
+STAGE_SEGMENT_AUTO    = "dissect.segment.auto"        # Q-A: SAM2-auto part proposer (art domain)
 STAGE_SEGMENT_COARSE  = "dissect.segment.coarse"      # block-level failure marker only
 STAGE_MERGE_ANCHORS   = "dissect.merge_anchors"
 STAGE_FALLBACK_DETECT = "dissect.fallback.detect"
@@ -88,6 +89,14 @@ STAGE_FS_SCOPE        = "find_similar.scope"
 STAGE_FS_FETCH        = "find_similar.fetch_image"
 STAGE_FS_RETRIEVE     = "find_similar.retrieve"
 STAGE_FS_COMPLETE     = "find_similar.complete"
+
+# CIRCUIT-001 P6-C · produce (the generic field-producer family) — one operation for EVERY field
+# producer (negative_space, material_field, and whatever plugs in next), so a new producer needs no
+# new run vocabulary. Read-mostly: it proposes quarantined suggestions and writes no post geometry.
+OPERATION_PRODUCE     = "produce"
+STAGE_PRODUCE_RECEIVE = "produce.receive"
+STAGE_PRODUCE_RUN     = "produce.run"          # the producer computes (CPU, or GPU via ModelManager)
+STAGE_PRODUCE_COMPLETE = "produce.complete"
 
 # A run that reaches one of these is done; it must not transition back to active.
 TERMINAL_STATUSES = frozenset({

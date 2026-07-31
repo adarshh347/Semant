@@ -14,6 +14,10 @@
     --diff-wash-max: 0.35;
     --diff-veil-max: 0.2;
 
+    /* Ground-tint strength multiplier: the same 2–3% wash over a dark surface
+       reads as half, so dark multiplies every ground tint by 1.7 (Commit 3). */
+    --tint-mult: 1;
+
     position: absolute;
     inset: 0;
     z-index: 30;                     /* over the parked Chiasm shell */
@@ -28,6 +32,13 @@
    RegionSurface documents). */
 .diff-root button { box-sizing: border-box; }
 .diff-root button svg { flex: none; }
+
+/* Dark reads a 2–3% wash as half — lift every ground tint by 1.7 in dark. */
+[data-theme='dark'] .diff-root { --tint-mult: 1.7; }
+
+/* The Differential mark beside its title (loupe on a print). color:inherit
+   overrides the glyph's own #g-differential{color} so it follows the topbar. */
+.diff-identity-glyph { width: 18px; height: 18px; flex: none; opacity: 0.9; }
 
 /* ── top bar ─────────────────────────────────────────────────────────────── */
 .diff-topbar {
@@ -135,9 +146,25 @@
     gap: 0.2rem;
     padding: 0.7rem 0.35rem;
     align-items: stretch;
+    /* GROUND: amethyst tints the whole rail at 2.5% (a wash, never a fill), its
+       hairline carries a little indigo. The tint rides a ::before so it
+       composites over the paper rather than replacing the surface colour. */
+    position: relative;
+    isolation: isolate;
+    border-right: 1px solid color-mix(in srgb, var(--indigo) 24%, var(--line));
+}
+.diff-tools::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--amethyst);
+    opacity: calc(0.025 * var(--tint-mult));
+    pointer-events: none;
 }
 
 .diff-tool {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -150,11 +177,29 @@
     cursor: pointer;
     font-size: 0.58rem;
     letter-spacing: 0.02em;
+    /* The tick is the state: grey at 28% when idle. */
+    --tick: currentColor;
+    --tick-o: 0.28;
 }
-.diff-tool:hover:not(:disabled) { background: var(--surface-hover); color: var(--text-primary); }
+.diff-tool-glyph { width: 21px; height: 21px; display: block; }
+.diff-tool:hover:not(:disabled) { color: var(--text-primary); }
+/* Active tool: the tick goes full plum and a 2px plum bar sits on the rail's
+   left edge — replacing the old accent-soft fill highlight (the tick marks
+   where you are; the rail is not decorated). */
 .diff-tool.on {
-    color: var(--accent);
-    background: var(--accent-soft);
+    color: var(--text-primary);
+    --tick: var(--plum);
+    --tick-o: 1;
+}
+.diff-tool.on::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--plum);
+    border-radius: 0 2px 2px 0;
 }
 .diff-tool:disabled {
     opacity: 0.38;
@@ -173,7 +218,21 @@
     justify-content: center;
     gap: 0.55rem;
     padding: 0.9rem;
+    /* two graphite corner crop ticks — the stage reads as a plate on a bench. */
+    position: relative;
 }
+.diff-stage-col::before,
+.diff-stage-col::after {
+    content: "";
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    border: 0 solid var(--graphite);
+    opacity: 0.5;
+    pointer-events: none;
+}
+.diff-stage-col::before { top: 3px; left: 3px; border-top-width: 1px; border-left-width: 1px; }
+.diff-stage-col::after { bottom: 3px; right: 3px; border-bottom-width: 1px; border-right-width: 1px; }
 
 .diff-stage {
     position: relative;
@@ -186,10 +245,23 @@
     border-radius: var(--radius-lg);
     overflow: hidden;
     background: var(--surface-2);
+    /* GROUND: indigo tints the stage at 2.2% (a hairline-bordered sheet, not a
+       dot grid). The tint rides a ::before over the surface, under the image. */
+    border: 1px solid var(--line);
+    isolation: isolate;
     /* No native text-selection or image drag while working the stage — a press-drag
        is always a tool gesture, never a browser drag. */
     user-select: none;
     -webkit-user-select: none;
+}
+.diff-stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--indigo);
+    opacity: calc(0.022 * var(--tint-mult));
+    pointer-events: none;
 }
 .diff-stage img {
     display: block;
@@ -393,6 +465,61 @@
 }
 .diff-chip--dim { background: transparent; color: var(--text-tertiary); }
 
+/* ── CIRCUIT-003 M5 — the epistemic-status chip ──────────────────────────────
+   The five-way legend, shown beside provenance. It answers "what KIND of claim
+   is this", which provenance ("Model suggestion") cannot: a segmented extent
+   and an inferred sentence are both the model's, and are not the same thing.
+
+   Colour alone would be the wrong signal — a reviewer with a colour deficiency,
+   or anyone reading a greyscale screenshot in a report, has to get the meaning.
+   So the WORD always carries it and the hue only makes the families scannable.
+   `uncertain` additionally gets a DASHED border and no fill: a hedge that looks
+   as solid as a measurement is a hedge nobody reads. Shape and text are the
+   message; hue is decoration. */
+.diff-epistemic-chip {
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+}
+.diff-epistemic-chip.is-visible {
+    background: color-mix(in srgb, #4E7A6B 14%, transparent);
+    color: #33604F; border-color: color-mix(in srgb, #4E7A6B 32%, transparent);
+}
+.diff-epistemic-chip.is-measured {
+    background: color-mix(in srgb, #4E5586 14%, transparent);
+    color: #3B4270; border-color: color-mix(in srgb, #4E5586 32%, transparent);
+}
+.diff-epistemic-chip.is-interpretive {
+    background: color-mix(in srgb, #7B2D6B 13%, transparent);
+    color: #6A2A5C; border-color: color-mix(in srgb, #7B2D6B 30%, transparent);
+}
+.diff-epistemic-chip.is-sourced {
+    background: color-mix(in srgb, #A66273 15%, transparent);
+    color: #8A4353; border-color: color-mix(in srgb, #A66273 34%, transparent);
+}
+.diff-epistemic-chip.is-uncertain {
+    background: transparent;
+    color: var(--text-tertiary, #8a8276);
+    border: 1px dashed color-mix(in srgb, currentColor 45%, transparent);
+    font-style: italic;
+}
+
+[data-theme='dark'] .diff-epistemic-chip.is-visible {
+    background: rgba(127, 179, 168, .16); color: #8FC4B5; border-color: rgba(127, 179, 168, .34);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-measured {
+    background: rgba(142, 150, 200, .16); color: #A7ADD8; border-color: rgba(142, 150, 200, .34);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-interpretive {
+    background: rgba(192, 139, 180, .16); color: #D3A6C8; border-color: rgba(192, 139, 180, .34);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-sourced {
+    background: rgba(198, 138, 152, .17); color: #DCA3AE; border-color: rgba(198, 138, 152, .36);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-uncertain { color: #9A9089; }
+
 .diff-insp-note {
     margin: 0.65rem 0 0;
     font-size: 0.8rem;
@@ -407,7 +534,16 @@
     color: var(--text-tertiary);
 }
 .diff-insp-hint { margin: 0.8rem 0 0; }
-.diff-insp-empty p { margin: 0.45rem 0 0; }
+/* Empty inspector — a quiet region-mark waiting, not a blank line. Aesthetic. */
+.diff-insp-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    padding: 0.6rem 0 0.3rem;
+}
+.diff-insp-motif { opacity: 0.5; margin-bottom: 0.35rem; }
+.diff-insp-empty p { margin: 0.35rem 0 0; }
 .diff-insp-empty kbd {
     font-size: 0.68rem;
     padding: 0.05rem 0.3rem;
@@ -865,10 +1001,10 @@
 .es-thumb { position: relative; aspect-ratio: 1 / 1; background: #1a1a1a; overflow: hidden; }
 .es-thumb > img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .es-insitu { position: absolute; inset: 0; }
-.es-insitu img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.es-insitu img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .es-mask { position: absolute; inset: 0; width: 100%; height: 100%; }
 .es-mask path { fill: color-mix(in srgb, var(--accent, #5E2B50) 22%, transparent);
-    stroke: #fff; stroke-width: 0.006; }
+    stroke: #fff; stroke-width: 1.5px; }
 .es-score { position: absolute; top: 4px; right: 4px; font-size: 10px; font-weight: 700;
     background: rgba(0,0,0,0.62); color: #fff; padding: 1px 6px; border-radius: 999px; font-variant-numeric: tabular-nums; }
 .es-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 7px; }
@@ -1151,6 +1287,73 @@
 }
 .diff-layer-eye:disabled { cursor: default; opacity: 0.5; }
 .diff-layer-lock.on { color: var(--accent, #C08457); }
+/* Aesthetic pass — a quiet family lane-mark per layer (Working·Evidence·
+   Suggestions·Recall). Plum, low-key: it names the lane, it doesn't shout. */
+/* GROUND hue per layer — the one place four hues sit together: Recall indigo,
+   Suggestions lilac, Evidence amethyst, Working (scratch) mulberry. Both the
+   lane mark and the opacity slider carry the layer's hue. */
+.diff-layer-row[data-layer="recall"]     { --lh: var(--indigo); }
+.diff-layer-row[data-layer="suggestion"] { --lh: var(--lilac); }
+.diff-layer-row[data-layer="evidence"]   { --lh: var(--amethyst); }
+.diff-layer-row[data-layer="scratch"]    { --lh: var(--mulberry); }
+.diff-layer-glyph { flex: none; color: var(--lh, var(--accent)); opacity: 0.72; }
+.diff-layer-row.is-hidden .diff-layer-glyph { opacity: 0.4; }
 .diff-layer-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.diff-layer-opacity { width: 44px; accent-color: var(--accent, #5E2B50); }
+.diff-layer-opacity { width: 44px; accent-color: var(--lh, var(--accent)); }
 .diff-layer-system { font-size: 9px; color: var(--diff-muted, #8a8276); opacity: 0.7; }
+/* Q-C — the render-layer (producer/role) panel; reuses the layer-row chrome. */
+.diff-layers--render { margin-top: 6px; }
+.diff-layer-count { font-size: 9px; color: var(--diff-muted, #8a8276); opacity: 0.7;
+    font-variant-numeric: tabular-nums; min-width: 12px; text-align: right; }
+
+/* ── CIRCUIT-001 P4-B — suggestion review surface ─────────────────────────────── */
+.diff-review-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.diff-review-start { font-size: 11px; padding: 4px 10px; }
+.diff-review { border: 1px solid rgba(127, 179, 168, 0.4); border-radius: 10px; padding: 10px; background: rgba(127, 179, 168, 0.05); }
+.diff-review .diff-eyebrow { color: #7FB3A8; }
+.diff-review-count { font-size: 11px; color: var(--diff-muted, #8a8276); font-variant-numeric: tabular-nums; }
+.diff-review-card { margin-top: 8px; display: flex; flex-direction: column; gap: 7px; }
+.diff-review-provrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.diff-review-status { font-size: 10px; color: var(--diff-muted, #8a8276); text-transform: uppercase; letter-spacing: 0.05em; }
+.diff-review-meta { display: flex; flex-wrap: wrap; gap: 5px; font-size: 11px; color: var(--diff-muted, #8a8276); align-items: baseline; }
+.diff-review-role-label { color: var(--diff-ink, #2c2822); font-weight: 600; text-transform: capitalize; }
+.diff-review-producer { font-style: italic; }
+.diff-review-warn { color: #C0834F; }
+.diff-review-citable.is-no { color: #C0574F; }
+.diff-review-roles { display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
+.diff-review-label { width: 100%; box-sizing: border-box; font-size: 12px; padding: 5px 8px; border: 1px solid var(--diff-hair, rgba(138,130,118,0.25)); border-radius: 6px; background: var(--diff-bg, #fff); }
+.diff-review-geo { align-self: flex-start; font-size: 11px; }
+.diff-review-geo.on { color: var(--accent, #C08457); font-weight: 600; }
+.diff-review-edited { font-size: 11px; color: #5a7d74; margin: 2px 0 0; line-height: 1.4; }
+.diff-review-actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.diff-review-accept { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.diff-review-dismiss { display: inline-flex; align-items: center; gap: 4px; }
+.diff-review-reasons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.diff-review-reason { font-size: 10px; padding: 2px 7px; border-radius: 10px; border: 1px dashed var(--diff-hair, rgba(138,130,118,0.35)); background: none; color: var(--diff-muted, #8a8276); cursor: pointer; }
+.diff-review-reason.on { border-style: solid; border-color: #C0574F; color: #C0574F; background: rgba(192, 87, 79, 0.06); }
+.diff-review-bulk { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(127, 179, 168, 0.2); }
+.diff-review-bulk-hint { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--diff-muted, #8a8276); }
+.diff-review-bulk-hint kbd { font-size: 9px; padding: 0 3px; border: 1px solid var(--diff-hair, rgba(138,130,118,0.4)); border-radius: 3px; }
+.diff-review-dismiss-all { font-size: 11px; color: #C0574F; }
+/* (2c) the SAM refine preview, on the suggestion layer */
+.diff-refine-ghost path { pointer-events: none; }
+
+/* CIRCUIT-001 P6-C — the Field tool panel (producer chooser + honest status) */
+.diff-field-panel { display: flex; flex-direction: column; gap: 8px; max-width: 640px; }
+.diff-field-hint { font-size: 12px; color: var(--ink-soft, #6b6b6b); margin: 0; }
+.diff-field-run { align-self: flex-start; }
+.diff-field-status { font-size: 12px; margin: 0; color: var(--ink-soft, #6b6b6b); }
+.diff-field-empty { color: #8A7A5E; font-style: italic; }
+
+/* P8-A — the phrase input: the one producer you drive with words */
+.diff-field-phrase { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.diff-field-phrase-input {
+  flex: 1 1 260px; min-width: 200px; padding: 5px 9px;
+  border: 1px solid var(--rule, #d9d4cd); border-radius: 6px;
+  background: var(--paper, #fff); font: inherit; font-size: 12px;
+}
+.diff-field-phrase-input:focus { outline: none; border-color: var(--accent, #7a3b62); }
+
+/* P8-D — a reading is an answer, not evidence: stated plainly, never styled as a mark */
+.diff-field-reading { font-style: normal; color: var(--ink, #2a2a2a); }
+.diff-field-reading.on { font-weight: 500; }
