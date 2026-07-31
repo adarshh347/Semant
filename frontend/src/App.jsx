@@ -20,8 +20,9 @@ function App() {
   // '/' is the full-bleed motive landing (the front door); the bento Home lives
   // at /home and sits in the standard content column like the other app pages.
   const isLandingPage = location.pathname === '/';
-  // Full-screen pages that should not have the app-content wrapper
-  const isFullscreenPage = location.pathname.startsWith('/posts/');
+  // Full-screen pages that should not have the app-content wrapper (the per-post
+  // workspace and the Writing Studio both fill the viewport under the sticky navbar).
+  const isFullscreenPage = location.pathname.startsWith('/posts/') || location.pathname.startsWith('/studio');
 
   return (
     <div className={`app-layout ${isLandingPage ? 'app-layout--landing' : ''} ${isFullscreenPage ? 'app-layout--fullscreen' : ''}`}>

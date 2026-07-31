@@ -1,0 +1,290 @@
+/* ── CIRCUIT-003 M4 — the perceptual article ─────────────────────────────────
+   A reading surface, not a dashboard: one measure-width column, prose that can
+   actually be read, and the evidence sitting inside the argument rather than in
+   a sidebar beside it. The figure belongs where the sentence is, because the
+   whole claim of the artifact is that you can check the sentence without
+   leaving it. */
+
+.art-root {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 5rem;
+    color: var(--text-primary, #23201d);
+}
+
+.art-empty { padding: 3rem; color: var(--text-secondary, #6b6560); }
+
+/* ── head ── */
+.art-eyebrow {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--text-tertiary, #8a8276); margin: 0 0 .75rem;
+}
+
+.art-thesis {
+    font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem);
+    line-height: 1.22; font-weight: 500; margin: 0 0 1rem; text-wrap: balance;
+}
+
+.art-status {
+    display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+    font-size: 12px; color: var(--text-secondary, #6b6560);
+    padding-bottom: 1rem;
+}
+
+.art-status-item::before { content: '·'; margin-right: .5rem; opacity: .5; }
+.art-status-item.is-warn { color: #9A5B33; font-weight: 500; }
+
+/* ── the five-way key ── */
+.art-legend {
+    border-top: 1px solid var(--border-subtle, #e5e0d8);
+    border-bottom: 1px solid var(--border-subtle, #e5e0d8);
+    padding: .85rem 0; margin-bottom: 2.5rem;
+}
+
+.art-legend-h {
+    display: block; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--text-tertiary, #8a8276); margin-bottom: .6rem;
+}
+
+.art-legend-list { list-style: none; margin: 0; padding: 0; display: flex;
+    flex-wrap: wrap; gap: .35rem 1.15rem; }
+.art-legend-item { display: flex; align-items: center; gap: .4rem; font-size: 11.5px; }
+.art-legend-hint { color: var(--text-secondary, #6b6560); }
+
+/* ── sections ── */
+.art-section { margin: 0 0 3rem; }
+
+.art-section-head {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+    margin-bottom: .6rem;
+}
+
+.art-section-n {
+    font-size: 12px; color: var(--text-tertiary, #8a8276);
+    font-variant-numeric: tabular-nums;
+}
+
+.art-claim {
+    font-size: 1.02rem; line-height: 1.4; font-weight: 500;
+    margin: 0 0 .75rem; color: var(--text-primary, #23201d);
+}
+
+.art-p { font-size: 1rem; line-height: 1.66; margin: 0 0 .85rem; }
+
+/* the argumentative function — the word carries it, the hue only groups it */
+.art-fn {
+    font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+    padding: .12rem .45rem; border-radius: 3px; border: 1px solid transparent;
+}
+.art-fn.is-support { color: #3B5F4E; background: color-mix(in srgb, #4E7A6B 12%, transparent); }
+.art-fn.is-complicate { color: #7A5A2E; background: color-mix(in srgb, #A98240 14%, transparent); }
+.art-fn.is-challenge { color: #8A3A3A; background: color-mix(in srgb, #A65252 14%, transparent); }
+.art-fn.is-qualification { color: var(--text-secondary, #6b6560);
+    background: var(--surface-2, #f2efe9); }
+
+.art-qualified-tag {
+    font-size: 10.5px; font-style: italic; color: #9A5B33;
+}
+
+.art-section.is-qualified > .art-claim {
+    border-left: 2px solid color-mix(in srgb, #9A5B33 40%, transparent);
+    padding-left: .65rem; margin-left: -.7rem;
+}
+
+/* ── figures: the live percepts ── */
+.art-figures {
+    display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.25rem 0 .5rem;
+}
+
+.art-figure { margin: 0; flex: 1 1 15rem; min-width: 13rem; max-width: 21rem; }
+
+.art-figure-open {
+    display: block; width: 100%; padding: 0; border: 0; background: none;
+    cursor: pointer; text-align: left; position: relative;
+}
+
+.art-figure-stage {
+    position: relative; width: 100%; aspect-ratio: 4 / 3;
+    background: var(--surface-2, #f2efe9);
+    border: 1px solid var(--border-subtle, #e5e0d8);
+    border-radius: 3px; overflow: hidden;
+}
+
+.art-figure-img,
+.art-figure-svg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+}
+
+/* The canvas is positioned onto the LETTERBOXED image box by PerceptFigure, not stretched to
+   the stage — the field painter works in normalized image coordinates and would otherwise be
+   skewed by the difference between the stage's aspect and the image's. */
+.art-figure-canvas { position: absolute; left: 0; top: 0; }
+
+/* `contain` is the contract the overlays' xMidYMid-meet viewBox letterboxes against.
+   `cover` here would crop the image while the overlay letterboxed — the exact drift
+   the FindSimilar coordinate bug was. */
+.art-figure-img { object-fit: contain; }
+.art-figure-canvas { pointer-events: none; }
+
+.art-figure-noimg {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 11.5px; color: var(--text-tertiary, #8a8276);
+}
+
+.art-figure-openhint {
+    position: absolute; right: .4rem; bottom: .4rem;
+    font-size: 10px; letter-spacing: .04em;
+    background: color-mix(in srgb, var(--surface-1, #fff) 88%, transparent);
+    border: 1px solid var(--border-subtle, #e5e0d8);
+    border-radius: 2px; padding: .1rem .35rem;
+    color: var(--text-secondary, #6b6560);
+    opacity: 0; transition: opacity .14s ease;
+}
+.art-figure-open:hover .art-figure-openhint,
+.art-figure-open:focus-visible .art-figure-openhint { opacity: 1; }
+
+.art-figure.is-unresolved .art-figure-stage {
+    border-style: dashed; background: transparent;
+}
+
+.art-figure-missing {
+    font-size: 11.5px; line-height: 1.45; padding: .5rem 0 0;
+    color: var(--text-secondary, #6b6560);
+}
+.art-figure-why { display: block; color: var(--text-tertiary, #8a8276); }
+
+.art-figure-cap {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .35rem;
+    font-size: 11.5px; padding-top: .45rem;
+    color: var(--text-secondary, #6b6560);
+}
+.art-figure-what em { font-style: normal; color: var(--text-tertiary, #8a8276); }
+.art-figure-attrib { font-style: italic; }
+
+/* ── THE HONEST-DEFECT CHANNEL ──────────────────────────────────────────────
+   Rendered inline and at the same visual weight as the prose it qualifies.
+   A footnote or an expander would be a way of shipping the honesty without
+   shipping it — the data would be on the page and still unread. */
+.art-defects {
+    margin: 1rem 0 0;
+    border-left: 2px solid color-mix(in srgb, #9A5B33 55%, transparent);
+    padding: .6rem .9rem .6rem .8rem;
+    background: color-mix(in srgb, #C98A4B 7%, transparent);
+    overflow-wrap: anywhere;
+}
+
+.art-defects-h {
+    margin: 0 0 .45rem; font-size: 10.5px; letter-spacing: .09em;
+    text-transform: uppercase; color: #8A5228; font-weight: 600;
+}
+
+.art-defects-list { list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: .4rem; }
+
+.art-defect { font-size: 12px; line-height: 1.45; }
+
+.art-defect-kind {
+    display: inline-block; font-size: 9.5px; letter-spacing: .07em;
+    text-transform: uppercase; color: #8A5228;
+    border: 1px solid color-mix(in srgb, #9A5B33 35%, transparent);
+    border-radius: 2px; padding: 0 .28rem; margin-right: .4rem;
+}
+
+.art-defect-title { color: var(--text-primary, #23201d); }
+.art-defect-detail { display: block; color: var(--text-secondary, #6b6560);
+    padding-left: .2rem; }
+
+/* ── counter-reading ── */
+.art-counter {
+    border-top: 1px solid var(--border-subtle, #e5e0d8);
+    padding-top: 1.75rem;
+}
+.art-counter-absent {
+    font-size: 13px; line-height: 1.55; padding: .75rem .9rem;
+    border: 1px dashed var(--border-subtle, #c9c2b6);
+    border-radius: 3px; color: var(--text-secondary, #6b6560);
+}
+.art-counter-absent .art-p { font-size: .93rem; margin: .4rem 0 .5rem; }
+
+/* ── qualifications: limits, never findings ── */
+.art-qualifications, .art-uncomposed {
+    border-top: 1px solid var(--border-subtle, #e5e0d8);
+    padding-top: 1.75rem;
+}
+
+.art-qual-list { list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 1rem; }
+
+.art-qual .art-p { font-size: .95rem; color: var(--text-secondary, #6b6560); margin: .3rem 0 0; }
+
+.art-qual-status {
+    font-size: 10px; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-tertiary, #8a8276);
+    border: 1px solid var(--border-subtle, #e5e0d8);
+    border-radius: 2px; padding: 0 .3rem;
+}
+
+.art-foot {
+    margin-top: 3rem; padding-top: 1rem;
+    border-top: 1px solid var(--border-subtle, #e5e0d8);
+    font-size: 11.5px; color: var(--text-tertiary, #8a8276);
+}
+
+/* ── the epistemic chip ──────────────────────────────────────────────────────
+   M5 (branch circuit/epistemic-layer) owns this chip and defines these exact
+   classes in DifferentialWorkspace.css. M5 is not in this branch's ancestry, so
+   these rules are a FALLBACK carrying M5's palette values verbatim — same
+   classes, same `data-epistemic`, same shape language (the word carries the
+   meaning, hue only groups, `uncertain` dashed and unfilled). When the branches
+   meet, delete this block: M5's is the canonical one. */
+.diff-epistemic-chip {
+    display: inline-block; padding: .1rem .4rem; border-radius: 3px;
+    font-size: 10.5px; letter-spacing: 0.02em;
+    border: 1px solid transparent;
+    background: var(--surface-2, #f2efe9);
+    color: var(--text-secondary, #6b6560);
+}
+.diff-epistemic-chip.is-visible {
+    background: color-mix(in srgb, #4E7A6B 14%, transparent);
+    color: #33604F; border-color: color-mix(in srgb, #4E7A6B 32%, transparent);
+}
+.diff-epistemic-chip.is-measured {
+    background: color-mix(in srgb, #4E5586 14%, transparent);
+    color: #3B4270; border-color: color-mix(in srgb, #4E5586 32%, transparent);
+}
+.diff-epistemic-chip.is-interpretive {
+    background: color-mix(in srgb, #7B2D6B 13%, transparent);
+    color: #6A2A5C; border-color: color-mix(in srgb, #7B2D6B 30%, transparent);
+}
+.diff-epistemic-chip.is-sourced {
+    background: color-mix(in srgb, #A66273 15%, transparent);
+    color: #8A4353; border-color: color-mix(in srgb, #A66273 34%, transparent);
+}
+.diff-epistemic-chip.is-uncertain {
+    background: transparent;
+    color: var(--text-tertiary, #8a8276);
+    border: 1px dashed color-mix(in srgb, currentColor 45%, transparent);
+    font-style: italic;
+}
+
+[data-theme='dark'] .diff-epistemic-chip.is-visible {
+    background: rgba(127, 179, 168, .16); color: #8FC4B5; border-color: rgba(127, 179, 168, .34);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-measured {
+    background: rgba(142, 150, 200, .16); color: #A7ADD8; border-color: rgba(142, 150, 200, .34);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-interpretive {
+    background: rgba(192, 139, 180, .16); color: #D3A6C8; border-color: rgba(192, 139, 180, .34);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-sourced {
+    background: rgba(214, 149, 165, .16); color: #E0A6B4; border-color: rgba(214, 149, 165, .34);
+}
+[data-theme='dark'] .diff-epistemic-chip.is-uncertain { color: #9A9089; }
+
+[data-theme='dark'] .art-status-item.is-warn,
+[data-theme='dark'] .art-qualified-tag { color: #D9A066; }
+[data-theme='dark'] .art-defects-h,
+[data-theme='dark'] .art-defect-kind { color: #D9A066; }
+[data-theme='dark'] .art-fn.is-support { color: #8FC4B5; }
+[data-theme='dark'] .art-fn.is-complicate { color: #D9BE83; }
+[data-theme='dark'] .art-fn.is-challenge { color: #E09A9A; }
