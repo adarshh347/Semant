@@ -11,7 +11,10 @@
 // citability, surface provenance) — getting that order wrong is exactly how a
 // suggestion launders itself into evidence.
 
-import { actionToDraftMark, markSummary, roleLabel, isPersistableMark } from './visualMarks';
+import {
+    actionToDraftMark, markSummary, roleLabel, isPersistableMark,
+    EPISTEMIC_LABEL, EPISTEMIC_HINT,
+} from './visualMarks';
 import {
     quarantineSuggestion, summarizeProvenance, canCiteMark, isSuggestion,
 } from './suggestionQuarantine';
@@ -66,6 +69,14 @@ export function markDisplay(mark) {
         // short, visible, number-free label.
         provenance: summarizeProvenance(mark),
         citable: canCiteMark(mark),
+        // CIRCUIT-003 M5 — the kind of knowing, alongside the provenance that says who made it.
+        // Both surfaces render from this one descriptor, so the Manuscript and the Differential
+        // cannot describe the same mark's epistemic standing differently. Null when no producer
+        // claimed a kind (a curator's own mark) — the surfaces show nothing rather than a hedge.
+        epistemic_status: mark.epistemic_status ?? null,
+        epistemic_label: mark.epistemic_status
+            ? (EPISTEMIC_LABEL[mark.epistemic_status] || mark.epistemic_status) : null,
+        epistemic_hint: mark.epistemic_status ? (EPISTEMIC_HINT[mark.epistemic_status] || '') : '',
         is_suggestion: isSuggestion(mark),
         derived_from: mark.derived_from || null,
         // 'unresolved' → the role exists, the shape does not yet. "Ready for your mark."

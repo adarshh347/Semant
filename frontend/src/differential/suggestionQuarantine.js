@@ -100,6 +100,13 @@ export function acceptSuggestion(suggestion, edits = {}, { now = null, idFn } = 
         // The model's authorship travels forward in provenance even though the source is now
         // the human's — so "who first proposed this" survives acceptance.
         provenance: { ...(suggestion.provenance || {}), model: suggestion.provenance?.model ?? null },
+        // M5 — THE WALL AT ACCEPTANCE, and the place it would otherwise break. Accepting turns
+        // the source from `model_suggested` into `user_confirmed`, and it would be easy to read
+        // that as the curator vouching for the claim and therefore as grounds to drop the tag or
+        // promote it. It is not. Accepting says "yes, keep this"; it does not turn a reading
+        // into an extent or a citation into something the picture shows. The classification is
+        // the producer's and it survives acceptance unchanged.
+        epistemic_status: suggestion.epistemic_status ?? null,
         created_at: ts,
         updated_at: ts,
     }, { now: ts, idFn });
@@ -291,6 +298,11 @@ export function suggestionFromDescriptor(descriptor, { now = null } = {}) {
         geometry: descriptor.geometry,
         linked_ground_ids: Array.isArray(descriptor.linked_ground_ids) ? descriptor.linked_ground_ids : [],
         provenance: descriptor.provenance || {},
+        // M5 — the producer's classification rides through unchanged, exactly as its receipt
+        // does. The backend guard has already refused anything improperly crossed, so what
+        // arrives here is what the producer is entitled to claim; the frontend's job is to
+        // carry it, not to re-derive it.
+        epistemic_status: descriptor.epistemic_status ?? null,
     }, { now, idFn: () => id });
     if (!mark) return null;
     // Belt and braces: force the quarantine flags even if a descriptor arrived mislabelled.

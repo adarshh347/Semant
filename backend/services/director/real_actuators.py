@@ -624,7 +624,15 @@ class RealActuatorRunner:
                                   detail=f"no in-process runner wired for '{self.name}'")
 
         async def _dispatch_then_unload() -> ActuatorResult:
+            before = len(self.ctx.suggestions)
             res = await handler(step, memory, self.ctx, act)
+            # M5 — the Director's quarantine boundary. Every runner appends to `ctx.suggestions`;
+            # only what THIS step added is checked, so the cost stays flat across a long chain
+            # rather than re-walking the whole list per step. In M6 this ran for one actuator and
+            # was redundant by construction; across every actuator it is the single place where a
+            # claim's stated kind is checked against the kind its producer is classified as.
+            from backend.services import epistemics
+            epistemics.guard(self.ctx.suggestions[before:])
             # Single-GPU residency: a GPU step hands the card back before the next model loads,
             # so the chain never needs two resident at once and the card ends at baseline.
             if act.capability in _GPU_CAPABILITIES:

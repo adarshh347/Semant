@@ -144,18 +144,27 @@ def _provenance(*, model: Optional[str], adapter: Optional[str], latency_ms: Opt
             "run_id": run_id, "producer": producer}
 
 
-def _epistemic(producer: str) -> Dict[str, Any]:
-    """CIRCUIT-003 M6 — the epistemic-status fragment every descriptor below opens with.
+def _epistemic(producer: str, *, confidence: Optional[float] = None,
+               threshold: Optional[float] = None, degraded: bool = False) -> Dict[str, Any]:
+    """The epistemic-status fragment every descriptor below opens with (M6, widened in M5).
 
     Spread into the literal (`**_epistemic(PRODUCER_X)`) rather than written out, so the
     mapping from producer to kind-of-knowing lives in ONE table (`epistemics._DEFAULTS`) and a
     producer cannot drift from what it claims to know. `provenance` says which model ran;
-    this says what kind of claim came out, which is the question M5's layer is built on.
+    this says what kind of claim came out.
 
-    Every producer in this module reads the IMAGE, so none of them can land on `sourced` — that
-    status has exactly one producer and it lives in `external_source_service`.
+    M5 adds the per-run half. Passing the confidence a producer computed AND the threshold it
+    refused below lets a reading that only just cleared its own gate come out `uncertain`
+    instead of `measured` — the same field, honestly described. The producers already refuse
+    below the line; this is about the band just above it, where a barely-there field currently
+    looks exactly like an unmistakable one.
+
+    Every producer in this module reads the IMAGE, so none can land on `sourced` — that status
+    has exactly one producer and it lives in `external_source_service`.
     """
-    return {epistemics.STATUS_KEY: epistemics.default_status_for(producer).value}
+    status = epistemics.status_for(producer, confidence=confidence, threshold=threshold,
+                                   degraded=degraded)
+    return {epistemics.STATUS_KEY: status.value}
 
 
 def suggestion_from_refine_region(
@@ -420,7 +429,7 @@ def suggestion_from_material(
         if val is not None:
             receipt[key] = val
     return {
-        **_epistemic(PRODUCER_MATERIAL),
+        **_epistemic(PRODUCER_MATERIAL, confidence=contrast, threshold=min_contrast),
         "producer": PRODUCER_MATERIAL,
         "type": "brush_field",
         "role": "material_field",
@@ -474,17 +483,23 @@ def _remap_strokes_into_box(strokes: List[Dict[str, Any]], box: Optional[Dict[st
 
 def _field_descriptor(*, producer: str, role: str, label: str, source_ref: str,
                       strokes: List[Dict[str, Any]], run_id: Optional[str], adapter: str,
-                      latency_ms: Optional[float], confidence: Optional[float]) -> Dict[str, Any]:
+                      latency_ms: Optional[float], confidence: Optional[float],
+                      threshold: Optional[float] = None) -> Dict[str, Any]:
     """The shared shape every DETERMINISTIC field producer emits (P6-A/P6-D/P6-E).
 
     The receipt names an adapter and a run but NO model/checkpoint — nothing was inferred, only
     measured — and `confidence` rides the descriptor, never `provenance` (a mark may not carry a
-    confidence score, contract §6)."""
+    confidence score, contract §6).
+
+    `threshold` is the REFUSAL gate the caller applied, passed so the epistemic status can tell
+    a field that cleared it comfortably from one that only just did. Optional: a producer with
+    no gate (negative_space inverts a mask that already exists) has nothing to be marginal
+    about, and passing None leaves it plainly `measured`."""
     receipt: Dict[str, Any] = {"run_id": run_id, "producer": producer, "adapter": adapter}
     if latency_ms is not None:
         receipt["latency_ms"] = latency_ms
     d: Dict[str, Any] = {
-        **_epistemic(producer),
+        **_epistemic(producer, confidence=confidence, threshold=threshold),
         "producer": producer,
         "type": "brush_field",
         "role": role,
@@ -562,7 +577,11 @@ def _from_perceptual_map(
         producer=producer, role=role, label=label or default_label,
         source_ref=f"{region_id or 'img'}:{role}", strokes=strokes, run_id=run_id,
         adapter="cpu_perceptual", latency_ms=latency_ms,
-        confidence=round(min(1.0, max(0.0, relief)), 4))
+        confidence=round(min(1.0, max(0.0, relief)), 4),
+        # M5: the REFUSAL gate, NOT this function's `threshold` param — that one is the stroke
+        # cutoff for painting the field. `min_contrast` is the line the reading had to clear to
+        # exist at all, so it is the one that decides whether only just clearing it is marginal.
+        threshold=min_contrast)
 
 
 def suggestions_from_rhythm(
@@ -669,7 +688,7 @@ def suggestion_from_recession(
     default_label = ("recession — what falls away behind" if band == "far"
                      else "atmosphere — the condition the foreground sits in")
     return {
-        **_epistemic(PRODUCER_RECESSION),
+        **_epistemic(PRODUCER_RECESSION, confidence=relief, threshold=min_contrast),
         "producer": PRODUCER_RECESSION,
         "type": "brush_field",
         "role": role,
@@ -756,7 +775,7 @@ def _suggestion_from_shading(
     default_label = ("light — where the light lives" if band == "light"
                      else "shadow — where it is withheld")
     d: Dict[str, Any] = {
-        **_epistemic(PRODUCER_SHADING),
+        **_epistemic(PRODUCER_SHADING, confidence=relief, threshold=min_contrast),
         "producer": PRODUCER_SHADING,
         "type": "brush_field",
         "role": role,
@@ -847,7 +866,7 @@ def suggestion_from_fall_of_light(
         if val is not None:
             receipt[key] = val
     return {
-        **_epistemic(PRODUCER_FALL_OF_LIGHT),
+        **_epistemic(PRODUCER_FALL_OF_LIGHT, confidence=relief, threshold=min_contrast),
         "producer": PRODUCER_FALL_OF_LIGHT,
         "type": "trace_mark",
         "role": "fall_of_light",
