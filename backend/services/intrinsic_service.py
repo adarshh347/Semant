@@ -156,7 +156,10 @@ def estimate(image, *, grid: int = GRID) -> Optional[Dict[str, Any]]:
         # stage=1 for it), so the multi-stage run_pipeline raises KeyError: 'col_model'.
         from intrinsic.pipeline import run_gray_pipeline
         arr = np.asarray(image.convert("RGB"), dtype="float32") / 255.0
-        result = run_gray_pipeline(_model, arr)
+        # `device` MUST be passed: run_gray_pipeline defaults it to 'cuda', which discards the
+        # choice _load() already made and dies with "Torch not compiled with CUDA enabled" on a
+        # box without one. On the CUDA box _device() returns 'cuda', so this is a no-op there.
+        result = run_gray_pipeline(_model, arr, device=_device())
         shading = _extract_shading(result)
         if shading is None:
             return None
