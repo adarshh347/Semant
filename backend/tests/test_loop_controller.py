@@ -491,3 +491,217 @@ def test_options_are_never_invented_when_nothing_has_been_found():
     q = res.question
     assert q.options == ()
     assert "nothing to point at" in q.text.lower()
+
+
+# ── 8. A2-EXT: the dead end A2 left open — a planner that proposes NOTHING ──────
+#
+# A2's hook reads the CLOSED DOORS, so it only fires when something was refused. A planner that
+# proposes nothing refuses nothing, so `nothing_planned` stayed silent — the same dead end, reached
+# by a different road, and A2's own commit named it. It is model-specific: RuleBasedPlanner emits
+# `presence_check {}` and lets resolve() refuse it (A2 fires); GroqPlanner returns [] rather than
+# inventing a phrase (A2 did not).
+#
+# The fix recovers the lost signal DETERMINISTICALLY — it asks the rule-based planner what it would
+# propose and resolves that — so it can tell "no actuator serves this" (say nothing) from "one does
+# and I lack the phrase" (ask). It is not a second prompt: no model is consulted, the intention is
+# untouched, and nothing the probe proposes is ever run.
+
+
+class _EmptyModelPlanner:
+    """Stands in for GroqPlanner's honest empty: it read the intention and proposed nothing rather
+    than inventing a phrase (`groq_planner.propose`, the `if not steps` branch)."""
+    name = "fake_groq"
+    last_notes = ("the planner proposed no steps",)
+
+    def __init__(self):
+        self.calls = []
+
+    def propose(self, intention, memory):
+        self.calls.append(intention)
+        return []
+
+
+def _empty_proposal_loop(intention, memory=None, labels=None, max_rounds=4):
+    planner = _EmptyModelPlanner()
+    res = lc.run_loop(intention, memory or _mem(), stub_registry(),
+                      director=Director(planner), max_rounds=max_rounds, labels=labels)
+    return res, planner
+
+
+# D — the case A2 documented and left open.
+
+def test_an_empty_proposal_still_asks_when_a_phrase_is_the_real_blocker():
+    """The model proposed nothing, so nothing was refused, so A2 had no door to read. The
+    diagnostic recovers it: `is there…` has a rule-based shape (`presence_check`) and that shape is
+    refused for a missing PARAM — which a human can supply in four words."""
+    res, planner = _empty_proposal_loop("is there a cross in this picture",
+                                        labels=["the wall", "the figure"])
+    assert res.stop_reason == lc.AWAITING_ANSWER
+    q = res.question
+    assert q is not None and q.is_grounded
+    assert q.actuator == "presence_check"
+    assert q.missing_param == "phrase"
+    assert q.options == ("the wall", "the figure")       # grounded in what exists, as ever
+    assert planner.calls == ["is there a cross in this picture"]   # asked ONCE, never again
+
+
+# E — the other half of the conflation: no fishing.
+
+def test_an_intention_no_actuator_serves_asks_NOTHING():
+    """`nothing_planned` is sometimes just true. With no shape to point at, a question could only
+    be 'what would you like me to look for?' — the fishing A2 forbids."""
+    res, _ = _empty_proposal_loop("mumble", labels=["the wall"])
+    assert res.stop_reason == lc.STOP_NOTHING_PLANNED
+    assert res.question is None
+    assert res.diagnostic_probe["outcome"] == lc.PROBE_NO_SHAPE
+    assert res.diagnostic_probe["proposed"] == []
+
+
+def test_a_shape_that_resolves_cleanly_asks_nothing():
+    """The rule-based shape for this intention runs on the memory we have. Whatever made the model
+    decline, it was not a missing phrase — so there is nothing to ask a human."""
+    res, _ = _empty_proposal_loop("read the material of the surface")
+    assert res.question is None
+    assert res.stop_reason == lc.STOP_NOTHING_PLANNED
+    assert res.diagnostic_probe["outcome"] == lc.PROBE_RESOLVES
+    assert res.diagnostic_probe["proposed"][0] == "find_parts"
+
+
+def test_a_shape_refused_only_for_missing_INPUT_asks_nothing():
+    """A missing INPUT is the loop's own work — it has the models to produce marks. Asking would
+    hand the curator a job the machine is standing next to."""
+    res, _ = _empty_proposal_loop("the motif and its echoes",
+                                  memory=build_memory(image_ref="i", post_id="p", phrase="a cross"))
+    assert res.question is None
+    assert res.diagnostic_probe["outcome"] == lc.PROBE_NO_ASKABLE_DOOR
+    assert {r["reason"] for r in res.diagnostic_probe["refused"]} == {"missing_input"}
+
+
+def test_the_probe_never_runs_anything_and_fabricates_no_param():
+    """A2's load-bearing guard, carried onto the new path. The diagnostic's only output is a
+    question or silence — it dispatches nothing and fills nothing in."""
+    reg = stub_registry()
+    res = lc.run_loop("is there a cross", _mem(), reg,
+                      director=Director(_EmptyModelPlanner()), max_rounds=4)
+    assert res.stop_reason == lc.AWAITING_ANSWER
+    assert all(runner.calls == [] for runner in reg.values())     # nothing was dispatched
+    assert res.memory.phrase in (None, "")                        # and no phrase was invented
+    assert not any(r.chain for r in res.rounds)
+
+
+# F — legibility: the probe is on the receipt, in its own field.
+
+def test_the_probe_is_its_own_receipt_field_and_is_not_a_planner_call():
+    """A1-FIX's auditability contract: 'the planner was not called a second time about the same
+    door' has to stay readable from the receipt. So the diagnostic is recorded separately and
+    `planner_calls` does not move for it."""
+    res, planner = _empty_proposal_loop("is there a cross", labels=["the wall"])
+    d = res.to_dict()
+    probe = d["diagnostic_probe"]
+    assert probe is not None                                   # its own field, not folded in
+    assert probe["planner"] == "rule_based"                    # a fixed function, not the model
+    assert probe["counts_as_planner_call"] is False
+    assert probe["outcome"] == lc.PROBE_QUESTION
+    assert probe["question_from"] == "presence_check"
+    assert [r["reason"] for r in probe["refused"]] == ["missing_param"]
+    # the count still means exactly what A1-FIX made it mean: one call per round, no more.
+    assert d["planner_calls"] == len(planner.calls) == len(res.rounds) == 1
+
+
+def test_the_probe_does_not_run_when_a_closed_door_already_answers():
+    """With something actually refused, A2's hook is the right instrument and the probe would be a
+    second opinion on a question already answered."""
+    res = _asks([Step("presence_check", id="pc")], labels=["the wall"])
+    assert res.stop_reason == lc.AWAITING_ANSWER
+    assert res.question.actuator == "presence_check"
+    assert res.diagnostic_probe is None                         # never needed
+
+
+def test_the_probe_does_not_fire_on_the_max_rounds_backstop():
+    """A2's exclusion holds: at the backstop progress was still being made, so the closed door is
+    not the blocker and a question implying the curator is would be false."""
+    seen = {"n": 0}
+
+    def script(m):
+        seen["n"] += 1
+        return [Step("rhythm", id="rh")] if seen["n"] == 1 else []
+
+    res = lc.run_loop("is there a cross", _mem(), stub_registry(),
+                      director=Director(_RecordingPlanner(script)), max_rounds=1)
+    assert res.stop_reason == lc.STOP_MAX_ROUNDS
+    assert res.question is None
+    assert res.diagnostic_probe is None
+
+
+# ── 9. A2-EXT: a volunteered question is CONFIRMED, never trusted ──────────────
+#
+# `Proposal(steps=[], question=…)` lets a capable planner short-circuit to the same honest outcome.
+# Taken on faith it is a hole in the guard A2 is: claiming "I need a phrase for X" is exactly as
+# easy for a model as inventing the phrase would have been. So the loop checks the claim the only
+# way it trusts anything — by running the named actuator through resolve().
+
+class _Claimant:
+    """A planner that proposes nothing and volunteers a question about `actuator`/`param`."""
+    name = "claimant"
+    last_notes = ()
+
+    def __init__(self, actuator, param="phrase", text="which one?"):
+        self._q = qs.Question(step_id="s", actuator=actuator, missing_param=param, text=text)
+
+    def propose(self, intention, memory):
+        return qs.Proposal(steps=[], question=self._q)
+
+    @property
+    def question(self):
+        return self._q
+
+
+def _claims(actuator, param="phrase", memory=None, intention="look"):
+    planner = _Claimant(actuator, param)
+    res = lc.run_loop(intention, memory or _mem(), stub_registry(),
+                      director=Director(planner), max_rounds=3)
+    return res, planner
+
+
+def test_a_confirmed_claim_is_surfaced_and_the_confirmation_is_on_the_receipt():
+    res, planner = _claims("presence_check")           # really is refused for a missing phrase
+    assert res.stop_reason == lc.AWAITING_ANSWER
+    assert res.question is planner.question            # the planner's own words, unrewritten
+    assert res.volunteer_check["confirmed"] is True
+    assert res.to_dict()["volunteer_check"]["actuator"] == "presence_check"
+
+
+def test_a_claim_the_gate_does_not_bear_out_is_refused_and_recorded():
+    """The memory already supplies the phrase, so nothing is blocked — the model wanted to ask
+    about something it could have read."""
+    res, _ = _claims("presence_check",
+                     memory=build_memory(image_ref="i", post_id="p", phrase="a cross"))
+    assert res.question is None
+    assert res.stop_reason == lc.STOP_NOTHING_PLANNED
+    assert res.volunteer_check["confirmed"] is False
+    assert "not blocked" in res.volunteer_check["why"]
+
+
+def test_a_claim_about_a_missing_INPUT_is_refused():
+    """`connect_marks` is blocked, but on marks the loop can go and produce. Dressing that as a
+    question would push the machine's own work onto the curator."""
+    res, _ = _claims("connect_marks")
+    assert res.question is None
+    assert res.volunteer_check["confirmed"] is False
+    assert "missing_input" in res.volunteer_check["why"]
+
+
+def test_a_claim_naming_a_param_the_step_does_not_need_is_refused():
+    res, _ = _claims("presence_check", param="relation_role")
+    assert res.question is None
+    assert res.volunteer_check["confirmed"] is False
+    assert "relation_role" in res.volunteer_check["why"]
+
+
+def test_a_rejected_claim_still_falls_through_to_the_honest_question():
+    """Rejecting a claim must not cost the curator the question they were actually owed."""
+    res, _ = _claims("connect_marks", intention="is there a cross in this picture")
+    assert res.volunteer_check["confirmed"] is False    # the claim was dropped …
+    assert res.stop_reason == lc.AWAITING_ANSWER        # … and the diagnostic found the real door
+    assert res.question.actuator == "presence_check"
+    assert res.diagnostic_probe["outcome"] == lc.PROBE_QUESTION

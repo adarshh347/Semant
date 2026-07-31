@@ -68,10 +68,10 @@ state itself is not inlined because it would duplicate the rounds and the packet
 
 ## Verification
 
-**`backend/tests/test_resume_a3.py` — 16 new tests. Backend: 1049 → 1065 collected**, all green
-apart from the two pre-existing `test_suggestion_producers.py` intrinsic failures that fail
-identically on `main`. `test_loop_controller.py`'s 30 A1/A1-FIX/A2 tests are untouched and green —
-the non-resume call is the loop A1 shipped.
+**`backend/tests/test_resume_a3.py` — 17 new tests. Backend: 1062 → 1079 collected** (after merging
+A2-EXT in — see below), all green apart from the two pre-existing `test_suggestion_producers.py`
+intrinsic failures that fail identically on `main`. `test_loop_controller.py`'s 43 A1/A1-FIX/A2/
+A2-EXT tests are untouched and green — the non-resume call is the loop A1 shipped.
 
 Covered: the answer unblocks and the loop carries on · the arc is one receipt (contiguous rounds,
 prior rounds verbatim, `resumed_at_round`) · the intention is unchanged across the resume · only
@@ -115,11 +115,29 @@ Two things worth recording rather than smoothing over:
   than through the `reopened` path. The rule-based shape (`presence_check {}`, phrase on the packet)
   is where the door literally re-opens; the unit tests pin that path. Both reach the same place, and
   neither invents the phrase.
-- **The same intention planned by Groq returns `[]`** — `nothing_planned`, no question. That is A2's
-  documented case C, closed on the `agentic/a2-ext-empty-plan` branch (A2-EXT) and *not* here; A3
-  branches off `main` as directed. The two are independent, but both touch the ask-block and
-  `LoopResult`, so **expect a textual merge conflict** in `loop_controller.py` when they land — the
-  resolution is mechanical (A2-EXT adds question sources; A3 adds the resume/answer fields).
+- **The same intention planned by Groq returns `[]`** — `nothing_planned`, no question, at the time
+  this run was recorded. That is A2's documented case C, and it is closed by A2-EXT (#110), which
+  has since landed on `main` and is now merged into this branch; on the merged code that same run
+  reaches `awaiting_answer` through the diagnostic probe. The real-run transcript above is left as
+  it was measured rather than re-narrated.
+
+## Merging A2-EXT (#110)
+
+A2-EXT landed on `main` while this branch was open. Both gates touch the ask-block and
+`LoopResult`, so the merge conflicted in four places, all mechanical: A2-EXT contributes question
+*sources* (confirmed volunteer → closed door → diagnostic probe), A3 contributes the resume/answer
+*fields* and the `ResumeState` built after a question is set. Both survive intact; the ask-block now
+reads confirm → ask → probe → build the state an answer can resume from.
+
+One test changed as a result, and the change is the two gates agreeing. A3's guard-5 test used to
+construct its unanswerable question with a planner that *volunteered* a claim about
+`connect_marks`/`relation_role`. A2-EXT now refuses that claim at source (`_confirmed_volunteer`
+checks it against `resolve()`), so the loop never reaches `awaiting_answer` that way. Post-merge,
+**every question the loop builds itself names `phrase`** — `missing_param_of` returns nothing else —
+so an unroutable param can only arrive from OUTSIDE `run_loop`: a state read back from a store, or
+the multi-param future. The test now constructs it that way, and a second test pins the A2-EXT half
+(a planner cannot talk the loop into an unanswerable question at all). The guard is defensive rather
+than dead, and the spec says which.
 
 ## Not in this gate
 
