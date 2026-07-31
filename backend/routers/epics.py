@@ -309,11 +309,17 @@ async def add_vision_text_to_post(request: AddVisionTextToPostRequest):
     """
     try:
         # Create text block
+        # PROV-001 Seam 5 — origin is stated, not left to the schema default. This route
+        # persists VISION-GENERATED text (its own name and docstring say so), and TextBlock
+        # defaults `origin` to "human". Omitting it here did not leave authorship unknown; it
+        # asserted the wrong author, and the block read back indistinguishable from prose the
+        # curator wrote.
         text_block = {
             "id": f"block_{uuid.uuid4()}",
             "type": request.text_type,
             "content": request.text_content,
-            "color": None
+            "color": None,
+            "origin": "sutradhar",
         }
         
         # Update post

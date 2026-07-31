@@ -160,6 +160,13 @@ class AddTagRequest(BaseModel):
 class AddTagAndStoryRequest(BaseModel):
     tag: str
     story: str
+    # PROV-001 Seam 5 — the caller states authorship, because only the caller knows it.
+    # Unlike the vision and epic routes, the text here is whatever the client had in hand: it
+    # may be a curator's own paragraph or a generated one, and the server cannot tell them apart
+    # from a bare string. Defaulting to "sutradhar" would be the same falsehood as the silent
+    # "human" it replaces, merely inverted. So it is explicit, and defaults to `human` — the
+    # conservative reading for a route whose payload a person assembled and submitted.
+    origin: str = "human"           # human | sutradhar
 
 class StoryFlowRequest(BaseModel):
     story: str
