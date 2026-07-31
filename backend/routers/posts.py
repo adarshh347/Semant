@@ -21,6 +21,7 @@ from backend.services import region_embedding_service
 from backend.services import region_geometry
 from backend.services import mask_geometry
 from backend.services import vision_run_service
+from backend.services import epistemics
 from backend.services import suggestion_service
 from backend.services.vision_orchestrator.contracts import JobStatus
 from backend.services.vision_orchestrator import vision_run_contracts as vrc
@@ -1401,7 +1402,9 @@ async def refine_region_suggest(post_id: str, req: RefineRequest):
                         detail={"geometry_rev": region.get("geometry_rev")})
         suggestion = suggestion_service.suggestion_from_refine_region(
             region, run_id=rec.run_id, latency_ms=propose_ms, base_id=req.base_id)
-        suggestions = [suggestion] if suggestion else []
+        # M5: every path into the quarantine is checked. `guard` raises on an untagged or
+        # improperly-crossed claim rather than letting it reach review looking confident.
+        suggestions = epistemics.guard([suggestion] if suggestion else [])
         # A proposal, not a persist — the run terminalizes without a persist stage.
         await rec.finish(JobStatus.SUCCEEDED, terminal_reason="suggested",
                          result_summary={"suggested": len(suggestions),
@@ -1570,7 +1573,8 @@ async def semantic_read(post_id: str, req: SemanticReadRequest = None):
         # `semantics` is unchanged; `suggestions` is the same assertions/relations projected as
         # quarantined `model_suggested` descriptors, run-linked, that the frontend circuit ingests.
         # Geometry is never authored here — a label is a region_ref, a relation is `derived`.
-        suggestions = suggestion_service.suggestions_from_semantics(merged, run_id=rec.run_id)
+        suggestions = epistemics.guard(
+            suggestion_service.suggestions_from_semantics(merged, run_id=rec.run_id))
         return {"semantics": merged, "status": (merged.get("meta") or {}).get("status"),
                 "run_id": rec.run_id, "suggestions": suggestions}
     except asyncio.CancelledError:
@@ -1699,8 +1703,8 @@ async def find_similar(post_id: str, region_id: str, req: FindSimilarRequest = N
             # frontend feeds through `ingestSuggestions` into the same review rhythm. The
             # persisted post is untouched; a suggestion is a proposal, never a write.
             from backend.services import suggestion_service
-            result.setdefault("suggestions",
-                              suggestion_service.suggestions_from_similar(result, run_id=rec.run_id))
+            result.setdefault("suggestions", epistemics.guard(
+                suggestion_service.suggestions_from_similar(result, run_id=rec.run_id)))
         return result
     except asyncio.CancelledError:
         await rec.finish(JobStatus.CANCELLED, terminal_reason="request_cancelled")
@@ -2468,6 +2472,7 @@ async def produce_field(post_id: str, req: ProduceFieldRequest):
                         detail={"producer": req.producer, "region_id": req.region_id})
         _t = time.perf_counter()
         suggestions, status, available = await handler(post_id, post, region, req, rec.run_id)
+        suggestions = epistemics.guard(suggestions or [])
         # A refusal is NOT a failure — the run succeeded at honestly reporting "nothing here"; only
         # an unavailable model terminalizes UNAVAILABLE. Neither writes any post geometry.
         job_status = JobStatus.SUCCEEDED if available else JobStatus.UNAVAILABLE

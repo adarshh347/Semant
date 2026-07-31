@@ -35,7 +35,7 @@ import asyncio
 import importlib
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .capabilities import Actuator, Resource, get as get_actuator, known
 from .execution import (ActuatorResult, EMPTY, ERROR, OK, UNAVAILABLE)
@@ -65,6 +65,10 @@ def _capability_available(capability: Optional[str]) -> bool:
         "intrinsic": lambda: _svc("intrinsic_service").is_available(),
         "grounding_detector": lambda: _svc("grounding_detector_service").is_available(),
         "semantic_provider": lambda: _semantic_available(),
+        # M6 — the library, not a model. Available means "a provider is configured and its
+        # client library imports", never a live reachability probe: a network round trip in
+        # front of every plan would make availability the slowest question the planner asks.
+        "external_source": lambda: _svc("external_source_service").default_provider().is_available(),
     }
     probe = probes.get(capability)
     if probe is None:
@@ -290,10 +294,293 @@ def _quarantined_marks(ctx: "ExecutionContext") -> List[Dict[str, Any]]:
     """Suggestions produced SO FAR in this plan that are real marks (not readings).
 
     This is the real-data bridge for evidence, exactly as `ctx.regions` is for geometry: working
-    memory carries counts, and a step that must actually cite two marks needs the marks."""
+    memory carries counts, and a step that must actually cite two marks needs the marks.
+
+    M6 makes this allowlist load-bearing rather than merely tidy. It names the four MARK types,
+    so a `sourced_statement` sitting in the same quarantine is invisible to `connect_marks` and
+    `compose_percept`: a plan cannot relate a citation to a mask, and a percept cannot come to
+    rest on a quotation. An allowlist and not a denylist, so a type added later is excluded
+    until someone decides otherwise — the safe direction to fail."""
     return [s for s in ctx.suggestions
             if isinstance(s, dict) and s.get("type") in ("region_mask", "brush_field",
                                                          "trace_mark", "relation_mark")]
+
+
+# ── CIRCUIT-003 M1 — the cross-image bridge ────────────────────────────────────────────────────
+# The corpus counterpart of `_quarantined_marks`. A corpus execution context (see
+# `corpus_execution.py`) holds one per-image context per image and answers `marks_by_image()`.
+#
+# DUCK-TYPED, not imported. `corpus_execution` imports THIS module for `ExecutionContext`, so a
+# type import in the other direction would be a cycle. More to the point, the runners below have
+# no business knowing what a corpus is: they need "marks, grouped by which picture they are on",
+# and a single-post context can answer that too — with one group, which is exactly why they refuse
+# honestly instead of degrading into a same-image relation.
+
+def _marks_by_image(ctx: "ExecutionContext") -> Dict[str, List[Dict[str, Any]]]:
+    """Quarantined marks grouped by the image they were produced on, in corpus order.
+
+    A plain single-post context yields ONE group. That is not a special case to work around; it is
+    the fact that makes `compare_views` on a single post return EMPTY with a reason a curator can
+    act on, rather than relating a picture to itself and calling it a comparison."""
+    grouped = getattr(ctx, "marks_by_image", None)
+    if callable(grouped):
+        return grouped()
+    return {ctx.post_id: _quarantined_marks(ctx)}
+
+
+def _mark_ref(mark: Dict[str, Any]) -> str:
+    return str(mark.get("source_ref") or mark.get("id") or "")
+
+
+def _image_ref_for(ctx: "ExecutionContext", post_id: str) -> str:
+    """The image_ref a corpus context knows for a post, or the post id. Provenance names both, so
+    a source stays identifiable after the post document has moved on."""
+    lookup = getattr(ctx, "image_ref_for", None)
+    if callable(lookup):
+        return str(lookup(post_id) or post_id)
+    return str((ctx.post or {}).get("photo_url") or post_id)
+
+
+def _source(ctx: "ExecutionContext", post_id: str, mark: Dict[str, Any],
+            position: Optional[int]) -> Dict[str, Any]:
+    """One side of a cross-image claim, fully identified.
+
+    Everything needed to go BACK to the evidence: which post, which image, which mark, and where
+    the image stood in the sequence. A comparative percept whose provenance named only the marks
+    would be uncheckable the moment two images carried marks with the same local id — which, since
+    ids are minted per post, is the normal case rather than the edge one."""
+    return {"post_id": post_id, "image_ref": _image_ref_for(ctx, post_id),
+            "mark_ref": _mark_ref(mark), "label": mark.get("label") or mark.get("role"),
+            "position": position}
+
+
+def _corpus_positions(ctx: "ExecutionContext") -> Dict[str, int]:
+    corpus = getattr(ctx, "corpus", None)
+    images = getattr(corpus, "images", ()) or ()
+    return {str(i.post_id): int(i.position) for i in images}
+
+
+def _pick_across_images(step: Step, by_image: Dict[str, List[Dict[str, Any]]]
+                        ) -> Optional[Tuple[Tuple[str, Dict[str, Any]], Tuple[str, Dict[str, Any]]]]:
+    """Two marks on two DIFFERENT images: explicit `left_ref`/`right_ref` if given, else one from
+    each of the first two images that actually carry marks, in corpus order.
+
+    Returns None when fewer than two images have marks — never a same-image pair as a consolation.
+    """
+    populated = [(pid, marks) for pid, marks in by_image.items() if marks]
+    explicit = {}
+    for side in ("left_ref", "right_ref"):
+        ref = str((step.params or {}).get(side) or "").strip()
+        if not ref:
+            continue
+        for pid, marks in populated:
+            found = next((m for m in marks if _mark_ref(m) == ref), None)
+            if found is not None:
+                explicit[side] = (pid, found)
+                break
+    left = explicit.get("left_ref")
+    right = explicit.get("right_ref")
+    if left and right and left[0] != right[0]:
+        return left, right
+    if len(populated) < 2:
+        return None
+    if left:
+        other = next(((pid, marks[-1]) for pid, marks in populated if pid != left[0]), None)
+        return (left, other) if other else None
+    if right:
+        other = next(((pid, marks[-1]) for pid, marks in populated if pid != right[0]), None)
+        return (other, right) if other else None
+    (pid_a, marks_a), (pid_b, marks_b) = populated[0], populated[1]
+    return (pid_a, marks_a[-1]), (pid_b, marks_b[-1])
+
+
+async def _name_relation(a_label: Any, b_label: Any, a_image: str, b_image: str
+                         ) -> Tuple[str, Optional[str]]:
+    """Ask the language model to name a CROSS-IMAGE relation. Returns (text, model) and never
+    raises — a failed naming is not a failed relation, exactly as in `_run_connect_marks`."""
+    if not _llm_available():
+        return "", None
+    try:
+        llm = _svc("llm_service").LLMService()
+        prompt = (f'Two visual marks, each on a DIFFERENT photograph of the same sequence: '
+                  f'"{a_label}" (on {a_image}) and "{b_label}" (on {b_image}). In ONE short '
+                  f'phrase, name the relation BETWEEN THE TWO VIEWS. Do not describe either '
+                  f'alone. JSON: {{"relation": "..."}}')
+        out = await asyncio.to_thread(
+            lambda: llm.client.chat.completions.create(
+                messages=[{"role": "system", "content": "You output JSON."},
+                          {"role": "user", "content": prompt}],
+                model=llm.model, response_format={"type": "json_object"}))
+        import json as _json
+        return (_json.loads(out.choices[0].message.content) or {}).get("relation", ""), llm.model
+    except Exception:
+        return "", None
+
+
+async def _run_compare_views(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
+                             actuator: Actuator) -> ActuatorResult:
+    """Name the relation between two marks on two DIFFERENT images (CIRCUIT-003 M1).
+
+    `connect_marks`' cross-image sibling. Two things make it a different act rather than a wider
+    one, and both are load-bearing:
+
+      IT REFUSES ON ONE IMAGE. `resolve()` already proved two images would be present; this proves
+      two images DO carry marks at the moment of dispatch, and those differ exactly when one
+      image's finder came back empty. Falling back to a same-image pair there would produce a
+      well-formed relation that answers a question nobody asked — the precise failure the chain
+      honesty rules exist to prevent.
+
+      IT TRACES BOTH SOURCES. `provenance.sources` carries post id, image ref, mark ref and
+      sequence position for EACH side. A cross-image claim that cannot say which pictures it
+      spans is not checkable, and an uncheckable comparison is the article's whole risk.
+    """
+    by_image = _marks_by_image(ctx)
+    populated = {pid: ms for pid, ms in by_image.items() if ms}
+    if len(populated) < 2:
+        return ActuatorResult(status=EMPTY, produced=(), adapter="compare_views",
+                              detail=(f"needs marks on 2 images; {len(populated)} image(s) "
+                                      f"carry any"))
+    pair = _pick_across_images(step, by_image)
+    if pair is None:
+        return ActuatorResult(status=EMPTY, produced=(), adapter="compare_views",
+                              detail="no two marks on two different images")
+    (pid_a, mark_a), (pid_b, mark_b) = pair
+
+    positions = _corpus_positions(ctx)
+    src_a = _source(ctx, pid_a, mark_a, positions.get(pid_a))
+    src_b = _source(ctx, pid_b, mark_b, positions.get(pid_b))
+
+    role_hint = (step.params or {}).get("relation_role")
+    relation_text = role_hint or ""
+    model_name = None
+    if not relation_text:
+        relation_text, model_name = await _name_relation(
+            mark_a.get("label") or mark_a.get("role"), mark_b.get("label") or mark_b.get("role"),
+            src_a["image_ref"], src_b["image_ref"])
+
+    from backend.services import suggestion_service as ss
+    role = ss.relation_role_for(relation_text)
+    left = f"{pid_a}:{src_a['mark_ref']}"
+    right = f"{pid_b}:{src_b['mark_ref']}"
+    sug = {
+        "producer": "semantic_read",           # the frozen producer vocabulary's relation minter
+        "type": "relation_mark",
+        "role": role,
+        "label": relation_text or role.replace("_", " "),
+        "source_ref": f"{left}→{right}",
+        # Endpoints stay STRINGS, like `connect_marks`' — post-qualified so nothing that already
+        # reads endpoints has to learn a new shape to keep working.
+        "geometry": {"kind": "derived", "endpoints": [left, right], "cross_image": True},
+        "linked_ground_ids": [],
+        "corpus": {"corpus_id": getattr(getattr(ctx, "corpus", None), "corpus_id", None),
+                   "spans": [pid_a, pid_b]},
+        "provenance": {"run_id": ctx.run_id, "producer": "compare_views",
+                       "adapter": "compare_views", "sources": [src_a, src_b],
+                       **({"model": model_name} if model_name else {})},
+    }
+    _record_comparative(ctx, sug)
+    return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
+                          adapter="compare_views",
+                          detail=f"related '{role}' across {pid_a} and {pid_b}")
+
+
+async def _run_compose_comparative_percept(step: Step, memory: WorkingMemory,
+                                           ctx: "ExecutionContext",
+                                           actuator: Actuator) -> ActuatorResult:
+    """Draft a percept that rests on a NAMED comparison across two images.
+
+    The single-image `compose_percept` rests on marks; this rests on a cross-image relation, and
+    refuses without one. That refusal is the point: a sentence about two photographs that was not
+    grounded in a relation somebody actually named would be a comparison in grammar only, and it
+    would look identical to one that was earned.
+    """
+    relations = [s for s in _comparative_relations(ctx)
+                 if len(((s.get("corpus") or {}).get("spans") or [])) >= 2]
+    if not relations:
+        return ActuatorResult(status=EMPTY, produced=(), adapter="compose_comparative_percept",
+                              detail="no cross-image relation to rest on")
+    relation = relations[-1]
+    sources = list((relation.get("provenance") or {}).get("sources") or [])
+    spans = list((relation.get("corpus") or {}).get("spans") or [])
+
+    draft = (step.params or {}).get("draft_text") or ""
+    model_name = None
+    if not draft and _llm_available():
+        try:
+            llm = _svc("llm_service").LLMService()
+            model_name = llm.model
+            left = sources[0] if sources else {}
+            right = sources[1] if len(sources) > 1 else {}
+            prompt = (f'A curator relating two photographs of one sequence named this relation: '
+                      f'"{relation.get("label")}". It joins "{left.get("label")}" on the view '
+                      f'"{left.get("image_ref")}" to "{right.get("label")}" on the view '
+                      f'"{right.get("image_ref")}". Write ONE sentence of close reading about '
+                      f'what the two views do TOGETHER. Claim nothing you cannot see in either. '
+                      f'JSON: {{"percept": "..."}}')
+            out = await asyncio.to_thread(
+                lambda: llm.client.chat.completions.create(
+                    messages=[{"role": "system", "content": "You output JSON."},
+                              {"role": "user", "content": prompt}],
+                    model=llm.model, response_format={"type": "json_object"}))
+            import json as _json
+            draft = (_json.loads(out.choices[0].message.content) or {}).get("percept", "")
+        except Exception:
+            draft = ""
+    if not draft:
+        return ActuatorResult(status=UNAVAILABLE, produced=(),
+                              adapter="compose_comparative_percept",
+                              detail="no draft available (language model unavailable)")
+
+    sug = {
+        "producer": "planner",
+        "type": "percept_draft",
+        "role": None,
+        "label": draft[:120],
+        "draft_text": draft,
+        "source_ref": f"{ctx.run_id}:comparative_percept:{len(spans)}",
+        # What it rests on: the named relation, and each side's mark. Post-qualified, so a reader
+        # of the percept can reach every piece of evidence without guessing which image it is on.
+        "ground_refs": [relation.get("source_ref")] + [
+            f"{s.get('post_id')}:{s.get('mark_ref')}" for s in sources if s.get("mark_ref")],
+        "geometry": None,                      # a percept has no extent — it rests on ones that do
+        "linked_ground_ids": [],
+        "corpus": {"corpus_id": (relation.get("corpus") or {}).get("corpus_id"),
+                   "spans": spans},
+        "provenance": {"run_id": ctx.run_id, "producer": "compose_comparative_percept",
+                       "adapter": "compose_comparative_percept",
+                       "rests_on": relation.get("source_ref"),
+                       "sources": sources,
+                       **({"model": model_name} if model_name else {})},
+    }
+    _record_comparative(ctx, sug)
+    return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
+                          adapter="compose_comparative_percept",
+                          detail=f"drafted across {len(spans)} image(s)")
+
+
+def _record_comparative(ctx: "ExecutionContext", suggestion: Dict[str, Any]) -> None:
+    """Where a cross-image suggestion lands.
+
+    A corpus context keeps comparative suggestions in their OWN quarantine rather than on any one
+    image's pile — a relation that spans the façade and the rotunda belongs to neither post, and
+    filing it under one of them would make it look, to every later reader, like evidence found
+    there. A plain context has nowhere else to put it, so it goes on the pile with everything
+    else and stays honest by carrying its `spans` list."""
+    sink = getattr(ctx, "record_comparative", None)
+    if callable(sink):
+        sink(suggestion)
+        return
+    ctx.suggestions.append(suggestion)
+
+
+def _comparative_relations(ctx: "ExecutionContext") -> List[Dict[str, Any]]:
+    """Cross-image relations produced SO FAR in this run — the evidence a comparative percept
+    must rest on."""
+    pool = getattr(ctx, "comparative", None)
+    items = list(pool) if isinstance(pool, list) else list(ctx.suggestions)
+    return [s for s in items
+            if isinstance(s, dict) and s.get("type") == "relation_mark"
+            and bool((s.get("geometry") or {}).get("cross_image"))]
 
 
 async def _run_semantic_read(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
@@ -450,6 +737,8 @@ async def _run_connect_marks(step: Step, memory: WorkingMemory, ctx: "ExecutionC
         "provenance": {"run_id": ctx.run_id, "producer": "connect_marks",
                        "adapter": "connect_marks", **({"model": model_name} if model_name else {})},
     }
+    from backend.services import epistemics
+    epistemics.stamp(sug)                      # interpretive: a named relation is a reading
     ctx.suggestions.append(sug)
     return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
                           adapter="connect_marks", detail=f"related as '{role}'")
@@ -504,9 +793,65 @@ async def _run_compose_percept(step: Step, memory: WorkingMemory, ctx: "Executio
                        "adapter": "compose_percept",
                        **({"model": model_name} if model_name else {})},
     }
+    from backend.services import epistemics
+    epistemics.stamp(sug)                      # interpretive: a draft percept is a reading
     ctx.suggestions.append(sug)
     return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
                           adapter="compose_percept", detail=f"drafted from {len(marks)} mark(s)")
+
+
+async def _run_historical_source(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
+                                 actuator: Actuator) -> ActuatorResult:
+    """CIRCUIT-003 M6 — retrieve what is DOCUMENTED about a topic, and quarantine it as sourced.
+
+    The one runner in this module that never touches `ctx.post` or the image bytes. It cannot:
+    the whole point of the actuator is that its answer comes from somewhere the picture is not,
+    and a runner holding the image would eventually be tempted to check its claims against it —
+    which is precisely the laundering the `sourced` status exists to prevent.
+
+    Three outcomes, mapped to the executor's existing vocabulary rather than a new one:
+      UNAVAILABLE — no provider, or the lookup failed. Retry is sensible.
+      EMPTY       — searched, found nothing citable. An honest answer; retry is not sensible.
+      OK          — statements, each carrying a citation that was checked before it got here.
+
+    `epistemics.guard()` runs on the descriptors before they enter the quarantine. It is
+    redundant here by construction — `to_descriptor()` is the only thing that built them and it
+    always writes `sourced` — and it is called anyway, because the day someone adds a second
+    path into this list is the day redundant becomes load-bearing.
+    """
+    from backend.services import epistemics
+    ess = _svc("external_source_service")
+
+    topic = str((step.params or {}).get("phrase")
+                or (step.params or {}).get("topic")
+                or memory.phrase or "").strip()
+    if not topic:
+        # `resolve()` already refused a topic-less step at plan time; this is the execution-time
+        # twin, for the same reason `connect_marks` re-counts its marks — the plan proved a topic
+        # WOULD exist, this proves one DOES.
+        return ActuatorResult(status=EMPTY, produced=(), adapter="historical_source",
+                              detail="no topic to research")
+
+    result = await asyncio.to_thread(ess.retrieve, topic)
+    if result.status == ess.RETRIEVAL_UNAVAILABLE:
+        return ActuatorResult(status=UNAVAILABLE, produced=(), adapter=result.provider,
+                              detail=result.detail)
+    if not result.ok:
+        return ActuatorResult(status=EMPTY, produced=(), adapter=result.provider,
+                              detail=result.detail)
+
+    descriptors = epistemics.guard([s.to_descriptor(run_id=ctx.run_id, provider=result.provider)
+                                    for s in result.statements])
+    ctx.suggestions.extend(descriptors)
+    # `confidence` here is retrieval relevance, not a claim about whether the source is right.
+    # The weakest-link summary treats it like any other, which is correct: a chain resting on a
+    # barely-relevant quotation IS the weaker for it.
+    weakest = min((s.confidence for s in result.statements), default=None)
+    return ActuatorResult(
+        status=OK, produced=tuple(actuator.produces) * len(result.statements),
+        confidence=weakest, model=None, adapter=result.provider,
+        detail=f"{len(result.statements)} sourced statement(s) from {result.documents_seen} source(s)",
+        payload={"topic": topic, "documents_seen": result.documents_seen})
 
 
 # actuator name → the async handler that runs it. Field producers share one handler; find_parts
@@ -524,6 +869,14 @@ _DISPATCH: Dict[str, Callable] = {
     "find_similar": _run_find_similar,
     "connect_marks": _run_connect_marks,
     "compose_percept": _run_compose_percept,
+    # CIRCUIT-003 M1 — the comparative two. They live in the SAME dispatch table as everything
+    # else (the suite pins that every declared actuator has a runner), and they are handed the
+    # same `ExecutionContext` shape. On a single-post context they find one image's marks and
+    # refuse; on a corpus context they find all of them and compare.
+    "compare_views": _run_compare_views,
+    "compose_comparative_percept": _run_compose_comparative_percept,
+    # CIRCUIT-003 M6 — the library.
+    "historical_source": _run_historical_source,
 }
 for _n in _FIELD_PRODUCER_NAMES:
     _DISPATCH[_n] = _run_field_producer
@@ -554,7 +907,15 @@ class RealActuatorRunner:
                                   detail=f"no in-process runner wired for '{self.name}'")
 
         async def _dispatch_then_unload() -> ActuatorResult:
+            before = len(self.ctx.suggestions)
             res = await handler(step, memory, self.ctx, act)
+            # M5 — the Director's quarantine boundary. Every runner appends to `ctx.suggestions`;
+            # only what THIS step added is checked, so the cost stays flat across a long chain
+            # rather than re-walking the whole list per step. In M6 this ran for one actuator and
+            # was redundant by construction; across every actuator it is the single place where a
+            # claim's stated kind is checked against the kind its producer is classified as.
+            from backend.services import epistemics
+            epistemics.guard(self.ctx.suggestions[before:])
             # Single-GPU residency: a GPU step hands the card back before the next model loads,
             # so the chain never needs two resident at once and the card ends at baseline.
             if act.capability in _GPU_CAPABILITIES:
