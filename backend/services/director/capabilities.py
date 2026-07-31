@@ -115,6 +115,21 @@ class Actuator:
     # short. The projection decides ORDER; reality still decides what runs.
     plural: bool = False
 
+    # CIRCUIT-003 M1 — how many DISTINCT images this actuator's inputs must come from.
+    #
+    # 1 (the default, and every actuator that existed before M1) means "one picture at a time" —
+    # unchanged behaviour, because a single-image packet reports IMAGE: 1 and every such actuator
+    # asks for at most one.
+    #
+    # 2 means the actuator is COMPARATIVE: it does not merely tolerate a second image, it is
+    # meaningless without one. It is declared here AND as an ordinary `_req(Resource.IMAGE, 2)`,
+    # which is what lets the EXISTING resolver refuse it with no corpus-specific code path — a
+    # single-image packet can never report two images, so "compare the façade with the rotunda"
+    # asked of one photograph is refused for the same reason, by the same gate, as a relation
+    # asked of one mark. This field is the DECLARATION (what a planner and the corpus tiering
+    # read); the requirement is the ENFORCEMENT.
+    spans_images: int = 1
+
     def projected_produces(self) -> Tuple["Resource", ...]:
         """What the PLANNER should assume this leaves behind. Two for a plural producer — the
         smallest count that distinguishes 'one' from 'several', and exactly what a relation needs."""
@@ -293,6 +308,38 @@ _ACTUATOR_LIST: List[Actuator] = [
         capability=None,
         param_keys=("draft_text",),
     ),
+    # -- comparison: they work ACROSS images (CIRCUIT-003 M1) -------------------
+    # `connect_marks` relates two marks on ONE picture and is left exactly as it was — the
+    # single-image relation is the common case and half the suite pins its behaviour. These two
+    # are its cross-image siblings rather than a widening of it, because the two say different
+    # things: relating two marks in one frame is a claim about that frame's internal structure;
+    # relating a mark on the façade to a mark on the rotunda is a claim about a SEQUENCE, and it
+    # has to carry which picture each side came from or the claim cannot be checked.
+    Actuator(
+        name="compare_views",
+        summary="Name the relation between marks on two different images.",
+        # Two images AND two marks. The IMAGE count is the whole difference from connect_marks:
+        # it is unsatisfiable on a single-post packet, which is what makes this refuse rather
+        # than quietly degrade into a same-image relation.
+        requires=(_req(Resource.IMAGE, 2), _req(Resource.MARK, 2)),
+        produces=(Resource.GROUND,),
+        capability=None,
+        param_keys=("relation_role", "left_ref", "right_ref"),
+        spans_images=2,
+    ),
+    Actuator(
+        name="compose_comparative_percept",
+        summary="Compose a reading that rests on a relation across two images.",
+        # Rests on a GROUND, not on loose marks: a comparative reading that did not rest on a
+        # NAMED comparison would be a sentence about two pictures that happen to be adjacent,
+        # which is the fabrication this pairing exists to prevent. `compare_views` produces the
+        # ground, so the resolver orders this after it or refuses it.
+        requires=(_req(Resource.IMAGE, 2), _req(Resource.GROUND)),
+        produces=(Resource.PERCEPT,),
+        capability=None,
+        param_keys=("draft_text",),
+        spans_images=2,
+    ),
 ]
 
 ACTUATORS: Dict[str, Actuator] = {a.name: a for a in _ACTUATOR_LIST}
@@ -323,3 +370,16 @@ def known() -> Tuple[str, ...]:
 def producers_of(kind: Resource) -> Tuple[str, ...]:
     """Every actuator that leaves `kind` behind — how the planner repairs an ordering."""
     return tuple(a.name for a in _ACTUATOR_LIST if kind in a.produces)
+
+
+def comparative() -> Tuple[str, ...]:
+    """Every actuator that relates ACROSS images (CIRCUIT-003 M1).
+
+    Derived from `spans_images`, never listed by hand, so a comparative actuator added later
+    is picked up by the corpus tiering without an edit here."""
+    return tuple(a.name for a in _ACTUATOR_LIST if a.spans_images >= 2)
+
+
+def is_comparative(name: str) -> bool:
+    actuator = ACTUATORS.get(name)
+    return bool(actuator and actuator.spans_images >= 2)

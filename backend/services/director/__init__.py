@@ -16,7 +16,9 @@ fabricate its way past a failure.
 Everything here is pure python: no torch, no fetch, no database, no GPU. It is exercised
 entirely against stub actuators, which is what makes it testable without a model.
 """
-from .capabilities import ACTUATORS, Actuator, Requirement, Resource
+from .capabilities import ACTUATORS, Actuator, Requirement, Resource, comparative, is_comparative
+from .corpus import (Corpus, CorpusImage, CorpusWorkingMemory, build_corpus, corpus_steps,
+                     hydrate_corpus, resolve_corpus)
 from .execution import (ChainProvenance, ChainResult, StepRecord, StubActuator,
                         EMPTY, OK, SKIPPED, UNAVAILABLE, execute, stub_registry)
 from .memory import WorkingMemory, build_memory
@@ -25,8 +27,13 @@ from .planner import Director, Intent, Planner, RuleBasedPlanner, match_intent
 from .workflows import Workflow
 
 __all__ = [
-    "ACTUATORS", "Actuator", "Requirement", "Resource",
+    "ACTUATORS", "Actuator", "Requirement", "Resource", "comparative", "is_comparative",
     "WorkingMemory", "build_memory",
+    # CIRCUIT-003 M1 — the corpus layer. Execution lives in `corpus_execution` and is imported on
+    # demand, not here: it pulls in `real_actuators`, and this package is deliberately importable
+    # with no model in the environment.
+    "Corpus", "CorpusImage", "CorpusWorkingMemory",
+    "build_corpus", "corpus_steps", "hydrate_corpus", "resolve_corpus",
     "Plan", "RefusedStep", "Step", "resolve",
     "Director", "Intent", "Planner", "RuleBasedPlanner", "match_intent",
     "Workflow",
