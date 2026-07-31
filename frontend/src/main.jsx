@@ -49,6 +49,8 @@ const UnconcealQueuePage = React.lazy(() => import('./pages/UnconcealQueuePage.j
 const AnatomyPage = React.lazy(() => import('./pages/AnatomyPage.jsx'));
 const BlockNoteLab = React.lazy(() => import('./pages/BlockNoteLab.jsx'));
 const ManuscriptLab = React.lazy(() => import('./pages/ManuscriptLab.jsx'));
+// Writing Studio (WS-0A) — the standalone manuscript-oriented writing tool.
+const StudioPage = React.lazy(() => import('./studio/StudioPage.jsx'));
 // DEV-ONLY · landing-migration checkpoint — the glyph contact sheet, proving the
 // 21 glyphs render identically once migrated into Semant (asset-layer fidelity).
 // Guarded so vite statically drops both the const and its dynamic-import chunk
@@ -102,6 +104,8 @@ const router = createBrowserRouter([
       // Editor Path B · Phase 0 — isolated BlockNote spike, before Phase 2 touches PostDetailPage.
       { path: "lab/blocknote", element: <BlockNoteLab /> },
       { path: "lab/manuscript", element: <ManuscriptLab /> },
+      // Writing Studio (WS-0A) — writing by orchestration; the manuscript is sacred.
+      { path: "studio", element: <StudioPage /> },
       // Primary-nav destinations, stubbed on-taste until their full pages land.
       // Atelier = the per-post workspace (/posts/:postId); this is its on-ramp
       // until the route rename. You = the taste/profile hub over Highlights/Epics.
