@@ -253,29 +253,26 @@ def test_a_loop_that_asked_nothing_cannot_be_answered():
 
 # ── 5. guard 5 — no re-ask ping-pong ──────────────────────────────────────────
 
-class _Volunteer:
-    """A planner that proposes nothing and volunteers a question about a param no answer can
-    route — the pathological case the guard exists for."""
-    name = "volunteer"
-    last_notes = ()
-
-    def __init__(self, missing_param):
-        self.question = qs.Question(step_id="v", actuator="connect_marks",
-                                    missing_param=missing_param, text="which relation?")
-
-    def propose(self, intention, memory):
-        return qs.Proposal(steps=[], question=self.question)
-
-
 def test_an_answer_that_cannot_unblock_terminates_instead_of_asking_again():
     """Asking the same question twice would be the loop pretending it had not just heard the
-    answer. It terminates with a reason that says exactly what happened."""
-    reg = stub_registry()
-    planner = _Volunteer("relation_role")
-    prior = lc.run_loop("relate them", _mem(), reg, director=Director(planner), max_rounds=2)
-    assert prior.stop_reason == lc.AWAITING_ANSWER
+    answer. It terminates with a reason that says exactly what happened.
 
-    res = lc.resume_loop(prior, "the echo", reg, director=Director(planner), max_rounds=3)
+    DEFENSIVE, and reachable only from outside `run_loop` today: every question the loop builds
+    itself names a param `missing_param_of` returned, which is always `phrase`, and A2-EXT's
+    `_confirmed_volunteer` refuses a planner's claim to any other. So the case is constructed the
+    way it would actually arrive — a question carried in from elsewhere: a state read back from a
+    store, or the multi-param future where a step needs something that is not a phrase.
+    """
+    from dataclasses import replace
+
+    prior, _, reg = _ask_first()
+    unroutable = qs.Question(step_id="v", actuator="connect_marks",
+                             missing_param="relation_role", text="which relation?")
+    carried_in = replace(prior, question=unroutable,
+                         resume_state=replace(prior.resume_state, question=unroutable))
+
+    res = lc.resume_loop(carried_in, "the echo", reg,
+                         director=Director(_ScriptedPlanner(lambda m: [])), max_rounds=3)
     assert res.stop_reason == lc.ANSWER_DID_NOT_UNBLOCK
     assert res.question is None                       # NOT asked again
     assert res.resume_state is None                   # and not answerable a third time
@@ -283,6 +280,27 @@ def test_an_answer_that_cannot_unblock_terminates_instead_of_asking_again():
     assert "relation_role" in res.answer.why
     assert res.memory.phrase is None                  # no param was invented to proceed
     assert all(runner.calls == [] for runner in reg.values())
+
+
+def test_a_planner_cannot_talk_the_loop_into_an_unanswerable_question():
+    """The A2-EXT half of the same guard, restated from A3's side: a planner volunteering a claim
+    about a param no answer could route never reaches `awaiting_answer` at all, so it can never
+    become an answer the loop has to refuse."""
+    class _Volunteer:
+        name = "volunteer"
+        last_notes = ()
+
+        def propose(self, intention, memory):
+            return qs.Proposal(steps=[], question=qs.Question(
+                step_id="v", actuator="connect_marks", missing_param="relation_role",
+                text="which relation?"))
+
+    res = lc.run_loop("relate them", _mem(), stub_registry(),
+                      director=Director(_Volunteer()), max_rounds=2)
+    assert res.stop_reason != lc.AWAITING_ANSWER
+    assert res.question is None
+    assert res.resume_state is None                   # nothing to answer, so nothing to resume
+    assert res.volunteer_check["confirmed"] is False
 
 
 def test_the_same_question_cannot_be_asked_twice_once_the_param_is_on_the_packet():
