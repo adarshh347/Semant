@@ -31,6 +31,19 @@ dead end. A2-EXT closes it with a deterministic rule-based diagnostic (`_diagnos
 tells "no actuator serves this" apart from "one does, and I lack the phrase" — without asking the
 model anything a second time.
 
+THEN CONTINUE (A3). A question with nowhere to put its answer is the same dead end one step later.
+`resume_loop()` injects the answer as the curator's PARAM on working memory and re-enters this same
+function with the state the loop stopped at, so the answered door re-opens through the machinery
+that was already there (`_door_still_closed` re-runs `resolve()`, and a missing-param door opens the
+moment the param exists). The whole arc — ask, answer, continue — comes back as ONE receipt, because
+a resumed loop that reported only its own rounds would hide where its evidence came from.
+
+WHAT AN ANSWER MAY AND MAY NOT DO. It supplies a PARAM. It may not supply a region, mark, ground or
+percept — `WorkingMemory.with_phrase` is structurally incapable of it, and `availability_for` is the
+same rule one layer down. An answer that leaves the step still refused for the same missing param is
+REFUSED at injection (`answer_did_not_unblock`); it is never rounded up into a param the loop
+invents for itself, and it is never turned into the same question asked twice.
+
 UNATTENDED-SAFE. Like the Director it wraps: it produces SUGGESTIONS only (into the execution
 context's quarantine), never accepts a mark, never writes a post. It is actuator-agnostic — hand it
 `stub_registry()` for a deterministic offline loop or `real_registry(ctx)` for a guarded real run.
@@ -38,12 +51,12 @@ context's quarantine), never accepts a mark, never writes a post. It is actuator
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .capabilities import Resource
 from .execution import EMPTY, OK, ActuatorRunner, ChainResult, execute
-from .memory import WorkingMemory
+from .memory import PHRASE_FROM_ANSWER, WorkingMemory, build_memory
 from .plan import Plan, Step, resolve
 from .questions import (Proposal, Question, is_question_able,
                         missing_param_of, question_for)
@@ -62,8 +75,18 @@ STOP_NOTHING_PLANNED = "nothing_planned"  # the planner proposed no steps and re
 STOP_MAX_ROUNDS = "max_rounds"            # the backstop
 STOP_ONLY_CLOSED_DOORS = "only_closed_doors"  # the round proposed nothing but already-shut doors
 # A2 — the terminal state that is not a dead end. The loop stopped because it needs something only
-# a human can supply, and it says exactly what. Resume is A3; A2 emits and returns.
+# a human can supply, and it says exactly what. A3 is how the answer comes back in.
 AWAITING_ANSWER = "awaiting_answer"
+# A3 — the answer arrived in the curator's own words and the step is STILL refused for the same
+# missing param. A distinct terminal reason rather than the same question a second time: asking
+# again would be the loop pretending it had not just heard the answer.
+ANSWER_DID_NOT_UNBLOCK = "answer_did_not_unblock"
+
+# A3 — where an answer is allowed to land. A phrase and nothing else, mirroring `availability_for`:
+# a param may supply the curator's WORDS, never their evidence. Widening this set would be the
+# fabrication route the whole layer closes, so it is a constant here rather than a lookup that
+# happens to have one entry today.
+ANSWERABLE_PARAMS = ("phrase",)
 
 # A2-EXT — outcomes of the deterministic diagnostic run on the `nothing_planned` dead end. A closed
 # set, because the receipt is read by machines as well as people.
@@ -295,6 +318,151 @@ class RoundRecord:
                 "closed_doors_at_start": list(self.closed_doors_at_start),
                 "plan": self.plan, "chain": self.chain}
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "RoundRecord":
+        """A3 — read a round back. Needed only so a loop paused at `awaiting_answer` can be
+        written down and resumed later; the fields are already plain data, so this is a mapping
+        and never a re-derivation."""
+        return cls(index=int(data.get("round", 0)), verdict=str(data.get("verdict", "")),
+                   plan=dict(data.get("plan") or {}),
+                   new_evidence=dict(data.get("new_evidence") or {}),
+                   chain=data.get("chain"),
+                   weakest_link=data.get("weakest_link"),
+                   refused=tuple(dict(r) for r in (data.get("refused") or ())),
+                   suppressed=tuple(dict(r) for r in (data.get("suppressed") or ())),
+                   reopened=tuple(data.get("reopened") or ()),
+                   closed_doors_at_start=tuple(data.get("closed_doors_at_start") or ()))
+
+
+@dataclass(frozen=True)
+class Answer:
+    """A3 — what the curator said, and what the loop did with it.
+
+    On the receipt whether it was taken or not. A rejected answer that left no trace would make
+    the loop look as though it had never been offered one, which is the same class of omission as
+    a plan that quietly drops a refusal.
+    """
+    text: str
+    missing_param: str
+    step_id: str = ""
+    actuator: str = ""
+    accepted: bool = False
+    why: str = ""
+    source: str = "curator"          # never a model, never a default — see `_answer_for`
+    at_round: int = 0                # the round the question came from
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"text": self.text, "missing_param": self.missing_param, "step_id": self.step_id,
+                "actuator": self.actuator, "accepted": self.accepted, "why": self.why,
+                "source": self.source, "at_round": self.at_round}
+
+
+@dataclass(frozen=True)
+class ResumeState:
+    """A3 — everything a paused loop needs to carry on being the SAME loop.
+
+    Set exactly when the loop stopped at `awaiting_answer`: the state exists when, and only when,
+    there is a question whose answer could use it.
+
+    Why the whole state and not just the memory: resuming from memory alone would be a RESTART
+    wearing the previous run's evidence. The executed signatures are what stop the loop redoing
+    work it has already done, and the closed doors are what stop the planner walking back through
+    refusals A1-FIX already shut — drop either and the resumed loop would happily re-refuse (or
+    re-run) its way through the first half of its own trace.
+
+    SERIALIZABLE ON PURPOSE (fork 3). `to_dict`/`from_dict` round-trip through plain JSON, so
+    persisting a paused loop and answering it minutes later over a new HTTP request is a store and
+    a load, not a refactor. Nothing here is a live handle: no actuators, no director, no client.
+    The one honest limit — a corpus packet (`corpus.CorpusMemory`) comes back as the plain
+    `WorkingMemory` it extends, so cross-request resume of a corpus loop needs its own packing,
+    which is not this gate's to invent.
+    """
+    intention: str
+    loop_id: str
+    memory: WorkingMemory
+    question: Optional[Question] = None
+    executed_sigs: Tuple[str, ...] = ()
+    # (signature, entry) pairs rather than a dict, so the order is stable through a round trip.
+    # The entry carries the refused Step as plain data — the reason a resumed loop can check the
+    # ACTUAL blocked step rather than a reconstruction of it.
+    closed: Tuple[Tuple[str, Dict[str, Any]], ...] = ()
+    rounds: Tuple[RoundRecord, ...] = ()
+    planner_calls: int = 0
+
+    def closed_map(self) -> Dict[str, Dict[str, Any]]:
+        """The live form the loop works in: signature → entry, with `step` rehydrated."""
+        out: Dict[str, Dict[str, Any]] = {}
+        for sig, entry in self.closed:
+            live = dict(entry)
+            step = live.get("step")
+            if isinstance(step, dict):
+                live["step"] = _step_from_dict(step)
+            out[sig] = live
+        return out
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "intention": self.intention,
+            "loop_id": self.loop_id,
+            "memory": _memory_to_dict(self.memory),
+            "question": self.question.to_dict() if self.question else None,
+            "executed_sigs": list(self.executed_sigs),
+            "closed": [[sig, {**{k: v for k, v in entry.items() if k != "step"},
+                              "step": _step_to_dict(entry.get("step"))}]
+                       for sig, entry in self.closed],
+            "rounds": [r.to_dict() for r in self.rounds],
+            "planner_calls": self.planner_calls,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ResumeState":
+        q = data.get("question")
+        return cls(
+            intention=str(data.get("intention", "")),
+            loop_id=str(data.get("loop_id", "loop")),
+            memory=_memory_from_dict(dict(data.get("memory") or {})),
+            question=Question.from_dict(q) if q else None,
+            executed_sigs=tuple(str(s) for s in (data.get("executed_sigs") or ())),
+            closed=tuple((str(sig), dict(entry)) for sig, entry in (data.get("closed") or ())),
+            rounds=tuple(RoundRecord.from_dict(r) for r in (data.get("rounds") or ())),
+            planner_calls=int(data.get("planner_calls", 0)),
+        )
+
+
+def _step_to_dict(step: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(step, Step):
+        return None
+    return {"actuator": step.actuator, "params": dict(step.params), "id": step.id,
+            "note": step.note}
+
+
+def _step_from_dict(data: Dict[str, Any]) -> Step:
+    return Step(actuator=str(data.get("actuator", "")), params=dict(data.get("params") or {}),
+                id=str(data.get("id", "")), note=str(data.get("note", "")))
+
+
+def _memory_to_dict(memory: WorkingMemory) -> Dict[str, Any]:
+    """The packet as plain data. `summary()` is the LOGGABLE view (counts, not contents) and would
+    lose the ids a resumed loop has to keep, so this is a separate, lossless mapping."""
+    return {"image_ref": memory.image_ref, "post_id": memory.post_id,
+            "region_ids": list(memory.region_ids), "mark_ids": list(memory.mark_ids),
+            "ground_ids": list(memory.ground_ids), "percept_ids": list(memory.percept_ids),
+            "phrase": memory.phrase, "first_attention": memory.first_attention,
+            "phrase_source": memory.phrase_source,
+            "unreadable": list(memory.unreadable), "constraints": dict(memory.constraints)}
+
+
+def _memory_from_dict(data: Dict[str, Any]) -> WorkingMemory:
+    return build_memory(
+        image_ref=str(data.get("image_ref", "")), post_id=data.get("post_id"),
+        region_ids=tuple(data.get("region_ids") or ()), mark_ids=tuple(data.get("mark_ids") or ()),
+        ground_ids=tuple(data.get("ground_ids") or ()),
+        percept_ids=tuple(data.get("percept_ids") or ()),
+        phrase=data.get("phrase"), first_attention=data.get("first_attention"),
+        phrase_source=data.get("phrase_source"),
+        unreadable=tuple(data.get("unreadable") or ()),
+        constraints=dict(data.get("constraints") or {}))
+
 
 @dataclass(frozen=True)
 class LoopResult:
@@ -321,6 +489,13 @@ class LoopResult:
     # A2-EXT: what a planner CLAIMED it was blocked on, and whether resolve() bore that out. Set
     # only when a planner volunteered a question; a rejected claim is recorded, not hidden.
     volunteer_check: Optional[Dict[str, Any]] = None
+    # A3: set alongside `question`, and for the same reason — this is what an answer resumes FROM.
+    resume_state: Optional[ResumeState] = None
+    # A3: the answer this loop was resumed with, taken or refused, and why. None on a first run.
+    answer: Optional[Answer] = None
+    # A3: the index of the first round of the CONTINUATION, so a reader of a single receipt can
+    # see where the human intervened. None when the loop was never resumed.
+    resumed_at_round: Optional[int] = None
 
     @property
     def executed_rounds(self) -> Tuple[RoundRecord, ...]:
@@ -360,6 +535,12 @@ class LoopResult:
             "question": self.question.to_dict() if self.question else None,
             "diagnostic_probe": dict(self.diagnostic_probe) if self.diagnostic_probe else None,
             "volunteer_check": dict(self.volunteer_check) if self.volunteer_check else None,
+            "answer": self.answer.to_dict() if self.answer else None,
+            "resumed_at_round": self.resumed_at_round,
+            # The state itself is NOT inlined — it would duplicate the rounds and the packet that
+            # are already here. This says an answer has somewhere to land; `result.resume_state
+            # .to_dict()` is the thing to store when the answer will arrive later.
+            "resumable": self.resume_state is not None,
             "closed_doors": [dict(d) for d in self.closed_doors],
             "suppressed_total": self.suppressed_total,
             "rounds_total": len(self.rounds),
@@ -375,7 +556,9 @@ def run_loop(intention: str, memory: WorkingMemory,
              actuators: Dict[str, ActuatorRunner], *,
              director: Optional[Director] = None, max_rounds: int = 4,
              loop_id: str = "loop",
-             labels: Optional[Sequence[str]] = None) -> LoopResult:
+             labels: Optional[Sequence[str]] = None,
+             resume: Optional[ResumeState] = None,
+             answer: Optional[Answer] = None) -> LoopResult:
     """propose → resolve → execute → evolve → decide → repeat.
 
     `actuators` is the registry every round executes against — `stub_registry()` (offline,
@@ -383,20 +566,36 @@ def run_loop(intention: str, memory: WorkingMemory,
     bridges real region data across rounds). `director` defaults to the rule-based Director; pass
     `Director(GroqPlanner())` for the model-backed planner. The intention is fixed for the life of
     the loop — re-planning is grounded only in evolved memory, never in a reworded prompt.
+
+    A3 — `resume` continues a loop that stopped at `awaiting_answer` instead of starting one:
+    memory, executed signatures, closed doors and the prior rounds all carry forward, and round
+    numbering continues where it left off. Called without it, this is byte-for-byte the loop A1
+    shipped. Callers do not build a `ResumeState` by hand — `resume_loop()` does, after it has
+    validated the answer.
     """
     director = director or Director()
-    current = memory
-    rounds: List[RoundRecord] = []
-    executed_sigs: set = set()                         # step signatures that have actually run
+    # ── A3: continue, or begin ────────────────────────────────────────────────────────────
+    # Everything the loop learned comes back: the memory it stopped at, the steps that have
+    # actually run (so a fixed point is still recognised), the doors A1-FIX shut (so a refusal is
+    # not re-refused), and the trace so far (so the arc is one receipt). Resuming from memory
+    # alone would be a restart wearing the old run's evidence.
+    current = resume.memory if resume else memory
+    rounds: List[RoundRecord] = list(resume.rounds) if resume else []
+    executed_sigs: set = set(resume.executed_sigs) if resume else set()
     # A1-FIX — the closed doors: signature → why it was shut. A refused step is struck from every
     # later round WHILE its reason holds, so the planner cannot re-propose it. Finding the key
-    # re-opens the door; re-knocking never does.
-    closed: Dict[str, Dict[str, Any]] = {}
-    planner_calls = 0
+    # re-opens the door; re-knocking never does. An ANSWER is a key: a missing-param door opens
+    # the moment the param exists on the packet, through `_door_still_closed` and nothing else.
+    closed: Dict[str, Dict[str, Any]] = resume.closed_map() if resume else {}
+    planner_calls = resume.planner_calls if resume else 0
     volunteered: Optional[Question] = None      # a question the planner raised itself
     stop_reason = STOP_MAX_ROUNDS                       # holds if the loop exhausts its budget
+    # Round numbering continues, so provenance chain ids from the continuation cannot collide
+    # with the ones the first half already wrote.
+    offset = len(rounds)
 
-    for i in range(max_rounds):
+    for turn in range(max_rounds):
+        i = offset + turn                  # the ROUND index: continues across a resume
         doors_at_start = tuple(sorted(closed))
 
         # ── propose (ONE call per round, always against the CURRENT evidence) ──────────────
@@ -520,10 +719,123 @@ def run_loop(intention: str, memory: WorkingMemory,
     if question is not None:
         stop_reason = AWAITING_ANSWER
 
+    # A3 — the state an answer would resume FROM, built exactly when there is a question to
+    # answer. No question, no state: a loop that ended for its own reasons is finished, and
+    # offering a resume handle on it would invite a caller to restart it wearing its own evidence.
+    #
+    # A2's re-ask guard, and why it needs no code: the same (step, param) cannot be asked twice,
+    # because an answered param lives on the packet and `question_for` returns None the moment the
+    # packet can answer it. The pathological case — accepted but still blocked — is caught before
+    # the loop is ever re-entered (`resume_loop`), so it terminates instead of asking again.
+    state: Optional[ResumeState] = None
+    if question is not None:
+        state = ResumeState(
+            intention=intention, loop_id=loop_id, memory=current, question=question,
+            executed_sigs=tuple(sorted(executed_sigs)),
+            closed=tuple((k, dict(v)) for k, v in sorted(closed.items())),
+            rounds=tuple(rounds), planner_calls=planner_calls)
+
     return LoopResult(loop_id=loop_id, intention=intention, rounds=tuple(rounds),
                       stop_reason=stop_reason, memory=current, planner_calls=planner_calls,
                       closed_doors=tuple({"step": k,
                                           **{kk: vv for kk, vv in v.items() if kk != "step"}}
                                          for k, v in sorted(closed.items())),
                       question=question, diagnostic_probe=probe,
-                      volunteer_check=volunteer_check)
+                      volunteer_check=volunteer_check, resume_state=state, answer=answer,
+                      resumed_at_round=offset if resume else None)
+
+
+# ── A3: the answer that resumes the loop ─────────────────────────────────────
+
+
+def _answer_for(question: Question, text: str, *, accepted: bool, why: str) -> Answer:
+    """Record what the curator said and what became of it. `source` is 'curator' and is not a
+    parameter: there is no other legitimate origin for an answer. A model-supplied phrase is the
+    fabrication A2 exists to refuse, and a field that could say so would be a place to put it."""
+    return Answer(text=text, missing_param=question.missing_param, step_id=question.step_id,
+                  actuator=question.actuator, accepted=accepted, why=why,
+                  at_round=question.round_index)
+
+
+def _blocked_step(state: ResumeState, question: Question) -> Step:
+    """The step the question is about — the REAL one where it can be had.
+
+    The closed-door entry holds the step that `resolve()` actually refused, params and all, so the
+    check below is run against what was blocked rather than a plausible reconstruction of it. The
+    fallback (a bare step with the named actuator) covers a question that arrived from somewhere
+    else — a planner volunteering one, or a state read back from a store that never had it.
+    """
+    entry = state.closed_map().get(question.step_id)
+    step = entry.get("step") if entry else None
+    if isinstance(step, Step):
+        return step
+    return Step(actuator=question.actuator, id=question.step_id or question.actuator)
+
+
+def resume_loop(prior: LoopResult, answer: str,
+                actuators: Dict[str, ActuatorRunner], *,
+                director: Optional[Director] = None, max_rounds: int = 4,
+                labels: Optional[Sequence[str]] = None) -> LoopResult:
+    """A3 — the curator answers, and the loop carries on being the same loop.
+
+    The whole gate in four moves: validate the answer against the question that earned it, inject
+    it as a PARAM on the packet, let the existing reopen machinery notice the door has opened, and
+    continue from where the loop stopped. Nothing here re-plans around a refusal and nothing here
+    invents a param; the answer is the only new fact, and it came from a person.
+
+    Returns a `LoopResult` whose rounds EXTEND the prior trace, so ask → answer → continue reads
+    as one receipt. A refused answer returns the prior arc unchanged, with the refusal recorded.
+
+    ROUND BUDGET (fork 1). `max_rounds` is a FRESH budget for the continuation, not the remainder
+    of the first run's. A human just intervened; spending their answer on one grudging round
+    because the first half used its budget looking for a way to proceed without them would waste
+    the intervention. The re-ask guard is what makes this safe: an answered param cannot produce
+    the same question again, so a fresh budget cannot become an ask/answer treadmill.
+    """
+    text = (answer or "").strip()
+    question = prior.question
+    state = prior.resume_state
+
+    # ── is there a question to answer? ────────────────────────────────────────────────
+    if question is None or state is None or prior.stop_reason != AWAITING_ANSWER:
+        # Not an error, and not a place to start a new loop either: answering a loop that asked
+        # nothing would attach the curator's words to a question that was never put to them.
+        blank = Question(step_id="", actuator="", missing_param="", text="")
+        return replace(prior, answer=_answer_for(
+            blank, text, accepted=False, why="this loop is not waiting for an answer"))
+
+    # ── guard 4: an empty answer supplies nothing ─────────────────────────────────────
+    # Refused HERE, before injection, so there is no path on which a blank becomes a param. The
+    # loop stays exactly where it was — still `awaiting_answer`, still holding the same question,
+    # because nothing has changed and pretending otherwise would cost the curator their turn.
+    if not text:
+        return replace(prior, answer=_answer_for(
+            question, text, accepted=False, why="an empty answer supplies nothing"))
+
+    # ── guard 1 + 2: the answer is a PARAM, and it goes where the question said ───────
+    if question.missing_param not in ANSWERABLE_PARAMS:
+        return replace(prior, stop_reason=ANSWER_DID_NOT_UNBLOCK, question=None, resume_state=None,
+                       answer=_answer_for(question, text, accepted=False,
+                                          why=(f"nothing can route an answer to "
+                                               f"'{question.missing_param}' — only "
+                                               f"{', '.join(ANSWERABLE_PARAMS)} is the curator's "
+                                               f"to supply")))
+    injected = state.memory.with_phrase(text, source=PHRASE_FROM_ANSWER)
+
+    # ── guard 4 again: did it actually unblock the door it was asked for? ────────────
+    # Asked of `resolve()`'s own check rather than re-derived, so "unblocked" means exactly what
+    # the gate means by it. Still refused for the same missing param ⇒ terminal, and NOT the same
+    # question a second time: the loop heard the answer, and saying otherwise would be a lie.
+    step = _blocked_step(state, question)
+    if missing_param_of(step, injected) == question.missing_param:
+        return replace(prior, stop_reason=ANSWER_DID_NOT_UNBLOCK, question=None, resume_state=None,
+                       answer=_answer_for(question, text, accepted=False,
+                                          why=(f"'{step.actuator}' is still refused for a missing "
+                                               f"{question.missing_param}")))
+
+    accepted = _answer_for(question, text, accepted=True,
+                           why=f"'{step.actuator}' is no longer refused for a missing "
+                               f"{question.missing_param}")
+    return run_loop(state.intention, injected, actuators, director=director,
+                    max_rounds=max_rounds, loop_id=state.loop_id, labels=labels,
+                    resume=replace(state, memory=injected), answer=accepted)
