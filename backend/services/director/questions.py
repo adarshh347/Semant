@@ -80,6 +80,18 @@ class Question:
                 "options": list(self.options), "grounded_in": dict(self.grounded_in),
                 "round": self.round_index}
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Question":
+        """The inverse of `to_dict`. A3 needs it: a loop that is waiting for an answer may have to
+        be written down and read back before the answer arrives."""
+        return cls(step_id=str(data.get("step_id", "")),
+                   actuator=str(data.get("actuator", "")),
+                   missing_param=str(data.get("missing_param", "")),
+                   text=str(data.get("text", "")),
+                   options=tuple(str(o) for o in (data.get("options") or ())),
+                   grounded_in=dict(data.get("grounded_in") or {}),
+                   round_index=int(data.get("round", 0)))
+
 
 @dataclass(frozen=True)
 class Proposal:
