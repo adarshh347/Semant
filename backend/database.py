@@ -113,6 +113,14 @@ scene_version_collection = database.get_collection("scene_versions")
 # until they adopt the same pattern.
 vision_run_collection = database.get_collection("vision_runs")
 
+# --- Corpus runs (CIRCUIT-002 · SURFACE-002) ---
+# run_collection: one document per corpus run — the RunView the API serves, plus A3's serialized
+# ResumeState. Unlike `vision_runs` this is NOT write-behind observability: an `awaiting_answer`
+# run is RESUMED FROM this document, so a failed write means the curator's answer would have
+# nowhere to land, and the route must say so rather than report a run that cannot be continued. It
+# holds no authoritative geometry either — every suggestion in it is quarantined and uncommitted.
+run_collection = database.get_collection("runs")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""
