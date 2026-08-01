@@ -1,0 +1,53 @@
+# Apple Silicon (arm64 / MPS) sibling of requirements-ml.txt — WEIGHTS-001 Mac gate, 2026-08-01.
+#
+# WHY A SEPARATE FILE, not an edit to requirements-ml.txt: that file pins the cu130 index on
+# purpose, and its comment says so — the pins are there to stop a future `pip install -r` from
+# silently reinstalling the CPU wheel and leaving the GTX 1650 box GPU-idle. Editing it to suit a
+# Mac would re-break exactly what it is defending. The two boxes get two files.
+#
+# THE VERSIONS ARE IDENTICAL. The only difference is the INDEX: drop
+# `--extra-index-url https://download.pytorch.org/whl/cu130` and default PyPI resolves the same
+# torch 2.13.0 / torchvision 0.28.0 as arm64 wheels with MPS built in. Nothing was downgraded to
+# make this work, so a mark produced here and a mark produced on the CUDA box came out of the same
+# model version — which is the whole point of pinning in the first place.
+#
+# Verified on this box (M-series, macOS 25.5, Python 3.12.13):
+#     torch.backends.mps.is_available() -> True, matmul on device OK
+#     torchvision.ops.nms imports (the "operator torchvision::nms does not exist" trap is absent)
+#     backend suite: 1040 passed, 9 skipped
+#
+# Install:
+#     pip install -r requirements-ml-mps.txt
+
+torch==2.13.0
+torchvision==0.28.0
+transformers
+pillow
+numpy
+
+# Phase 2a — garment segmentation. Same as the CUDA file; both have arm64 wheels.
+ultralytics
+opencv-python-headless
+
+# Exact-mask refiner: SAM 2.1 Hiera Tiny. No wheel is published for arm64, but the sdist builds
+# from source here in seconds with no CUDA extension involved. Checkpoint is NOT vendored —
+# `python scripts/fetch_weights.py` places it at models/sam2.1_hiera_tiny.pt.
+sam2==1.1.0
+
+# CIRCUIT-001 P6-I — Intrinsic (Careaga/Aksoy Ordinal Shading): light_field / shadow_field.
+# Same GitHub-only install as the CUDA file, and the same warning applies: do NOT `pip install
+# intrinsic` from PyPI, that is an unrelated stub also versioned 0.0.1.
+# Re-verified with `pip install --dry-run` on this box: pulls chrislib + altered_midas and adds
+# scipy / scikit-image / timm / kornia, downgrading NONE of torch, numpy or transformers.
+#
+# TWO Mac-specific gotchas, both already handled in-tree — noted here so they are not rediscovered:
+#   1. `altered_midas` calls torch.hub.load() without trust_repo, so the first load BLOCKS on an
+#      interactive y/N prompt and returns None under pytest. Clear it once, deliberately:
+#          python scripts/fetch_weights.py --trust-hub-repos
+#   2. `run_gray_pipeline` defaults device='cuda'. intrinsic_service._device() already resolves
+#      cpu here, and now passes it through explicitly; without that the call dies with
+#      "Torch not compiled with CUDA enabled".
+git+https://github.com/compphoto/Intrinsic
+
+# NOT INSTALLED, same as the CUDA file: the Fashionpedia stack (Attribute-Mask-RCNN /
+# Fashionformer). `vision/capabilities` reports it `deferred` pending FASHIONPEDIA_ENDPOINT.
