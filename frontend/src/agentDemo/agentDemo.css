@@ -1,0 +1,371 @@
+/* AGENT-DEMO — the run surface.
+ *
+ * Editorial tokens only (--bg / --surface / --ink / --line / --accent …), which are already
+ * redefined under the app's dark scheme, so this surface follows light and dark without a second
+ * palette of its own. No hard-coded hex anywhere below for that reason.
+ *
+ * Its own stylesheet and its own `ad-` prefix: nothing here may leak into `/differential`, and
+ * nothing there is depended on. The two surfaces have diverged on purpose. */
+
+.ad-shell {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3rem);
+    color: var(--ink);
+}
+
+.ad-shell--run {
+    display: grid;
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    gap: clamp(1.25rem, 3vw, 2.5rem);
+    align-items: start;
+    max-width: 84rem;
+}
+
+/* The run column is a companion to the reading, so it stays put while the output scrolls —
+   until there is no room for two columns, at which point stacking beats a cramped pair. */
+@media (min-width: 60rem) {
+    .ad-col--run { position: sticky; top: 1.5rem; }
+}
+@media (max-width: 60rem) {
+    .ad-shell--run { grid-template-columns: minmax(0, 1fr); }
+}
+
+.ad-col { min-width: 0; }
+
+/* ── entry ─────────────────────────────────────────────────────────────── */
+
+.ad-entry { display: flex; flex-direction: column; gap: 1.75rem; max-width: 46rem; margin: 0 auto; }
+.ad-entry-head { display: flex; flex-direction: column; gap: .5rem; }
+
+.ad-title {
+    font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+
+.ad-sub { margin: 0; color: var(--ink-muted); max-width: 38rem; line-height: 1.55; }
+
+.ad-field { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .625rem; }
+
+.ad-legend {
+    padding: 0;
+    font-size: .75rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+}
+
+.ad-corpus {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: .625rem;
+}
+
+.ad-thumb {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    padding: .375rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: .5rem;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .15s ease, background .15s ease;
+}
+.ad-thumb:hover { background: var(--surface-hover); }
+.ad-thumb.is-on { border-color: var(--accent); background: var(--accent-soft); }
+
+.ad-thumb img,
+.ad-thumb-blank {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: .3125rem;
+    background: var(--surface-2);
+    display: block;
+}
+
+.ad-thumb-meta { display: flex; flex-direction: column; gap: .125rem; min-width: 0; }
+.ad-thumb-title {
+    font-size: .8125rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* "no marks yet" is the argument, so it is legible rather than a whisper. */
+.ad-thumb-marks { font-size: .6875rem; color: var(--ink-subtle); }
+
+.ad-input,
+.ad-prompt {
+    width: 100%;
+    padding: .625rem .75rem;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: .5rem;
+    font: inherit;
+}
+.ad-prompt { resize: vertical; line-height: 1.5; }
+.ad-input:focus, .ad-prompt:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.ad-modes { display: grid; grid-template-columns: 1fr 1fr; gap: .625rem; }
+.ad-modes .ad-legend { grid-column: 1 / -1; }
+
+.ad-mode {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    padding: .75rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: .5rem;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+}
+.ad-mode.is-on { border-color: var(--accent); background: var(--accent-soft); }
+.ad-mode-name { font-weight: 600; font-size: .9375rem; }
+.ad-mode-hint { font-size: .8125rem; color: var(--ink-muted); line-height: 1.4; }
+
+.ad-start {
+    align-self: flex-start;
+    padding: .6875rem 1.5rem;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
+    border-radius: .5rem;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.ad-start:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── progress ──────────────────────────────────────────────────────────── */
+
+.ad-progress {
+    display: flex;
+    flex-direction: column;
+    gap: .875rem;
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: .625rem;
+}
+
+.ad-progress-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+
+.ad-status { display: inline-flex; align-items: center; gap: .4375rem; font-size: .8125rem; font-weight: 600; }
+.ad-status--stopped { color: var(--ink-muted); }
+.ad-status--awaiting_answer { color: var(--accent); }
+
+/* A pulse, not a bar: the loop does not know how many rounds remain, so nothing here
+   may imply a fraction. Stilled for reduced-motion. */
+.ad-pulse {
+    width: .5rem; height: .5rem;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: ad-pulse 1.4s ease-in-out infinite;
+}
+@keyframes ad-pulse { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ad-pulse { animation: none; opacity: .8; } }
+
+.ad-weakest { font-size: .75rem; color: var(--ink-muted); }
+.ad-intention { margin: 0; font-size: .9375rem; line-height: 1.5; }
+
+.ad-rounds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .625rem; }
+.ad-round { padding: .625rem .75rem; background: var(--surface-2); border-radius: .5rem; }
+.ad-round-head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
+.ad-round-n { font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+.ad-round-weak { font-size: .75rem; color: var(--ink-subtle); font-variant-numeric: tabular-nums; }
+
+.ad-steps { list-style: none; margin: .375rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .3125rem; }
+.ad-step {
+    font-size: .6875rem;
+    padding: .125rem .4375rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: 'Spline Sans Mono', ui-monospace, monospace;
+}
+.ad-round-note { margin: .4375rem 0 0; font-size: .8125rem; color: var(--ink-muted); line-height: 1.45; }
+
+.ad-stop { margin: 0; font-size: .8125rem; line-height: 1.5; padding: .5rem .625rem; border-radius: .375rem; }
+.ad-stop--complete { color: var(--ink-muted); }
+.ad-stop--stopped { color: var(--ink); background: var(--surface-2); }
+
+.ad-quiet { margin: 0; font-size: .8125rem; color: var(--ink-subtle); }
+.ad-error { margin: 0; font-size: .8125rem; color: var(--accent-deep); }
+
+/* ── question (A2/A3) ──────────────────────────────────────────────────── */
+
+.ad-question {
+    display: flex;
+    flex-direction: column;
+    gap: .625rem;
+    padding: 1rem;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: .625rem;
+}
+.ad-question-text { margin: 0; font-size: 1rem; line-height: 1.4; }
+.ad-question-why { margin: 0; font-size: .8125rem; color: var(--ink-muted); line-height: 1.5; }
+.ad-question-ground { margin: 0; font-size: .75rem; color: var(--ink-subtle); }
+.ad-question-ground code { font-family: 'Spline Sans Mono', ui-monospace, monospace; }
+
+.ad-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .375rem; }
+.ad-option {
+    width: 100%;
+    text-align: left;
+    padding: .5rem .625rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: .4375rem;
+    font: inherit;
+    font-size: .875rem;
+    color: inherit;
+    cursor: pointer;
+}
+.ad-option:hover:not(:disabled) { border-color: var(--accent); }
+.ad-option:disabled { opacity: .5; cursor: not-allowed; }
+
+.ad-answer-form { display: flex; gap: .375rem; }
+.ad-answer-send {
+    padding: .5rem .875rem;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
+    border-radius: .4375rem;
+    font: inherit;
+    font-size: .8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ad-answer-send:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── production records ────────────────────────────────────────────────── */
+
+.ad-prod {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: .625rem;
+}
+.ad-h2 { margin: 0; font-size: .9375rem; font-weight: 600; }
+.ad-prod-head { display: flex; flex-direction: column; gap: .5rem; }
+.ad-prod-summary { display: flex; flex-wrap: wrap; gap: .3125rem; }
+
+.ad-chip {
+    font-size: .6875rem;
+    padding: .125rem .4375rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--ink-muted);
+}
+.ad-chip--measured { background: var(--accent-soft); color: var(--accent-deep); }
+.ad-chip--refused { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+
+.ad-prod-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+
+.ad-prod-row {
+    padding: .625rem .75rem;
+    background: var(--surface-2);
+    border-radius: .5rem;
+    border-left: 2px solid transparent;
+}
+/* A refusal is a result and reads as one — marked, never greyed out. */
+.ad-prod-row.is-refused { border-left-color: var(--accent); }
+
+.ad-prod-top { display: flex; align-items: baseline; gap: .5rem; }
+.ad-actuator { font-weight: 600; font-size: .8125rem; }
+.ad-step-id,
+.ad-latency {
+    font-size: .6875rem;
+    color: var(--ink-subtle);
+    font-family: 'Spline Sans Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+}
+.ad-latency { margin-left: auto; }
+
+.ad-prod-meta { display: flex; flex-wrap: wrap; gap: .75rem; margin: .375rem 0 0; }
+.ad-prod-meta > div { display: flex; gap: .25rem; align-items: baseline; min-width: 0; }
+.ad-prod-meta dt { font-size: .625rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-subtle); }
+.ad-prod-meta dd {
+    margin: 0;
+    font-size: .6875rem;
+    font-family: 'Spline Sans Mono', ui-monospace, monospace;
+    overflow-wrap: anywhere;
+}
+
+.ad-refusal { display: flex; flex-direction: column; gap: .1875rem; margin: .4375rem 0 0; }
+.ad-refusal-tag {
+    font-size: .6875rem;
+    font-weight: 600;
+    color: var(--accent-deep);
+    font-family: 'Spline Sans Mono', ui-monospace, monospace;
+}
+.ad-refusal-detail { font-size: .75rem; color: var(--ink-muted); line-height: 1.45; }
+.ad-produced-none { margin-top: .4375rem; }
+
+.ad-produced { list-style: none; margin: .4375rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .25rem; }
+.ad-produced-item { display: flex; align-items: baseline; gap: .4375rem; font-size: .6875rem; }
+.ad-epi {
+    padding: .0625rem .375rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    white-space: nowrap;
+}
+.ad-epi--measured { border-color: var(--accent); color: var(--accent-deep); }
+.ad-produced-kind { color: var(--ink-muted); }
+.ad-produced-id,
+.ad-produced-conf {
+    font-family: 'Spline Sans Mono', ui-monospace, monospace;
+    color: var(--ink-subtle);
+    font-variant-numeric: tabular-nums;
+}
+.ad-produced-conf { margin-left: auto; }
+
+/* ── output ────────────────────────────────────────────────────────────── */
+
+.ad-output { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.ad-output--empty {
+    padding: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: .625rem;
+}
+.ad-empty-reason { margin: 0; font-size: .9375rem; line-height: 1.55; }
+.ad-empty-note { margin: 0; font-size: .8125rem; color: var(--ink-subtle); }
+
+.ad-figures { display: flex; flex-direction: column; gap: 1.25rem; }
+.ad-figure { margin: 0; display: flex; flex-direction: column; gap: .375rem; }
+.ad-figure-cap { display: flex; gap: .5rem; align-items: baseline; font-size: .75rem; }
+.ad-figure-label { font-weight: 600; }
+.ad-figure-act {
+    color: var(--ink-subtle);
+    font-family: 'Spline Sans Mono', ui-monospace, monospace;
+}
+
+.ad-again {
+    align-self: flex-start;
+    padding: .4375rem .875rem;
+    background: transparent;
+    color: var(--ink-muted);
+    border: 1px solid var(--line);
+    border-radius: .4375rem;
+    font: inherit;
+    font-size: .8125rem;
+    cursor: pointer;
+}
+.ad-again:hover { color: var(--ink); border-color: var(--line-strong); }
