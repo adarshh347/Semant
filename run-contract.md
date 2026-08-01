@@ -119,6 +119,30 @@ object. A manifest listing only what ran would make a plan of five steps look li
   whole corpus. `resolve_corpus` alone would default such a step to the FOCUS image — right for a
   plan a curator wrote, wrong for a run whose premise is a *set* of images.
 
+## Lane B swap notes — three concrete deltas [addendum]
+
+Lane B (#114) shipped `frontend/src/agentDemo/` against this contract before the routes existed,
+with its own `runViewFixture.js` written from the spec and a docstring saying it should be deleted
+when Lane A's lands. Comparing the two, three things need a change on the Lane B side when the
+mock is swapped for the live endpoint. None of them is a disagreement about the shape — Lane B's
+normalisers drop unknown fields, so the real payload renders today — but each would show something
+subtly wrong.
+
+1. **`produced[].id` is `null`; use `ref` as the key and the handle.** `ProductionPanel` does
+   `key={p.id}` and renders `{p.id}`. Against the real payload every key is `null` (React duplicate
+   keys) and the id column is blank. `id` stays null on purpose — a quarantined suggestion has no
+   stored id until a curator accepts it, and emitting one would dress a proposal as a record. `ref`
+   (`{run_id}:{step_id}#{n}`) is the run-local handle provided for exactly this.
+2. **Adopt `status` on a production record.** `normalizeProductionRecord` drops it, so "produced
+   nothing" is inferred from an empty `produced[]`. That conflates three different outcomes the
+   backend distinguishes: `empty` (ran, honestly found nothing), `unavailable` (the model was
+   down), `skipped` (an input never arrived). The panel already argues that a refusal is a result
+   rather than an absence; the same argument applies here.
+3. **`answer` explains a REFUSED answer.** POST `/answer` returns the updated view directly. An
+   empty or unroutable answer comes back still `awaiting_answer`, with the same question and
+   `answer.accepted: false` plus `answer.why`. Without reading it the page re-shows the question
+   with no indication that the last attempt was declined, which reads as a lost click.
+
 ## Ownership
 - **Lane A** implements the routes + assembles `RunView`/`ProductionRecord` and owns
   `runViewFixture` (`backend/tests/fixtures/run_view_fixture.{py,json}` — the `.py` generates it
