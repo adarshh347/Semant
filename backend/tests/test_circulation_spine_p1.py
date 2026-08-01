@@ -48,7 +48,15 @@ class FakeCollection:
                 if any(e.get("event_id") == v["$ne"] for e in doc.get("events", [])):
                     return False
             elif isinstance(v, dict) and "$in" in v:
-                if doc.get(k) not in v["$in"]:
+                field = doc.get(k)
+                # Mongo matches `$in` against an ARRAY field element-wise: a post tagged
+                # ["facade", "stair"] matches {"general_tags": {"$in": ["facade"]}}. The scalar
+                # comparison alone made this fake reject a query the real driver answers, which
+                # is the one way a test double is worse than no double at all.
+                if isinstance(field, (list, tuple, set)):
+                    if not any(item in v["$in"] for item in field):
+                        return False
+                elif field not in v["$in"]:
                     return False
             elif isinstance(v, dict) and "$ne" in v:
                 if doc.get(k) == v["$ne"]:
