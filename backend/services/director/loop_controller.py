@@ -52,7 +52,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field, replace
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from .capabilities import Resource
 from .execution import EMPTY, OK, ActuatorRunner, ChainResult, execute
@@ -95,6 +95,17 @@ PROBE_RESOLVES = "resolves_cleanly"         # the shape runs; the empty proposal
 PROBE_NO_ASKABLE_DOOR = "no_askable_door"   # it is refused, but for the loop's own work (input)
 PROBE_QUESTION = "question_recovered"       # a missing PARAM — a human could unblock this
 
+# SURFACE-002 — the gate the loop resolves through, injectable.
+#
+# `resolve()` judges one image. A CORPUS is judged by `corpus.resolve_corpus`, which resolves each
+# image against its OWN packet and the comparative steps against the merged one — the distinction
+# that stops a field being planned on the colonnade because the rotunda had a region. The loop must
+# not choose between them: it does not know what a corpus is, and teaching it would put a second
+# notion of "runnable" inside the controller. So the gate arrives as an argument, defaulting to the
+# single-image one, and EVERY place the loop resolves uses the same one — including the closed-door
+# recheck, or a door could be judged shut by one gate and open by another.
+Resolver = Callable[..., Plan]
+
 
 def _sig(step: Step) -> str:
     """A stable identity for a step by WHAT it asks, not which round asked it — so re-proposing
@@ -102,7 +113,8 @@ def _sig(step: Step) -> str:
     return json.dumps([step.actuator, step.params], sort_keys=True, default=str)
 
 
-def _door_still_closed(step: Step, memory: WorkingMemory) -> bool:
+def _door_still_closed(step: Step, memory: WorkingMemory,
+                       resolve_fn: Resolver = resolve) -> bool:
     """Would this step STILL be refused, on the evidence that exists now?
 
     Asked by re-running the real gate on the step alone, rather than by re-implementing the
@@ -113,7 +125,7 @@ def _door_still_closed(step: Step, memory: WorkingMemory) -> bool:
     curator found the key, the door is no longer shut. A step refused for a missing param or an
     unknown actuator never re-opens, because no amount of looking at the picture supplies it.
     """
-    return bool(resolve([step], memory).refused)
+    return bool(resolve_fn([step], memory).refused)
 
 
 def _new_evidence(before: Dict[Resource, int], after: Dict[Resource, int]) -> Dict[str, int]:
@@ -182,7 +194,8 @@ def _askable_door(closed: Dict[str, Dict[str, Any]], memory: WorkingMemory,
 
 def _diagnostic_probe(intention: str, memory: WorkingMemory, *,
                       labels: Optional[Sequence[str]] = None,
-                      round_index: int = 0) -> Tuple[Optional[Question], Dict[str, Any]]:
+                      round_index: int = 0,
+                      resolve_fn: Resolver = resolve) -> Tuple[Optional[Question], Dict[str, Any]]:
     """A2-EXT — recover the signal an EMPTY proposal threw away.
 
     A2's ask-hook reads the closed-door list, so it only fires when something was refused. But a
@@ -226,7 +239,7 @@ def _diagnostic_probe(intention: str, memory: WorkingMemory, *,
         return None, record                   # nothing serves this intention — ask nothing
 
     stamped = [s if s.id else s.with_id(f"probe:{i}:{s.actuator}") for i, s in enumerate(steps)]
-    plan = resolve(stamped, memory, intention=intention)
+    plan = resolve_fn(stamped, memory, intention=intention)
     record["refused"] = [r.to_dict() for r in plan.refused]
     if not plan.refused:
         record["outcome"] = PROBE_RESOLVES
@@ -249,8 +262,8 @@ def _diagnostic_probe(intention: str, memory: WorkingMemory, *,
     return None, record
 
 
-def _confirmed_volunteer(question: Question,
-                         memory: WorkingMemory) -> Tuple[Optional[Question], Dict[str, Any]]:
+def _confirmed_volunteer(question: Question, memory: WorkingMemory,
+                         resolve_fn: Resolver = resolve) -> Tuple[Optional[Question], Dict[str, Any]]:
     """A2-EXT — validate a volunteered question instead of trusting it.
 
     `Proposal(steps=[], question=…)` lets a planner that already knows it is stuck say so. Taken on
@@ -269,7 +282,7 @@ def _confirmed_volunteer(question: Question,
         return None, record
 
     step = Step(actuator=question.actuator, id=question.step_id or question.actuator)
-    refused = resolve([step], memory).refused
+    refused = resolve_fn([step], memory).refused
     if not refused:
         record["why"] = f"'{question.actuator}' is not blocked on this memory — nothing to ask"
         return None, record
@@ -332,6 +345,25 @@ class RoundRecord:
                    suppressed=tuple(dict(r) for r in (data.get("suppressed") or ())),
                    reopened=tuple(data.get("reopened") or ()),
                    closed_doors_at_start=tuple(data.get("closed_doors_at_start") or ()))
+
+
+def _announced(record: "RoundRecord",
+               on_round: Optional[Callable[["RoundRecord"], None]]) -> "RoundRecord":
+    """Tell an observer a round happened, and never let it break the run.
+
+    Returns the record, so the announcement sits inside the append and cannot drift out of step
+    with the trace. SURFACE-002 needs progress out of a synchronous loop, and the only honest way
+    to get it is to say what has ALREADY been decided. The swallow is deliberate and narrow: a reporting callback
+    that raises would otherwise turn a run that was going fine into a failed one, which is the
+    observer changing the observation.
+    """
+    if on_round is None:
+        return record
+    try:
+        on_round(record)
+    except Exception:                              # noqa: BLE001 — see docstring
+        pass
+    return record
 
 
 @dataclass(frozen=True)
@@ -558,7 +590,9 @@ def run_loop(intention: str, memory: WorkingMemory,
              loop_id: str = "loop",
              labels: Optional[Sequence[str]] = None,
              resume: Optional[ResumeState] = None,
-             answer: Optional[Answer] = None) -> LoopResult:
+             answer: Optional[Answer] = None,
+             resolve_fn: Resolver = resolve,
+             on_round: Optional[Callable[["RoundRecord"], None]] = None) -> LoopResult:
     """propose → resolve → execute → evolve → decide → repeat.
 
     `actuators` is the registry every round executes against — `stub_registry()` (offline,
@@ -566,6 +600,16 @@ def run_loop(intention: str, memory: WorkingMemory,
     bridges real region data across rounds). `director` defaults to the rule-based Director; pass
     `Director(GroqPlanner())` for the model-backed planner. The intention is fixed for the life of
     the loop — re-planning is grounded only in evolved memory, never in a reworded prompt.
+
+    SURFACE-002 — `on_round` is called with each `RoundRecord` as it is appended, so a caller can
+    report progress while the loop is still working. It is told what happened; it cannot change
+    what happens next, and an exception from it is not allowed to end a run that is going fine —
+    an observer that breaks the thing it observes is not an observer.
+
+    SURFACE-002 — `resolve_fn` is the gate every round resolves through, defaulting to the
+    single-image `resolve()`. A corpus run passes `corpus.resolve_corpus`; nothing else about the
+    loop changes, because a corpus packet is a `WorkingMemory` and a routed registry is an
+    `ActuatorRunner` map.
 
     A3 — `resume` continues a loop that stopped at `awaiting_answer` instead of starting one:
     memory, executed signatures, closed doors and the prior rounds all carry forward, and round
@@ -618,7 +662,7 @@ def run_loop(intention: str, memory: WorkingMemory,
         for st in stamped:
             sig = _sig(st)
             if sig in closed:
-                if _door_still_closed(st, current):
+                if _door_still_closed(st, current, resolve_fn):
                     suppressed.append({"step": sig, "actuator": st.actuator,
                                        "reason": closed[sig].get("reason"),
                                        "detail": closed[sig].get("detail")})
@@ -630,15 +674,15 @@ def run_loop(intention: str, memory: WorkingMemory,
 
         # ── a round that only re-knocks shut doors got nowhere ────────────────────────────
         if not kept and suppressed:
-            rounds.append(RoundRecord(
+            rounds.append(_announced(RoundRecord(
                 index=i, verdict=STOP_ONLY_CLOSED_DOORS,
-                plan=resolve([], current, intention=intention).to_dict(),
+                plan=resolve_fn([], current, intention=intention).to_dict(),
                 suppressed=tuple(suppressed), reopened=tuple(reopened),
-                closed_doors_at_start=doors_at_start))
+                closed_doors_at_start=doors_at_start), on_round))
             stop_reason = STOP_ONLY_CLOSED_DOORS
             break
 
-        plan = resolve(kept, current, intention=intention)
+        plan = resolve_fn(kept, current, intention=intention)
 
         # ── shut the door on anything refused this round ──────────────────────────────────
         for r in plan.refused:
@@ -650,10 +694,10 @@ def run_loop(intention: str, memory: WorkingMemory,
 
         # Fixed point: the planner can only re-propose steps already run — nothing new to do.
         if plan.steps and sigs <= executed_sigs:
-            rounds.append(RoundRecord(
+            rounds.append(_announced(RoundRecord(
                 index=i, verdict=STOP_FIXED_POINT, plan=plan.to_dict(),
                 refused=refused_trace, suppressed=tuple(suppressed),
-                reopened=tuple(reopened), closed_doors_at_start=doors_at_start))
+                reopened=tuple(reopened), closed_doors_at_start=doors_at_start), on_round))
             stop_reason = STOP_FIXED_POINT
             break
 
@@ -661,10 +705,10 @@ def run_loop(intention: str, memory: WorkingMemory,
         # shut; the loop ends because there is no work, not because a refusal is fatal.
         if not plan.steps:
             reason = STOP_ONLY_REFUSALS if plan.refused else STOP_NOTHING_PLANNED
-            rounds.append(RoundRecord(
+            rounds.append(_announced(RoundRecord(
                 index=i, verdict=reason, plan=plan.to_dict(), refused=refused_trace,
                 suppressed=tuple(suppressed), reopened=tuple(reopened),
-                closed_doors_at_start=doors_at_start))
+                closed_doors_at_start=doors_at_start), on_round))
             stop_reason = reason
             break
 
@@ -676,11 +720,11 @@ def run_loop(intention: str, memory: WorkingMemory,
         current = chain.memory                          # re-plan next round on the EVOLVED memory
 
         verdict = _decide(plan, chain, added)
-        rounds.append(RoundRecord(
+        rounds.append(_announced(RoundRecord(
             index=i, verdict=verdict, plan=plan.to_dict(), new_evidence=added,
             chain=chain.provenance.to_dict(), weakest_link=chain.provenance.weakest_link,
             refused=refused_trace, suppressed=tuple(suppressed), reopened=tuple(reopened),
-            closed_doors_at_start=doors_at_start))
+            closed_doors_at_start=doors_at_start), on_round))
         if verdict != CONTINUE:
             stop_reason = verdict
             break
@@ -701,7 +745,7 @@ def run_loop(intention: str, memory: WorkingMemory,
     question: Optional[Question] = None
     volunteer_check: Optional[Dict[str, Any]] = None
     if volunteered is not None:
-        question, volunteer_check = _confirmed_volunteer(volunteered, current)
+        question, volunteer_check = _confirmed_volunteer(volunteered, current, resolve_fn)
     if question is None and stop_reason in (STOP_ONLY_CLOSED_DOORS, STOP_ONLY_REFUSALS,
                                             STOP_NOTHING_PLANNED, STOP_NO_NEW_EVIDENCE,
                                             STOP_FIXED_POINT):
@@ -714,7 +758,7 @@ def run_loop(intention: str, memory: WorkingMemory,
     if question is None and stop_reason == STOP_NOTHING_PLANNED and not closed:
         question, probe = _diagnostic_probe(
             intention, current, labels=labels,
-            round_index=rounds[-1].index if rounds else 0)
+            round_index=rounds[-1].index if rounds else 0, resolve_fn=resolve_fn)
 
     if question is not None:
         stop_reason = AWAITING_ANSWER
@@ -775,7 +819,9 @@ def _blocked_step(state: ResumeState, question: Question) -> Step:
 def resume_loop(prior: LoopResult, answer: str,
                 actuators: Dict[str, ActuatorRunner], *,
                 director: Optional[Director] = None, max_rounds: int = 4,
-                labels: Optional[Sequence[str]] = None) -> LoopResult:
+                labels: Optional[Sequence[str]] = None,
+                resolve_fn: Resolver = resolve,
+                on_round: Optional[Callable[["RoundRecord"], None]] = None) -> LoopResult:
     """A3 — the curator answers, and the loop carries on being the same loop.
 
     The whole gate in four moves: validate the answer against the question that earned it, inject
@@ -838,4 +884,5 @@ def resume_loop(prior: LoopResult, answer: str,
                                f"{question.missing_param}")
     return run_loop(state.intention, injected, actuators, director=director,
                     max_rounds=max_rounds, loop_id=state.loop_id, labels=labels,
-                    resume=replace(state, memory=injected), answer=accepted)
+                    resume=replace(state, memory=injected), answer=accepted,
+                    resolve_fn=resolve_fn, on_round=on_round)

@@ -1,0 +1,734 @@
+{
+  "answer": null,
+  "article": null,
+  "corpus": [
+    {
+      "image_url": "https://example.invalid/0.jpg",
+      "post_id": "507f1f77bcf86cd799439021",
+      "title": "Facade"
+    },
+    {
+      "image_url": "https://example.invalid/1.jpg",
+      "post_id": "507f1f77bcf86cd799439022",
+      "title": "Rotunda"
+    }
+  ],
+  "created_at": null,
+  "intention": "read the material of the surface",
+  "mode": "explore",
+  "notes": [],
+  "production_records": [
+    {
+      "actuator": "find_parts",
+      "adapter": "find_parts",
+      "confidence": 0.62,
+      "consumed": [],
+      "detail": "produced 1 suggestion(s)",
+      "image": "507f1f77bcf86cd799439021",
+      "inputs_used": {
+        "ground": 0,
+        "image": 2,
+        "mark": 0,
+        "percept": 0,
+        "phrase": 0,
+        "reading": 0,
+        "region": 0,
+        "source": 0
+      },
+      "latency_ms": 0.0,
+      "model": "fixture::find_parts",
+      "params": {
+        "image": "507f1f77bcf86cd799439021"
+      },
+      "produced": [
+        {
+          "confidence": 0.62,
+          "epistemic_status": "uncertain",
+          "id": null,
+          "kind": "brush_field",
+          "producer": "find_parts",
+          "ref": "run_fixture01:read_material:0:find_parts@507f1f77bcf86cd799439021#0"
+        }
+      ],
+      "refusal": null,
+      "round": 0,
+      "status": "ok",
+      "step_id": "read_material:0:find_parts@507f1f77bcf86cd799439021"
+    },
+    {
+      "actuator": "material_field",
+      "adapter": "material_field",
+      "confidence": 0.62,
+      "consumed": [],
+      "detail": "produced 1 suggestion(s)",
+      "image": "507f1f77bcf86cd799439021",
+      "inputs_used": {
+        "ground": 0,
+        "image": 2,
+        "mark": 1,
+        "percept": 0,
+        "phrase": 0,
+        "reading": 0,
+        "region": 1,
+        "source": 0
+      },
+      "latency_ms": 0.0,
+      "model": "fixture::material_field",
+      "params": {
+        "image": "507f1f77bcf86cd799439021"
+      },
+      "produced": [
+        {
+          "confidence": 0.62,
+          "epistemic_status": "measured",
+          "id": null,
+          "kind": "brush_field",
+          "producer": "material_field",
+          "ref": "run_fixture01:read_material:1:material_field@507f1f77bcf86cd799439021#0"
+        }
+      ],
+      "refusal": null,
+      "round": 0,
+      "status": "ok",
+      "step_id": "read_material:1:material_field@507f1f77bcf86cd799439021"
+    },
+    {
+      "actuator": "semantic_read",
+      "adapter": "semantic_read",
+      "confidence": 0.62,
+      "consumed": [],
+      "detail": "produced 1 suggestion(s)",
+      "image": "507f1f77bcf86cd799439021",
+      "inputs_used": {
+        "ground": 0,
+        "image": 2,
+        "mark": 2,
+        "percept": 0,
+        "phrase": 0,
+        "reading": 0,
+        "region": 1,
+        "source": 0
+      },
+      "latency_ms": 0.0,
+      "model": "fixture::semantic_read",
+      "params": {
+        "image": "507f1f77bcf86cd799439021",
+        "question": "What is this made of, and where does it recur?"
+      },
+      "produced": [
+        {
+          "confidence": 0.62,
+          "epistemic_status": "interpretive",
+          "id": null,
+          "kind": "brush_field",
+          "producer": "semantic_read",
+          "ref": "run_fixture01:read_material:2:semantic_read@507f1f77bcf86cd799439021#0"
+        }
+      ],
+      "refusal": null,
+      "round": 0,
+      "status": "ok",
+      "step_id": "read_material:2:semantic_read@507f1f77bcf86cd799439021"
+    },
+    {
+      "actuator": "find_parts",
+      "adapter": "find_parts",
+      "confidence": 0.62,
+      "consumed": [],
+      "detail": "produced 1 suggestion(s)",
+      "image": "507f1f77bcf86cd799439022",
+      "inputs_used": {
+        "ground": 0,
+        "image": 2,
+        "mark": 2,
+        "percept": 0,
+        "phrase": 0,
+        "reading": 0,
+        "region": 1,
+        "source": 0
+      },
+      "latency_ms": 0.0,
+      "model": "fixture::find_parts",
+      "params": {
+        "image": "507f1f77bcf86cd799439022"
+      },
+      "produced": [
+        {
+          "confidence": 0.62,
+          "epistemic_status": "uncertain",
+          "id": null,
+          "kind": "brush_field",
+          "producer": "find_parts",
+          "ref": "run_fixture01:read_material:0:find_parts@507f1f77bcf86cd799439022#0"
+        }
+      ],
+      "refusal": null,
+      "round": 0,
+      "status": "ok",
+      "step_id": "read_material:0:find_parts@507f1f77bcf86cd799439022"
+    },
+    {
+      "actuator": "material_field",
+      "adapter": "material_field",
+      "confidence": 0.62,
+      "consumed": [],
+      "detail": "produced 1 suggestion(s)",
+      "image": "507f1f77bcf86cd799439022",
+      "inputs_used": {
+        "ground": 0,
+        "image": 2,
+        "mark": 3,
+        "percept": 0,
+        "phrase": 0,
+        "reading": 0,
+        "region": 2,
+        "source": 0
+      },
+      "latency_ms": 0.0,
+      "model": "fixture::material_field",
+      "params": {
+        "image": "507f1f77bcf86cd799439022"
+      },
+      "produced": [
+        {
+          "confidence": 0.62,
+          "epistemic_status": "measured",
+          "id": null,
+          "kind": "brush_field",
+          "producer": "material_field",
+          "ref": "run_fixture01:read_material:1:material_field@507f1f77bcf86cd799439022#0"
+        }
+      ],
+      "refusal": null,
+      "round": 0,
+      "status": "ok",
+      "step_id": "read_material:1:material_field@507f1f77bcf86cd799439022"
+    },
+    {
+      "actuator": "semantic_read",
+      "adapter": "semantic_read",
+      "confidence": 0.62,
+      "consumed": [],
+      "detail": "produced 1 suggestion(s)",
+      "image": "507f1f77bcf86cd799439022",
+      "inputs_used": {
+        "ground": 0,
+        "image": 2,
+        "mark": 4,
+        "percept": 0,
+        "phrase": 0,
+        "reading": 0,
+        "region": 2,
+        "source": 0
+      },
+      "latency_ms": 0.0,
+      "model": "fixture::semantic_read",
+      "params": {
+        "image": "507f1f77bcf86cd799439022",
+        "question": "What is this made of, and where does it recur?"
+      },
+      "produced": [
+        {
+          "confidence": 0.62,
+          "epistemic_status": "interpretive",
+          "id": null,
+          "kind": "brush_field",
+          "producer": "semantic_read",
+          "ref": "run_fixture01:read_material:2:semantic_read@507f1f77bcf86cd799439022#0"
+        }
+      ],
+      "refusal": null,
+      "round": 0,
+      "status": "ok",
+      "step_id": "read_material:2:semantic_read@507f1f77bcf86cd799439022"
+    }
+  ],
+  "question": null,
+  "rounds": [
+    {
+      "chain": {
+        "chain_id": "run_fixture01:r0",
+        "complete": true,
+        "gaps": [],
+        "intention": "read the material of the surface",
+        "lineage": [
+          {
+            "actuator": "find_parts",
+            "adapter": "find_parts",
+            "confidence": 0.62,
+            "detail": "produced 1 suggestion(s)",
+            "inputs_used": {
+              "ground": 0,
+              "image": 2,
+              "mark": 0,
+              "percept": 0,
+              "phrase": 0,
+              "reading": 0,
+              "region": 0,
+              "source": 0
+            },
+            "latency_ms": 0.0,
+            "model": "fixture::find_parts",
+            "params": {
+              "image": "507f1f77bcf86cd799439021"
+            },
+            "position": 0,
+            "status": "ok",
+            "step_id": "read_material:0:find_parts@507f1f77bcf86cd799439021"
+          },
+          {
+            "actuator": "material_field",
+            "adapter": "material_field",
+            "confidence": 0.62,
+            "detail": "produced 1 suggestion(s)",
+            "inputs_used": {
+              "ground": 0,
+              "image": 2,
+              "mark": 1,
+              "percept": 0,
+              "phrase": 0,
+              "reading": 0,
+              "region": 1,
+              "source": 0
+            },
+            "latency_ms": 0.0,
+            "model": "fixture::material_field",
+            "params": {
+              "image": "507f1f77bcf86cd799439021"
+            },
+            "position": 1,
+            "status": "ok",
+            "step_id": "read_material:1:material_field@507f1f77bcf86cd799439021"
+          },
+          {
+            "actuator": "semantic_read",
+            "adapter": "semantic_read",
+            "confidence": 0.62,
+            "detail": "produced 1 suggestion(s)",
+            "inputs_used": {
+              "ground": 0,
+              "image": 2,
+              "mark": 2,
+              "percept": 0,
+              "phrase": 0,
+              "reading": 0,
+              "region": 1,
+              "source": 0
+            },
+            "latency_ms": 0.0,
+            "model": "fixture::semantic_read",
+            "params": {
+              "image": "507f1f77bcf86cd799439021",
+              "question": "What is this made of, and where does it recur?"
+            },
+            "position": 2,
+            "status": "ok",
+            "step_id": "read_material:2:semantic_read@507f1f77bcf86cd799439021"
+          },
+          {
+            "actuator": "find_parts",
+            "adapter": "find_parts",
+            "confidence": 0.62,
+            "detail": "produced 1 suggestion(s)",
+            "inputs_used": {
+              "ground": 0,
+              "image": 2,
+              "mark": 2,
+              "percept": 0,
+              "phrase": 0,
+              "reading": 0,
+              "region": 1,
+              "source": 0
+            },
+            "latency_ms": 0.0,
+            "model": "fixture::find_parts",
+            "params": {
+              "image": "507f1f77bcf86cd799439022"
+            },
+            "position": 3,
+            "status": "ok",
+            "step_id": "read_material:0:find_parts@507f1f77bcf86cd799439022"
+          },
+          {
+            "actuator": "material_field",
+            "adapter": "material_field",
+            "confidence": 0.62,
+            "detail": "produced 1 suggestion(s)",
+            "inputs_used": {
+              "ground": 0,
+              "image": 2,
+              "mark": 3,
+              "percept": 0,
+              "phrase": 0,
+              "reading": 0,
+              "region": 2,
+              "source": 0
+            },
+            "latency_ms": 0.0,
+            "model": "fixture::material_field",
+            "params": {
+              "image": "507f1f77bcf86cd799439022"
+            },
+            "position": 4,
+            "status": "ok",
+            "step_id": "read_material:1:material_field@507f1f77bcf86cd799439022"
+          },
+          {
+            "actuator": "semantic_read",
+            "adapter": "semantic_read",
+            "confidence": 0.62,
+            "detail": "produced 1 suggestion(s)",
+            "inputs_used": {
+              "ground": 0,
+              "image": 2,
+              "mark": 4,
+              "percept": 0,
+              "phrase": 0,
+              "reading": 0,
+              "region": 2,
+              "source": 0
+            },
+            "latency_ms": 0.0,
+            "model": "fixture::semantic_read",
+            "params": {
+              "image": "507f1f77bcf86cd799439022",
+              "question": "What is this made of, and where does it recur?"
+            },
+            "position": 5,
+            "status": "ok",
+            "step_id": "read_material:2:semantic_read@507f1f77bcf86cd799439022"
+          }
+        ],
+        "planner": "rule_based",
+        "refused": [],
+        "steps_empty": 0,
+        "steps_ok": 6,
+        "steps_refused": 0,
+        "steps_skipped": 0,
+        "steps_total": 6,
+        "steps_unavailable": 0,
+        "weakest_link": 0.62,
+        "workflow": null
+      },
+      "closed_doors_at_start": [],
+      "new_evidence": {
+        "mark": 4,
+        "region": 2
+      },
+      "plan": {
+        "complete": true,
+        "intention": "read the material of the surface",
+        "notes": [],
+        "planner": "rule_based",
+        "refused": [],
+        "reordered": true,
+        "steps": [
+          {
+            "actuator": "find_parts",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439021"
+            },
+            "step_id": "read_material:0:find_parts@507f1f77bcf86cd799439021"
+          },
+          {
+            "actuator": "material_field",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439021"
+            },
+            "step_id": "read_material:1:material_field@507f1f77bcf86cd799439021"
+          },
+          {
+            "actuator": "semantic_read",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439021",
+              "question": "What is this made of, and where does it recur?"
+            },
+            "step_id": "read_material:2:semantic_read@507f1f77bcf86cd799439021"
+          },
+          {
+            "actuator": "find_parts",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439022"
+            },
+            "step_id": "read_material:0:find_parts@507f1f77bcf86cd799439022"
+          },
+          {
+            "actuator": "material_field",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439022"
+            },
+            "step_id": "read_material:1:material_field@507f1f77bcf86cd799439022"
+          },
+          {
+            "actuator": "semantic_read",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439022",
+              "question": "What is this made of, and where does it recur?"
+            },
+            "step_id": "read_material:2:semantic_read@507f1f77bcf86cd799439022"
+          }
+        ],
+        "workflow": null
+      },
+      "refused": [],
+      "reopened": [],
+      "round": 0,
+      "suppressed": [],
+      "verdict": "continue",
+      "weakest_link": 0.62
+    },
+    {
+      "chain": null,
+      "closed_doors_at_start": [],
+      "new_evidence": {},
+      "plan": {
+        "complete": true,
+        "intention": "read the material of the surface",
+        "notes": [],
+        "planner": "rule_based",
+        "refused": [],
+        "reordered": true,
+        "steps": [
+          {
+            "actuator": "find_parts",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439021"
+            },
+            "step_id": "read_material:0:find_parts@507f1f77bcf86cd799439021"
+          },
+          {
+            "actuator": "material_field",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439021"
+            },
+            "step_id": "read_material:1:material_field@507f1f77bcf86cd799439021"
+          },
+          {
+            "actuator": "semantic_read",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439021",
+              "question": "What is this made of, and where does it recur?"
+            },
+            "step_id": "read_material:2:semantic_read@507f1f77bcf86cd799439021"
+          },
+          {
+            "actuator": "find_parts",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439022"
+            },
+            "step_id": "read_material:0:find_parts@507f1f77bcf86cd799439022"
+          },
+          {
+            "actuator": "material_field",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439022"
+            },
+            "step_id": "read_material:1:material_field@507f1f77bcf86cd799439022"
+          },
+          {
+            "actuator": "semantic_read",
+            "note": "",
+            "params": {
+              "image": "507f1f77bcf86cd799439022",
+              "question": "What is this made of, and where does it recur?"
+            },
+            "step_id": "read_material:2:semantic_read@507f1f77bcf86cd799439022"
+          }
+        ],
+        "workflow": null
+      },
+      "refused": [],
+      "reopened": [],
+      "round": 1,
+      "suppressed": [],
+      "verdict": "fixed_point",
+      "weakest_link": null
+    }
+  ],
+  "run_id": "run_fixture01",
+  "status": "complete",
+  "stop_reason": "fixed_point",
+  "suggestions": [
+    {
+      "confidence": 0.62,
+      "epistemic_status": "uncertain",
+      "geometry": {
+        "kind": "soft_mask",
+        "strokes": [
+          {
+            "points": [
+              [
+                0.5,
+                0.5
+              ]
+            ],
+            "radius": 0.05
+          }
+        ]
+      },
+      "post_id": "507f1f77bcf86cd799439021",
+      "producer": "find_parts",
+      "provenance": {
+        "adapter": "find_parts",
+        "model": "fixture::find_parts",
+        "run_id": "run_fixture01",
+        "step_id": "read_material:0:find_parts@507f1f77bcf86cd799439021"
+      },
+      "role": "find_parts",
+      "type": "brush_field"
+    },
+    {
+      "confidence": 0.62,
+      "epistemic_status": "measured",
+      "geometry": {
+        "kind": "soft_mask",
+        "strokes": [
+          {
+            "points": [
+              [
+                0.5,
+                0.5
+              ]
+            ],
+            "radius": 0.05
+          }
+        ]
+      },
+      "post_id": "507f1f77bcf86cd799439021",
+      "producer": "material_field",
+      "provenance": {
+        "adapter": "material_field",
+        "model": "fixture::material_field",
+        "run_id": "run_fixture01",
+        "step_id": "read_material:1:material_field@507f1f77bcf86cd799439021"
+      },
+      "role": "material_field",
+      "type": "brush_field"
+    },
+    {
+      "confidence": 0.62,
+      "epistemic_status": "interpretive",
+      "geometry": {
+        "kind": "soft_mask",
+        "strokes": [
+          {
+            "points": [
+              [
+                0.5,
+                0.5
+              ]
+            ],
+            "radius": 0.05
+          }
+        ]
+      },
+      "post_id": "507f1f77bcf86cd799439021",
+      "producer": "semantic_read",
+      "provenance": {
+        "adapter": "semantic_read",
+        "model": "fixture::semantic_read",
+        "run_id": "run_fixture01",
+        "step_id": "read_material:2:semantic_read@507f1f77bcf86cd799439021"
+      },
+      "role": "semantic_read",
+      "type": "brush_field"
+    },
+    {
+      "confidence": 0.62,
+      "epistemic_status": "uncertain",
+      "geometry": {
+        "kind": "soft_mask",
+        "strokes": [
+          {
+            "points": [
+              [
+                0.5,
+                0.5
+              ]
+            ],
+            "radius": 0.05
+          }
+        ]
+      },
+      "post_id": "507f1f77bcf86cd799439022",
+      "producer": "find_parts",
+      "provenance": {
+        "adapter": "find_parts",
+        "model": "fixture::find_parts",
+        "run_id": "run_fixture01",
+        "step_id": "read_material:0:find_parts@507f1f77bcf86cd799439022"
+      },
+      "role": "find_parts",
+      "type": "brush_field"
+    },
+    {
+      "confidence": 0.62,
+      "epistemic_status": "measured",
+      "geometry": {
+        "kind": "soft_mask",
+        "strokes": [
+          {
+            "points": [
+              [
+                0.5,
+                0.5
+              ]
+            ],
+            "radius": 0.05
+          }
+        ]
+      },
+      "post_id": "507f1f77bcf86cd799439022",
+      "producer": "material_field",
+      "provenance": {
+        "adapter": "material_field",
+        "model": "fixture::material_field",
+        "run_id": "run_fixture01",
+        "step_id": "read_material:1:material_field@507f1f77bcf86cd799439022"
+      },
+      "role": "material_field",
+      "type": "brush_field"
+    },
+    {
+      "confidence": 0.62,
+      "epistemic_status": "interpretive",
+      "geometry": {
+        "kind": "soft_mask",
+        "strokes": [
+          {
+            "points": [
+              [
+                0.5,
+                0.5
+              ]
+            ],
+            "radius": 0.05
+          }
+        ]
+      },
+      "post_id": "507f1f77bcf86cd799439022",
+      "producer": "semantic_read",
+      "provenance": {
+        "adapter": "semantic_read",
+        "model": "fixture::semantic_read",
+        "run_id": "run_fixture01",
+        "step_id": "read_material:2:semantic_read@507f1f77bcf86cd799439022"
+      },
+      "role": "semantic_read",
+      "type": "brush_field"
+    }
+  ],
+  "updated_at": "2026-08-01T12:00:00+00:00",
+  "weakest_link": 0.62
+}

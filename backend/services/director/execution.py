@@ -33,6 +33,7 @@ this gate run unattended.
 """
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple
 
@@ -154,6 +155,10 @@ class StepRecord:
     params: Dict[str, Any] = field(default_factory=dict)
     skip_reason: str = ""
     blocked_by: Tuple[str, ...] = ()     # step ids whose failure caused this skip
+    # SURFACE-002: wall-clock around the DISPATCH, and None for a step that never reached one.
+    # A skipped or unrouted step has no duration to report, and writing 0 would say "instant"
+    # where the truth is "never ran" — the same conflation `confidence: None` exists to avoid.
+    latency_ms: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {
@@ -161,6 +166,7 @@ class StepRecord:
             "position": self.position, "confidence": self.confidence,
             "model": self.model, "adapter": self.adapter, "detail": self.detail,
             "inputs_used": dict(self.inputs_used), "params": dict(self.params),
+            "latency_ms": self.latency_ms,
         }
         if self.skip_reason:
             d["skip_reason"] = self.skip_reason
@@ -328,14 +334,16 @@ def execute(plan: Plan, memory: WorkingMemory,
 
         # The step is handed the CURRENT packet — this is the "never fires blind" rule
         # actually taking effect, not merely being asserted in a docstring.
+        started = time.perf_counter()
         result = runner(step, current)
+        elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
         results.append(result)
         lineage.append(StepRecord(
             step_id=step.id, actuator=step.actuator, status=result.status, position=position,
             confidence=result.confidence, model=result.model, adapter=result.adapter,
             detail=result.detail,
             inputs_used={k.value: v for k, v in available.items()},
-            params=dict(step.params)))
+            params=dict(step.params), latency_ms=elapsed_ms))
 
         if result.succeeded and result.produced:
             current = current.evolve(result.produced, step_id=step.id)
