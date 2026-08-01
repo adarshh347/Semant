@@ -23,6 +23,14 @@ a round that added nothing, a round of only refusals/empties, or the `max_rounds
 multi-round score, which would be exactly the fabrication the chain-provenance module exists to
 prevent.
 
+ASK, RATHER THAN DEAD-END (A2, extended by A2-EXT). At a stop point — never mid-round — the loop
+may emit one grounded question when the only thing between it and progress is something a person
+could say. A2 read that off the closed doors, which meant it only fired when something had been
+REFUSED; a planner proposing nothing at all refuses nothing, so `nothing_planned` stayed a silent
+dead end. A2-EXT closes it with a deterministic rule-based diagnostic (`_diagnostic_probe`) that
+tells "no actuator serves this" apart from "one does, and I lack the phrase" — without asking the
+model anything a second time.
+
 UNATTENDED-SAFE. Like the Director it wraps: it produces SUGGESTIONS only (into the execution
 context's quarantine), never accepts a mark, never writes a post. It is actuator-agnostic — hand it
 `stub_registry()` for a deterministic offline loop or `real_registry(ctx)` for a guarded real run.
@@ -39,7 +47,7 @@ from .memory import WorkingMemory
 from .plan import Plan, Step, resolve
 from .questions import (Proposal, Question, is_question_able,
                         missing_param_of, question_for)
-from .planner import Director
+from .planner import PLANNER_RULE_BASED, Director, RuleBasedPlanner
 
 # Resources that count as EVIDENCE — the loop advances only on these. READING is a sentence about
 # the image, never evidence in it; IMAGE/PHRASE are inputs the curator brought, not products.
@@ -56,6 +64,13 @@ STOP_ONLY_CLOSED_DOORS = "only_closed_doors"  # the round proposed nothing but a
 # A2 — the terminal state that is not a dead end. The loop stopped because it needs something only
 # a human can supply, and it says exactly what. Resume is A3; A2 emits and returns.
 AWAITING_ANSWER = "awaiting_answer"
+
+# A2-EXT — outcomes of the deterministic diagnostic run on the `nothing_planned` dead end. A closed
+# set, because the receipt is read by machines as well as people.
+PROBE_NO_SHAPE = "no_rule_based_shape"      # no actuator serves this intention at all — ask nothing
+PROBE_RESOLVES = "resolves_cleanly"         # the shape runs; the empty proposal was not about a gap
+PROBE_NO_ASKABLE_DOOR = "no_askable_door"   # it is refused, but for the loop's own work (input)
+PROBE_QUESTION = "question_recovered"       # a missing PARAM — a human could unblock this
 
 
 def _sig(step: Step) -> str:
@@ -142,6 +157,114 @@ def _askable_door(closed: Dict[str, Dict[str, Any]], memory: WorkingMemory,
     return None
 
 
+def _diagnostic_probe(intention: str, memory: WorkingMemory, *,
+                      labels: Optional[Sequence[str]] = None,
+                      round_index: int = 0) -> Tuple[Optional[Question], Dict[str, Any]]:
+    """A2-EXT — recover the signal an EMPTY proposal threw away.
+
+    A2's ask-hook reads the closed-door list, so it only fires when something was refused. But a
+    planner that proposes NOTHING refuses nothing, so there is no door, so the loop dead-ends at
+    `nothing_planned` — the dead end A2 existed to remove, reached by a different road. This is
+    model-specific and real: the `RuleBasedPlanner` emits `presence_check {}` and lets `resolve()`
+    refuse it, so A2 fires; the `GroqPlanner` returns `[]` rather than inventing a phrase, so it
+    does not.
+
+    An empty proposal conflates two different facts:
+
+        NO ACTUATOR SERVES THIS      an honest refusal. There is nothing to ask about, and asking
+                                     anyway would be fishing.
+        ONE SERVES IT, I LACK THE    a door that is shut on four words from a human — exactly what
+        PHRASE                       A2 exists to ask about.
+
+    This tells them apart by asking the RULE-BASED planner what it WOULD propose here and running
+    that through the same `resolve()`. That is a deterministic function of intention + memory — no
+    model, no network, nothing that could invent a phrase — so it is a diagnostic, not a second
+    opinion.
+
+    THE BOUNDARY IS INTACT. This is not re-prompting around a refusal: there was no refusal to
+    route around (the model returned nothing), the intention is untouched, and the model is not
+    asked again. Nothing proposed here is ever RUN — the probe's only output is a question or
+    silence. `planner_calls` deliberately does not count it; the receipt carries it in its own
+    field so "the planner was not called a second time about the same door" stays readable.
+
+    Silent (question=None) unless the probe finds a step refused for a MISSING PARAM: a shape that
+    resolves cleanly says the empty proposal was not about a gap at all, and a missing-INPUT
+    refusal is the loop's own work rather than the curator's.
+    """
+    steps = RuleBasedPlanner().propose(intention, memory)
+    record: Dict[str, Any] = {
+        "planner": PLANNER_RULE_BASED,
+        "counts_as_planner_call": False,      # a diagnostic, not a round — see planner_calls
+        "proposed": [s.actuator for s in steps],
+        "refused": [],
+        "outcome": PROBE_NO_SHAPE,
+    }
+    if not steps:
+        return None, record                   # nothing serves this intention — ask nothing
+
+    stamped = [s if s.id else s.with_id(f"probe:{i}:{s.actuator}") for i, s in enumerate(steps)]
+    plan = resolve(stamped, memory, intention=intention)
+    record["refused"] = [r.to_dict() for r in plan.refused]
+    if not plan.refused:
+        record["outcome"] = PROBE_RESOLVES
+        return None, record
+
+    for r in plan.refused:
+        if not is_question_able(r.reason):
+            continue
+        param = missing_param_of(r.step, memory)
+        if not param:
+            continue
+        q = question_for(r.step, memory, missing_param=param, labels=labels,
+                         round_index=round_index, step_id=_sig(r.step))
+        if q is not None:
+            record["outcome"] = PROBE_QUESTION
+            record["question_from"] = r.step.actuator
+            return q, record
+
+    record["outcome"] = PROBE_NO_ASKABLE_DOOR
+    return None, record
+
+
+def _confirmed_volunteer(question: Question,
+                         memory: WorkingMemory) -> Tuple[Optional[Question], Dict[str, Any]]:
+    """A2-EXT — validate a volunteered question instead of trusting it.
+
+    `Proposal(steps=[], question=…)` lets a planner that already knows it is stuck say so. Taken on
+    faith, that is a hole in exactly the guard A2 is: a model that wants to ask can claim any
+    blockage it likes, and "I need a phrase for X" is as easy to emit as a fabricated phrase would
+    have been. So the loop CONFIRMS the claim the only way it trusts anything — by running the
+    named actuator through `resolve()` and checking it really is refused for the param claimed.
+
+    Unconfirmed does not mean an error is raised: the claim is recorded on the receipt and dropped,
+    and the honest paths (the closed door, then the diagnostic probe) still get their turn.
+    """
+    record: Dict[str, Any] = {"actuator": question.actuator, "missing_param": question.missing_param,
+                              "confirmed": False, "why": ""}
+    if not question.is_grounded:
+        record["why"] = "the question does not name an act, a param and a sentence"
+        return None, record
+
+    step = Step(actuator=question.actuator, id=question.step_id or question.actuator)
+    refused = resolve([step], memory).refused
+    if not refused:
+        record["why"] = f"'{question.actuator}' is not blocked on this memory — nothing to ask"
+        return None, record
+    reason = refused[0].reason
+    if not is_question_able(reason):
+        record["why"] = f"'{question.actuator}' is refused for {reason}, which is not a human's to fix"
+        return None, record
+    param = missing_param_of(step, memory)
+    if param != question.missing_param:
+        record["why"] = (f"claimed a missing '{question.missing_param}'; "
+                         f"'{question.actuator}' is missing {param or 'nothing'}")
+        return None, record
+
+    record["confirmed"] = True
+    record["why"] = f"'{question.actuator}' really is refused for a missing {param}"
+    return question, record
+
+
 @dataclass(frozen=True)
 class RoundRecord:
     """One turn of the loop. `chain` is None only for a round that STOPPED before executing
@@ -190,6 +313,14 @@ class LoopResult:
     # A2: set when the loop stopped needing something only a human can supply. Its presence is
     # exactly equivalent to stop_reason == AWAITING_ANSWER.
     question: Optional[Question] = None
+    # A2-EXT: the deterministic diagnostic run on the `nothing_planned` dead end, kept in its OWN
+    # field rather than folded into `planner_calls` — so a reader can see that the second look was
+    # a rule-based probe that ran nothing, not the planner being asked again about the same door.
+    # None means it never ran (there was no dead end to diagnose).
+    diagnostic_probe: Optional[Dict[str, Any]] = None
+    # A2-EXT: what a planner CLAIMED it was blocked on, and whether resolve() bore that out. Set
+    # only when a planner volunteered a question; a rejected claim is recorded, not hidden.
+    volunteer_check: Optional[Dict[str, Any]] = None
 
     @property
     def executed_rounds(self) -> Tuple[RoundRecord, ...]:
@@ -227,6 +358,8 @@ class LoopResult:
             "stop_reason": self.stop_reason,
             "planner_calls": self.planner_calls,
             "question": self.question.to_dict() if self.question else None,
+            "diagnostic_probe": dict(self.diagnostic_probe) if self.diagnostic_probe else None,
+            "volunteer_check": dict(self.volunteer_check) if self.volunteer_check else None,
             "closed_doors": [dict(d) for d in self.closed_doors],
             "suppressed_total": self.suppressed_total,
             "rounds_total": len(self.rounds),
@@ -361,11 +494,29 @@ def run_loop(intention: str, memory: WorkingMemory,
     # STOP_MAX_ROUNDS is deliberately excluded. There, progress was still being made when the
     # backstop fired — so the closed door is not what is blocking us, and the honest report is
     # "I ran out of rounds", not a question implying the curator is the bottleneck.
-    question: Optional[Question] = volunteered
+    #
+    # A2-EXT adds the third and last source of a question, in strict order of trust: a planner's
+    # own claim (only once resolve() confirms it), then the closed door A2 reads, then — for the
+    # dead end where nothing was proposed and so nothing was refused — a deterministic rule-based
+    # diagnostic. Each falls through to the next, so a rejected claim still gets an honest answer.
+    question: Optional[Question] = None
+    volunteer_check: Optional[Dict[str, Any]] = None
+    if volunteered is not None:
+        question, volunteer_check = _confirmed_volunteer(volunteered, current)
     if question is None and stop_reason in (STOP_ONLY_CLOSED_DOORS, STOP_ONLY_REFUSALS,
                                             STOP_NOTHING_PLANNED, STOP_NO_NEW_EVIDENCE,
                                             STOP_FIXED_POINT):
         question = _askable_door(closed, current, labels)
+
+    # A2-EXT — the one dead end A2 left open. Only where the planner proposed nothing AND nothing
+    # was refused: with a closed door in hand the hook above is the right instrument, and the probe
+    # would be a second opinion on a question already answered.
+    probe: Optional[Dict[str, Any]] = None
+    if question is None and stop_reason == STOP_NOTHING_PLANNED and not closed:
+        question, probe = _diagnostic_probe(
+            intention, current, labels=labels,
+            round_index=rounds[-1].index if rounds else 0)
+
     if question is not None:
         stop_reason = AWAITING_ANSWER
 
@@ -374,4 +525,5 @@ def run_loop(intention: str, memory: WorkingMemory,
                       closed_doors=tuple({"step": k,
                                           **{kk: vv for kk, vv in v.items() if kk != "step"}}
                                          for k, v in sorted(closed.items())),
-                      question=question)
+                      question=question, diagnostic_probe=probe,
+                      volunteer_check=volunteer_check)
