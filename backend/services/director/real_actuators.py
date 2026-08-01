@@ -882,6 +882,40 @@ for _n in _FIELD_PRODUCER_NAMES:
     _DISPATCH[_n] = _run_field_producer
 
 
+def _stamp_step_id(suggestions: List[Dict[str, Any]], step_id: str) -> None:
+    """Write `provenance.step_id` onto each suggestion a single plan step produced.
+
+    PROV-001 Seam 1. Before this, a suggestion recorded `{run_id, producer, adapter}` — enough to
+    say WHICH RUN made it, never WHICH STEP. That gap is the sole cause of M4's AMBIGUOUS refusal:
+    `article_resolver` had to join citation→geometry on `(actuator, image)`, which stops being a
+    key the moment one plan runs the same actuator twice on one image, so it honestly refused to
+    draw rather than guess. With a step id the join is a lookup and the ambiguity cannot arise.
+
+    Deliberately tolerant of shape and deliberately intolerant of invention:
+
+      · a non-dict entry, or one whose `provenance` is not a dict, is skipped rather than
+        coerced — this runs inside the produce path and must never turn a malformed suggestion
+        into a raised exception that fails an otherwise-good step;
+      · an EMPTY `step_id` writes nothing. Steps carry ids assigned by the planner, but a
+        hand-built or replayed Step can have `id=""`, and `{"step_id": ""}` would be a claim of
+        identity that is not one. Absent is the honest record;
+      · `setdefault` so a producer that stamped its own (a future actuator that fans out to
+        sub-steps, say) is left alone. This function only fills a gap; it never overwrites a
+        provenance claim someone else made deliberately.
+    """
+    if not step_id:
+        return
+    for sug in suggestions:
+        if not isinstance(sug, dict):
+            continue
+        prov = sug.get("provenance")
+        if prov is None:
+            prov = {}
+            sug["provenance"] = prov
+        if isinstance(prov, dict):
+            prov.setdefault("step_id", step_id)
+
+
 class RealActuatorRunner:
     """One actuator, wired to its real in-process producer. Shares the `ActuatorRunner` shape
     (`(Step, WorkingMemory) → ActuatorResult`) with `StubActuator`, so `execute` cannot tell them
@@ -909,6 +943,21 @@ class RealActuatorRunner:
         async def _dispatch_then_unload() -> ActuatorResult:
             before = len(self.ctx.suggestions)
             res = await handler(step, memory, self.ctx, act)
+            # PROV-001 Seam 1 — stamp the plan step that caused each suggestion.
+            #
+            # Stamped HERE, at the one chokepoint, rather than threaded through ~40 producer
+            # signatures. The `before:` slice is already the canonical "what THIS step produced"
+            # (epistemics.guard below has relied on it since M5), and every one of the eight
+            # producer sites reaches `ctx.suggestions` through it. A central stamp is therefore
+            # provably total, and — the reason that matters — a producer added tomorrow is
+            # stamped without its author remembering to. Threading would make step_id a thing
+            # each new signature can silently omit, which is exactly the class of gap this
+            # directive exists to close.
+            #
+            # `setdefault`, not assignment: a producer that already knows its own step id keeps
+            # it. Absent `step.id` writes nothing at all — an unstamped suggestion is honest,
+            # a suggestion stamped with a fabricated id is not.
+            _stamp_step_id(self.ctx.suggestions[before:], step.id)
             # M5 — the Director's quarantine boundary. Every runner appends to `ctx.suggestions`;
             # only what THIS step added is checked, so the cost stays flat across a long chain
             # rather than re-walking the whole list per step. In M6 this ran for one actuator and

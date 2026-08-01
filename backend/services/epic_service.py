@@ -518,11 +518,16 @@ class EpicService:
             epic_id: Epic ID
             epic_title: Epic Title
         """
+        # PROV-001 Seam 5 — a synced epic block is the epic agent's prose, not the curator's.
+        # `block_content` arrives from the epic's story_blocks, which story_block_service
+        # segmented out of generated story text. TextBlock defaults `origin` to "human", so
+        # leaving it unset made the agent's writing read back as the curator's own.
         text_block = {
             "id": f"block_{uuid.uuid4()}",
             "type": "paragraph",
             "content": block_content,
-            "color": None
+            "color": None,
+            "origin": "sutradhar",
         }
         
         epic_ref = {
