@@ -11,18 +11,27 @@ This module is that join, and it is READ-ONLY: it reads a draft, the run's quara
 suggestions, and M1's corpus, and returns what to draw. It produces nothing, commits nothing, and
 mutates nothing it is handed.
 
-THE JOIN IS NOT A LOOKUP, AND THE REASON MATTERS.
+THE JOIN IS A LOOKUP NOW — AND THE WEAK KEY IS STILL HERE, ON PURPOSE.
 
-A produced suggestion carries `provenance: {run_id, producer, adapter}` — it does NOT carry the
-step id of the plan step that caused it. So `step_id → suggestion` cannot be a dictionary lookup;
-it has to be matched on what both sides DO record: the actuator that ran, and the image it ran on.
+As shipped, M4 could not do a lookup. A produced suggestion carried `provenance: {run_id,
+producer, adapter}` and NOT the step id of the plan step that caused it, so `step_id → suggestion`
+had to be approximated by what both sides did record: the actuator that ran, and the image it ran
+on. Two `pressure_zone` steps on one image were indistinguishable from here.
 
-That is a weaker key, and it can be ambiguous — two `pressure_zone` steps on the same image in one
-run are indistinguishable from here. When that happens this module REFUSES to pick. An article
-that silently drew the wrong field beside a sentence would be the most damaging possible failure
-in this whole stack: the prose would be true, the citation would be real, and the picture would be
-of something else. Every reader would believe it, and nothing in the document would be wrong
-enough to notice.
+PROV-001 Seam 1 closed that at the source: `real_actuators._stamp_step_id` now writes
+`provenance.step_id` at the single chokepoint every producer passes through. When a citation and
+a suggestion both name a step, this module joins on identity and the approximation is never
+consulted.
+
+The weak key REMAINS, and deleting it would be a bug. Every suggestion produced before that change
+carries no step_id — for those it is not a worse key, it is the only key. So the order is: exact
+first, approximate only when the exact key is absent on both sides.
+
+When the approximation genuinely cannot decide, this module REFUSES to pick. An article that
+silently drew the wrong field beside a sentence would be the most damaging possible failure in
+this whole stack: the prose would be true, the citation would be real, and the picture would be of
+something else. Every reader would believe it, and nothing in the document would be wrong enough
+to notice.
 
 So a citation resolves to exactly one percept, or it resolves to nothing and says which of the two
 happened:
@@ -32,13 +41,14 @@ happened:
                   left no drawable geometry, or the quarantine handed here does not contain it.
     AMBIGUOUS   — more than one match. The candidates are reported; none is chosen.
 
+AMBIGUOUS now has two distinct causes and says which it hit. Down the weak-key path the producing
+step is unknown (historical data). Down the exact path the step is known and produced several
+drawable percepts, and the citation does not say which one the sentence meant — a modelling
+question, not a provenance gap. The detail text distinguishes them so a reader is not sent to fix
+something that is already fixed.
+
 The honest-defect channel M3 built (`uncited_mentions`, `relevance_flags`) is carried through
 untouched, because M4's whole job is to make those visible rather than let them die in a dict.
-
-FIX FORWARD, RECORDED HERE SO IT IS NOT LOST: the real repair is for a producer to stamp the
-`step_id` onto the suggestion it produces, which would make this an exact lookup and delete the
-ambiguity case entirely. That belongs in `real_actuators.py`, which M5 is editing in a parallel
-branch; doing it here would collide. It is a one-line change per runner once the branches meet.
 """
 from __future__ import annotations
 
@@ -129,6 +139,27 @@ def _produced_by(suggestion: Dict[str, Any]) -> Tuple[str, ...]:
     return tuple(dict.fromkeys(str(n) for n in names if n))
 
 
+def _step_id_of(suggestion: Dict[str, Any]) -> str:
+    """The plan step that produced this suggestion, or "" when it does not record one.
+
+    PROV-001. `real_actuators._stamp_step_id` writes this at the produce chokepoint, so anything
+    made by a run on this code carries it. Anything made BEFORE it does not, and "" is how that
+    says so — the resolver reads the absence and falls back rather than treating a missing step
+    as a step named "".
+    """
+    prov = suggestion.get("provenance") or {}
+    if not isinstance(prov, dict):
+        return ""
+    return str(prov.get("step_id") or "")
+
+
+def _matches_step(suggestion: Dict[str, Any], step_id: str) -> bool:
+    """Exact identity match: this suggestion was produced BY that plan step."""
+    if suggestion.get("type") not in DRAWABLE_TYPES:
+        return False
+    return bool(step_id) and _step_id_of(suggestion) == step_id
+
+
 def _matches(suggestion: Dict[str, Any], actuator: str, image: Optional[str]) -> bool:
     if suggestion.get("type") not in DRAWABLE_TYPES:
         return False
@@ -173,7 +204,19 @@ def resolve_citation(citation: Dict[str, Any], suggestions: Sequence[Dict[str, A
         image_title=title or str(citation.get("image_title") or ""),
         attribution=citation.get("attribution"))
 
-    matched = [s for s in suggestions if isinstance(s, dict) and _matches(s, actuator, image)]
+    # PROV-001 — the exact join, tried first.
+    #
+    # A citation names the step that was meant to produce its evidence; since Seam 1 the
+    # suggestion names the step that did. When both are present this is an identity lookup, and
+    # the (actuator, image) approximation below — with everything it cannot distinguish — is
+    # never reached. Two `pressure_zone` steps on one image now resolve to their own percepts.
+    #
+    # The fallback is NOT dead code and must not be deleted: every suggestion produced before
+    # this change carries no step_id, and for those the weak key is still the only key there is.
+    # Its AMBIGUOUS refusal therefore stays reachable, and stays correct, for historical data.
+    by_step = [s for s in suggestions if isinstance(s, dict) and _matches_step(s, step_id)]
+    matched = by_step or [
+        s for s in suggestions if isinstance(s, dict) and _matches(s, actuator, image)]
 
     if not matched:
         return ResolvedCitation(
@@ -183,11 +226,21 @@ def resolve_citation(citation: Dict[str, Any], suggestions: Sequence[Dict[str, A
     if len(matched) > 1:
         # Refuse to pick. An article that drew the wrong field beside a true sentence would be
         # believed by every reader and contradicted by nothing in the document.
+        #
+        # The two ways to get here are NOT the same failure and must not read as though they
+        # were. Down the weak-key path the step is genuinely unknown. Down the exact path the
+        # step is known precisely and produced several drawable percepts — a real modelling
+        # question about which one the sentence meant, not a provenance gap. Reporting the old
+        # reason for the new case would send a reader to fix something already fixed.
+        if by_step:
+            why = (f"; none was chosen because step '{step_id}' produced {len(matched)} "
+                   "drawable percepts and the citation does not say which")
+        else:
+            why = "; none was chosen because a suggestion does not record its step"
         return ResolvedCitation(
             status=AMBIGUOUS,
             detail=(f"{len(matched)} produced percepts match '{actuator}'"
-                    + (f" on {image}" if image else "")
-                    + "; none was chosen because a suggestion does not record its step"),
+                    + (f" on {image}" if image else "") + why),
             candidates=tuple(str(s.get("source_ref") or "") for s in matched), **base)
 
     found = matched[0]
