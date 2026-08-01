@@ -38,6 +38,10 @@ const RegionSurfaceLab = React.lazy(() => import('./pages/RegionSurfaceLab.jsx')
 const RefineLab = React.lazy(() => import('./pages/RefineLab.jsx'));
 const DifferentialLab = React.lazy(() => import('./pages/DifferentialLab.jsx')); // DEV-ONLY · CIRCUIT-001 P2E-B harness
 const ArticleLab = React.lazy(() => import('./pages/ArticleLab.jsx')); // DEV-ONLY · CIRCUIT-003 M4 harness
+// AGENT-DEMO — the run surface: images + a prompt → the orchestrator working, in the open.
+// Its OWN route and shell, deliberately not folded into /differential, which is the manual
+// instrument and has diverged from this on purpose.
+const AgentDemoPage = React.lazy(() => import('./agentDemo/AgentDemoPage.jsx'));
 const HighlightsPage = React.lazy(() => import('./pages/HighlightsPage.jsx'));
 const TextFeedPage = React.lazy(() => import('./pages/TextFeedPage.jsx'));
 const EpicsPage = React.lazy(() => import('./pages/EpicsPage.jsx'));
@@ -94,6 +98,8 @@ const router = createBrowserRouter([
       { path: "lab/differential", element: <DifferentialLab /> },
       // DEV-ONLY · CIRCUIT-003 M4 — the perceptual article over an offline fixture draft.
       { path: "lab/article", element: <ArticleLab /> },
+      // AGENT-DEMO — a real user surface, not a lab: images + a prompt, and the run in the open.
+      { path: "agent", element: <AgentDemoPage /> },
       { path: "feed", element: <TextFeedPage /> },
       { path: "epics", element: <EpicsPage /> },
       { path: "epics/:id", element: <EpicEditorPage /> },
