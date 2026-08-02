@@ -10,6 +10,7 @@ from typing import List, Dict, Any
 from groq import Groq
 from backend.config import settings
 from backend.schemas.epic import StoryBlock
+from backend.services import role_registry
 
 
 class StoryBlockService:
@@ -17,17 +18,25 @@ class StoryBlockService:
     Service for segmenting stories into coherent blocks using AI.
     Uses LLM to intelligently divide stories based on narrative coherence.
     """
-    
+
+    ROLE = "story_segmenter"
+
     def __init__(self):
         """Initialize Groq client for story analysis."""
         if settings.GROQ_API_KEY:
             self.client = Groq(api_key=settings.GROQ_API_KEY)
-            # Using a capable model for text analysis
-            self.model = "llama-3.3-70b-versatile"
         else:
             self.client = None
-            self.model = None
-    
+
+    @property
+    def model(self):
+        """ROLES-001 — the capable text-analysis model, from the `story_segmenter` role.
+        None with no client, exactly as before: a service that cannot call must not name one."""
+        if self.client is None:
+            return None
+        return role_registry.model_for(self.ROLE)
+
+
     def _is_available(self) -> bool:
         """Check if service is available."""
         return self.client is not None

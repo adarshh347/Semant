@@ -41,6 +41,8 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from backend.services import role_registry
+
 from .capabilities import ACTUATORS, get as get_actuator, known
 from .memory import WorkingMemory
 from .plan import Step
@@ -48,8 +50,15 @@ from .planner import RuleBasedPlanner
 
 PLANNER_GROQ = "groq"
 
-# Same model the rest of the app uses (llm_service). One model choice, one place to change it.
-DEFAULT_MODEL = "openai/gpt-oss-120b"
+#: ROLES-001 — the role this planner fills. The "one model choice, one place to change it"
+#: intention that `DEFAULT_MODEL` carried was right and is now actually true: the place is the
+#: role registry, and it covers the other seven thinkers too.
+ROLE = "step_planner"
+
+#: Retained as a module name because the argument planner and the tests read it. It is the role's
+#: SHIPPED default — the live binding is `role_registry.model_for(ROLE)`, which is what the
+#: planner actually calls with.
+DEFAULT_MODEL = role_registry.ROLES[ROLE].default_model
 
 # A plan longer than this is not a plan, it is the model free-associating. The cap is applied
 # after parsing and the overflow is REPORTED, never trimmed silently.
@@ -187,15 +196,22 @@ class GroqPlanner:
     """
     name = PLANNER_GROQ
 
-    def __init__(self, client: Any = None, *, model: str = DEFAULT_MODEL,
+    def __init__(self, client: Any = None, *, model: Optional[str] = None,
                  fallback: Optional[Any] = None):
         self._client = client
         self._client_resolved = client is not None
-        self.model = model
+        # `= DEFAULT_MODEL` as a default argument bound at DEF time, which made the env rebind
+        # invisible to any planner constructed after import — i.e. all of them. None means
+        # "ask the role", per access.
+        self._model = model
         self.fallback = fallback if fallback is not None else RuleBasedPlanner()
         # Read by Director and copied into plan.notes, so a fallback is never silent.
         self.last_notes: Tuple[str, ...] = ()
         self.calls: int = 0            # guard 3 is observable: tests assert this is 1
+
+    @property
+    def model(self) -> Optional[str]:
+        return self._model if self._model is not None else role_registry.model_for(ROLE)
 
     # ── client ──
     def _get_client(self) -> Any:

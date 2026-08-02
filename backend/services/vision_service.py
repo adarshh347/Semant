@@ -9,7 +9,7 @@ import re
 from typing import Optional, Dict, Any
 from groq import Groq
 from backend.config import settings
-from backend.services import lens_registry
+from backend.services import lens_registry, role_registry
 from backend.services.editor_llm_service import ground_prompt
 
 
@@ -19,22 +19,39 @@ class VisionService:
     Provides image analysis and text generation capabilities.
     """
     
+    # ROLES-001 — the VLM that reads a picture and proposes its parts. This is the role SAM 3
+    # is aimed at: the boxes it returns for the SŪKṢMA stage are ESTIMATED from a reading, not
+    # computed off the signal, which is why the role's epistemic ceiling is `interpretive`.
+    ROLE = "dissector"
+
     def __init__(self):
         """Initialize Groq client with API key from settings."""
         if settings.GROQ_API_KEY:
             self.client = Groq(api_key=settings.GROQ_API_KEY)
-            # Groq retired the llama-4 vision models (scout/maverick both 404). qwen3.6-27b is
-            # the vision-capable model now on the catalogue — verified live against an image.
-            # NB it is a REASONING model: left to itself it emits an unclosed <think>… block that
-            # consumes the whole max_tokens budget before any JSON is produced (finish_reason
-            # "length" → parsers return []). Every call below therefore passes
-            # reasoning_effort="none", which suppresses the block entirely; the model then emits
-            # the fenced JSON the existing regex parsers already handle.
-            self.vision_model = "qwen/qwen3.6-27b"
         else:
             self.client = None
-            self.vision_model = None
-    
+
+    @property
+    def vision_model(self):
+        """The bound model, or None when the service has no client.
+
+        None is load-bearing and predates ROLES-001: `_is_available()` gates on the client, and
+        several callers read `vision_model` to report what answered. A service with no key must
+        not report a model it cannot call.
+
+        Groq retired the llama-4 vision models (scout/maverick both 404). qwen3.6-27b is the
+        vision-capable model now on the catalogue — verified live against an image, and now the
+        `dissector` role's default. NB it is a REASONING model: left to itself it emits an
+        unclosed <think>… block that consumes the whole max_tokens budget before any JSON is
+        produced (finish_reason "length" → parsers return []). Every call below therefore passes
+        reasoning_effort="none", which suppresses the block entirely; the model then emits the
+        fenced JSON the existing regex parsers already handle.
+        """
+        if self.client is None:
+            return None
+        return role_registry.model_for(self.ROLE)
+
+
     def _is_available(self) -> bool:
         """Check if vision service is available."""
         return self.client is not None

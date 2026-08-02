@@ -1,6 +1,7 @@
 import json
 from groq import Groq
 from backend.config import settings
+from backend.services import role_registry
 
 # --- Anuraṇana grounding (Darshan Track C §4) --------------------------------------
 # The writer used to see the image and the blocks and nothing else, so it wrote
@@ -25,6 +26,13 @@ def ground_prompt(prompt: str, context_pack: str = "") -> str:
 
 
 class EditorLLMService:
+    # ROLES-001 — this service does TWO jobs and they are now two roles. They were two literals
+    # before, one of which happened to equal a literal in `vision_service`; nothing recorded
+    # whether that was a decision. Naming the jobs separately means the writer's eyes can be
+    # rebound without moving the writer's hand, and vice versa.
+    LITERARY_ROLE = "writer_literary"
+    VISION_ROLE = "writer_vision"
+
     def __init__(self):
         # Initialize Groq client with API key from settings
         if settings.GROQ_API_KEY:
@@ -32,12 +40,18 @@ class EditorLLMService:
         else:
             self.client = None
             print("Warning: GROQ_API_KEY not found in settings. Editor LLM features will be disabled.")
-            
-        # Literary refinement model (high quality text generation)
-        self.literary_model = "openai/gpt-oss-120b"
-        # Vision model (image understanding). Groq retired llama-4-maverick (404); qwen3.6-27b
-        # is the vision-capable replacement on the current catalogue.
-        self.vision_model = "qwen/qwen3.6-27b"
+
+    @property
+    def literary_model(self) -> str:
+        """Literary refinement model (high quality text generation) — from the role registry."""
+        return role_registry.model_for(self.LITERARY_ROLE)
+
+    @property
+    def vision_model(self) -> str:
+        """Vision model (image understanding) — from the role registry. Groq retired
+        llama-4-maverick (404); qwen3.6-27b is the vision-capable replacement on the current
+        catalogue, and that fact now lives on the role as its default rather than here."""
+        return role_registry.model_for(self.VISION_ROLE)
 
     def _literary_refine(self, raw_text: str, context: str = "", style_hint: str = "evocative literary prose") -> str:
         """
