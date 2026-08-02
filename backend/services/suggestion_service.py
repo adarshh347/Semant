@@ -111,6 +111,10 @@ PRODUCER_ARCHITECTURAL_AXIS = "architectural_axis"
 # TRACE-002 — the projective sibling. architectural_axis reads the lines that ARE in the
 # picture; external_limit reads the frame those lines imply. Learned, GPU, deferred.
 PRODUCER_EXTERNAL_LIMIT = "external_limit"
+# CONCEPT-SEG-001 — the TWO producers of one SAM 3 result. They are two because the result is
+# two claims: the extent was measured off the signal, the words were supplied in the prompt.
+PRODUCER_CONCEPT_SEGMENT = "concept_segment"   # the mask   → measured (from the `sam3` role)
+PRODUCER_CONCEPT_NAMING = "concept_naming"     # the label  → interpretive (from the prompt)
 
 # The VLM emits a free-text relation ("beside", "echoes", "same-material-as"); the mark contract
 # freezes relation_role to a fixed vocabulary. Map by keyword, default to the generic spatial
@@ -194,6 +198,98 @@ def suggestion_from_refine_region(
         # extra context (ignored by the frontend mapper, useful to the review UX / tests)
         "base_id": base_id,
     }
+
+
+def suggestions_from_concept_segments(
+    results: Optional[List[Dict[str, Any]]], *, run_id: Optional[str],
+    step_id: Optional[str] = None, concept_source: str = "domain_profile",
+    adapter: str = "sam3", model: Optional[str] = None,
+    naming_floor: Optional[float] = None,
+) -> List[Dict[str, Any]]:
+    """SAM 3 concept results → suggestion descriptors, TWO PER INSTANCE.
+
+    This is SF-004-R §5.3 made real. The finding was that SAM 3 gives one object two statuses at
+    once and nothing in the system emitted it. Here is the emission:
+
+        1. ``region_mask`` with the real ``mask_rle``, producer ``concept_segment``
+           → ``measured``. What the organ computed off the signal.
+        2. ``region_mask`` in ``region_ref`` mode carrying the LABEL, producer ``concept_naming``
+           → ``interpretive``. What the prompt asserted about that extent.
+
+    The second references the first by ``source_ref``, so review can accept the measurement and
+    reject the naming, or the reverse. That is not a nicety. SF-004-R2 §4.3 measured the case it
+    exists for: on a painting, ``shoulder fabric`` at confidence 0.27–0.43 returned a clean,
+    well-formed mask — OF THE BACKGROUND. The geometry was right and the words were wrong. A
+    single status would force the reviewer to take both or bin both.
+
+    ``concept_source`` records WHOSE interpretation the naming is — ``domain_profile`` (a fixed
+    vocabulary), ``vlm`` (the ``dissector`` proposed it), or ``curator`` (their own phrase). It
+    does not change the status, because none of the three is the image; it changes who is
+    answerable for it, and a reviewer cannot weigh a naming without knowing that.
+
+    ``naming_floor`` gates the NAMING ONLY. Below it the extent is still emitted — a measurement
+    does not become false because the word attached to it is doubtful — and the naming is dropped
+    rather than proposed. Never the other way round, and never a fallback to an estimated box:
+    "no mask" is an honest answer and a fabricated one is not.
+
+    PROPOSE-NEVER-COMMIT. These are quarantined suggestion descriptors. Nothing here writes a
+    post, and ``step_id`` rides through on the provenance so a re-run is attributable (SAM 3's
+    instance ids are POSITIONAL — the HW-C6 substitution hazard — so identity across runs comes
+    from the run/step, never from ``fine_N``).
+    """
+    floor = naming_floor if naming_floor is not None else 0.0
+    out: List[Dict[str, Any]] = []
+    for result in results or []:
+        concept = (result or {}).get("concept") or ""
+        latency = (result or {}).get("latency_ms")
+        used_model = model or (result or {}).get("model")
+        for inst in (result or {}).get("instances") or []:
+            rle = inst.get("mask_rle")
+            if not rle:
+                continue                       # no mask, no claim — never coerced to a box
+            confidence = inst.get("confidence")
+            # Positional within (concept, run) and labelled as such, so nothing downstream reads
+            # it as a stable identity across re-runs.
+            ref = f"{concept}|{inst.get('index')}"
+            prov = _provenance(model=used_model, adapter=adapter, latency_ms=latency,
+                               run_id=run_id, producer=PRODUCER_CONCEPT_SEGMENT)
+            prov["step_id"] = step_id
+            out.append({
+                **_epistemic(PRODUCER_CONCEPT_SEGMENT, confidence=confidence),
+                "producer": PRODUCER_CONCEPT_SEGMENT,
+                "type": "region_mask",
+                "role": None,                  # a measured extent carries no reading yet
+                "label": "",                   # deliberately EMPTY: the words are the other claim
+                "source_ref": ref,
+                "geometry": {"kind": "raster_mask", "mask_rle": rle},
+                "linked_ground_ids": [],
+                "provenance": prov,
+                "confidence": confidence,
+            })
+            if confidence is not None and confidence < floor:
+                # The naming did not clear its floor. The extent above stands; the words do not
+                # get proposed. Recorded on the extent so the drop is visible, not silent.
+                out[-1]["naming_withheld"] = {"concept": concept, "confidence": confidence,
+                                              "floor": floor}
+                continue
+            nprov = _provenance(model=used_model, adapter=adapter, latency_ms=latency,
+                                run_id=run_id, producer=PRODUCER_CONCEPT_NAMING)
+            nprov["step_id"] = step_id
+            nprov["concept_source"] = concept_source
+            out.append({
+                **_epistemic(PRODUCER_CONCEPT_NAMING),
+                "producer": PRODUCER_CONCEPT_NAMING,
+                "type": "region_mask",
+                "role": None,
+                "label": concept,
+                "source_ref": ref,             # names the extent above; authors no geometry
+                "geometry": {"kind": "region_ref", "region_ref": {"source_ref": ref}},
+                "linked_ground_ids": [],
+                "provenance": nprov,
+                "confidence": confidence,
+                "concept_source": concept_source,
+            })
+    return out
 
 
 def suggestions_from_semantics(

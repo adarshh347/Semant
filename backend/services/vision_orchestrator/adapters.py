@@ -873,3 +873,91 @@ class ClipPresenceAdapter:
             return JobResult(JobStatus.UNAVAILABLE, provenance=prov)
         return JobResult(JobStatus.SUCCEEDED,
                          artifact=VisionArtifact("presence", survivors, prov), provenance=prov)
+
+
+# ── CONCEPT-SEG-001: SAM 3 promptable concept segmentation ───────────────────
+class Sam3ConceptAdapter:
+    """The `CONCEPT_SEGMENT` adapter — a concept in, every instance of it out, as real masks.
+
+    The first organ that can give the SŪKṢMA stage MEASURED geometry. That stage currently asks
+    a VLM to dissect the image and returns boxes it estimated, with no `mask_rle` at all.
+
+    Two things about it are unlike every other adapter here, and both are deliberate:
+
+      1. IT TAKES A CONCEPT, so it can fabricate in a way a class-fixed segmenter cannot. YOLO
+         can only be wrong about extent; this can be wrong about extent OR about whether the
+         words belong to it. The spike caught the second on a painting — `shoulder fabric` at
+         confidence 0.27–0.43 returned a clean, well-formed mask of the BACKGROUND.
+
+      2. ITS OUTPUT CARRIES TWO STATUSES. The mask is `measured`; the label came from the prompt
+         and is the prompt author's `interpretive` claim. The adapter keeps them separable by
+         carrying `concept` and per-instance `confidence` through to the artifact, and
+         `suggestion_service` emits them as two descriptors. Nothing here collapses them.
+
+    Heavy and slow — 5.3 s per concept warm on an M4, ~3.2 GiB resident — so `unload()` is
+    load-bearing and it is never the default path.
+    """
+
+    def __init__(self) -> None:
+        from backend.services import sam3_concept_service
+        self._svc = sam3_concept_service
+        ok = self._deps_ok()
+        self.spec = AdapterSpec(
+            name="sam3", capability=Capability.CONCEPT_SEGMENT, resource=ResourceKind.GPU,
+            model_id=sam3_concept_service.CHECKPOINT,
+            checkpoint=sam3_concept_service.weights_path(),
+            license="SAM License",
+            preprocessing_version=sam3_concept_service.PREPROCESSING_VERSION,
+            available=ok, deferred=not ok)
+
+    @staticmethod
+    def _deps_ok() -> bool:
+        try:
+            from backend.services import sam3_concept_service as s
+            return s.is_available()
+        except Exception:
+            return False
+
+    def is_available(self) -> bool:
+        # Re-probed rather than read off the spec: weights can arrive after import (they are
+        # fetched out of band, not by this process), and a spec frozen at construction would
+        # report the organ permanently missing for the life of the server.
+        return self._deps_ok()
+
+    async def load(self) -> float:
+        import asyncio
+        return await asyncio.to_thread(self._svc.load)
+
+    async def unload(self) -> None:
+        self._svc.unload()
+
+    async def infer(self, payload: dict, cancel: CancelToken) -> JobResult:
+        if cancel.cancelled:
+            return JobResult(JobStatus.CANCELLED)
+        import asyncio
+        image = payload.get("image") or payload.get("path")
+        concepts = payload.get("concepts") or ([payload["concept"]] if payload.get("concept") else [])
+        if not concepts:
+            # An open-vocabulary organ with nothing to look for is the P8-B fabrication shape.
+            # Refuse rather than invent a vocabulary.
+            prov = Provenance(adapter=self.spec.name, error="no concept given")
+            return JobResult(JobStatus.FAILED, provenance=prov)
+        t0 = time.perf_counter()
+        results = []
+        for concept in concepts:
+            if cancel.cancelled:                       # boundary re-check between concepts —
+                return JobResult(JobStatus.CANCELLED)  # each is its own multi-second call
+            results.append(await asyncio.to_thread(
+                self._svc.segment_concept, image, concept,
+                conf=payload.get("conf", self._svc.DEFAULT_CONF)))
+        latency = (time.perf_counter() - t0) * 1000.0
+        prov = Provenance(adapter=self.spec.name, model=self.spec.model_id,
+                          checkpoint=self.spec.checkpoint,
+                          preprocessing_version=self.spec.preprocessing_version,
+                          device=self._svc.device(), latency_ms=latency)
+        # SUCCEEDED even when every concept came back empty. "None of these concepts are in this
+        # picture" is a real answer and the caller must be able to tell it from a failure — the
+        # silent-empty-return hazard SF-004-R2 §7 left open is made visible here, not hidden.
+        return JobResult(JobStatus.SUCCEEDED,
+                         artifact=VisionArtifact("concept_segment", results, prov),
+                         provenance=prov)

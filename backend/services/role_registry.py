@@ -224,6 +224,12 @@ _CAPABILITY_CEILINGS: Dict[Capability, EpistemicStatus] = {
     Capability.ARCH_PARSE: EpistemicStatus.VISIBLE,
     Capability.PAINTING_PROPOSE: EpistemicStatus.VISIBLE,
     Capability.GROUNDING: EpistemicStatus.VISIBLE,
+    # CONCEPT-SEG-001 — `measured`, not `visible`, and the difference is the point. A segmenter's
+    # extent is `visible`: you can point at the thing it found. This organ was HANDED the words
+    # and computed where they land, so what it contributes is the computation. The words are a
+    # separate claim by whoever wrote the prompt, and they are emitted separately
+    # (`concept_naming`, `interpretive`). The ceiling here covers only the half this organ earned.
+    Capability.CONCEPT_SEGMENT: EpistemicStatus.MEASURED,
     Capability.DOMAIN_ROUTE: EpistemicStatus.MEASURED,
     Capability.EMBED: EpistemicStatus.MEASURED,
     Capability.FEATURE: EpistemicStatus.MEASURED,
@@ -250,6 +256,11 @@ _ADAPTER_PRODUCERS: Dict[str, Tuple[str, ...]] = {
     "dinov2_vits14": ("material_field",),
     "depth_anything_v2_small": ("recession",),
     "intrinsic_ordinal_shading": ("shading", "fall_of_light"),
+    # Only the EXTENT. `concept_naming` is deliberately absent: the naming is not this organ's
+    # output at all — it belongs to whoever supplied the concept (the `dissector` thinker, a
+    # `domain_profiles` vocabulary, or the curator's own phrase), so no single role owns it and
+    # it keeps its own `_DEFAULTS` entry. That absence IS the two-status wall, expressed here.
+    "sam3": ("concept_segment",),
 }
 
 

@@ -568,6 +568,93 @@ def _clip_box_to_parent(box: dict, parent: dict) -> dict:
     return region_geometry.clip_box_to_parent(box, parent)
 
 
+# ── CONCEPT-SEG-001 · the measuring pass behind SŪKṢMA ───────────────────────────────────────
+#
+# OFF BY DEFAULT, and that is the SF-004-R2 verdict rather than caution. The spike returned a
+# QUALIFIED GO: real masks for 27 of 35 concepts against ZERO masks on 72/72 baseline parts, but
+# 5.3 s per concept warm on an M4 — 63–67 s per image against 3.3–39.6 s for the one VLM call it
+# would replace. Wired on by default that is a large regression on wall clock for every dissect.
+# So the plumbing lands and the switch stays off until the latency work (fp16,
+# encode-once-prompt-many, the MLX arm) has a number behind it.
+SUKSHMA_CONCEPT_SEGMENT_ENV = "SEMANT_SUKSHMA_CONCEPT_SEGMENT"
+
+#: Domains where the spike measured this working. Photograph 11/12 and engraving 11/12; PAINTING
+#: 5/11, on an art-heavy corpus, and the painting failure was not a miss but a confident wrong
+#: mask. Not applied as a gate yet — three fixtures is not a domain policy — but recorded here so
+#: the number is attached to the code that would use it.
+CONCEPT_SEGMENT_DOMAIN_NOTE = {"photograph": "11/12", "engraving": "11/12", "painting": "5/11"}
+
+
+def _sukshma_concept_segmentation_enabled() -> bool:
+    return (os.environ.get(SUKSHMA_CONCEPT_SEGMENT_ENV) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+async def _measure_fine_parts_with_sam3(fine: list, img_bytes) -> tuple:
+    """The VLM named the parts; SAM 3 measures where they are.
+
+    Returns `(parts, detail)`. Every part keeps its VLM label and estimated box; a part SAM 3
+    could measure additionally gains a real `mask_rle` and is marked `detector: "sam3"`.
+
+    THREE RULES, each from a measured finding:
+
+      · The VLM stays the concept source. A fixed vocabulary scored 6/18 in the spike's first
+        Gate-2 run because it asked a painterly neck close-up for `collar`/`cuff`/`hem`/
+        `placket` — parts not in that image. Feeding SAM 3 the VLM's own per-image labels gave
+        27/35. The concepts have to come from something that has looked at THIS picture.
+
+      · A part SAM 3 cannot measure keeps its estimated box and is NOT dropped, and no box is
+        ever fabricated to stand in for a missing mask. The estimate stays labelled an estimate.
+
+      · The naming and the extent stay separable. `mask_rle` is measured; the label was
+        already the VLM's interpretation before SAM 3 saw it, and running a measurement over it
+        does not promote it. `suggestion_service.suggestions_from_concept_segments` is where the
+        two statuses are actually emitted; this function only attaches geometry.
+
+    Never raises into the route: an organ that is down degrades the pass, it does not fail it.
+    """
+    detail: Dict[str, Any] = {"ran": False, "concepts": 0, "measured": 0}
+    try:
+        import asyncio as _asyncio
+        from backend.services import sam3_concept_service
+        if not sam3_concept_service.is_available():
+            detail["reason"] = "weights_absent"
+            return fine, detail
+        concepts, index = [], {}
+        for i, part in enumerate(fine):
+            label = (part.get("label") or "").strip()
+            if label and label not in index:
+                index[label] = i
+                concepts.append(label)
+        if not concepts:
+            detail["reason"] = "no_labels"
+            return fine, detail
+        detail["concepts"] = len(concepts)
+        results = await _asyncio.to_thread(
+            sam3_concept_service.segment_concepts, img_bytes, concepts)
+        measured = 0
+        for result in results:
+            best = max((r for r in result.get("instances") or []),
+                       key=lambda r: (r.get("confidence") or 0.0), default=None)
+            if not best or not best.get("mask_rle"):
+                continue
+            part = fine[index[result["concept"]]]
+            part["mask_rle"] = best["mask_rle"]
+            part["detector"] = "sam3"
+            part["confidence"] = best.get("confidence")
+            # Every instance travels, not just the strongest. The headline claim is EXHAUSTIVE
+            # segmentation — eleven serpent heads from one prompt in the spike — and keeping only
+            # the best would quietly discard the thing that makes this organ worth its cost.
+            part["concept_instances"] = len(result.get("instances") or [])
+            measured += 1
+        detail.update({"ran": True, "measured": measured,
+                       "latency_ms": round(sum(r.get("latency_ms") or 0 for r in results), 1)})
+        return fine, detail
+    except Exception as e:                    # noqa: BLE001 — an organ failing degrades the pass
+        print(f"SAM 3 concept measurement failed (non-fatal): {e}")
+        detail["reason"] = str(e)
+        return fine, detail
+
+
 def _match_parent(fine: dict, anchors: list) -> Optional[dict]:
     """The coarse anchor a fine part genuinely belongs to (≥ half inside), or None.
     None means the part is a top-level fine region living in the full image frame —
@@ -797,6 +884,11 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
 
         # --- Stage 2 · SŪKṢMA: fine semantic decomposition (Groq vision). ---
         fine_degraded = False
+        # CONCEPT-SEG-001 — which fine-parts producer actually ran. Recorded on the response
+        # because the two are NOT interchangeable: `sam3` returns measured pixel masks, the VLM
+        # returns boxes it estimated and no mask at all. A caller that cannot tell them apart
+        # would read a guess as a measurement.
+        fine_source = "vlm"
         if not req.coarse_only:
             try:
                 _t = time.perf_counter()
@@ -813,6 +905,33 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
                 fine_degraded = True                       # → the run finalizes PARTIAL, not FAILED
                 await rec.event(vrc.STAGE_DECOMPOSE_FINE, JobStatus.FAILED, capability="decompose",
                                 adapter="vision_service.decompose_regions", error=str(e))
+            # ── the measuring pass, BEHIND the VLM rather than instead of it ──────────
+            #
+            # SF-004-R2 returned a QUALIFIED GO: 27/35 concepts really masked against 0 masks on
+            # 72/72 for the VLM baseline, but 5.3 s per concept warm on an M4 (63–67 s per image)
+            # against 3.3–39.6 s for the single VLM call. So it runs OPT-IN and it runs SECOND:
+            # the VLM stays the concept source (it knows what is in THIS picture; a fixed
+            # vocabulary asked a neck close-up for "cuff" and "placket" and got 6/18), and SAM 3
+            # measures the parts the VLM named. That ordering is the spike's own finding — the
+            # first Gate-2 run inverted it and scored badly for a reason that was methodological.
+            if fine and _sukshma_concept_segmentation_enabled():
+                _t = time.perf_counter()
+                fine, seg_detail = await _measure_fine_parts_with_sam3(fine, img_bytes)
+                if seg_detail.get("ran"):
+                    fine_source = "sam3"
+                    await rec.event(vrc.STAGE_DECOMPOSE_FINE, JobStatus.SUCCEEDED,
+                                    capability="concept_segment", adapter="sam3",
+                                    latency_ms=round((time.perf_counter() - _t) * 1000, 1),
+                                    detail=seg_detail)
+                else:
+                    # Requested but unavailable (no weights) or it raised. The VLM parts above
+                    # stand and the response says which producer they came from — a degraded
+                    # answer that names itself, never a silent substitution.
+                    fine_source = "sam3_fallback_vlm"
+                    await rec.event(vrc.STAGE_DECOMPOSE_FINE, JobStatus.UNAVAILABLE,
+                                    capability="concept_segment", adapter="sam3",
+                                    fallbacks=["vision_service.decompose_regions"],
+                                    detail=seg_detail)
             # Link each fine part to its anchor. Geometry guard (VISION-BUILD-001 B2):
             # a mask-bearing region's exact mask is authoritative and is NEVER clipped or
             # collapsed by semantic parenting; only a box-only fine part may be nudged into
@@ -959,6 +1078,9 @@ async def detect_regions(post_id: str, request: Optional[RegionDetectRequest] = 
                             "region_count": len(regions)})
         return {"regions": regions, "source": source, "anchor_count": len(anchors or []),
                 "fine_count": len(fine), "creator_preserved": len(creator_regions),
+                # CONCEPT-SEG-001 — `vlm` | `sam3` | `sam3_fallback_vlm`. Which producer the fine
+                # parts came from, and therefore whether their geometry was measured or estimated.
+                "fine_source": fine_source,
                 "run_id": rec.run_id}
     except asyncio.CancelledError:
         # Request cancelled/shutdown — terminalize the run CANCELLED (shielded finalize) and
