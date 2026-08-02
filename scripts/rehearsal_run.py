@@ -47,11 +47,10 @@ from rehearsal_adapters import (  # noqa: E402
 # --------------------------------------------------------------------------- #
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# The rehearsal research home moved into the vault Build space (AGENTS.md: docs live in
-# vault/Build/Architecture Lab; top-level architecture-lab is retired and must not be recreated).
-REHEARSALS_ROOT = os.path.join(
-    REPO_ROOT, "vault", "Build", "Architecture Lab", "Vision pipeline", "rehearsals"
-)
+# The rehearsal research home lives at research/rehearsals. It used to sit inside the vault,
+# but the vault is no longer versioned (see .gitignore) and these schemas, sandboxes and run
+# records are read by the test suite — they have to travel with the repo to stay checkable.
+REHEARSALS_ROOT = os.path.join(REPO_ROOT, "research", "rehearsals")
 SCHEMA_DIR = os.path.join(REHEARSALS_ROOT, "schemas")
 DEFAULT_RUNS_ROOT = os.path.join(REHEARSALS_ROOT, "runs")
 
