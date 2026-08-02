@@ -108,6 +108,19 @@ INTENTS: Tuple[Intent, ...] = (
         steps=(("background_recession", {}), ("atmosphere_field", {})),
         why="How far back the picture goes, and the haze that says so.",
     ),
+    # CONCEPT-SEG-001 — the only intent that asks for the EXTENT of a named thing rather than a
+    # yes/no about it. `check_presence` and `count` also take the curator's words, so these
+    # keywords are deliberately about geometry ("outline", "cut out", "exactly") and share
+    # nothing with "is there" / "how many": asking whether a thing is present and asking to be
+    # handed its shape are different requests, and answering the first with the second spends
+    # ~5 s per concept on an answer nobody asked for.
+    Intent(
+        key="measure_concept",
+        keywords=("outline", "cut out", "exactly", "every instance", "each one",
+                  "segment", "mask", "extent", "where exactly", "all of them"),
+        steps=(("concept_segment", {}),),
+        why="A named thing's real extent, measured off the pixels rather than estimated.",
+    ),
 )
 
 

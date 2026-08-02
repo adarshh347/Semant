@@ -874,7 +874,13 @@ async def _run_concept_segment(step: Step, memory: WorkingMemory, ctx: "Executio
     extent and an `interpretive` naming per instance. Nothing is committed: they land in the
     context's quarantine like every other suggestion.
     """
-    phrase = str((step.params or {}).get("phrase") or "").strip()
+    # A phrase arrives two ways and `plan.py:134` already says so: typed into the workspace (it
+    # lands on the packet, i.e. on memory) or written into the step by the planner. The step wins
+    # when both exist. Reading only the step would make this actuator unreachable from the
+    # Orchestrate bar, where the curator types their words into the workspace and the planner
+    # never sees them.
+    phrase = str((step.params or {}).get("phrase")
+                 or (getattr(memory, "phrase", None) or "")).strip()
     if not phrase:
         return ActuatorResult(status=EMPTY, produced=(), adapter="sam3",
                               detail="needs a concept — an open-vocabulary finder with nothing "
@@ -891,6 +897,12 @@ async def _run_concept_segment(step: Step, memory: WorkingMemory, ctx: "Executio
         return ActuatorResult(status=EMPTY, produced=(), model=result.get("model"),
                               adapter="sam3", detail=f"no instance of '{phrase}' measured",
                               payload={"concept": phrase, "latency_ms": result.get("latency_ms")})
+
+    # The masks become PROPOSED regions first. A suggestion references a region's mask by id and
+    # never inlines it (the mark contract), so without this the descriptors below are dropped
+    # silently at frontend intake and the curator sees nothing at all.
+    regions = svc.instances_to_regions(result)
+    ctx.regions.extend(regions)
 
     from backend.services import suggestion_service as ss
     suggestions = ss.suggestions_from_concept_segments(

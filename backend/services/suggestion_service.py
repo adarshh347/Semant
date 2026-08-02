@@ -247,13 +247,27 @@ def suggestions_from_concept_segments(
             rle = inst.get("mask_rle")
             if not rle:
                 continue                       # no mask, no claim — never coerced to a box
+            # THE MASK MUST ALREADY LIVE ON A REGION. The mark contract's rule, enforced by the
+            # frontend's `validateMark`: a `raster_mask` suggestion carries `mask_ref.region_id`
+            # and a `region_ref` carries `region_ref.region_id` — never inline geometry. A
+            # suggestion that inlines its mask is dropped SILENTLY at intake
+            # (`normalizeMark → null → filter(Boolean)`), which is the `architectural_axis` bug:
+            # the producer ships, the mark never renders, and nothing fails loudly in between.
+            region_id = inst.get("region_id")
+            if not region_id:
+                continue
             confidence = inst.get("confidence")
             # Positional within (concept, run) and labelled as such, so nothing downstream reads
             # it as a stable identity across re-runs.
             ref = f"{concept}|{inst.get('index')}"
             prov = _provenance(model=used_model, adapter=adapter, latency_ms=latency,
                                run_id=run_id, producer=PRODUCER_CONCEPT_SEGMENT)
-            prov["step_id"] = step_id
+            # ONLY when we actually have one. `real_actuators._stamp_step_id` fills this in with
+            # `setdefault`, so writing an explicit None here does not leave the field empty — it
+            # occupies the key and blocks the stamp, and the suggestion ends up with no step id
+            # at all. Absent is what invites the stamp; None is what defeats it.
+            if step_id is not None:
+                prov["step_id"] = step_id
             out.append({
                 **_epistemic(PRODUCER_CONCEPT_SEGMENT, confidence=confidence),
                 "producer": PRODUCER_CONCEPT_SEGMENT,
@@ -261,7 +275,9 @@ def suggestions_from_concept_segments(
                 "role": None,                  # a measured extent carries no reading yet
                 "label": "",                   # deliberately EMPTY: the words are the other claim
                 "source_ref": ref,
-                "geometry": {"kind": "raster_mask", "mask_rle": rle},
+                "geometry": {"kind": "raster_mask",
+                             "mask_ref": {"region_id": region_id,
+                                          "geometry_rev": inst.get("geometry_rev", 0)}},
                 "linked_ground_ids": [],
                 "provenance": prov,
                 "confidence": confidence,
@@ -274,7 +290,8 @@ def suggestions_from_concept_segments(
                 continue
             nprov = _provenance(model=used_model, adapter=adapter, latency_ms=latency,
                                 run_id=run_id, producer=PRODUCER_CONCEPT_NAMING)
-            nprov["step_id"] = step_id
+            if step_id is not None:            # same reason as the extent above
+                nprov["step_id"] = step_id
             nprov["concept_source"] = concept_source
             out.append({
                 **_epistemic(PRODUCER_CONCEPT_NAMING),
@@ -283,7 +300,10 @@ def suggestions_from_concept_segments(
                 "role": None,
                 "label": concept,
                 "source_ref": ref,             # names the extent above; authors no geometry
-                "geometry": {"kind": "region_ref", "region_ref": {"source_ref": ref}},
+                # A NAMING REFERENCE, and it may carry no `mask_ref` at all — a reference, never
+                # a copy. It points at the same region the extent above measured, which is what
+                # lets review accept one and reject the other and still know which mask was meant.
+                "geometry": {"kind": "region_ref", "region_ref": {"region_id": region_id}},
                 "linked_ground_ids": [],
                 "provenance": nprov,
                 "confidence": confidence,

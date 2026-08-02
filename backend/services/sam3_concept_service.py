@@ -223,6 +223,54 @@ def segment_concept(image: Any, concept: str, *, conf: float = DEFAULT_CONF,
     }
 
 
+def instances_to_regions(result: Dict[str, Any], *, prefix: str = "cseg") -> List[Dict[str, Any]]:
+    """A concept result's instances → PROPOSED Regions that own the masks.
+
+    The mark contract requires a suggestion to REFERENCE a region's mask by id, never to inline
+    it (`validateMark`: `raster_mask` needs `mask_ref.region_id`). So the masks have to become
+    regions first — the same move `refined_mask_to_region` makes for SAM 2 — and the two-status
+    descriptors then both point here.
+
+    Mutates each instance with its `region_id`, so `suggestions_from_concept_segments` can find
+    it, and returns the regions for the caller to put in front of the curator.
+
+    `proposed=True`: nothing is committed. These are candidate extents awaiting review, and the
+    curator fields carry Region's own defaults so the shape stays schema-valid.
+    """
+    from backend.services import mask_geometry
+
+    concept = result.get("concept") or ""
+    slug = "".join(ch if ch.isalnum() else "_" for ch in concept)[:24] or "concept"
+    regions: List[Dict[str, Any]] = []
+    for inst in result.get("instances") or []:
+        if not inst.get("mask_rle"):
+            continue
+        region: Dict[str, Any] = {
+            "id": f"{prefix}_{slug}_{inst.get('index')}",
+            "actor": "auto",
+            "detector": MODEL_TAG,
+            # The label lives on the NAMING descriptor, not here. A region minted with the
+            # concept already written on it would smuggle the interpretive half into the
+            # measured object and make the two statuses inseparable again.
+            "label": "",
+            "confidence": inst.get("confidence"),
+            "mask_rle": inst["mask_rle"],
+            "proposed": True,
+            "geometry_rev": 0,
+            "prioritised": False,
+            "weight": 0,
+            "user_note": "",
+        }
+        mask_geometry.canonicalize_geometry(region, provenance={
+            "adapter": MODEL_TAG, "model": CHECKPOINT, "device": device(),
+            "method": "sam3-concept-segment", "prompt": concept,
+        })
+        inst["region_id"] = region["id"]
+        inst["geometry_rev"] = region.get("geometry_rev", 0)
+        regions.append(region)
+    return regions
+
+
 def segment_concepts(image: Any, concepts: Sequence[str], *, conf: float = DEFAULT_CONF,
                      max_instances: int = 16) -> List[Dict[str, Any]]:
     """Several concepts on one image, in order.

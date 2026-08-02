@@ -34,9 +34,14 @@ def _rle(n: int = 4):
 
 
 def _result(concept="collar", confs=(0.9,)):
+    """A segment result AFTER `instances_to_regions` has run — i.e. each instance already knows
+    the id of the region that owns its mask. That ordering is not incidental: a suggestion
+    references a region's mask and never inlines it, so an instance with no `region_id` yields
+    no descriptor at all."""
     return {
         "concept": concept,
-        "instances": [{"index": i, "mask_rle": _rle(), "confidence": c}
+        "instances": [{"index": i, "mask_rle": _rle(), "confidence": c,
+                       "region_id": f"cseg_{concept.replace(' ', '_')}_{i}", "geometry_rev": 0}
                       for i, c in enumerate(confs)],
         "truncated": False, "latency_ms": 5292.0, "device": "mps", "model": "facebook/sam3",
     }
@@ -63,12 +68,17 @@ def test_the_extent_carries_the_geometry_and_the_naming_carries_the_words():
     VLM's own namings use — the law that a reading never mints an extent)."""
     extent, naming = ss.suggestions_from_concept_segments([_result("cuff")], run_id="r1")
     assert extent["geometry"]["kind"] == "raster_mask"
-    assert extent["geometry"]["mask_rle"] == _rle()
+    # It REFERENCES the region that owns the mask; it does not carry one. Inlining it is what
+    # `validateMark` drops silently at intake.
+    assert extent["geometry"]["mask_ref"]["region_id"] == "cseg_cuff_0"
+    assert "mask_rle" not in extent["geometry"]
     assert extent["label"] == ""
 
     assert naming["label"] == "cuff"
     assert naming["geometry"]["kind"] == "region_ref"
-    assert "mask_rle" not in naming["geometry"]
+    assert naming["geometry"]["region_ref"]["region_id"] == "cseg_cuff_0"
+    # A reference, never a copy: a naming may carry no mask_ref at all.
+    assert "mask_ref" not in naming["geometry"]
 
 
 def test_the_naming_references_the_extent_it_names():
@@ -139,6 +149,15 @@ def test_the_floor_never_fabricates_a_box_when_there_is_no_mask():
     empty = {"concept": "hem", "instances": [{"index": 0, "mask_rle": None, "confidence": 0.9}],
              "model": "facebook/sam3"}
     assert ss.suggestions_from_concept_segments([empty], run_id="r1") == []
+
+
+def test_an_instance_with_no_region_yields_no_descriptor():
+    """The mask has to live on a region before anything may reference it. A descriptor emitted
+    ahead of its region is dropped SILENTLY by the frontend, which is the worst available
+    failure — the producer looks like it ran and the curator sees nothing."""
+    orphan = {"concept": "hem", "model": "facebook/sam3",
+              "instances": [{"index": 0, "mask_rle": _rle(), "confidence": 0.9}]}
+    assert ss.suggestions_from_concept_segments([orphan], run_id="r1") == []
 
 
 def test_no_instances_is_an_answer_and_yields_nothing():
@@ -259,6 +278,21 @@ def test_provenance_carries_the_run_and_the_step():
     for d in out:
         assert d["provenance"]["run_id"] == "r7"
         assert d["provenance"]["step_id"] == "s3"
+        assert d["provenance"]["adapter"] == "sam3"
+        assert d["provenance"]["model"] == "facebook/sam3"
+
+
+def test_no_step_id_leaves_the_key_ABSENT_so_the_runner_can_stamp_it():
+    """`real_actuators._stamp_step_id` fills the field with `setdefault`. Writing an explicit
+    None here would occupy the key and block the stamp, leaving every orchestrated suggestion
+    with no step id — which is exactly the PROV-001 gap that made M4 refuse to draw."""
+    from backend.services.director.real_actuators import _stamp_step_id
+
+    out = ss.suggestions_from_concept_segments([_result()], run_id="r7")
+    assert all("step_id" not in d["provenance"] for d in out)
+    _stamp_step_id(out, "s9")
+    for d in out:
+        assert d["provenance"]["step_id"] == "s9"
         assert d["provenance"]["adapter"] == "sam3"
         assert d["provenance"]["model"] == "facebook/sam3"
 
@@ -390,6 +424,15 @@ def test_guarded_real_run_emits_two_statuses_over_real_geometry():
             rle = inst["mask_rle"]
             assert rle["size"][0] > 0 and rle["size"][1] > 0
             assert sum(rle["counts"]) == rle["size"][0] * rle["size"][1]
+
+        # The masks become PROPOSED regions before anything references them — the same order the
+        # runner uses, and the reason this test mirrors it rather than shortcutting: a descriptor
+        # emitted ahead of its region is dropped silently by the frontend.
+        regions = svc.instances_to_regions(result)
+        assert len(regions) == len(instances)
+        assert all(r["proposed"] is True and r["detector"] == "sam3" for r in regions)
+        assert all(r["label"] == "" for r in regions), \
+            "the concept belongs on the naming descriptor, never on the measured region"
 
         sug = ss.suggestions_from_concept_segments(
             [result], run_id="guarded", step_id="s1", concept_source="curator",
