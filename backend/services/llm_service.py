@@ -1,8 +1,11 @@
 import json
 from groq import Groq
 from backend.config import settings
+from backend.services import role_registry
 
 class LLMService:
+    ROLE = "archivist"
+
     def __init__(self):
         # Initialize Groq client with API key from settings
         if settings.GROQ_API_KEY:
@@ -10,9 +13,17 @@ class LLMService:
         else:
             self.client = None
             print("Warning: GROQ_API_KEY not found in settings. LLM features will be disabled.")
-            
-        # Model can be easily switched here
-        self.model = "openai/gpt-oss-120b"
+
+    @property
+    def model(self) -> str:
+        """ROLES-001 — resolved from the `archivist` role, not held as a literal.
+
+        A PROPERTY rather than an assignment in `__init__`, because this service is constructed
+        once at import and lives for the whole process. Capturing the model at construction would
+        make `SEMANT_ROLE_ARCHIVIST_MODEL` a setting that takes effect only on restart, which is
+        not what "rebind without a code edit" means.
+        """
+        return role_registry.model_for(self.ROLE)
 
     def generate_summary_and_plots(self, text_content: str) -> dict:
         """
