@@ -11,7 +11,9 @@ import { atlasService } from './atlasService.js';
 import {
     ATLAS_NODE_TYPE, arrangementFrom, flowNodesFromView, positionsOf, refusalLines,
 } from './atlasDocument.js';
-import { CLAIM_NODE_TYPE, acceptPayload, bindingEdges, claimFlowNodes } from './atlasPlan.js';
+import {
+    CLAIM_NODE_TYPE, acceptPayload, bindingEdges, claimFlowNodes, isClaimNodeId,
+} from './atlasPlan.js';
 
 /**
  * ATLAS C1 — the canvas: a corpus, coexisting, with its committed percepts on it.
@@ -62,6 +64,8 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
     // render, so a drag that ends where it started sends nothing.
     const saved = useRef({});
     const timer = useRef(null);
+    // React Flow's own instance, for the one thing a plan needs the VIEW to do (see below).
+    const flow = useRef(null);
 
     useEffect(() => {
         let live = true;
@@ -179,19 +183,72 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
     // What the canvas draws: the writer's current structure over the server's plan. Derived, never
     // stored — the claim column is laid out from the ORDER, so a reorder moves the cards.
     const planView = useMemo(() => (plan ? { ...plan, claims } : null), [claims, plan]);
-    const flowNodes = useMemo(
-        () => (planView ? [...nodes, ...claimFlowNodes(planView, nodes)] : nodes),
-        [nodes, planView]);
+
+    // CLAIM CARDS GO INTO THE SAME NODE ARRAY AS THE PICTURES, and that is the whole reason this
+    // is a merge rather than a concatenation at render time. React Flow measures the nodes it is
+    // given and reports each measurement back through `onNodesChange`; a node whose measurement
+    // the app never applies stays unmeasured forever, and an unmeasured node has no handle bounds,
+    // and a handle with no bounds anchors no edge. Claim cards kept outside this array rendered
+    // perfectly and every single connector was silently dropped — no error, no warning, just no
+    // lines. So they live here, are measured here, and are excluded at the SAVE boundary instead
+    // (`positionsOf`), which is where they never belonged in the first place.
     const flowEdges = useMemo(() => (planView ? bindingEdges(planView) : []), [planView]);
 
+    // A claim card's content changes what it DRAWS (its status, which percepts bound); the set and
+    // order change where the cards SIT. Both have to reach the node array, so the signature covers
+    // both — while staying stable across a render that changed neither.
+    const hasPlan = Boolean(planView);
+    const claimSignature = JSON.stringify(
+        claims.map((c) => [c.claim_id, c.text, c.status, c.dirty === true,
+            (c.percepts || []).map((p) => `${p.step_id}:${p.bound}`)]));
+
+    useEffect(() => {
+        setNodes((prev) => {
+            const images = prev.filter((n) => !isClaimNodeId(n.id));
+            if (!hasPlan) return images.length === prev.length ? prev : images;
+            const was = new Map(prev.filter((n) => isClaimNodeId(n.id)).map((n) => [n.id, n]));
+            return [...images, ...claimFlowNodes(planView, images).map((n) => {
+                // Carry the measurement forward for a card that survived the edit. Rebuilding it
+                // unmeasured would hide it (React Flow hides what it has not measured) and drop
+                // its connectors until the next measurement pass.
+                const before = was.get(n.id);
+                return before ? { ...n, measured: before.measured } : n;
+            })];
+        });
+        // `planView` is deliberately absent: it is a fresh object every render, and `claimSignature`
+        // already covers everything about it that this effect reads.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [claimSignature, hasPlan]);
+
+    // WHEN AN ARGUMENT ARRIVES, SHOW IT. The claim column is laid out to the left of the corpus,
+    // which on a canvas already fitted to the images is off-screen — so the first plan a writer
+    // ever asks for appears to do nothing to the canvas. Refit when the SET of claims changes
+    // (arrived, reordered, one removed), not on every keystroke of an edit, or the view would
+    // lurch while somebody is rewording a sentence.
+    const claimIds = claims.map((c) => c.claim_id).join(',');
+    useEffect(() => {
+        if (!claimIds || !flow.current) return undefined;
+        // One frame late, on purpose: the cards have just been added to the node array and React
+        // Flow has not measured them yet, so fitting now would frame a bounding box that does not
+        // include them.
+        const t = setTimeout(() => flow.current?.fitView({ padding: 0.12, duration: 350 }), 120);
+        return () => clearTimeout(t);
+    }, [claimIds]);
+
     const unreadable = view?.unreadable || [];
-    const counts = useMemo(() => ({
-        images: nodes.length,
-        percepts: nodes.reduce((n, node) => n
-            + (node.data?.grounds?.length || 0)
-            + (node.data?.marks?.length || 0)
-            + (node.data?.regions?.length || 0), 0),
-    }), [nodes]);
+    // Images only. Since C4 the node array also holds claim cards, and a header that counted them
+    // would report more photographs than the corpus has — which is exactly the drift this line is
+    // there to prevent, so it filters rather than trusting the array's length.
+    const counts = useMemo(() => {
+        const images = nodes.filter((n) => !isClaimNodeId(n.id));
+        return {
+            images: images.length,
+            percepts: images.reduce((n, node) => n
+                + (node.data?.grounds?.length || 0)
+                + (node.data?.marks?.length || 0)
+                + (node.data?.regions?.length || 0), 0),
+        };
+    }, [nodes]);
 
     if (error && !view) {
         return <div className="atlas-error" role="alert">{error}</div>;
@@ -247,10 +304,11 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
             <div className="atlas-with-plan">
                 <div className="atlas-canvas">
                 <ReactFlow
-                    nodes={flowNodes}
+                    nodes={nodes}
                     edges={flowEdges}
                     nodeTypes={nodeTypes}
                     onNodesChange={onNodesChange}
+                    onInit={(instance) => { flow.current = instance; }}
                     // Nobody draws a binding by hand. C4's edges are minted from a plan the gate
                     // judged, and C3's will be minted from a real `compare_views` percept —
                     // neither is a line anyone gets to assert with a drag.

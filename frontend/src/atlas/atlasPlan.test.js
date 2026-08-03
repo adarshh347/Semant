@@ -15,8 +15,9 @@ import { describe, it, expect } from 'vitest';
 import {
     CLAIM_H, CLAIM_NODE_TYPE, CLAIM_W, acceptPayload, bindingEdges, claimFlowNodes,
     claimPositions, connectorsAgree, dropClaim, dropPercept, emptyPlanReason, functionLabel,
-    isEdited, moveClaim, planSummary, refusalLines, rewordClaim,
+    isClaimNodeId, isEdited, moveClaim, planSummary, refusalLines, rewordClaim,
 } from './atlasPlan.js';
+import { arrangementFrom, positionsOf } from './atlasDocument.js';
 
 const percept = (over = {}) => ({
     step_id: 'c0:0:negative_space', actuator: 'negative_space', params: {},
@@ -58,6 +59,25 @@ describe('the claim column', () => {
     it('survives a canvas whose nodes have no usable positions', () => {
         expect(claimPositions(1, [{ id: 'n0', position: { x: NaN, y: undefined } }]))
             .toEqual([{ x: -CLAIM_W - 220, y: 0 }]);
+    });
+
+    it('namespaces a claim node so the save path can tell it from a picture', () => {
+        // The cards share the node array with the images — that is what gets them MEASURED, and an
+        // unmeasured node has no handle bounds and anchors no connector. The namespace is what
+        // keeps them out of the arrangement anyway.
+        const [n] = claimFlowNodes(aPlan(), imageNodes);
+        expect(n.id).toBe('claim:c0');
+        expect(isClaimNodeId(n.id)).toBe(true);
+        expect(isClaimNodeId('n0')).toBe(false);
+    });
+
+    it('keeps claim cards out of the arrangement a save carries', () => {
+        const mixed = [
+            { id: 'n0', position: { x: 10, y: 20 } },
+            { id: 'claim:c0', position: { x: -500, y: 0 } },
+        ];
+        expect(Object.keys(positionsOf(mixed))).toEqual(['n0']);
+        expect(arrangementFrom(mixed, {}).map((p) => p.node_id)).toEqual(['n0']);
     });
 
     it('lays a claim out FROM its order and refuses to let it be dragged', () => {

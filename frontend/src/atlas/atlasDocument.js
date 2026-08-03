@@ -18,6 +18,19 @@
 
 export const ATLAS_NODE_TYPE = 'atlasImage';
 
+/**
+ * The namespace for nodes that are NOT images of the corpus.
+ *
+ * C4 puts claim cards on the same canvas, and they go through the same React Flow node array as
+ * the pictures — because that array is what React Flow measures, and an unmeasured node cannot
+ * anchor a connector. What they must never do is reach the ARRANGEMENT: the Atlas document holds
+ * where each image sits, and a claim has no place in it. So the two live together on the canvas
+ * and part company here, at the save boundary, by id.
+ */
+export const CLAIM_NODE_PREFIX = 'claim:';
+
+export const isClaimNodeId = (id) => String(id ?? '').startsWith(CLAIM_NODE_PREFIX);
+
 // How far a node must move before the change is worth a round trip. Sub-pixel jitter from a
 // pointer that barely moved is not an arrangement anyone chose.
 export const MOVE_EPSILON = 0.5;
@@ -49,12 +62,11 @@ export function flowNodesFromView(view) {
         id: String(n.node_id),
         type: ATLAS_NODE_TYPE,
         position: { x: finite(n.x) ?? 0, y: finite(n.y) ?? 0 },
-        // The box, told to React Flow rather than left to be measured. The document already knows
-        // it, and C4's connectors need an endpoint the moment a plan arrives — an edge whose
-        // source has not been measured is simply not drawn, so a binding would appear a frame
-        // late, or in a surface that never measures, not at all.
-        width: finite(n.w) ?? 420,
-        height: finite(n.h) ?? 320,
+        // NO `width`/`height` HERE, and it is load-bearing rather than an omission. Declaring the
+        // box that the node's own inline style already sets makes React Flow's measurement pass a
+        // no-op — and that same pass is what records where each handle SITS. Skip it and every
+        // C4 connector aimed at this node is silently dropped: handles in the DOM, edges in the
+        // props, nothing drawn. Cost one live browser to find; it renders fine in jsdom either way.
         // Nobody wires a node by hand: a binding is granted by the gate (C4), a relation is a
         // produced percept (C3). Neither is a line anyone gets to assert with a drag.
         connectable: false,
@@ -80,9 +92,12 @@ export function flowNodesFromView(view) {
 export function positionsOf(nodes) {
     const out = {};
     (nodes || []).forEach((n) => {
+        // A claim card shares the canvas but is not part of the arrangement — it is laid out from
+        // the argument's ORDER, and the document has no node to move for it.
+        if (!n?.id || isClaimNodeId(n.id)) return;
         const x = finite(n?.position?.x);
         const y = finite(n?.position?.y);
-        if (n?.id && x !== null && y !== null) out[String(n.id)] = { x, y };
+        if (x !== null && y !== null) out[String(n.id)] = { x, y };
     });
     return out;
 }

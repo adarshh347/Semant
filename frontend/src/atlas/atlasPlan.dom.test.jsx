@@ -281,6 +281,30 @@ describe('plan mode on the canvas', () => {
             (h) => h.className.includes('atlas-handle'))).toBe(true);
     });
 
+    it('counts the images, not the claim cards sharing the canvas', async () => {
+        // Since the claim cards joined the node array (so React Flow would measure them), the
+        // header's count had to stop trusting `nodes.length`. It said "5 images" over a corpus of
+        // three, which is the one number on this surface a reader would take at face value.
+        const service = fakeService();
+        await mount(<AtlasCanvas atlasId="atlas_1" service={service} />);
+        expect(container.textContent).toContain('2 images');
+        await typeThesis('a thesis');
+        await click(container.querySelector('.atlas-plan .atlas-go'));
+        expect(container.querySelectorAll('.atlas-claim').length).toBe(2);
+        expect(container.textContent).toContain('2 images');       // still two, with two claims on it
+    });
+
+    it('never sends a claim card to the arrangement', async () => {
+        // The cards ride in the same node array as the pictures and must part company at the save
+        // boundary: the Atlas document holds where an IMAGE sits and has no node for a claim.
+        const service = fakeService();
+        await planIt(service);
+        const claimNode = container.querySelector('.react-flow__node[data-id^="claim:"]');
+        expect(claimNode).toBeTruthy();
+        const sent = service.saveArrangement.mock.calls.flatMap(([, patches]) => patches);
+        expect(sent.every((p) => !String(p.node_id).startsWith('claim:'))).toBe(true);
+    });
+
     it('says on the surface that a line is a binding, not a relation between images', async () => {
         await planIt(fakeService());
         expect(container.textContent)

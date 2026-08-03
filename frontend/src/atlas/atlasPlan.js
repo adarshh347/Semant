@@ -29,7 +29,14 @@
  * canvas — would contradict each other the moment anybody moved a card.
  */
 
+import { CLAIM_NODE_PREFIX, isClaimNodeId } from './atlasDocument.js';
+
 export const CLAIM_NODE_TYPE = 'atlasClaim';
+
+/** A claim's node id. Namespaced so the save path can tell a card from a picture. */
+export const claimNodeId = (claimId) => `${CLAIM_NODE_PREFIX}${claimId}`;
+
+export { isClaimNodeId };
 
 /** What a claim→image line is. Never the word `relation`, which belongs to C3's percepts. */
 export const EDGE_BINDING = 'binding';
@@ -101,13 +108,12 @@ export function claimFlowNodes(plan, imageNodes = []) {
     const claims = plan?.claims || [];
     const at = claimPositions(claims.length, imageNodes);
     return claims.map((claim, i) => ({
-        id: `claim:${claim.claim_id}`,
+        id: claimNodeId(claim.claim_id),
         type: CLAIM_NODE_TYPE,
         position: at[i],
-        // Declared, not measured — same reason as the image nodes: the connector needs both
-        // endpoints to have a box before it can be drawn at all.
-        width: CLAIM_W,
-        height: CLAIM_H,
+        // Deliberately no `width`/`height` — see the note in `flowNodesFromView`. A declared box
+        // suppresses the measurement pass that records handle positions, and a claim whose handle
+        // was never located is a claim whose connectors never draw.
         // The claim's place in the argument is its order. Dragging would invent a second sequence.
         draggable: false,
         connectable: false,
@@ -130,7 +136,7 @@ export function bindingEdges(plan) {
             if (!p.bound || p.spans_corpus || !p.node_id) return;
             out.push({
                 id: `${claim.claim_id}~${p.step_id}`,
-                source: `claim:${claim.claim_id}`,
+                source: claimNodeId(claim.claim_id),
                 target: String(p.node_id),
                 // Dashed, labelled with the rhetorical job, and never the same shape a real
                 // comparative percept will get in C3.
