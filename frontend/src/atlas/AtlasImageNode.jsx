@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { Handle, Position } from '@xyflow/react';
 import GroundLayers from '../differential/GroundLayers.jsx';
 import RegionOverlay from '../components/RegionOverlay.jsx';
 import useStageGeometry, { useNaturalSize } from '../differential/useStageGeometry.js';
@@ -46,6 +47,11 @@ export default function AtlasImageNode({ data }) {
                 <div className="atlas-node-cap">
                     <span className="atlas-node-title">{data.postId}</span>
                 </div>
+                {/* An unreadable image is still a landing point for a C4 binding: a percept
+                    planned on it BINDS, with a caveat, because the actuator fetches the picture at
+                    execution. Omitting the handle here would silently drop that claim's line. */}
+                <Handle type="target" position={Position.Left} isConnectable={false}
+                    className="atlas-handle" />
             </div>
         );
     }
@@ -102,6 +108,11 @@ export default function AtlasImageNode({ data }) {
             {summary.withheldNote && (
                 <div className="atlas-node-withheld" role="note">{summary.withheldNote}</div>
             )}
+
+            {/* Where C4's claim connectors land. `isConnectable` is false — the handle is an
+                endpoint the layout needs, not an affordance: nobody draws a binding by hand. */}
+            <Handle type="target" position={Position.Left} isConnectable={false}
+                className="atlas-handle" />
         </div>
     );
 }

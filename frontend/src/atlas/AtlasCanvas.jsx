@@ -5,10 +5,13 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import AtlasImageNode from './AtlasImageNode.jsx';
+import AtlasClaimNode from './AtlasClaimNode.jsx';
+import AtlasPlanPanel from './AtlasPlanPanel.jsx';
 import { atlasService } from './atlasService.js';
 import {
     ATLAS_NODE_TYPE, arrangementFrom, flowNodesFromView, positionsOf, refusalLines,
 } from './atlasDocument.js';
+import { CLAIM_NODE_TYPE, acceptPayload, bindingEdges, claimFlowNodes } from './atlasPlan.js';
 
 /**
  * ATLAS C1 — the canvas: a corpus, coexisting, with its committed percepts on it.
@@ -34,7 +37,7 @@ import {
 
 const SAVE_DEBOUNCE_MS = 600;
 
-const nodeTypes = { [ATLAS_NODE_TYPE]: AtlasImageNode };
+const nodeTypes = { [ATLAS_NODE_TYPE]: AtlasImageNode, [CLAIM_NODE_TYPE]: AtlasClaimNode };
 
 export default function AtlasCanvas({ atlasId, service = atlasService }) {
     const [view, setView] = useState(null);
@@ -42,6 +45,18 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
     const [error, setError] = useState('');
     const [status, setStatus] = useState('');
     const [refusals, setRefusals] = useState([]);
+
+    // ── C4: plan mode ──
+    // `plan` is what the server last said. `claims` is what the writer has done to it since, and
+    // the two are kept apart on purpose: `isEdited` compares them, and a single merged copy would
+    // leave nothing able to say the verdicts on screen predate the edit.
+    const [thesis, setThesis] = useState('');
+    const [plan, setPlan] = useState(null);
+    const [claims, setClaims] = useState([]);
+    const [planning, setPlanning] = useState(false);
+    const [accepting, setAccepting] = useState(false);
+    const [accepted, setAccepted] = useState(false);
+    const [planError, setPlanError] = useState('');
 
     // The arrangement the SERVER is known to hold. A save diffs against this, not against the last
     // render, so a drag that ends where it started sends nothing.
@@ -59,6 +74,15 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
                 const flow = flowNodesFromView(data);
                 setNodes(flow);
                 saved.current = positionsOf(flow);
+                // An Atlas that already holds an accepted plan opens wearing it. The stored plan
+                // is the record — it is shown as it was stored, not re-planned, because a fresh
+                // model call on every page load would quietly replace what the writer accepted.
+                if (data?.plan) {
+                    setPlan(data.plan);
+                    setClaims(data.plan.claims || []);
+                    setThesis(data.plan.thesis || '');
+                    setAccepted(true);
+                }
             } catch (e) {
                 if (live) setError(e?.message || 'Could not open this Atlas.');
             }
@@ -98,6 +122,68 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
         });
     }, [flush]);
 
+    // ── C4: ask, edit, accept ──
+
+    const onPlan = useCallback(async () => {
+        if (!thesis.trim() || planning) return;
+        setPlanning(true);
+        setPlanError('');
+        setAccepted(false);
+        try {
+            const data = await service.proposePlan(atlasId, { thesis: thesis.trim() });
+            setPlan(data);
+            setClaims(data.claims || []);
+        } catch (e) {
+            // A planner that failed says so. It never leaves the previous plan on screen looking
+            // like the answer to the new thesis.
+            setPlan(null);
+            setClaims([]);
+            setPlanError(e?.message || 'The planner could not be reached.');
+        } finally {
+            setPlanning(false);
+        }
+    }, [atlasId, planning, service, thesis]);
+
+    const onAccept = useCallback(async () => {
+        if (!claims.length || accepting) return;
+        setAccepting(true);
+        setPlanError('');
+        try {
+            const res = await service.acceptPlan(atlasId, acceptPayload(thesis, claims));
+            // Trust what came BACK. The server re-bound the edited structure, so its verdicts are
+            // the only ones that describe what was actually accepted — replacing the local claims
+            // with the response is what makes a claim that lost its evidence go struck on screen.
+            const stored = res?.plan || null;
+            setPlan(stored);
+            setClaims(stored?.claims || []);
+            setAccepted(true);
+        } catch (e) {
+            setPlanError(e?.message || 'The plan was not accepted.');
+        } finally {
+            setAccepting(false);
+        }
+    }, [accepting, atlasId, claims, service, thesis]);
+
+    const onDiscard = useCallback(async () => {
+        setPlan(null);
+        setClaims([]);
+        setAccepted(false);
+        setPlanError('');
+        try {
+            if (accepted) await service.clearPlan(atlasId);
+        } catch (e) {
+            setPlanError(e?.message || 'The stored plan was not cleared.');
+        }
+    }, [accepted, atlasId, service]);
+
+    // What the canvas draws: the writer's current structure over the server's plan. Derived, never
+    // stored — the claim column is laid out from the ORDER, so a reorder moves the cards.
+    const planView = useMemo(() => (plan ? { ...plan, claims } : null), [claims, plan]);
+    const flowNodes = useMemo(
+        () => (planView ? [...nodes, ...claimFlowNodes(planView, nodes)] : nodes),
+        [nodes, planView]);
+    const flowEdges = useMemo(() => (planView ? bindingEdges(planView) : []), [planView]);
+
     const unreadable = view?.unreadable || [];
     const counts = useMemo(() => ({
         images: nodes.length,
@@ -124,6 +210,18 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
                             tempts a reader to forget. */}
                         <em className="atlas-note">position is a thinking aid — it asserts nothing</em>
                     </p>
+                    {planView && (
+                        // The second thing a plan-mode canvas most tempts a reader to forget: a
+                        // line from a claim says the gate would grant that percept, not that two
+                        // pictures are related. Relations between images are C3's, and they will
+                        // be real comparative percepts rather than proposals.
+                        <p className="atlas-sub">
+                            <em className="atlas-note">
+                                a line here binds a claim to the evidence that would carry it — it
+                                is a proposal the gate allowed, not a relation between images
+                            </em>
+                        </p>
+                    )}
                 </div>
                 <div className="atlas-head-status" aria-live="polite">
                     {status && <span className="atlas-status">{status}</span>}
@@ -146,14 +244,16 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
 
             {error && view && <div className="atlas-banner is-error" role="alert">{error}</div>}
 
-            <div className="atlas-canvas">
+            <div className="atlas-with-plan">
+                <div className="atlas-canvas">
                 <ReactFlow
-                    nodes={nodes}
-                    edges={[]}
+                    nodes={flowNodes}
+                    edges={flowEdges}
                     nodeTypes={nodeTypes}
                     onNodesChange={onNodesChange}
-                    // C1 draws no edges. Connection is C3's gesture, and it will mean invoking
-                    // `compare_views` — not drawing a line.
+                    // Nobody draws a binding by hand. C4's edges are minted from a plan the gate
+                    // judged, and C3's will be minted from a real `compare_views` percept —
+                    // neither is a line anyone gets to assert with a drag.
                     nodesConnectable={false}
                     elementsSelectable
                     fitView
@@ -165,6 +265,13 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
                     <Controls showInteractive={false} />
                     <MiniMap pannable zoomable ariaLabel="Atlas overview" />
                 </ReactFlow>
+                </div>
+
+                <AtlasPlanPanel
+                    thesis={thesis} onThesis={setThesis} onPlan={onPlan} planning={planning}
+                    plan={plan} claims={claims} onClaims={setClaims}
+                    onAccept={onAccept} onDiscard={onDiscard}
+                    accepting={accepting} accepted={accepted} error={planError} />
             </div>
         </div>
     );

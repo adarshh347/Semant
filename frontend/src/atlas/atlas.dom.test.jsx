@@ -9,6 +9,7 @@
  */
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ReactFlowProvider } from '@xyflow/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import AtlasCanvas from './AtlasCanvas.jsx';
@@ -27,6 +28,9 @@ if (typeof globalThis.DOMMatrixReadOnly === 'undefined') {
 
 let container; let root;
 const mount = async (node) => { await act(async () => { root.render(node); }); };
+// A node mounted on its own still needs React Flow's store: C4 gave the image node a target
+// handle, which is where a claim's binding connector lands.
+const mountNode = async (node) => mount(<ReactFlowProvider>{node}</ReactFlowProvider>);
 
 beforeEach(() => {
     container = document.createElement('div');
@@ -69,19 +73,19 @@ const fakeService = (over = {}) => ({
 
 describe('an image node', () => {
     it('shows the picture and counts what is committed on it', async () => {
-        await mount(<AtlasImageNode data={nodeData()} />);
+        await mountNode(<AtlasImageNode data={nodeData()} />);
         expect(container.querySelector('.atlas-node-img').getAttribute('src'))
             .toBe('https://example.invalid/1.jpg');
         expect(container.textContent).toContain('2 percepts');
     });
 
     it('says so plainly when nothing has been committed yet', async () => {
-        await mount(<AtlasImageNode data={nodeData({ grounds: [] })} />);
+        await mountNode(<AtlasImageNode data={nodeData({ grounds: [] })} />);
         expect(container.textContent).toContain('no committed percepts');
     });
 
     it('stays on the canvas when the image could not be read, and says why', async () => {
-        await mount(<AtlasImageNode data={nodeData({
+        await mountNode(<AtlasImageNode data={nodeData({
             readable: false, unreadableReason: 'post:ghost could not be read' })} />);
         const node = container.querySelector('.atlas-node');
         expect(node.getAttribute('data-readable')).toBe('false');
@@ -89,7 +93,7 @@ describe('an image node', () => {
     });
 
     it('renders a withheld suggestion as visible text, never a tooltip', async () => {
-        await mount(<AtlasImageNode data={nodeData({ withheld: 2 })} />);
+        await mountNode(<AtlasImageNode data={nodeData({ withheld: 2 })} />);
         const note = container.querySelector('.atlas-node-withheld');
         expect(note).toBeTruthy();
         expect(note.textContent).toMatch(/2 suggestions not shown/);
@@ -98,7 +102,7 @@ describe('an image node', () => {
     });
 
     it('offers nothing that could change a percept — this gate is read-only', async () => {
-        await mount(<AtlasImageNode data={nodeData()} />);
+        await mountNode(<AtlasImageNode data={nodeData()} />);
         expect(container.querySelectorAll('button').length).toBe(0);
         expect(container.querySelectorAll('input').length).toBe(0);
     });

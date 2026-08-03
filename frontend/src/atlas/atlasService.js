@@ -35,6 +35,19 @@ export const atlasService = {
     async saveArrangement(id, nodes) {
         return json(await post(`${BASE}/${id}/arrangement`, { nodes }), 'save arrangement');
     },
+
+    // ── C4: plan mode ──
+    /** A thesis → the argument this corpus could carry. Proposing does NOT persist. */
+    async proposePlan(id, { thesis, why = '' }) {
+        return json(await post(`${BASE}/${id}/plan`, { thesis, why }), 'plan an argument');
+    },
+    /** The writer's edited plan. The server RE-BINDS it — no status this sends is believed. */
+    async acceptPlan(id, payload) {
+        return json(await post(`${BASE}/${id}/plan/accept`, payload), 'accept the plan');
+    },
+    async clearPlan(id) {
+        return json(await fetch(`${BASE}/${id}/plan`, { method: 'DELETE' }), 'clear the plan');
+    },
 };
 
 export default atlasService;

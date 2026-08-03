@@ -234,6 +234,10 @@ def new_atlas_doc(*, atlas_id: str, corpus_ref: Any, post_ids: Sequence[str],
         # C3 fills this with the ids of real comparative percepts. Empty is not "no relations
         # found" — it is "none drawn", and the distinction is the whole reason edges are explicit.
         "edges": [],
+        # C4's accepted argument. Null until a writer accepts one. Kept SEPARATE from `edges` on
+        # purpose: an edge is a relation somebody produced, a plan is structure somebody proposed,
+        # and a document that stored them in one list would have no way left to tell them apart.
+        "plan": None,
         # C5's writer node. Null until a draft exists; a draft is a quarantined suggestion.
         "draft": None,
         "created_at": stamp,
@@ -341,6 +345,9 @@ def atlas_view(doc: Mapping[str, Any],
         "corpus_ref": doc.get("corpus_ref") or normalize_corpus_ref(None),
         "nodes": nodes,
         "edges": list(doc.get("edges") or []),
+        # C4. Absent on an Atlas created before plan mode, and `None` reads the same as "no plan
+        # accepted yet" — which is what it is.
+        "plan": doc.get("plan"),
         "draft": doc.get("draft"),
         "unreadable": unreadable,
         "updated_at": doc.get("updated_at"),
@@ -394,6 +401,33 @@ async def save_arrangement(atlas_id: str, nodes: Sequence[Mapping[str, Any]], *,
     doc["updated_at"] = stamp
     assert_no_percept_data(doc)
     return {"doc": doc, "refused": refused}
+
+
+async def save_plan(atlas_id: str, plan: Optional[Mapping[str, Any]], *,
+                    now: Optional[str] = None, collection=None) -> Optional[Dict[str, Any]]:
+    """Store the accepted argument plan (C4), or clear it with `None`.
+
+    The plan is a WHOLE replacement rather than a merge. An argument is one structure — claims in
+    an order, each bound or refused together — and patching it field by field would let a document
+    end up holding half of one decomposition and half of another, with a `complete` flag computed
+    from neither.
+
+    Nothing about a post is touched here. The plan names images by post id and actuators by name;
+    the ledger is not written, no percept is created, and no suggestion is accepted.
+    """
+    coll = _collection(collection)
+    doc = await coll.find_one({"_id": str(atlas_id)})
+    if doc is None:
+        return None
+    stamp = now or utc_now()
+    stored = dict(plan) if plan else None
+    await coll.update_one({"_id": str(atlas_id)},
+                          {"$set": {"plan": stored, "updated_at": stamp}})
+    doc = dict(doc)
+    doc["plan"] = stored
+    doc["updated_at"] = stamp
+    assert_no_percept_data(doc)
+    return doc
 
 
 async def list_atlases(*, limit: int = 20, collection=None) -> List[Dict[str, Any]]:

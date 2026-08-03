@@ -49,7 +49,14 @@ export function flowNodesFromView(view) {
         id: String(n.node_id),
         type: ATLAS_NODE_TYPE,
         position: { x: finite(n.x) ?? 0, y: finite(n.y) ?? 0 },
-        // C1 draws no edges and connects nothing; a node is dragged, not wired.
+        // The box, told to React Flow rather than left to be measured. The document already knows
+        // it, and C4's connectors need an endpoint the moment a plan arrives — an edge whose
+        // source has not been measured is simply not drawn, so a binding would appear a frame
+        // late, or in a surface that never measures, not at all.
+        width: finite(n.w) ?? 420,
+        height: finite(n.h) ?? 320,
+        // Nobody wires a node by hand: a binding is granted by the gate (C4), a relation is a
+        // produced percept (C3). Neither is a line anyone gets to assert with a drag.
         connectable: false,
         data: {
             nodeId: String(n.node_id),

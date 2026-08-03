@@ -10,6 +10,21 @@ set of images.
     GET  /api/v1/atlas/{id}/view          the same, hydrated from the ledger for rendering
     POST /api/v1/atlas/{id}/arrangement   node positions; refusals travel with the save
 
+ATLAS C4 adds plan mode — three more, over M2's rhetorical planner:
+
+    POST   /api/v1/atlas/{id}/plan          a thesis → the proposed ArgumentPlan, NOT persisted
+    POST   /api/v1/atlas/{id}/plan/accept   the writer's edited plan → RE-BOUND, then persisted
+    DELETE /api/v1/atlas/{id}/plan          drop the accepted plan
+
+WHY PROPOSING DOES NOT PERSIST. A proposal is a question the writer has not answered yet, and an
+Atlas that stored every thesis anyone tried would accumulate arguments nobody chose. Accepting is
+the gesture that means something, and it is the one that writes.
+
+WHY ACCEPTING RE-BINDS RATHER THAN RECORDING. The accept payload is a browser's, so every status
+in it is discarded and `plan_argument` judges the edited claims again against the corpus as it is
+at accept time. It is the same asymmetry the Director keeps with the model, applied to the client:
+propose freely, and let the gate decide what is carried.
+
 WHY `GET {id}` AND `GET {id}/view` ARE TWO ENDPOINTS. They could have been one with a query
 parameter, and separating them is the point: the first returns exactly what is stored, so what the
 Atlas document does and does not contain is inspectable rather than asserted in a comment. Anyone
@@ -23,6 +38,7 @@ here.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Dict, List, Mapping, Optional
 
 from bson.errors import InvalidId
@@ -31,6 +47,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.database import post_collection
+from backend.services import atlas_plan as P
 from backend.services import atlas_service as A
 
 router = APIRouter()
@@ -159,3 +176,122 @@ async def save_arrangement(atlas_id: str, body: ArrangementRequest):
     if result is None:
         raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
     return {"atlas": A._out(result["doc"]), "refused": result["refused"]}
+
+
+# ── C4: plan mode ────────────────────────────────────────────────────────────
+
+class PlanRequest(BaseModel):
+    thesis: str = ""
+    why: str = ""            # what this sequence of images is FOR, in the writer's words
+
+
+class AcceptPlanRequest(BaseModel):
+    thesis: str = ""
+    claims: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+async def _atlas_or_404(atlas_id: str) -> Dict[str, Any]:
+    doc = await A.get_atlas(atlas_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
+    return doc
+
+
+async def _corpus_memory(doc: Mapping[str, Any], *, why: str = ""):
+    """The Atlas's images → M1's corpus, hydrated from the ledger.
+
+    THE CORPUS IS THE NODES, IN NODE ORDER. Not `corpus_ref.post_ids` — those record how the Atlas
+    was opened, while the nodes are what the writer is looking at now, and order is evidence. An
+    image whose post cannot be read stays in the corpus and `hydrate_corpus` records it as
+    unreadable, so a claim planned on it binds with a caveat rather than vanishing.
+    """
+    from backend.services.director.corpus import build_corpus, hydrate_corpus
+
+    post_ids = P.node_post_ids(doc)
+    posts = await _posts_for(post_ids)
+    corpus = build_corpus(
+        corpus_id=str(doc.get("_id") or ""),
+        title=str(doc.get("title") or ""),
+        why=why or str(doc.get("title") or ""),
+        images=[{
+            "post_id": pid,
+            "photo_url": str((posts.get(pid) or {}).get("photo_url") or ""),
+            "title": str((posts.get(pid) or {}).get("instagram_handle")
+                         or (posts.get(pid) or {}).get("domain") or ""),
+        } for pid in post_ids])
+    return corpus, hydrate_corpus(corpus, posts)
+
+
+@router.post("/{atlas_id}/plan")
+async def propose_plan(atlas_id: str, body: PlanRequest):
+    """A thesis → the argument this corpus could carry, as M2 judges it. NOT persisted.
+
+    The model gets to propose a decomposition; it does not get to decide what is carried. Every
+    percept goes through the unmodified `resolve_corpus()` gate, and a claim whose evidence cannot
+    be produced comes back refused with the gate's own reason — which is the answer the writer
+    most needs and the one a planner left to itself would never give.
+
+    The Groq call is synchronous, so it runs off the event loop in a worker thread. It needs no
+    GPU and drives no producers, so it deliberately does NOT queue behind the orchestration worker
+    that runs; planning a thesis should not wait on somebody else's segmentation.
+    """
+    thesis = (body.thesis or "").strip()
+    if not thesis:
+        raise HTTPException(status_code=422, detail="a thesis is required to plan an argument")
+
+    doc = await _atlas_or_404(atlas_id)
+    corpus, memory = await _corpus_memory(doc, why=body.why)
+    if not corpus.images:
+        raise HTTPException(status_code=409,
+                            detail="this Atlas spans no images; there is nothing to argue over")
+
+    from backend.services.director.argument_planner import RhetoricalDirector
+    director = RhetoricalDirector()
+    available = bool(getattr(director.planner, "is_available", lambda: True)())
+    argument = await asyncio.to_thread(director.plan, thesis, memory)
+    return P.plan_view(argument, doc, planner_available=available)
+
+
+@router.post("/{atlas_id}/plan/accept")
+async def accept_plan(atlas_id: str, body: AcceptPlanRequest):
+    """The writer's edited plan, RE-BOUND against the corpus, then stored as C5's seed.
+
+    Nothing the payload says about a claim's status survives this route. The claims and their
+    percepts are rebuilt, params are clamped to each actuator's declared vocabulary, and
+    `plan_argument` judges the lot again — so an accepted `supported` was earned against the
+    ledger a second time, and a writer who removed the last challenge percept gets the
+    argument-level refusal rather than a document that looks finished.
+    """
+    thesis = (body.thesis or "").strip()
+    if not thesis:
+        raise HTTPException(status_code=422, detail="a thesis is required to accept a plan")
+
+    doc = await _atlas_or_404(atlas_id)
+    claims, notes, proposed = P.claims_from_payload(body.claims)
+    if not claims:
+        # An empty accept is a clear wearing the wrong verb. Refused rather than silently
+        # honoured, because "I accepted this plan" and "I threw it away" must not be the same call.
+        raise HTTPException(
+            status_code=422,
+            detail="an accepted plan needs at least one claim; DELETE the plan to clear it")
+
+    _, memory = await _corpus_memory(doc)
+
+    from backend.services.director.argument import plan_argument
+    argument = plan_argument(thesis, claims, memory, planner=P.PLANNER_ACCEPTED, notes=notes)
+    stored = P.stored_plan(argument, doc, proposed_text=proposed, now=A.utc_now())
+    P.assert_plan_authors_no_evidence(stored)
+
+    updated = await A.save_plan(atlas_id, stored)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
+    return {"atlas": A._out(updated), "plan": stored}
+
+
+@router.delete("/{atlas_id}/plan")
+async def clear_plan(atlas_id: str):
+    """Drop the accepted plan. The Atlas keeps its images and its arrangement."""
+    updated = await A.save_plan(atlas_id, None)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
+    return {"atlas": A._out(updated), "plan": None}
