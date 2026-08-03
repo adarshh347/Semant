@@ -42,8 +42,12 @@ export function finite(value) {
  * `data` carries what the custom node draws: the image and the ledger's CURRENT answer for it.
  * That payload is rebuilt from the server on every load and never persisted back — it is a
  * render input, not document state.
+ *
+ * C2 passes `onOpen` through `data` because that is how React Flow gets anything to a custom node.
+ * It is a callback, not state: an unreadable node never receives it, so the one control on the
+ * canvas cannot appear on an image there is nothing to open.
  */
-export function flowNodesFromView(view) {
+export function flowNodesFromView(view, { onOpen = null } = {}) {
     const nodes = view?.nodes || [];
     return nodes.map((n) => ({
         id: String(n.node_id),
@@ -65,6 +69,10 @@ export function flowNodesFromView(view) {
             withheld: Number(n.withheld || 0),
             w: finite(n.w) ?? 420,
             h: finite(n.h) ?? 320,
+            // Only where there is an image to open. There is nothing to make a percept on in a
+            // post that could not be read, and offering the way in would be a dead end dressed
+            // as an affordance.
+            onOpen: n.readable === false ? null : onOpen,
         },
     }));
 }

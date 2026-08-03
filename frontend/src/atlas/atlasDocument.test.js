@@ -60,6 +60,24 @@ describe('flowNodesFromView', () => {
         const v = view({ nodes: [{ node_id: 'n0', post_id: 'p1', x: 'over there', y: null }] });
         expect(flowNodesFromView(v).at(0).position).toEqual({ x: 0, y: 0 });
     });
+
+    // C2 — the way into the Differential rides on `data`, which is how React Flow reaches a
+    // custom node at all.
+    it('passes the way in to every readable image', () => {
+        const onOpen = () => {};
+        expect(flowNodesFromView(view(), { onOpen }).every((n) => n.data.onOpen === onOpen))
+            .toBe(true);
+    });
+
+    it('withholds it from an image that could not be read', () => {
+        const v = view({ nodes: [{ node_id: 'n0', post_id: 'ghost', x: 0, y: 0,
+            readable: false, unreadable_reason: 'post:ghost could not be read' }] });
+        expect(flowNodesFromView(v, { onOpen: () => {} }).at(0).data.onOpen).toBe(null);
+    });
+
+    it('is null when nobody offered one', () => {
+        expect(flowNodesFromView(view()).at(0).data.onOpen).toBe(null);
+    });
 });
 
 describe('finite', () => {

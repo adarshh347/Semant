@@ -9,7 +9,7 @@ import { perceptSummary } from './atlasDocument.js';
 import '../components/RegionSurface.css';
 
 /**
- * ATLAS C1 — one image of the corpus, on the canvas, wearing its committed percepts.
+ * ATLAS C1/C2 — one image of the corpus, on the canvas, wearing its committed percepts.
  *
  * THE RENDERER IS INHERITED, NOT REWRITTEN. The overlay is `GroundLayers` — the same component the
  * Differential stage and the Chiasm pane both mount — driven by the same stage-geometry contract
@@ -18,10 +18,11 @@ import '../components/RegionSurface.css';
  * of the picture nobody measured. If a mask lands wrong here, it lands wrong in the workspace too,
  * and one fix corrects both.
  *
- * READ-ONLY, THIS GATE. `interactive={false}`, no draft, no pick handler, no Accept. The overlays
- * are the ledger's committed evidence and there is nothing here that could change them — C2 adds
- * making percepts, and it does so by opening the EXISTING Differential rather than by growing
- * editing affordances on this node.
+ * THE NODE ITSELF STAYS READ-ONLY. `interactive={false}`, no draft, no pick handler, no Accept.
+ * C2 adds exactly ONE control, and what it does is leave: `open →` hands the image to the existing
+ * Differential. The alternative — growing a brush, a review chip, an Accept onto a 420px card —
+ * would have been a second, worse Differential, and then two places where a percept can be made
+ * and only one of them properly guarded. The canvas shows evidence; the instrument makes it.
  *
  * AN UNREADABLE IMAGE STILL GETS A NODE. It renders as a card that says it could not be loaded.
  * Dropping it would quietly shrink the corpus, and "no percepts" and "could not be read" are
@@ -95,6 +96,17 @@ export default function AtlasImageNode({ data }) {
                     {summary.drawn === 0 ? 'no committed percepts'
                         : `${summary.drawn} percept${summary.drawn === 1 ? '' : 's'}`}
                 </span>
+                {/* C2: the way in. `nodrag` is load-bearing — without it React Flow claims the
+                    pointer for a drag and the button never fires a click. The only control on the
+                    node, and it opens the existing instrument rather than doing anything itself. */}
+                {data.onOpen && (
+                    <button type="button" className="atlas-node-open nodrag nopan"
+                        data-open-post={data.postId}
+                        onClick={(e) => { e.stopPropagation(); data.onOpen(data.postId); }}
+                        title={`Open ${data.title || data.postId} in the Differential`}>
+                        open →
+                    </button>
+                )}
             </div>
 
             {/* Never a tooltip. A suggestion the canvas declined to draw is exactly the kind of

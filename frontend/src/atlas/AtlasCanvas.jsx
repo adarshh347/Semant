@@ -5,6 +5,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import AtlasImageNode from './AtlasImageNode.jsx';
+import AtlasDifferential from './AtlasDifferential.jsx';
 import { atlasService } from './atlasService.js';
 import {
     ATLAS_NODE_TYPE, arrangementFrom, flowNodesFromView, positionsOf, refusalLines,
@@ -43,10 +44,35 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
     const [status, setStatus] = useState('');
     const [refusals, setRefusals] = useState([]);
 
+    // C2: which image is open in the Differential, if any.
+    const [openPostId, setOpenPostId] = useState(null);
+
     // The arrangement the SERVER is known to hold. A save diffs against this, not against the last
     // render, so a drag that ends where it started sends nothing.
     const saved = useRef({});
     const timer = useRef(null);
+
+    /**
+     * C2: re-read the ledger's current answer and redraw the overlays.
+     *
+     * KEEPS THE ARRANGEMENT PUT. Only `data` is replaced; each node's `position` is carried over
+     * from what is on screen. Taking positions from the refetch too would snap a node back to
+     * wherever the last save landed and silently discard a drag still inside its debounce — the
+     * curator would watch their arrangement undo itself for no stated reason.
+     */
+    const refreshOverlays = useCallback(async () => {
+        try {
+            const data = await service.view(atlasId);
+            setView(data);
+            const fresh = flowNodesFromView(data, { onOpen: setOpenPostId });
+            setNodes((prev) => {
+                const at = Object.fromEntries(prev.map((n) => [n.id, n.position]));
+                return fresh.map((n) => (at[n.id] ? { ...n, position: at[n.id] } : n));
+            });
+        } catch (e) {
+            setError(e?.message || 'Could not refresh what is on the canvas.');
+        }
+    }, [atlasId, service]);
 
     useEffect(() => {
         let live = true;
@@ -56,7 +82,7 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
                 const data = await service.view(atlasId);
                 if (!live) return;
                 setView(data);
-                const flow = flowNodesFromView(data);
+                const flow = flowNodesFromView(data, { onOpen: setOpenPostId });
                 setNodes(flow);
                 saved.current = positionsOf(flow);
             } catch (e) {
@@ -65,6 +91,15 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
         })();
         return () => { live = false; if (timer.current) clearTimeout(timer.current); };
     }, [atlasId, service]);
+
+    /**
+     * Coming back from the Differential. The Atlas is told only that the curator is DONE — never
+     * what they made. It asks the ledger, which is the only thing entitled to answer.
+     */
+    const closeDifferential = useCallback(async () => {
+        setOpenPostId(null);
+        await refreshOverlays();
+    }, [refreshOverlays]);
 
     const flush = useCallback(async (current) => {
         const patches = arrangementFrom(current, saved.current);
@@ -109,6 +144,20 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
 
     if (error && !view) {
         return <div className="atlas-error" role="alert">{error}</div>;
+    }
+
+    // C2: the Differential takes the viewport. The canvas is UNMOUNTED rather than hidden behind
+    // it — the workspace is a heavy instrument with its own model loading and pointer capture, and
+    // leaving a live React Flow pane underneath it would be two surfaces competing for the same
+    // gestures. The arrangement is on the server; coming back re-reads it.
+    if (openPostId) {
+        return (
+            <AtlasDifferential
+                postId={openPostId}
+                title={nodes.find((n) => n.data?.postId === openPostId)?.data?.title || ''}
+                onClose={closeDifferential}
+            />
+        );
     }
 
     return (
