@@ -22,7 +22,11 @@ function App() {
   const isLandingPage = location.pathname === '/';
   // Full-screen pages that should not have the app-content wrapper (the per-post
   // workspace and the Writing Studio both fill the viewport under the sticky navbar).
-  const isFullscreenPage = location.pathname.startsWith('/posts/') || location.pathname.startsWith('/studio');
+  // '/atlas/:id' is the canvas and fills the viewport; bare '/atlas' is the corpus picker and
+  // sits in the standard content column — so the trailing slash is the distinction.
+  const isFullscreenPage = location.pathname.startsWith('/posts/')
+    || location.pathname.startsWith('/studio')
+    || location.pathname.startsWith('/atlas/');
 
   return (
     <div className={`app-layout ${isLandingPage ? 'app-layout--landing' : ''} ${isFullscreenPage ? 'app-layout--fullscreen' : ''}`}>
