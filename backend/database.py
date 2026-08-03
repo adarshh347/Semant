@@ -121,6 +121,16 @@ vision_run_collection = database.get_collection("vision_runs")
 # holds no authoritative geometry either — every suggestion in it is quarantined and uncommitted.
 run_collection = database.get_collection("runs")
 
+# --- The Atlas (ATLAS · C1) ---
+# atlas_collection: one document per Atlas canvas. It stores ARRANGEMENT ONLY — which corpus the
+# canvas is over, where each image node sits, and (later) the edge list and draft state. It holds
+# no percept data whatsoever: nodes carry a `post_id` and the overlays are hydrated from the
+# ledger at read time. That is the whole discipline of this collection, and the reason a stale
+# Atlas document can never disagree with the ledger about what was seen — it makes no claim about
+# what was seen. Spatial position is a writer's thinking aid and asserts no relation; only a
+# drawn edge (a real `compare_views` percept, C3) asserts one.
+atlas_collection = database.get_collection("atlases")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""
