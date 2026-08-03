@@ -97,10 +97,45 @@ describe('an image node', () => {
         expect(container.textContent).toContain('2 percepts');
     });
 
-    it('offers nothing that could change a percept — this gate is read-only', async () => {
+    it('offers nothing that could change a percept ON THE NODE', async () => {
+        // C2 adds exactly one control, and what it does is LEAVE. There is still no brush, no
+        // review chip and no Accept here — a second, smaller Differential is what that would be.
+        await mount(<AtlasImageNode data={nodeData({ onOpen: () => {} })} />);
+        const buttons = [...container.querySelectorAll('button')];
+        expect(buttons).toHaveLength(1);
+        expect(buttons[0].getAttribute('data-open-post')).toBe('p1');
+        expect(container.querySelectorAll('input').length).toBe(0);
+    });
+
+    it('shows no way in until one is given', async () => {
         await mount(<AtlasImageNode data={nodeData()} />);
         expect(container.querySelectorAll('button').length).toBe(0);
-        expect(container.querySelectorAll('input').length).toBe(0);
+    });
+});
+
+// ── C2: the way into the Differential ───────────────────────────────────────
+
+describe('opening an image in the Differential', () => {
+    it('hands back the post id the node stands for', async () => {
+        const onOpen = vi.fn();
+        await mount(<AtlasImageNode data={nodeData({ onOpen })} />);
+        await act(async () => {
+            container.querySelector('[data-open-post]').dispatchEvent(
+                new MouseEvent('click', { bubbles: true }));
+        });
+        expect(onOpen).toHaveBeenCalledWith('p1');
+    });
+
+    it('carries the nodrag class, or React Flow eats the click', async () => {
+        await mount(<AtlasImageNode data={nodeData({ onOpen: () => {} })} />);
+        expect(container.querySelector('[data-open-post]').className).toContain('nodrag');
+    });
+
+    it('offers no way in on an image that could not be read', async () => {
+        // A dead end dressed as an affordance. `flowNodesFromView` withholds the callback.
+        await mount(<AtlasImageNode data={nodeData({
+            readable: false, unreadableReason: 'post:ghost could not be read', onOpen: null })} />);
+        expect(container.querySelector('[data-open-post]')).toBe(null);
     });
 });
 
@@ -142,4 +177,93 @@ describe('the canvas', () => {
         await mount(<AtlasCanvas atlasId="atlas_1" service={fakeService()} />);
         expect(container.querySelectorAll('.react-flow__edge').length).toBe(0);
     });
+});
+
+// ── C2: the round trip ──────────────────────────────────────────────────────
+// The real `AtlasDifferential` loads a post over the network and mounts the whole workspace —
+// far too heavy for jsdom, and not what is under test here. What IS under test is the canvas's
+// half of the contract: hand the instrument a post id, and on return ask the LEDGER what changed.
+
+vi.mock('./AtlasDifferential.jsx', () => ({
+    default: ({ postId, onClose }) => (
+        <div data-testid="focus" data-post-id={postId}>
+            <button type="button" data-testid="done" onClick={onClose}>done</button>
+        </div>
+    ),
+}));
+
+const click = async (el) => {
+    await act(async () => { el.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+};
+
+describe('the canvas ⇄ the Differential', () => {
+    const openFirst = async (service) => {
+        await mount(<AtlasCanvas atlasId="atlas_1" service={service} />);
+        await click(container.querySelector('[data-open-post]'));
+    };
+
+    it('gives the instrument the viewport, for the image that was asked for', async () => {
+        await openFirst(fakeService());
+        const focus = container.querySelector('[data-testid="focus"]');
+        expect(focus).toBeTruthy();
+        expect(focus.getAttribute('data-post-id')).toBe('p1');
+        // The canvas steps aside rather than sitting live underneath, competing for gestures.
+        expect(container.querySelector('.atlas-canvas')).toBe(null);
+    });
+
+    it('asks the ledger what changed when the curator comes back', async () => {
+        const service = fakeService();
+        await openFirst(service);
+        expect(service.view).toHaveBeenCalledTimes(1);
+        await click(container.querySelector('[data-testid="done"]'));
+        expect(service.view).toHaveBeenCalledTimes(2);
+        expect(container.querySelector('.atlas-canvas')).toBeTruthy();
+    });
+
+    it('shows a percept accepted in the Differential as an overlay on the node', async () => {
+        // The C2 demo criterion. The Atlas is never TOLD what was made — the second read of the
+        // ledger is what carries the new percept onto the canvas.
+        let call = 0;
+        const service = fakeService({
+            view: vi.fn(async () => {
+                call += 1;
+                if (call === 1) return aView();
+                const after = aView();
+                after.nodes[0].grounds = [{ id: 'g1' }, { id: 'g_new' }];
+                return after;
+            }),
+        });
+        await openFirst(service);
+        await click(container.querySelector('[data-testid="done"]'));
+        // 1 (p1) + 0 (p2) before; 2 + 0 after.
+        expect(container.textContent).toContain('2 committed percepts');
+        expect(container.textContent).toContain('2 percepts');
+    });
+
+    it('does not undo an arrangement the curator is still mid-drag on', async () => {
+        // The refresh replaces `data`, never `position`. Taking positions from the refetch would
+        // snap a node back to the last save and discard a drag still inside its debounce.
+        const service = fakeService();
+        await mount(<AtlasCanvas atlasId="atlas_1" service={service} />);
+        const before = container.querySelector('.react-flow__node').style.transform;
+        await click(container.querySelector('[data-open-post]'));
+        await click(container.querySelector('[data-testid="done"]'));
+        expect(container.querySelector('.react-flow__node').style.transform).toBe(before);
+    });
+
+    it('says so if the ledger cannot be re-read, rather than showing stale overlays as fresh',
+        async () => {
+            let call = 0;
+            const service = fakeService({
+                view: vi.fn(async () => {
+                    call += 1;
+                    if (call === 1) return aView();
+                    throw new Error('ledger unreachable');
+                }),
+            });
+            await openFirst(service);
+            await click(container.querySelector('[data-testid="done"]'));
+            expect(container.querySelector('.atlas-banner.is-error').textContent)
+                .toContain('ledger unreachable');
+        });
 });

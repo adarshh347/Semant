@@ -169,6 +169,60 @@
     white-space: nowrap;
 }
 
+/* C2: the one control on a node — the way into the Differential. Quiet until hovered, because the
+   evidence is what the canvas is for and the door should not compete with it. */
+.atlas-node-open {
+    flex: 0 0 auto;
+    padding: 2px var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    background: var(--surface-2);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.12));
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+
+.atlas-node-open:hover,
+.atlas-node-open:focus-visible {
+    color: #fff;
+    background: var(--accent, #7B2D6B);
+    border-color: var(--accent, #7B2D6B);
+}
+
+/* C2: the Differential, given the viewport. The canvas steps aside rather than shrinking the
+   instrument into a card — a second, smaller Differential is the thing C2 exists to avoid. */
+.atlas-focus {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: var(--bg);
+}
+
+.atlas-focus-loading,
+.atlas-focus-error {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+}
+
+.atlas-focus-error { color: #A66273; }
+
+.atlas-focus-back {
+    padding: var(--space-2) var(--space-4);
+    font: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.16));
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+
 .atlas-node-count[data-drawn="0"] {
     font-style: italic;
 }
