@@ -172,6 +172,24 @@ _ACTUATOR_LIST: List[Actuator] = [
         param_keys=("phrase",),
         plural=True,          # yields however many are there, not exactly one
     ),
+    # CONCEPT-SEG-001 (SF-004) — the fine-parts finder that MEASURES instead of estimating.
+    #
+    # Its sibling `find_parts` runs the SŪKṢMA stage through a VLM, which returns boxes it
+    # guessed and no mask at all. This takes a CONCEPT and returns every instance of it as real
+    # pixel geometry. Same shape as `grounded_sam_find_parts` — image + phrase, refuse without
+    # the phrase — for the same reason: an open-vocabulary finder with nothing to look for is
+    # the P8-B fabrication shape, and this model will happily mask SOMETHING for any phrase you
+    # give it (a painting returned a confident background mask for "shoulder fabric").
+    Actuator(
+        name="concept_segment",
+        summary="Measure every instance of a named concept, as real pixel masks.",
+        requires=(_req(Resource.IMAGE), _req(Resource.PHRASE)),
+        produces=(Resource.REGION, Resource.MARK),
+        capability="concept_segmenter",
+        authors_geometry=True,
+        param_keys=("phrase",),
+        plural=True,          # the headline claim is that it finds them ALL, not one
+    ),
     # -- fields: brushed evidence over the image or a region -------------------
     Actuator(
         name="negative_space",

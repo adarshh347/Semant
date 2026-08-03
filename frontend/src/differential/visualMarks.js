@@ -144,6 +144,12 @@ export const PRODUCERS = [
     // producers shipped, the vocabulary did not, and nothing failed loudly in between.
     'architectural_axis', 'external_limit',
     'florence_find_parts', 'grounded_sam_find_parts', 'fixture',
+    // CONCEPT-SEG-001 — the TWO producers of one SAM 3 result, and they are two on purpose.
+    // `concept_segment` is the mask, computed off the image signal (`measured`).
+    // `concept_naming` is the label, which came from the prompt and is whoever wrote it
+    // interpreting the picture (`interpretive`). Both must be listed or `validateMark` rejects
+    // them at intake and the Accept button never renders — the `architectural_axis` bug above.
+    'concept_segment', 'concept_naming',
 ];
 
 // ── role vocabularies ────────────────────────────────────────────────────────

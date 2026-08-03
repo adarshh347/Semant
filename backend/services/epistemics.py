@@ -270,6 +270,19 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
     "enumerate": EpistemicStatus.INTERPRETIVE,
     "connect_marks": EpistemicStatus.INTERPRETIVE,
     "compose_percept": EpistemicStatus.INTERPRETIVE,
+    # CONCEPT-SEG-001 — the other half of a SAM 3 result, and the reason this table still exists.
+    #
+    # `concept_segment` (the mask) takes `measured` from the `sam3` organ role. This is the LABEL,
+    # and it has no role because it has no single producer: the concept may come from the
+    # `dissector` thinker, from a fixed `domain_profiles` vocabulary, or from the curator's own
+    # phrase. What they have in common is that none of them is the image — nothing in the picture
+    # says "this is a collar" — so the naming is `interpretive` whoever wrote it.
+    #
+    # Emitting it separately is what lets a wrong naming be rejected WITHOUT discarding a correct
+    # measurement. SF-004-R2 §4.3 is the case: `shoulder fabric` at confidence 0.27–0.43 returned
+    # a clean mask of the background. One status for both would force a choice between trusting
+    # the whole thing and binning the whole thing, and it is neither.
+    "concept_naming": EpistemicStatus.INTERPRETIVE,
     # -- from outside the image -------------------------------------------------
     "historical_source": EpistemicStatus.SOURCED,
 }
