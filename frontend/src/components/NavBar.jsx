@@ -28,6 +28,7 @@ const TOOLS_LINKS = [
   ['/unconceal', 'Unconceal'],
   ['/anatomy', 'Anatomy'],
   ['/motive', 'Motive'],
+  ['/writing', 'Writing'],
 ];
 
 function Navbar() {
