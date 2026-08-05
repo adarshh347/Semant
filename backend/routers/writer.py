@@ -47,10 +47,12 @@ from backend.schemas.writer import (
     AssemblageDismiss,
     PassageAccept,
     PassageDismiss,
+    LibraryOp,
     RelationsUpdate,
 )
 from backend.services.writer import dsl, instrument
 from backend.services.writer import assemblages as assemblages_mod
+from backend.services.writer import library as library_mod
 from backend.services.writer import relations as relations_mod
 from backend.services.writer.operators import OperatorError, operator_registry
 from backend.services.writer.passages import PassageError, passage_store
@@ -216,6 +218,65 @@ async def create_assemblage(project_id: str, request: AssemblageCreate):
         raise HTTPException(status_code=400, detail=str(exc))
     await assemblages_mod.record_authored(project_id, request.name, request.members)
     return op
+
+
+# --- The portable ontology (W5) ---
+#
+# Four operations, all explicit and author-committed. None of them is a canon write: the
+# library holds the author's language, never their prose. Import is a LINKED COPY — the
+# project copy versions independently, so editing it here can never redefine the language
+# under another book's committed passages.
+
+@router.get("/library/{author}")
+async def list_library(author: str):
+    """The author's cross-manuscript library. A read; touches nothing."""
+    return {"author": author, "entries": await library_mod.list_entries(author)}
+
+
+@router.post("/{project_id}/library/promote")
+async def promote_to_library(project_id: str, request: LibraryOp):
+    """Lift a project operator UP into the library, with its `requires`/members closure."""
+    try:
+        return await library_mod.promote(
+            request.author, project_id, request.name,
+            await operator_registry.by_name(project_id),
+        )
+    except library_mod.LibraryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/{project_id}/library/import")
+async def import_from_library(project_id: str, request: LibraryOp):
+    """Bring a library operator DOWN as a linked copy, with its closure."""
+    try:
+        return await operator_registry.import_from_library(
+            project_id, request.author, request.name)
+    except OperatorError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/{project_id}/library/publish")
+async def publish_to_library(project_id: str, request: LibraryOp):
+    """Push this project's current version UP as a new library version."""
+    operator = await operator_registry.get(project_id, request.name)
+    if not operator:
+        raise HTTPException(
+            status_code=404,
+            detail=f"operator '{request.name}' is not defined in this project")
+    try:
+        return await library_mod.publish(request.author, project_id, request.name, operator)
+    except library_mod.LibraryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/{project_id}/library/pull")
+async def pull_from_library(project_id: str, request: LibraryOp):
+    """Bring a newer library version down. Author-reviewed; never automatic."""
+    try:
+        return await operator_registry.pull_from_library(
+            project_id, request.author, request.name)
+    except OperatorError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 # --- The loop ---

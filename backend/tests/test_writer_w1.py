@@ -430,7 +430,10 @@ def test_render_carries_operator_versions_and_intents(store, threshold_operator,
     assert result.status == "ok" and result.text == "The latch gave."
     assert result.provenance["operators"] == [
         # `source` is W3's marking: this one was typed by the author, not pulled by an edge.
-        {"name": "threshold", "version": 1, "id": threshold_operator["id"], "source": "direct"}
+        # `library_ref`/`author` are W5's: null here because this operator was defined in
+        # this project rather than carried in from the author's library.
+        {"name": "threshold", "version": 1, "id": threshold_operator["id"],
+         "source": "direct", "library_ref": None, "author": None}
     ]
     assert result.provenance["pulled_operators"] == []
     assert result.provenance["intents"] == [{"key": "goal", "value": "cross it"}]

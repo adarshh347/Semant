@@ -83,12 +83,17 @@ class ManuscriptService:
 
     # --- Manuscripts ---
 
-    async def create_manuscript(self, title: str, synopsis: Optional[str] = None) -> Dict[str, Any]:
+    async def create_manuscript(self, title: str, synopsis: Optional[str] = None,
+                                author: Optional[str] = None) -> Dict[str, Any]:
         now = _now()
         doc = {
             "_id": _gen("ms"),
             "title": title or "Untitled manuscript",
             "synopsis": synopsis or "",
+            # W5 — whose book this is. Nullable, so every manuscript written before the
+            # portable library is valid as it stands, and the single-author guard treats
+            # absence as "nobody has said yet" rather than as a violation.
+            "author": author or "",
             "chapters": [],          # [{id, title, scene_ids: [...]}]
             "created_at": now,
             "updated_at": now,
@@ -134,7 +139,8 @@ class ManuscriptService:
         return result
 
     async def update_manuscript(self, manuscript_id: str, patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        fields = {k: v for k, v in patch.items() if k in ("title", "synopsis") and v is not None}
+        fields = {k: v for k, v in patch.items()
+                  if k in ("title", "synopsis", "author") and v is not None}
         if not fields:
             return await self.get_manuscript(manuscript_id)
         fields["updated_at"] = _now()
