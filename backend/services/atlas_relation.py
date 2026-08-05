@@ -42,6 +42,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 from uuid import uuid4
 
+from backend.services import cross_image
 from backend.services.director.corpus import Corpus, build_corpus, hydrate_corpus, resolve_corpus
 from backend.services.director.corpus_execution import (CorpusExecutionContext,
                                                         build_corpus_context, run_corpus_plan)
@@ -138,6 +139,12 @@ def committed_marks(post: Optional[Mapping[str, Any]]) -> List[Dict[str, Any]]:
         if not isinstance(mark, Mapping):
             continue
         if str(mark.get("source") or "user") == "model_suggested":
+            continue
+        # THE CROSS-IMAGE GUARD, applied to C3's own input. A relation this gate already produced
+        # is committed into both posts it spans, so without this it would come back as evidence
+        # for the NEXT comparison — the gate grading its own output, and a second relation resting
+        # on a first with nothing in the record saying so.
+        if cross_image.is_cross_image(mark):
             continue
         out.append(dict(mark))
     return out

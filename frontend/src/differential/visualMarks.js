@@ -627,6 +627,28 @@ export const persistableMarks = (marks = []) => (marks || []).filter(isPersistab
 
 export const isMarkType = (m, type) => !!m && m.type === type;
 
+/**
+ * ATLAS C3 — does this mark span more than one photograph?
+ *
+ * A `compare_views` relation is committed into BOTH posts it joins, so it arrives in a single
+ * image's `visual_marks` while being a claim about the SEQUENCE. No single-image surface may count
+ * or render it as a native percept: the Differential is looking at one picture, and a relation to
+ * a different picture is not something this one shows.
+ *
+ * Two independent signals, either sufficient, matching `backend/services/cross_image.py` exactly.
+ * A same-image `connect_marks` relation has neither and stays native — relating two marks inside
+ * one frame IS a claim about that frame.
+ */
+export const isCrossImageMark = (m) => {
+    if (!m || typeof m !== 'object') return false;
+    if (m.geometry && m.geometry.cross_image) return true;
+    const spans = m.corpus && m.corpus.spans;
+    return Array.isArray(spans) && new Set(spans.filter(Boolean).map(String)).size >= 2;
+};
+
+/** What this photograph itself shows — the list every single-image count must use. */
+export const nativeMarks = (marks = []) => (marks || []).filter((m) => !isCrossImageMark(m));
+
 /** The geometry-bearing families. A relation/collection derives its shape from its refs. */
 export const markHasOwnGeometry = (m) =>
     !!m && !['derived', 'unresolved'].includes(m.geometry?.kind);

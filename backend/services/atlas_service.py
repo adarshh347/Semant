@@ -39,6 +39,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 from uuid import uuid4
 
+from backend.services import cross_image
+
 CONTRACT_VERSION = 1
 
 # How a corpus can be named. Both resolve to an ordered tuple of post ids; neither invents one.
@@ -467,14 +469,21 @@ def hydrate_node(node: Mapping[str, Any],
     if post is None:
         out.update({"readable": False, "image_ref": "", "title": "",
                     "grounds": [], "regions": [], "marks": [], "percepts": [],
-                    "withheld": 0,
+                    "relations": [], "withheld": 0,
                     "unreadable_reason": f"post:{node.get('post_id')} could not be read"})
         return out
 
     grounds, w1 = _committed(post.get("grounds"))
-    marks, w2 = _committed(post.get("visual_marks"))
+    committed_marks, w2 = _committed(post.get("visual_marks"))
     regions, _ = _committed(post.get("region_annotations"))
     percepts, w3 = _committed(post.get("percepts"))
+
+    # THE CROSS-IMAGE GUARD (C3). A `compare_views` relation is committed into BOTH posts it
+    # spans, so it is sitting right here in `visual_marks` — and it is not a finding about this
+    # photograph. It is split out rather than dropped: a writer looking at the rotunda should be
+    # able to learn it has been related to the façade, but the node's overlays and its caption
+    # count must answer "what does THIS picture show", and the answer excludes it.
+    marks, relations = cross_image.split_marks(committed_marks)
 
     out.update({
         "readable": True,
@@ -484,6 +493,9 @@ def hydrate_node(node: Mapping[str, Any],
         "regions": regions,
         "marks": marks,
         "percepts": percepts,
+        # Named separately and never added into any total on this node — a relation that spans
+        # two images belongs to the sequence, not to either frame.
+        "relations": relations,
         "withheld": w1 + w2 + w3,
         "unreadable_reason": None,
     })
