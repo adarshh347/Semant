@@ -193,6 +193,18 @@ corpus_collection = database.get_collection("corpora")
 # from the movements that instantiate it, exactly as a movement edge derives its own from its mark.
 movement_axis_collection = database.get_collection("movement_axes")
 
+# --- Agent observations (WAVE3 · the first situated agent) ---
+# agent_observation_collection: what a situated agent reported from where it stood. Its own
+# collection rather than an array on the Atlas, because `atlas_collection` above holds NO percept
+# data by design and `assert_no_percept_data` enforces that on every save path — an agent's report
+# IS percept data, so putting it on the canvas would mean weakening that guard from this lane to
+# admit the very thing it exists to keep out. It points at the canvas by `atlas_id` and `node_id`
+# instead, the way a movement axis does. It stores NO epistemic status: the row cites the organ's
+# `mark_id`, and what kind of knowing it is comes off that mark at read time — so an agent's report
+# reads `proposed` until a curator commits the mark. That is the private-measured / ledger-proposed
+# decision made structural rather than promised.
+agent_observation_collection = database.get_collection("agent_observations")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""
