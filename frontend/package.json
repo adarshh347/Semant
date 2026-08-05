@@ -41,9 +41,11 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-hotkeys-hook": "^5.3.3",
+    "react-markdown": "^10.1.0",
     "react-photo-album": "^3.6.0",
     "react-resizable-panels": "^2.1.9",
-    "react-router-dom": "^7.9.2"
+    "react-router-dom": "^7.9.2",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@blocknote/server-util": "^0.51.4",
