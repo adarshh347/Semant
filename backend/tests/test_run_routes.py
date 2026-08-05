@@ -262,3 +262,72 @@ def test_a_prompt_nothing_serves_comes_back_as_a_run_that_says_so(wired):
     assert body["status"] == rs.STATUS_STOPPED
     assert body["stop_reason"] == "nothing_planned"
     assert body["suggestions"] == [] and body["production_records"] == []
+
+
+# ── the serialization boundary: a cycle costs a marker, never the run ─────────
+
+def test_the_store_projects_a_cyclic_view_instead_of_dying_on_it():
+    """The guard that means the NEXT cycle is a visible marker in one field rather than a dead
+    run. This is the exact shape argue mode used to build, and the exact way it died.
+
+    Note this is defence, not the fix: the cycle itself is gone at its source in
+    `run_surface.compose_for_run`. Something has to hold the line at the boundary anyway, because
+    `RecursionError` at BSON-encode time is about as opaque a failure as this system can produce
+    — it reached the curator as `run_failed:RecursionError` with no article and no rounds.
+    """
+    from bson import BSON
+
+    article = {"title": "t", "sections": [{"citations": [{"step_id": "s1"}]}]}
+    article["resolved"] = {"version": 1, "draft": article, "resolved": {}}
+
+    breaks = []
+    projected = run_store.acyclic({"article": article}, _breaks=breaks)
+
+    assert breaks == ["view.article.resolved.draft"]
+    assert projected["article"]["resolved"]["draft"] == {"$cycle": "view.article.resolved.draft"}
+    # everything that was not the back-pointer is untouched
+    assert projected["article"]["sections"][0]["citations"][0] == {"step_id": "s1"}
+    BSON.encode({"view": projected})
+
+
+def test_a_shared_reference_is_not_a_cycle_and_survives_whole():
+    """Identity is tracked over ANCESTORS only. The same citation dict referenced from two
+    sections is a DAG — perfectly encodable, and gutting it would be a worse bug than the one
+    this guard exists to catch."""
+    shared = {"step_id": "c0", "geometry": {"kind": "soft_mask"}}
+    view = {"sections": [{"citations": [shared]}, {"citations": [shared]}]}
+
+    breaks = []
+    projected = run_store.acyclic(view, _breaks=breaks)
+
+    assert breaks == []
+    assert projected["sections"][0]["citations"][0] == shared
+    assert projected["sections"][1]["citations"][0] == shared
+
+
+def test_runaway_nesting_is_bounded_rather_than_recursed():
+    """A structure deep enough to exhaust the stack without ever repeating an object. Depth is
+    bounded separately from cycle detection because they are different pathologies."""
+    from bson import BSON
+
+    deep = {}
+    node = deep
+    for _ in range(run_store.MAX_ENCODE_DEPTH + 40):
+        node["next"] = {}
+        node = node["next"]
+    node["leaf"] = True
+
+    breaks = []
+    projected = run_store.acyclic(deep, _breaks=breaks)
+    assert breaks and all(b.startswith("view.next") for b in breaks)
+    BSON.encode(projected)
+
+
+def test_a_healthy_save_records_no_repairs(wired):
+    """`encoding_repairs` is empty on every sound run, so a non-empty one is a real signal."""
+    client, _, runs_coll = wired
+    run_id = client.post("/api/v1/runs", json={"prompt": "check whether it is present",
+                                               "image_ids": [str(_A)]}).json()["run_id"]
+    _await_terminal(client, run_id)
+    stored = runs_coll.docs[run_id]
+    assert stored.get("encoding_repairs") == []
