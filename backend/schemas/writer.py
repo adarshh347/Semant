@@ -67,6 +67,28 @@ class OperatorUpdate(BaseModel):
     author: Optional[str] = None
 
 
+# --- Assemblages (W4) ---
+
+class AssemblageDismiss(BaseModel):
+    """The author does not want this cluster named. Changes no ontology."""
+    members: List[str] = Field(default_factory=list)
+    support: int = 0
+
+
+class AssemblageCreate(BaseModel):
+    """Author an assemblage from a suggested cluster.
+
+    `members` are operator NAMES, looked up in the ontology — never free text (I5).
+    `rendering_intent` is REQUIRED and is the AUTHOR'S: the system may show that these
+    operators recur, but what the recurrence means is the one thing it must not decide.
+    """
+    name: str
+    members: List[str] = Field(default_factory=list)
+    rendering_intent: str
+    definition: Optional[str] = ""
+    author: Optional[str] = ""
+
+
 # --- Running a block ---
 
 class BlockRun(BaseModel):

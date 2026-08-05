@@ -1,0 +1,150 @@
+/*
+ * Semant Writer · W4 — the suggestion feed.
+ *
+ * The evidence is given more weight than the strawman on purpose. What the system actually
+ * knows is the count and the blocks; the draft intent is scaffolding the author is meant to
+ * overwrite. Styling that reversed the emphasis would make a proposal look like a reading.
+ */
+
+.writer-assemblages {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 0 1rem;
+  border-left: 1px solid rgba(128, 128, 128, 0.2);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.86rem;
+}
+
+.writer-assemblages__bar {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+}
+
+.writer-assemblages__bar strong {
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.writer-assemblages__help { opacity: 0.55; font-size: 0.75rem; flex: 1; }
+.writer-assemblages__empty { padding: 1.2rem 0.9rem; opacity: 0.6; line-height: 1.6; }
+.writer-assemblages__error { margin: 0.6rem 0.9rem 0; color: rgb(190, 70, 60); font-size: 0.8rem; }
+.writer-assemblages__status { margin: 0.6rem 0.9rem 0; opacity: 0.6; font-size: 0.8rem; }
+
+/* --- one suggestion --- */
+
+.writer-assemblage {
+  margin: 0.9rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 4px;
+}
+
+.writer-assemblage header { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem; }
+
+.writer-assemblage__member {
+  font-family: 'Spline Sans Mono', ui-monospace, Menlo, monospace;
+  font-size: 0.78rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 999px;
+}
+
+.writer-assemblage__member span { opacity: 0.5; font-size: 0.9em; }
+
+/* The evidence carries the weight — it is the part the system can actually stand behind. */
+.writer-assemblage__evidence {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 0.88rem;
+}
+
+.writer-assemblage__evidence b { font-size: 1.05em; }
+.writer-assemblage__aside { opacity: 0.6; font-size: 0.82rem; }
+
+.writer-assemblage__cite {
+  margin-left: 0.5rem;
+  font-size: 0.76rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  opacity: 0.7;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.writer-assemblage__blocks {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.6rem;
+  border-left: 2px solid rgba(128, 128, 128, 0.3);
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.writer-assemblage__blocks li { display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 0.15rem 0; }
+.writer-assemblage__blocks code { font-family: 'Spline Sans Mono', ui-monospace, Menlo, monospace; }
+.writer-assemblage__when { opacity: 0.6; }
+.writer-assemblage__directives { opacity: 0.7; font-family: 'Spline Sans Mono', ui-monospace, Menlo, monospace; }
+
+/* --- naming --- */
+
+.writer-assemblage__naming { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.8rem; }
+.writer-assemblage__naming label { font-size: 0.78rem; opacity: 0.8; margin-top: 0.4rem; }
+
+/* Says where the draft came from, so it is never mistaken for the system's reading. */
+.writer-assemblage__strawman-note {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.6;
+  font-style: italic;
+  margin-top: 0.15rem;
+}
+
+.writer-assemblage__naming input,
+.writer-assemblage__naming textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.5rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 3px;
+  resize: vertical;
+}
+
+.writer-assemblage__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.15);
+}
+
+.writer-assemblage__note { flex: 1 1 auto; opacity: 0.6; font-size: 0.78rem; }
+
+.writer-assemblages button {
+  font: inherit;
+  font-size: 0.79rem;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.writer-assemblages button:hover:not(:disabled) { border-color: currentColor; }
+.writer-assemblages button:disabled { opacity: 0.4; cursor: default; }
+.writer-assemblage__cite:hover { border: none; }
