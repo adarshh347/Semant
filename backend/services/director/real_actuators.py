@@ -487,12 +487,17 @@ async def _run_compare_views(step: Step, memory: WorkingMemory, ctx: "ExecutionC
 async def _run_compose_comparative_percept(step: Step, memory: WorkingMemory,
                                            ctx: "ExecutionContext",
                                            actuator: Actuator) -> ActuatorResult:
-    """Draft a percept that rests on a NAMED comparison across two images.
+    """Draft a PERCEPT DRAFT that rests on a NAMED comparison across two images. A mark-precursor.
 
     The single-image `compose_percept` rests on marks; this rests on a cross-image relation, and
     refuses without one. That refusal is the point: a sentence about two photographs that was not
     grounded in a relation somebody actually named would be a comparison in grammar only, and it
     would look identical to one that was earned.
+
+    SF-002 Part 0 — like its single-image sibling, what this emits is a `percept_draft`: a proposal
+    that enters the quarantine and becomes a **visual_mark** if accepted, never a row in
+    `post.percepts`. See `backend/services/percept_lineage.py` for the two objects the word
+    "percept" holds and why they stay apart.
     """
     relations = [s for s in _comparative_relations(ctx)
                  if len(((s.get("corpus") or {}).get("spans") or [])) >= 2]
@@ -746,11 +751,21 @@ async def _run_connect_marks(step: Step, memory: WorkingMemory, ctx: "ExecutionC
 
 async def _run_compose_percept(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
                                actuator: Actuator) -> ActuatorResult:
-    """Draft a percept that RESTS ON the marks gathered so far.
+    """Draft a PERCEPT DRAFT that RESTS ON the marks gathered so far. A mark-precursor, not a percept.
 
     The draft is a proposal, never a commitment: it enters the same quarantine as every other
     suggestion and a curator writes the real sentence. `ground_refs` names what it rests on, so a
-    percept resting on two marks cannot later be mistaken for one resting on five."""
+    percept resting on two marks cannot later be mistaken for one resting on five.
+
+    SF-002 Part 0 — say which of the two "percepts" this is, because the system holds two and they
+    share no schema (`backend/services/percept_lineage.py`). What this emits is a `percept_draft`:
+    it goes to `ctx.suggestions`, a curator's accept turns it into a **visual_mark**, and it is
+    NEVER written to `post.percepts`. The durable object of that name is the curator's *expression
+    percept* (`makeExpressionPercept`, `frontend/src/state/perceptMentions.js`), which this
+    function does not produce. Any join between the two is recorded on the mark
+    (`linked_percept_ids`, `frontend/src/differential/visualMarks.js`), never on the percept —
+    the mark already authors provenance, and a second authored copy is the drift
+    `groundProvenanceParity.test.js` exists to catch."""
     marks = _quarantined_marks(ctx)
     if not marks:
         return ActuatorResult(status=EMPTY, produced=(), adapter="compose_percept",
