@@ -22,6 +22,33 @@ between them; the structure-mapper cannot promote a mapping into a grounding bec
 re-measures on the far image before anything is written; and no stage can write a status onto an
 edge, because Lane G refuses to store one and derives it from the mark instead.
 
+## WAVE2.5 RULING — and only a mask may conclude
+
+The mask sweep (420 of 505 regions) did not fix the box pathology; it made it legible. A SAM-3
+region measured against an UNMASKED VLM box still falls back to boxes, and
+`cseg_golden_finial_7` against `region_2` ('Sky') came back containment 1.000, index **0.999**,
+`measured`. The finial is in FRONT of the sky. In a 2D projection a bounding box cannot tell
+`inside` from `in front of`, and the sky's box contains everything beneath it.
+
+Masking both sides everywhere would have closed it only by asserting a SAM-3-mask = VLM-box
+identity nobody measured (~20% overlap). That was declined: a mask welded onto the wrong region is
+worse than no mask, because the organ then reports it as the STRONGER evidence.
+
+So the fix is a rule, not a sweep:
+
+  · **A box is an estimate; a mask is a measurement.** `BASIS_EPISTEMIC` in the organ.
+  · **A measured movement grounds on masks at BOTH endpoints, or it does not ground.** One
+    measured side and one estimated side is an estimate — the weaker basis governs.
+  · **Box-basis containment is interpretive, never measured.** It may still propose (it is a real
+    peripheral signal) and is refused at the grounding step as `box_only`, recorded exactly like
+    `surface_only`. Refusals are evidence, not failures.
+  · **The VLM's boxes are not retired.** They stay as data and as candidates. No identity between
+    a `cseg_` region and a `fine_N` region is asserted anywhere; that remains a curator's call.
+
+`box_only` and `surface_only` are counted separately on purpose: one says the relation is not
+there, the other says it may well be and this corpus cannot yet measure it. The first is a finding
+about images, the second about coverage.
+
 ## The mark is the grounding, and this lane writes no marks to posts
 
 Lane G's contract: an edge stores `mark_id` and never `epistemic_status`; `hydrate_movement_edge`
@@ -62,6 +89,24 @@ DEFAULT_K = 12
 #: Sentinel post ids the hygiene lane purged. Checked anyway — a movement grounded to a post that
 #: does not exist is worse than no movement, and the cost of the guard is one set lookup.
 SENTINEL_POST_IDS = frozenset({"s", "scratch-in-memory", "scratch", ""})
+
+#: WAVE2.5 RULING — a pair whose geometry is only boxes. Refused at the grounding step, and
+#: RECORDED, exactly like `surface_only`: a refusal is evidence about the corpus, not a failure.
+#:
+#: The candidate is not discarded. A box-basis containment is a perfectly good peripheral signal —
+#: it is why the VLM's boxes stay in the pipeline at all — it simply cannot mint a `measured` edge.
+#: Propose, never ground.
+REFUSED_BOX_ONLY = "box_only"
+
+
+class InadmissibleGrounding(Exception):
+    """An attempt to mint a measured movement from geometry that cannot carry one.
+
+    An exception rather than a returned refusal because there is no sensible way to continue: a
+    caller that reaches `movement_from` with a box-basis measurement has already skipped the gate
+    in `consider`, and the only correct handling is to stop before the edge exists. The same shape
+    `epistemics.EpistemicViolation` uses, for the same reason.
+    """
 
 
 class PostsMutated(Exception):
@@ -263,10 +308,39 @@ def consider(seeded: Mapping[str, Any], candidate: Mapping[str, Any],
                            f"({measurement['detail']}) — a mapping is not a grounding"),
                 "measurement": measurement, "mark": None}
 
+    # WAVE2.5 RULING — ADMISSIBILITY. A measured movement grounds on masks at BOTH ends or it does
+    # not ground at all. This is where the box pathology is closed: `cseg_golden_finial_7` against
+    # an unmasked `Sky` box computes containment 1.000 and index 0.999, and is refused here rather
+    # than becoming the strongest edge in the graph.
+    #
+    # Both ends, because a cross-image relation is a claim about a PAIR of images. One measured
+    # side and one estimated side is an estimate — the weaker basis governs, the same way a chain's
+    # weakest link does, and for the same reason.
+    near_ok, far_ok = organ.is_admissible(seeded["measurement"]), organ.is_admissible(measurement)
+    if not (near_ok and far_ok):
+        offending = [side for side, ok in (("source", near_ok), ("target", far_ok)) if not ok]
+        return {
+            **base, "status": "refused", "reason": REFUSED_BOX_ONLY,
+            "detail": (
+                f"{' and '.join(offending)} rests on box geometry "
+                f"(source={seeded['measurement']['basis']}, target={measurement['basis']}). "
+                f"A box is an estimate of an extent; only a mask is a measurement of one, and a "
+                f"measured cross-image relation cannot be grounded on an estimate. Kept as a "
+                f"candidate — this pair scored {measurement['nesting_index']:.3f}, and that number "
+                f"is a peripheral signal, not a finding."),
+            "measurement": measurement,
+            # The interpretive reading is RETURNED, and it is not a mark an edge may cite. It
+            # exists so the refusal carries what was actually computed rather than an assertion
+            # that nothing was.
+            "interpretive_reading": organ.grounding_mark(measurement, post_id=cand_post_id,
+                                                         step_id=KERNEL_STEP_ID),
+            "mark": None,
+        }
+
     return {**base, "status": "grounded", "reason": "", "detail": measurement["detail"],
             "measurement": measurement,
-            "mark": organ.measured_mark(measurement, post_id=cand_post_id,
-                                        step_id=KERNEL_STEP_ID)}
+            "mark": organ.grounding_mark(measurement, post_id=cand_post_id,
+                                         step_id=KERNEL_STEP_ID)}
 
 
 # ── stage 5: the edge ────────────────────────────────────────────────────────
@@ -288,9 +362,23 @@ def movement_from(seeded: Mapping[str, Any], considered: Mapping[str, Any], *,
         raise ValueError("only a grounded candidate becomes a movement — "
                          f"this one is {considered.get('status')!r} ({considered.get('reason')!r})")
 
+    # THE RULING, RE-ASSERTED AT THE MINT. `consider` already refuses an inadmissible pair, so
+    # reaching here with one means a caller skipped the gate — and the honest response to that is
+    # to stop before the edge exists rather than to trust the caller. The same belt-and-braces
+    # shape `assert_valid_movement_edge` uses below: the last thing between a bug and a stored
+    # claim should be a guard, not a convention.
+    for side, measurement in (("source", seeded.get("measurement")),
+                              ("target", (considered.get("measurement") or {}))):
+        if not organ.is_admissible(measurement):
+            raise InadmissibleGrounding(
+                f"refusing to mint a measured movement: the {side} rests on "
+                f"{(measurement or {}).get('basis')!r} geometry. A box is an estimate; only a mask "
+                f"is a measurement, and a measured cross-image relation grounds on masks at both "
+                f"ends or not at all.")
+
     stamp = now or utc_now()
-    near_mark = organ.measured_mark(seeded["measurement"], post_id=seeded["post_id"],
-                                    step_id=KERNEL_STEP_ID, now=stamp)
+    near_mark = organ.grounding_mark(seeded["measurement"], post_id=seeded["post_id"],
+                                     step_id=KERNEL_STEP_ID, now=stamp)
     far_mark = dict(considered["mark"])
     far_mark["created_at"] = far_mark.get("created_at") or stamp
 
@@ -400,7 +488,22 @@ def place(third_post: Mapping[str, Any], atlas_doc: Mapping[str, Any], *,
         mapping = sm.structure_map(seeded["structure"], structure,
                                    min_systematicity=min_systematicity)
 
-    placed = bool(measurement and measurement.get("nested"))
+    # WAVE2.5 RULING, APPLIED TO THE PROOF ITSELF. A placement is a grounded cross-image claim —
+    # "this image belongs on this axis" — so it obeys the same admissibility as an edge. A nesting
+    # the organ read off two boxes is an interpretive proposal about where the image might sit,
+    # and calling it a placement would be the milestone claiming more than it measured.
+    nested = bool(measurement and measurement.get("nested"))
+    admissible = organ.is_admissible(measurement)
+    placed = bool(nested and admissible)
+    if nested and not admissible:
+        detail = (f"the organ read a nesting here on {measurement['basis']} geometry "
+                  f"({measurement['detail']}) — an estimate, so this is an interpretive proposal "
+                  f"and NOT a placement on the axis")
+    elif nested:
+        detail = measurement["detail"]
+    else:
+        detail = "the organ measured no nesting in this image — nothing to place"
+
     return {
         "post_id": post_id,
         "region_id": candidate_region,
@@ -409,18 +512,25 @@ def place(third_post: Mapping[str, Any], atlas_doc: Mapping[str, Any], *,
         # The one field that says what did the placing. Never the retina, never the axis.
         "placed_by": organ.ORGAN if placed else None,
         "basis": (measurement or {}).get("basis"),
+        # What this reading IS, whether or not it placed. `interpretive` here is the honest record
+        # of a real computation that is not admissible as a grounding.
+        "epistemic": (measurement or {}).get("epistemic"),
+        "admissible": admissible,
         "measurement": measurement,
         "structure": structure,
         "structure_map": mapping,
         "axis": axis_answer,
         "retina": retina_answer,
-        "mark": (organ.measured_mark(measurement, post_id=post_id, step_id=KERNEL_STEP_ID)
+        "mark": (organ.grounding_mark(measurement, post_id=post_id, step_id=KERNEL_STEP_ID)
                  if placed else None),
+        # The reading that did not place, kept rather than dropped — a refusal is evidence.
+        "interpretive_reading": (
+            organ.grounding_mark(measurement, post_id=post_id, step_id=KERNEL_STEP_ID)
+            if (nested and not admissible) else None),
         "labels": ({"part": _label(third_post, candidate_region),
                     "whole": _label(third_post, (structure or {}).get("parent_id") or "")}
                    if candidate_region else {}),
-        "detail": ((measurement or {}).get("detail") if placed
-                   else "the organ measured no nesting in this image — nothing to place"),
+        "detail": detail,
     }
 
 
@@ -479,6 +589,12 @@ async def run_kernel(*, post_a: Mapping[str, Any], posts: Mapping[str, Mapping[s
     transcript["refused"] = [c for c in considered if c["status"] != "grounded"]
     transcript["surface_only_refusals"] = [
         c for c in considered if c.get("reason") == sm.REFUSED_SURFACE_ONLY]
+    # WAVE2.5 — reported as its own class, because it says something different about the corpus.
+    # `surface_only` means the relation is not there; `box_only` means it may well be there and
+    # this corpus cannot yet measure it. One is a finding about images, the other is a finding
+    # about coverage, and a single "refused" count would hide the difference.
+    transcript["box_only_refusals"] = [
+        c for c in considered if c.get("reason") == REFUSED_BOX_ONLY]
 
     # ── 5. the edges ──
     movements = [movement_from(seeded, c, now=stamp) for c in grounded[:max(1, int(max_movements))]]

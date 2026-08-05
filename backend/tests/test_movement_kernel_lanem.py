@@ -34,7 +34,37 @@ def _box(x, y, w, h):
     return {"x": x, "y": y, "w": w, "h": h}
 
 
+#: The shared raster every fixture mask is rasterized onto. One size for all of them, because
+#: `_mask_pair` refuses two different rasters rather than resampling — see the organ.
+RASTER = 100
+
+
+def _rle_for(box):
+    """A rectangular mask matching the box exactly.
+
+    Rectangular on purpose: it keeps every measurement in this file numerically identical to what
+    the box path produced, so the assertions about containment and index still say what they said.
+    What changes is only the BASIS — which, under the WAVE2.5 ruling, is the whole difference
+    between a measurement and an estimate.
+    """
+    x, y, w, h = box
+    bits = np.zeros((RASTER, RASTER), np.uint8)
+    bits[int(round(y * RASTER)):int(round((y + h) * RASTER)),
+         int(round(x * RASTER)):int(round((x + w) * RASTER))] = 1
+    return mg.rle_encode_mask(bits)
+
+
 def _region(rid, box, label=""):
+    """A MEASURED region — it carries a mask, which is now the corpus norm (420 of 505)."""
+    return {"id": rid, "box": _box(*box), "label": label or rid, "mask_rle": _rle_for(box)}
+
+
+def _box_region(rid, box, label=""):
+    """An ESTIMATED region — a VLM box with no mask, exactly like `region_2` ('Sky').
+
+    These are not second-class data and they are not going away: they still propose. They simply
+    cannot ground a measured cross-image relation.
+    """
     return {"id": rid, "box": _box(*box), "label": label or rid}
 
 
@@ -77,7 +107,29 @@ POST_D = _post("post_d", [
     _region("d_sibling", (0.12, 0.12, 0.10, 0.10), "speck"),
 ])
 
-POSTS = {p["_id"]: p for p in (POST_A, POST_B, POST_S, POST_C, POST_D)}
+#: Image X — THE NAMED PATHOLOGY, in miniature. A real nesting by every number the organ can
+#: compute, on geometry that is only boxes: `x_part` sits inside `x_sky` at containment 1.000 and
+#: index 0.997, precisely as `cseg_golden_finial_7` sat "inside" `region_2` ('Sky') at 0.999.
+#:
+#: The point of this fixture is that the numbers are IMPRESSIVE. Nothing about the score reveals
+#: that the part is in front of the sky rather than within it; only the basis does.
+POST_X = _post("post_x", [
+    _box_region("x_sky", (0.02, 0.02, 0.96, 0.96), "Sky"),
+    _box_region("x_whole", (0.20, 0.20, 0.50, 0.50), "Temple Spire"),
+    _box_region("x_part", (0.30, 0.30, 0.10, 0.10), "golden finial"),
+    _box_region("x_sibling", (0.50, 0.50, 0.10, 0.10), "dome ribs"),
+])
+
+#: Image M — a masked twin of X, so a test can hold the basis as the ONLY difference between a
+#: grounding and a refusal. Same ids' geometry, same skeleton, masks instead of boxes.
+POST_M = _post("post_m", [
+    _region("m_sky", (0.02, 0.02, 0.96, 0.96), "Sky"),
+    _region("m_whole", (0.20, 0.20, 0.50, 0.50), "Temple Spire"),
+    _region("m_part", (0.30, 0.30, 0.10, 0.10), "golden finial"),
+    _region("m_sibling", (0.50, 0.50, 0.10, 0.10), "dome ribs"),
+])
+
+POSTS = {p["_id"]: p for p in (POST_A, POST_B, POST_S, POST_C, POST_D, POST_X, POST_M)}
 
 
 class FakeRetina:
@@ -123,7 +175,7 @@ def test_the_organ_measures_containment_and_scale():
     assert m["containment"] == 1.0
     assert m["scale_ratio"] == pytest.approx(0.01 / 0.36, rel=1e-3)
     assert m["nesting_index"] == pytest.approx(1.0 * (1 - 0.01 / 0.36), rel=1e-3)
-    assert m["nested"] is True and m["basis"] == "box"
+    assert m["nested"] is True and m["basis"] == "mask"
 
 
 def test_a_region_is_not_nested_within_itself():
@@ -191,13 +243,87 @@ def test_mismatched_mask_rasters_fall_back_to_boxes_and_say_so():
     assert m["basis"] == "box" and "no shared mask raster" in m["basis_detail"]
 
 
-def test_the_organs_mark_is_the_only_place_measured_is_written():
+def test_the_organs_mark_is_the_only_place_a_status_is_written():
     m = organ.measure(_region("i", (0.4, 0.4, 0.1, 0.1)), _region("o", (0.2, 0.2, 0.6, 0.6)))
-    mark = organ.measured_mark(m, post_id="post_a", step_id="s1")
+    mark = organ.grounding_mark(m, post_id="post_a", step_id="s1")
     assert mark[STATUS_KEY] == EpistemicStatus.MEASURED.value
     assert mark["provenance"]["producer"] == organ.ORGAN
-    assert mark["provenance"]["adapter"] == "geometry:box"
+    assert mark["provenance"]["adapter"] == "geometry:mask"
     assert mark["measurement"]["nesting_index"] == m["nesting_index"]
+
+
+# ── WAVE2.5 RULING: a box is an estimate; a mask is a measurement ────────────
+
+def test_the_basis_decides_what_kind_of_knowing_a_number_is():
+    """THE RULING, at its narrowest. The same rectangle measured two ways gives the SAME numbers
+    and two different kinds of claim — which is the point: nothing about the score can tell you
+    whether it was measured, only the basis can."""
+    by_mask = organ.measure(_region("i", (0.4, 0.4, 0.1, 0.1)),
+                            _region("o", (0.2, 0.2, 0.6, 0.6)))
+    by_box = organ.measure(_box_region("i", (0.4, 0.4, 0.1, 0.1)),
+                           _box_region("o", (0.2, 0.2, 0.6, 0.6)))
+
+    assert by_mask["nesting_index"] == pytest.approx(by_box["nesting_index"], rel=1e-2)
+    assert by_mask["nested"] is by_box["nested"] is True
+
+    assert by_mask["basis"] == "mask"
+    assert by_mask["epistemic"] == EpistemicStatus.MEASURED.value
+    assert by_mask["admissible"] is True and organ.is_admissible(by_mask)
+
+    assert by_box["basis"] == "box"
+    assert by_box["epistemic"] == EpistemicStatus.INTERPRETIVE.value
+    assert by_box["admissible"] is False and not organ.is_admissible(by_box)
+
+
+def test_a_box_basis_mark_says_interpretive_however_high_it_scored():
+    """`cseg_golden_finial_7` against an unmasked `Sky` box came back
+    `epistemic_status='measured', adapter='geometry:box'` at index 0.999. That mark is the lie
+    this ruling closes — the strongest word in the vocabulary on a 2D-projection artefact."""
+    m = organ.measure(_box_region("finial", (0.46, 0.03, 0.02, 0.06)),
+                      _box_region("sky", (0.0, 0.0, 1.0, 0.7)))
+    assert m["nesting_index"] > 0.99 and m["nested"] is True     # the number is still impressive
+    mark = organ.grounding_mark(m, post_id="post_x", step_id="s1")
+    assert mark[STATUS_KEY] == EpistemicStatus.INTERPRETIVE.value
+    assert mark["provenance"]["adapter"] == "geometry:box"
+
+
+def test_the_vectorized_and_pure_python_mask_paths_agree(monkeypatch):
+    """numpy is an optimisation, never a second opinion.
+
+    It is a guarded import — absent from `requirements.txt`, so a slim deploy falls back to the
+    Python loop — and an organ that measured differently depending on what happened to be
+    installed would be the worst kind of unreproducible. ~100x faster, bit-identical.
+    """
+    inner, outer = _ring_post()
+    with_numpy = organ.measure(inner, outer)
+    monkeypatch.setattr(organ, "_np", None)
+    without_numpy = organ.measure(inner, outer)
+
+    assert with_numpy["basis"] == without_numpy["basis"] == "mask"
+    for field in ("containment", "scale_ratio", "nesting_index", "area_inner", "area_outer"):
+        assert with_numpy[field] == without_numpy[field], field
+
+
+def test_caching_the_sweep_does_not_change_what_it_finds():
+    """`find_nested_pairs` decodes each mask once for the whole n² sweep — 54 decodes instead of
+    5,724 on the real corpus, which is what took a post from ~252s to ~1.8s. A cache that changed
+    an answer would be a much worse bug than the slowness it fixes."""
+    regions = POST_M["region_annotations"]
+    cached = organ.find_nested_pairs(regions)
+    uncached = [organ.measure(a, b) for a in regions for b in regions
+                if a is not b and organ.measure(a, b)["nested"]]
+
+    assert [(m["inner_region_id"], m["outer_region_id"], m["nesting_index"]) for m in cached] == \
+           sorted([(m["inner_region_id"], m["outer_region_id"], m["nesting_index"])
+                   for m in uncached], key=lambda t: -t[2])
+
+
+def test_an_unknown_basis_is_interpretive_rather_than_assumed_measured():
+    """The conservative direction is the only safe default for a basis nobody has ruled on."""
+    assert organ.epistemic_for("lidar") == EpistemicStatus.INTERPRETIVE.value
+    assert organ.epistemic_for("") == EpistemicStatus.INTERPRETIVE.value
+    assert not organ.is_admissible({"basis": "lidar"})
+    assert not organ.is_admissible(None)
 
 
 # ── structure mapping: relations, never appearances ──────────────────────────
@@ -319,8 +445,8 @@ def test_an_organ_that_contradicts_itself_stops_the_write(monkeypatch):
     real_measure = organ.measure
     seen = {"n": 0}
 
-    def flaky(inner, outer):
-        result = real_measure(inner, outer)
+    def flaky(inner, outer, **kwargs):
+        result = real_measure(inner, outer, **kwargs)
         # Let the sweep run honestly, then contradict it on the single re-measurement.
         if result.get("nested") and str(inner.get("id")) == "b_part":
             seen["n"] += 1
@@ -336,6 +462,103 @@ def test_an_organ_that_contradicts_itself_stops_the_write(monkeypatch):
     assert refusal["reason"] == "ungrounded"
     assert refusal["measurement"]["nested"] is False
     assert refusal["mark"] is None
+
+
+def test_a_box_only_candidate_is_refused_however_well_it_scores():
+    """THE NAMED CASE, as a kernel test. `x_part` in `x_whole` is a real nesting by every number
+    the organ computes — and it is boxes, so it cannot mint a measured edge."""
+    t = _run(region_id="a_part", retina_module=FakeRetina([_cand("post_x", "x_part", 0.98)]))
+    assert t["movements"] == []
+    (refusal,) = t["refused"]
+    assert refusal["reason"] == mk.REFUSED_BOX_ONLY
+    assert refusal["mark"] is None
+    # The reading is kept, not discarded — a refusal is evidence about the corpus.
+    assert refusal["measurement"]["nested"] is True
+    assert refusal["measurement"]["nesting_index"] > 0.9
+    assert refusal["interpretive_reading"][STATUS_KEY] == EpistemicStatus.INTERPRETIVE.value
+    assert "estimate" in refusal["detail"]
+
+
+def test_only_the_basis_separates_the_refusal_from_the_grounding():
+    """POST_M is POST_X with masks and nothing else changed. Same skeleton, same geometry, same
+    scores — one refuses, one grounds. That is the ruling isolated to a single variable."""
+    boxed = _run(region_id="a_part",
+                 retina_module=FakeRetina([_cand("post_x", "x_part", 0.9)]))
+    masked = _run(region_id="a_part",
+                  retina_module=FakeRetina([_cand("post_m", "m_part", 0.9)]))
+
+    assert boxed["movements"] == []
+    assert boxed["refused"][0]["reason"] == mk.REFUSED_BOX_ONLY
+
+    assert len(masked["movements"]) == 1
+    assert masked["movements"][0]["far_mark"][STATUS_KEY] == EpistemicStatus.MEASURED.value
+    # …and the two measured the same relation to the same strength.
+    assert masked["considered"][0]["measurement"]["nesting_index"] == pytest.approx(
+        boxed["refused"][0]["measurement"]["nesting_index"], rel=1e-2)
+
+
+def test_box_only_and_surface_only_are_counted_apart():
+    """One says the relation is not there; the other says it may well be and this corpus cannot
+    yet measure it. A single `refused` count would hide the difference between a finding about
+    images and a finding about coverage."""
+    t = _run(region_id="a_part", retina_module=FakeRetina([
+        _cand("post_s", "s_only", 0.99),        # no relation at all
+        _cand("post_x", "x_part", 0.98),        # a relation, on boxes
+        _cand("post_b", "b_part", 0.30),        # a relation, on masks
+    ]))
+    assert [c["candidate"]["post_id"] for c in t["surface_only_refusals"]] == ["post_s"]
+    assert [c["candidate"]["post_id"] for c in t["box_only_refusals"]] == ["post_x"]
+    assert [m["edge"]["target_node"] for m in t["movements"]] == ["vm_post_b:b_part"]
+
+
+def test_an_estimated_SOURCE_refuses_even_when_the_target_is_measured():
+    """Both endpoints, not either. A cross-image relation is a claim about a PAIR of images, so
+    one measured side and one estimated side is an estimate — the weaker basis governs."""
+    t = asyncio.run(mk.run_kernel(
+        post_a=POST_X, posts=copy.deepcopy(POSTS), persist=False, region_id="x_part",
+        retina_module=FakeRetina([_cand("post_b", "b_part", 0.9)])))
+    assert t["seed"]["measurement"]["basis"] == "box"
+    assert t["movements"] == []
+    assert t["refused"][0]["reason"] == mk.REFUSED_BOX_ONLY
+    assert "source" in t["refused"][0]["detail"]
+
+
+def test_the_mint_refuses_an_inadmissible_pair_even_if_the_gate_is_skipped():
+    """Belt and braces. `consider` already refuses, so reaching the mint with box geometry means a
+    caller went around the gate — and the last thing between a bug and a stored claim should be a
+    guard, not a convention."""
+    seeded = mk.seed(POST_X, region_id="x_part")
+    considered = mk.consider(mk.seed(POST_A, region_id="a_part"),
+                             _cand("post_b", "b_part", 0.9), POST_B)
+    assert considered["status"] == "grounded"
+    with pytest.raises(mk.InadmissibleGrounding, match="source"):
+        mk.movement_from(seeded, considered)
+
+
+def test_a_box_basis_reading_is_not_a_placement():
+    """A placement is a grounded cross-image claim, so it obeys the same admissibility. The
+    reading is kept as an interpretive proposal rather than dressed as the milestone."""
+    placement = mk.place(POST_X, {"edges": []})
+    assert placement["measurement"]["nested"] is True      # the organ really did read a nesting
+    assert placement["basis"] == "box"
+    assert placement["epistemic"] == EpistemicStatus.INTERPRETIVE.value
+    assert placement["placed"] is False and placement["placed_by"] is None
+    assert placement["mark"] is None
+    assert placement["interpretive_reading"][STATUS_KEY] == EpistemicStatus.INTERPRETIVE.value
+    assert "NOT a placement" in placement["detail"]
+
+
+def test_the_vlm_boxes_are_still_candidates_and_nothing_asserts_an_identity():
+    """The ruling does not retire the boxes. They stay as data and as proposals — the retina still
+    offers them, the transcript still carries them — they are simply not admissible as groundings.
+    No `cseg_`/`fine_N` identity is asserted anywhere."""
+    t = _run(region_id="a_part", retina_module=FakeRetina([_cand("post_x", "x_part", 0.98)]))
+    assert t["retina"]["status"] == "ready"
+    assert [c["post_id"] for c in t["retina"]["candidates"]] == ["post_x"]
+    assert t["retina"]["skipped_candidates"] == []       # proposed, not filtered out
+    considered = t["considered"][0]
+    assert considered["candidate"]["score"] == 0.98      # the peripheral signal survives whole
+    assert considered["structure_map"]["status"] == "mapped"
 
 
 def test_an_unreadable_candidate_post_is_refused_not_skipped():
