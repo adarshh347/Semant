@@ -337,7 +337,37 @@ class OperatorRegistry:
                 f"assemblage '{name}' needs at least two members — a cluster of one is "
                 f"just the operator it already is"
             )
-        _validate(name, definition or rendering_intent)
+
+        # A DISTINCT DEFINITION IS REQUIRED, and this is a fix rather than a nicety.
+        #
+        # W4's live gate rendered an assemblage and got its `rendering_intent` echoed back
+        # almost verbatim as the passage. The cause was here: `definition` defaulted to
+        # `rendering_intent`, so the operator arrived at the prompt saying the same sentence
+        # twice and carrying nothing else — a thin operator renders thinly, which is the
+        # calibration problem (plan §9) in miniature.
+        #
+        # The two fields do different work. `definition` is what the thing IS;
+        # `rendering_intent` is what should happen on the page when it fires. Collapsing them
+        # leaves the render nothing to work from but an instruction, and an instruction
+        # repeated is the most likely thing for a model to hand straight back.
+        definition = (definition or "").strip()
+        if not definition:
+            raise OperatorError(
+                f"assemblage '{name}' needs a definition as well as a rendering intent. "
+                f"The intent says what should happen on the page; the definition says what "
+                f"this thing IS in your writing. An assemblage carrying only the intent "
+                f"gives the render one sentence to work from, and it tends to hand that "
+                f"sentence straight back."
+            )
+        if definition == rendering_intent.strip():
+            raise OperatorError(
+                f"assemblage '{name}' has the same text for its definition and its "
+                f"rendering intent. They do different work — what it is, and what should "
+                f"happen when it fires — and an operator that says one thing twice renders "
+                f"thinly."
+            )
+
+        _validate(name, definition)
 
         index = await self.by_name(project_id)
         members: List[Dict[str, Any]] = []
@@ -362,7 +392,7 @@ class OperatorRegistry:
 
         created = await self.create(
             project_id, name,
-            definition=(definition or "").strip() or rendering_intent.strip(),
+            definition=definition.strip(),
             rendering_intent=rendering_intent.strip(),
             author=author,
         )

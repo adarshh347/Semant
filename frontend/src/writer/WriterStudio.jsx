@@ -3,6 +3,7 @@ import { writerService } from './writerService';
 import WriterEditor from './WriterEditor';
 import OperatorGraph from './graph/OperatorGraph';
 import AssemblageSuggestions from './assemblages/AssemblageSuggestions';
+import OperatorLibrary from './library/OperatorLibrary';
 import './WriterStudio.css';
 
 /**
@@ -18,13 +19,16 @@ import './WriterStudio.css';
  * looking. Nothing about a passage lives in a side panel any more, because a decision about
  * prose should be made next to the prose.
  */
-export default function WriterStudio({ projectId, manuscriptId = '', sceneId = '', initialContent = null }) {
+export default function WriterStudio({
+  projectId, manuscriptId = '', sceneId = '', initialContent = null, author = '',
+}) {
   const [operators, setOperators] = useState([]);
   const [error, setError] = useState('');
   const [drafting, setDrafting] = useState(false);
   const [draft, setDraft] = useState({ name: '', definition: '' });
   const [showGraph, setShowGraph] = useState(false);
   const [showPatterns, setShowPatterns] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   const loadOperators = useCallback(async () => {
     if (!projectId) return;
@@ -73,6 +77,15 @@ export default function WriterStudio({ projectId, manuscriptId = '', sceneId = '
             </li>
           ))}
         </ul>
+
+        <button
+          type="button"
+          onClick={() => setShowLibrary((l) => !l)}
+          aria-pressed={showLibrary}
+          data-testid="library-toggle"
+        >
+          {showLibrary ? 'Hide my library' : 'My library'}
+        </button>
 
         <button
           type="button"
@@ -131,6 +144,16 @@ export default function WriterStudio({ projectId, manuscriptId = '', sceneId = '
         {showGraph && (
           <div className="writer-graph-panel">
             <OperatorGraph projectId={projectId} onClose={() => setShowGraph(false)} />
+          </div>
+        )}
+        {showLibrary && (
+          <div className="writer-graph-panel">
+            <OperatorLibrary
+              projectId={projectId}
+              author={author}
+              onChanged={loadOperators}
+              onClose={() => setShowLibrary(false)}
+            />
           </div>
         )}
         {showPatterns && (

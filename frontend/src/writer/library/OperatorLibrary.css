@@ -1,0 +1,94 @@
+/*
+ * Semant Writer · W5 — the portable ontology panel.
+ *
+ * The badges carry the one distinction that matters: "here vN" is this book's own copy,
+ * "library vN" is what the library holds, "taken from vN" is the version this copy came
+ * from. Showing all three is what keeps an import legible as a COPY rather than a window
+ * onto shared state.
+ */
+
+.writer-library {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid rgba(128, 128, 128, 0.2);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.85rem;
+}
+
+.writer-library__bar {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+}
+
+.writer-library__bar strong {
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.writer-library__author {
+  font-family: 'Spline Sans Mono', ui-monospace, Menlo, monospace;
+  font-size: 0.76rem;
+  opacity: 0.7;
+}
+
+.writer-library__help { flex: 1 1 14rem; opacity: 0.55; font-size: 0.74rem; line-height: 1.45; }
+.writer-library__empty { padding: 1.2rem 0.9rem; opacity: 0.6; line-height: 1.6; }
+.writer-library__error { margin: 0.6rem 0.9rem 0; color: rgb(190, 70, 60); font-size: 0.8rem; }
+.writer-library__status { margin: 0.6rem 0.9rem 0; opacity: 0.6; font-size: 0.8rem; }
+
+.writer-library__rows { list-style: none; margin: 0; padding: 0; }
+
+.writer-library__row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.14);
+}
+
+.writer-library__id { display: flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap; flex: 1; }
+.writer-library__id code { font-family: 'Spline Sans Mono', ui-monospace, Menlo, monospace; font-size: 0.82rem; }
+
+.writer-library__badge {
+  font-size: 0.68rem;
+  padding: 0.08rem 0.38rem;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 999px;
+  opacity: 0.8;
+}
+
+.writer-library__badge--lib { border-style: dashed; }
+.writer-library__from { font-size: 0.7rem; opacity: 0.55; }
+
+.writer-library__behind {
+  font-size: 0.7rem;
+  padding: 0.08rem 0.38rem;
+  border: 1px solid rgb(190, 140, 40);
+  border-radius: 3px;
+  opacity: 0.9;
+}
+
+.writer-library__actions { display: flex; gap: 0.4rem; }
+
+.writer-library button {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.writer-library button:hover:not(:disabled) { border-color: currentColor; }
+.writer-library button:disabled { opacity: 0.4; cursor: default; }
