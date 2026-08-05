@@ -27,7 +27,7 @@ export default function AssemblageSuggestions({ projectId, onAuthored = null, on
   const [status, setStatus] = useState('');
   const [expanded, setExpanded] = useState(null);
   const [naming, setNaming] = useState(null);      // suggestion id being authored
-  const [draft, setDraft] = useState({ name: '', rendering_intent: '' });
+  const [draft, setDraft] = useState({ name: '', rendering_intent: '', definition: '' });
 
   const load = useCallback(async () => {
     if (!projectId) return;
@@ -50,7 +50,10 @@ export default function AssemblageSuggestions({ projectId, onAuthored = null, on
     setNaming(s.id);
     // The strawman is a STARTING POINT. It is pre-filled so the author edits rather than
     // starts from nothing, and the label beside it says where it came from.
-    setDraft({ name: s.strawman.name, rendering_intent: s.strawman.rendering_intent });
+    // The strawman seeds the INTENT only. The definition is left blank on purpose:
+    // it is the one field that must be the author's own, and pre-filling it with the
+    // same sentence is exactly what made W4's gate echo its intent back as prose.
+    setDraft({ name: s.strawman.name, rendering_intent: s.strawman.rendering_intent, definition: '' });
   };
 
   const author = async (s) => {
@@ -60,6 +63,7 @@ export default function AssemblageSuggestions({ projectId, onAuthored = null, on
         name: draft.name.trim(),
         members: s.members.map((m) => m.name),
         rendering_intent: draft.rendering_intent.trim(),
+        definition: draft.definition.trim(),
       });
       setNaming(null);
       setStatus(`\`${draft.name.trim()}\` is yours now — invoke it with / ${draft.name.trim()}`);
@@ -168,11 +172,27 @@ export default function AssemblageSuggestions({ projectId, onAuthored = null, on
                 onChange={(e) => setDraft({ ...draft, rendering_intent: e.target.value })}
               />
 
+              <label htmlFor={`asm-definition-${s.id}`}>
+                What it IS in your writing
+                <span className="writer-assemblage__strawman-note">
+                  not what should happen on the page — that is the field above. An
+                  assemblage that says one of them twice renders thinly.
+                </span>
+              </label>
+              <textarea
+                id={`asm-definition-${s.id}`}
+                rows={3}
+                value={draft.definition}
+                onChange={(e) => setDraft({ ...draft, definition: e.target.value })}
+              />
+
               <div className="writer-assemblage__actions">
                 <button
                   type="button"
                   data-testid="commit-assemblage"
-                  disabled={!draft.name.trim() || !draft.rendering_intent.trim()}
+                  disabled={!draft.name.trim() || !draft.rendering_intent.trim()
+                    || !draft.definition.trim()
+                    || draft.definition.trim() === draft.rendering_intent.trim()}
                   onClick={() => author(s)}
                 >
                   Add it to my operators

@@ -85,8 +85,25 @@ class AssemblageCreate(BaseModel):
     name: str
     members: List[str] = Field(default_factory=list)
     rendering_intent: str
-    definition: Optional[str] = ""
+    # REQUIRED, and distinct from `rendering_intent`. The two do different work — what this
+    # thing IS, and what should happen on the page when it fires — and an assemblage that
+    # says one of them twice renders thinly: W4's live gate had the intent handed straight
+    # back as the passage. See `operators.create_assemblage`.
+    definition: str
     author: Optional[str] = ""
+
+
+# --- The portable ontology (W5) ---
+
+class LibraryOp(BaseModel):
+    """Promote / import / publish / pull, all of which name an author and an operator.
+
+    `author` is required and is what the library is keyed by. W5 is SINGLE-AUTHOR: a
+    library is one person's declared language, and importing across authors would put
+    prose in your book in a voice you never declared.
+    """
+    author: str
+    name: str
 
 
 # --- Running a block ---

@@ -126,6 +126,22 @@ writer_operator_collection = database.get_collection("writer_operators")
 writer_passage_collection = database.get_collection("writer_passages")
 writer_usage_collection = database.get_collection("writer_usage")
 
+# --- Semant Writer W5 · the portable ontology ---
+# writer_library_collection: the author's cross-manuscript operator/assemblage library,
+# ABOVE project scope and keyed by author. It is purely additive — no existing operator
+# moves into it and nothing auto-migrates; the author populates it by PROMOTING operators
+# they want to reuse.
+#
+# Entries hold FULL IMMUTABLE VERSION HISTORY and old versions are never discarded, because
+# committed passages across every book pin an exact version and must always resolve. That
+# is the one property the whole of W5 rests on: portability is safe exactly as long as
+# every passage can still name what made it.
+#
+# Import is a LINKED COPY, not a live reference — a project copy carries `library_ref`
+# lineage and versions independently thereafter, so editing an operator while writing Book B
+# can never silently redefine the language under Book A's committed prose.
+writer_library_collection = database.get_collection("writer_library")
+
 # --- Vision runtime provenance (CIRCULATION-SPINE-001 · P1) ---
 # vision_run_collection: one poll-friendly document per vision operation attempt, with
 # its stage events embedded (mirrors the agent_runs run+step-ledger pattern). This is a

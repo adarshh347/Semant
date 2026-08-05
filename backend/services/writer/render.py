@@ -58,7 +58,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from backend.services import role_registry
 from backend.services.director.execution import ERROR, OK, UNAVAILABLE
 from backend.services.llm_service import llm_service
-from backend.services.writer import dsl, instrument, relations
+from backend.services.writer import dsl, instrument, library, relations
 from backend.services.writer.dsl import Directive, OrchestrationNote
 from backend.services.writer.operators import operator_registry
 
@@ -87,6 +87,20 @@ class RenderResult:
     @property
     def succeeded(self) -> bool:
         return self.status == OK and bool(self.text.strip())
+
+
+async def _manuscript_author(manuscript_id: str) -> str:
+    """The manuscript's declared author, or "" if it has not declared one.
+
+    Empty is the normal case for everything written before W5, and `library.author_guard`
+    treats absence as "nobody has said yet" rather than as a violation — see the note there.
+    """
+    try:
+        from backend.services.manuscript_service import manuscript_collection
+        doc = await manuscript_collection.find_one({"_id": manuscript_id})
+        return (doc or {}).get("author") or ""
+    except Exception:
+        return ""
 
 
 def _now_iso() -> str:
@@ -333,10 +347,53 @@ def _style_by_reference(orchestration: Dict[str, str]) -> Optional[str]:
     return None
 
 
+def _thin_operator_warnings(operators: Sequence[Dict[str, Any]]) -> List[str]:
+    """Operators whose `definition` and `rendering_intent` say the same thing.
+
+    A WARNING, not a refusal — it is the author's ontology and they may have meant it. But
+    it is worth saying, because it reliably produces the failure W4's gate hit live: an
+    operator carrying one sentence twice gives the render nothing to work from but an
+    instruction, and the likeliest thing to come back is that instruction. This is the
+    calibration axis (plan §9) showing up where the author can act on it — the same reason
+    an assemblage refuses outright, softened for operators that predate the rule.
+    """
+    out: List[str] = []
+    for op in operators:
+        definition = (op.get("definition") or "").strip()
+        intent = (op.get("rendering_intent") or "").strip()
+        if definition and intent and definition == intent:
+            out.append(
+                f"`{op.get('name')}` says the same thing for what it IS and for what should "
+                f"happen when it fires. Operators that thin tend to get their own sentence "
+                f"handed back — worth sharpening one of the two."
+            )
+    return out
+
+
+def _author_refusal(found: Dict[str, Any], manuscript_author: str) -> Optional[str]:
+    """I5 ACROSS AUTHORS (W5). An operator another person declared may not render here.
+
+    W5 widens the evidence base from one project's ontology to the AUTHOR'S — across their
+    books. That is still their own declared language, so it stays grounded. What it must not
+    become is someone else's: an operator from another hand carries meaning this author never
+    declared and cannot check against their own book, which is the priors violation with a
+    human source rather than a statistical one.
+
+    Checked here, before the model, for the same reason every other wall is: a refusal is
+    cheaper and more certain than hoping the prompt holds.
+    """
+    for name, operator in found.items():
+        reason = library.author_guard(operator.get("author", ""), manuscript_author)
+        if reason:
+            return f"`{name}` is not yours to render from. {reason}"
+    return None
+
+
 def _preflight(
     resolved: Dict[str, Any],
     names: Sequence[str],
     orchestration: Dict[str, str],
+    manuscript_author: str = "",
 ) -> Optional[str]:
     """The refusal reason, or None to proceed. Cheap, certain, and before any spend."""
     if not names:
@@ -350,6 +407,12 @@ def _preflight(
             f"Define with `#create {missing[0]}: …` first — rendering it now would mean "
             f"inventing a voice you have not declared."
         )
+
+    # I5 across authors — the W5 guardrail. Before the style wall, because an operator
+    # from another hand is not a question about how the prose sounds.
+    foreign = _author_refusal(resolved.get("found") or {}, manuscript_author)
+    if foreign:
+        return foreign
 
     # The author's-ontology wall, made structural — see `_STYLE_BY_REFERENCE`.
     by_reference = _style_by_reference(orchestration)
@@ -443,6 +506,7 @@ async def render_directive(
     manuscript_id: str = "",
     scene_id: str = "",
     run_id: str = "",
+    manuscript_author: str = "",
 ) -> RenderResult:
     """Fire one `/` directive under its active `//` orchestration.
 
@@ -477,6 +541,11 @@ async def render_directive(
             # provenance has to say so. Naming only what was typed would be an audit trail
             # that lies by omission.
             "source": source,
+            # W5 — where this operator came from, if it was imported. Lineage, recorded so a
+            # passage made with a carried-over operator can say which library version it was
+            # taken from; nothing reads it to fetch anything.
+            "library_ref": op.get("library_ref"),
+            "author": op.get("author") or None,
         }
 
     provenance: Dict[str, Any] = {
@@ -495,7 +564,12 @@ async def render_directive(
         "rendered_at": _now_iso(),
     }
 
-    refusal = _preflight(resolved, names, orchestration)
+    # Whose manuscript is this? Resolved here rather than trusted from the caller, so the
+    # guard cannot be bypassed by a caller that simply omits it.
+    if manuscript_id and not manuscript_author:
+        manuscript_author = await _manuscript_author(manuscript_id)
+
+    refusal = _preflight(resolved, names, orchestration, manuscript_author)
     if refusal:
         await instrument.record(
             instrument.REFUSAL, project_id, operators=names,
@@ -526,8 +600,13 @@ async def render_directive(
     provenance["model"] = model
     passage, model_refusal, diagnostics = _parse_model_reply(raw)
     # A dangling or cyclic `requires` edge does not fail the span — the author's DIRECT
-    # request is still renderable — but it is never silent either.
-    diagnostics = list(requires_diagnostics) + diagnostics
+    # request is still renderable — but it is never silent either. Same for an operator
+    # thin enough that it is likely to echo.
+    diagnostics = (
+        list(requires_diagnostics)
+        + _thin_operator_warnings([found[n] for n in names if n in found] + pulled)
+        + diagnostics
+    )
 
     if model_refusal and not passage:
         await instrument.record(
