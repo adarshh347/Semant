@@ -52,6 +52,8 @@ const PersonasPage = React.lazy(() => import('./pages/PersonasPage.jsx'));
 const UnconcealQueuePage = React.lazy(() => import('./pages/UnconcealQueuePage.jsx'));
 const AnatomyPage = React.lazy(() => import('./pages/AnatomyPage.jsx'));
 const BlockNoteLab = React.lazy(() => import('./pages/BlockNoteLab.jsx'));
+// Semant Writer (W2) — the literary editor over the W1 loop.
+const WriterPage = React.lazy(() => import('./writer/WriterPage.jsx'));
 const ManuscriptLab = React.lazy(() => import('./pages/ManuscriptLab.jsx'));
 // Writing Studio (WS-0A) — the standalone manuscript-oriented writing tool.
 const StudioPage = React.lazy(() => import('./studio/StudioPage.jsx'));
@@ -120,6 +122,9 @@ const router = createBrowserRouter([
       { path: "lab/manuscript", element: <ManuscriptLab /> },
       // Writing Studio (WS-0A) — writing by orchestration; the manuscript is sacred.
       { path: "studio", element: <StudioPage /> },
+      // Semant Writer · W2. `/writer` opens the most recent manuscript; `/writer/:id` names one.
+      { path: "writer", element: <WriterPage /> },
+      { path: "writer/:manuscriptId", element: <WriterPage /> },
       // ATLAS C1 — the index picks a corpus; the canvas opens over one.
       { path: "atlas", element: <AtlasPage /> },
       { path: "atlas/:atlasId", element: <AtlasPage /> },

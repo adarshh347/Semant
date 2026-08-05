@@ -1,139 +1,116 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import WriterStudio from './WriterStudio';
 import { writerService } from './writerService';
 
 /**
- * Semant Writer · W1 — the studio, mounted.
+ * Semant Writer · W2 — the studio shell.
  *
- * The backend suite owns the invariants. This owns the BOUNDARY: that the surface does
- * not quietly undo them.
+ * W1 tested this file as the whole surface (a textarea and a results list). W2 moved every
+ * decision about a passage INLINE into the editor, so those assertions moved with it and now
+ * live in `WriterEditor.dom.test.jsx`, where they run against the real document model.
  *
- *   - a refused directive is shown as a result with its reason, not swallowed as an error
- *     and not given an Accept button;
- *   - a rendered passage is labelled quarantined and commits only on an explicit Accept;
- *   - `//` staging is rendered apart from the prose, never inside it.
+ * What is left here is what belongs beside the page rather than on it: the author's ontology,
+ * and the `#create` gesture that grows it — propose, the author confirms, then store.
  */
 
-const RENDERED = {
-    line: 4,
-    directive: '/ threshold',
-    operators: ['threshold'],
-    orchestration: { goal: 'she arrives at the door', voice: 'close third' },
-    status: 'ok',
-    text: 'The latch gave before she had decided to push it.',
-    refusal: '',
-    provenance: { operators: [{ name: 'threshold', version: 1 }], intents: [] },
-    diagnostics: [],
-    passage_id: 'psg_1',
-};
-
-const REFUSED = {
-    line: 5,
-    directive: '/ ekstasis',
-    operators: ['ekstasis'],
-    orchestration: {},
-    status: 'refused',
-    text: '',
-    refusal: 'undefined operator: `ekstasis`. Define with `#create ekstasis: …` first.',
-    provenance: {},
-    diagnostics: [],
-    passage_id: null,
-};
+const OPERATORS = [
+  { id: 'op_1', name: 'threshold', version: 1, definition: 'a crossing noticed late' },
+];
 
 let container, root;
 
 beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    root = createRoot(container);
-    vi.spyOn(writerService, 'listOperators').mockResolvedValue([
-        { id: 'op_1', name: 'threshold', version: 1, definition: 'a crossing noticed late' },
-    ]);
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  root = createRoot(container);
+  vi.spyOn(writerService, 'listOperators').mockResolvedValue(OPERATORS);
 });
 
 afterEach(() => {
-    act(() => root.unmount());
-    container.remove();
-    vi.restoreAllMocks();
+  act(() => root.unmount());
+  container.remove();
+  vi.restoreAllMocks();
 });
 
 async function mount(props = {}) {
-    await act(async () => {
-        root.render(<WriterStudio projectId="ms_1" sceneId="sc_1" {...props} />);
-    });
+  await act(async () => {
+    root.render(<WriterStudio projectId="ms_1" manuscriptId="ms_1" sceneId="sc_1" {...props} />);
+  });
 }
 
-async function runBlock(results) {
-    vi.spyOn(writerService, 'run').mockResolvedValue({ results, proposals: [], diagnostics: [] });
-    const textarea = container.querySelector('#writer-block-input');
-    await act(async () => {
-        const setter = Object.getOwnPropertyDescriptor(
-            window.HTMLTextAreaElement.prototype, 'value',
-        ).set;
-        setter.call(textarea, '/ threshold');
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-    const button = [...container.querySelectorAll('button')]
-        .find((b) => b.textContent === 'Render');
-    await act(async () => { button.click(); });
+const byTestId = (id) => container.querySelector(`[data-testid="${id}"]`);
+const buttonWithText = (text) =>
+  [...container.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
+
+function typeInto(el, value) {
+  const proto = el.tagName === 'TEXTAREA'
+    ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype;
+  Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-describe('WriterStudio', () => {
-    it('lists the author operators it was given', async () => {
-        await mount();
-        expect(container.textContent).toContain('threshold');
-        expect(container.textContent).toContain('a crossing noticed late');
+describe('WriterStudio — the shell', () => {
+  it('lists the author ontology beside the page', async () => {
+    await mount();
+    const panel = byTestId('ontology-panel');
+    expect(panel.textContent).toContain('threshold');
+    expect(panel.textContent).toContain('v1');
+    expect(panel.textContent).toContain('a crossing noticed late');
+  });
+
+  it('hosts the editor rather than a form', async () => {
+    await mount();
+    expect(byTestId('writer-prose')).not.toBeNull();
+    expect(byTestId('render-button')).not.toBeNull();
+    // the W1 textarea surface is gone; prose is written in the editor now
+    expect(container.querySelector('#writer-block-input')).toBeNull();
+  });
+
+  it('says what an operator is when there are none yet', async () => {
+    writerService.listOperators.mockResolvedValue([]);
+    await mount();
+    expect(byTestId('ontology-panel').textContent).toContain('your word for a thing your prose does');
+  });
+
+  it('#create stores only after the author confirms', async () => {
+    const create = vi.spyOn(writerService, 'createOperator').mockResolvedValue({});
+    await mount();
+
+    await act(async () => { byTestId('create-operator').click(); });
+    expect(create).not.toHaveBeenCalled();
+
+    await act(async () => {
+      typeInto(container.querySelector('input[aria-label="operator name"]'), 'interiority');
+      typeInto(
+        container.querySelector('textarea[aria-label="operator definition"]'),
+        'what the body knows before the mind admits it',
+      );
     });
+    await act(async () => { buttonWithText('Add to my operators').click(); });
 
-    it('shows a refusal as a result with its reason, and offers no Accept', async () => {
-        await mount();
-        await runBlock([REFUSED]);
-
-        expect(container.textContent).toContain('undefined operator');
-        expect(container.textContent).toContain('#create ekstasis');
-        expect(container.querySelector('.writer-error')).toBeNull();   // not an error
-        expect(container.querySelector('.writer-result--refused')).not.toBeNull();
-        const buttons = [...container.querySelectorAll('.writer-result button')]
-            .map((b) => b.textContent);
-        expect(buttons).not.toContain('Accept');
+    expect(create).toHaveBeenCalledWith('ms_1', {
+      name: 'interiority',
+      definition: 'what the body knows before the mind admits it',
     });
+  });
 
-    it('labels a rendered passage quarantined and commits only on Accept', async () => {
-        const accept = vi.spyOn(writerService, 'accept').mockResolvedValue({});
-        await mount();
-        await runBlock([RENDERED]);
-
-        expect(container.querySelector('.writer-quarantined').textContent).toBe('quarantined');
-        expect(accept).not.toHaveBeenCalled();          // nothing auto-commits
-
-        const button = [...container.querySelectorAll('button')]
-            .find((b) => b.textContent === 'Accept');
-        await act(async () => { button.click(); });
-
-        expect(accept).toHaveBeenCalledWith('psg_1', 'sc_1');
-        expect(container.textContent).toContain('accepted');
-        expect([...container.querySelectorAll('button')].map((b) => b.textContent))
-            .not.toContain('Accept');                   // a decision is made once
+  it('will not store an operator with no definition', async () => {
+    await mount();
+    await act(async () => { byTestId('create-operator').click(); });
+    await act(async () => {
+      typeInto(container.querySelector('input[aria-label="operator name"]'), 'hollow');
     });
+    // an operator with no definition is a style prior with a label on it
+    expect(buttonWithText('Add to my operators').disabled).toBe(true);
+  });
 
-    it('renders // staging apart from the prose, never inside it', async () => {
-        await mount();
-        await runBlock([RENDERED]);
-
-        const staging = container.querySelector('.writer-staging');
-        const passage = container.querySelector('.writer-passage');
-        expect(staging.textContent).toContain('she arrives at the door');
-        expect(passage.textContent).toBe('The latch gave before she had decided to push it.');
-        expect(passage.textContent).not.toContain('goal');
-        expect(passage.textContent).not.toContain('//');
-    });
-
-    it('shows provenance for a rendered passage', async () => {
-        await mount();
-        await runBlock([RENDERED]);
-        expect(container.querySelector('.writer-provenance').textContent)
-            .toContain('threshold v1');
-    });
+  it('surfaces a registry error rather than swallowing it', async () => {
+    writerService.listOperators.mockRejectedValue(new Error('registry unreachable'));
+    await mount();
+    expect(container.querySelector('.writer-error').textContent).toContain('registry unreachable');
+  });
 });

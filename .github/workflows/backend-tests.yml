@@ -7,11 +7,16 @@ name: backend
 # in CI. It was green only because somebody ran it by hand in a venv assembled by memory, which is
 # exactly as reliable as it sounds: `main` has been shipping six red tests for as long as
 # `test_concept_segmentation.py` has existed, and nothing was in a position to notice.
+#
+# `writer/integration` is the Semant Writer trunk, added for the same reason: the W1 gate
+# (the ontology wall, the refusal rules, the Accept gate) lives in `test_writer_w1.py`, and
+# W2 builds a surface on top of it. A writer gate that only ever ran by hand would repeat
+# precisely the mistake this file was written to fix.
 on:
   pull_request:
-    branches: [main, atlas/integration]
+    branches: [main, atlas/integration, writer/integration]
   push:
-    branches: [main, atlas/integration]
+    branches: [main, atlas/integration, writer/integration]
 
 concurrency:
   group: backend-${{ github.ref }}

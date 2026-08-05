@@ -1,160 +1,99 @@
 /*
- * Semant Writer · W1 — minimal styling for the loop.
+ * Semant Writer · W2 — the studio shell.
  *
- * Deliberately plain. The literary surface is W2, and anything ambitious written here
- * would have to be thrown away then. What this file DOES carry is the one distinction
- * that is not cosmetic: staging (`//`) and prose must never look like each other, and a
- * quarantined passage must never look like committed manuscript.
+ * The page owns the writing; this file owns only what sits beside it. Deliberately quiet:
+ * the ontology panel is reference material, and it must never compete with the prose for
+ * the author's eye. All the cadence, margin and card styling lives in `WriterEditor.css`.
  */
 
+/* `/writer` is a fullscreen route (App.jsx): the shell is already `height: 100vh;
+   overflow: hidden`, and each inner pane scrolls itself. So this fills its parent rather
+   than claiming a viewport of its own — `min-height: 100vh` here would push the editor's
+   sticky toolbar up under the app navbar and make the page unscrollable. */
 .writer-studio {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  max-width: 46rem;
-  margin: 0 auto;
-  padding: 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(14rem, 18rem) 1fr;
+  height: 100%;
+  min-height: 0;
 }
 
-.writer-studio h3 {
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
+@media (max-width: 60rem) {
+  .writer-studio { grid-template-columns: 1fr; }
+  .writer-ontology { border-right: none; border-bottom: 1px solid rgba(128, 128, 128, 0.2); }
+}
+
+/* --- the ontology panel --- */
+
+.writer-ontology {
+  padding: 1.5rem 1.25rem;
+  border-right: 1px solid rgba(128, 128, 128, 0.2);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.86rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.writer-ontology h3 {
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  opacity: 0.6;
-  margin: 0 0 0.5rem;
+  opacity: 0.55;
+  margin: 0 0 0.75rem;
 }
 
-/* --- the ontology --- */
+.writer-ontology ul { list-style: none; margin: 0 0 1rem; padding: 0; }
 
-.writer-ontology ul { list-style: none; margin: 0; padding: 0; }
-.writer-ontology li { padding: 0.5rem 0; border-bottom: 1px solid rgba(128, 128, 128, 0.18); }
-.writer-ontology li p { margin: 0.25rem 0 0; opacity: 0.75; font-size: 0.9rem; }
-.writer-version { opacity: 0.45; font-size: 0.8rem; }
-.writer-empty { opacity: 0.6; font-size: 0.9rem; line-height: 1.5; }
-
-/* --- the block --- */
-
-.writer-block label {
-  display: block;
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.6;
-  margin-bottom: 0.5rem;
+.writer-ontology li {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.14);
 }
 
-.writer-block textarea {
+.writer-ontology li p { margin: 0.25rem 0 0; opacity: 0.7; line-height: 1.5; font-size: 0.82rem; }
+.writer-ontology code { font-family: 'Spline Sans Mono', ui-monospace, Menlo, monospace; font-size: 0.82rem; }
+
+.writer-version { opacity: 0.45; font-size: 0.76rem; }
+.writer-empty { opacity: 0.6; line-height: 1.55; margin: 0 0 1rem; }
+
+/* --- the #create draft --- */
+
+.writer-draft { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.writer-draft input,
+.writer-draft textarea {
   width: 100%;
-  min-height: 9rem;
-  padding: 0.75rem;
   font: inherit;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.9rem;
-  line-height: 1.6;
+  font-size: 0.84rem;
+  padding: 0.4rem 0.5rem;
   background: transparent;
   color: inherit;
   border: 1px solid rgba(128, 128, 128, 0.35);
-  border-radius: 4px;
+  border-radius: 3px;
   resize: vertical;
 }
 
-.writer-actions { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.6rem; }
-.writer-note { font-size: 0.8rem; opacity: 0.6; }
-
-/* --- results --- */
-
-.writer-result {
-  border: 1px solid rgba(128, 128, 128, 0.28);
-  border-radius: 4px;
-  padding: 0.9rem;
-  margin-bottom: 1rem;
-}
-
-.writer-result header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
-  font-size: 0.85rem;
-}
-
-.writer-result header code { opacity: 0.8; }
-.writer-status { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.7rem; opacity: 0.55; }
-
-/* A refusal is a RESULT. It is not dimmed, not collapsed, and not styled as an error —
-   the reason is meant to be read. */
-.writer-result--refused { border-left: 3px solid rgba(190, 140, 40, 0.9); }
-.writer-refusal { margin: 0.6rem 0 0; line-height: 1.6; }
-
-.writer-result--unavailable { border-left: 3px solid rgba(128, 128, 128, 0.6); }
-.writer-unavailable { margin: 0.6rem 0 0; opacity: 0.7; font-size: 0.9rem; }
-
-/* Staging is NOT prose. Monospace, indented, muted — it must never be mistakable for
-   the passage it conditioned. */
-.writer-staging {
-  list-style: none;
-  margin: 0.6rem 0 0;
-  padding: 0.4rem 0.6rem;
-  border-left: 2px solid rgba(128, 128, 128, 0.3);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78rem;
-  opacity: 0.62;
-}
-
-.writer-staging b { font-weight: 600; margin-right: 0.4rem; }
-
-/* Prose reads as prose. */
-.writer-passage { margin: 0.8rem 0 0; line-height: 1.7; }
-.writer-passage p { margin: 0 0 0.7rem; }
-
-.writer-result footer {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  padding-top: 0.6rem;
-  border-top: 1px solid rgba(128, 128, 128, 0.18);
-  font-size: 0.8rem;
-}
-
-.writer-provenance { opacity: 0.6; flex: 1 1 auto; }
-
-/* Quarantine has to be legible at a glance — this is invariant 1 wearing a colour. */
-.writer-quarantined {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.68rem;
-  padding: 0.15rem 0.45rem;
-  border: 1px solid rgba(190, 140, 40, 0.7);
-  border-radius: 3px;
-  opacity: 0.85;
-}
-
-.writer-decided {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.68rem;
-  opacity: 0.6;
-}
-
-/* --- proposals + messages --- */
-
-.writer-proposal { padding: 0.6rem 0; border-bottom: 1px solid rgba(128, 128, 128, 0.18); }
-.writer-proposal p { margin: 0.25rem 0 0.5rem; opacity: 0.75; font-size: 0.9rem; }
-
-.writer-error { color: rgb(190, 70, 60); font-size: 0.85rem; margin: 0.5rem 0 0; }
-.writer-diagnostic { font-size: 0.78rem; opacity: 0.55; margin: 0.35rem 0 0; }
+.writer-draft__actions { display: flex; gap: 0.4rem; }
 
 .writer-studio button {
   font: inherit;
-  font-size: 0.82rem;
-  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.65rem;
   background: transparent;
   color: inherit;
-  border: 1px solid rgba(128, 128, 128, 0.45);
+  border: 1px solid rgba(128, 128, 128, 0.4);
   border-radius: 3px;
   cursor: pointer;
 }
 
 .writer-studio button:hover:not(:disabled) { border-color: currentColor; }
 .writer-studio button:disabled { opacity: 0.4; cursor: default; }
+
+.writer-error { color: rgb(190, 70, 60); font-size: 0.82rem; margin: 0.6rem 0 0; }
+
+/* --- the page --- */
+
+.writer-page {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
