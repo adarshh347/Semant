@@ -9,7 +9,7 @@ import {
 import { hydrateGrounds } from '../differential/grounds';
 // CIRCUIT-001 P2E — durable visual_marks. Only committed/superseded persist; a suggestion
 // stays session truth and never reaches the database (contract v2 §7.3).
-import { normalizeMark, persistableMarks, PERSISTED_STATUSES } from '../differential/visualMarks';
+import { isCrossImageMark, nativeMarks, normalizeMark, persistableMarks, PERSISTED_STATUSES } from '../differential/visualMarks';
 // CIRCUIT-001 P3-A — provenance is authored on the mark; a ground carries only DERIVED
 // bridge fields. `reconcileBridgeFields` reads them off the linked mark so a ground can
 // SHOW who made it without ever authoring provenance itself.
@@ -96,6 +96,17 @@ export function useRegionState(post, onPostChange) {
     const groundsRef = useRef(grounds);
     const perceptsRef = useRef(percepts);
     const visualMarksRef = useRef(visualMarks);
+    /**
+     * ATLAS C3 — the cross-image relations this post holds, WITHHELD from the instrument but kept
+     * so the save can put them back.
+     *
+     * `persistMeta` writes `visual_marks` as a whole array. Filtering the relations out on load
+     * without holding them here would mean the first meta-save after opening any related image
+     * silently deleted every relation on it — the exact wholesale-replace loss that has already
+     * destroyed committed evidence in this codebase once. Withholding from a RENDER is a display
+     * decision; withholding from a WRITE is data loss.
+     */
+    const crossImageMarksRef = useRef([]);
     const visualLayersRef = useRef(visualLayers);
     const saveTimer = useRef(null);
     const metaSaveTimer = useRef(null);
@@ -137,8 +148,13 @@ export function useRegionState(post, onPostChange) {
         // Hydrate durable marks, fail-closed: a stored mark that no longer validates is
         // dropped rather than trusted (the same discipline normalizeMark keeps on the way in).
         // Only persisted statuses ever reach storage, so this is committed/superseded only.
+        // ATLAS C3's cross-image guard. A `compare_views` relation is committed into both posts
+        // it spans, so it is sitting in this post's `visual_marks` — and the Differential is the
+        // single-image instrument. Rendering it here would draw a claim about two photographs on
+        // one of them, and counting it would credit this picture with evidence it does not hold.
+        crossImageMarksRef.current = (post.visual_marks || []).filter(isCrossImageMark);
         setVisualMarks(
-            (post.visual_marks || [])
+            nativeMarks(post.visual_marks || [])
                 .map((m) => normalizeMark(m))
                 .filter((m) => m && PERSISTED_STATUSES.has(m.status)),
         );
@@ -226,7 +242,11 @@ export function useRegionState(post, onPostChange) {
                     percepts: perceptsRef.current.filter(isExpressionPercept),
                     // Only committed/superseded marks are written — a suggestion never
                     // touches the database (contract v2 §7.3). The quarantine is session truth.
-                    visual_marks: persistableMarks(visualMarksRef.current),
+                    // The instrument's own marks, plus the cross-image relations it never showed.
+                    // They are not this picture's findings, and they are still this picture's
+                    // record — a save that dropped them would destroy them.
+                    visual_marks: [...persistableMarks(visualMarksRef.current),
+                        ...crossImageMarksRef.current],
                     // Q-C: the render layers' saved visibility/opacity (opaque dicts).
                     visual_layers: visualLayersRef.current,
                 }),

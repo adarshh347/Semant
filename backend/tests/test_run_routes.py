@@ -200,6 +200,7 @@ def test_a_run_that_needs_a_phrase_asks_and_waits(wired):
     assert stored["resume"]["question"]["actuator"] == "presence_check"
 
 
+@pytest.mark.ml          # drives a real producer; see conftest
 def test_the_answer_arrives_in_a_SEPARATE_request_and_continues_the_same_run(wired):
     """The whole point of the store. A3 resumes a loop inside one process; a curator answers
     minutes later over a new request, and it has to be the same run — one receipt, not two."""

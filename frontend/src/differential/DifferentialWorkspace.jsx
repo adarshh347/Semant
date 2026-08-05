@@ -193,7 +193,7 @@ const groundTitle = (g, regions = []) => {
 
 const MIN_SAMPLE_DIST = 0.004;
 
-export default function DifferentialWorkspace({ post, store, onExit, onSendToManuscript = null, onPostChange = null, firstAttentionPrefill = null }) {
+export default function DifferentialWorkspace({ post, store, onExit, onSendToManuscript = null, onPostChange = null, firstAttentionPrefill = null, machineRead = null }) {
     const [tool, setTool] = useState('select');
     const [traceSub, setTraceSub] = useState('path');
     const [untouched, setUntouched] = useState(false);
@@ -1556,7 +1556,11 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         SAME quarantine/review below, so orchestration reuses the review surface
                         rather than building a new one. */}
                     <section className="diff-insp-section diff-insp-orchestrate">
-                        <OrchestrationBar postId={postId} store={store} />
+                        {/* ATLAS T1: `machineRead` is an intention the curator already chose on
+                            the way in (the Light Table's one-click read). It runs once, in this
+                            bar, through the same Director and into the same quarantine below — no
+                            second trigger path, no review bypassed. */}
+                        <OrchestrationBar postId={postId} store={store} autoRun={machineRead} />
                     </section>
 
                     {/* P4-B (2a) — the suggestion quarantine, now a REVIEW surface. When

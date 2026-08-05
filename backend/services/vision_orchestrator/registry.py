@@ -85,6 +85,18 @@ def default_roster() -> List[AdapterSpec]:
                     license="MIT", available=False, deferred=True),
         AdapterSpec("cloud_vlm", Capability.SEMANTIC_ANNOTATE, ResourceKind.REMOTE,
                     "cloud-vision-language-model", available=False, deferred=True),
+        # CONCEPT-SEG-001 — SAM 3 Promptable Concept Segmentation. The first organ that gives the
+        # SŪKṢMA fine-parts stage MEASURED geometry instead of a VLM's estimate: today that stage
+        # returns boxes a language model guessed and no `mask_rle` at all (SF-004-R §4.2 measured
+        # 0 masks on 72/72 baseline parts, against 27/35 concepts really masked by this).
+        #
+        # GATED, and it stays gated: weights are ~3.2 GiB and the SF-004-R2 spike measured 5.3 s
+        # per concept warm on an M4 — a GO on quality, not on cost. `available` therefore turns on
+        # the weights actually being present, so a deploy without them (Render) degrades to the
+        # VLM honestly rather than failing.
+        AdapterSpec("sam3", Capability.CONCEPT_SEGMENT, ResourceKind.GPU,
+                    "facebook/sam3", license="SAM License", available=False, deferred=True,
+                    preprocessing_version="sam3-pcs-v1"),
     ]
 
 

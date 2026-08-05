@@ -1,0 +1,23 @@
+# What it takes to RUN THE TESTS, as opposed to running the app.
+#
+# These were undeclared until now, which is not a tidiness problem — it is why the backend suite
+# had never once run in CI. There was no workflow to run it, and nothing a workflow could have
+# installed to make it runnable. The suite was green only because it was being run by hand in a
+# venv somebody had assembled by memory.
+#
+# Install with:  pip install -r requirements.txt -r requirements-dev.txt
+#
+# NOT the ML stack. `requirements-ml.txt` carries torch and the vision models; the test suite fakes
+# every producer and needs none of them, which is what lets CI stay a minute rather than twenty.
+
+pytest
+
+# `@pytest.mark.asyncio` — six tests in `test_concept_segmentation.py` carry the marker and were
+# silently failing without this plugin, so `main` has been red for as long as they have existed.
+# The markers were right; the dependency was simply missing.
+pytest-asyncio
+
+# `fastapi.testclient.TestClient` is a thin wrapper over httpx. It rides in transitively today
+# (groq and cloudinary both pull it) and is declared here because the route tests import it
+# directly — a direct dependency arriving on someone else's coattails is one upgrade from gone.
+httpx

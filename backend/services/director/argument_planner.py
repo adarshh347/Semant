@@ -49,11 +49,18 @@ from .argument import (CHALLENGE, EPISTEMIC_STATUSES, FUNCTIONS, FUNCTION_MEANIN
                        PerceptStep, SubClaim, epistemic_ceiling)
 from .capabilities import ACTUATORS, known
 from .corpus import CorpusWorkingMemory, IMAGE_PARAM
-from .groq_planner import DEFAULT_MODEL, _clamp_params
+from .groq_planner import _clamp_params
 from .memory import WorkingMemory
 from .plan import Step
 
+from backend.services import role_registry
+
 PLANNER_ARGUMENT_GROQ = "argument_groq"
+
+#: ROLES-001 — its own role, no longer borrowing `groq_planner.DEFAULT_MODEL`. Asking for a
+#: CHAIN OF ACTUATORS and asking for an ARGUMENT are different jobs of different difficulty;
+#: sharing the import made them look like one choice when they were only ever the same string.
+ROLE = "argument_planner"
 
 # An argument with more sub-claims than this is not an argument, it is a list. The cap is applied
 # after parsing and the overflow is REPORTED, never trimmed silently.
@@ -274,12 +281,16 @@ class GroqArgumentPlanner:
     """
     name = PLANNER_ARGUMENT_GROQ
 
-    def __init__(self, client: Any = None, *, model: str = DEFAULT_MODEL):
+    def __init__(self, client: Any = None, *, model: Optional[str] = None):
         self._client = client
         self._client_resolved = client is not None
-        self.model = model
+        self._model = model
         self.last_notes: Tuple[str, ...] = ()
         self.calls: int = 0            # guard 3 is observable: tests assert this is 1
+
+    @property
+    def model(self) -> Optional[str]:
+        return self._model if self._model is not None else role_registry.model_for(ROLE)
 
     # ── client ──
     def _get_client(self) -> Any:

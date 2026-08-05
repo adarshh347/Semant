@@ -44,6 +44,8 @@ from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .capabilities import Resource, get as get_actuator, is_comparative
+from backend.services import cross_image
+
 from .memory import DEFAULT_CONSTRAINTS, WorkingMemory, build_memory
 from .plan import Plan, RefusedStep, Step, resolve
 
@@ -294,7 +296,13 @@ def memory_from_post(post: Mapping[str, Any], *, post_id: str,
     return build_memory(
         image_ref=image_ref or str(post.get("photo_url") or post_id), post_id=post_id,
         region_ids=_ids(post.get("region_annotations")),
-        mark_ids=_ids(post.get("visual_marks")),
+        # THE CROSS-IMAGE GUARD (C3). A `compare_views` relation is committed into both posts it
+        # spans, so it is in this post's `visual_marks` — and counting it here would let a single
+        # image's packet claim a mark that is really about the SEQUENCE. That matters most for
+        # `compare_views` itself, whose two-image requirement is checked against these counts: a
+        # relation counted as native evidence would help satisfy the requirement for producing
+        # another relation, and the gate would be grading its own output.
+        mark_ids=_ids(cross_image.native_marks(post.get("visual_marks"))),
         ground_ids=_ids(post.get("grounds")),
         percept_ids=_ids(post.get("percepts")),
         phrase=phrase, first_attention=first_attention, unreadable=unreadable)

@@ -26,10 +26,19 @@ from typing import Any, Dict, List, Optional
 from backend.config import settings
 from backend.schemas.vision_semantic import (SemanticResponse, SCHEMA_VERSION,
                                              enforce_candidate_ids)
+from backend.services import role_registry
+
+#: ROLES-001 — the role this provider fills. The model choice above is now the role's DEFAULT
+#: rather than this module's constant, so the evidence-backed decision recorded in the docstring
+#: keeps its home while the binding becomes rebindable (`SEMANT_ROLE_SEMANTIC_ANNOTATOR_MODEL`).
+ROLE = "semantic_annotator"
 
 PROVIDER = "openrouter"
-MODEL = "openai/gpt-4o-mini"
-FALLBACK_MODELS = ["google/gemini-2.5-flash-lite", "qwen/qwen3-vl-8b-instruct"]
+#: Kept as module names because they read as the documentation of the decision above, and
+#: because callers and tests already reach for them. Both are DERIVED from the role now — the
+#: string exists in exactly one place, which is the whole point.
+MODEL = role_registry.ROLES[ROLE].default_model
+FALLBACK_MODELS = list(role_registry.ROLES[ROLE].fallback_models)
 _ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 
 
@@ -79,14 +88,17 @@ def _response_schema() -> Dict[str, Any]:
 class SemanticResult:
     def __init__(self, status: str, response: Optional[SemanticResponse] = None,
                  *, error: str = "", dropped_ids: Optional[List[str]] = None,
-                 latency_ms: Optional[float] = None, model: str = MODEL,
+                 latency_ms: Optional[float] = None, model: Optional[str] = None,
                  provider: str = PROVIDER, tokens: Optional[str] = None):
         self.status = status            # ready | unavailable | error | timed_out
         self.response = response
         self.error = error
         self.dropped_ids = dropped_ids or []
         self.latency_ms = latency_ms
-        self.model = model
+        # `= MODEL` as a default argument would bind at DEF time, so a rebound role would be
+        # reported under the old model's name for the life of the process — the receipt lying
+        # about which model answered is the one failure this whole layer cannot tolerate.
+        self.model = model if model is not None else role_registry.model_for(ROLE)
         self.provider = provider
         self.tokens = tokens
 
@@ -98,9 +110,16 @@ class SemanticResult:
 
 
 class SemanticProvider:
-    def __init__(self, model: str = MODEL):
-        self.model = model
+    def __init__(self, model: Optional[str] = None):
+        # An EXPLICIT model still wins — `FakeSemanticProvider` passes one, and a caller pinning
+        # a model for one call is not the same thing as the role's binding. None means "ask the
+        # role", re-read per access so a rebind lands on a long-lived provider instance.
+        self._model = model
         self.provider = PROVIDER
+
+    @property
+    def model(self) -> Optional[str]:
+        return self._model if self._model is not None else role_registry.model_for(ROLE)
 
     def available(self) -> bool:
         return _key() is not None
