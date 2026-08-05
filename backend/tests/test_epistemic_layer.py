@@ -25,10 +25,18 @@ from backend.services.epistemics import EpistemicStatus, EpistemicViolation
 
 def test_every_frozen_producer_has_a_classification():
     """The vocabulary of producers and the vocabulary of kinds must not drift. A producer
-    absent from the table falls to `uncertain`, which is safe — but silently safe is how a
-    real classification goes missing, so the table is pinned against the constants."""
+    absent from the tables falls to `uncertain`, which is safe — but silently safe is how a
+    real classification goes missing, so the classification is pinned against the constants.
+
+    ROLES-001 moved the producers whose claim IS their role's own output onto that role's
+    `epistemic_ceiling`, so this asks `classified_producers()` rather than reaching into
+    `_DEFAULTS`. Same guard, one surface wider — and deliberately NOT
+    `default_status_for(p) is not UNCERTAIN`, which would pass for a producer that had fallen
+    through unclassified and fail for `external_limit`, which is classified `uncertain` on
+    purpose.
+    """
     producers = {getattr(ss, name) for name in dir(ss) if name.startswith("PRODUCER_")}
-    missing = {p for p in producers if p not in epistemics._DEFAULTS}
+    missing = producers - epistemics.classified_producers()
     assert not missing, f"producers with no epistemic classification: {sorted(missing)}"
 
 

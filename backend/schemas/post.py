@@ -4,6 +4,11 @@ from typing import Optional,Dict, List
 from datetime import datetime
 import uuid
 
+# SF-002 — the typed soft-field models. Kept in their own module because the reasoning they carry
+# (why absence must survive a round trip, why Ground is a union, what is deliberately NOT declared)
+# is longer than this file should hold, not because they are a separate concern.
+from backend.schemas.soft_fields import Ground, Percept
+
 # a schema for bounding box coordinates
 # DEPRECATED (Darshan Track A): pixel bounding boxes are retired in favour of the
 # normalized `Region`/`RegionBox` model below. `bounding_box_tags` is kept read-only
@@ -166,8 +171,13 @@ class Post(BaseModel):
     # Differential v1 — Grounds (visual evidence) + expression Percepts. Deliberately
     # OUTSIDE region_annotations: detect-regions wholesale-replaces that array, and the
     # region machinery (persona rollup, embeddings, catalog) iterates it.
-    grounds: Optional[List[dict]] = None
-    percepts: Optional[List[dict]] = None
+    # SF-002 — typed, so the perceptual layer is visible to the database instead of being an
+    # opaque bag of dicts. Both models allow extras AND emit only what was actually set, so
+    # nothing the frontend mints is dropped and nothing it omits is invented. `Ground` is a
+    # discriminated union over the seven types in `frontend/src/differential/grounds.js` (the
+    # authoritative contract, deliberately not restated) with an open fallback variant.
+    grounds: Optional[List[Ground]] = None
+    percepts: Optional[List[Percept]] = None
     # CIRCUIT-001 P2E — durable visual_marks (contract v2 §7.3). Additive, PATCH-persisted
     # beside grounds/percepts; only committed/superseded marks are ever written (the client
     # filters — a suggestion never reaches here). Rides the same exclude_unset PATCH, so a
@@ -185,8 +195,11 @@ class PostUpdate(BaseModel):
     text_blocks: Optional[List[TextBlock]] = None
     general_tags: Optional[List[str]] = None
     highlights: Optional[List[Highlight]] = None  # NEW: Can update highlights
-    grounds: Optional[List[dict]] = None   # Differential v1
-    percepts: Optional[List[dict]] = None  # Differential v1
+    # SF-002 — typed on the WRITE model too, and that is the half that matters: this is the model
+    # the wholesale PATCH validates against (`update_post`), so a bare List[dict] here would leave
+    # every soft field undefended on exactly the path they are persisted by.
+    grounds: Optional[List[Ground]] = None   # Differential v1
+    percepts: Optional[List[Percept]] = None  # Differential v1
     # PROV-001 Seam 2 — typed on the WRITE model too, and that is the half that matters. This is
     # the model the wholesale PATCH validates against (`update_post`), so a bare List[dict] here
     # would leave provenance undefended on exactly the path marks are persisted by.

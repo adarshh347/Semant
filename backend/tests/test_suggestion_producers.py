@@ -1293,6 +1293,7 @@ def test_produce_field_refuses_when_the_presence_gate_is_unavailable(monkeypatch
         RR._grounding_mgr = None; RR._grounding_adapter = None
 
 
+@pytest.mark.ml          # drives a real producer; see conftest
 def test_produce_field_grounded_sam_refuses_a_phrase_that_grounds_nothing(monkeypatch):
     """Below threshold, SAM2 is never even called — a guessed box must not become a mask."""
     post = {"_id": ObjectId(), "region_annotations": []}

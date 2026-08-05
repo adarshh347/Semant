@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import useOrchestrate from './useOrchestrate';
 import './OrchestrationBar.css';
@@ -18,13 +18,36 @@ const STATUS_WORD = {
   skipped: 'skipped', error: 'error',
 };
 
-export default function OrchestrationBar({ postId, store }) {
+export default function OrchestrationBar({ postId, store, autoRun = null }) {
   const [intention, setIntention] = useState('');
   const { status, error, plan, provenance, orchestrate, cancel } = useOrchestrate(postId, store);
 
   // FIX-UI-001 follow-up: abort an in-flight orchestrate when this bar unmounts (i.e. on leaving
   // the workspace), so a seconds-long real-model run never resolves against a torn-down tree.
   useEffect(() => () => { cancel(); }, [cancel]);
+
+  /**
+   * ATLAS T1 — arriving with the act already chosen (the Light Table's "machine read").
+   *
+   * This is the one case that may run without a second press, and the contrast with
+   * `AttunementPanel`'s prefill is exactly why it is allowed. That prefill carries text the curator
+   * wrote elsewhere, in the Manuscript, so submitting it for them would put words in the image's
+   * mouth they only meant to consider. `autoRun` is a fixed, named act invoked by pressing a button
+   * that states what it runs — the press IS the approval, one screen ago. What comes back is still
+   * quarantined and still needs Accept, so the model has proposed and nothing more.
+   *
+   * Fires once per distinct arrival, guarded by a ref rather than by the input's value, so a
+   * curator who then edits or clears the intention is never re-run behind their back. The text is
+   * put in the field either way: what ran must be visible and editable, never merely implied.
+   */
+  const ranRef = useRef(null);
+  useEffect(() => {
+    const text = String(autoRun || '').trim();
+    if (!text || !postId || ranRef.current === text) return;
+    ranRef.current = text;
+    setIntention(text);
+    orchestrate(text);
+  }, [autoRun, postId, orchestrate]);
 
   const run = () => { if (intention.trim() && status !== 'loading') orchestrate(intention); };
 

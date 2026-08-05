@@ -30,6 +30,18 @@ class Capability(str, Enum):
     DEPTH = "depth"                     # relative depth (Depth-Anything)
     SHADING = "shading"                 # intrinsic decomposition — light/shadow (Intrinsic)
     GROUNDING = "grounding"             # phrase → region, detect, caption (Florence-2: open-vocab)
+    # CONCEPT-SEG-001 (SF-004) — concept → EVERY instance of it, as real pixel masks.
+    #
+    # Distinct from GROUNDING, which resolves a phrase to the region it refers to (one referent,
+    # a box the refiner then cuts). This asks the other question: given a concept, find all of
+    # them. On the spike's line engraving `snake hood` returned eleven separate serpent heads,
+    # individually masked, from one prompt — which is not a thing the grounding row can express.
+    #
+    # It is also the first capability whose output carries TWO epistemic statuses at once: the
+    # MASK is measured off the signal, the LABEL was supplied in the prompt and is the prompt
+    # author's interpretation. `suggestion_service.suggestions_from_concept_segments` emits them
+    # as two descriptors rather than collapsing them — see SF-004-R §5.3.
+    CONCEPT_SEGMENT = "concept_segment"
     # CIRCUIT-003 M6 — the one capability in this enum that does not read the image.
     #
     # Every row above answers a question ABOUT PIXELS, which is why they can share a scheduler,

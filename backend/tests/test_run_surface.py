@@ -300,6 +300,7 @@ def test_a_run_that_needs_a_phrase_stops_and_asks(faked_producers):
     assert result.resume_state is not None, "and it can be answered later"
 
 
+@pytest.mark.ml          # drives a real producer; see conftest
 def test_the_answer_continues_the_SAME_run_and_the_step_then_runs(faked_producers):
     """The surface's own contribution to A3: the run is rebuilt from what was STORED and carries
     on, so the arc is one receipt rather than two runs."""

@@ -1,0 +1,57 @@
+name: backend
+
+# Runs the pytest suite on every PR into main or atlas/integration, and on pushes to either.
+#
+# THIS WORKFLOW DID NOT EXIST UNTIL NOW. The backend suite — the larger of the two, and the one
+# holding the Director, the gate, the epistemic layer and every refusal rule — had never once run
+# in CI. It was green only because somebody ran it by hand in a venv assembled by memory, which is
+# exactly as reliable as it sounds: `main` has been shipping six red tests for as long as
+# `test_concept_segmentation.py` has existed, and nothing was in a position to notice.
+on:
+  pull_request:
+    branches: [main, atlas/integration]
+  push:
+    branches: [main, atlas/integration]
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      # THE LIGHT STACK, deliberately. `requirements-ml.txt` is torch + ultralytics + sam2 + a git
+      # dependency behind a CUDA index — several gigabytes, to run three tests that drive a real
+      # producer. Those three are marked `ml` and SKIP here, out loud, in the summary line; see
+      # `backend/tests/conftest.py` for why a visible skip beats a path deselected in this file.
+      #
+      # numpy / pillow / opencv are not in `requirements.txt` because the APP does not import them
+      # outside the ML services — but several test modules do, at collection time, so the suite
+      # cannot even be gathered without them.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+          pip install numpy pillow opencv-python-headless
+
+      # `backend/config.py` builds a pydantic Settings at IMPORT time, so every one of these must
+      # be present or the suite fails to collect rather than failing to pass. They are deliberate
+      # nonsense: the tests fake every boundary, and a real credential here would mean CI could
+      # reach a real database — which is the one thing this project's data-safety rule forbids.
+      - name: Run tests
+        env:
+          MONGO_DETAILS: mongodb://127.0.0.1:27017/ci-does-not-connect
+          CLOUDINARY_NAME: ci
+          CLOUDINARY_API_KEY: ci
+          CLOUDINARY_API_SECRET: ci
+          OPENROUTER_API_KEY: ci
+        run: python -m pytest backend/tests -q

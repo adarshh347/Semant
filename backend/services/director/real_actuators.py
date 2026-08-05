@@ -64,6 +64,10 @@ def _capability_available(capability: Optional[str]) -> bool:
         "depth": lambda: _svc("depth_service").is_available(),
         "intrinsic": lambda: _svc("intrinsic_service").is_available(),
         "grounding_detector": lambda: _svc("grounding_detector_service").is_available(),
+        # CONCEPT-SEG-001 — gated on the WEIGHTS being on disk, not on the library importing.
+        # ~3.2 GiB fetched out of band; a deploy without them (Render) reports this DOWN and the
+        # SŪKṢMA stage falls back to the VLM, saying which ran. Nothing downloads at request time.
+        "concept_segmenter": lambda: _svc("sam3_concept_service").is_available(),
         "semantic_provider": lambda: _semantic_available(),
         # M6 — the library, not a model. Available means "a provider is configured and its
         # client library imports", never a live reachability probe: a network round trip in
@@ -478,6 +482,8 @@ async def _run_compare_views(step: Step, memory: WorkingMemory, ctx: "ExecutionC
                        "adapter": "compare_views", "sources": [src_a, src_b],
                        **({"model": model_name} if model_name else {})},
     }
+    from backend.services import epistemics
+    epistemics.stamp(sug)                      # interpretive: a named relation is a reading
     _record_comparative(ctx, sug)
     return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
                           adapter="compare_views",
@@ -487,12 +493,17 @@ async def _run_compare_views(step: Step, memory: WorkingMemory, ctx: "ExecutionC
 async def _run_compose_comparative_percept(step: Step, memory: WorkingMemory,
                                            ctx: "ExecutionContext",
                                            actuator: Actuator) -> ActuatorResult:
-    """Draft a percept that rests on a NAMED comparison across two images.
+    """Draft a PERCEPT DRAFT that rests on a NAMED comparison across two images. A mark-precursor.
 
     The single-image `compose_percept` rests on marks; this rests on a cross-image relation, and
     refuses without one. That refusal is the point: a sentence about two photographs that was not
     grounded in a relation somebody actually named would be a comparison in grammar only, and it
     would look identical to one that was earned.
+
+    SF-002 Part 0 — like its single-image sibling, what this emits is a `percept_draft`: a proposal
+    that enters the quarantine and becomes a **visual_mark** if accepted, never a row in
+    `post.percepts`. See `backend/services/percept_lineage.py` for the two objects the word
+    "percept" holds and why they stay apart.
     """
     relations = [s for s in _comparative_relations(ctx)
                  if len(((s.get("corpus") or {}).get("spans") or [])) >= 2]
@@ -552,6 +563,8 @@ async def _run_compose_comparative_percept(step: Step, memory: WorkingMemory,
                        "sources": sources,
                        **({"model": model_name} if model_name else {})},
     }
+    from backend.services import epistemics
+    epistemics.stamp(sug)                      # interpretive: a comparative reading is a reading
     _record_comparative(ctx, sug)
     return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
                           adapter="compose_comparative_percept",
@@ -746,11 +759,21 @@ async def _run_connect_marks(step: Step, memory: WorkingMemory, ctx: "ExecutionC
 
 async def _run_compose_percept(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
                                actuator: Actuator) -> ActuatorResult:
-    """Draft a percept that RESTS ON the marks gathered so far.
+    """Draft a PERCEPT DRAFT that RESTS ON the marks gathered so far. A mark-precursor, not a percept.
 
     The draft is a proposal, never a commitment: it enters the same quarantine as every other
     suggestion and a curator writes the real sentence. `ground_refs` names what it rests on, so a
-    percept resting on two marks cannot later be mistaken for one resting on five."""
+    percept resting on two marks cannot later be mistaken for one resting on five.
+
+    SF-002 Part 0 — say which of the two "percepts" this is, because the system holds two and they
+    share no schema (`backend/services/percept_lineage.py`). What this emits is a `percept_draft`:
+    it goes to `ctx.suggestions`, a curator's accept turns it into a **visual_mark**, and it is
+    NEVER written to `post.percepts`. The durable object of that name is the curator's *expression
+    percept* (`makeExpressionPercept`, `frontend/src/state/perceptMentions.js`), which this
+    function does not produce. Any join between the two is recorded on the mark
+    (`linked_percept_ids`, `frontend/src/differential/visualMarks.js`), never on the percept —
+    the mark already authors provenance, and a second authored copy is the drift
+    `groundProvenanceParity.test.js` exists to catch."""
     marks = _quarantined_marks(ctx)
     if not marks:
         return ActuatorResult(status=EMPTY, produced=(), adapter="compose_percept",
@@ -854,6 +877,70 @@ async def _run_historical_source(step: Step, memory: WorkingMemory, ctx: "Execut
         payload={"topic": topic, "documents_seen": result.documents_seen})
 
 
+async def _run_concept_segment(step: Step, memory: WorkingMemory, ctx: "ExecutionContext",
+                               actuator: Actuator) -> ActuatorResult:
+    """CONCEPT-SEG-001 — a concept in, every instance of it out, as MEASURED pixel masks.
+
+    Its own runner rather than a `_FIELD_PRODUCERS` row, for the same reason `find_parts` has
+    one: it calls an organ directly, not a produce-field handler.
+
+    THE REFUSAL COMES FIRST. No phrase, no run. SAM 3 will return a confident mask for very
+    nearly any phrase you hand it — the spike's painting produced a clean background mask for
+    `shoulder fabric` at 0.27–0.43 — so an empty concept is not a degenerate query, it is an
+    invitation to fabricate. This is the same guard `grounded_sam_find_parts` carries.
+
+    AND THE OUTPUT IS TWO CLAIMS, NOT ONE. `suggestions_from_concept_segments` emits a `measured`
+    extent and an `interpretive` naming per instance. Nothing is committed: they land in the
+    context's quarantine like every other suggestion.
+    """
+    # A phrase arrives two ways and `plan.py:134` already says so: typed into the workspace (it
+    # lands on the packet, i.e. on memory) or written into the step by the planner. The step wins
+    # when both exist. Reading only the step would make this actuator unreachable from the
+    # Orchestrate bar, where the curator types their words into the workspace and the planner
+    # never sees them.
+    phrase = str((step.params or {}).get("phrase")
+                 or (getattr(memory, "phrase", None) or "")).strip()
+    if not phrase:
+        return ActuatorResult(status=EMPTY, produced=(), adapter="sam3",
+                              detail="needs a concept — an open-vocabulary finder with nothing "
+                                     "to look for cannot be checked")
+    svc = _svc("sam3_concept_service")
+    posts = importlib.import_module("backend.routers.posts")
+    img_bytes = await posts._fetch_post_image_cached(ctx.post_id, ctx.post)
+
+    result = await asyncio.to_thread(svc.segment_concept, img_bytes, phrase)
+    instances = result.get("instances") or []
+    if not instances:
+        # "That concept is not in this picture" is an ANSWER. Reporting it as EMPTY rather than
+        # as a failure is what stops a caller inventing a box to stand in for the absence.
+        return ActuatorResult(status=EMPTY, produced=(), model=result.get("model"),
+                              adapter="sam3", detail=f"no instance of '{phrase}' measured",
+                              payload={"concept": phrase, "latency_ms": result.get("latency_ms")})
+
+    # The masks become PROPOSED regions first. A suggestion references a region's mask by id and
+    # never inlines it (the mark contract), so without this the descriptors below are dropped
+    # silently at frontend intake and the curator sees nothing at all.
+    regions = svc.instances_to_regions(result)
+    ctx.regions.extend(regions)
+
+    from backend.services import suggestion_service as ss
+    suggestions = ss.suggestions_from_concept_segments(
+        [result], run_id=ctx.run_id, concept_source="curator", adapter="sam3",
+        model=result.get("model"), naming_floor=svc.NAMING_CONFIDENCE_FLOOR)
+    ctx.suggestions.extend(suggestions)
+
+    weakest = min((i.get("confidence") for i in instances
+                   if i.get("confidence") is not None), default=None)
+    return ActuatorResult(
+        status=OK,
+        produced=tuple([Resource.REGION] * len(instances) + [Resource.MARK] * len(instances)),
+        confidence=weakest, model=result.get("model"), adapter="sam3",
+        detail=f"measured {len(instances)} instance(s) of '{phrase}'",
+        payload={"concept": phrase, "instances": len(instances),
+                 "truncated": result.get("truncated"),
+                 "latency_ms": result.get("latency_ms")})
+
+
 # actuator name → the async handler that runs it. Field producers share one handler; find_parts
 # has its own (it calls segmentation, not a produce-field row). Actuators absent here have no
 # in-process runner yet and report UNAVAILABLE — honest, and it flows through the skip logic.
@@ -877,6 +964,8 @@ _DISPATCH: Dict[str, Callable] = {
     "compose_comparative_percept": _run_compose_comparative_percept,
     # CIRCUIT-003 M6 — the library.
     "historical_source": _run_historical_source,
+    # CONCEPT-SEG-001 — the organ that measures a named concept instead of estimating it.
+    "concept_segment": _run_concept_segment,
 }
 for _n in _FIELD_PRODUCER_NAMES:
     _DISPATCH[_n] = _run_field_producer

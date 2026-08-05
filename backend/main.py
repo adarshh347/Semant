@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import posts, epics, phrases, research, personas, anatomy, taste, manuscript, runs
+from backend.routers import posts, epics, phrases, research, personas, anatomy, taste, manuscript, runs, atlas
 from backend.routers import retina
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
@@ -108,6 +108,10 @@ app.include_router(manuscript.router, prefix="/api/v1/manuscript", tags=["Writin
 # production record, and (in argue mode) a drafted article. Suggestions-only, like everything it
 # drives: a run never accepts a mark or writes a post.
 app.include_router(runs.router, prefix="/api/v1/runs", tags=["Runs"], dependencies=[Depends(require_api_key)])
+# ATLAS C1 — the multi-image writing canvas. A thin arrangement document over the existing corpus,
+# ledger and Differential: it stores where each image sits and references percepts by id, never
+# copying them. Writes nothing to any post.
+app.include_router(atlas.router, prefix="/api/v1/atlas", tags=["Atlas"], dependencies=[Depends(require_api_key)])
 
 # Simulation Engine · Lane 3 — the retina: peripheral vision for movement. A cheap, broad
 # "what is roughly near this?" over a LanceDB index derived from `region_embeddings`. Proposal
