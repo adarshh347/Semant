@@ -100,6 +100,7 @@ class CreateAtlasRequest(BaseModel):
     title: str = ""
     post_ids: List[str] = Field(default_factory=list)
     run_id: Optional[str] = None
+    corpus_id: Optional[str] = None     # L1 — a curated walk, opened again
 
 
 class ArrangementRequest(BaseModel):
@@ -156,7 +157,29 @@ async def create_atlas(body: CreateAtlasRequest):
     post_ids = list(dict.fromkeys(p for p in body.post_ids if p))
     corpus_ref: Any = {"kind": A.CORPUS_POSTS, "post_ids": post_ids}
 
-    if body.run_id:
+    if body.corpus_id:
+        # L1. The walk is RESOLVED here, once, and its post ids are stored on the Atlas alongside
+        # the corpus id. The canvas therefore never has to consult the corpus again to know its own
+        # images — re-sequencing or deleting the walk later cannot reach back and empty a canvas
+        # somebody is working on. What the corpus id buys is provenance: this canvas can say which
+        # walk it came from, which a bare list of ids never could.
+        from backend.services import corpus_store
+        corpus_doc = await corpus_store.get_corpus(str(body.corpus_id))
+        if corpus_doc is None:
+            raise HTTPException(status_code=404, detail=f"no corpus '{body.corpus_id}'")
+        from_corpus = corpus_store.post_ids_of(corpus_doc)
+        if not from_corpus:
+            raise HTTPException(
+                status_code=409,
+                detail=(f"corpus '{body.corpus_id}' holds no images — there is no walk here to "
+                        f"open a canvas over"))
+        post_ids = from_corpus
+        corpus_ref = {"kind": A.CORPUS_CURATED, "corpus_id": str(body.corpus_id),
+                      "post_ids": post_ids}
+        if not body.title:
+            body.title = str(corpus_doc.get("title") or "")
+
+    elif body.run_id:
         from backend.services import run_store
         run_doc = await run_store.get_run(str(body.run_id))
         if run_doc is None:
