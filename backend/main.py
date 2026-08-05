@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from backend.routers import posts, epics, phrases, research, personas, anatomy, taste, manuscript, runs
+from backend.routers import retina
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
@@ -107,6 +108,12 @@ app.include_router(manuscript.router, prefix="/api/v1/manuscript", tags=["Writin
 # production record, and (in argue mode) a drafted article. Suggestions-only, like everything it
 # drives: a run never accepts a mark or writes a post.
 app.include_router(runs.router, prefix="/api/v1/runs", tags=["Runs"], dependencies=[Depends(require_api_key)])
+
+# Simulation Engine · Lane 3 — the retina: peripheral vision for movement. A cheap, broad
+# "what is roughly near this?" over a LanceDB index derived from `region_embeddings`. Proposal
+# only, and there is no write path here to misuse: it returns candidates with similarity
+# scores, never relations, and grounding one into a claim is a later organ's job.
+app.include_router(retina.router, prefix="/api/v1/retina", tags=["Retina"], dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
 @app.get("/health")
