@@ -14,6 +14,7 @@ import {
 import {
     CLAIM_NODE_TYPE, acceptPayload, bindingEdges, claimFlowNodes, isClaimNodeId,
 } from './atlasPlan.js';
+import { refusedEdge, relationEdges, connectionRefusal, relationSummary } from './atlasRelation.js';
 
 /**
  * ATLAS C1 — the canvas: a corpus, coexisting, with its committed percepts on it.
@@ -59,6 +60,13 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
     const [accepting, setAccepting] = useState(false);
     const [accepted, setAccepted] = useState(false);
     const [planError, setPlanError] = useState('');
+
+    // ── C3: relation edges ──
+    // The last refusal, held only so it can be DRAWN on the line it refers to. It is never sent,
+    // never stored, and is cleared by the next gesture — a refusal about one pair of photographs
+    // must not linger over a canvas the writer has moved on from.
+    const [relationRefusal, setRelationRefusal] = useState(null);
+    const [drawing, setDrawing] = useState(false);
 
     // The arrangement the SERVER is known to hold. A save diffs against this, not against the last
     // render, so a drag that ends where it started sends nothing.
@@ -126,6 +134,43 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
         });
     }, [flush]);
 
+    // ── C3: draw a relation ──
+
+    const onConnect = useCallback(async (connection) => {
+        if (drawing) return;
+        setRelationRefusal(null);
+
+        // The two checks a client can make honestly on its own. Everything else — whether the
+        // marks exist, whether a relation can be named — belongs to the gate, and guessing at it
+        // here would refuse comparisons the system would have allowed.
+        const local = connectionRefusal(connection, { isClaimNode: isClaimNodeId });
+        if (local) { setRelationRefusal(local); return; }
+
+        setDrawing(true);
+        try {
+            const res = await service.drawRelation(atlasId, {
+                source_node: connection.source, target_node: connection.target,
+            });
+            if (res?.refused) {
+                // Drawn on the attempted line, persisted nowhere.
+                setRelationRefusal(res.refused);
+                return;
+            }
+            // Re-read the view rather than splicing the returned edge in. The edge's words come
+            // from the ledger, and a client that assembled them from its own request would be the
+            // one place this surface could disagree with what was actually committed.
+            setView(await service.view(atlasId));
+        } catch (e) {
+            setRelationRefusal({
+                reason: 'unavailable', source_node: connection.source,
+                target_node: connection.target,
+                detail: e?.message || 'the comparison could not be run',
+            });
+        } finally {
+            setDrawing(false);
+        }
+    }, [atlasId, drawing, service]);
+
     // ── C4: ask, edit, accept ──
 
     const onPlan = useCallback(async () => {
@@ -192,7 +237,21 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
     // perfectly and every single connector was silently dropped — no error, no warning, just no
     // lines. So they live here, are measured here, and are excluded at the SAVE boundary instead
     // (`positionsOf`), which is where they never belonged in the first place.
-    const flowEdges = useMemo(() => (planView ? bindingEdges(planView) : []), [planView]);
+    // BOTH KINDS OF LINE, IN ONE ARRAY, AND THEY MUST NEVER READ AS ONE KIND.
+    //   · C4 bindings  — claim→image, dashed, unarrowed, labelled with an argumentative function.
+    //                    They assert a percept WOULD resolve.
+    //   · C3 relations — image↔image, solid, arrowed, labelled with the relation's own role and
+    //                    epistemic kind. They assert a comparison WAS produced and committed.
+    //   · a refusal    — the line a writer attempted that could not be grounded. Drawn, never
+    //                    persisted, and impossible to mistake for either of the above.
+    const flowEdges = useMemo(() => {
+        const refused = refusedEdge(relationRefusal);
+        return [
+            ...(planView ? bindingEdges(planView) : []),
+            ...relationEdges(view),
+            ...(refused ? [refused] : []),
+        ];
+    }, [planView, relationRefusal, view]);
 
     // A claim card's content changes what it DRAWS (its status, which percepts bound); the set and
     // order change where the cards SIT. Both have to reach the node array, so the signature covers
@@ -235,6 +294,7 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
         return () => clearTimeout(t);
     }, [claimIds]);
 
+    const relations = relationSummary(view);
     const unreadable = view?.unreadable || [];
     // Images only. Since C4 the node array also holds claim cards, and a header that counted them
     // would report more photographs than the corpus has — which is exactly the drift this line is
@@ -266,6 +326,21 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
                         {/* Said out loud, on the surface, because it is the rule a canvas most
                             tempts a reader to forget. */}
                         <em className="atlas-note">position is a thinking aid — it asserts nothing</em>
+                        {relations.drawn > 0 && (
+                            <>
+                                {' · '}
+                                <span className="atlas-rel-count">
+                                    {relations.drawn} relation{relations.drawn === 1 ? '' : 's'} drawn
+                                    {relations.stale > 0 && (
+                                        // Never folded into the total. An edge whose relation left
+                                        // the ledger is still on the canvas and is not evidence.
+                                        <span className="atlas-rel-stale">
+                                            {' '}({relations.stale} no longer in the ledger)
+                                        </span>
+                                    )}
+                                </span>
+                            </>
+                        )}
                     </p>
                     {planView && (
                         // The second thing a plan-mode canvas most tempts a reader to forget: a
@@ -309,10 +384,15 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
                     nodeTypes={nodeTypes}
                     onNodesChange={onNodesChange}
                     onInit={(instance) => { flow.current = instance; }}
+                    onConnect={onConnect}
                     // Nobody draws a binding by hand. C4's edges are minted from a plan the gate
                     // judged, and C3's will be minted from a real `compare_views` percept —
                     // neither is a line anyone gets to assert with a drag.
-                    nodesConnectable={false}
+                    // C3 turns this on. What a drag produces is a REQUEST to `compare_views`,
+                    // not a line: `onConnect` never adds an edge itself, so an ungroundable pair
+                    // leaves the canvas exactly as it was, wearing the refusal.
+                    nodesConnectable
+                    connectOnClick={false}
                     elementsSelectable
                     fitView
                     minZoom={0.1}

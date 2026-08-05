@@ -252,6 +252,14 @@ _FORBIDDEN_NODE_KEYS = frozenset({
     "photo_url", "image_url", "epistemic_status", "provenance",
 })
 
+# The same rule for C3's relation edges. An edge names a committed relation by id and says which
+# two nodes it runs between; what the relation SAYS — its role, its label, what kind of knowing it
+# is — belongs to the ledger and is read back at view time. An edge that cached the label could
+# disagree with the ledger about what was named, in a document that looks authoritative.
+_FORBIDDEN_EDGE_KEYS = frozenset({
+    "geometry", "label", "role", "epistemic_status", "provenance", "sources", "mask", "points",
+})
+
 
 def assert_no_percept_data(doc: Mapping[str, Any]) -> None:
     """Raise if an Atlas document has begun to hold what the ledger holds.
@@ -269,6 +277,14 @@ def assert_no_percept_data(doc: Mapping[str, Any]) -> None:
             raise ValueError(
                 f"Atlas node '{node.get('node_id')}' carries percept data: {leaked}. "
                 "The Atlas references the ledger by id; it never copies it.")
+    for edge in doc.get("edges") or []:
+        if not isinstance(edge, Mapping):
+            continue
+        leaked = sorted(set(edge.keys()) & _FORBIDDEN_EDGE_KEYS)
+        if leaked:
+            raise ValueError(
+                f"Atlas edge '{edge.get('edge_id')}' carries percept data: {leaked}. "
+                "An edge references the relation by id; it never copies it.")
 
 
 # ── the view: the document, hydrated from the ledger at read time ────────────
@@ -401,6 +417,55 @@ async def save_arrangement(atlas_id: str, nodes: Sequence[Mapping[str, Any]], *,
     doc["updated_at"] = stamp
     assert_no_percept_data(doc)
     return {"doc": doc, "refused": refused}
+
+
+async def add_edge(atlas_id: str, edge: Mapping[str, Any], *,
+                   now: Optional[str] = None, collection=None) -> Optional[Dict[str, Any]]:
+    """Record a drawn relation (C3). Appends; never rewrites the list.
+
+    `$push`, deliberately, and not a read-modify-`$set` of the whole array. Two writers drawing
+    edges on the same Atlas at once would each have read the list before the other wrote, and the
+    second `$set` would silently drop the first edge — the same class of loss that a wholesale
+    array replace has already caused in this codebase once.
+    """
+    coll = _collection(collection)
+    doc = await coll.find_one({"_id": str(atlas_id)})
+    if doc is None:
+        return None
+    stamp = now or utc_now()
+    entry = dict(edge)
+    # Guarded BEFORE the write, on the document as it will be, so a bad edge never lands.
+    assert_no_percept_data({**doc, "edges": [*(doc.get("edges") or []), entry]})
+    await coll.update_one({"_id": str(atlas_id)},
+                          {"$push": {"edges": entry}, "$set": {"updated_at": stamp}})
+    doc = dict(doc)
+    doc["edges"] = [*(doc.get("edges") or []), entry]
+    doc["updated_at"] = stamp
+    return doc
+
+
+async def remove_edge(atlas_id: str, edge_id: str, *, now: Optional[str] = None,
+                      collection=None) -> Optional[Dict[str, Any]]:
+    """Take a relation off the canvas.
+
+    THE LEDGER IS NOT TOUCHED. The committed relation stays exactly where it is; what is removed
+    is this Atlas's reference to it. The Atlas never owned the percept, so it has no business
+    deleting one — and a canvas gesture that quietly destroyed committed evidence is precisely the
+    irreversible act this whole architecture is arranged to prevent.
+    """
+    coll = _collection(collection)
+    doc = await coll.find_one({"_id": str(atlas_id)})
+    if doc is None:
+        return None
+    stamp = now or utc_now()
+    kept = [e for e in (doc.get("edges") or [])
+            if not (isinstance(e, Mapping) and str(e.get("edge_id")) == str(edge_id))]
+    await coll.update_one({"_id": str(atlas_id)},
+                          {"$set": {"edges": kept, "updated_at": stamp}})
+    doc = dict(doc)
+    doc["edges"] = kept
+    doc["updated_at"] = stamp
+    return doc
 
 
 async def save_plan(atlas_id: str, plan: Optional[Mapping[str, Any]], *,

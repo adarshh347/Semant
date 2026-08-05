@@ -109,10 +109,21 @@ export default function AtlasImageNode({ data }) {
                 <div className="atlas-node-withheld" role="note">{summary.withheldNote}</div>
             )}
 
-            {/* Where C4's claim connectors land. `isConnectable` is false — the handle is an
-                endpoint the layout needs, not an affordance: nobody draws a binding by hand. */}
-            <Handle type="target" position={Position.Left} isConnectable={false}
+            {/* TWO HANDLES, TWO DIFFERENT ACTS.
+
+                The LEFT target is where C4's claim connectors land, and it stays unconnectable:
+                a binding is minted by the planner and granted by the gate, never dragged into
+                existence by hand. It is also where a C3 relation ARRIVES.
+
+                The RIGHT source is C3's, and it IS an affordance — dragging from it to another
+                image asks `compare_views` to name the relation between them. What that produces
+                is a proposal to the gate, not a line: if the comparison cannot be grounded, no
+                edge is kept and the refusal is drawn instead. */}
+            <Handle type="target" position={Position.Left} isConnectable
                 className="atlas-handle" />
+            <Handle type="source" position={Position.Right} isConnectable
+                className="atlas-handle is-draw"
+                title="drag to another image to name the relation between them" />
         </div>
     );
 }

@@ -48,6 +48,19 @@ export const atlasService = {
     async clearPlan(id) {
         return json(await fetch(`${BASE}/${id}/plan`, { method: 'DELETE' }), 'clear the plan');
     },
+
+    // ── C3: relation edges ──
+    /** A drawn line → M1's `compare_views`. Resolves to `{atlas, edge}` or `{refused}` — a
+     *  refusal arrives as a 200, because "these two images share no evidence to compare" is an
+     *  answer about the corpus, not a malfunction to be thrown. */
+    async drawRelation(id, body) {
+        return json(await post(`${BASE}/${id}/relations`, body), 'draw the relation');
+    },
+    /** Take the edge off the canvas. The committed relation stays in the ledger. */
+    async removeRelation(id, edgeId) {
+        return json(await fetch(`${BASE}/${id}/relations/${edgeId}`, { method: 'DELETE' }),
+            'remove the relation');
+    },
 };
 
 export default atlasService;

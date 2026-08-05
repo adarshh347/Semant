@@ -273,12 +273,16 @@ describe('plan mode on the canvas', () => {
         await planIt(fakeService());
         expect(container.querySelector('.react-flow__edges')).toBeTruthy();
         const claimHandles = container.querySelectorAll('.atlas-claim .react-flow__handle');
-        const imageHandles = container.querySelectorAll('.atlas-node .react-flow__handle');
-        expect(claimHandles.length).toBe(2);          // one per claim node
-        expect(imageHandles.length).toBe(2);          // one per image node
-        // and neither is an affordance: a binding is granted, never dragged into existence
-        expect([...claimHandles, ...imageHandles].every(
-            (h) => h.className.includes('atlas-handle'))).toBe(true);
+        expect(claimHandles.length).toBe(2);          // one source per claim node
+        // one TARGET per image node — the end a binding lands on. Since C3 each image also has a
+        // source handle for drawing relations, so this counts the landing ends specifically
+        // rather than every handle on the node.
+        expect(container.querySelectorAll('.atlas-node .react-flow__handle.target').length).toBe(2);
+
+        // A BINDING IS STILL NOT DRAGGED INTO EXISTENCE. C3 made exactly one handle draggable —
+        // the image's relation source — and no claim handle is among them: a binding is granted
+        // by the gate from a plan, and there is no gesture anywhere that mints one by hand.
+        expect(container.querySelectorAll('.atlas-claim .atlas-handle.is-draw').length).toBe(0);
     });
 
     it('counts the images, not the claim cards sharing the canvas', async () => {
