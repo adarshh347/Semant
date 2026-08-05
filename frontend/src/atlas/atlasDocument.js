@@ -18,6 +18,52 @@
 
 export const ATLAS_NODE_TYPE = 'atlasImage';
 
+/**
+ * T1 — the modes.
+ *
+ * A mode is a LENS over one Atlas document, not an application. Both modes read the same `/view`,
+ * write through the same two save routes, and share the same way into the Differential; switching
+ * swaps a renderer and nothing else. That is why this is a list of two strings and not a registry
+ * with capabilities — the moment a mode could own state the others cannot see, "the same document,
+ * looked at differently" would stop being true and the curator would start losing work by
+ * navigating.
+ */
+export const MODE_CANVAS = 'canvas';
+export const MODE_LIGHT_TABLE = 'light-table';
+
+export const ATLAS_MODES = [
+    { key: MODE_CANVAS, label: 'Canvas',
+        hint: 'arrange the corpus in space — position is a thinking aid' },
+    { key: MODE_LIGHT_TABLE, label: 'Light Table',
+        hint: 'scan the corpus in a grid — read, note, and ask for a machine read' },
+];
+
+export function isMode(value) {
+    return ATLAS_MODES.some((m) => m.key === value);
+}
+
+/**
+ * T1 — what a one-click "machine read" asks for.
+ *
+ * It is an INTENTION, in the curator's vocabulary, handed to the Director exactly as if it had
+ * been typed into the Orchestrate bar — because that is precisely what happens. The Director plans
+ * it (`trace_light` → the `light_field` producer), executes real actuators that write nothing to
+ * the post, and the result lands in the existing quarantine for review. No new actuator, no second
+ * trigger path, nothing bypassed.
+ *
+ * WHY THIS INTENTION. It has to resolve on ANY image with nothing gathered yet, which rules most
+ * chains out: `semantic_read` requires REGION and is only reachable through `read_material`, whose
+ * chain re-runs segmentation first. The light field needs the image alone, is quick, and produces
+ * real evidence-bound geometry rather than a sentence. When the planner learns a cheaper reading
+ * act, this constant is the one place to change.
+ *
+ * WHY AUTO-RUNNING IS ALLOWED HERE, when the Manuscript's `firstAttentionPrefill` deliberately is
+ * not: that prefill carries text the curator wrote for another purpose, so running it would put
+ * words in the image's mouth. This runs a fixed, named act the curator invoked by pressing a
+ * button that says what it does. The click IS the approval — and the output is still quarantined.
+ */
+export const MACHINE_READ_INTENTION = 'trace the light';
+
 // How far a node must move before the change is worth a round trip. Sub-pixel jitter from a
 // pointer that barely moved is not an arrangement anyone chose.
 export const MOVE_EPSILON = 0.5;
@@ -47,7 +93,7 @@ export function finite(value) {
  * It is a callback, not state: an unreadable node never receives it, so the one control on the
  * canvas cannot appear on an image there is nothing to open.
  */
-export function flowNodesFromView(view, { onOpen = null } = {}) {
+export function flowNodesFromView(view, { onOpen = null, onMachineRead = null } = {}) {
     const nodes = view?.nodes || [];
     return nodes.map((n) => ({
         id: String(n.node_id),
@@ -67,14 +113,86 @@ export function flowNodesFromView(view, { onOpen = null } = {}) {
             marks: n.marks || [],
             percepts: n.percepts || [],
             withheld: Number(n.withheld || 0),
+            // T1: the author's own lines about this image. From the Atlas document, not the
+            // ledger — which is why an unreadable node still has them.
+            notes: (n.notes || []).map((note) => ({
+                note_id: String(note?.note_id || ''),
+                text: String(note?.text || ''),
+            })),
             w: finite(n.w) ?? 420,
             h: finite(n.h) ?? 320,
             // Only where there is an image to open. There is nothing to make a percept on in a
             // post that could not be read, and offering the way in would be a dead end dressed
             // as an affordance.
             onOpen: n.readable === false ? null : onOpen,
+            // T1: same rule, same reason. A machine read on an image that could not be loaded
+            // would be a model asked to look at nothing.
+            onMachineRead: n.readable === false ? null : onMachineRead,
         },
     }));
+}
+
+/**
+ * node_id → the notes it holds, for diffing a save against what the server confirmed.
+ *
+ * BLANK NOTES ARE NOT NOTES, which is the same rule the backend keeps (`clean_note` drops them).
+ * The two ends have to agree or the diff never settles: an empty slot the writer has opened but
+ * not filled would be a difference from the server on every keystroke, so the save would fire, the
+ * server would echo back a list without it, and the difference would still be there. Dropping it
+ * here means an opened-and-abandoned slot costs nothing and leaves nothing behind.
+ */
+export function notesOf(nodes) {
+    const out = {};
+    (nodes || []).forEach((n) => {
+        if (!n?.id) return;
+        out[String(n.id)] = (n.data?.notes || [])
+            .map((note) => ({
+                note_id: String(note?.note_id || ''), text: String(note?.text || ''),
+            }))
+            .filter((note) => note.text.trim() !== '');
+    });
+    return out;
+}
+
+/** Two note lists, compared by what they SAY — id and text, in order. */
+function sameNotes(a, b) {
+    if ((a?.length || 0) !== (b?.length || 0)) return false;
+    return (a || []).every((note, i) => note.note_id === b[i].note_id && note.text === b[i].text);
+}
+
+/**
+ * The patches a notes save should carry: the nodes whose notes actually changed.
+ *
+ * The same shape as `arrangementFrom` and for the same reason — a save that re-sent every node's
+ * notes on every keystroke would say nothing about what the writer did, and would race with
+ * itself across a sixty-image corpus. The slot travels whole because replacing it is what makes
+ * add, edit and delete one code path rather than three.
+ */
+export function notePatchesFrom(nodes, saved = {}) {
+    const now = notesOf(nodes);
+    const out = [];
+    Object.entries(now).forEach(([nodeId, notes]) => {
+        if (sameNotes(saved[nodeId], notes)) return;
+        out.push({ node_id: nodeId, notes });
+    });
+    return out;
+}
+
+/**
+ * Apply an edit to one node's notes, purely. Blank text deletes.
+ *
+ * Deleting by emptying is the gesture a text field already has, and it means there is no second
+ * "remove" affordance to reason about — a note the writer cleared is a note they took back.
+ */
+export function withNoteEdit(notes, noteId, text) {
+    const next = (notes || []).map((n) => (n.note_id === noteId ? { ...n, text } : n));
+    return next.filter((n) => String(n.text || '').trim() !== '');
+}
+
+/** Add an empty note to write into. It is not saved until it has text — `notePatchesFrom` and the
+ *  backend both drop blank ones, so an abandoned slot leaves nothing behind. */
+export function withNoteAdded(notes, noteId) {
+    return [...(notes || []), { note_id: noteId, text: '' }];
 }
 
 /** node_id → {x, y}, for comparing an arrangement against the one the server last confirmed. */
@@ -141,6 +259,10 @@ export function refusalLines(refused) {
         const what = r?.node_id ? `node ${r.node_id}` : 'a node';
         if (r?.reason === 'unknown_node') return `${what} is no longer on this Atlas — not moved.`;
         if (r?.reason === 'bad_position') return `${what} was sent an impossible position — not moved.`;
+        // T1's two. A note that vanished without a word would read as an unreliable slot, and a
+        // writer who cannot trust the slot stops using it.
+        if (r?.reason === 'bad_note') return `${what}: ${r?.detail || 'a note had no text'} — not saved.`;
+        if (r?.reason === 'too_many_notes') return `${what}: ${r?.detail || 'too many notes'}.`;
         return `${what}: ${r?.detail || r?.reason || 'refused'}`;
     });
 }

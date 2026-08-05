@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import AtlasCanvas from './AtlasCanvas.jsx';
+import AtlasWorkspace from './AtlasWorkspace.jsx';
 import { atlasService } from './atlasService.js';
 import { API_URL } from '../config/api';
 import './atlas.css';
@@ -137,5 +137,7 @@ function AtlasIndex() {
 
 export default function AtlasPage() {
     const { atlasId } = useParams();
-    return atlasId ? <AtlasCanvas atlasId={atlasId} /> : <AtlasIndex />;
+    // T1: the route opens the WORKSPACE, which owns the document and hands it to whichever mode is
+    // on. The route knows nothing about modes — a mode is a lens, not a place.
+    return atlasId ? <AtlasWorkspace atlasId={atlasId} /> : <AtlasIndex />;
 }

@@ -11,7 +11,11 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import AtlasCanvas from './AtlasCanvas.jsx';
+// T1 moved the document, both saves and the Differential path out of `AtlasCanvas` and up into
+// `AtlasWorkspace`, so every mode shares one copy of them. These assertions are unchanged in
+// substance — they were always about the Atlas SURFACE, which is what the workspace now is, and
+// `AtlasCanvas` is now the renderer it hands nodes to.
+import AtlasWorkspace from './AtlasWorkspace.jsx';
 import AtlasImageNode from './AtlasImageNode.jsx';
 
 // jsdom has no ResizeObserver; React Flow and `useStageGeometry` both want one.
@@ -62,6 +66,7 @@ const aView = (over = {}) => ({
 const fakeService = (over = {}) => ({
     view: vi.fn(async () => aView()),
     saveArrangement: vi.fn(async () => ({ atlas: { nodes: [] }, refused: [] })),
+    saveNotes: vi.fn(async () => ({ atlas: { nodes: [] }, refused: [] })),
     ...over,
 });
 
@@ -144,7 +149,7 @@ describe('opening an image in the Differential', () => {
 describe('the canvas', () => {
     it('opens an Atlas and reports what is on it', async () => {
         const service = fakeService();
-        await mount(<AtlasCanvas atlasId="atlas_1" service={service} />);
+        await mount(<AtlasWorkspace atlasId="atlas_1" service={service} />);
         expect(service.view).toHaveBeenCalledWith('atlas_1');
         expect(container.textContent).toContain('the walk');
         expect(container.textContent).toContain('2 images');
@@ -152,7 +157,7 @@ describe('the canvas', () => {
     });
 
     it('says on the surface that position asserts nothing', async () => {
-        await mount(<AtlasCanvas atlasId="atlas_1" service={fakeService()} />);
+        await mount(<AtlasWorkspace atlasId="atlas_1" service={fakeService()} />);
         expect(container.textContent).toMatch(/position is a thinking aid/i);
     });
 
@@ -160,21 +165,24 @@ describe('the canvas', () => {
         const service = fakeService({
             view: async () => aView({ unreadable: ['gone'] }),
         });
-        await mount(<AtlasCanvas atlasId="atlas_1" service={service} />);
+        await mount(<AtlasWorkspace atlasId="atlas_1" service={service} />);
         const banner = container.querySelector('.atlas-banner.is-unreadable');
         expect(banner).toBeTruthy();
         expect(banner.textContent).toMatch(/could not be read/);
-        expect(banner.textContent).toMatch(/stays on the canvas/);
+        // "on the Atlas", not "on the canvas": T1 shows this banner in every mode, and an
+        // unreadable image stays in the Light Table's grid for the same reason it stays on the
+        // canvas — dropping it would quietly shrink the corpus.
+        expect(banner.textContent).toMatch(/stays on the Atlas/);
     });
 
     it('reports a failure to open rather than showing an empty canvas', async () => {
         const service = fakeService({ view: async () => { throw new Error('nope'); } });
-        await mount(<AtlasCanvas atlasId="atlas_1" service={service} />);
+        await mount(<AtlasWorkspace atlasId="atlas_1" service={service} />);
         expect(container.querySelector('[role="alert"]').textContent).toContain('nope');
     });
 
     it('draws no edges — a relation is a percept, and that is C3', async () => {
-        await mount(<AtlasCanvas atlasId="atlas_1" service={fakeService()} />);
+        await mount(<AtlasWorkspace atlasId="atlas_1" service={fakeService()} />);
         expect(container.querySelectorAll('.react-flow__edge').length).toBe(0);
     });
 });
@@ -185,8 +193,8 @@ describe('the canvas', () => {
 // half of the contract: hand the instrument a post id, and on return ask the LEDGER what changed.
 
 vi.mock('./AtlasDifferential.jsx', () => ({
-    default: ({ postId, onClose }) => (
-        <div data-testid="focus" data-post-id={postId}>
+    default: ({ postId, intention, onClose }) => (
+        <div data-testid="focus" data-post-id={postId} data-intention={intention || ''}>
             <button type="button" data-testid="done" onClick={onClose}>done</button>
         </div>
     ),
@@ -198,7 +206,7 @@ const click = async (el) => {
 
 describe('the canvas ⇄ the Differential', () => {
     const openFirst = async (service) => {
-        await mount(<AtlasCanvas atlasId="atlas_1" service={service} />);
+        await mount(<AtlasWorkspace atlasId="atlas_1" service={service} />);
         await click(container.querySelector('[data-open-post]'));
     };
 
@@ -244,7 +252,7 @@ describe('the canvas ⇄ the Differential', () => {
         // The refresh replaces `data`, never `position`. Taking positions from the refetch would
         // snap a node back to the last save and discard a drag still inside its debounce.
         const service = fakeService();
-        await mount(<AtlasCanvas atlasId="atlas_1" service={service} />);
+        await mount(<AtlasWorkspace atlasId="atlas_1" service={service} />);
         const before = container.querySelector('.react-flow__node').style.transform;
         await click(container.querySelector('[data-open-post]'));
         await click(container.querySelector('[data-testid="done"]'));

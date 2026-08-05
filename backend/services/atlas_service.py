@@ -66,6 +66,23 @@ QUARANTINED_SOURCE = "model_suggested"
 # cannot branch on is a string, not a contract.
 REFUSED_UNKNOWN_NODE = "unknown_node"       # the arrangement named a node this Atlas does not hold
 REFUSED_BAD_POSITION = "bad_position"       # a coordinate that is not a finite number
+REFUSED_BAD_NOTE = "bad_note"               # a note with no text, or text that is not text
+REFUSED_TOO_MANY_NOTES = "too_many_notes"   # past the per-node ceiling; the surplus is dropped
+
+# T1 — author notes. The writer's freehand one-liners under an image: "the light does the arguing
+# here", "compare with the rotunda". Deliberately small.
+#
+# WHAT A NOTE IS NOT, and this is the whole design. A note is NOT a percept, NOT evidence, NOT
+# citable, and it never enters the ledger — it lives in THIS document, next to the arrangement,
+# because it is the same kind of thing as where a picture sits: the writer's own thinking aid. It
+# carries no epistemic status, because the five-way vocabulary describes how well something is
+# GROUNDED, and a note claims nothing to ground. Giving it `uncertain` would be worse than giving
+# it nothing: it would enter the epistemic system at the bottom rung rather than staying outside it.
+#
+# The two lanes never merge. A machine read may only produce a quarantined percept proposal, and
+# may never write here; a note may never be promoted into a percept. Neither direction has code.
+MAX_NOTES_PER_NODE = 12
+MAX_NOTE_CHARS = 280
 
 
 def utc_now() -> str:
@@ -170,6 +187,9 @@ def default_nodes(post_ids: Sequence[str], *, cols: int = GRID_COLS) -> List[Dic
             "y": float(row * (NODE_H + GRID_GAP_Y)),
             "w": float(NODE_W),
             "h": float(NODE_H),
+            # T1: the author-notes slot, empty. Present from the start so "no notes yet" and "an
+            # older document that predates notes" are the same shape to every reader.
+            "notes": [],
         })
     return out
 
@@ -219,6 +239,98 @@ def merge_nodes(existing: Sequence[Mapping[str, Any]],
     return ordered, refused
 
 
+# ── the author notes (T1) ────────────────────────────────────────────────────
+
+def new_note_id() -> str:
+    return f"note_{uuid4().hex[:10]}"
+
+
+def clean_note(raw: Any) -> Optional[Dict[str, str]]:
+    """A note as this document is willing to store it: `{note_id, text}` and nothing else.
+
+    WHITELISTED, NOT SANITISED. Every other key a client sends is DROPPED rather than inspected —
+    a note that arrived carrying `geometry`, `epistemic_status` or `source` would be a percept
+    wearing a note's name, and the way to make that impossible is to build the stored dict from
+    two known fields instead of editing the incoming one. `assert_no_percept_data` then has
+    nothing to find, because nothing else was ever copied across.
+
+    Empty text is not a note. A blank slot is how a curator DELETES one, and storing it would
+    leave an invisible row that reappears as a stray empty line on the next load.
+    """
+    if isinstance(raw, str):
+        raw = {"text": raw}
+    if not isinstance(raw, Mapping):
+        return None
+    text = raw.get("text")
+    if not isinstance(text, str):
+        return None
+    text = text.strip()[:MAX_NOTE_CHARS]
+    if not text:
+        return None
+    note_id = str(raw.get("note_id") or "").strip() or new_note_id()
+    return {"note_id": note_id, "text": text}
+
+
+def merge_notes(existing: Sequence[Mapping[str, Any]],
+                incoming: Sequence[Mapping[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Apply author notes to the nodes an Atlas holds. Returns `(nodes, refused)`.
+
+    NOTES ONLY, and the mirror of `merge_nodes`'s discipline: this touches no coordinate and
+    `merge_nodes` touches no note, so neither gesture can quietly perform the other. The slot is
+    replaced wholesale — the client sends the node's full list, exactly as a drag sends the node's
+    full position — which is what makes editing and deleting one save path instead of three.
+
+    An unknown node is refused and reported, never created; a note past the ceiling is dropped and
+    SAID, because a curator who typed a thirteenth one and saw it vanish silently would reasonably
+    conclude the whole slot is unreliable.
+    """
+    by_id = {str(n.get("node_id")): dict(n) for n in existing}
+    refused: List[Dict[str, Any]] = []
+
+    for patch in incoming or []:
+        if not isinstance(patch, Mapping):
+            continue
+        node_id = str(patch.get("node_id") or "")
+        target = by_id.get(node_id)
+        if target is None:
+            refused.append({"node_id": node_id, "reason": REFUSED_UNKNOWN_NODE,
+                            "detail": "this Atlas holds no such node"})
+            continue
+
+        raw_notes = patch.get("notes")
+        if raw_notes is None or not isinstance(raw_notes, (list, tuple)):
+            refused.append({"node_id": node_id, "reason": REFUSED_BAD_NOTE,
+                            "detail": "notes must be a list"})
+            continue
+
+        cleaned: List[Dict[str, str]] = []
+        dropped = 0
+        for item in raw_notes:
+            note = clean_note(item)
+            if note is None:
+                dropped += 1
+                continue
+            cleaned.append(note)
+
+        if dropped:
+            refused.append({"node_id": node_id, "reason": REFUSED_BAD_NOTE,
+                            "detail": f"{dropped} note{'' if dropped == 1 else 's'} had no text"})
+
+        if len(cleaned) > MAX_NOTES_PER_NODE:
+            refused.append({
+                "node_id": node_id, "reason": REFUSED_TOO_MANY_NOTES,
+                "detail": f"an image holds at most {MAX_NOTES_PER_NODE} notes; "
+                          f"{len(cleaned) - MAX_NOTES_PER_NODE} not saved"})
+            cleaned = cleaned[:MAX_NOTES_PER_NODE]
+
+        updated = dict(target)
+        updated["notes"] = cleaned
+        by_id[node_id] = updated
+
+    ordered = [by_id[str(n.get("node_id"))] for n in existing]
+    return ordered, refused
+
+
 # ── the document ─────────────────────────────────────────────────────────────
 
 def new_atlas_doc(*, atlas_id: str, corpus_ref: Any, post_ids: Sequence[str],
@@ -249,6 +361,12 @@ _FORBIDDEN_NODE_KEYS = frozenset({
 })
 
 
+# T1: what a note may contain. A whitelist, not a blacklist — the guard on the notes slot is
+# stricter than the guard on the node, because a note is free text a client composes and is
+# therefore the most inviting place for percept data to arrive wearing a disguise.
+_ALLOWED_NOTE_KEYS = frozenset({"note_id", "text"})
+
+
 def assert_no_percept_data(doc: Mapping[str, Any]) -> None:
     """Raise if an Atlas document has begun to hold what the ledger holds.
 
@@ -256,6 +374,11 @@ def assert_no_percept_data(doc: Mapping[str, Any]) -> None:
     can disagree with the ledger about what was seen — and a disagreement nobody is told about is
     worse than either answer. `photo_url` is on the list for the same reason: a cached image URL is
     a copy of the post's truth that goes stale when the post is re-uploaded.
+
+    T1 extends the same check to the author-notes slot. Notes are the one place in this document
+    where free-form content lives, so they are the one place a percept could plausibly be smuggled
+    in — a note carrying `box` or `epistemic_status` would be evidence in a slot that renders as
+    "not evidence", which is the exact confusion the two-lane rule exists to prevent.
     """
     for node in doc.get("nodes") or []:
         if not isinstance(node, Mapping):
@@ -265,6 +388,17 @@ def assert_no_percept_data(doc: Mapping[str, Any]) -> None:
             raise ValueError(
                 f"Atlas node '{node.get('node_id')}' carries percept data: {leaked}. "
                 "The Atlas references the ledger by id; it never copies it.")
+
+        for note in node.get("notes") or []:
+            if not isinstance(note, Mapping):
+                raise ValueError(
+                    f"Atlas node '{node.get('node_id')}' has a note that is not a note.")
+            extra = sorted(set(note.keys()) - _ALLOWED_NOTE_KEYS)
+            if extra:
+                raise ValueError(
+                    f"Atlas node '{node.get('node_id')}' has an author note carrying {extra}. "
+                    "An author note is {note_id, text} — it is not evidence and never becomes a "
+                    "percept.")
 
 
 # ── the view: the document, hydrated from the ledger at read time ────────────
@@ -298,6 +432,12 @@ def hydrate_node(node: Mapping[str, Any],
     that showed the second as the first would be lying by omission about the corpus's extent.
     """
     out = {k: node.get(k) for k in ("node_id", "post_id", "x", "y", "w", "h")}
+    # T1: the author's own notes travel with the node, in both modes. They come from THIS document
+    # rather than the post, which is the whole point — an unreadable image still carries whatever
+    # the writer said about it, because a note is about the writer's thinking, not the ledger's
+    # contents. They are cleaned on the way in, and re-cleaned here so a document written by an
+    # older build cannot render anything but `{note_id, text}`.
+    out["notes"] = [n for n in (clean_note(x) for x in node.get("notes") or []) if n]
     if post is None:
         out.update({"readable": False, "image_ref": "", "title": "",
                     "grounds": [], "regions": [], "marks": [], "percepts": [],
@@ -393,6 +533,33 @@ async def save_arrangement(atlas_id: str, nodes: Sequence[Mapping[str, Any]], *,
     doc["nodes"] = merged
     doc["updated_at"] = stamp
     assert_no_percept_data(doc)
+    return {"doc": doc, "refused": refused}
+
+
+async def save_notes(atlas_id: str, notes: Sequence[Mapping[str, Any]], *,
+                     now: Optional[str] = None,
+                     collection=None) -> Optional[Dict[str, Any]]:
+    """Save author notes. Returns `{doc, refused}`, or None if there is no such Atlas.
+
+    The same shape and the same debounced idiom as `save_arrangement`, and deliberately a SEPARATE
+    write: notes and positions travel on different routes so that neither request can perform the
+    other's gesture. It is also the only write in the Atlas that stores something a person typed,
+    which is why `assert_no_percept_data` runs before it is handed back.
+    """
+    coll = _collection(collection)
+    doc = await coll.find_one({"_id": str(atlas_id)})
+    if doc is None:
+        return None
+    merged, refused = merge_notes(doc.get("nodes") or [], notes)
+    stamp = now or utc_now()
+    doc = dict(doc)
+    doc["nodes"] = merged
+    doc["updated_at"] = stamp
+    # Checked BEFORE the write, not after: a document that should not exist should not reach the
+    # database and then be reported as a problem.
+    assert_no_percept_data(doc)
+    await coll.update_one({"_id": str(atlas_id)},
+                          {"$set": {"nodes": merged, "updated_at": stamp}})
     return {"doc": doc, "refused": refused}
 
 

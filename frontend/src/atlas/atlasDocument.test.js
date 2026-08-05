@@ -9,8 +9,9 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-    ATLAS_NODE_TYPE, arrangementFrom, finite, flowNodesFromView, perceptSummary,
-    positionsOf, refusalLines,
+    ATLAS_MODES, ATLAS_NODE_TYPE, MACHINE_READ_INTENTION, MODE_CANVAS, MODE_LIGHT_TABLE,
+    arrangementFrom, finite, flowNodesFromView, isMode, notePatchesFrom, notesOf, perceptSummary,
+    positionsOf, refusalLines, withNoteAdded, withNoteEdit,
 } from './atlasDocument.js';
 
 const view = (over = {}) => ({
@@ -184,5 +185,160 @@ describe('refusalLines', () => {
     it('is empty when nothing was refused', () => {
         expect(refusalLines([])).toEqual([]);
         expect(refusalLines(null)).toEqual([]);
+    });
+});
+
+// ── T1: the modes ────────────────────────────────────────────────────────────
+
+describe('the modes', () => {
+    it('are a closed, tiny list — a mode is a lens, not an app', () => {
+        expect(ATLAS_MODES.map((m) => m.key)).toEqual([MODE_CANVAS, MODE_LIGHT_TABLE]);
+    });
+
+    it('recognises only the modes that exist', () => {
+        expect(isMode(MODE_LIGHT_TABLE)).toBe(true);
+        expect(isMode('gallery')).toBe(false);
+        expect(isMode(undefined)).toBe(false);
+    });
+
+    it('each says what it is for, so the control is not two unexplained words', () => {
+        expect(ATLAS_MODES.every((m) => m.label && m.hint)).toBe(true);
+    });
+});
+
+// ── T1: the author-notes slot ────────────────────────────────────────────────
+
+const withNotes = (notes) => view({ nodes: [
+    { node_id: 'n0', post_id: 'p1', x: 0, y: 0, readable: true, notes },
+] });
+
+describe('notes on the way in', () => {
+    it('carries the writer’s own lines onto the node', () => {
+        const node = flowNodesFromView(withNotes([{ note_id: 'a', text: 'the light argues' }]))[0];
+        expect(node.data.notes).toEqual([{ note_id: 'a', text: 'the light argues' }]);
+    });
+
+    it('is an empty list when nothing has been written', () => {
+        expect(flowNodesFromView(view())[0].data.notes).toEqual([]);
+    });
+
+    it('keeps the notes of an image that could not be read', () => {
+        // A note is about the WRITER's thinking, not the ledger's contents. Losing it because a
+        // photograph went missing would delete the one thing the ledger never held.
+        const v = view({ nodes: [{ node_id: 'n0', post_id: 'ghost', x: 0, y: 0, readable: false,
+            unreadable_reason: 'gone', notes: [{ note_id: 'a', text: 'still mine' }] }] });
+        expect(flowNodesFromView(v)[0].data.notes).toHaveLength(1);
+    });
+
+    it('never lets a note arrive carrying anything but an id and text', () => {
+        const v = withNotes([{ note_id: 'a', text: 'hm', box: [0, 0, 1, 1],
+            epistemic_status: 'grounded' }]);
+        expect(Object.keys(flowNodesFromView(v)[0].data.notes[0]).sort())
+            .toEqual(['note_id', 'text']);
+    });
+
+    it('is never counted as a percept', () => {
+        const node = flowNodesFromView(withNotes([{ note_id: 'a', text: 'x' }]))[0];
+        expect(perceptSummary(node.data).drawn).toBe(0);
+    });
+});
+
+describe('editing notes', () => {
+    const notes = [{ note_id: 'a', text: 'one' }, { note_id: 'b', text: 'two' }];
+
+    it('rewrites the one that was typed in', () => {
+        expect(withNoteEdit(notes, 'b', 'two, revised'))
+            .toEqual([{ note_id: 'a', text: 'one' }, { note_id: 'b', text: 'two, revised' }]);
+    });
+
+    it('deletes a note the writer emptied — taking it back is the same gesture', () => {
+        expect(withNoteEdit(notes, 'a', '   ')).toEqual([{ note_id: 'b', text: 'two' }]);
+    });
+
+    it('adds an empty slot to write into', () => {
+        expect(withNoteAdded(notes, 'c').at(-1)).toEqual({ note_id: 'c', text: '' });
+    });
+
+    it('leaves an abandoned empty slot out of the save', () => {
+        const nodes = [{ id: 'n0', data: { notes: withNoteAdded([], 'c') } }];
+        expect(notePatchesFrom(nodes, { n0: [] })).toEqual([]);
+    });
+});
+
+describe('notePatchesFrom', () => {
+    const node = (id, notes) => ({ id, data: { notes } });
+
+    it('sends only the images whose notes changed', () => {
+        const saved = { n0: [{ note_id: 'a', text: 'one' }], n1: [] };
+        const patches = notePatchesFrom(
+            [node('n0', [{ note_id: 'a', text: 'one' }]), node('n1', [{ note_id: 'b', text: 'new' }])],
+            saved);
+        expect(patches).toEqual([{ node_id: 'n1', notes: [{ note_id: 'b', text: 'new' }] }]);
+    });
+
+    it('sends nothing when a note was retyped to exactly what it said', () => {
+        expect(notePatchesFrom([node('n0', [{ note_id: 'a', text: 'same' }])],
+            { n0: [{ note_id: 'a', text: 'same' }] })).toEqual([]);
+    });
+
+    it('notices a deletion, not only an edit', () => {
+        expect(notePatchesFrom([node('n0', [])], { n0: [{ note_id: 'a', text: 'gone' }] }))
+            .toEqual([{ node_id: 'n0', notes: [] }]);
+    });
+
+    it('carries the notes and nothing else — never the image, never a position', () => {
+        const patches = notePatchesFrom(
+            [{ id: 'n0', position: { x: 5, y: 6 },
+                data: { notes: [{ note_id: 'a', text: 'x' }], postId: 'p1', grounds: [{ id: 'g' }] } }],
+            {});
+        expect(Object.keys(patches[0]).sort()).toEqual(['node_id', 'notes']);
+        expect(Object.keys(patches[0].notes[0]).sort()).toEqual(['note_id', 'text']);
+    });
+
+    it('is what an arrangement save is diffed against, separately', () => {
+        // The two saves share no state: `notesOf` and `positionsOf` read different halves, so
+        // neither gesture can perform the other's.
+        const nodes = [{ id: 'n0', position: { x: 1, y: 2 }, data: { notes: [] } }];
+        expect(notesOf(nodes)).toEqual({ n0: [] });
+        expect(positionsOf(nodes)).toEqual({ n0: { x: 1, y: 2 } });
+        expect(arrangementFrom(nodes, { n0: { x: 1, y: 2 } })).toEqual([]);
+    });
+});
+
+// ── T1: the machine read ─────────────────────────────────────────────────────
+
+describe('the machine read', () => {
+    it('is offered on a readable image', () => {
+        const onMachineRead = () => {};
+        expect(flowNodesFromView(view(), { onMachineRead })[0].data.onMachineRead)
+            .toBe(onMachineRead);
+    });
+
+    it('is withheld from an image that could not be read', () => {
+        // A model asked to look at nothing. The affordance would be a dead end.
+        const v = view({ nodes: [{ node_id: 'n0', post_id: 'ghost', x: 0, y: 0, readable: false }] });
+        expect(flowNodesFromView(v, { onMachineRead: () => {} })[0].data.onMachineRead).toBe(null);
+    });
+
+    it('asks for an act by name, in the curator’s own vocabulary', () => {
+        // It is handed to the Director exactly as a typed intention would be — no private API,
+        // no new actuator, nothing the Orchestrate bar could not have been told.
+        expect(typeof MACHINE_READ_INTENTION).toBe('string');
+        expect(MACHINE_READ_INTENTION.trim().length).toBeGreaterThan(0);
+    });
+});
+
+// ── T1: refusals from the notes save render too ──────────────────────────────
+
+describe('refusalLines, for notes', () => {
+    it('says a note was not saved rather than letting it vanish', () => {
+        expect(refusalLines([{ node_id: 'n0', reason: 'bad_note', detail: '1 note had no text' }])[0])
+            .toMatch(/1 note had no text — not saved/);
+    });
+
+    it('says when the slot was full', () => {
+        expect(refusalLines([{ node_id: 'n0', reason: 'too_many_notes',
+            detail: 'an image holds at most 12 notes; 3 not saved' }])[0])
+            .toMatch(/3 not saved/);
     });
 });

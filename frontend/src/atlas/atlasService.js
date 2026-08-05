@@ -35,6 +35,16 @@ export const atlasService = {
     async saveArrangement(id, nodes) {
         return json(await post(`${BASE}/${id}/arrangement`, { nodes }), 'save arrangement');
     },
+    /**
+     * T1 — the author's own notes. Returns `{atlas, refused}`, same as an arrangement save.
+     *
+     * A separate route from `saveArrangement` because they are separate gestures: this one cannot
+     * move a picture and that one cannot write a sentence. Notes are the writer's thinking, never
+     * evidence — nothing on this path reaches the ledger.
+     */
+    async saveNotes(id, nodes) {
+        return json(await post(`${BASE}/${id}/notes`, { nodes }), 'save notes');
+    },
 };
 
 export default atlasService;
