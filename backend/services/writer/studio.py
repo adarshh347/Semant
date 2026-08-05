@@ -31,6 +31,14 @@ from backend.services.writer.passages import passage_store
 from backend.services.writer.render import REFUSED, RenderResult, render_directive
 
 
+async def _manuscript_author(manuscript_id: str) -> str:
+    """Whose book this is, or "" if it has not said (W5)."""
+    if not manuscript_id:
+        return ""
+    doc = await manuscript_service.get_manuscript(manuscript_id)
+    return (doc or {}).get("author") or ""
+
+
 async def _committed_prose(scene_id: str) -> str:
     """The scene's canon as plain text — the author's committed language, in order."""
     if not scene_id:
@@ -80,6 +88,9 @@ async def run_block(
     """
     parsed = dsl.parse_block(text)
     canon = await _committed_prose(scene_id)
+    # Resolved once per block rather than per directive — it is the same answer for all of
+    # them, and the render actuator re-resolves it anyway if a caller omits it.
+    manuscript_author = await _manuscript_author(manuscript_id)
 
     # One id per BLOCK RUN. W4's detection counts how many blocks a cluster of operators
     # recurred in, and a suggestion has to cite those blocks — "these operators appeared
@@ -139,6 +150,7 @@ async def run_block(
             manuscript_id=manuscript_id,
             scene_id=scene_id,
             run_id=run_id,
+            manuscript_author=manuscript_author,
         )
 
         entry: Dict[str, Any] = {

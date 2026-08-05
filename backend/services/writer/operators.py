@@ -35,6 +35,8 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from backend.database import writer_operator_collection
+from backend.services.writer import instrument
+from backend.services.writer import library
 from backend.services.writer import relations as relations_mod
 
 #: `kind` for a composite operator distilled from a recurring cluster (W4).
@@ -105,6 +107,73 @@ class OperatorRegistry:
         """The whole project ontology keyed by name — what relation validation reads."""
         return {op["name"]: op for op in await self.list(project_id)}
 
+    async def resolve_version(
+        self, project_id: str, name: str, version: int
+    ) -> Optional[Dict[str, Any]]:
+        """The operator AS IT STOOD at `version`, or None if that version is unrecoverable.
+
+        THIS IS WHAT MAKES PROVENANCE MEAN ANYTHING (I4). Every committed passage pins
+        `name@version`, and until W5 nothing could turn that pin back into a body — the
+        version number was recorded but not resolvable, so "what wrote this?" had an answer
+        the system could not actually produce. W5 makes portability possible, and
+        portability is only safe if that question keeps its answer forever, so the resolver
+        is the first thing built and the first thing tested.
+
+        Resolution is local and exact: the CURRENT doc if its version matches, otherwise the
+        matching entry in `history`, which `update()` has been appending since W1. Nothing
+        is reconstructed or approximated — an unresolvable version returns None rather than
+        the nearest thing, because a plausible substitute is exactly the fabrication the
+        audit trail exists to refuse.
+        """
+        doc = await writer_operator_collection.find_one(
+            {"project_id": project_id, "name": name}
+        )
+        if not doc:
+            return None
+
+        if int(doc.get("version", 1)) == int(version):
+            return _out(doc)
+
+        for prior in doc.get("history", []) or []:
+            if int(prior.get("version", -1)) == int(version):
+                # A history entry holds the fields that VARY across versions; the rest
+                # (id, name, project, author) are stable properties of the operator.
+                restored = {k: v for k, v in doc.items() if k not in prior}
+                restored.update(prior)
+                restored.pop("retired_at", None)
+                return _out(restored)
+
+        return None
+
+    async def resolve_provenance(
+        self, project_id: str, provenance: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Can every operator this passage names still be produced? `{resolved, missing}`.
+
+        The audit-trail check in one call: hand it a committed passage's provenance and it
+        answers whether the passage can still say what made it. `missing` being non-empty is
+        a broken audit trail, which is why the W5 gate runs this over every pre-existing
+        record before anything else is built on top.
+        """
+        resolved: List[Dict[str, Any]] = []
+        missing: List[Dict[str, Any]] = []
+        for stamp in (provenance or {}).get("operators", []) or []:
+            name, version = stamp.get("name"), stamp.get("version")
+            body = await self.resolve_version(project_id, name, version) if version else None
+            if body is None:
+                missing.append({"name": name, "version": version})
+            else:
+                resolved.append({
+                    "name": name,
+                    "version": version,
+                    "source": stamp.get("source"),
+                    "definition": body.get("definition", ""),
+                    "rendering_intent": body.get("rendering_intent", ""),
+                    # W5 — where this operator came from, when it was imported.
+                    "library_ref": body.get("library_ref"),
+                })
+        return {"resolved": resolved, "missing": missing}
+
     async def set_relations(
         self, project_id: str, name: str, relations: List[Dict[str, str]]
     ) -> Optional[Dict[str, Any]]:
@@ -124,6 +193,101 @@ class OperatorRegistry:
         index = await self.by_name(project_id)
         validated = relations_mod.validate_relations(name, relations, index)
         return await self.update(project_id, name, {"relations": validated})
+
+    async def import_from_library(
+        self, project_id: str, author: str, name: str
+    ) -> Dict[str, Any]:
+        """Import a library operator into a project as a LINKED COPY, with its closure.
+
+        The copy is independently versioned from here on: editing it in this project touches
+        neither the library nor any other project. `library_ref` records the exact version
+        taken, so provenance can say where it came from without anything fetching at render.
+
+        The whole closure comes down together, or nothing does — an operator whose `requires`
+        targets or assemblage members are absent would reach at render for a referent that
+        is not there.
+        """
+        entries = await library.by_name(author)
+        if name not in entries:
+            raise OperatorError(
+                f"`{name}` is not in `{author}`'s library. Promote it from the project where "
+                f"you defined it first."
+            )
+
+        ordered, missing = library.closure(name, entries)
+        if missing:
+            raise OperatorError(
+                f"cannot import `{name}`: it refers to "
+                f"{', '.join('`' + m + '`' for m in missing)}, which "
+                f"{'is' if len(missing) == 1 else 'are'} not in your library. Promote "
+                f"{'it' if len(missing) == 1 else 'them'} too — an operator without its "
+                f"declared context cannot render honestly."
+            )
+
+        imported: List[Dict[str, Any]] = []
+        for dep in ordered:                      # dependencies first, never a dangling ref
+            if await self.get(project_id, dep):
+                continue                         # already here; import does not overwrite
+            entry = entries[dep]
+            body = library.linked_copy(entry)
+            # ONE write, so the copy lands at v1 — the author has not edited it yet. This is
+            # safe to do with relations attached because the closure is walked in dependency
+            # order, so every edge target already exists by the time its dependent is written.
+            imported.append(await self.create(
+                project_id, dep,
+                definition=body.get("definition") or entry.get("rendering_intent") or dep,
+                rendering_intent=body.get("rendering_intent") or "",
+                examples=body.get("examples") or [],
+                negative_examples=body.get("negative_examples") or [],
+                relations=body.get("relations") or [],
+                author=author,
+                kind=body.get("kind") or "operator",
+                members=body.get("members") or [],
+                library_ref=body["library_ref"],
+            ))
+            await instrument.record(
+                library.IMPORTED, project_id, operators=[dep],
+                extra={"author": author, "library_version": entry.get("version"),
+                       "with_closure": dep != name, "root": name},
+            )
+
+        return {"imported": imported, "root": name, "closure": ordered}
+
+    async def pull_from_library(
+        self, project_id: str, author: str, name: str
+    ) -> Dict[str, Any]:
+        """Bring a newer library version down into a project. Author-reviewed, never automatic.
+
+        This is the ONLY way a library change reaches a project. Publishing from Book B makes
+        a version available; Book A keeps rendering exactly as before until the author comes
+        and asks for it.
+        """
+        entry = await library.get(author, name)
+        if not entry:
+            raise OperatorError(f"`{name}` is not in `{author}`'s library")
+        current = await self.get(project_id, name)
+        if not current:
+            raise OperatorError(
+                f"`{name}` is not in this project — import it rather than pulling"
+            )
+
+        ref = current.get("library_ref") or {}
+        if ref.get("version") == entry.get("version"):
+            return {"operator": current, "changed": False,
+                    "detail": f"already at library v{entry.get('version')}"}
+
+        body = library.linked_copy(entry)
+        patch = {k: v for k, v in body.items() if k != "library_ref"}
+        patch["library_ref"] = body["library_ref"]
+        updated = await self.update(project_id, name, patch)
+
+        await instrument.record(
+            library.PULLED, project_id, operators=[name],
+            extra={"author": author, "library_version": entry.get("version"),
+                   "from_version": ref.get("version")},
+        )
+        return {"operator": updated, "changed": True,
+                "detail": f"pulled library v{entry.get('version')}"}
 
     async def create_assemblage(
         self,
@@ -257,8 +421,17 @@ class OperatorRegistry:
         negative_examples: Optional[List[str]] = None,
         relations: Optional[List[Dict[str, str]]] = None,
         author: str = "",
+        kind: str = "operator",
+        members: Optional[List[Dict[str, Any]]] = None,
+        library_ref: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """The explicit author-confirmed write. Raises on a duplicate name."""
+        """The explicit author-confirmed write. Raises on a duplicate name.
+
+        `kind`/`members`/`library_ref` exist so an assemblage or an imported operator can be
+        stored in ONE write. An import that created and then patched would land the operator
+        at version 2 before the author had touched it, and `version` is supposed to count
+        the author's edits — a passage pinned to "v1" should mean the first thing they had.
+        """
         _validate(name, definition)
         if relations:
             index = await self.by_name(project_id)
@@ -284,8 +457,12 @@ class OperatorRegistry:
             "author": author or "",
             # W4 — `operator` or `assemblage`. An assemblage is the same object with a
             # lineage; the kind is what lets a surface show that without guessing.
-            "kind": "operator",
-            "members": [],
+            "kind": kind or "operator",
+            "members": list(members or []),
+            # W5 — lineage of an imported operator: which library entry and which exact
+            # version this copy was taken from. Nullable, so every pre-W5 operator is valid
+            # as it stands. It is a RECORD, never a live link: nothing reads it to fetch.
+            "library_ref": library_ref,
             "version": 1,
             "history": [],
             "created_at": now,
@@ -301,7 +478,7 @@ class OperatorRegistry:
             return None
 
         editable = ("definition", "rendering_intent", "examples", "negative_examples",
-                    "relations", "author", "kind", "members")
+                    "relations", "author", "kind", "members", "library_ref")
         fields = {k: v for k, v in (patch or {}).items() if k in editable and v is not None}
         if not fields:
             return _out(doc)
@@ -315,7 +492,7 @@ class OperatorRegistry:
 
         prior = {k: doc.get(k) for k in ("definition", "rendering_intent", "examples",
                                          "negative_examples", "relations", "members",
-                                         "version")}
+                                         "library_ref", "version")}
         prior["retired_at"] = _now()
         history = list(doc.get("history", []))
         history.append(prior)
