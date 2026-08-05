@@ -164,3 +164,62 @@ describe('the question (A2/A3)', () => {
         expect(normalizeRunView(runViewFixture()).question).toBeNull();
     });
 });
+
+describe('plan steps — the live shape, not the fixture-only one', () => {
+    it('normalizes a server step object into something renderable', () => {
+        const v = normalizeRunView({
+            rounds: [{
+                round: 1,
+                plan: {
+                    steps: [{
+                        step_id: 'groq:1:pressure_zone@post_a',
+                        actuator: 'pressure_zone',
+                        params: { image: 'post_a' },
+                        note: 'detect concentration',
+                    }],
+                },
+            }],
+        });
+        const [s] = v.rounds[0].plan.steps;
+        expect(s.key).toBe('groq:1:pressure_zone@post_a');
+        expect(s.label).toBe('pressure_zone');
+        expect(s.note).toBe('detect concentration');
+        expect(s.image).toBe('post_a');
+    });
+
+    it('never leaves a raw object where a React child is rendered', () => {
+        // The exact crash: "Objects are not valid as a React child (found: object with keys
+        // {step_id, actuator, params, note})". Every step's label must be a primitive.
+        const v = normalizeRunView({
+            rounds: [{ plan: { steps: [
+                { step_id: 'a', actuator: 'rhythm', params: { image: 'p' }, note: 'n' },
+                'pressure_zone',
+                null,
+            ] } }],
+        });
+        for (const s of v.rounds[0].plan.steps) {
+            expect(typeof s.label).toBe('string');
+            expect(typeof s.key === 'string' || typeof s.key === 'number').toBe(true);
+        }
+    });
+
+    it('still accepts a bare string step, so an older server keeps working', () => {
+        const v = normalizeRunView({ rounds: [{ plan: { steps: ['rhythm'] } }] });
+        expect(v.rounds[0].plan.steps[0].label).toBe('rhythm');
+        expect(v.rounds[0].plan.steps[0].actuator).toBe('rhythm');
+    });
+
+    it('gives two steps on the same actuator distinct keys', () => {
+        const v = normalizeRunView({
+            rounds: [{ plan: { steps: ['pressure_zone', 'pressure_zone'] } }],
+        });
+        const [a, b] = v.rounds[0].plan.steps;
+        expect(a.key).not.toBe(b.key);
+    });
+
+    it('survives a round with no plan at all', () => {
+        const v = normalizeRunView({ rounds: [{ round: 1 }, null] });
+        expect(v.rounds[0].plan.steps).toEqual([]);
+        expect(v.rounds[1].plan.steps).toEqual([]);
+    });
+});

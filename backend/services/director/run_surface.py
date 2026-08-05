@@ -657,10 +657,30 @@ def compose_for_run(spec: RunSpec, result: lc.LoopResult, engine: RunEngine, *,
                                 run_id=engine.run_id)
         payload = draft.to_dict()
         resolved = resolve_article(payload, list(engine.ctx.all_suggestions()), memory)
-        payload["resolved"] = resolved.to_dict()
+        # THE RESOLVED ENVELOPE IS THE ARTICLE. This line is the whole argue-mode bug.
+        #
+        # It used to read `payload["resolved"] = resolved.to_dict()`, which was wrong twice over:
+        #
+        #   1. IT MADE THE ARTICLE SELF-REFERENTIAL. `ResolvedArticle` carries the draft VERBATIM
+        #      and by reference (deliberately — see its docstring), so
+        #      `resolved.to_dict()["draft"] is payload`. Assigning that back INTO `payload` closed
+        #      the loop: `article["resolved"]["draft"] is article`. BSON has no cycle detection,
+        #      so every argue run died at persist time with `RecursionError`, `0 rounds`, and no
+        #      article. That is exactly why explore worked and argue never once completed — the
+        #      cycle lives in the article objects, which only argue mode builds.
+        #   2. IT WAS THE WRONG SHAPE ANYWAY. The renderer reads `article.draft` (`draftOf` in
+        #      `articleDraft.js`) and looks each citation up in `article.resolved[step_id]` — a
+        #      FLAT map. The old assembly put the draft's own fields at the top level with no
+        #      `draft` key at all, so even with the cycle removed the surface would have rendered
+        #      "No article draft.". The checked-in `articleFixture.js` has had the envelope shape
+        #      all along: the fixture was right and this assembly had drifted from it.
+        #
+        # One line fixes both and loses nothing — the draft is nested exactly once, acyclically,
+        # in the place the renderer already looks for it.
+        article = resolved.to_dict()
         notes.append(f"argue: {len(getattr(argument, 'claims', ()))} claim(s) planned, "
                      f"composed against a run of {len(chain.provenance.lineage)} step(s)")
-        return payload, notes
+        return article, notes
     except Exception as exc:                      # noqa: BLE001 — a note, never a failed run
         notes.append(f"argue: composition did not complete ({type(exc).__name__}); "
                      f"the run's evidence is unaffected")
