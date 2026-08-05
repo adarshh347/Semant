@@ -72,17 +72,39 @@ export function docToBlockText(doc) {
   return lines.join('\n');
 }
 
-/** Does this block hold anything the loop could act on? Guards an empty Render call. */
-export function hasRunnableContent(doc) {
-  let found = false;
-  doc?.descendants((node) => {
+/** Every directive in the document, in order, with its position and index. */
+export function directivesInDoc(doc) {
+  const found = [];
+  doc?.descendants((node, pos) => {
     if (node.type.name === 'directive') {
-      found = true;
-      return false;
+      found.push({ node, pos, index: found.length });
     }
     return true;
   });
   return found;
+}
+
+/**
+ * BLOCK SCOPE (W3 §1) — the indices of the directives that still need rendering.
+ *
+ * A directive is SATISFIED once the author accepted its render (`satisfiedBy` holds the
+ * passage id). Rendering it again would hand the author a second proposal for prose that
+ * is already canon, which they would then have to dismiss — the loop generating work for
+ * the author out of work the author already finished.
+ *
+ * Index is position among all directives in document order, which is what `run_block`
+ * counts. Cards are inserted *between* directives and accepting one replaces a card with
+ * paragraphs, so neither changes the directive ordering this depends on.
+ */
+export function pendingDirectiveIndices(doc) {
+  return directivesInDoc(doc)
+    .filter((d) => !d.node.attrs.satisfiedBy)
+    .map((d) => d.index);
+}
+
+/** Does this block hold anything the loop could act on? Guards an empty Render call. */
+export function hasRunnableContent(doc) {
+  return directivesInDoc(doc).length > 0;
 }
 
 // ── the notation the author types ────────────────────────────────────────────

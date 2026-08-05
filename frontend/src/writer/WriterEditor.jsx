@@ -3,7 +3,12 @@ import { EditorContent, useEditor } from '@tiptap/react';
 
 import { writerService } from './writerService';
 import { writerExtensions } from './schema/writerExtensions';
-import { docToBlockText, hasRunnableContent } from './schema/writerDoc';
+import {
+  directivesInDoc,
+  docToBlockText,
+  hasRunnableContent,
+  pendingDirectiveIndices,
+} from './schema/writerDoc';
 import { exportManuscriptText, toManuscriptBlocks } from './schema/manuscriptExport';
 import { WriterActionsContext } from './views/WriterActions';
 import './WriterEditor.css';
@@ -103,22 +108,47 @@ export default function WriterEditor({
 
   // ── Render: hand the block to W1, put the outcomes back inline ─────────────
 
-  const run = async () => {
+  /**
+   * BLOCK SCOPE (W3 §1). By default this renders only the directives that are still
+   * PENDING — the ones whose render the author has not accepted. `{ all: true }` is the
+   * explicit re-run-everything action, and `{ only: [i] }` re-renders one satisfied
+   * directive on request.
+   *
+   * The whole block text always goes to the server regardless: `//` scope is positional,
+   * so sending a filtered block would re-stage every directive after the gap.
+   */
+  const run = async ({ all = false, only = null } = {}) => {
     if (!editor || busy) return;
-    const text = docToBlockText(editor.state.doc);
-    if (!hasRunnableContent(editor.state.doc)) {
+    const doc = editor.state.doc;
+    const text = docToBlockText(doc);
+    if (!hasRunnableContent(doc)) {
       setError('Nothing to render — a block needs at least one `/` directive.');
       return;
     }
+
+    const onlyDirectives = all ? null : (only ?? pendingDirectiveIndices(doc));
+    if (onlyDirectives && onlyDirectives.length === 0) {
+      setError('Every directive here is already accepted. Re-render one from its span, '
+        + 'or use Render all.');
+      return;
+    }
+
     setBusy(true);
     setError('');
     setStatus('Rendering…');
     try {
-      const out = await writerService.run(projectId, { text, manuscriptId, sceneId });
-      insertResults(out.results ?? []);
-      const refused = (out.results ?? []).filter((r) => r.status === 'refused').length;
+      const out = await writerService.run(projectId, {
+        text, manuscriptId, sceneId, onlyDirectives,
+      });
+      const results = out.results ?? [];
+      insertResults(results);
+      const refused = results.filter((r) => r.status === 'refused').length;
+      const skipped = results.filter((r) => r.status === 'skipped').length;
+      const rendered = results.length - refused - skipped;
       setStatus(
-        `${(out.results ?? []).length - refused} rendered, ${refused} refused — nothing committed.`,
+        `${rendered} rendered, ${refused} refused`
+        + (skipped ? `, ${skipped} already accepted` : '')
+        + ' — nothing committed.',
       );
     } catch (e) {
       setError(e.message);
@@ -138,19 +168,19 @@ export default function WriterEditor({
   const insertResults = (results) => {
     if (!editor || !results.length) return;
 
-    const directives = [];
-    editor.state.doc.descendants((node, pos) => {
-      if (node.type.name === 'directive') directives.push({ node, pos });
-      return true;
-    });
+    const directives = directivesInDoc(editor.state.doc);
 
-    const placements = results.map((result, i) => {
-      const d = directives[i];
-      const after = d
-        ? editor.state.doc.resolve(d.pos).after(1)
-        : editor.state.doc.content.size;
-      return { after, result };
-    });
+    // A skipped directive produced nothing to place — it is reported so the author can
+    // see it was already satisfied, not so a card appears for it.
+    const placements = results
+      .filter((r) => r.status !== 'skipped')
+      .map((result) => {
+        const d = directives[result.directive_index];
+        const after = d
+          ? editor.state.doc.resolve(d.pos).after(1)
+          : editor.state.doc.content.size;
+        return { after, result };
+      });
 
     placements
       .sort((a, b) => b.after - a.after)
@@ -168,6 +198,7 @@ export default function WriterEditor({
               orchestration: result.orchestration || null,
               diagnostics: result.diagnostics || [],
               directive: result.directive || '',
+              directiveIndex: result.directive_index ?? null,
             },
           })
           .run();
@@ -189,11 +220,23 @@ export default function WriterEditor({
         blockId: result?.block_id ?? null,
       });
 
-      editor
-        .chain()
-        .focus(null, { scrollIntoView: false })
-        .insertContentAt({ from: pos, to: pos + node.nodeSize }, paragraphs)
-        .run();
+      // Mark the directive satisfied BEFORE the card is replaced, so the position lookup
+      // is against the document the caller measured. A satisfied directive is skipped by
+      // the next Render (W3 §1) — the author finished it.
+      const directives = directivesInDoc(editor.state.doc);
+      const source = directives[node.attrs.directiveIndex];
+
+      const chain = editor.chain().focus(null, { scrollIntoView: false });
+      if (source) {
+        chain.command(({ tr }) => {
+          tr.setNodeMarkup(source.pos, undefined, {
+            ...source.node.attrs,
+            satisfiedBy: passageId,
+          });
+          return true;
+        });
+      }
+      chain.insertContentAt({ from: pos, to: pos + node.nodeSize }, paragraphs).run();
 
       setStatus('Accepted into the manuscript.');
     },
@@ -229,17 +272,42 @@ export default function WriterEditor({
     [operators],
   );
 
+  // Re-rendering a directive the author already accepted is an EXPLICIT action (W3 §1),
+  // never something the default Render does on its own.
+  const onRerenderDirective = useCallback(
+    (index) => run({ only: [index] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editor, projectId, manuscriptId, sceneId, busy],
+  );
+
   const actions = useMemo(
-    () => ({ onAccept, onDismiss, onCreateOperator, onInspectOperator, operators }),
-    [onAccept, onDismiss, onCreateOperator, onInspectOperator, operators],
+    () => ({
+      onAccept, onDismiss, onCreateOperator, onInspectOperator, onRerenderDirective, operators,
+    }),
+    [onAccept, onDismiss, onCreateOperator, onInspectOperator, onRerenderDirective, operators],
   );
 
   return (
     <WriterActionsContext.Provider value={actions}>
       <div className={`writer-editor${focusMode ? ' writer-editor--focus' : ''}`}>
         <div className="writer-editor__bar">
-          <button type="button" onClick={run} disabled={busy} data-testid="render-button">
+          <button
+            type="button"
+            onClick={() => run()}
+            disabled={busy}
+            data-testid="render-button"
+            title="Render the directives you have not accepted yet"
+          >
             {busy ? 'Rendering…' : 'Render'}
+          </button>
+          <button
+            type="button"
+            onClick={() => run({ all: true })}
+            disabled={busy}
+            data-testid="render-all-button"
+            title="Re-render every directive in the block, including ones you accepted"
+          >
+            Render all
           </button>
           <button
             type="button"

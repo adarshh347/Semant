@@ -45,8 +45,10 @@ from backend.schemas.writer import (
     OperatorUpdate,
     PassageAccept,
     PassageDismiss,
+    RelationsUpdate,
 )
 from backend.services.writer import dsl, instrument
+from backend.services.writer import relations as relations_mod
 from backend.services.writer.operators import OperatorError, operator_registry
 from backend.services.writer.passages import PassageError, passage_store
 from backend.services.writer.studio import run_block
@@ -116,6 +118,60 @@ async def delete_operator(project_id: str, name: str):
     return {"deleted": name}
 
 
+# --- The operator graph (W3) ---
+
+@router.get("/{project_id}/graph")
+async def operator_graph(project_id: str):
+    """The ontology as nodes + typed edges. A READ over the ledger; touches no canon."""
+    operators = await operator_registry.list(project_id)
+    edges = []
+    for op in operators:
+        for rel in relations_mod.relations_of(op):
+            edges.append({
+                "source": op["name"],
+                "target": rel["target"],
+                "kind": rel["kind"],
+                # Only `requires` conditions a render. The graph says which edges act, so
+                # the author can see the difference rather than having to remember it.
+                "feeds_render": rel["kind"] in relations_mod.RENDERING_KINDS,
+            })
+    return {
+        "nodes": [
+            {"id": op["name"], "name": op["name"], "version": op["version"],
+             "definition": op.get("definition", ""),
+             "rendering_intent": op.get("rendering_intent", ""),
+             "examples": op.get("examples", []),
+             "negative_examples": op.get("negative_examples", [])}
+            for op in operators
+        ],
+        "edges": edges,
+        "kinds": list(relations_mod.RELATION_KINDS),
+        "rendering_kinds": sorted(relations_mod.RENDERING_KINDS),
+    }
+
+
+@router.put("/{project_id}/operators/{name}/relations")
+async def set_relations(project_id: str, name: str, request: RelationsUpdate):
+    """Replace an operator's edges. The author draws these by hand, so this commits —
+    but it VALIDATES first (undefined target, unknown kind, cycle) and bumps the version,
+    because relations are part of what the operator IS."""
+    try:
+        op = await operator_registry.set_relations(
+            project_id, name, [r.model_dump() for r in request.relations]
+        )
+    except relations_mod.RelationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except OperatorError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not op:
+        raise HTTPException(status_code=404, detail=f"operator '{name}' is not defined in this project")
+    await instrument.record(
+        "relations", project_id, operators=[name],
+        extra={"relations": [r.model_dump() for r in request.relations]},
+    )
+    return op
+
+
 # --- The loop ---
 
 @router.post("/{project_id}/parse")
@@ -153,6 +209,7 @@ async def run(project_id: str, request: BlockRun):
         manuscript_id=request.manuscript_id or "",
         scene_id=request.scene_id or "",
         quarantine=request.quarantine,
+        only_directives=request.only_directives,
     )
 
 

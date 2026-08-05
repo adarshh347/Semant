@@ -24,9 +24,19 @@ from pydantic import BaseModel, Field
 # --- Operators (the author's ontology) ---
 
 class OperatorRelation(BaseModel):
-    """A declared relation to another operator. W3 builds the graph from these."""
+    """A typed edge to another operator (W3).
+
+    `target` is an operator NAME, never free text — that is what makes an edge incapable
+    of importing a style the ontology never declared (I5). `kind` is one of
+    `relations.RELATION_KINDS`, and only `requires` feeds rendering in v1.
+    """
     target: str
-    kind: str = "related"
+    kind: str = "requires"
+
+
+class RelationsUpdate(BaseModel):
+    """Replace an operator's whole edge set. Validated, then version-bumped."""
+    relations: List[OperatorRelation] = Field(default_factory=list)
 
 
 class OperatorPropose(BaseModel):
@@ -70,6 +80,11 @@ class BlockRun(BaseModel):
     manuscript_id: Optional[str] = ""
     scene_id: Optional[str] = ""
     quarantine: bool = True
+    # BLOCK SCOPE (W3 §1). Indices, in document order, of the `/` directives that are
+    # still PENDING — the ones whose render has not been accepted. `None` means run the
+    # whole block, which is the explicit "re-run everything" action. Omitting this is
+    # therefore the safe default for any caller with no notion of what is satisfied.
+    only_directives: Optional[List[int]] = None
 
 
 class BlockParse(BaseModel):

@@ -58,7 +58,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from backend.services import role_registry
 from backend.services.director.execution import ERROR, OK, UNAVAILABLE
 from backend.services.llm_service import llm_service
-from backend.services.writer import dsl, instrument
+from backend.services.writer import dsl, instrument, relations
 from backend.services.writer.dsl import Directive, OrchestrationNote
 from backend.services.writer.operators import operator_registry
 
@@ -142,6 +142,7 @@ def build_render_prompt(
     *,
     arguments: Optional[Dict[str, str]] = None,
     preceding_prose: str = "",
+    required: Sequence[Dict[str, Any]] = (),
 ) -> Dict[str, str]:
     """The render contract as `{system, user}`. PURE — testable without a network.
 
@@ -150,6 +151,12 @@ def build_render_prompt(
     `preceding_prose` is the author's committed manuscript. The scaffolding sentences
     this function adds are instructions ABOUT the author's material and never describe
     how prose should sound.
+
+    `required` (W3) is the operators pulled in through `requires` edges. They are in the
+    prompt as GROUNDING for this one span, and the prompt says so explicitly: they shape
+    how the invoked operators read, they are not additional things to render. That
+    distinction is what keeps composition sequential — one operator, one span — instead of
+    quietly becoming the blended field that Tier 3 reserves.
     """
     orchestration = orchestration or {}
     arguments = arguments or {}
@@ -159,6 +166,18 @@ def build_render_prompt(
     for op in operators:
         parts.append(operator_registry.as_evidence(op))
         parts.append("")
+
+    if required:
+        parts.append(
+            "GROUNDING THE AUTHOR HAS DECLARED THESE OPERATORS TO REQUIRE. Their meaning "
+            "must be present in the passage for the invoked operators to read correctly. "
+            "Do NOT render them as separate moments or give them their own span — this is "
+            "one passage, and they condition it:"
+        )
+        parts.append("")
+        for op in required:
+            parts.append(operator_registry.as_evidence(op))
+            parts.append("")
 
     if orchestration:
         parts.append(
@@ -437,12 +456,35 @@ async def render_directive(
     resolved = await operator_registry.resolve(project_id, names)
     found = resolved["found"]
 
+    # W3 — `requires` resolution. Follows ONLY `requires` edges, transitively, and only
+    # from operators that actually resolved. Every name it returns is an operator the
+    # author defined, so nothing ungrounded can enter this way (I5 holds by construction:
+    # an edge target is an operator reference, never free text).
+    ontology = await operator_registry.by_name(project_id)
+    pulled_names, requires_diagnostics = relations.resolve_requires(
+        [n for n in names if n in found], ontology
+    )
+    pulled = [ontology[n] for n in pulled_names if n in ontology]
+
+    def _stamp(op: Dict[str, Any], source: str) -> Dict[str, Any]:
+        return {
+            "name": op.get("name"),
+            "version": op.get("version"),
+            "id": op.get("id"),
+            # I4, the load-bearing half of W3. The author typed only the direct operators;
+            # if the passage reads as it does partly because of what `requires` pulled in,
+            # provenance has to say so. Naming only what was typed would be an audit trail
+            # that lies by omission.
+            "source": source,
+        }
+
     provenance: Dict[str, Any] = {
-        "operators": [
-            {"name": n, "version": found[n].get("version"), "id": found[n].get("id")}
-            for n in names if n in found
-        ],
+        "operators": (
+            [_stamp(found[n], "direct") for n in names if n in found]
+            + [_stamp(op, "pulled_via_requires") for op in pulled]
+        ),
         "requested_operators": names,
+        "pulled_operators": pulled_names,
         "intents": [{"key": n.key, "value": n.value} for n in notes if n.known and n.key],
         "directive": directive.raw,
         "directive_line": directive.line,
@@ -464,6 +506,7 @@ async def render_directive(
         orchestration,
         arguments=arguments,
         preceding_prose=preceding_prose,
+        required=pulled,
     )
 
     try:
@@ -480,6 +523,9 @@ async def render_directive(
 
     provenance["model"] = model
     passage, model_refusal, diagnostics = _parse_model_reply(raw)
+    # A dangling or cyclic `requires` edge does not fail the span — the author's DIRECT
+    # request is still renderable — but it is never silent either.
+    diagnostics = list(requires_diagnostics) + diagnostics
 
     if model_refusal and not passage:
         await instrument.record(
@@ -510,7 +556,8 @@ async def render_directive(
 
     await instrument.record(
         instrument.RENDER, project_id, operators=names,
-        intents=orchestration, extra={"chars": len(passage)},
+        intents=orchestration,
+        extra={"chars": len(passage), "pulled_operators": pulled_names},
     )
     return RenderResult(
         status=OK, text=passage, provenance=provenance,

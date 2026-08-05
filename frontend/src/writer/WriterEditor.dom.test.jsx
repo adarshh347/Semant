@@ -28,6 +28,7 @@ const AVOID_TOKEN = 'PELICAN-AVOID-TOKEN';
 
 const RENDERED = {
   line: 4,
+  directive_index: 0,
   directive: '/ threshold',
   operators: ['threshold'],
   orchestration: { goal: LEAK_TOKEN, avoid: AVOID_TOKEN },
@@ -45,6 +46,7 @@ const RENDERED = {
 
 const REFUSED = {
   line: 5,
+  directive_index: 0,
   directive: '/ threshold',
   operators: ['threshold'],
   orchestration: { voice: 'like Tolstoy' },
@@ -151,7 +153,85 @@ describe('WriterEditor — the surface', () => {
       text: '// goal: she arrives\n/ threshold(the door)',
       manuscriptId: 'ms_1',
       sceneId: 'sc_1',
+      onlyDirectives: [0],
     });
+  });
+});
+
+// ══ W3 §1 — block scope at the surface ══════════════════════════════════════
+
+describe('block scope', () => {
+  const RENDERED_AT = (i, passageId) => ({
+    ...RENDERED, directive_index: i, passage_id: passageId,
+  });
+
+  it('the default Render asks only for directives that are not yet accepted', async () => {
+    vi.spyOn(writerService, 'accept').mockResolvedValue({ block_id: 'blk_9' });
+    await mount();
+    await seed([directiveNode(['threshold']), directiveNode(['interiority'])]);
+
+    await renderBlock([RENDERED_AT(0, 'psg_1'), RENDERED_AT(1, 'psg_2')]);
+    expect(writerService.run.mock.calls[0][1].onlyDirectives).toEqual([0, 1]);
+
+    // accept the FIRST card only
+    await act(async () => { allByTestId('accept-button')[0].click(); });
+
+    await renderBlock([RENDERED_AT(1, 'psg_3')]);
+    // the accepted directive is not asked for again
+    expect(writerService.run.mock.calls.at(-1)[1].onlyDirectives).toEqual([1]);
+  });
+
+  it('a skipped result produces no card', async () => {
+    await mount();
+    await seed([directiveNode(['threshold']), directiveNode(['interiority'])]);
+    await renderBlock([
+      { ...RENDERED, directive_index: 0, status: 'skipped', text: '', passage_id: null },
+      RENDERED_AT(1, 'psg_2'),
+    ]);
+    expect(allByTestId('quarantine-card')).toHaveLength(1);
+    expect(byTestId('editor-status').textContent).toContain('already accepted');
+  });
+
+  it('Render all re-runs the whole block, satisfied directives included', async () => {
+    vi.spyOn(writerService, 'accept').mockResolvedValue({ block_id: 'blk_9' });
+    await mount();
+    await seed([directiveNode(['threshold'])]);
+    await renderBlock([RENDERED_AT(0, 'psg_1')]);
+    await act(async () => { byTestId('accept-button').click(); });
+
+    vi.spyOn(writerService, 'run').mockResolvedValue({ results: [], proposals: [], diagnostics: [] });
+    await act(async () => { byTestId('render-all-button').click(); });
+    // null means "the whole block" — the explicit re-run-everything action
+    expect(writerService.run.mock.calls.at(-1)[1].onlyDirectives).toBeNull();
+  });
+
+  it('a satisfied directive offers an explicit re-render, and nothing re-renders on its own',
+    async () => {
+      vi.spyOn(writerService, 'accept').mockResolvedValue({ block_id: 'blk_9' });
+      await mount();
+      await seed([directiveNode(['threshold'])]);
+      await renderBlock([RENDERED_AT(0, 'psg_1')]);
+
+      expect(byTestId('rerender-button')).toBeNull();   // pending: nothing to re-render
+      await act(async () => { byTestId('accept-button').click(); });
+      expect(byTestId('rerender-button')).not.toBeNull();
+
+      vi.spyOn(writerService, 'run').mockResolvedValue({ results: [], proposals: [], diagnostics: [] });
+      await act(async () => { byTestId('rerender-button').click(); });
+      expect(writerService.run.mock.calls.at(-1)[1].onlyDirectives).toEqual([0]);
+    });
+
+  it('says so rather than rendering when every directive is already accepted', async () => {
+    vi.spyOn(writerService, 'accept').mockResolvedValue({ block_id: 'blk_9' });
+    await mount();
+    await seed([directiveNode(['threshold'])]);
+    await renderBlock([RENDERED_AT(0, 'psg_1')]);
+    await act(async () => { byTestId('accept-button').click(); });
+
+    const runs = writerService.run.mock.calls.length;
+    await act(async () => { byTestId('render-button').click(); });
+    expect(writerService.run.mock.calls.length).toBe(runs);   // no pointless call
+    expect(byTestId('editor-error').textContent).toContain('already accepted');
   });
 });
 

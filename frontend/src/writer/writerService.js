@@ -62,19 +62,41 @@ export const writerService = {
     );
   },
 
+  // --- The operator graph (W3) ---
+  // A READ over the ledger: nodes are operators, edges are typed relations. Nothing here
+  // can reach the manuscript.
+  async graph(projectId) {
+    return json(await fetch(`${BASE}/${projectId}/graph`), 'load operator graph');
+  },
+  // Replace an operator's whole edge set. The server validates (undefined target, unknown
+  // kind, cycle) and bumps the version — relations are part of what an operator IS.
+  async setRelations(projectId, name, relations) {
+    return json(
+      await fetch(`${BASE}/${projectId}/operators/${name}/relations`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ relations }),
+      }),
+      'save relations',
+    );
+  },
+
   // --- The loop ---
   // Parse only: the `/` ÷ `//` split, with no model called and nothing stored.
   async parse(projectId, text) {
     return json(await post(`${BASE}/${projectId}/parse`, { text }), 'parse block');
   },
   // Execute a block. Every render comes back QUARANTINED; nothing reaches the manuscript.
-  async run(projectId, { text, manuscriptId, sceneId, quarantine = true }) {
+  // `onlyDirectives` is BLOCK SCOPE (W3 §1): the indices of the directives still pending.
+  // `null`/omitted runs the whole block, which is the explicit re-run-everything action.
+  async run(projectId, { text, manuscriptId, sceneId, quarantine = true, onlyDirectives = null }) {
     return json(
       await post(`${BASE}/${projectId}/run`, {
         text,
         manuscript_id: manuscriptId ?? '',
         scene_id: sceneId ?? '',
         quarantine,
+        only_directives: onlyDirectives,
       }),
       'run block',
     );

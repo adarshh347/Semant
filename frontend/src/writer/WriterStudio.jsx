@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { writerService } from './writerService';
 import WriterEditor from './WriterEditor';
+import OperatorGraph from './graph/OperatorGraph';
 import './WriterStudio.css';
 
 /**
@@ -21,6 +22,7 @@ export default function WriterStudio({ projectId, manuscriptId = '', sceneId = '
   const [error, setError] = useState('');
   const [drafting, setDrafting] = useState(false);
   const [draft, setDraft] = useState({ name: '', definition: '' });
+  const [showGraph, setShowGraph] = useState(false);
 
   const loadOperators = useCallback(async () => {
     if (!projectId) return;
@@ -70,6 +72,15 @@ export default function WriterStudio({ projectId, manuscriptId = '', sceneId = '
           ))}
         </ul>
 
+        <button
+          type="button"
+          onClick={() => setShowGraph((g) => !g)}
+          aria-pressed={showGraph}
+          data-testid="graph-toggle"
+        >
+          {showGraph ? 'Hide the graph' : 'See the graph'}
+        </button>
+
         {drafting ? (
           <div className="writer-draft">
             <input
@@ -106,6 +117,11 @@ export default function WriterStudio({ projectId, manuscriptId = '', sceneId = '
       </aside>
 
       <main className="writer-page">
+        {showGraph && (
+          <div className="writer-graph-panel">
+            <OperatorGraph projectId={projectId} onClose={() => setShowGraph(false)} />
+          </div>
+        )}
         <WriterEditor
           projectId={projectId}
           manuscriptId={manuscriptId}

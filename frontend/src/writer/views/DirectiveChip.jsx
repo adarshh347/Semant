@@ -1,6 +1,13 @@
 import React from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { useWriterActions } from './WriterActions';
+import { directivesInDoc } from '../schema/writerDoc';
+
+/** This chip's index among all directives — what `run_block` counts (W3 §1). */
+function directiveIndexOf(editor, pos) {
+  const found = directivesInDoc(editor.state.doc).find((d) => d.pos === pos);
+  return found ? found.index : 0;
+}
 
 /**
  * The `/` layer, on screen — an operator chip.
@@ -15,9 +22,9 @@ import { useWriterActions } from './WriterActions';
  * Clicking inspects the definition (read-only in W2). The chip may LINK toward the operator
  * graph later; W2 ships no graph (W3 owns that).
  */
-export default function DirectiveChip({ node }) {
-  const { operators = [], argument } = node.attrs;
-  const { operators: known = [], onInspectOperator } = useWriterActions();
+export default function DirectiveChip({ node, getPos, editor }) {
+  const { operators = [], argument, satisfiedBy } = node.attrs;
+  const { operators: known = [], onInspectOperator, onRerenderDirective } = useWriterActions();
 
   const resolve = (name) => known.find((o) => o.name === name) || null;
   const anyUndefined = operators.some((n) => !resolve(n));
@@ -25,7 +32,8 @@ export default function DirectiveChip({ node }) {
   return (
     <NodeViewWrapper
       as="span"
-      className={`writer-directive${anyUndefined ? ' writer-directive--undefined' : ''}`}
+      className={`writer-directive${anyUndefined ? ' writer-directive--undefined' : ''}`
+        + `${satisfiedBy ? ' writer-directive--satisfied' : ''}`}
       data-testid="directive-chip"
       contentEditable={false}
     >
@@ -50,6 +58,19 @@ export default function DirectiveChip({ node }) {
         );
       })}
       {argument ? <span className="writer-directive__arg">({argument})</span> : null}
+      {satisfiedBy && (
+        // Satisfied: its render is canon, so the default Render leaves it alone. Asking
+        // for another proposal is the author's explicit choice, offered right here.
+        <button
+          type="button"
+          className="writer-directive__rerender"
+          data-testid="rerender-button"
+          title="This directive's render is already accepted — render it again?"
+          onClick={() => onRerenderDirective(directiveIndexOf(editor, getPos()))}
+        >
+          accepted · re-render
+        </button>
+      )}
     </NodeViewWrapper>
   );
 }

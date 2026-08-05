@@ -429,8 +429,10 @@ def test_render_carries_operator_versions_and_intents(store, threshold_operator,
 
     assert result.status == "ok" and result.text == "The latch gave."
     assert result.provenance["operators"] == [
-        {"name": "threshold", "version": 1, "id": threshold_operator["id"]}
+        # `source` is W3's marking: this one was typed by the author, not pulled by an edge.
+        {"name": "threshold", "version": 1, "id": threshold_operator["id"], "source": "direct"}
     ]
+    assert result.provenance["pulled_operators"] == []
     assert result.provenance["intents"] == [{"key": "goal", "value": "cross it"}]
     assert result.provenance["directive_line"] == 2
 
@@ -614,6 +616,85 @@ def test_continuity_feeds_committed_prose_into_the_next_render(
     run(studio.run_block(PROJECT, "/ threshold\n", manuscript_id=manuscript_id, scene_id=scene_id))
 
     assert "She had been standing there for an hour." in seen["user"]
+
+
+# ══ W3 §1 — block scope: a satisfied directive does not re-render ════════════
+
+def test_block_scope_runs_only_pending_directives(store, threshold_operator,
+                                                  fixture_manuscript, monkeypatch):
+    """Accepting one directive's card must not make the next Render propose it again.
+
+    Without this the author accepts a passage, renders the block for the NEXT directive,
+    and is handed a second proposal for prose that is already canon — work they finished,
+    coming back as a card they have to dismiss.
+    """
+    manuscript_id, scene_id = fixture_manuscript
+    run(op_svc.operator_registry.create(PROJECT, "interiority", "what the body knows first"))
+    _stub_model(monkeypatch, '{"passage": "The latch gave.", "refusal": ""}')
+
+    block = "// goal: cross it\n/ threshold\n/ interiority\n"
+
+    # first pass: everything is pending
+    first = run(studio.run_block(PROJECT, block, manuscript_id=manuscript_id, scene_id=scene_id))
+    assert [r["directive_index"] for r in first["results"]] == [0, 1]
+    assert first["rendered"] == 2
+
+    run(psg_svc.passage_store.accept(first["results"][0]["passage_id"]))
+
+    # second pass: directive 0 is satisfied, so only directive 1 is asked for
+    second = run(studio.run_block(
+        PROJECT, block, manuscript_id=manuscript_id, scene_id=scene_id, only_directives=[1],
+    ))
+    assert second["skipped"] == 1
+    assert second["rendered"] == 1
+    assert second["results"][0]["status"] == studio.SKIPPED
+    assert second["results"][0]["passage_id"] is None
+    assert "already satisfied" in second["results"][0]["detail"]
+    assert second["results"][1]["directive_index"] == 1
+    assert second["results"][1]["status"] == "ok"
+
+
+def test_a_skipped_directive_is_not_a_refusal(store, threshold_operator, monkeypatch):
+    """`skipped` and `refused` are different answers and must not be conflated."""
+    _stub_model(monkeypatch, '{"passage": "The latch gave.", "refusal": ""}')
+    out = run(studio.run_block(PROJECT, "/ threshold\n", only_directives=[], quarantine=False))
+    assert out["results"][0]["status"] == studio.SKIPPED
+    assert out["refused"] == 0
+    assert out["results"][0]["refusal"] == ""
+
+
+def test_block_scope_keeps_orchestration_scope_positional(store, threshold_operator, monkeypatch):
+    """A skipped directive is WALKED, not filtered out — `//` scope is positional.
+
+    Dropping the line before parsing would re-stage every directive after it.
+    """
+    seen = {}
+
+    def capture(system, user):
+        seen["user"] = user
+        return '{"passage": "The latch gave.", "refusal": ""}'
+
+    _stub_model(monkeypatch, capture)
+    run(op_svc.operator_registry.create(PROJECT, "interiority", "what the body knows first"))
+
+    out = run(studio.run_block(
+        PROJECT,
+        "/ threshold\n"
+        "// voice: close third\n"
+        "/ interiority\n",
+        only_directives=[1],
+        quarantine=False,
+    ))
+    # directive 1 still sees the note that sits above it, and only that note
+    assert out["results"][1]["orchestration"] == {"voice": "close third"}
+    assert "close third" in seen["user"]
+
+
+def test_running_the_whole_block_is_still_available(store, threshold_operator, monkeypatch):
+    """`only_directives=None` is the explicit re-run-everything action."""
+    _stub_model(monkeypatch, '{"passage": "The latch gave.", "refusal": ""}')
+    out = run(studio.run_block(PROJECT, "/ threshold\n/ threshold\n", quarantine=False))
+    assert out["rendered"] == 2 and out["skipped"] == 0
 
 
 # ══ instrumentation (record now, reason later) ═══════════════════════════════

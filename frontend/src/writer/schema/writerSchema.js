@@ -138,6 +138,11 @@ export const Directive = Node.create({
       argument: { default: '' },
       // Resolved from the registry for display (`name v1`); null until looked up.
       versions: { default: null },
+      // BLOCK SCOPE (W3 §1). The passage id whose Accept satisfied this directive, or
+      // null while it is still pending. A satisfied directive is skipped by the default
+      // Render: re-rendering it would propose a second passage for prose that is already
+      // canon. Cleared by nothing — the author re-runs a satisfied directive explicitly.
+      satisfiedBy: { default: null, keepOnSplit: false },
     };
   },
 
@@ -184,6 +189,9 @@ export const QuarantinedPassage = Node.create({
       orchestration: { default: null },
       diagnostics: { default: [] },
       directive: { default: '' },
+      // Which directive produced this, so Accept can mark that directive satisfied
+      // (W3 §1). Index in document order, matching `run_block`'s `directive_index`.
+      directiveIndex: { default: null },
     };
   },
 

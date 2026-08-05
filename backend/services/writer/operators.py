@@ -35,6 +35,7 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from backend.database import writer_operator_collection
+from backend.services.writer import relations as relations_mod
 
 #: An operator name is a DSL token — it has to survive `/ name(arg)` unambiguously.
 NAME_RE = re.compile(r"^[A-Za-z][\w-]*$")
@@ -97,6 +98,30 @@ class OperatorRegistry:
             out.append(_out(doc))
         return out
 
+    async def by_name(self, project_id: str) -> Dict[str, Dict[str, Any]]:
+        """The whole project ontology keyed by name — what relation validation reads."""
+        return {op["name"]: op for op in await self.list(project_id)}
+
+    async def set_relations(
+        self, project_id: str, name: str, relations: List[Dict[str, str]]
+    ) -> Optional[Dict[str, Any]]:
+        """Replace an operator's relations. Validated, then versioned like any other edit.
+
+        Relations are part of the operator's identity, not metadata beside it: a passage
+        rendered by `interiority v2` (which requires `threshold`) rests on different
+        grounding than one rendered by `interiority v1` (which required nothing). So an
+        edge edit bumps the version, and provenance stays honest across the change.
+
+        The author draws these by hand, so this commits directly — it is authoring, not a
+        model proposal, and the propose-never-commit rule is about what the MODEL writes.
+        """
+        doc = await self.get(project_id, name)
+        if not doc:
+            return None
+        index = await self.by_name(project_id)
+        validated = relations_mod.validate_relations(name, relations, index)
+        return await self.update(project_id, name, {"relations": validated})
+
     async def resolve(self, project_id: str, names: List[str]) -> Dict[str, Any]:
         """Names → `{"found": {name: operator}, "missing": [name, ...]}`.
 
@@ -151,6 +176,12 @@ class OperatorRegistry:
     ) -> Dict[str, Any]:
         """The explicit author-confirmed write. Raises on a duplicate name."""
         _validate(name, definition)
+        if relations:
+            index = await self.by_name(project_id)
+            # The operator being created is itself a valid target for its own edges to be
+            # checked against (self-relation is rejected inside `validate_relations`).
+            index.setdefault(name, {"name": name, "relations": []})
+            relations = relations_mod.validate_relations(name, relations, index)
         if await self.get(project_id, name):
             raise OperatorError(
                 f"operator '{name}' already exists in this project — update it instead of "
@@ -187,6 +218,11 @@ class OperatorRegistry:
             return _out(doc)
         if "definition" in fields:
             _validate(name, fields["definition"])
+        if "relations" in fields:
+            index = await self.by_name(project_id)
+            fields["relations"] = relations_mod.validate_relations(
+                name, fields["relations"], index
+            )
 
         prior = {k: doc.get(k) for k in ("definition", "rendering_intent", "examples",
                                          "negative_examples", "relations", "version")}
