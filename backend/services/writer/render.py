@@ -18,6 +18,15 @@ into the image statuses, because a citation cannot be checked by looking harder 
 picture. The Writer's wall is the same wall transposed: the AUTHOR'S OWN LANGUAGE is the
 only evidence base, and a generic prior cannot be checked against the author's book.
 
+WHAT "PERMITTED `//` ORCHESTRATION" MEANS — stated explicitly, because it read as an
+ambiguity once and must not again. Invariant 5 permits generation to be constrained by
+the author's operator definitions AND their `//` orchestration. That permission covers
+orchestration WHOSE MEANING THE AUTHOR SUPPLIES. A `//` value that refers out to the
+model's priors for its content is NOT permitted orchestration and never was: it is an
+import wearing the author's syntax. `// voice: close third, past tense` is theirs;
+`// voice: like Tolstoy` is the priors', and the author's own hand typing it does not
+make its meaning theirs. See `_STYLE_BY_REFERENCE`.
+
 Enforced in the prompt CONTRACT, in three places that must stay in agreement:
 
   1. `build_render_prompt` is a pure function whose every style-bearing line comes from
@@ -41,10 +50,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from backend.services import role_registry
 from backend.services.director.execution import ERROR, OK, UNAVAILABLE
 from backend.services.llm_service import llm_service
 from backend.services.writer import dsl, instrument
@@ -192,47 +203,113 @@ def build_render_prompt(
 
 # ── pre-flight: the refusals that need no model ──────────────────────────────────
 
-#: Phrases that mark an orchestration note as STYLE BY REFERENCE — a request to render
-#: from a corpus that is not this author's. Kept deliberately small and literal.
+#: Markers of an orchestration value whose meaning lives in the MODEL'S PRIORS rather than
+#: in anything the author has declared.
 #:
-#: WHY THIS EXISTS AS CODE AND NOT ONLY AS AN INSTRUCTION. The system prompt states the
-#: rule plainly, and the model was measured ignoring it: asked for "the ornate omniscience
-#: of a 19th-century Russian novel", it complied, invented a Russian name, and addressed
-#: the reader — importing a whole tradition the author never wrote a word of. A wall that
-#: the model can talk past is not a wall, so the refusal is made structural here, exactly
-#: as an undefined operator is. The prompt keeps the rule (it catches phrasings this list
-#: does not); this catches the ones the prompt does not.
+#: THE PRINCIPLE, stated exactly, because the surface symptom is easy to mistake for it.
+#: The test is NOT "describes qualities vs names a corpus", and it is not "common noun vs
+#: proper noun". It is GROUNDED-IN-THE-AUTHOR'S-ONTOLOGY vs IMPORTED-FROM-PRIORS. When the
+#: author writes `// voice: close third, past tense`, every word is theirs and the model is
+#: being instructed. When they write `// voice: like Tolstoy`, the word "Tolstoy" carries
+#: no meaning the author has supplied — its entire content lives in the training priors, so
+#: the model reaches in and renders a voice the author never defined. That is not a risky-
+#: looking `//` constraint; it is precisely what invariant 5 forbids, and it is the writer's
+#: analogue of a VLM narrating a region with no detector evidence under it.
 #:
-#: IT IS A HEURISTIC AND IT IS NOT COMPLETE. It will miss a bare author's name ("write it
-#: Woolf") and it can fire on an author who genuinely uses one of these words about their
-#: own writing. Both failures are survivable in the right direction: a miss falls back to
-#: the prompt rule, and a false positive is a REFUSAL that names the offending phrase and
-#: asks for a rephrase — recoverable, and never a silent change to the prose.
-_STYLE_BY_REFERENCE = (
-    "in the style of", "in the manner of", "written like", "write like", "sounds like",
-    "reminiscent of", "channelling", "channeling", "pastiche", "homage to", "a la ",
-    "à la ", "-esque", "esque,", "th-century", "th century", "st-century", "st century",
-    "victorian", "edwardian", "modernist", "postmodern", "beat generation", "gothic",
-    "noir", "hardboiled", "hard-boiled", "pulp", "penny dreadful", "mfa",
+#: WHY THIS EXISTS AS CODE AND NOT ONLY AS AN INSTRUCTION. The system prompt states the rule
+#: plainly, and the model was measured ignoring it: asked for "the ornate omniscience of a
+#: 19th-century Russian novel", it complied, invented a Russian name, and addressed the
+#: reader. Strengthening the prompt did not fix it. A wall the model can talk past is not a
+#: wall, so the refusal is structural here, exactly as an undefined operator is. The prompt
+#: keeps the rule too — it catches phrasings this list cannot.
+#:
+#: IT IS A HEURISTIC, AND IT IS TUNED TO OVER-REFUSE ON PURPOSE. The two failure directions
+#: are not symmetric:
+#:   · a FALSE POSITIVE is a loud, named refusal the author rephrases around — a shrug;
+#:   · a FALSE NEGATIVE silently smuggles priors into the sacred canon — the cardinal sin,
+#:     because nothing downstream can tell borrowed prose from the author's own.
+#: So the list is deliberately broad, bare surnames included, and any UNDER-refusal found
+#: later is a priority bug rather than a papercut. Over-refusal is the safe direction and
+#: this list should be tuned aggressively toward it.
+#: Phrase markers: emulation formulas, periods, movements, genres. A genre label is a
+#: corpus reference wearing a common noun, which is why "noir" sits beside "like Tolstoy".
+_PRIOR_PHRASES = (
+    # explicit emulation
+    "in the style of", "in the manner of", "in the vein of", "written like", "write like",
+    "sounds like", "read like", "reminiscent of", "evoking", "channelling", "channeling",
+    "pastiche", "homage", "à la ", "a la ", "-esque", "-ian prose", "riff on",
+    # periods and movements
+    "th-century", "th century", "st-century", "st century", "victorian", "edwardian",
+    "modernist", "postmodern", "romantic era", "beat generation", "new journalism",
+    # genres and schools
+    "gothic", "noir", "hardboiled", "hard-boiled", "pulp", "penny dreadful", "mfa",
+    "magical realism", "hard sci-fi", "space opera", "cozy mystery", "bodice ripper",
+    "airport thriller", "literary fiction", "autofiction",
 )
+
+#: Bare surnames the model has a dense prior for. Held SEPARATELY from the phrases because
+#: only these make a usable operator name: `tolstoy` → `#create tolstoy_voice` reads as an
+#: invitation, whereas a fragment like "th-century" would produce `th_century_voice`, which
+#: is noise. Not a canon and not meant as one — a sample of what actually gets typed into a
+#: `//voice`. A name that is missing falls through to the prompt rule; see the over-refusal
+#: note above, and treat any under-refusal as a bug worth fixing here.
+_PRIOR_SURNAMES = (
+    "tolstoy", "dostoev", "chekhov", "nabokov", "woolf", "joyce", "hemingway",
+    "faulkner", "mccarthy", "morrison", "austen", "dickens", "kafka", "borges",
+    "sebald", "didion", "carver", "munro", "ishiguro", "ferrante", "knausgaard",
+    "proust", "beckett", "pynchon", "delillo", "atwood", "le guin", "tolkien",
+)
+
+_STYLE_BY_REFERENCE = _PRIOR_PHRASES + _PRIOR_SURNAMES
 
 #: `avoid` is exempt: telling the model NOT to sound like something imports nothing.
 _REFERENCE_CHECKED_KEYS = tuple(k for k in dsl.ORCHESTRATION_KEYS if k != "avoid")
 
 
+def _suggested_operator_name(marker: str) -> str:
+    """A name for the operator this reference WANTS to become.
+
+    Only a SURNAME marker yields a stem — a phrase marker is a fragment ("th-century")
+    and would make a worse suggestion than the neutral fallback.
+
+    Deliberately not clever even then: `tolstoy` → `tolstoy_voice`, not an attempt at
+    `tolstoyan`. English adjective formation off a surname has no correct general answer
+    ("kafkaesque", "woolfian", "le guinian"?) and this only has to be a valid, obvious
+    starting point the author will rename anyway. It must satisfy `operators.NAME_RE`.
+    """
+    if marker not in _PRIOR_SURNAMES:
+        return "my_voice"
+    stem = re.sub(r"[^a-z0-9]+", "_", marker.strip().lower()).strip("_")
+    return f"{stem}_voice" if stem and stem[0].isalpha() else "my_voice"
+
+
 def _style_by_reference(orchestration: Dict[str, str]) -> Optional[str]:
-    """The refusal reason if a note asks for a style by reference, else None."""
+    """The refusal reason if a note's meaning lives in the priors, else None.
+
+    THE REFUSAL IS GENERATIVE, and that is the point of it. It does not merely wall off
+    `// voice: like Tolstoy` — it routes the author to `#create`, where the qualities they
+    were reaching for become a declared, versioned operator they own and can re-render.
+    They get the destination they wanted, by the path that keeps the canon theirs. The wall
+    is an on-ramp to the ontology growing, not a dead end, and this is the mechanism behind
+    "the language becomes more the author's own with every chapter".
+    """
     for key in _REFERENCE_CHECKED_KEYS:
         value = orchestration.get(key) or ""
         lowered = value.lower()
         for marker in _STYLE_BY_REFERENCE:
             if marker in lowered:
+                name = _suggested_operator_name(marker)
                 return (
-                    f"style by reference in `// {key}`: \"{value}\" points at a body of "
-                    f"work outside your own (\"{marker.strip()}\"). That is an import of "
-                    f"priors this system cannot check against your book, so it will not "
-                    f"render from it. Describe the qualities you want in your own words — "
-                    f"or make them an operator, which is what operators are for."
+                    f"`// {key}: {value}` names something whose meaning lives in my priors, "
+                    f"not in your ontology (\"{marker.strip()}\"). I cannot check it against "
+                    f"your book, so I will not render from it — that would put prose in your "
+                    f"manuscript that is not yours.\n\n"
+                    f"Tell me what it means TO YOU instead — the remove, the sentence length, "
+                    f"what the narrator is allowed to know — and it becomes an operator you "
+                    f"own:\n"
+                    f"    #create {name}: <the qualities, in your words>\n"
+                    f"Then `/ {name}` renders it, versioned and auditable, and it is yours "
+                    f"from that point on."
                 )
     return None
 
@@ -297,17 +374,33 @@ def _parse_model_reply(raw: str) -> Tuple[str, str, List[str]]:
     )
 
 
+#: ROLES-001 — the JOB this actuator does. The model bound to it lives in `role_registry`
+#: and is resolved LIVE on every render, so `SEMANT_ROLE_MANUSCRIPT_RENDERER_MODEL` is a
+#: config change rather than a code edit.
+ROLE = "manuscript_renderer"
+
+
 async def _call_model(system: str, user: str) -> Tuple[str, Optional[str]]:
     """Groq, via the EXISTING `llm_service` client. Returns `(reply, model_name)`.
 
-    The kernel's client is reused rather than a second one built here — same key, same
-    model choice, one place to change it. The Groq SDK call is synchronous, so it goes to
-    a worker thread: a render must not block the event loop the rest of the app runs on.
+    TWO DIFFERENT THINGS ARE BORROWED HERE, and only one of them should be.
+
+    The CLIENT is reused: it is a connection built from one API key, and a second one would
+    be a second thing to configure for no gain.
+
+    The MODEL is NOT taken from `llm_service` — it is resolved from this actuator's own
+    role. Reading `llm_service.model` would bind manuscript prose to the `archivist` role
+    (corpus summarisation), so rebinding the archivist would silently change how the
+    author's book reads. Same default model today, different jobs, separately rebindable:
+    that is the whole point of ROLES-001.
+
+    The Groq SDK call is synchronous, so it goes to a worker thread: a render must not
+    block the event loop the rest of the app runs on.
     """
     client = getattr(llm_service, "client", None)
     if client is None:
         raise RuntimeError("GROQ_API_KEY is not configured, so no passage can be rendered")
-    model = getattr(llm_service, "model", None)
+    model = role_registry.model_for(ROLE)
 
     def _blocking() -> str:
         completion = client.chat.completions.create(

@@ -357,8 +357,23 @@ def test_style_by_reference_refuses_before_the_model(store, threshold_operator, 
 
     assert result.status == REFUSED
     assert result.text == ""
-    assert "style by reference" in result.refusal
-    assert "in your own words" in result.refusal
+    assert "lives in my priors" in result.refusal
+    # the refusal is GENERATIVE — it routes to #create rather than dead-ending
+    assert "#create" in result.refusal
+    assert "in your words" in result.refusal
+
+
+def test_a_bare_surname_is_refused_too(store, threshold_operator, monkeypatch):
+    """`// voice: like Tolstoy` — the meaning lives in the priors, not the author's book."""
+    async def explode(system, user):
+        raise AssertionError("a bare corpus reference must not reach the model")
+
+    monkeypatch.setattr(render_svc, "_call_model", explode)
+    directive = dsl.parse_block("// voice: like Tolstoy, but shorter\n/ threshold\n").directives[0]
+    result = run(render_svc.render_directive(PROJECT, directive))
+
+    assert result.status == REFUSED
+    assert "#create tolstoy_voice" in result.refusal   # it names the operator to author
 
 
 def test_a_voice_described_in_the_authors_own_words_renders(store, threshold_operator, monkeypatch):
@@ -638,6 +653,33 @@ def test_instrumentation_failure_never_breaks_a_render(store, threshold_operator
     result = run(render_svc.render_directive(PROJECT, directive))
 
     assert result.status == "ok" and result.text == "The latch gave."
+
+
+# ══ ROLES-001: the renderer is its own job ═══════════════════════════════════
+
+def test_the_renderer_resolves_its_own_role_not_the_archivists():
+    """Rebinding corpus summarisation must not change how the author's book reads.
+
+    Before ROLES-001 this call site read `llm_service.model`, which resolves to the
+    `archivist` role — so the two jobs shared a binding by accident. They are separate
+    roles now, and this pins that: rebinding one moves only one.
+    """
+    from backend.services import role_registry
+
+    assert render_svc.ROLE == "manuscript_renderer"
+    assert role_registry.get(render_svc.ROLE) is not None
+
+    role_registry.bind("archivist", "some/other-model")
+    try:
+        assert role_registry.model_for(render_svc.ROLE) != "some/other-model"
+    finally:
+        role_registry.unbind("archivist")
+
+    role_registry.bind(render_svc.ROLE, "a/renderer-model")
+    try:
+        assert role_registry.model_for(render_svc.ROLE) == "a/renderer-model"
+    finally:
+        role_registry.unbind(render_svc.ROLE)
 
 
 # ══ the model being down is not a refusal ════════════════════════════════════
