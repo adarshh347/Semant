@@ -606,3 +606,88 @@
     opacity: 0.6;
     pointer-events: none;
 }
+
+/* ── ATLAS C3: relation edges ────────────────────────────────────────────────
+ *
+ * A RELATION IS NOT A BINDING, and the two must never be mistaken for one another at a glance.
+ *
+ *   C4 binding   dashed · no arrow · muted ink   · claim → image · "supports · measured"
+ *   C3 relation  SOLID  · arrow    · accent ink  · image ↔ image · "kinship · interpretive"
+ *   a refusal    dotted · no arrow · warning ink · the attempted line, persisted nowhere
+ *
+ * The arrow is not decoration: `compare_views` records a left and a right, and "the façade
+ * prepares the rotunda" is not its own converse.
+ */
+
+.atlas-canvas .react-flow__edge.atlas-relation path {
+    stroke: var(--accent, #7B2D6B);
+    stroke-width: 2;
+    stroke-dasharray: none;                 /* solid — a produced percept, not a proposal */
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation .react-flow__edge-text {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    fill: var(--ink);
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation .react-flow__edge-textbg {
+    fill: var(--surface);
+}
+
+/* An edge whose relation has left the ledger STAYS on the canvas and stops looking like
+   evidence. "Never drawn" and "drawn, then uncommitted" are different facts. */
+.atlas-canvas .react-flow__edge.atlas-relation.is-stale path {
+    stroke: var(--ink-subtle, rgba(23, 18, 26, 0.35));
+    stroke-width: 1.5;
+    stroke-dasharray: 2 4;
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation.is-stale .react-flow__edge-text {
+    fill: #A66273;
+}
+
+/* The line a writer attempted that could not be grounded. Dotted, warning-coloured, no arrow —
+   nothing was established, so nothing may look established. It is never persisted. */
+.atlas-canvas .react-flow__edge.atlas-relation.is-refused path {
+    stroke: #A66273;
+    stroke-width: 1.5;
+    stroke-dasharray: 1 5;
+    stroke-linecap: round;
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation.is-refused .react-flow__edge-text {
+    fill: #A66273;
+    font-style: italic;
+}
+
+/* The one draggable affordance on this canvas. Bigger than the layout handle it sits opposite,
+   because it is a thing a person is meant to find and pull. */
+.atlas-handle.is-draw {
+    width: 11px;
+    height: 11px;
+    background: var(--accent, #7B2D6B);
+    opacity: 0.55;
+    pointer-events: all;
+    cursor: crosshair;
+}
+
+.atlas-handle.is-draw:hover {
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(123, 45, 107, 0.18);
+}
+
+.atlas-rel-count { color: var(--ink-muted); }
+.atlas-rel-stale { color: #A66273; }
+
+/* While a relation is being dragged, every landing point grows. A 6px target is findable with a
+   mouse only by accident, and a gesture this consequential should not depend on precision — the
+   handle is where a claim about two photographs comes to rest. */
+.atlas-canvas .react-flow__pane.connecting .atlas-handle,
+.atlas-canvas.is-connecting .atlas-handle {
+    width: 16px;
+    height: 16px;
+    opacity: 0.9;
+    background: var(--accent, #7B2D6B);
+    box-shadow: 0 0 0 4px rgba(123, 45, 107, 0.15);
+}

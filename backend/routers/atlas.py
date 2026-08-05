@@ -31,10 +31,21 @@ Atlas document does and does not contain is inspectable rather than asserted in 
 can `curl` it and see there is no percept data in there. The second assembles the drawable view
 from the ledger at read time, which is where percept truth is allowed to appear.
 
-READ-ONLY WITH RESPECT TO EVIDENCE. Nothing here writes to a post, creates a percept, accepts a
-suggestion, or touches the ledger. The only thing these routes write is where a picture sits on a
-canvas. C2 adds percept creation — through the EXISTING quarantine and Accept path, not through
-here.
+ATLAS C3 adds relation edges — two more, over M1's `compare_views`:
+
+    POST   /api/v1/atlas/{id}/relations            a drawn line → a committed relation, or a refusal
+    DELETE /api/v1/atlas/{id}/relations/{edge_id}  take the edge off the canvas; the ledger keeps the mark
+
+READ-ONLY WITH RESPECT TO EVIDENCE, WITH EXACTLY ONE EXCEPTION — and it is written here rather than
+discovered later. Through C2 this was absolute: nothing in this file wrote to a post, created a
+percept or accepted a suggestion. `POST /relations` is the exception. Drawing a line from one image
+to another IS the curator's decision, so that route appends the one relation mark `compare_views`
+produced to the two posts the writer named. It can do nothing else: it cannot edit a mark, cannot
+delete one, cannot touch a region, and every other route in this file remains as read-only as it
+was. A refusal writes nothing at all.
+
+Everything else these routes write is still only where a picture sits on a canvas and which
+relations have been drawn between them.
 """
 from __future__ import annotations
 
@@ -48,6 +59,7 @@ from pydantic import BaseModel, Field
 
 from backend.database import post_collection
 from backend.services import atlas_plan as P
+from backend.services import atlas_relation as R
 from backend.services import atlas_service as A
 
 router = APIRouter()
@@ -161,7 +173,14 @@ async def get_atlas_view(atlas_id: str):
     if doc is None:
         raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
     ids = [str(n.get("post_id")) for n in doc.get("nodes") or []]
-    return A.atlas_view(doc, await _posts_for(ids))
+    posts = await _posts_for(ids)
+    view = A.atlas_view(doc, posts)
+    # C3: the edges carry ids; what each relation SAYS is read from the ledger here, on every
+    # request, exactly as the nodes' overlays are. Hydrated in the route rather than in
+    # `atlas_service` because the relation hydrator lives beside `compare_views`' vocabulary and
+    # `atlas_service` must stay importable with none of the Director on the path.
+    view["edges"] = R.hydrate_edges(doc, posts)
+    return view
 
 
 @router.post("/{atlas_id}/arrangement")
@@ -295,3 +314,107 @@ async def clear_plan(atlas_id: str):
     if updated is None:
         raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
     return {"atlas": A._out(updated), "plan": None}
+
+
+# ── C3: relation edges ───────────────────────────────────────────────────────
+
+class RelateRequest(BaseModel):
+    source_node: str
+    target_node: str
+    relation_role: str = ""     # the writer's own word for the relation, when they have one
+    left_ref: str = ""          # which mark on the source image
+    right_ref: str = ""         # which mark on the target image
+
+
+def _node_post(doc: Mapping[str, Any], node_id: str) -> Optional[str]:
+    for node in doc.get("nodes") or []:
+        if isinstance(node, Mapping) and str(node.get("node_id")) == str(node_id):
+            return str(node.get("post_id"))
+    return None
+
+
+@router.post("/{atlas_id}/relations")
+async def draw_relation(atlas_id: str, body: RelateRequest):
+    """A drawn line → M1's `compare_views` → a committed relation, or a refusal.
+
+    THE ONE ROUTE IN THIS FILE THAT WRITES TO A POST, and the gesture is the reason: a writer
+    dragging one image onto another has made the decision a review step would otherwise ask for.
+    C1's header said this router touches no post; C3 is the deliberate exception, and it is narrow
+    — it appends the one relation mark the actuator produced to the two posts the writer named,
+    and it can do nothing else.
+
+    REFUSAL IS 200, NOT 4xx. "These two images carry no marks to compare" is an answer about the
+    evidence, not a complaint about the request. An error status would make the surface render it
+    as a malfunction, and the writer would learn nothing about their corpus.
+    """
+    doc = await _atlas_or_404(atlas_id)
+
+    if body.source_node == body.target_node:
+        return {"refused": R.refusal(
+            R.REFUSED_SAME_NODE,
+            "a relation needs two different images; this line starts and ends on one",
+            source_node=body.source_node, target_node=body.target_node)}
+
+    source_post = _node_post(doc, body.source_node)
+    target_post = _node_post(doc, body.target_node)
+    missing = [n for n, p in ((body.source_node, source_post), (body.target_node, target_post))
+               if p is None]
+    if missing:
+        return {"refused": R.refusal(
+            R.REFUSED_UNKNOWN_NODE, f"this Atlas holds no node {', '.join(missing)}",
+            source_node=body.source_node, target_node=body.target_node)}
+
+    posts = await _posts_for([source_post, target_post])
+    unreadable = [p for p in (source_post, target_post) if p not in posts]
+    if unreadable:
+        # An unreadable endpoint is not an empty one. Saying which, rather than letting
+        # `compare_views` report "no marks", keeps the two facts apart.
+        return {"refused": R.refusal(
+            R.REFUSED_UNREADABLE, f"could not read post(s): {', '.join(unreadable)}",
+            source_node=body.source_node, target_node=body.target_node)}
+
+    outcome = await asyncio.to_thread(
+        R.relate,
+        [(source_post, posts[source_post]), (target_post, posts[target_post])],
+        source_node=body.source_node, target_node=body.target_node,
+        relation_role=body.relation_role, left_ref=body.left_ref, right_ref=body.right_ref)
+
+    if outcome.get("refused"):
+        # NOTHING IS PERSISTED on this path — not the edge, not a mark, not a placeholder.
+        return {"refused": outcome["refused"]}
+
+    mark = R.committed_relation(outcome["relation"], mark_id=R.new_mark_id())
+    # The collection is passed EXPLICITLY, never left to the service's default import. This is the
+    # only line in the Atlas that writes to a post, and a route that resolved its own collection
+    # would be one a test could not redirect — which is how a suite ends up writing to the real
+    # ledger while appearing to run against fakes.
+    written = await R.commit_relation_to_posts(mark, [source_post, target_post],
+                                               collection=post_collection)
+    if not written:
+        return {"refused": R.refusal(
+            R.REFUSED_UNREADABLE, "the relation was named but no post accepted the write",
+            source_node=body.source_node, target_node=body.target_node)}
+
+    entry = R.edge_entry(mark_id=mark["id"], source_node=body.source_node,
+                         target_node=body.target_node, spans=[source_post, target_post])
+    updated = await A.add_edge(atlas_id, entry)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
+
+    # Re-read so the edge is hydrated from the ledger exactly as a later page load will do it —
+    # if the write did not land, this is where the surface finds out rather than at reload.
+    return {"atlas": A._out(updated),
+            "edge": R.hydrate_edge(entry, await _posts_for([source_post, target_post]))}
+
+
+@router.delete("/{atlas_id}/relations/{edge_id}")
+async def remove_relation(atlas_id: str, edge_id: str):
+    """Take the edge off this canvas. The committed relation stays in the ledger.
+
+    The Atlas never owned the percept and does not get to destroy one. Removing the reference is
+    reversible — the relation can be drawn again, and it will find the mark still there.
+    """
+    updated = await A.remove_edge(atlas_id, edge_id)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
+    return {"atlas": A._out(updated), "removed": edge_id}
