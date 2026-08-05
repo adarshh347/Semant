@@ -85,7 +85,11 @@ class AssemblageCreate(BaseModel):
     name: str
     members: List[str] = Field(default_factory=list)
     rendering_intent: str
-    definition: Optional[str] = ""
+    # REQUIRED, and distinct from `rendering_intent`. The two do different work — what this
+    # thing IS, and what should happen on the page when it fires — and an assemblage that
+    # says one of them twice renders thinly: W4's live gate had the intent handed straight
+    # back as the passage. See `operators.create_assemblage`.
+    definition: str
     author: Optional[str] = ""
 
 

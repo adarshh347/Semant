@@ -193,7 +193,8 @@ def test_promote_brings_the_requires_closure(store, books, book_a_ontology):
 def test_promote_brings_assemblage_members(store, books, book_a_ontology):
     run(op_svc.operator_registry.create_assemblage(
         BOOK_A, "the_held_crossing", ["interiority", "threshold"],
-        rendering_intent="mine, in my words", author=AUTHOR))
+        rendering_intent="mine, in my words",
+        definition="what this compression is, in my writing", author=AUTHOR))
     out = promote("the_held_crossing")
 
     assert set(out["closure"]) == {"interiority", "threshold", "the_held_crossing"}
