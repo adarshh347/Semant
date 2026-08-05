@@ -105,6 +105,26 @@ export const writerService = {
     );
   },
 
+  // --- The portable ontology (W5) ---
+  // The author's cross-manuscript library. All four operations are explicit and
+  // author-committed; none is a canon write. Import is a LINKED COPY — a project copy
+  // versions independently, so editing it here cannot redefine another book's language.
+  async library(author) {
+    return json(await fetch(`${BASE}/library/${encodeURIComponent(author)}`), 'load library');
+  },
+  async promoteToLibrary(projectId, author, name) {
+    return json(await post(`${BASE}/${projectId}/library/promote`, { author, name }), 'promote');
+  },
+  async importFromLibrary(projectId, author, name) {
+    return json(await post(`${BASE}/${projectId}/library/import`, { author, name }), 'import');
+  },
+  async publishToLibrary(projectId, author, name) {
+    return json(await post(`${BASE}/${projectId}/library/publish`, { author, name }), 'publish');
+  },
+  async pullFromLibrary(projectId, author, name) {
+    return json(await post(`${BASE}/${projectId}/library/pull`, { author, name }), 'pull');
+  },
+
   // --- The loop ---
   // Parse only: the `/` ÷ `//` split, with no model called and nothing stored.
   async parse(projectId, text) {

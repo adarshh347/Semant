@@ -89,6 +89,19 @@ class AssemblageCreate(BaseModel):
     author: Optional[str] = ""
 
 
+# --- The portable ontology (W5) ---
+
+class LibraryOp(BaseModel):
+    """Promote / import / publish / pull, all of which name an author and an operator.
+
+    `author` is required and is what the library is keyed by. W5 is SINGLE-AUTHOR: a
+    library is one person's declared language, and importing across authors would put
+    prose in your book in a voice you never declared.
+    """
+    author: str
+    name: str
+
+
 # --- Running a block ---
 
 class BlockRun(BaseModel):
