@@ -7,7 +7,9 @@ import '@xyflow/react/dist/style.css';
 import AtlasImageNode from './AtlasImageNode.jsx';
 import AtlasClaimNode from './AtlasClaimNode.jsx';
 import AtlasPlanPanel from './AtlasPlanPanel.jsx';
+import AtlasWriterPanel from './AtlasWriterPanel.jsx';
 import { atlasService } from './atlasService.js';
+import { blockerFrom, seedBlocker } from './atlasDraft.js';
 import {
     ATLAS_NODE_TYPE, arrangementFrom, flowNodesFromView, positionsOf, refusalLines,
 } from './atlasDocument.js';
@@ -61,6 +63,17 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
     const [accepted, setAccepted] = useState(false);
     const [planError, setPlanError] = useState('');
 
+    // ── C5: the writer ──
+    // `storedPlan` is what the SERVER holds — the accepted seed — and is deliberately not `plan`,
+    // which tracks whatever was last proposed. Drafting from an unsaved proposal would compose an
+    // article from an argument the gate has not re-bound.
+    const [side, setSide] = useState('plan');
+    const [storedPlan, setStoredPlan] = useState(null);
+    const [draft, setDraft] = useState(null);
+    const [drafting, setDrafting] = useState(false);
+    const [acceptingDraft, setAcceptingDraft] = useState(false);
+    const [draftError, setDraftError] = useState('');
+
     // ── C3: relation edges ──
     // The last refusal, held only so it can be DRAWN on the line it refers to. It is never sent,
     // never stored, and is cleared by the next gesture — a refusal about one pair of photographs
@@ -91,10 +104,15 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
                 // model call on every page load would quietly replace what the writer accepted.
                 if (data?.plan) {
                     setPlan(data.plan);
+                    setStoredPlan(data.plan);
                     setClaims(data.plan.claims || []);
                     setThesis(data.plan.thesis || '');
                     setAccepted(true);
                 }
+                // A draft already on the document opens with it, in whatever state it was left —
+                // quarantined or accepted. Never re-drafted on load: composing runs producers, and
+                // a page refresh must not spend a run or replace prose the writer has read.
+                if (data?.draft) setDraft(data.draft);
             } catch (e) {
                 if (live) setError(e?.message || 'Could not open this Atlas.');
             }
@@ -204,6 +222,7 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
             // with the response is what makes a claim that lost its evidence go struck on screen.
             const stored = res?.plan || null;
             setPlan(stored);
+            setStoredPlan(stored);          // the seed the writer may now draft from
             setClaims(stored?.claims || []);
             setAccepted(true);
         } catch (e) {
@@ -215,6 +234,7 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
 
     const onDiscard = useCallback(async () => {
         setPlan(null);
+        setStoredPlan(null);
         setClaims([]);
         setAccepted(false);
         setPlanError('');
@@ -224,6 +244,81 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
             setPlanError(e?.message || 'The stored plan was not cleared.');
         }
     }, [accepted, atlasId, service]);
+
+    // ── C5: draft, accept, dismiss, export ──
+
+    const onDraft = useCallback(async () => {
+        if (drafting) return;
+        setDrafting(true);
+        setDraftError('');
+        try {
+            const res = await service.draftArticle(atlasId, {});
+            setDraft(res?.draft || null);
+        } catch (e) {
+            // The refusal IS the answer. `blockerFrom` reads the server's own sentence out of the
+            // 409 rather than replacing it with a status code.
+            setDraft(null);
+            setDraftError(blockerFrom(e));
+        } finally {
+            setDrafting(false);
+        }
+    }, [atlasId, drafting, service]);
+
+    const onAcceptDraft = useCallback(async () => {
+        if (acceptingDraft) return;
+        setAcceptingDraft(true);
+        setDraftError('');
+        try {
+            const res = await service.acceptDraft(atlasId, {});
+            // Trust what came back: the server records which manuscript the prose landed in, and
+            // the draft's state is now `accepted` because it left quarantine there, not here.
+            setDraft(res?.draft || null);
+        } catch (e) {
+            setDraftError(blockerFrom(e));
+        } finally {
+            setAcceptingDraft(false);
+        }
+    }, [acceptingDraft, atlasId, service]);
+
+    const onDismissDraft = useCallback(async () => {
+        setDraft(null);
+        setDraftError('');
+        try {
+            await service.dismissDraft(atlasId);
+        } catch (e) {
+            setDraftError(e?.message || 'The draft was not dismissed.');
+        }
+    }, [atlasId, service]);
+
+    const onExport = useCallback(async () => {
+        setDraftError('');
+        try {
+            const artifact = await service.exportDraft(atlasId);
+            // The artifact is a document, so it leaves as one. A blob rather than a server-side
+            // file: exporting must not become a second write path out of quarantine.
+            const blob = new Blob([JSON.stringify(artifact, null, 2)],
+                { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `atlas-${atlasId}-article.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            setDraftError(blockerFrom(e));
+        }
+    }, [atlasId, service]);
+
+    /** Reopen a cited percept on its own source image — M4's reopen target, C2's Differential. */
+    const onReopenPercept = useCallback((target) => {
+        if (target?.href && typeof window !== 'undefined') window.location.assign(target.href);
+    }, []);
+
+    // Why the writer cannot draft yet, computed from the STORED document rather than from the
+    // panel's own state — the seed is what the server accepted.
+    const writerBlocker = useMemo(
+        () => (draft ? null : seedBlocker({ nodes: view?.nodes || [], plan: storedPlan })),
+        [draft, storedPlan, view]);
 
     // What the canvas draws: the writer's current structure over the server's plan. Derived, never
     // stored — the claim column is laid out from the ORDER, so a reorder moves the cards.
@@ -405,11 +500,33 @@ export default function AtlasCanvas({ atlasId, service = atlasService }) {
                 </ReactFlow>
                 </div>
 
-                <AtlasPlanPanel
-                    thesis={thesis} onThesis={setThesis} onPlan={onPlan} planning={planning}
-                    plan={plan} claims={claims} onClaims={setClaims}
-                    onAccept={onAccept} onDiscard={onDiscard}
-                    accepting={accepting} accepted={accepted} error={planError} />
+                <div className="atlas-side">
+                    {/* Two surfaces, one order. The plan is judged before any prose exists, and
+                        the writer has nothing honest to draft from until it is. */}
+                    <div className="atlas-side-tabs" role="tablist" aria-label="Atlas mode">
+                        <button type="button" role="tab" aria-selected={side === 'plan'}
+                            className={`atlas-tab${side === 'plan' ? ' is-on' : ''}`}
+                            onClick={() => setSide('plan')}>Plan</button>
+                        <button type="button" role="tab" aria-selected={side === 'write'}
+                            className={`atlas-tab${side === 'write' ? ' is-on' : ''}`}
+                            onClick={() => setSide('write')}>Write</button>
+                    </div>
+
+                    {side === 'plan' ? (
+                        <AtlasPlanPanel
+                            thesis={thesis} onThesis={setThesis} onPlan={onPlan} planning={planning}
+                            plan={plan} claims={claims} onClaims={setClaims}
+                            onAccept={onAccept} onDiscard={onDiscard}
+                            accepting={accepting} accepted={accepted} error={planError} />
+                    ) : (
+                        <AtlasWriterPanel
+                            plan={storedPlan} draft={draft} blocker={writerBlocker}
+                            onDraft={onDraft} drafting={drafting}
+                            onAccept={onAcceptDraft} accepting={acceptingDraft}
+                            onDismiss={onDismissDraft} onExport={onExport}
+                            onReopen={onReopenPercept} error={draftError} />
+                    )}
+                </div>
             </div>
         </div>
     );

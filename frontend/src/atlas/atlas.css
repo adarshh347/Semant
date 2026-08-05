@@ -691,3 +691,140 @@
     background: var(--accent, #7B2D6B);
     box-shadow: 0 0 0 4px rgba(123, 45, 107, 0.15);
 }
+
+/* ── C5: the writer ──────────────────────────────────────────────────────────
+   The side column now holds two surfaces. `.atlas-plan` keeps its own width rule for the plan
+   panel; the shared column owns the sizing so switching tabs does not resize the canvas. */
+
+.atlas-side {
+    flex: 0 0 clamp(340px, 32vw, 520px);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-left: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+    background: var(--surface);
+}
+
+.atlas-side .atlas-plan,
+.atlas-side .atlas-writer {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    border-left: 0;
+}
+
+.atlas-side-tabs {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6) 0;
+    border-bottom: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+}
+
+.atlas-tab {
+    padding: var(--space-2) var(--space-4);
+    font: inherit;
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+}
+
+.atlas-tab.is-on {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+}
+
+.atlas-writer {
+    padding: var(--space-5) var(--space-6);
+}
+
+.atlas-h3 {
+    font-family: var(--font-display);
+    font-size: var(--fs-body);
+    margin: var(--space-4) 0 var(--space-2);
+}
+
+.atlas-w-note {
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+    margin: var(--space-2) 0 var(--space-3);
+}
+
+.atlas-w-stubs {
+    list-style: none;
+    margin: 0 0 var(--space-4);
+    padding: 0;
+}
+
+.atlas-w-stub {
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--line, rgba(23, 18, 26, 0.08));
+}
+
+/* A struck claim is dimmed, never hidden: the writer accepted a plan that included this refusal. */
+.atlas-w-stub.is-struck { opacity: 0.6; }
+.atlas-w-stub.is-struck .atlas-w-stub-text { text-decoration: line-through; }
+
+.atlas-w-stub-text { margin: 0 0 var(--space-2); font-size: var(--fs-small); }
+
+.atlas-w-stub-percepts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.atlas-w-p {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    font-size: var(--fs-tiny, 0.75rem);
+    color: var(--ink-muted);
+}
+
+.atlas-w-p.is-unbound { color: #A66273; }
+
+.atlas-w-status {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-3);
+}
+
+/* The quarantine label reads at full weight. A document that is only a proposal has to say so
+   more loudly than it says anything else. */
+.atlas-w-quarantine {
+    font-size: var(--fs-small);
+    font-weight: 600;
+}
+
+.atlas-w-quarantine.is-quarantined { color: #8A6D3B; }
+.atlas-w-quarantine.is-accepted { color: var(--ink-muted); }
+
+.atlas-w-counts { font-size: var(--fs-small); color: var(--ink-muted); }
+.atlas-w-warn { color: #A66273; }
+
+.atlas-w-article {
+    margin: var(--space-4) 0;
+    padding: var(--space-4);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+    border-radius: var(--radius-2, 6px);
+    background: var(--bg);
+}
+
+.atlas-w-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+.atlas-w-cannot {
+    margin: var(--space-2) 0 0;
+    font-size: var(--fs-small);
+    color: #A66273;
+}

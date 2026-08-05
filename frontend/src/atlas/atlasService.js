@@ -16,6 +16,23 @@ const post = (url, body) =>
         body: JSON.stringify(body ?? {}),
     });
 
+/**
+ * Like `json`, but carries the server's `detail` onto the thrown error.
+ *
+ * C5's refusals ARE the answer — "every claim in this plan was refused" is what the writer needs
+ * to read, and the plain helper above would replace it with "Failed to draft (409)". Used only
+ * where the body is worth more than the status.
+ */
+async function jsonOrDetail(res, action) {
+    if (res.ok) return res.json();
+    let detail = null;
+    try { detail = (await res.json())?.detail ?? null; } catch { /* not every error has a body */ }
+    const err = new Error(`Failed to ${action} (${res.status})`);
+    err.detail = detail;
+    err.status = res.status;
+    throw err;
+}
+
 export const atlasService = {
     async list() {
         return json(await fetch(`${BASE}/`), 'list atlases');
@@ -60,6 +77,27 @@ export const atlasService = {
     async removeRelation(id, edgeId) {
         return json(await fetch(`${BASE}/${id}/relations/${edgeId}`, { method: 'DELETE' }),
             'remove the relation');
+    },
+
+    // ── C5: the writer ──
+    /** The accepted plan → an executed chain → M3's prose → M4's live percepts. The slow one:
+     *  this runs the producers. Refusals arrive as a 409 whose detail is the writer's sentence. */
+    async draftArticle(id, { why = '' } = {}) {
+        return jsonOrDetail(await post(`${BASE}/${id}/draft`, { why }), 'draft the article');
+    },
+    /** The drafted passages → the manuscript. The one call that takes prose out of quarantine. */
+    async acceptDraft(id, payload = {}) {
+        return jsonOrDetail(await post(`${BASE}/${id}/draft/accept`, payload),
+            'accept the draft');
+    },
+    /** Drop the draft. The accepted plan and the arrangement survive it. */
+    async dismissDraft(id) {
+        return json(await fetch(`${BASE}/${id}/draft`, { method: 'DELETE' }),
+            'dismiss the draft');
+    },
+    /** The M4 perceptual-article artifact. A read: exporting accepts nothing. */
+    async exportDraft(id) {
+        return jsonOrDetail(await fetch(`${BASE}/${id}/draft/export`), 'export the article');
     },
 };
 

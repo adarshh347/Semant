@@ -495,6 +495,39 @@ async def save_plan(atlas_id: str, plan: Optional[Mapping[str, Any]], *,
     return doc
 
 
+async def save_draft(atlas_id: str, draft: Optional[Mapping[str, Any]], *,
+                     now: Optional[str] = None, collection=None) -> Optional[Dict[str, Any]]:
+    """Store the quarantined article draft (C5), or clear it with `None`.
+
+    A whole replacement, for the same reason the plan is: an article is one structure, and half of
+    one composition beside half of another would carry an `epistemic` computed from neither.
+
+    WHY THIS MAY HOLD GEOMETRY WHEN A NODE MAY NOT. `assert_no_percept_data` forbids a node from
+    carrying geometry because a node REFERENCES a committed percept, and a copy of the ledger can
+    silently disagree with it. A draft carries geometry for the opposite reason: the percepts its
+    sentences rest on are the draft's OWN quarantined suggestions, produced by the run that
+    composed it and committed nowhere. There is no ledger row for them to drift from. Dropping
+    them would leave an article whose live percepts could never be drawn again — the export would
+    show prose with empty figures beside it, which is precisely the unfalsifiable document this
+    circuit exists to refuse.
+
+    Nothing about a post is touched here. No percept is committed, no suggestion accepted.
+    """
+    coll = _collection(collection)
+    doc = await coll.find_one({"_id": str(atlas_id)})
+    if doc is None:
+        return None
+    stamp = now or utc_now()
+    stored = dict(draft) if draft else None
+    await coll.update_one({"_id": str(atlas_id)},
+                          {"$set": {"draft": stored, "updated_at": stamp}})
+    doc = dict(doc)
+    doc["draft"] = stored
+    doc["updated_at"] = stamp
+    assert_no_percept_data(doc)
+    return doc
+
+
 async def list_atlases(*, limit: int = 20, collection=None) -> List[Dict[str, Any]]:
     cursor = _collection(collection).find({}).sort("created_at", -1).limit(limit)
     out: List[Dict[str, Any]] = []

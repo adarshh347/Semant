@@ -31,6 +31,25 @@ Atlas document does and does not contain is inspectable rather than asserted in 
 can `curl` it and see there is no percept data in there. The second assembles the drawable view
 from the ledger at read time, which is where percept truth is allowed to appear.
 
+ATLAS C5 adds the writer — four more, over M3's composition and M4's resolver:
+
+    POST   /api/v1/atlas/{id}/draft          the accepted plan → EXECUTED, composed, quarantined
+    POST   /api/v1/atlas/{id}/draft/accept   the drafted passages → the manuscript
+    DELETE /api/v1/atlas/{id}/draft          dismiss the draft; the plan and the images stay
+    GET    /api/v1/atlas/{id}/draft/export   the M4 perceptual-article artifact
+
+WHY DRAFTING RUNS PRODUCERS AND PLANNING DOES NOT. M3 refuses to compose from a plan. A plan says
+what WOULD be produced; only a run says what was, and an article written from the former is
+indistinguishable from one that was earned. So `POST /draft` executes the accepted plan's percept
+chain first and composes against that chain's provenance. It is the most expensive route in this
+file and the only one that runs a producer, which is why nothing calls it implicitly — no draft is
+composed on page load, on accept, or on arrangement.
+
+WHAT DRAFTING STILL DOES NOT DO. The percepts a draft rests on are SUGGESTIONS: quarantined, held
+inside the draft, committed to no post. `POST /draft` writes exactly one thing — the draft on the
+Atlas document — and `POST /draft/accept` writes exactly one more, a manuscript. Neither accepts a
+mark, edits a region, or touches the ledger.
+
 ATLAS C3 adds relation edges — two more, over M1's `compare_views`:
 
     POST   /api/v1/atlas/{id}/relations            a drawn line → a committed relation, or a refusal
@@ -58,6 +77,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.database import post_collection
+from backend.services import atlas_draft as D
 from backend.services import atlas_plan as P
 from backend.services import atlas_relation as R
 from backend.services import atlas_service as A
@@ -418,3 +438,188 @@ async def remove_relation(atlas_id: str, edge_id: str):
     if updated is None:
         raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
     return {"atlas": A._out(updated), "removed": edge_id}
+
+
+# ── C5: the writer ───────────────────────────────────────────────────────────
+
+class DraftRequest(BaseModel):
+    why: str = ""
+
+
+class AcceptDraftRequest(BaseModel):
+    manuscript_id: str = ""     # append to this manuscript; blank opens a new one
+    chapter_id: str = ""        # append to this chapter; blank opens one for the reading
+    title: str = ""
+
+
+def _draft_or_404(doc: Mapping[str, Any]) -> Dict[str, Any]:
+    draft = doc.get("draft")
+    if not isinstance(draft, Mapping) or not draft:
+        raise HTTPException(status_code=409,
+                            detail="this Atlas holds no draft; draft the article first")
+    return dict(draft)
+
+
+@router.post("/{atlas_id}/draft")
+async def draft_article(atlas_id: str, body: DraftRequest):
+    """The accepted plan → an executed chain → M3's prose → M4's live percepts. QUARANTINED.
+
+    THE ORDER IS M3's AND IS NOT NEGOTIABLE. The stored plan is re-bound against the corpus as it
+    is now (a percept that has stopped resolving is refused here, before a word is written), its
+    percept chain is EXECUTED, and only then is the article composed against that chain's
+    provenance. Composing straight from the accepted plan would describe evidence that may never
+    have been produced.
+
+    THE PRODUCERS RUN FOR REAL, and their output stays quarantined. `run_corpus_plan` routes each
+    step to its image's context; what comes back are suggestions, held in the draft, accepted into
+    no post. The composition is synchronous and GPU-bound, so it runs off the event loop.
+    """
+    doc = await _atlas_or_404(atlas_id)
+
+    blocker = D.draft_blocker(doc)
+    if blocker is not None:
+        # 409, not 422: the request is well formed and the Atlas is simply not in a state that can
+        # be drafted from. The reason travels as the writer's own sentence.
+        raise HTTPException(status_code=409,
+                            detail={"reason": blocker, "message": D.blocker_text(blocker)})
+
+    corpus, memory = await _corpus_memory(doc, why=body.why)
+    argument, notes = D.argument_from_stored_plan(doc, memory)
+    if argument is None:
+        raise HTTPException(status_code=409, detail={
+            "reason": D.BLOCK_NO_CLAIMS, "message": D.blocker_text(D.BLOCK_NO_CLAIMS),
+            "notes": notes})
+
+    plan = getattr(argument, "plan", None)
+    if plan is None or not getattr(plan, "steps", ()):
+        # An argument that binds but plans no chain has nothing to execute, and M3 would compose
+        # nothing from it. Said plainly rather than returned as an empty article.
+        raise HTTPException(status_code=409, detail={
+            "reason": D.BLOCK_ALL_REFUSED,
+            "message": ("No percept chain could be planned for this argument, so there is nothing "
+                        "to run and nothing to write from."),
+            "notes": notes})
+
+    from backend.services.director.corpus_execution import build_corpus_context, run_corpus_plan
+
+    run_id = f"atlas:{atlas_id}:draft"
+    posts = await _posts_for(P.node_post_ids(doc))
+    cctx = build_corpus_context(corpus, posts, run_id=run_id)
+    try:
+        chain = await asyncio.to_thread(run_corpus_plan, plan, memory, cctx, chain_id=run_id)
+        article = await asyncio.to_thread(
+            D.compose_from_chain, argument, memory,
+            provenance=chain.provenance, suggestions=cctx.all_suggestions(), run_id=run_id)
+    finally:
+        cctx.close()
+
+    notes = list(notes) + [f"composed against a run of {len(chain.provenance.lineage)} step(s)"]
+    stored = D.stored_draft(article, thesis=str((doc.get("plan") or {}).get("thesis") or ""),
+                            run_id=run_id, notes=notes, now=A.utc_now())
+    D.assert_draft_is_quarantined(stored)
+
+    updated = await A.save_draft(atlas_id, stored)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
+    return {"atlas": A._out(updated), "draft": stored}
+
+
+@router.get("/{atlas_id}/draft/export")
+async def export_draft(atlas_id: str):
+    """The M4 perceptual-article artifact: the resolved article, exactly as the renderer eats it.
+
+    A read, and only a read. Exporting does not accept, commit or publish anything — the payload
+    carries `committed: false` all the way out, and the passages are included so what Accept WOULD
+    write can be inspected before anyone accepts it.
+    """
+    doc = await _atlas_or_404(atlas_id)
+    draft = _draft_or_404(doc)
+    article = draft.get("article") or {}
+    return {
+        "atlas_id": atlas_id,
+        "title": str(doc.get("title") or ""),
+        "state": draft.get("state"),
+        "committed": bool(draft.get("committed")),
+        "thesis": draft.get("thesis"),
+        "run_id": draft.get("run_id"),
+        "drafted_at": draft.get("drafted_at"),
+        "article": article,
+        "passages": D.passages(article),
+        "limits": D.limit_lines(article),
+        "notes": draft.get("notes") or [],
+    }
+
+
+@router.post("/{atlas_id}/draft/accept")
+async def accept_draft(atlas_id: str, body: AcceptDraftRequest):
+    """The drafted passages → the manuscript. The one place prose leaves quarantine.
+
+    THE CURATOR'S GESTURE, and nothing more automatic than that. What crosses is what M3 composed;
+    what M3 refused crosses as a marked limits passage rather than as body text, because a limit
+    pasted in as prose becomes a finding on the next read. Every passage keeps the step_ids it
+    rests on, so an accepted paragraph is still checkable after it has left the canvas.
+
+    The draft is marked accepted rather than deleted. A writer who accepted an article and then
+    wants to see what it rested on should find it still there, saying it has been accepted.
+    """
+    doc = await _atlas_or_404(atlas_id)
+    draft = _draft_or_404(doc)
+    if str(draft.get("state")) == D.DRAFT_ACCEPTED:
+        raise HTTPException(status_code=409,
+                            detail="this draft has already been accepted into a manuscript")
+
+    article = draft.get("article") or {}
+    items = D.passages(article)
+    if not items:
+        raise HTTPException(status_code=409, detail=(
+            "this draft composed no prose; there is nothing to accept. Read the refusals on it."))
+
+    blocks = D.passages_to_text_blocks(items)
+    from backend.services.manuscript_service import ManuscriptService
+    svc = ManuscriptService()
+
+    title = (body.title or str(draft.get("thesis") or "") or str(doc.get("title") or "")).strip()
+    manuscript_id = (body.manuscript_id or "").strip()
+    chapter_id = (body.chapter_id or "").strip()
+    if not manuscript_id:
+        created = await svc.create_manuscript(title)
+        manuscript_id = str(created.get("id"))
+        chapter_id = ""
+    if not chapter_id:
+        # A reading lands as its own chapter. Appending scenes into whatever chapter happened to
+        # be first would interleave one argument's prose with another's.
+        holder = await svc.add_chapter(manuscript_id, title)
+        if holder is None:
+            raise HTTPException(status_code=404, detail=f"no manuscript '{manuscript_id}'")
+        chapter_id = str((holder.get("chapters") or [])[-1].get("id"))
+
+    scene = await svc.add_scene(manuscript_id, chapter_id, title, blocks)
+    if scene is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"no manuscript '{manuscript_id}' or chapter '{chapter_id}'")
+
+    stored = dict(draft)
+    stored["state"] = D.DRAFT_ACCEPTED
+    stored["accepted_at"] = A.utc_now()
+    stored["manuscript_id"] = manuscript_id
+    stored["chapter_id"] = chapter_id
+    stored["scene_id"] = str((scene or {}).get("id") or "")
+    updated = await A.save_draft(atlas_id, stored)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
+    return {"atlas": A._out(updated), "draft": stored,
+            "manuscript_id": manuscript_id, "scene": scene, "passages": len(items)}
+
+
+@router.delete("/{atlas_id}/draft")
+async def dismiss_draft(atlas_id: str):
+    """Drop the draft. The accepted plan, the images and the arrangement all stay.
+
+    Dismissing is cheap and repeatable BECAUSE the plan survives it: the writer can draft again
+    from the same argument and get prose composed against a fresh run.
+    """
+    updated = await A.save_draft(atlas_id, None)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
+    return {"atlas": A._out(updated), "draft": None}
