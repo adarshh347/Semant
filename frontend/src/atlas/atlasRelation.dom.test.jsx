@@ -197,12 +197,14 @@ describe('the header', () => {
         expect(container.textContent).toContain('1 no longer in the ledger');
     });
 
-    it('counts no relations on a canvas where none were drawn', async () => {
+    it('claims no relations on a canvas where none were drawn', async () => {
         // The word itself appears in plan mode's header note (a binding is "not a relation
-        // between images"), so this asserts the absence of the COUNT rather than of the word —
-        // which is what the header is actually claiming.
+        // between images") and, since T2, in the Scout's "Suggest relations" action. So this
+        // asserts the absence of the CLAIM rather than of the word: no count, and nothing about
+        // the ledger. An offer to look is not a claim to have found.
         await mount(<AtlasWorkspace atlasId="atlas_1" service={fakeService()} initialMode={MODE_PLAN} />);
         expect(container.querySelector('.atlas-rel-count')).toBeNull();
         expect(container.textContent).not.toMatch(/\d+ relations? drawn/);
+        expect(container.textContent).not.toContain('no longer in the ledger');
     });
 });

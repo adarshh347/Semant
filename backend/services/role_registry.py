@@ -206,6 +206,19 @@ _THINKERS: List[Role] = [
         default_model="openai/gpt-oss-120b",
         provider="groq",
     ),
+    Role(
+        name="relation_scout",
+        kind=RoleKind.THINKER,
+        # ATLAS T2. Note what this summary does NOT say: it proposes PAIRS, never relations. The
+        # ceiling is `interpretive` because that is the strongest thing any thinker may reach, but
+        # a candidate is weaker still — it asserts nothing at all until `compare_views` has ground
+        # it. The role is declared here so the Scout's model is rebindable like every other
+        # thinker's, and so nothing has to invent a second table of who-uses-which-model.
+        summary="Proposes which pairs of images on an Atlas might repay comparison, and why.",
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        default_model="openai/gpt-oss-120b",
+        provider="groq",
+    ),
 ]
 
 

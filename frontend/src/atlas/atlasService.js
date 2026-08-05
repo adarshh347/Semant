@@ -107,6 +107,18 @@ export const atlasService = {
     async drawRelation(id, body) {
         return json(await post(`${BASE}/${id}/relations`, body), 'draw the relation');
     },
+    // ── T2: the Scout ──
+    /**
+     * Ask which pairs might repay comparison. Resolves to `{candidates, dropped}` or `{refused}`.
+     *
+     * PROPOSES ONLY. Nothing this returns is stored on either side of the wire. A candidate becomes
+     * a relation solely by going through `drawRelation` above — which runs `compare_views` and can
+     * refuse — and there is deliberately no endpoint that would shortcut that.
+     */
+    async scout(id, { limit = 0 } = {}) {
+        return json(await post(`${BASE}/${id}/scout`, { limit }), 'ask the scout');
+    },
+
     /** Take the edge off the canvas. The committed relation stays in the ledger. */
     async removeRelation(id, edgeId) {
         return json(await fetch(`${BASE}/${id}/relations/${edgeId}`, { method: 'DELETE' }),

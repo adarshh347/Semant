@@ -11,7 +11,12 @@ import {
     positionsOf, refusalLines,
 } from './atlasDocument.js';
 import { acceptPayload, bindingEdges, claimFlowNodes } from './atlasPlan.js';
-import { connectionRefusal, refusedEdge, relationEdges, relationSummary } from './atlasRelation.js';
+import {
+    connectionRefusal, refusalLine, refusedEdge, relationEdges, relationSummary,
+} from './atlasRelation.js';
+import {
+    droppedLines, ghostEdges, scoutRefusalLine, scoutSummary, withoutCandidate,
+} from './atlasScout.js';
 
 /**
  * ATLAS T1 — the workspace: one Atlas document, seen through whichever mode is on.
@@ -71,6 +76,21 @@ export default function AtlasWorkspace({
     // linger over a canvas the writer has moved on from.
     const [relationRefusal, setRelationRefusal] = useState(null);
     const [drawing, setDrawing] = useState(false);
+
+    // ── T2: the Scout ──
+    // Candidates are SESSION state and nothing else. A ghost is a model's hunch about which pair
+    // might repay comparison; it is not a relation, it is not stored, and it is gone on reload.
+    // Keeping it out of the document is what makes "nothing here is a relation yet" true rather
+    // than merely printed.
+    const [candidates, setCandidates] = useState([]);
+    const [scoutDropped, setScoutDropped] = useState([]);
+    const [scoutRefusal, setScoutRefusal] = useState(null);
+    const [scouting, setScouting] = useState(false);
+    const [confirming, setConfirming] = useState('');
+    // A refusal that OUTLIVES the ghost it came from. Confirming removes the candidate either
+    // way; if the answer was "no", the reason has to stay on screen, or the writer sees a
+    // suggestion vanish and learns nothing about why the comparison would not ground.
+    const [scoutAnswers, setScoutAnswers] = useState([]);
 
     // What the SERVER is known to hold. Saves diff against these, not against the last render, so
     // a drag that ends where it started and a note re-typed to its own text both send nothing.
@@ -273,6 +293,42 @@ export default function AtlasWorkspace({
 
     // ── C3: draw a relation ──────────────────────────────────────────────────
 
+    /**
+     * THE ONE PATH BY WHICH A RELATION IS EVER PERSISTED (T2).
+     *
+     * Drawing by hand and confirming a Scout candidate are the SAME call. That is structural, not
+     * tidy: with two paths, one would eventually learn to trust the model's hunch and skip the
+     * comparison, and a ghost would become a stored edge without `compare_views` ever having
+     * looked at a mark. With one, there is no such path to write.
+     *
+     * It returns the outcome rather than swallowing it, because the two callers need different
+     * things from a refusal — the drag leaves it on the attempted line, the Scout keeps it as text
+     * that outlives the candidate.
+     */
+    const groundRelation = useCallback(async (source, target) => {
+        try {
+            const res = await service.drawRelation(atlasId, {
+                source_node: source, target_node: target,
+            });
+            if (res?.refused) {
+                setRelationRefusal(res.refused);
+                return { refused: res.refused };
+            }
+            // Re-read rather than splicing the returned edge in. The edge's words come from the
+            // ledger, and a client that assembled them from its own request would be the one place
+            // this surface could disagree with what was actually committed.
+            await refreshOverlays();
+            return { edge: res?.edge || null };
+        } catch (e) {
+            const refused = {
+                reason: 'unavailable', source_node: source, target_node: target,
+                detail: e?.message || 'the comparison could not be run',
+            };
+            setRelationRefusal(refused);
+            return { refused };
+        }
+    }, [atlasId, refreshOverlays, service]);
+
     const onConnect = useCallback(async (connection) => {
         if (drawing) return;
         setRelationRefusal(null);
@@ -285,28 +341,73 @@ export default function AtlasWorkspace({
 
         setDrawing(true);
         try {
-            const res = await service.drawRelation(atlasId, {
-                source_node: connection.source, target_node: connection.target,
-            });
-            if (res?.refused) {
-                // Drawn on the attempted line, persisted nowhere.
-                setRelationRefusal(res.refused);
-                return;
-            }
-            // Re-read rather than splicing the returned edge in. The edge's words come from the
-            // ledger, and a client that assembled them from its own request would be the one place
-            // this surface could disagree with what was actually committed.
-            await refreshOverlays();
-        } catch (e) {
-            setRelationRefusal({
-                reason: 'unavailable', source_node: connection.source,
-                target_node: connection.target,
-                detail: e?.message || 'the comparison could not be run',
-            });
+            await groundRelation(connection.source, connection.target);
         } finally {
             setDrawing(false);
         }
-    }, [atlasId, drawing, refreshOverlays, service]);
+    }, [drawing, groundRelation]);
+
+    // ── T2: the Scout ────────────────────────────────────────────────────────
+
+    /** Ask a model which pairs might repay comparison. It proposes; it never asserts. */
+    const onScout = useCallback(async () => {
+        if (scouting) return;
+        setScouting(true);
+        setScoutRefusal(null);
+        setRelationRefusal(null);
+        try {
+            const res = await service.scout(atlasId);
+            if (res?.refused) {
+                setCandidates([]);
+                setScoutDropped(res.dropped || []);
+                setScoutRefusal(res.refused);
+                return;
+            }
+            setCandidates(res?.candidates || []);
+            setScoutDropped(res?.dropped || []);
+            setScoutAnswers([]);
+        } catch (e) {
+            setCandidates([]);
+            setScoutRefusal({ reason: 'model_unavailable',
+                detail: e?.message || 'the scout could not be reached' });
+        } finally {
+            setScouting(false);
+        }
+    }, [atlasId, scouting, service]);
+
+    /**
+     * Confirm a candidate — which RUNS the comparison, and may refuse.
+     *
+     * The candidate is removed either way, because it has been answered. When the answer was a
+     * refusal the REASON is kept: a suggestion that simply vanished would teach the writer nothing
+     * about why that pair cannot be compared.
+     */
+    const onConfirmCandidate = useCallback(async (candidate) => {
+        if (!candidate || confirming) return;
+        const pair = `${candidate.from}~${candidate.to}`;
+        setConfirming(pair);
+        setRelationRefusal(null);
+        try {
+            // Only the PAIR is sent. Nothing the model said about it travels to the gate — the
+            // rationale is a hunch, and a hunch must not colour what the comparison finds by
+            // looking at marks.
+            const outcome = await groundRelation(candidate.from, candidate.to);
+            if (outcome?.refused) {
+                setScoutAnswers((prev) => [
+                    ...prev.filter((a) => a.pair !== pair),
+                    { pair, line: refusalLine(outcome.refused) },
+                ]);
+            }
+        } finally {
+            setCandidates((prev) => withoutCandidate(prev, candidate.from, candidate.to));
+            setConfirming('');
+        }
+    }, [confirming, groundRelation]);
+
+    /** Dismiss a candidate. Nothing was persisted, so nothing is undone — it simply goes. */
+    const onDismissCandidate = useCallback((candidate) => {
+        setCandidates((prev) => withoutCandidate(prev, candidate.from, candidate.to));
+    }, []);
 
     // ── what the canvas draws ────────────────────────────────────────────────
 
@@ -338,9 +439,15 @@ export default function AtlasWorkspace({
         return [
             ...(showPlan && planView ? bindingEdges(planView) : []),
             ...relationEdges(view),
+            // T2's ghosts: dotted, unarrowed, greyed, and deliberately the weakest mark here.
+            // They are session state — a hunch about which pair might repay comparison, not a
+            // relation — and they carry an id prefix that cannot collide with a stored edge's.
+            ...ghostEdges(candidates),
             ...(refused ? [refused] : []),
         ];
-    }, [planView, relationRefusal, showPlan, view]);
+    }, [candidates, planView, relationRefusal, showPlan, view]);
+
+    const scout = scoutSummary(candidates, scoutDropped);
 
     // ── what the header says ─────────────────────────────────────────────────
 
@@ -442,6 +549,13 @@ export default function AtlasWorkspace({
                             </button>
                         ))}
                     </div>
+                    {/* T2. The word is "Suggest", never "Find": the Scout has not looked at a
+                        photograph and cannot find anything in one. */}
+                    <button type="button" className="atlas-scout-go" data-scout
+                        onClick={onScout} disabled={scouting}
+                        title="Ask a model which pairs might repay comparison. It proposes only — each one still has to be grounded by the comparison before it becomes a relation.">
+                        {scouting ? 'asking…' : 'Suggest relations'}
+                    </button>
                     <div className="atlas-head-status" aria-live="polite">
                         {status && <span className="atlas-status">{status}</span>}
                     </div>
@@ -463,6 +577,69 @@ export default function AtlasWorkspace({
             )}
 
             {error && view && <div className="atlas-banner is-error" role="alert">{error}</div>}
+
+            {/* T2: what the Scout proposed, and what it was not allowed to propose. */}
+            {scoutRefusal && (
+                <div className="atlas-banner is-refused" role="alert">
+                    {scoutRefusalLine(scoutRefusal)}
+                </div>
+            )}
+
+            {droppedLines(scoutDropped).length > 0 && (
+                // Drops are REPORTED, never silent: how often a model overreaches is the
+                // observable that says whether to trust its suggestions at all.
+                <ul className="atlas-banner is-dropped" role="note">
+                    {droppedLines(scoutDropped).map((line) => <li key={line}>{line}</li>)}
+                </ul>
+            )}
+
+            {scoutAnswers.length > 0 && (
+                // A refusal that outlives the ghost that prompted it. The candidate is gone
+                // because it was answered; the answer is what the writer needed.
+                <ul className="atlas-banner is-refused" role="alert">
+                    {scoutAnswers.map((a) => <li key={a.pair}>{a.pair}: {a.line}</li>)}
+                </ul>
+            )}
+
+            {candidates.length > 0 && (
+                <div className="atlas-scout" role="region" aria-label="Suggested comparisons">
+                    <p className="atlas-scout-lede">
+                        {scout.proposed} pair{scout.proposed === 1 ? '' : 's'} a model thinks might
+                        repay comparison.{' '}
+                        {/* The sentence that keeps the whole gate honest, on the surface where the
+                            ghosts are, not buried in a tooltip. */}
+                        <em className="atlas-note">
+                            nothing here is a relation yet — confirming runs the comparison, which
+                            can refuse
+                        </em>
+                    </p>
+                    <ul className="atlas-scout-list">
+                        {candidates.map((c) => {
+                            const busy = confirming === `${c.from}~${c.to}`;
+                            return (
+                                <li key={`${c.from}~${c.to}`} className="atlas-scout-item"
+                                    data-candidate={`${c.from}~${c.to}`}>
+                                    <span className="atlas-scout-pair">{c.from} ↔ {c.to}</span>
+                                    <span className="atlas-scout-why">{c.rationale}</span>
+                                    <button type="button" className="atlas-scout-confirm"
+                                        data-confirm={`${c.from}~${c.to}`}
+                                        disabled={busy || drawing}
+                                        onClick={() => onConfirmCandidate(c)}
+                                        title="Run the comparison on this pair. It may refuse.">
+                                        {busy ? 'comparing…' : 'confirm'}
+                                    </button>
+                                    <button type="button" className="atlas-scout-dismiss"
+                                        data-dismiss={`${c.from}~${c.to}`}
+                                        onClick={() => onDismissCandidate(c)}
+                                        title="Take this suggestion off the canvas. Nothing was stored.">
+                                        dismiss
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
+            )}
 
             {mode === MODE_LIGHT_TABLE ? (
                 <AtlasLightTable
