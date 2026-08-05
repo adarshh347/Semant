@@ -131,6 +131,21 @@ run_collection = database.get_collection("runs")
 # drawn edge (a real `compare_views` percept, C3) asserts one.
 atlas_collection = database.get_collection("atlases")
 
+# --- The curated corpus (ATLAS · L1) ---
+# corpus_collection: one document per named, ORDERED walk — a title, why the sequence exists, and
+# the images in the order the curator put them, each with a note about why it sits where it sits.
+#
+# C1 deliberately did not create this, and said why: a corpus collection would be "a fifth place a
+# corpus can be defined, and the one that nothing else reads." That was true while a corpus was
+# only ever a list typed into a picker and thrown away when the canvas closed. It stops being true
+# the moment a walk has to be REUSED — reopened, re-sequenced, handed to a sensory pass and then to
+# a writer as the same object — so this collection exists on the condition that it is the one that
+# IS read: `corpus_ref.kind == "curated"` points here, and `POST /atlas` resolves it.
+#
+# It holds no percept data, for the same reason the Atlas does not: an entry caching a `photo_url`
+# would go stale the moment a post was re-uploaded, in a document that looks authoritative.
+corpus_collection = database.get_collection("corpora")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""
