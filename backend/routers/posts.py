@@ -2728,10 +2728,14 @@ async def orchestrate(post_id: str, req: OrchestrateRequest):
     # Hydrate working memory from the REAL post — what the Director actually has to plan against.
     def _ids(items):
         return [str(x.get("id")) for x in (items or []) if isinstance(x, dict) and x.get("id")]
+    from backend.services import cross_image
     memory = build_memory(
         image_ref=str(post.get("photo_url") or post_id), post_id=post_id,
         region_ids=_ids(post.get("region_annotations")),
-        mark_ids=_ids(post.get("visual_marks")),
+        # C3's cross-image guard: a relation spanning two photographs is committed into both, and
+        # is not a mark this single image carries. Counting it would let `connect_marks` here
+        # "relate two marks" one of which is a claim about a different picture.
+        mark_ids=_ids(cross_image.native_marks(post.get("visual_marks"))),
         ground_ids=_ids(post.get("grounds")),
         percept_ids=_ids(post.get("percepts")),
         phrase=req.phrase)

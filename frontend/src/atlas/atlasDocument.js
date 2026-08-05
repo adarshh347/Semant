@@ -19,6 +19,19 @@
 export const ATLAS_NODE_TYPE = 'atlasImage';
 
 /**
+ * The namespace for nodes that are NOT images of the corpus.
+ *
+ * C4 puts claim cards on the same canvas, and they go through the same React Flow node array as
+ * the pictures — because that array is what React Flow measures, and an unmeasured node cannot
+ * anchor a connector. What they must never do is reach the ARRANGEMENT: the Atlas document holds
+ * where each image sits, and a claim has no place in it. So the two live together on the canvas
+ * and part company at the save boundary, by id.
+ */
+export const CLAIM_NODE_PREFIX = 'claim:';
+
+export const isClaimNodeId = (id) => String(id ?? '').startsWith(CLAIM_NODE_PREFIX);
+
+/**
  * T1 — the modes.
  *
  * A mode is a LENS over one Atlas document, not an application. Both modes read the same `/view`,
@@ -30,12 +43,18 @@ export const ATLAS_NODE_TYPE = 'atlasImage';
  */
 export const MODE_CANVAS = 'canvas';
 export const MODE_LIGHT_TABLE = 'light-table';
+// C4. Plan mode is the Canvas plus an argument drawn over it — the SAME renderer, given claim
+// cards and binding connectors as well as images. A third lens, not a third surface, which is
+// exactly the claim T1's framework makes and the first real test of it.
+export const MODE_PLAN = 'plan';
 
 export const ATLAS_MODES = [
     { key: MODE_CANVAS, label: 'Canvas',
         hint: 'arrange the corpus in space — position is a thinking aid' },
     { key: MODE_LIGHT_TABLE, label: 'Light Table',
         hint: 'scan the corpus in a grid — read, note, and ask for a machine read' },
+    { key: MODE_PLAN, label: 'Plan',
+        hint: 'ask what argument this corpus could carry — and see what it refuses' },
 ];
 
 export function isMode(value) {
@@ -144,6 +163,7 @@ export function flowNodesFromView(view, { onOpen = null, onMachineRead = null } 
 export function notesOf(nodes) {
     const out = {};
     (nodes || []).forEach((n) => {
+        if (isClaimNodeId(n?.id)) return;      // a claim card is not an image and holds no notes
         if (!n?.id) return;
         out[String(n.id)] = (n.data?.notes || [])
             .map((note) => ({
@@ -199,9 +219,12 @@ export function withNoteAdded(notes, noteId) {
 export function positionsOf(nodes) {
     const out = {};
     (nodes || []).forEach((n) => {
+        // A claim card shares the canvas but is not part of the arrangement — it is laid out from
+        // the argument's ORDER, and the document has no node to move for it.
+        if (!n?.id || isClaimNodeId(n.id)) return;
         const x = finite(n?.position?.x);
         const y = finite(n?.position?.y);
-        if (n?.id && x !== null && y !== null) out[String(n.id)] = { x, y };
+        if (x !== null && y !== null) out[String(n.id)] = { x, y };
     });
     return out;
 }

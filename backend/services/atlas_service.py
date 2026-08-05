@@ -39,6 +39,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 from uuid import uuid4
 
+from backend.services import cross_image
+
 CONTRACT_VERSION = 1
 
 # How a corpus can be named. Both resolve to an ordered tuple of post ids; neither invents one.
@@ -346,6 +348,10 @@ def new_atlas_doc(*, atlas_id: str, corpus_ref: Any, post_ids: Sequence[str],
         # C3 fills this with the ids of real comparative percepts. Empty is not "no relations
         # found" — it is "none drawn", and the distinction is the whole reason edges are explicit.
         "edges": [],
+        # C4's accepted argument. Null until a writer accepts one. Kept SEPARATE from `edges` on
+        # purpose: an edge is a relation somebody produced, a plan is structure somebody proposed,
+        # and a document that stored them in one list would have no way left to tell them apart.
+        "plan": None,
         # C5's writer node. Null until a draft exists; a draft is a quarantined suggestion.
         "draft": None,
         "created_at": stamp,
@@ -365,6 +371,15 @@ _FORBIDDEN_NODE_KEYS = frozenset({
 # stricter than the guard on the node, because a note is free text a client composes and is
 # therefore the most inviting place for percept data to arrive wearing a disguise.
 _ALLOWED_NOTE_KEYS = frozenset({"note_id", "text"})
+
+
+# The same rule for C3's relation edges. An edge names a committed relation by id and says which
+# two nodes it runs between; what the relation SAYS — its role, its label, what kind of knowing it
+# is — belongs to the ledger and is read back at view time. An edge that cached the label could
+# disagree with the ledger about what was named, in a document that looks authoritative.
+_FORBIDDEN_EDGE_KEYS = frozenset({
+    "geometry", "label", "role", "epistemic_status", "provenance", "sources", "mask", "points",
+})
 
 
 def assert_no_percept_data(doc: Mapping[str, Any]) -> None:
@@ -399,6 +414,19 @@ def assert_no_percept_data(doc: Mapping[str, Any]) -> None:
                     f"Atlas node '{node.get('node_id')}' has an author note carrying {extra}. "
                     "An author note is {note_id, text} — it is not evidence and never becomes a "
                     "percept.")
+
+    # C3 extends the same discipline to relation edges. An edge names a committed relation by id
+    # and says which two nodes it runs between; what the relation SAYS is the ledger's and is read
+    # back at view time. An edge that cached the label could disagree with the ledger about what
+    # was named, silently, in a document that looks authoritative.
+    for edge in doc.get("edges") or []:
+        if not isinstance(edge, Mapping):
+            continue
+        leaked = sorted(set(edge.keys()) & _FORBIDDEN_EDGE_KEYS)
+        if leaked:
+            raise ValueError(
+                f"Atlas edge '{edge.get('edge_id')}' carries percept data: {leaked}. "
+                "An edge references the relation by id; it never copies it.")
 
 
 # ── the view: the document, hydrated from the ledger at read time ────────────
@@ -441,14 +469,21 @@ def hydrate_node(node: Mapping[str, Any],
     if post is None:
         out.update({"readable": False, "image_ref": "", "title": "",
                     "grounds": [], "regions": [], "marks": [], "percepts": [],
-                    "withheld": 0,
+                    "relations": [], "withheld": 0,
                     "unreadable_reason": f"post:{node.get('post_id')} could not be read"})
         return out
 
     grounds, w1 = _committed(post.get("grounds"))
-    marks, w2 = _committed(post.get("visual_marks"))
+    committed_marks, w2 = _committed(post.get("visual_marks"))
     regions, _ = _committed(post.get("region_annotations"))
     percepts, w3 = _committed(post.get("percepts"))
+
+    # THE CROSS-IMAGE GUARD (C3). A `compare_views` relation is committed into BOTH posts it
+    # spans, so it is sitting right here in `visual_marks` — and it is not a finding about this
+    # photograph. It is split out rather than dropped: a writer looking at the rotunda should be
+    # able to learn it has been related to the façade, but the node's overlays and its caption
+    # count must answer "what does THIS picture show", and the answer excludes it.
+    marks, relations = cross_image.split_marks(committed_marks)
 
     out.update({
         "readable": True,
@@ -458,6 +493,9 @@ def hydrate_node(node: Mapping[str, Any],
         "regions": regions,
         "marks": marks,
         "percepts": percepts,
+        # Named separately and never added into any total on this node — a relation that spans
+        # two images belongs to the sequence, not to either frame.
+        "relations": relations,
         "withheld": w1 + w2 + w3,
         "unreadable_reason": None,
     })
@@ -481,6 +519,9 @@ def atlas_view(doc: Mapping[str, Any],
         "corpus_ref": doc.get("corpus_ref") or normalize_corpus_ref(None),
         "nodes": nodes,
         "edges": list(doc.get("edges") or []),
+        # C4. Absent on an Atlas created before plan mode, and `None` reads the same as "no plan
+        # accepted yet" — which is what it is.
+        "plan": doc.get("plan"),
         "draft": doc.get("draft"),
         "unreadable": unreadable,
         "updated_at": doc.get("updated_at"),
@@ -561,6 +602,82 @@ async def save_notes(atlas_id: str, notes: Sequence[Mapping[str, Any]], *,
     await coll.update_one({"_id": str(atlas_id)},
                           {"$set": {"nodes": merged, "updated_at": stamp}})
     return {"doc": doc, "refused": refused}
+
+
+async def add_edge(atlas_id: str, edge: Mapping[str, Any], *,
+                   now: Optional[str] = None, collection=None) -> Optional[Dict[str, Any]]:
+    """Record a drawn relation (C3). Appends; never rewrites the list.
+
+    `$push`, deliberately, and not a read-modify-`$set` of the whole array. Two writers drawing
+    edges on the same Atlas at once would each have read the list before the other wrote, and the
+    second `$set` would silently drop the first edge — the same class of loss that a wholesale
+    array replace has already caused in this codebase once.
+    """
+    coll = _collection(collection)
+    doc = await coll.find_one({"_id": str(atlas_id)})
+    if doc is None:
+        return None
+    stamp = now or utc_now()
+    entry = dict(edge)
+    # Guarded BEFORE the write, on the document as it will be, so a bad edge never lands.
+    assert_no_percept_data({**doc, "edges": [*(doc.get("edges") or []), entry]})
+    await coll.update_one({"_id": str(atlas_id)},
+                          {"$push": {"edges": entry}, "$set": {"updated_at": stamp}})
+    doc = dict(doc)
+    doc["edges"] = [*(doc.get("edges") or []), entry]
+    doc["updated_at"] = stamp
+    return doc
+
+
+async def remove_edge(atlas_id: str, edge_id: str, *, now: Optional[str] = None,
+                      collection=None) -> Optional[Dict[str, Any]]:
+    """Take a relation off the canvas.
+
+    THE LEDGER IS NOT TOUCHED. The committed relation stays exactly where it is; what is removed
+    is this Atlas's reference to it. The Atlas never owned the percept, so it has no business
+    deleting one — and a canvas gesture that quietly destroyed committed evidence is precisely the
+    irreversible act this whole architecture is arranged to prevent.
+    """
+    coll = _collection(collection)
+    doc = await coll.find_one({"_id": str(atlas_id)})
+    if doc is None:
+        return None
+    stamp = now or utc_now()
+    kept = [e for e in (doc.get("edges") or [])
+            if not (isinstance(e, Mapping) and str(e.get("edge_id")) == str(edge_id))]
+    await coll.update_one({"_id": str(atlas_id)},
+                          {"$set": {"edges": kept, "updated_at": stamp}})
+    doc = dict(doc)
+    doc["edges"] = kept
+    doc["updated_at"] = stamp
+    return doc
+
+
+async def save_plan(atlas_id: str, plan: Optional[Mapping[str, Any]], *,
+                    now: Optional[str] = None, collection=None) -> Optional[Dict[str, Any]]:
+    """Store the accepted argument plan (C4), or clear it with `None`.
+
+    The plan is a WHOLE replacement rather than a merge. An argument is one structure — claims in
+    an order, each bound or refused together — and patching it field by field would let a document
+    end up holding half of one decomposition and half of another, with a `complete` flag computed
+    from neither.
+
+    Nothing about a post is touched here. The plan names images by post id and actuators by name;
+    the ledger is not written, no percept is created, and no suggestion is accepted.
+    """
+    coll = _collection(collection)
+    doc = await coll.find_one({"_id": str(atlas_id)})
+    if doc is None:
+        return None
+    stamp = now or utc_now()
+    stored = dict(plan) if plan else None
+    await coll.update_one({"_id": str(atlas_id)},
+                          {"$set": {"plan": stored, "updated_at": stamp}})
+    doc = dict(doc)
+    doc["plan"] = stored
+    doc["updated_at"] = stamp
+    assert_no_percept_data(doc)
+    return doc
 
 
 async def list_atlases(*, limit: int = 20, collection=None) -> List[Dict[str, Any]]:
