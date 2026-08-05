@@ -97,10 +97,12 @@ const toLightTable = async (service = fakeService()) => {
 // ── 1. a mode is a lens over one document ───────────────────────────────────
 
 describe('the mode switcher', () => {
-    it('offers both ways of looking, with the current one marked', async () => {
+    it('offers every way of looking, with the current one marked', async () => {
         await mount(<AtlasWorkspace atlasId="atlas_1" service={fakeService()} />);
         const modes = [...container.querySelectorAll('.atlas-mode')];
-        expect(modes).toHaveLength(2);
+        // Canvas, Light Table, and C4's Plan. Exactly one is on: a mode is a lens, and you are
+        // never looking through two at once.
+        expect(modes).toHaveLength(3);
         expect(modes.filter((m) => m.getAttribute('aria-pressed') === 'true')).toHaveLength(1);
     });
 

@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-    ATLAS_MODES, ATLAS_NODE_TYPE, MACHINE_READ_INTENTION, MODE_CANVAS, MODE_LIGHT_TABLE,
+    ATLAS_MODES, ATLAS_NODE_TYPE, MACHINE_READ_INTENTION, MODE_CANVAS, MODE_LIGHT_TABLE, MODE_PLAN,
     arrangementFrom, finite, flowNodesFromView, isMode, notePatchesFrom, notesOf, perceptSummary,
     positionsOf, refusalLines, withNoteAdded, withNoteEdit,
 } from './atlasDocument.js';
@@ -192,7 +192,10 @@ describe('refusalLines', () => {
 
 describe('the modes', () => {
     it('are a closed, tiny list — a mode is a lens, not an app', () => {
-        expect(ATLAS_MODES.map((m) => m.key)).toEqual([MODE_CANVAS, MODE_LIGHT_TABLE]);
+        // C4's plan mode is the third, and it is the framework's first real test: it swaps the
+        // renderer's INPUTS (claim cards, binding connectors) and reuses the Canvas itself.
+        expect(ATLAS_MODES.map((m) => m.key))
+            .toEqual([MODE_CANVAS, MODE_LIGHT_TABLE, MODE_PLAN]);
     });
 
     it('recognises only the modes that exist', () => {

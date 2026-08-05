@@ -613,3 +613,371 @@
 [data-theme='dark'] .lt-note-text {
     border-color: var(--line, rgba(250, 247, 245, 0.14));
 }
+
+/* ── ATLAS C4: plan mode ─────────────────────────────────────────────────────
+ *
+ * The panel sits BESIDE the canvas rather than over it. An argument and the pictures it is about
+ * have to be readable at the same time — a plan behind a drawer would make a writer choose between
+ * seeing a claim and seeing what it points at, and the whole gate is about keeping the two joined.
+ *
+ * Refusals are styled to be READ, at prose weight and in the flow of the list. Nothing here is
+ * collapsed, greyed to illegibility, or moved below a fold: a claim nothing can carry is the most
+ * useful sentence on this surface.
+ */
+
+.atlas-with-plan {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.atlas-with-plan .atlas-canvas {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.atlas-plan {
+    flex: 0 0 clamp(320px, 28vw, 420px);
+    overflow-y: auto;
+    padding: var(--space-5) var(--space-6);
+    border-left: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+    background: var(--surface);
+}
+
+.atlas-thesis {
+    width: 100%;
+    padding: var(--space-3);
+    font: inherit;
+    color: var(--ink);
+    background: var(--surface-2, var(--surface));
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.16));
+    border-radius: var(--radius-md, 6px);
+    resize: vertical;
+    margin-bottom: var(--space-3);
+}
+
+.atlas-plan-note,
+.atlas-plan-counts {
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+    margin: var(--space-3) 0 0;
+}
+
+.atlas-plan-complete {
+    font-size: var(--fs-small);
+    margin: var(--space-2) 0 var(--space-4);
+}
+
+.atlas-plan-complete.is-false { color: #A66273; }
+.atlas-plan-complete.is-true { color: var(--ink-muted); }
+
+.atlas-banner.is-empty,
+.atlas-banner.is-edited {
+    background: var(--surface-2, rgba(23, 18, 26, 0.03));
+    color: var(--ink);
+}
+
+/* ── the claim list ─────────────────────────────────────────────────────── */
+
+.atlas-claims {
+    list-style: none;
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+    counter-reset: claim;
+}
+
+.atlas-claim-row {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.12));
+    border-radius: var(--radius-md, 6px);
+    background: var(--surface-2, transparent);
+}
+
+.atlas-claim-row.is-struck { border-style: dashed; }
+
+.atlas-claim-row-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+.atlas-claim-move { display: inline-flex; gap: var(--space-1, 4px); }
+
+.atlas-claim-move button {
+    font: inherit;
+    font-size: var(--fs-caption);
+    padding: 2px var(--space-2);
+    color: var(--ink-muted);
+    background: transparent;
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.14));
+    border-radius: var(--radius-sm, 4px);
+    cursor: pointer;
+}
+
+.atlas-claim-move button[disabled] { opacity: 0.35; cursor: not-allowed; }
+
+.atlas-claim-status {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
+    color: var(--ink-muted);
+}
+
+.atlas-claim-status.is-refused { color: #A66273; }
+
+.atlas-claim-edit {
+    width: 100%;
+    font: inherit;
+    color: var(--ink);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px dashed var(--line, rgba(23, 18, 26, 0.18));
+    padding: var(--space-1, 4px) 0;
+    resize: vertical;
+}
+
+.atlas-claim-row.is-struck .atlas-claim-edit { text-decoration: line-through; }
+
+.atlas-claim-stale,
+.atlas-claim-caveat,
+.atlas-claim-why {
+    font-size: var(--fs-caption);
+    color: #A66273;
+    margin: var(--space-2) 0 0;
+}
+
+/* ── one percept line ───────────────────────────────────────────────────── */
+
+.atlas-p-list {
+    list-style: none;
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-1, 4px);
+}
+
+.atlas-p-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+}
+
+.atlas-p-fn { font-weight: 600; color: var(--ink); }
+.atlas-p-act { font-family: var(--font-mono); }
+.atlas-p-ep,
+.atlas-p-img,
+.atlas-p-span { font-family: var(--font-mono); opacity: 0.8; }
+
+/* A refused percept is not dimmed into the background — it is the line a writer most needs. */
+.atlas-p-row.is-unbound .atlas-p-why { color: #A66273; }
+
+.atlas-p-cut {
+    margin-left: auto;
+    font: inherit;
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line, rgba(23, 18, 26, 0.2));
+    cursor: pointer;
+}
+
+.atlas-plan-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+}
+
+.atlas-plain {
+    font: inherit;
+    color: var(--ink-muted);
+    background: transparent;
+    border: 0;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.atlas-plan-accepted {
+    margin-top: var(--space-3);
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+}
+
+/* ── a claim, on the canvas ─────────────────────────────────────────────── */
+
+.atlas-claim {
+    padding: var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.14));
+    border-left: 3px solid var(--accent, #7B2D6B);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 2px rgba(23, 18, 26, 0.06), 0 8px 24px rgba(23, 18, 26, 0.05);
+    font-size: var(--fs-small);
+}
+
+/* Dashed, and the accent bar drops away: a refused claim keeps its place in the argument and
+   stops looking like something that carries. */
+.atlas-claim.is-struck {
+    border-style: dashed;
+    border-left-color: #A66273;
+    background: var(--surface-2, var(--surface));
+}
+
+.atlas-claim-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+}
+
+.atlas-claim-n { font-family: var(--font-mono); font-size: var(--fs-caption); }
+.atlas-claim-of { opacity: 0.5; }
+
+.atlas-claim-text { margin: 0 0 var(--space-2); line-height: 1.4; }
+
+.atlas-claim-percepts,
+.atlas-claim-unbound {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: grid;
+    gap: 2px;
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+}
+
+.atlas-claim-unbound { color: #A66273; }
+
+.atlas-percept { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.atlas-percept-fn { font-weight: 600; color: var(--ink); }
+.atlas-percept-act { font-family: var(--font-mono); }
+.atlas-percept-ep,
+.atlas-percept-span { font-family: var(--font-mono); opacity: 0.8; }
+
+.atlas-claim-reach {
+    margin: var(--space-3) 0 0;
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+}
+
+/* ── the connectors ─────────────────────────────────────────────────────── */
+
+/* Dashed on purpose, and never solid: what a line asserts here is that a percept WOULD resolve.
+   C3's relation edges are real produced percepts and will read as solid. */
+.atlas-canvas .react-flow__edge.atlas-edge path {
+    stroke: var(--ink-muted, rgba(23, 18, 26, 0.45));
+    stroke-dasharray: 6 5;
+    stroke-width: 1.5;
+}
+
+.atlas-canvas .react-flow__edge.is-challenge path { stroke: #A66273; }
+
+.atlas-canvas .react-flow__edge .react-flow__edge-text {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    fill: var(--ink-muted);
+}
+
+/* An endpoint the layout needs, not an affordance — nobody drags a binding into existence. */
+.atlas-handle {
+    width: 6px;
+    height: 6px;
+    background: var(--line, rgba(23, 18, 26, 0.25));
+    border: 0;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* ── ATLAS C3: relation edges ────────────────────────────────────────────────
+ *
+ * A RELATION IS NOT A BINDING, and the two must never be mistaken for one another at a glance.
+ *
+ *   C4 binding   dashed · no arrow · muted ink   · claim → image · "supports · measured"
+ *   C3 relation  SOLID  · arrow    · accent ink  · image ↔ image · "kinship · interpretive"
+ *   a refusal    dotted · no arrow · warning ink · the attempted line, persisted nowhere
+ *
+ * The arrow is not decoration: `compare_views` records a left and a right, and "the façade
+ * prepares the rotunda" is not its own converse.
+ */
+
+.atlas-canvas .react-flow__edge.atlas-relation path {
+    stroke: var(--accent, #7B2D6B);
+    stroke-width: 2;
+    stroke-dasharray: none;                 /* solid — a produced percept, not a proposal */
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation .react-flow__edge-text {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    fill: var(--ink);
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation .react-flow__edge-textbg {
+    fill: var(--surface);
+}
+
+/* An edge whose relation has left the ledger STAYS on the canvas and stops looking like
+   evidence. "Never drawn" and "drawn, then uncommitted" are different facts. */
+.atlas-canvas .react-flow__edge.atlas-relation.is-stale path {
+    stroke: var(--ink-subtle, rgba(23, 18, 26, 0.35));
+    stroke-width: 1.5;
+    stroke-dasharray: 2 4;
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation.is-stale .react-flow__edge-text {
+    fill: #A66273;
+}
+
+/* The line a writer attempted that could not be grounded. Dotted, warning-coloured, no arrow —
+   nothing was established, so nothing may look established. It is never persisted. */
+.atlas-canvas .react-flow__edge.atlas-relation.is-refused path {
+    stroke: #A66273;
+    stroke-width: 1.5;
+    stroke-dasharray: 1 5;
+    stroke-linecap: round;
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation.is-refused .react-flow__edge-text {
+    fill: #A66273;
+    font-style: italic;
+}
+
+/* The one draggable affordance on this canvas. Bigger than the layout handle it sits opposite,
+   because it is a thing a person is meant to find and pull. */
+.atlas-handle.is-draw {
+    width: 11px;
+    height: 11px;
+    background: var(--accent, #7B2D6B);
+    opacity: 0.55;
+    pointer-events: all;
+    cursor: crosshair;
+}
+
+.atlas-handle.is-draw:hover {
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(123, 45, 107, 0.18);
+}
+
+.atlas-rel-count { color: var(--ink-muted); }
+.atlas-rel-stale { color: #A66273; }
+
+/* While a relation is being dragged, every landing point grows. A 6px target is findable with a
+   mouse only by accident, and a gesture this consequential should not depend on precision — the
+   handle is where a claim about two photographs comes to rest. */
+.atlas-canvas .react-flow__pane.connecting .atlas-handle,
+.atlas-canvas.is-connecting .atlas-handle {
+    width: 16px;
+    height: 16px;
+    opacity: 0.9;
+    background: var(--accent, #7B2D6B);
+    box-shadow: 0 0 0 4px rgba(123, 45, 107, 0.15);
+}
