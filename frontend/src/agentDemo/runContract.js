@@ -84,7 +84,7 @@ export function normalizeRunView(raw) {
         intention: str(v.intention),
         mode: RUN_MODES.includes(v.mode) ? v.mode : DEFAULT_MODE,
         corpus: arr(v.corpus).map(normalizeCorpusImage),
-        rounds: arr(v.rounds),
+        rounds: arr(v.rounds).map(normalizeRound),
         question: v.question && typeof v.question === 'object' ? normalizeQuestion(v.question) : null,
         stop_reason: orNull(v.stop_reason) === undefined ? null : (v.stop_reason ?? null),
         weakest_link: numOrNull(v.weakest_link),
@@ -97,6 +97,51 @@ export function normalizeRunView(raw) {
 export function normalizeCorpusImage(raw) {
     const v = raw && typeof raw === 'object' ? raw : {};
     return { post_id: str(v.post_id), image_url: str(v.image_url), title: str(v.title) };
+}
+
+/**
+ * One planned step → something renderable.
+ *
+ * THE SERVER SENDS OBJECTS, NOT STRINGS. A live `plan.steps` entry is
+ * `{step_id, actuator, params, note}`; `RunProgress` rendered the entry directly as a React
+ * child, which React refuses for an object — so the whole `/agent` page white-screened with
+ * "Objects are not valid as a React child" the moment any run finished a round.
+ *
+ * The fixture said `steps: ['pressure_zone', 'rhythm']`, which is why nobody saw it: the same
+ * fixture drift PR #132 found for `ref`, in the next field along. Strings are still accepted
+ * here — a step that really is one stays one — so this widens the contract rather than swapping
+ * it, and an older server keeps working.
+ */
+export function normalizeStep(raw, index = 0) {
+    if (typeof raw === 'string') {
+        return { key: `${raw}-${index}`, label: raw, actuator: raw, note: '', image: '' };
+    }
+    const v = raw && typeof raw === 'object' ? raw : {};
+    const actuator = str(v.actuator);
+    const stepId = str(v.step_id);
+    return {
+        // `step_id` is unique per round and per image; the index is the fallback for a server
+        // that did not send one, so two steps on the same actuator never collide as React keys.
+        key: stepId || `${actuator || 'step'}-${index}`,
+        // What the step DID, not its id: the id carries the planner and the post id, which is
+        // provenance rather than something a reader of the progress list needs.
+        label: actuator || stepId || 'step',
+        actuator,
+        note: str(v.note),
+        image: str((v.params && v.params.image) || ''),
+    };
+}
+
+/** One round, with its plan's steps made renderable. */
+export function normalizeRound(raw, index = 0) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    const plan = v.plan && typeof v.plan === 'object' ? v.plan : {};
+    return {
+        ...v,
+        round: typeof v.round === 'number' ? v.round : index + 1,
+        weakest_link: numOrNull(v.weakest_link),
+        plan: { ...plan, steps: arr(plan.steps).map(normalizeStep) },
+    };
 }
 
 /**
