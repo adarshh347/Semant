@@ -91,21 +91,20 @@ def is_available() -> bool:
 
 
 def device() -> str:
-    """MPS on Apple Silicon, CUDA where it exists, CPU as the honest last resort.
+    """CUDA where it exists, MPS on Apple Silicon, CPU as the honest last resort.
 
-    MPS first is not a preference, it is what the spike actually ran on: Ultralytics'
+    MPS is here because it is what the spike actually ran on: Ultralytics'
     `SAM3SemanticPredictor` on `device="mps"` worked first try, and neither the reference repo
-    nor the `sam3-apple-silicon` fork was needed.
+    nor the `sam3-apple-silicon` fork was needed. This module was for a long time the ONLY one
+    that knew that; the resolution now lives in `torch_device` so every adapter knows it.
+
+    `indexed=True` because Ultralytics wants the ordinal — `cuda:0`, not `cuda`. The docstring
+    used to lead with "MPS first" while the code checked CUDA first; the code was right (see
+    `torch_device` on why the order is nearly unobservable anyway) and the sentence is now fixed
+    rather than the behaviour.
     """
-    try:
-        import torch
-        if torch.cuda.is_available():
-            return "cuda:0"
-        if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
-            return "mps"
-    except Exception:
-        pass
-    return "cpu"
+    from backend.services.torch_device import resolve
+    return resolve(indexed=True)
 
 
 def load(*, conf: float = DEFAULT_CONF, imgsz: int = DEFAULT_IMGSZ) -> float:

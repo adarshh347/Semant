@@ -43,8 +43,9 @@ def is_available() -> bool:
 
 
 def _device() -> str:
-    import torch
-    return "cuda" if torch.cuda.is_available() else "cpu"
+    """cuda → mps → cpu, resolved centrally (`torch_device`) so this box's answer is one answer."""
+    from backend.services.torch_device import resolve
+    return resolve()
 
 
 def _load() -> None:
