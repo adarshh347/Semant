@@ -144,6 +144,10 @@ describe('nothing commits until the author names it', () => {
         container.querySelector(`#asm-intent-${SUGGESTION.id}`),
         'the body arrives before the mind does, and the room goes quiet',
       );
+      typeInto(
+        container.querySelector(`#asm-definition-${SUGGESTION.id}`),
+        'the crossing she notices only once the room has gone quiet behind her',
+      );
     });
     await act(async () => { byTestId('commit-assemblage').click(); });
 
@@ -151,7 +155,39 @@ describe('nothing commits until the author names it', () => {
       name: 'the_held_crossing',
       members: ['interiority', 'threshold', 'hush'],
       rendering_intent: 'the body arrives before the mind does, and the room goes quiet',
+      definition: 'the crossing she notices only once the room has gone quiet behind her',
     });
+  });
+
+  it('leaves the DEFINITION blank, because that field must be the author own', async () => {
+    // The strawman seeds the intent only. Pre-filling the definition with the same
+    // sentence is what made W4's live gate hand the intent back as the passage.
+    await mount();
+    await act(async () => { byTestId('name-assemblage').click(); });
+    expect(container.querySelector(`#asm-intent-${SUGGESTION.id}`).value)
+      .toBe(SUGGESTION.strawman.rendering_intent);
+    expect(container.querySelector(`#asm-definition-${SUGGESTION.id}`).value).toBe('');
+  });
+
+  it('will not commit an assemblage that says the same thing twice', async () => {
+    await mount();
+    await act(async () => { byTestId('name-assemblage').click(); });
+    await act(async () => {
+      typeInto(container.querySelector(`#asm-name-${SUGGESTION.id}`), 'echo');
+      typeInto(container.querySelector(`#asm-intent-${SUGGESTION.id}`), 'the same sentence');
+      typeInto(container.querySelector(`#asm-definition-${SUGGESTION.id}`), 'the same sentence');
+    });
+    expect(byTestId('commit-assemblage').disabled).toBe(true);
+  });
+
+  it('will not commit an assemblage with no definition', async () => {
+    await mount();
+    await act(async () => { byTestId('name-assemblage').click(); });
+    await act(async () => {
+      typeInto(container.querySelector(`#asm-name-${SUGGESTION.id}`), 'x');
+      typeInto(container.querySelector(`#asm-intent-${SUGGESTION.id}`), 'mine');
+    });
+    expect(byTestId('commit-assemblage').disabled).toBe(true);
   });
 
   it('will not commit an assemblage with no intent of the author own', async () => {
@@ -197,6 +233,7 @@ describe('the feed has no route to the canon', () => {
     await act(async () => {
       typeInto(container.querySelector(`#asm-name-${SUGGESTION.id}`), 'x');
       typeInto(container.querySelector(`#asm-intent-${SUGGESTION.id}`), 'mine');
+      typeInto(container.querySelector(`#asm-definition-${SUGGESTION.id}`), 'what it is');
     });
     await act(async () => { byTestId('commit-assemblage').click(); });
 

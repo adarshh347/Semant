@@ -256,7 +256,8 @@ def test_the_strawman_adds_no_reading_of_its_own():
 def test_authoring_stores_kind_members_with_versions_and_the_authors_intent(store, ontology):
     op = run(op_svc.operator_registry.create_assemblage(
         PROJECT, "the_held_crossing", ["interiority", "threshold", "hush"],
-        rendering_intent="the body arrives before the mind does, and the room goes quiet"))
+        rendering_intent="the body arrives before the mind does, and the room goes quiet",
+        definition="the crossing she only notices once the room has gone quiet behind her"))
 
     assert op["kind"] == asm.ASSEMBLAGE_KIND
     assert op["rendering_intent"] == \
@@ -264,6 +265,60 @@ def test_authoring_stores_kind_members_with_versions_and_the_authors_intent(stor
     assert [m["name"] for m in op["members"]] == ["interiority", "threshold", "hush"]
     # lineage records the members AS THEY STOOD
     assert all(m["version"] == 1 for m in op["members"])
+
+
+def test_an_assemblage_needs_a_definition_as_well_as_an_intent(store, ontology):
+    """The W4 live gate echoed the intent back as the passage. This is why.
+
+    `definition` used to default to `rendering_intent`, so the operator reached the prompt
+    saying one sentence twice and carrying nothing else. A thin operator renders thinly, and
+    an instruction repeated is the likeliest thing for a model to hand straight back.
+    """
+    with pytest.raises(op_svc.OperatorError, match="needs a definition as well as"):
+        run(op_svc.operator_registry.create_assemblage(
+            PROJECT, "thin", ["interiority", "threshold"],
+            rendering_intent="the body arrives before the mind does"))
+
+
+def test_an_assemblage_saying_the_same_thing_twice_is_refused(store, ontology):
+    same = "the body arrives before the mind does"
+    with pytest.raises(op_svc.OperatorError, match="same text for its definition"):
+        run(op_svc.operator_registry.create_assemblage(
+            PROJECT, "echo", ["interiority", "threshold"],
+            rendering_intent=same, definition=same))
+
+
+def test_an_assemblage_with_both_is_stored(store, ontology):
+    op = run(op_svc.operator_registry.create_assemblage(
+        PROJECT, "the_held_crossing", ["interiority", "threshold"],
+        rendering_intent="let the quiet land after the crossing, never before",
+        definition="the crossing she notices only once the room has gone quiet behind her"))
+    assert op["definition"] != op["rendering_intent"]
+    assert op["kind"] == asm.ASSEMBLAGE_KIND
+
+
+def test_an_operator_that_says_one_thing_twice_is_warned_about(store, ontology, monkeypatch):
+    """A WARNING for plain operators, not a refusal — it is the author's ontology.
+
+    Operators predating the rule are still renderable; they just say so in the diagnostics,
+    where the author can act on it.
+    """
+    same = "one held moment, no summary"
+    run(op_svc.operator_registry.create(PROJECT, "thin_one", same, rendering_intent=same))
+    _stub_model(monkeypatch)
+
+    directive = dsl.parse_block("/ thin_one\n").directives[0]
+    result = run(render_svc.render_directive(PROJECT, directive))
+
+    assert result.status == "ok"          # rendered, not refused
+    assert any("says the same thing" in d for d in result.diagnostics)
+
+
+def test_a_well_formed_operator_draws_no_warning(store, ontology, monkeypatch):
+    _stub_model(monkeypatch)
+    directive = dsl.parse_block("/ threshold\n").directives[0]
+    result = run(render_svc.render_directive(PROJECT, directive))
+    assert not any("says the same thing" in d for d in result.diagnostics)
 
 
 def test_an_assemblage_without_the_authors_intent_is_refused(store, ontology):
@@ -278,13 +333,14 @@ def test_a_corpus_string_cannot_be_a_member(store, ontology):
         with pytest.raises(op_svc.OperatorError, match="not an operator"):
             run(op_svc.operator_registry.create_assemblage(
                 PROJECT, "borrowed", ["interiority", bogus],
-                rendering_intent="mine, in my words"))
+                rendering_intent="mine, in my words",
+        definition="what this compression is, in my writing"))
 
 
 def test_an_assemblage_needs_at_least_two_members(store, ontology):
     with pytest.raises(op_svc.OperatorError, match="at least two members"):
         run(op_svc.operator_registry.create_assemblage(
-            PROJECT, "lonely", ["interiority"], rendering_intent="mine"))
+            PROJECT, "lonely", ["interiority"], rendering_intent="mine", definition="what it is"))
 
 
 def test_an_authored_cluster_stops_being_suggested(store, ontology, monkeypatch):
@@ -292,7 +348,8 @@ def test_an_authored_cluster_stops_being_suggested(store, ontology, monkeypatch)
     top = suggestions()[0]
     run(op_svc.operator_registry.create_assemblage(
         PROJECT, "the_held_crossing", [m["name"] for m in top["members"]],
-        rendering_intent="mine, in my words"))
+        rendering_intent="mine, in my words",
+        definition="what this compression is, in my writing"))
     assert suggestions() == []
 
 
@@ -308,7 +365,8 @@ def test_an_assemblage_renders_one_span_from_its_own_intent(store, ontology, mon
     _stub_model(monkeypatch, capture)
     run(op_svc.operator_registry.create_assemblage(
         PROJECT, "the_held_crossing", ["interiority", "threshold", "hush"],
-        rendering_intent="the body arrives before the mind does, and the room goes quiet"))
+        rendering_intent="the body arrives before the mind does, and the room goes quiet",
+        definition="the crossing she only notices once the room has gone quiet behind her"))
 
     directive = dsl.parse_block("/ the_held_crossing\n").directives[0]
     result = run(render_svc.render_directive(PROJECT, directive))
@@ -337,7 +395,8 @@ def test_lineage_is_not_a_render_input(store, ontology, monkeypatch):
     _stub_model(monkeypatch, capture)
     run(op_svc.operator_registry.create_assemblage(
         PROJECT, "the_held_crossing", ["interiority", "threshold", "hush"],
-        rendering_intent="mine, in my words"))
+        rendering_intent="mine, in my words",
+        definition="what this compression is, in my writing"))
 
     directive = dsl.parse_block("/ the_held_crossing\n").directives[0]
     result = run(render_svc.render_directive(PROJECT, directive))
@@ -364,7 +423,8 @@ def test_the_author_can_still_wire_a_member_with_requires(store, ontology, monke
     _stub_model(monkeypatch, capture)
     run(op_svc.operator_registry.create_assemblage(
         PROJECT, "the_held_crossing", ["interiority", "threshold", "hush"],
-        rendering_intent="mine, in my words"))
+        rendering_intent="mine, in my words",
+        definition="what this compression is, in my writing"))
     run(op_svc.operator_registry.set_relations(
         PROJECT, "the_held_crossing", [{"target": "hush", "kind": "requires"}]))
 
@@ -400,7 +460,8 @@ def test_no_assemblage_activity_touches_the_manuscript(store, ontology, monkeypa
     run(asm.dismiss(PROJECT, [m["name"] for m in top["members"]], top["support"]))
     run(op_svc.operator_registry.create_assemblage(
         PROJECT, "the_held_crossing", ["interiority", "threshold"],
-        rendering_intent="mine, in my words"))
+        rendering_intent="mine, in my words",
+        definition="what this compression is, in my writing"))
 
     after = run(ms_svc.manuscript_service.export_manuscript(manuscript_id))["content"]
     assert after == before

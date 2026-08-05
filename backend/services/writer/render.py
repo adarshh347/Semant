@@ -347,6 +347,29 @@ def _style_by_reference(orchestration: Dict[str, str]) -> Optional[str]:
     return None
 
 
+def _thin_operator_warnings(operators: Sequence[Dict[str, Any]]) -> List[str]:
+    """Operators whose `definition` and `rendering_intent` say the same thing.
+
+    A WARNING, not a refusal — it is the author's ontology and they may have meant it. But
+    it is worth saying, because it reliably produces the failure W4's gate hit live: an
+    operator carrying one sentence twice gives the render nothing to work from but an
+    instruction, and the likeliest thing to come back is that instruction. This is the
+    calibration axis (plan §9) showing up where the author can act on it — the same reason
+    an assemblage refuses outright, softened for operators that predate the rule.
+    """
+    out: List[str] = []
+    for op in operators:
+        definition = (op.get("definition") or "").strip()
+        intent = (op.get("rendering_intent") or "").strip()
+        if definition and intent and definition == intent:
+            out.append(
+                f"`{op.get('name')}` says the same thing for what it IS and for what should "
+                f"happen when it fires. Operators that thin tend to get their own sentence "
+                f"handed back — worth sharpening one of the two."
+            )
+    return out
+
+
 def _author_refusal(found: Dict[str, Any], manuscript_author: str) -> Optional[str]:
     """I5 ACROSS AUTHORS (W5). An operator another person declared may not render here.
 
@@ -577,8 +600,13 @@ async def render_directive(
     provenance["model"] = model
     passage, model_refusal, diagnostics = _parse_model_reply(raw)
     # A dangling or cyclic `requires` edge does not fail the span — the author's DIRECT
-    # request is still renderable — but it is never silent either.
-    diagnostics = list(requires_diagnostics) + diagnostics
+    # request is still renderable — but it is never silent either. Same for an operator
+    # thin enough that it is likely to echo.
+    diagnostics = (
+        list(requires_diagnostics)
+        + _thin_operator_warnings([found[n] for n in names if n in found] + pulled)
+        + diagnostics
+    )
 
     if model_refusal and not passage:
         await instrument.record(

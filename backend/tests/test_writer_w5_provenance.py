@@ -178,7 +178,8 @@ def test_w4_an_assemblage_render_resolves(store, scene, monkeypatch):
         run(op_svc.operator_registry.create(PROJECT, n, d))
     run(op_svc.operator_registry.create_assemblage(
         PROJECT, "the_held_crossing", ["interiority", "threshold", "hush"],
-        rendering_intent="the body arrives before the mind does"))
+        rendering_intent="the body arrives before the mind does",
+        definition="the crossing noticed only once the room is quiet"))
     _stub(monkeypatch)
 
     out = run(studio.run_block(PROJECT, "/ the_held_crossing\n",
@@ -221,7 +222,8 @@ def test_every_provenance_record_in_a_mixed_session_resolves(store, scene, monke
     # W4 — an assemblage, rendered and accepted
     run(op_svc.operator_registry.create_assemblage(
         PROJECT, "the_held_crossing", ["interiority", "hush"],
-        rendering_intent="mine, in my words"))
+        rendering_intent="mine, in my words",
+        definition="what this compression is, in my writing"))
     c = run(studio.run_block(PROJECT, "/ the_held_crossing\n",
                              manuscript_id=manuscript_id, scene_id=scene_id))
     run(psg_svc.passage_store.accept(c["results"][0]["passage_id"]))

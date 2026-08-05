@@ -69,6 +69,7 @@ export default function WriterPage() {
       manuscriptId={manuscript.id}
       sceneId={sceneId || ''}
       initialContent={initialContent}
+      author={manuscript.author || ''}
     />
   );
 }
