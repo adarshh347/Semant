@@ -80,13 +80,26 @@ export default function ProductionPanel({ records = [], open = true }) {
                                 <p className="ad-quiet ad-produced-none">Produced nothing.</p>
                             ) : (
                                 <ul className="ad-produced">
-                                    {r.produced.map((p) => (
-                                        <li className="ad-produced-item" key={p.id}>
+                                    {r.produced.map((p, n) => (
+                                        // KEYED ON `ref`, NEVER ON `id`. A quarantined suggestion
+                                        // has no id by design (`run_surface._suggestion_ref`), so
+                                        // against a live run every row in this list would key on
+                                        // the same empty string and React could not tell them
+                                        // apart while the panel streams. `ref` (`run:step#n`) is
+                                        // the run-local handle that exists for exactly this. The
+                                        // index tail is the last resort for a pre-`ref` record,
+                                        // not the normal path.
+                                        <li className="ad-produced-item" key={p.ref || `${p.id}#${n}`}>
                                             <span className={`ad-epi ad-epi--${p.epistemic_status}`}>
                                                 {EPISTEMIC_LABEL[p.epistemic_status] || p.epistemic_status || '—'}
                                             </span>
                                             <span className="ad-produced-kind">{p.kind || '—'}</span>
-                                            <span className="ad-produced-id">{p.id}</span>
+                                            {/* The id when it HAS one — an accepted, stored
+                                                descriptor — and the run-local ref when it does
+                                                not. Showing an empty cell for every quarantined
+                                                item read as "this produced something nameless";
+                                                showing the ref says what it actually is. */}
+                                            <span className="ad-produced-id">{p.id || p.ref}</span>
                                             <span className="ad-produced-conf">
                                                 {p.confidence === null ? '—' : p.confidence.toFixed(2)}
                                             </span>

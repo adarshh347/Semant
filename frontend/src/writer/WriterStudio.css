@@ -1,0 +1,107 @@
+/*
+ * Semant Writer · W2 — the studio shell.
+ *
+ * The page owns the writing; this file owns only what sits beside it. Deliberately quiet:
+ * the ontology panel is reference material, and it must never compete with the prose for
+ * the author's eye. All the cadence, margin and card styling lives in `WriterEditor.css`.
+ */
+
+/* `/writer` is a fullscreen route (App.jsx): the shell is already `height: 100vh;
+   overflow: hidden`, and each inner pane scrolls itself. So this fills its parent rather
+   than claiming a viewport of its own — `min-height: 100vh` here would push the editor's
+   sticky toolbar up under the app navbar and make the page unscrollable. */
+.writer-studio {
+  display: grid;
+  grid-template-columns: minmax(14rem, 18rem) 1fr;
+  height: 100%;
+  min-height: 0;
+}
+
+@media (max-width: 60rem) {
+  .writer-studio { grid-template-columns: 1fr; }
+  .writer-ontology { border-right: none; border-bottom: 1px solid rgba(128, 128, 128, 0.2); }
+}
+
+/* --- the ontology panel --- */
+
+.writer-ontology {
+  padding: 1.5rem 1.25rem;
+  border-right: 1px solid rgba(128, 128, 128, 0.2);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.86rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.writer-ontology h3 {
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  margin: 0 0 0.75rem;
+}
+
+.writer-ontology ul { list-style: none; margin: 0 0 1rem; padding: 0; }
+
+.writer-ontology li {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.14);
+}
+
+.writer-ontology li p { margin: 0.25rem 0 0; opacity: 0.7; line-height: 1.5; font-size: 0.82rem; }
+.writer-ontology code { font-family: 'Spline Sans Mono', ui-monospace, Menlo, monospace; font-size: 0.82rem; }
+
+.writer-version { opacity: 0.45; font-size: 0.76rem; }
+.writer-empty { opacity: 0.6; line-height: 1.55; margin: 0 0 1rem; }
+
+/* --- the #create draft --- */
+
+.writer-draft { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.writer-draft input,
+.writer-draft textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.84rem;
+  padding: 0.4rem 0.5rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 3px;
+  resize: vertical;
+}
+
+.writer-draft__actions { display: flex; gap: 0.4rem; }
+
+.writer-studio button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.65rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.writer-studio button:hover:not(:disabled) { border-color: currentColor; }
+.writer-studio button:disabled { opacity: 0.4; cursor: default; }
+
+.writer-error { color: rgb(190, 70, 60); font-size: 0.82rem; margin: 0.6rem 0 0; }
+
+/* --- the page --- */
+
+.writer-page {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The graph takes the top half when open; the page keeps writing beneath it, because the
+   ontology is something you consult WHILE writing, not a place you go instead. */
+.writer-graph-panel {
+  flex: 0 0 48%;
+  min-height: 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}

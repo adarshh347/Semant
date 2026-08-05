@@ -104,6 +104,44 @@ manuscript_collection = database.get_collection("manuscripts")
 scene_collection = database.get_collection("scenes")
 scene_version_collection = database.get_collection("scene_versions")
 
+# --- Semant Writer (W1 · the executable document) ---
+# The Writer wraps the orchestration kernel for the manuscript half. It adds no canon of
+# its own: Accept writes THROUGH `manuscript_service` into the scenes above, so the sacred
+# manuscript keeps exactly one owner. What is new here is the ontology, the quarantine and
+# the usage record:
+#   writer_operator_collection: the LEDGER half of the two memories — one doc per operator
+#                               the author has authored (`#create`), the actuator registry
+#                               made author-editable and persisted. Versioned in place, so
+#                               a passage can cite the operator as it stood when it fired.
+#   writer_passage_collection:  the SESSION half — one doc per RENDERED passage, born
+#                               `committed: False`. Accept flips it and copies the prose
+#                               into a scene; Dismiss drops it. Nothing here is canon, and
+#                               a passage that is never accepted never touches a scene.
+#   writer_usage_collection:    instrumentation ONLY (W1 is instrument-now, build-later):
+#                               operator invocations, co-occurrence, accept/reject. Tier 2
+#                               (assemblages) and Tier 3 are data-gated and cannot be built
+#                               without this corpus. Write-behind — a failed write must
+#                               never change what the render or accept path does.
+writer_operator_collection = database.get_collection("writer_operators")
+writer_passage_collection = database.get_collection("writer_passages")
+writer_usage_collection = database.get_collection("writer_usage")
+
+# --- Semant Writer W5 · the portable ontology ---
+# writer_library_collection: the author's cross-manuscript operator/assemblage library,
+# ABOVE project scope and keyed by author. It is purely additive — no existing operator
+# moves into it and nothing auto-migrates; the author populates it by PROMOTING operators
+# they want to reuse.
+#
+# Entries hold FULL IMMUTABLE VERSION HISTORY and old versions are never discarded, because
+# committed passages across every book pin an exact version and must always resolve. That
+# is the one property the whole of W5 rests on: portability is safe exactly as long as
+# every passage can still name what made it.
+#
+# Import is a LINKED COPY, not a live reference — a project copy carries `library_ref`
+# lineage and versions independently thereafter, so editing an operator while writing Book B
+# can never silently redefine the language under Book A's committed prose.
+writer_library_collection = database.get_collection("writer_library")
+
 # --- Vision runtime provenance (CIRCULATION-SPINE-001 · P1) ---
 # vision_run_collection: one poll-friendly document per vision operation attempt, with
 # its stage events embedded (mirrors the agent_runs run+step-ledger pattern). This is a
@@ -145,6 +183,15 @@ atlas_collection = database.get_collection("atlases")
 # It holds no percept data, for the same reason the Atlas does not: an entry caching a `photo_url`
 # would go stale the moment a post was re-uploaded, in a document that looks authoritative.
 corpus_collection = database.get_collection("corpora")
+
+# --- Movement axes (WAVE2 · Lane G) ---
+# movement_axis_collection: the discovered dimensions movements run along (nestedness, enclosure,
+# recession). Its own collection rather than an array on one Atlas, because an axis found while
+# reading one corpus is referenced by movements on another, and an embedded one would have to be
+# COPIED to be reused — the drift this architecture keeps closing. An axis holds a name, a relation
+# kind and the ids of what grounds it. It stores NO epistemic status: that is derived at read time
+# from the movements that instantiate it, exactly as a movement edge derives its own from its mark.
+movement_axis_collection = database.get_collection("movement_axes")
 
 # --- Connection Test Function ---
 async def ping_server():

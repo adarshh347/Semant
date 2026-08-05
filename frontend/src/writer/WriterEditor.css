@@ -1,0 +1,337 @@
+/*
+ * Semant Writer · W2 — the literary surface.
+ *
+ * The register this file has to hold: a place to write prose, not a form. Wide margins, a
+ * real reading measure, a prose face for prose, and a quiet marginal register for the
+ * author's staging.
+ *
+ * WHAT IS AND IS NOT LOAD-BEARING HERE. The `//`-never-reaches-the-page guarantee is NOT in
+ * this file — it is `manuscriptExport: false` in the schema. Styling only makes the
+ * guarantee legible; if every rule below were deleted the manuscript would still be clean.
+ * That separation is the whole point of doing it in the schema (W2 directive §4).
+ */
+
+.writer-editor {
+  --writer-measure: 34rem;          /* the reading measure — prose, not full-bleed */
+  --writer-margin: 5rem;            /* wide margins are a requirement, not polish */
+  --writer-ink: currentColor;
+  --writer-quiet: color-mix(in srgb, currentColor 45%, transparent);
+  --writer-rule: color-mix(in srgb, currentColor 18%, transparent);
+  --writer-flag: rgb(190, 140, 40);
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* --- the bar --- */
+
+.writer-editor__bar {
+  flex: 0 0 auto;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem var(--writer-margin);
+  border-bottom: 1px solid var(--writer-rule);
+  backdrop-filter: blur(8px);
+  font-size: 0.82rem;
+}
+
+.writer-editor__status { opacity: 0.6; }
+.writer-editor__error { color: rgb(190, 70, 60); }
+
+.writer-editor button {
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.7rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--writer-rule);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.writer-editor button:hover:not(:disabled) { border-color: currentColor; }
+.writer-editor button:disabled { opacity: 0.4; cursor: default; }
+.writer-editor button[aria-pressed='true'] { border-color: currentColor; }
+
+/* --- the page --- */
+
+.writer-editor__page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4rem var(--writer-margin) 12rem;
+}
+
+.writer-prose {
+  max-width: var(--writer-measure);
+  margin: 0 auto;
+  outline: none;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  font-size: 1.125rem;
+  line-height: 1.75;
+}
+
+/*
+ * THE TWO-TIER CADENCE, which is the typographic claim of this surface.
+ *
+ *   inner tier — a soft break (Shift+Enter → `hardBreak`) turns the line INSIDE a beat.
+ *                It inherits the line-height and nothing more: the lines stay one breath.
+ *   outer tier — a paragraph break separates beats, and gets real air plus the indent
+ *                convention of set prose.
+ *
+ * Uniform block gaps (the Notion register) collapse those two into one, which is exactly
+ * what W2 exists not to do.
+ */
+.writer-prose p {
+  margin: 0;
+  text-indent: 1.5em;
+}
+
+.writer-prose p + p { margin-top: 0.15rem; }
+
+/* First paragraph of a beat group, and any paragraph after a non-paragraph, opens flush. */
+.writer-prose > p:first-child,
+.writer-prose > *:not(p) + p {
+  text-indent: 0;
+  margin-top: 1.6rem;
+}
+
+.writer-prose p:has(br) { }   /* soft breaks need no extra rule — that is the point */
+
+/* An accepted span is quietly markable, so provenance has something to hang on. */
+.writer-prose p[data-provenance] { cursor: text; }
+.writer-prose p[data-provenance]:hover {
+  background: color-mix(in srgb, var(--writer-flag) 7%, transparent);
+}
+
+/* --- focus mode --- */
+
+.writer-editor--focus .writer-prose > * { transition: opacity 160ms ease; opacity: 0.28; }
+.writer-editor--focus .writer-prose > *:hover,
+.writer-editor--focus .writer-prose > .has-focus,
+.writer-editor--focus .writer-prose > *:focus-within { opacity: 1; }
+.writer-editor--focus .writer-editor__page { padding-top: 18vh; }
+
+/* --- the `//` register: quiet, marginal, unmistakably not prose --- */
+
+.writer-orchestration {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0.9rem 0;
+  padding: 0.15rem 0 0.15rem 0.75rem;
+  border-left: 2px solid var(--writer-rule);
+  font-family: 'Spline Sans Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--writer-quiet);
+  user-select: none;
+}
+
+.writer-orchestration__mark { opacity: 0.5; }
+.writer-orchestration__key { font-weight: 600; letter-spacing: 0.04em; }
+.writer-orchestration__value { flex: 1; }
+
+.writer-orchestration--inert { border-left-style: dashed; }
+.writer-orchestration__note {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+/* Present for screen readers and for the author's certainty; never in the export. */
+.writer-orchestration__invisible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* --- the `/` register: a chip, in the prose line --- */
+
+.writer-directive {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin: 0 0.15rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--writer-rule);
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+  font-family: 'Spline Sans Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  vertical-align: baseline;
+  user-select: none;
+}
+
+.writer-directive__mark { opacity: 0.5; }
+.writer-directive__plus { opacity: 0.4; }
+.writer-directive__arg { opacity: 0.65; }
+
+.writer-directive__op {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.writer-directive__version {
+  margin-left: 0.25rem;
+  font-size: 0.9em;
+  opacity: 0.5;
+}
+
+.writer-directive--undefined {
+  border-color: color-mix(in srgb, var(--writer-flag) 60%, transparent);
+  border-style: dashed;
+}
+
+/* --- the cards --- */
+
+.writer-card {
+  max-width: var(--writer-measure);
+  margin: 1.6rem auto;
+  border: 1px solid var(--writer-rule);
+  border-radius: 4px;
+  padding: 0.9rem 1rem;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+/* Quarantine reads as provisional at a glance — I1 wearing a colour. */
+.writer-card--quarantined { border-left: 3px solid var(--writer-flag); }
+/* A refusal is an ANSWER: same weight as a passage, never dimmed, never an error style. */
+.writer-card--refused { border-left: 3px solid var(--writer-flag); }
+.writer-card--unavailable { border-left: 3px solid var(--writer-quiet); }
+
+.writer-card__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.writer-card__label {
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-size: 0.66rem;
+  padding: 0.12rem 0.42rem;
+  border: 1px solid var(--writer-flag);
+  border-radius: 3px;
+}
+
+.writer-card__directive { font-size: 0.76rem; opacity: 0.6; }
+
+/* The proposal is set in the prose face — it is a passage — but inside the card, so it can
+   never be mistaken for the page it is not yet on. */
+.writer-card__prose {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+.writer-card__prose p { margin: 0 0 0.6rem; }
+
+.writer-card__refusal {
+  margin: 0;
+  line-height: 1.65;
+  white-space: pre-wrap;   /* the `#create` block in the reason keeps its shape */
+}
+
+.writer-card__provenance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+  font-size: 0.74rem;
+  opacity: 0.7;
+}
+
+.writer-card__provenance-label { text-transform: uppercase; letter-spacing: 0.07em; font-size: 0.66rem; }
+.writer-card__op { padding: 0.08rem 0.4rem; border: 1px solid var(--writer-rule); border-radius: 999px; }
+.writer-card__intents, .writer-card__model { opacity: 0.75; }
+
+.writer-card__foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--writer-rule);
+  font-size: 0.78rem;
+}
+
+.writer-card__note { flex: 1 1 auto; opacity: 0.6; }
+.writer-card__diagnostic { font-size: 0.74rem; opacity: 0.55; margin: 0.4rem 0 0; }
+.writer-card__error { color: rgb(190, 70, 60); font-size: 0.8rem; margin: 0.5rem 0 0; }
+
+/* The `#create` on-ramp — the feature, per GROUNDING.md. Given room, not tucked away. */
+.writer-card__onramp {
+  margin-top: 0.9rem;
+  padding: 0.7rem;
+  border: 1px dashed var(--writer-rule);
+  border-radius: 4px;
+}
+
+.writer-card__onramp label { display: block; font-size: 0.78rem; margin-bottom: 0.4rem; opacity: 0.8; }
+
+.writer-card__onramp textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.86rem;
+  padding: 0.5rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--writer-rule);
+  border-radius: 3px;
+  resize: vertical;
+}
+
+.writer-card__actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+
+/* --- the operator inspector --- */
+
+.writer-inspector {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: min(22rem, calc(100vw - 3rem));
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--writer-rule);
+  border-radius: 4px;
+  background: Canvas;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.86rem;
+  z-index: 5;
+}
+
+.writer-inspector header { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; }
+.writer-inspector header span { opacity: 0.5; font-size: 0.78rem; }
+.writer-inspector header button { margin-left: auto; }
+.writer-inspector__definition { margin: 0 0 0.5rem; line-height: 1.6; }
+.writer-inspector__intent { margin: 0 0 0.5rem; opacity: 0.75; font-size: 0.82rem; }
+.writer-inspector__example { margin: 0 0 0.3rem; font-style: italic; opacity: 0.8; }
+.writer-inspector__negative { margin: 0 0 0.3rem; opacity: 0.6; font-size: 0.82rem; }
+
+/* --- placeholder --- */
+
+.writer-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  font-style: italic;
+}

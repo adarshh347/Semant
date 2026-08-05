@@ -309,7 +309,27 @@ def hydrate_edge(edge: Mapping[str, Any],
 
 def hydrate_edges(doc: Mapping[str, Any],
                   posts: Mapping[str, Mapping[str, Any]]) -> List[Dict[str, Any]]:
-    return [hydrate_edge(e, posts) for e in (doc.get("edges") or []) if isinstance(e, Mapping)]
+    """Every stored edge → what the canvas draws, each by its own `kind`.
+
+    WAVE2 Lane G adds `movement` edges to this same array. They are hydrated by their own function
+    because they carry six fields C3's fixed key list does not name, and a key list is a silent
+    dropper: a movement hydrated as a relation would come back without its axis or its weight and
+    nothing would fail. The ledger half is identical either way — `hydrate_movement_edge` calls
+    `hydrate_edge` and adds to it, so there is one implementation of "what does the mark say".
+
+    Imported lazily to keep the dependency pointing one way: Lane G knows about the Atlas, and the
+    Atlas need not know about Lane G until an actual movement edge shows up in a document.
+    """
+    out: List[Dict[str, Any]] = []
+    for edge in (doc.get("edges") or []):
+        if not isinstance(edge, Mapping):
+            continue
+        if str(edge.get("kind") or "") == "movement":
+            from backend.services.movement_graph import hydrate_movement_edge
+            out.append(hydrate_movement_edge(edge, posts))
+        else:
+            out.append(hydrate_edge(edge, posts))
+    return out
 
 
 # The edge-purity check lives in `atlas_service.assert_no_percept_data` alongside the node one, so

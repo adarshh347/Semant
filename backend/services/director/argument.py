@@ -207,12 +207,19 @@ BINDING_CONFIRMED = "confirmed"  # a chain ran and the evidence WAS produced
 
 @dataclass(frozen=True)
 class PerceptStep:
-    """One percept proposed to carry a claim, with its argumentative job written on it.
+    """One percept PLANNED TO EXIST to carry a claim, with its argumentative job written on it.
 
     The `Step` is the ordinary Layer-3 step — same actuator vocabulary, same params, same gate.
     Everything else here is rhetoric, deliberately kept OUTSIDE the step: an actuator must not be
     able to behave differently because a planner said the percept was a challenge, or the
     evidence would be shaped by the argument it is meant to test.
+
+    SF-002 Part 0 — this is a *plan for* a percept: one lineage further from the durable object
+    than even the `percept_draft` it may produce. `function`, `target_status` and
+    `epistemic_ceiling` are ITS fields and belong to the argument layer. They are deliberately
+    absent from the persisted `Percept` schema (`backend/schemas/soft_fields.py`); SF-002 v1
+    listed them there and v2.1 corrected it, because putting them on the durable object
+    re-merges the two things `backend/services/percept_lineage.py` keeps apart.
     """
     step: Step
     function: str = SUPPORT

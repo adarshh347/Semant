@@ -72,3 +72,11 @@ models
 venv
 # NOT a blanket `*.bin` — that extension is not exclusively weights, and nothing in this repo
 # tracks one today. Add specific paths if a .bin weight ever appears.
+
+# SIM-ENGINE Lane 3 — the retina's derived vector index (LanceDB).
+# `region_embeddings` in Mongo is the source of truth; this directory is a rebuildable cache
+# (`retina.index_rebuild()`). Memory-mapped, tens of MB and up, and regenerated rather than
+# restored — it has no business in a public repo, and no history worth keeping.
+# Root-anchored (`/data/`, where `default_db_path()` puts it) rather than a bare `data/`, which
+# would also swallow any nested data directory someone adds later.
+/data/

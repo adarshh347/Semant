@@ -1,0 +1,132 @@
+/*
+ * Semant Writer · W3 — the operator graph.
+ *
+ * The one thing this file must carry: an edge that ACTS must not look like an edge that
+ * does not. `requires` is solid and full-strength; the associative kinds are dashed and
+ * muted. The distinction is also in the data (`operatorGraph.js`), so restyling this file
+ * cannot make an inert edge start rendering — it can only make the difference harder to
+ * see, which is bad enough.
+ */
+
+.writer-graph {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  border-left: 1px solid rgba(128, 128, 128, 0.2);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.85rem;
+}
+
+.writer-graph__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+}
+
+.writer-graph__bar strong { font-size: 0.7rem; letter-spacing: 0.09em; text-transform: uppercase; opacity: 0.55; }
+.writer-graph__bar label { opacity: 0.7; font-size: 0.78rem; }
+.writer-graph__close { margin-left: auto; }
+.writer-graph__help { opacity: 0.6; font-size: 0.76rem; flex: 1 1 12rem; }
+
+.writer-graph select {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.4rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 3px;
+}
+
+.writer-graph button {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.writer-graph button:hover { border-color: currentColor; }
+
+/* --- legend --- */
+
+.writer-graph__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+  font-size: 0.74rem;
+  opacity: 0.75;
+}
+
+.writer-graph__legend-item { display: flex; align-items: center; gap: 0.45rem; }
+
+.writer-graph__swatch { display: inline-block; width: 1.6rem; height: 0; border-top-width: 2px; }
+.writer-graph__swatch--acts { border-top-style: solid; border-top-color: rgb(190, 140, 40); }
+.writer-graph__swatch--inert { border-top-style: dashed; border-top-color: rgba(128, 128, 128, 0.7); }
+
+.writer-graph__error { margin: 0.5rem 0.9rem 0; color: rgb(190, 70, 60); font-size: 0.8rem; }
+.writer-graph__status { margin: 0.5rem 0.9rem 0; opacity: 0.6; font-size: 0.8rem; }
+
+/* --- canvas --- */
+
+.writer-graph__canvas { flex: 1; min-height: 22rem; }
+.writer-graph__empty { padding: 2rem; opacity: 0.6; text-align: center; }
+
+/* An edge that acts reads at full strength; one that does not is dashed and quiet. */
+.writer-edge--acts .react-flow__edge-path { stroke: rgb(190, 140, 40); stroke-width: 2; }
+.writer-edge--inert .react-flow__edge-path { stroke: rgba(128, 128, 128, 0.65); stroke-width: 1.4; }
+.writer-edge--inert .react-flow__edge-text { opacity: 0.7; }
+.writer-edge .react-flow__edge-text { font-size: 0.66rem; }
+
+/* --- the node --- */
+
+.writer-op-node {
+  min-width: 10rem;
+  max-width: 13rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgba(128, 128, 128, 0.45);
+  border-radius: 4px;
+  background: Canvas;
+  color: CanvasText;
+}
+
+.writer-op-node--selected { border-color: currentColor; }
+.writer-op-node__head { display: flex; align-items: baseline; gap: 0.4rem; }
+.writer-op-node__head code { font-family: 'Spline Sans Mono', ui-monospace, Menlo, monospace; font-size: 0.8rem; }
+.writer-op-node__version { font-size: 0.7rem; opacity: 0.5; }
+
+.writer-op-node__definition {
+  margin: 0.3rem 0 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  opacity: 0.75;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* --- the edge panel --- */
+
+.writer-graph__edge-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.writer-graph__edge-panel code {
+  font-family: 'Spline Sans Mono', ui-monospace, Menlo, monospace;
+  font-size: 0.78rem;
+}

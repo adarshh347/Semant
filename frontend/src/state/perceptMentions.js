@@ -55,6 +55,17 @@ export function perceptForRegion(percepts, regionId, actor = 'creator') {
 // the attention percepts above: `pctx_` ids, no per-ground uniqueness — the
 // cardinality is many-to-many-to-many (Percept↔Ground↔Mention). The old
 // one-creator-percept-per-region rule stays untouched for back-compat.
+//
+// SF-002 Part 0 — THIS is the object `post.percepts` holds, and the only one the
+// backend's `Percept` schema types (backend/schemas/soft_fields.py). It is the
+// curator's ACT OF NOTICING. Do not confuse it with the director's `percept_draft`
+// (backend/services/director/real_actuators.py) — that is a PROPOSAL: it enters the
+// suggestion quarantine, becomes a visual_mark if accepted, and is never written
+// here. `isExpressionPercept` below is the filter that keeps it that way, on hydrate
+// and on save (regionStore.js). Any join between the two is recorded on the MARK
+// (`linked_percept_ids`, differential/visualMarks.js), never on the percept: the mark
+// already authors provenance, and the percept derives its own through `ground_ids`.
+// See backend/services/percept_lineage.py for the full statement of the two lineages.
 
 let pctxSeq = 0;
 

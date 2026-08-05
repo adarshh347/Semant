@@ -44,7 +44,8 @@ function record(over = {}) {
         adapter: 'pressure_zone',
         consumed: [`${GROUND}:image`],
         produced: [
-            { id: 'sug_1', kind: 'brush_field', epistemic_status: 'measured', confidence: 0.82 },
+            { id: null, ref: 'run_demo_1:s0#0', kind: 'brush_field',
+              epistemic_status: 'measured', confidence: 0.82 },
         ],
         refusal: null,
         latency_ms: 412,
@@ -62,7 +63,8 @@ export const FIXTURE_PRODUCTION_RECORDS = [
         adapter: 'rhythm',
         consumed: [`${FACADE}:image`],
         produced: [
-            { id: 'sug_2', kind: 'trace_mark', epistemic_status: 'visible', confidence: null },
+            { id: null, ref: 'run_demo_1:s2#0', kind: 'trace_mark',
+              epistemic_status: 'visible', confidence: null },
         ],
         latency_ms: 96,
     }),
@@ -72,7 +74,8 @@ export const FIXTURE_PRODUCTION_RECORDS = [
         params: { image: ROTUNDA },
         consumed: [`${ROTUNDA}:image`],
         produced: [
-            { id: 'sug_3', kind: 'brush_field', epistemic_status: 'measured', confidence: 0.77 },
+            { id: null, ref: 'run_demo_1:s3#0', kind: 'brush_field',
+              epistemic_status: 'measured', confidence: 0.77 },
         ],
         latency_ms: 388,
     }),
@@ -112,17 +115,40 @@ export const FIXTURE_PRODUCTION_RECORDS = [
         adapter: 'semantic_pass',
         consumed: ['sug_1', 'sug_3'],
         produced: [
-            { id: 'sug_7', kind: 'percept', epistemic_status: 'interpretive', confidence: 0.4 },
+            { id: null, ref: 'run_demo_1:s6#0', kind: 'percept',
+              epistemic_status: 'interpretive', confidence: 0.4 },
         ],
         latency_ms: 1840,
     }),
 ];
 
+/**
+ * A planned step, in the shape the SERVER sends: `{step_id, actuator, params, note}`.
+ *
+ * This fixture used to list bare actuator names (`steps: ['pressure_zone', 'rhythm']`), a shape
+ * no live run has ever produced. `RunProgress` rendered each entry directly as a React child, so
+ * against a real run the whole `/agent` page white-screened with "Objects are not valid as a
+ * React child" — and this fixture is why nobody saw it, exactly as PR #132 found for `ref` one
+ * field over. It now says what the server says.
+ */
+const step = (n, actuator, image, note) => ({
+    step_id: `groq:${n}:${actuator}@${image}`,
+    actuator,
+    params: { image },
+    note,
+});
+
 const ROUNDS = [
     {
         round: 1,
         intention: PROMPT,
-        plan: { steps: ['pressure_zone', 'rhythm', 'pressure_zone'] },
+        plan: {
+            steps: [
+                step(0, 'pressure_zone', 'post_lustgarten', 'detect concentration on the ground'),
+                step(1, 'rhythm', 'post_lustgarten', 'measure rhythm across the colonnade'),
+                step(2, 'pressure_zone', 'post_rotunda', 'detect concentration in the rotunda'),
+            ],
+        },
         step_ids: ['s1', 's2', 's3'],
         weakest_link: 0.77,
         note: 'Opened on the three images; measured pressure on the ground and the rotunda.',
@@ -130,7 +156,13 @@ const ROUNDS = [
     {
         round: 2,
         intention: PROMPT,
-        plan: { steps: ['external_limit', 'historical_source', 'compose_percept'] },
+        plan: {
+            steps: [
+                step(0, 'external_limit', 'post_rotunda', 'test the projective frame'),
+                step(1, 'historical_source', 'post_rotunda', 'look for a cited source'),
+                step(2, 'compose_percept', 'post_rotunda', 'compose across the measurements'),
+            ],
+        },
         step_ids: ['s4', 's5', 's6'],
         weakest_link: 0.4,
         note: 'Tried the projective frame (refused), then composed across the two measurements.',

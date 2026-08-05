@@ -13,3 +13,14 @@ pymongo
 # it directly and a direct dependency that rides in on someone else's coattails is one upgrade
 # away from disappearing.
 requests
+# SIM-ENGINE Lane 3 — the retina's vector store. Embedded and on-disk (no server, no new
+# infra); pulls pyarrow, ~90 MB of wheels between them.
+#
+# CORE rather than requirements-ml.txt, whose bar is "heavy (~2GB)" — this is an order of
+# magnitude under that, has no CUDA/MPS dimension to pin per box, and backs a route that
+# main.py registers unconditionally. A registered endpoint that always 503s in production
+# would cost more than the wheels do.
+#
+# The import in `backend/services/retina/store.py` is still guarded: a checkout without this
+# boots the API and runs the whole suite, and only the retina's own entry points fail, loudly.
+lancedb

@@ -26,6 +26,7 @@ function App() {
   // sits in the standard content column — so the trailing slash is the distinction.
   const isFullscreenPage = location.pathname.startsWith('/posts/')
     || location.pathname.startsWith('/studio')
+    || location.pathname.startsWith('/writer')
     || location.pathname.startsWith('/atlas/');
 
   return (
