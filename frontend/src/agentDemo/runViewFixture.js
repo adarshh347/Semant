@@ -44,7 +44,8 @@ function record(over = {}) {
         adapter: 'pressure_zone',
         consumed: [`${GROUND}:image`],
         produced: [
-            { id: 'sug_1', kind: 'brush_field', epistemic_status: 'measured', confidence: 0.82 },
+            { id: null, ref: 'run_demo_1:s0#0', kind: 'brush_field',
+              epistemic_status: 'measured', confidence: 0.82 },
         ],
         refusal: null,
         latency_ms: 412,
@@ -62,7 +63,8 @@ export const FIXTURE_PRODUCTION_RECORDS = [
         adapter: 'rhythm',
         consumed: [`${FACADE}:image`],
         produced: [
-            { id: 'sug_2', kind: 'trace_mark', epistemic_status: 'visible', confidence: null },
+            { id: null, ref: 'run_demo_1:s2#0', kind: 'trace_mark',
+              epistemic_status: 'visible', confidence: null },
         ],
         latency_ms: 96,
     }),
@@ -72,7 +74,8 @@ export const FIXTURE_PRODUCTION_RECORDS = [
         params: { image: ROTUNDA },
         consumed: [`${ROTUNDA}:image`],
         produced: [
-            { id: 'sug_3', kind: 'brush_field', epistemic_status: 'measured', confidence: 0.77 },
+            { id: null, ref: 'run_demo_1:s3#0', kind: 'brush_field',
+              epistemic_status: 'measured', confidence: 0.77 },
         ],
         latency_ms: 388,
     }),
@@ -112,7 +115,8 @@ export const FIXTURE_PRODUCTION_RECORDS = [
         adapter: 'semantic_pass',
         consumed: ['sug_1', 'sug_3'],
         produced: [
-            { id: 'sug_7', kind: 'percept', epistemic_status: 'interpretive', confidence: 0.4 },
+            { id: null, ref: 'run_demo_1:s6#0', kind: 'percept',
+              epistemic_status: 'interpretive', confidence: 0.4 },
         ],
         latency_ms: 1840,
     }),
