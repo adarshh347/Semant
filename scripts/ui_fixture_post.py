@@ -7,7 +7,8 @@ marked by `photo_public_id` so `drop` can never delete anything else.
 
     python scripts/ui_fixture_post.py make <source_post_id> [<source_post_id> ...]
     python scripts/ui_fixture_post.py make <src> <src> <src> --marks 1,1,0
-    python scripts/ui_fixture_post.py drop
+    python scripts/ui_fixture_post.py make <src> <src> --lane t2      # scoped to one lane
+    python scripts/ui_fixture_post.py drop [--lane t2 | --lane all]
 
 `make` prints one clone id per line, in the order given — a corpus is a SEQUENCE, and a
 multi-image surface (the Atlas, the Light Table) has to be verified over one that holds its
@@ -32,6 +33,7 @@ when a proof needs something this script does not yet make, EXTEND THIS SCRIPT r
 reaching for a real post.
 """
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -41,6 +43,36 @@ from bson.objectid import ObjectId          # noqa: E402
 from backend.database import post_collection  # noqa: E402
 
 MARKER = "ui-fixture-visual-content"
+
+# THE MARKER IS LANE-SCOPED, and this is the whole point of the suffix.
+#
+# `make` begins by dropping every fixture it can see. With one global marker, two lanes proving at
+# the same time deleted each other's corpora mid-run — and the symptom was not an obvious crash but
+# an honest-looking refusal ("a comparison needs two readable images; this Atlas has fewer"), which
+# reads exactly like the gate working correctly. A lane can burn an hour proving its own gate is
+# broken when what actually happened is that a neighbour ran `make`.
+#
+# `--lane <name>` (or ATLAS_FIXTURE_LANE) scopes both the write and the drop, so a lane can only
+# ever clear its own. The default lane keeps the old marker verbatim, so anything already in the
+# database from before this change is still findable and still droppable.
+LANE_ENV = "ATLAS_FIXTURE_LANE"
+
+
+def marker_for(lane: str = "") -> str:
+    """The `photo_public_id` this lane's fixtures carry. The default is the historical value."""
+    lane = (lane or "").strip()
+    return f"{MARKER}:{lane}" if lane else MARKER
+
+
+def lane_query(lane: str = "", *, every: bool = False) -> dict:
+    """What `drop` deletes. Scoped to one lane unless explicitly asked for all of them.
+
+    `--lane all` is deliberately spelled out rather than being the default: clearing another
+    lane's corpus is a thing somebody should have to ask for.
+    """
+    if every:
+        return {"photo_public_id": {"$regex": f"^{MARKER}"}}
+    return {"photo_public_id": marker_for(lane)}
 
 
 # `trace_mark` roles from the frontend's own vocabulary (`perceptualActions.TRACE_ROLES`), so a
@@ -78,11 +110,11 @@ def _marks_for(spec, clone_index: int) -> int:
     return max(0, spec[clone_index]) if clone_index < len(spec) else 0
 
 
-def _clone_of(src: dict, *, marks: int = 0, index: int = 0) -> dict:
+def _clone_of(src: dict, *, marks: int = 0, index: int = 0, marker: str = MARKER) -> dict:
     return {
         "visual_marks": [_mark(index, m) for m in range(marks)],
         "photo_url": src["photo_url"],
-        "photo_public_id": MARKER,
+        "photo_public_id": marker,
         "text_blocks": [],
         "general_tags": [],
         "highlights": [],
@@ -94,7 +126,7 @@ def _clone_of(src: dict, *, marks: int = 0, index: int = 0) -> dict:
     # A clone with the source's handle would feed the source's persona on save.
 
 
-async def make(source_ids: list, marks=1) -> None:
+async def make(source_ids: list, marks=1, lane: str = "") -> None:
     """Clone each source, in order, printing one new id per line.
 
     Every source is READ and validated before anything is written: a batch that would half-build
@@ -110,24 +142,41 @@ async def make(source_ids: list, marks=1) -> None:
             raise SystemExit(f"source post {source_id} has no photo to clone")
         sources.append(src)
 
-    await drop(quiet=True)
+    await drop(quiet=True, lane=lane)
+    marker = marker_for(lane)
+    made = []
     for i, src in enumerate(sources):
         res = await post_collection.insert_one(
-            _clone_of(src, marks=_marks_for(marks, i), index=i))
+            _clone_of(src, marks=_marks_for(marks, i), index=i, marker=marker))
+        made.append(str(res.inserted_id))
         print(str(res.inserted_id))
 
+    # READINESS, asserted rather than assumed (T2). A harness that starts before its corpus is
+    # readable reports the gate as broken when the truth is that the fixtures are not there yet.
+    ready = await post_collection.count_documents({"photo_public_id": marker})
+    if ready != len(sources):
+        raise SystemExit(f"fixture corpus is not ready: expected {len(sources)}, found {ready}")
 
-async def drop(quiet: bool = False) -> None:
-    r = await post_collection.delete_many({"photo_public_id": MARKER})
+
+async def drop(quiet: bool = False, lane: str = "", every: bool = False) -> None:
+    r = await post_collection.delete_many(lane_query(lane, every=every))
     if not quiet:
-        print(f"dropped {r.deleted_count}")
+        scope = "every lane" if every else f"lane {lane!r}" if lane else "the default lane"
+        print(f"dropped {r.deleted_count} from {scope}")
 
 
 async def main() -> None:
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
-    if sys.argv[1] == "make":
-        args = sys.argv[2:]
+    lane = os.environ.get(LANE_ENV, "")
+    argv = list(sys.argv[1:])
+    if "--lane" in argv:
+        at = argv.index("--lane")
+        lane = argv[at + 1] if at + 1 < len(argv) else ""
+        del argv[at:at + 2]
+
+    if argv[0] == "make":
+        args = argv[1:]
         marks = 1
         if "--marks" in args:
             at = args.index("--marks")
@@ -136,9 +185,9 @@ async def main() -> None:
             args = args[:at]
         if not args:
             raise SystemExit(__doc__)
-        await make(args, marks)
-    elif sys.argv[1] == "drop":
-        await drop()
+        await make(args, marks, lane)
+    elif argv[0] == "drop":
+        await drop(lane="" if lane == "all" else lane, every=(lane == "all"))
     else:
         raise SystemExit(__doc__)
 

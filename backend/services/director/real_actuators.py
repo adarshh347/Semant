@@ -482,6 +482,8 @@ async def _run_compare_views(step: Step, memory: WorkingMemory, ctx: "ExecutionC
                        "adapter": "compare_views", "sources": [src_a, src_b],
                        **({"model": model_name} if model_name else {})},
     }
+    from backend.services import epistemics
+    epistemics.stamp(sug)                      # interpretive: a named relation is a reading
     _record_comparative(ctx, sug)
     return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
                           adapter="compare_views",
@@ -556,6 +558,8 @@ async def _run_compose_comparative_percept(step: Step, memory: WorkingMemory,
                        "sources": sources,
                        **({"model": model_name} if model_name else {})},
     }
+    from backend.services import epistemics
+    epistemics.stamp(sug)                      # interpretive: a comparative reading is a reading
     _record_comparative(ctx, sug)
     return ActuatorResult(status=OK, produced=tuple(actuator.produces), model=model_name,
                           adapter="compose_comparative_percept",

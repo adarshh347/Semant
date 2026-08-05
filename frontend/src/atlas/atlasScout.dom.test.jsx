@@ -20,7 +20,8 @@ import { createRoot } from 'react-dom/client';
 import { ReactFlowProvider } from '@xyflow/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import AtlasCanvas from './AtlasCanvas.jsx';
+import AtlasWorkspace from './AtlasWorkspace.jsx';
+import { MODE_PLAN } from './atlasDocument.js';
 
 if (typeof globalThis.ResizeObserver === 'undefined') {
     globalThis.ResizeObserver = class {
@@ -84,6 +85,7 @@ const twoCandidates = {
 const fakeService = (over = {}) => ({
     view: vi.fn(async () => aView()),
     saveArrangement: vi.fn(async () => ({ atlas: { nodes: [] }, refused: [] })),
+    saveNotes: vi.fn(async () => ({ atlas: { nodes: [] }, refused: [] })),
     proposePlan: vi.fn(async () => ({ claims: [], connectors: [], counts: {}, refusals: [] })),
     acceptPlan: vi.fn(async () => ({ plan: null })),
     clearPlan: vi.fn(async () => ({ plan: null })),
@@ -94,7 +96,7 @@ const fakeService = (over = {}) => ({
 });
 
 const openWithCandidates = async (service = fakeService()) => {
-    await mount(<AtlasCanvas atlasId="atlas_1" service={service} />);
+    await mount(<AtlasWorkspace atlasId="atlas_1" service={service} initialMode={MODE_PLAN} />);
     await click(container.querySelector('[data-scout]'));
     return service;
 };
@@ -105,7 +107,7 @@ describe('asking the Scout', () => {
     it('offers the action in the header, worded as a suggestion', async () => {
         // "Suggest", never "Find": the Scout has not looked at a photograph and cannot find
         // anything in one.
-        await mount(<AtlasCanvas atlasId="atlas_1" service={fakeService()} />);
+        await mount(<AtlasWorkspace atlasId="atlas_1" service={fakeService()} initialMode={MODE_PLAN} />);
         const button = container.querySelector('[data-scout]');
         expect(button.textContent).toMatch(/suggest/i);
         expect(button.textContent).not.toMatch(/find/i);

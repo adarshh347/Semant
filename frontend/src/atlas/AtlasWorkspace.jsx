@@ -4,6 +4,7 @@ import AtlasCanvas from './AtlasCanvas.jsx';
 import AtlasLightTable from './AtlasLightTable.jsx';
 import AtlasDifferential from './AtlasDifferential.jsx';
 import AtlasPlanPanel from './AtlasPlanPanel.jsx';
+import AtlasWriterPanel from './AtlasWriterPanel.jsx';
 import { atlasService } from './atlasService.js';
 import {
     ATLAS_MODES, MACHINE_READ_INTENTION, MODE_CANVAS, MODE_LIGHT_TABLE, MODE_PLAN,
@@ -11,6 +12,7 @@ import {
     positionsOf, refusalLines,
 } from './atlasDocument.js';
 import { acceptPayload, bindingEdges, claimFlowNodes } from './atlasPlan.js';
+import { blockerFrom, seedBlocker } from './atlasDraft.js';
 import {
     connectionRefusal, refusalLine, refusedEdge, relationEdges, relationSummary,
 } from './atlasRelation.js';
@@ -76,6 +78,18 @@ export default function AtlasWorkspace({
     // linger over a canvas the writer has moved on from.
     const [relationRefusal, setRelationRefusal] = useState(null);
     const [drawing, setDrawing] = useState(false);
+
+    // ── C5: the writer ──
+    // `storedPlan` is the ACCEPTED plan as the server holds it — the only thing a draft may be
+    // written from. It is kept apart from the working `plan`/`claims` above, which are what the
+    // writer is still editing: drafting from an unaccepted edit would compose prose from an
+    // argument nothing had judged.
+    const [side, setSide] = useState('plan');
+    const [storedPlan, setStoredPlan] = useState(null);
+    const [draft, setDraft] = useState(null);
+    const [drafting, setDrafting] = useState(false);
+    const [acceptingDraft, setAcceptingDraft] = useState(false);
+    const [draftError, setDraftError] = useState('');
 
     // ── T2: the Scout ──
     // Candidates are SESSION state and nothing else. A ghost is a model's hunch about which pair
@@ -154,7 +168,12 @@ export default function AtlasWorkspace({
                     setClaims(data.plan.claims || []);
                     setThesis(data.plan.thesis || '');
                     setAccepted(true);
+                    setStoredPlan(data.plan);
                 }
+                // C5: a draft already on the document opens with it. It is quarantined prose, so
+                // it is shown exactly as stored and never re-composed on load — a fresh run on
+                // every page view would replace what the writer read last time.
+                if (data?.draft) setDraft(data.draft);
             } catch (e) {
                 if (live) setError(e?.message || 'Could not open this Atlas.');
             }
@@ -272,6 +291,7 @@ export default function AtlasWorkspace({
             setPlan(stored);
             setClaims(stored?.claims || []);
             setAccepted(true);
+            setStoredPlan(stored);          // the seed the writer may now draft from
         } catch (e) {
             setPlanError(e?.message || 'The plan was not accepted.');
         } finally {
@@ -284,6 +304,7 @@ export default function AtlasWorkspace({
         setClaims([]);
         setAccepted(false);
         setPlanError('');
+        setStoredPlan(null);
         try {
             if (accepted) await service.clearPlan(atlasId);
         } catch (e) {
@@ -404,6 +425,81 @@ export default function AtlasWorkspace({
         }
     }, [confirming, groundRelation]);
 
+    // ── C5: draft, accept, export ────────────────────────────────────────────
+
+    /**
+     * Compose the accepted plan into prose.
+     *
+     * The most expensive gesture on this surface and the only one that RUNS producers, which is
+     * why nothing calls it implicitly — no draft is composed on page load, on accept, or on a
+     * drag. M3 refuses to compose from a plan: a plan says what WOULD be produced, and an article
+     * written from that is indistinguishable from one that was earned. So the route executes the
+     * chain first and composes against that run's provenance.
+     */
+    const onDraft = useCallback(async () => {
+        if (drafting) return;
+        setDrafting(true);
+        setDraftError('');
+        try {
+            const res = await service.draftArticle(atlasId, {});
+            setDraft(res?.draft || null);
+        } catch (e) {
+            setDraft(null);
+            setDraftError(blockerFrom(e));
+        } finally {
+            setDrafting(false);
+        }
+    }, [atlasId, drafting, service]);
+
+    const onAcceptDraft = useCallback(async () => {
+        if (acceptingDraft) return;
+        setAcceptingDraft(true);
+        setDraftError('');
+        try {
+            const res = await service.acceptDraft(atlasId, {});
+            setDraft(res?.draft || null);
+        } catch (e) {
+            setDraftError(blockerFrom(e));
+        } finally {
+            setAcceptingDraft(false);
+        }
+    }, [acceptingDraft, atlasId, service]);
+
+    /** Dismiss the draft. The plan and the images stay — only the prose goes. */
+    const onDismissDraft = useCallback(async () => {
+        setDraft(null);
+        setDraftError('');
+        try {
+            await service.dismissDraft(atlasId);
+        } catch (e) {
+            setDraftError(e?.message || 'The draft was not dismissed.');
+        }
+    }, [atlasId, service]);
+
+    /** Export IS the M4 article artifact — not a second rendering of it. */
+    const onExport = useCallback(async () => {
+        setDraftError('');
+        try {
+            const artifact = await service.exportDraft(atlasId);
+            const blob = new Blob([JSON.stringify(artifact, null, 2)],
+                { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `atlas-${atlasId}-article.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            setDraftError(blockerFrom(e));
+        }
+    }, [atlasId, service]);
+
+    /** Reopen a cited percept on its own source image — M4's reopen target, C2's Differential. */
+    const onReopenPercept = useCallback((target) => {
+        if (target?.postId) { openImage(target.postId); return; }
+        if (target?.href && typeof window !== 'undefined') window.location.assign(target.href);
+    }, [openImage]);
+
     /** Dismiss a candidate. Nothing was persisted, so nothing is undone — it simply goes. */
     const onDismissCandidate = useCallback((candidate) => {
         setCandidates((prev) => withoutCandidate(prev, candidate.from, candidate.to));
@@ -448,6 +544,10 @@ export default function AtlasWorkspace({
     }, [candidates, planView, relationRefusal, showPlan, view]);
 
     const scout = scoutSummary(candidates, scoutDropped);
+    // Why the writer cannot draft yet, in its own words. Absent once a draft exists.
+    const writerBlocker = useMemo(
+        () => (draft ? null : seedBlocker({ nodes: view?.nodes || [], plan: storedPlan })),
+        [draft, storedPlan, view]);
 
     // ── what the header says ─────────────────────────────────────────────────
 
@@ -661,11 +761,35 @@ export default function AtlasWorkspace({
                         connectable
                     />
                     {showPlan && (
-                        <AtlasPlanPanel
-                            thesis={thesis} onThesis={setThesis} onPlan={onPlan}
-                            planning={planning} plan={plan} claims={claims} onClaims={setClaims}
-                            onAccept={onAccept} onDiscard={onDiscard}
-                            accepting={accepting} accepted={accepted} error={planError} />
+                        <div className="atlas-side">
+                            {/* Two surfaces, ONE ORDER. The plan is judged before any prose
+                                exists, and the writer has nothing honest to draft from until it
+                                is — which is why these are tabs inside plan mode rather than a
+                                mode of their own that could be entered first. */}
+                            <div className="atlas-side-tabs" role="tablist"
+                                aria-label="Plan or write">
+                                <button type="button" role="tab" aria-selected={side === 'plan'}
+                                    className={`atlas-tab${side === 'plan' ? ' is-on' : ''}`}
+                                    onClick={() => setSide('plan')}>Plan</button>
+                                <button type="button" role="tab" aria-selected={side === 'write'}
+                                    className={`atlas-tab${side === 'write' ? ' is-on' : ''}`}
+                                    onClick={() => setSide('write')}>Write</button>
+                            </div>
+                            {side === 'plan' ? (
+                                <AtlasPlanPanel
+                                    thesis={thesis} onThesis={setThesis} onPlan={onPlan}
+                                    planning={planning} plan={plan} claims={claims}
+                                    onClaims={setClaims} onAccept={onAccept} onDiscard={onDiscard}
+                                    accepting={accepting} accepted={accepted} error={planError} />
+                            ) : (
+                                <AtlasWriterPanel
+                                    plan={storedPlan} draft={draft} blocker={writerBlocker}
+                                    onDraft={onDraft} drafting={drafting}
+                                    onAccept={onAcceptDraft} accepting={acceptingDraft}
+                                    onDismiss={onDismissDraft} onExport={onExport}
+                                    onReopen={onReopenPercept} error={draftError} />
+                            )}
+                        </div>
                     )}
                 </div>
             )}
