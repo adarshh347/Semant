@@ -9,6 +9,7 @@ set of images.
     GET  /api/v1/atlas/{id}               the STORED document — arrangement only
     GET  /api/v1/atlas/{id}/view          the same, hydrated from the ledger for rendering
     POST /api/v1/atlas/{id}/arrangement   node positions; refusals travel with the save
+    POST /api/v1/atlas/{id}/notes         T1 — the author's freehand notes; NOT percepts
 
 WHY `GET {id}` AND `GET {id}/view` ARE TWO ENDPOINTS. They could have been one with a query
 parameter, and separating them is the point: the first returns exactly what is stored, so what the
@@ -56,6 +57,22 @@ class CreateAtlasRequest(BaseModel):
 
 class ArrangementRequest(BaseModel):
     nodes: List[NodePatch] = Field(default_factory=list)
+
+
+class NotePatch(BaseModel):
+    """One author note. Two fields, and the model is closed: FastAPI drops anything else the
+    client sent, so percept data cannot arrive inside a note even before the service whitelists it."""
+    note_id: Optional[str] = None
+    text: str = ""
+
+
+class NotesPatch(BaseModel):
+    node_id: str
+    notes: List[NotePatch] = Field(default_factory=list)
+
+
+class NotesRequest(BaseModel):
+    nodes: List[NotesPatch] = Field(default_factory=list)
 
 
 async def _posts_for(post_ids: List[str], collection=None) -> Dict[str, Dict[str, Any]]:
@@ -156,6 +173,26 @@ async def save_arrangement(atlas_id: str, body: ArrangementRequest):
     """
     result = await A.save_arrangement(
         atlas_id, [n.model_dump(exclude_none=True) for n in body.nodes])
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
+    return {"atlas": A._out(result["doc"]), "refused": result["refused"]}
+
+
+@router.post("/{atlas_id}/notes")
+async def save_notes(atlas_id: str, body: NotesRequest):
+    """Save the author's notes on one or more images. Notes only — this cannot move a node.
+
+    T1's second tiny write, and the only one that stores something a person typed. An author note
+    is the writer's freehand aside: NOT a percept, NOT evidence, NOT citable, and never entering
+    the ledger. It lives here beside the arrangement because it is the same kind of thing — the
+    writer's own thinking, about the corpus rather than in it.
+
+    Nothing on this route can produce a percept, and nothing anywhere can promote a note into one.
+    The other lane — the machine read — runs the existing Director and can only ever mint a
+    QUARANTINED proposal on the post, which is reviewed in the Differential. Two lanes, no bridge.
+    """
+    result = await A.save_notes(
+        atlas_id, [n.model_dump() for n in body.nodes])
     if result is None:
         raise HTTPException(status_code=404, detail=f"no atlas '{atlas_id}'")
     return {"atlas": A._out(result["doc"]), "refused": result["refused"]}

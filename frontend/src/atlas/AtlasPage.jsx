@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import AtlasCanvas from './AtlasCanvas.jsx';
-import { atlasService } from './atlasService.js';
+import AtlasWorkspace from './AtlasWorkspace.jsx';
+import { atlasService, authMessage, isAuthFailure } from './atlasService.js';
 import { API_URL } from '../config/api';
 import './atlas.css';
 
@@ -26,19 +26,38 @@ function AtlasIndex() {
     const [title, setTitle] = useState('');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
+    // Told apart from "there is nothing here", which is what this page used to show instead.
+    const [denied, setDenied] = useState('');
 
     useEffect(() => {
         let live = true;
         (async () => {
+            let refused = '';
             try {
-                const res = await fetch(`${API_URL}/api/v1/posts?page=1&limit=24`);
-                const data = res.ok ? await res.json() : null;
-                if (live && Array.isArray(data?.posts)) setPosts(data.posts);
-            } catch { /* the existing-atlas list is still useful */ }
+                // Trailing slash on purpose: without it FastAPI answers 307 and the request is
+                // re-issued, and a redirect is exactly where an intermediary is most likely to
+                // drop a custom `X-API-Key` header.
+                const res = await fetch(`${API_URL}/api/v1/posts/?page=1&limit=24`);
+                if (res.status === 401 || res.status === 403) {
+                    refused = authMessage(res.status);
+                } else if (res.ok) {
+                    const data = await res.json();
+                    if (live && Array.isArray(data?.posts)) setPosts(data.posts);
+                }
+            } catch { /* offline or unreachable — the existing-atlas list is still worth trying */ }
+
             try {
                 const data = await atlasService.list();
                 if (live) setAtlases(data?.atlases || []);
-            } catch { /* a fresh install has none */ }
+            } catch (e) {
+                // A REFUSAL IS NOT AN EMPTY SHELF. "A fresh install has none" is a fine reason to
+                // tolerate a failure here, but it is only true of some failures: a 401 means the
+                // canvases exist and this browser was not allowed to see them, and rendering that
+                // as an empty picker tells the curator their work is gone.
+                if (isAuthFailure(e)) refused = e.message;
+            }
+
+            if (live && refused) setDenied(refused);
         })();
         return () => { live = false; };
     }, []);
@@ -70,6 +89,10 @@ function AtlasIndex() {
                     sequence carries the argument.
                 </p>
             </header>
+
+            {denied && (
+                <div className="atlas-banner is-error" role="alert">{denied}</div>
+            )}
 
             {atlases.length > 0 && (
                 <section className="atlas-existing">
@@ -104,7 +127,11 @@ function AtlasIndex() {
                         Images {selected.length ? `· ${selected.length} chosen, in order` : ''}
                     </legend>
                     {posts.length === 0 ? (
-                        <p className="atlas-empty">No images loaded.</p>
+                        <p className="atlas-empty">
+                            {denied
+                                ? 'Images could not be listed — see above.'
+                                : 'No images loaded.'}
+                        </p>
                     ) : (
                         <ul className="atlas-picker">
                             {posts.map((p) => {
@@ -137,5 +164,7 @@ function AtlasIndex() {
 
 export default function AtlasPage() {
     const { atlasId } = useParams();
-    return atlasId ? <AtlasCanvas atlasId={atlasId} /> : <AtlasIndex />;
+    // T1: the route opens the WORKSPACE, which owns the document and hands it to whichever mode is
+    // on. The route knows nothing about modes — a mode is a lens, not a place.
+    return atlasId ? <AtlasWorkspace atlasId={atlasId} /> : <AtlasIndex />;
 }

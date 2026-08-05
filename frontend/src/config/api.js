@@ -13,7 +13,14 @@ const API_KEY = import.meta.env.VITE_API_KEY;
 if (API_KEY) {
   // Covers every axios request (most of the app).
   axios.defaults.headers.common['X-API-Key'] = API_KEY;
+}
 
+// The fetch patch needs a `window`, and this module is imported by plenty of code that runs
+// without one — the node-environment unit tests, and anything server-rendered. Reading
+// `window.fetch` at module scope threw `ReferenceError: window is not defined` there, but ONLY
+// once an API key was configured, so the whole app worked until the day someone set one. Guarded
+// separately from the axios default above, which needs no DOM.
+if (API_KEY && typeof window !== 'undefined' && typeof window.fetch === 'function') {
   // Parts of the app use the raw fetch() API instead of axios. Patch fetch
   // once, here, to inject the key on requests aimed at our backend so we don't
   // have to touch each call site. Requests to other hosts (e.g. Cloudinary)

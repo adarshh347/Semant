@@ -1,11 +1,53 @@
 import { API_URL } from '../config/api';
 
 // ATLAS C1 — the Atlas client. Mirrors the repo's per-domain service pattern (raw fetch, throw on
-// !ok). The X-API-Key header, when the backend requires one, is installed globally by config/api.js.
+// !ok). The X-API-Key header, when the backend requires one, is installed globally by config/api.js
+// — which patches `window.fetch`, so these raw calls are covered without a per-call-site header.
 const BASE = `${API_URL}/api/v1/atlas`;
 
+/**
+ * A request the Atlas made and the backend turned down, carrying the status.
+ *
+ * The status is kept rather than folded into a string because REFUSAL AND EMPTINESS ARE DIFFERENT
+ * FACTS and only the caller can tell them apart usefully: a 404 on one Atlas is "that canvas is
+ * gone", a 401 anywhere is "this browser is not authorised", and an empty list is neither. The
+ * Atlas index used to swallow all three into a picker that said "No images loaded."
+ */
+export class AtlasRequestError extends Error {
+    constructor(message, status) {
+        super(message);
+        this.name = 'AtlasRequestError';
+        this.status = status;
+    }
+}
+
+/** True when a failure was the door, not the data. */
+export const isAuthFailure = (e) => e?.status === 401 || e?.status === 403;
+
+/**
+ * What to tell a person whose key was refused.
+ *
+ * Named, and actionable. "Failed to load atlas view (401)" is a true sentence that helps nobody:
+ * it names neither what was refused nor what to change. The backend's gate is a single static
+ * key (`API_KEY`), and the browser's copy of it is `VITE_API_KEY`, so the fix is one line of
+ * configuration and the message should say which.
+ */
+export function authMessage(status) {
+    if (status === 401) {
+        return 'The backend did not accept this browser’s API key (401). '
+            + 'Set VITE_API_KEY to match the backend’s API_KEY and reload.';
+    }
+    return 'The backend refused this request (403). '
+        + 'This browser’s API key is not allowed to read the Atlas.';
+}
+
 async function json(res, action) {
-    if (!res.ok) throw new Error(`Failed to ${action} (${res.status})`);
+    if (!res.ok) {
+        const message = (res.status === 401 || res.status === 403)
+            ? authMessage(res.status)
+            : `Failed to ${action} (${res.status})`;
+        throw new AtlasRequestError(message, res.status);
+    }
     return res.json();
 }
 
@@ -34,6 +76,16 @@ export const atlasService = {
     /** Move nodes. Returns `{atlas, refused}` — the refusals travel with the save. */
     async saveArrangement(id, nodes) {
         return json(await post(`${BASE}/${id}/arrangement`, { nodes }), 'save arrangement');
+    },
+    /**
+     * T1 — the author's own notes. Returns `{atlas, refused}`, same as an arrangement save.
+     *
+     * A separate route from `saveArrangement` because they are separate gestures: this one cannot
+     * move a picture and that one cannot write a sentence. Notes are the writer's thinking, never
+     * evidence — nothing on this path reaches the ledger.
+     */
+    async saveNotes(id, nodes) {
+        return json(await post(`${BASE}/${id}/notes`, { nodes }), 'save notes');
     },
 };
 

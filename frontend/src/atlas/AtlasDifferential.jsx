@@ -21,13 +21,20 @@ import { API_URL } from '../config/api';
  * smaller Differential, and a second one is the thing this gate exists to avoid. So the canvas
  * steps aside and gives it the viewport, then comes back.
  *
+ * T1 — ARRIVING WITH AN ACT ALREADY CHOSEN. `intention` is the Light Table's one-click machine
+ * read, and it is passed STRAIGHT THROUGH to the workspace's own Orchestrate bar. This file gains
+ * no trigger of its own: the Director runs where it always ran, the result lands in the quarantine
+ * it always landed in, and Accept is the same button. The machine may only ever propose here, and
+ * it can no more write an author note than a note can become a percept — the two lanes have no
+ * connecting code anywhere, and this seam is the place it would have been convenient to add one.
+ *
  * THE ATLAS DOES NOT LEARN WHAT WAS MADE. It is told only that the curator is done. The overlays
  * refresh by re-reading `/view` — the ledger's current answer — rather than by this component
  * handing back a percept it saw go past. Threading the new percept through here would be faster
  * and would also be the Atlas starting to hold percept truth, which is the invariant C1 spent its
  * whole design on. One extra request is the correct price.
  */
-export default function AtlasDifferential({ postId, title = '', onClose }) {
+export default function AtlasDifferential({ postId, title = '', intention = null, onClose }) {
     const [post, setPost] = useState(null);
     const [error, setError] = useState('');
     // The store is a hook: it must be called on every render, and it tolerates a null post while
@@ -59,7 +66,8 @@ export default function AtlasDifferential({ postId, title = '', onClose }) {
 
     return (
         <div className="atlas-focus" role="dialog" aria-modal="true"
-            aria-label={`${title || postId} in the Differential`} data-post-id={postId}>
+            aria-label={`${title || postId} in the Differential`} data-post-id={postId}
+            data-intention={intention || ''}>
             {error && (
                 <div className="atlas-focus-error" role="alert">
                     {error}
@@ -80,6 +88,7 @@ export default function AtlasDifferential({ postId, title = '', onClose }) {
                         store={store}
                         onExit={close}
                         onPostChange={setPost}
+                        machineRead={intention}
                     />
                 </RegionStoreContext.Provider>
             )}

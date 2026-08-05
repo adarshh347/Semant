@@ -377,3 +377,239 @@
     background: var(--surface);
     border-color: var(--line, rgba(250, 247, 245, 0.14));
 }
+
+/* ── ATLAS T1 — the modes, and the Light Table ─────────────────────────────── */
+
+/* The shared percept stage. `.atlas-node-stage` (canvas) and `.lt-stage` (Light Table) both land
+   here, so the geometry the overlays letterbox into is established in exactly one place. */
+.atlas-stage {
+    position: relative;
+}
+
+.atlas-head-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+/* The mode switcher. A segmented control, deliberately plain: it changes how you LOOK, not what
+   you are looking at, and a loud control would imply you had navigated somewhere. */
+.atlas-modes {
+    display: inline-flex;
+    padding: 2px;
+    gap: 2px;
+    background: var(--surface-2);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.12));
+    border-radius: var(--radius-md, 8px);
+}
+
+.atlas-mode {
+    padding: 4px var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    background: transparent;
+    border: 0;
+    border-radius: calc(var(--radius-md, 8px) - 3px);
+    cursor: pointer;
+}
+
+.atlas-mode:hover { color: var(--ink); }
+
+.atlas-mode.is-on {
+    color: var(--ink);
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(23, 18, 26, 0.08);
+}
+
+/* ── the Light Table ──────────────────────────────────────────────────────── */
+
+.lt {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-5) var(--space-8) var(--space-8);
+    background: var(--bg);
+}
+
+.lt-legend,
+.lt-empty {
+    margin: 0 0 var(--space-5);
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+}
+
+.lt-status {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+}
+
+.lt-grid {
+    display: grid;
+    /* Uniform cells in corpus order. No masonry, no sort — the sequence is the argument (M1). */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lt-cell {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.12));
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.lt-cell-stage {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background: var(--surface-2);
+}
+
+.lt-stage { position: absolute; inset: 0; }
+
+.lt-missing {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: var(--space-4);
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+    text-align: center;
+}
+
+.lt-cell-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-top: 1px solid var(--line, rgba(23, 18, 26, 0.08));
+}
+
+.lt-cell-title {
+    font-size: var(--fs-caption);
+    font-weight: 600;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lt-cell-count,
+.lt-withheld {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+}
+
+.lt-withheld {
+    margin: 0;
+    padding: 0 var(--space-3) var(--space-2);
+}
+
+/* ── the author-notes slot ────────────────────────────────────────────────────
+   A NOTE IS NOT EVIDENCE, and the treatment has to say so before anyone reads a word. The five
+   epistemic chips are coloured, bordered pills; this is deliberately none of those — a warm tinted
+   panel with a handwritten-feeling label. It must not be mistakable for `grounded`/`uncertain` at
+   a glance across a grid, because the one failure that matters here is a reader taking the
+   writer's aside for a finding. */
+.lt-notes {
+    padding: var(--space-3);
+    background: color-mix(in srgb, var(--surface-2) 78%, #C9A227 22%);
+    border-top: 1px solid var(--line, rgba(23, 18, 26, 0.08));
+}
+
+.lt-notes-label {
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--fs-caption);
+    font-style: italic;
+    color: var(--ink-muted);
+}
+
+.lt-notes-caveat {
+    font-family: var(--font-mono);
+    font-style: normal;
+    color: var(--ink-subtle);
+}
+
+.lt-note-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.lt-note-text {
+    width: 100%;
+    padding: var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--fs-small);
+    font-style: italic;
+    line-height: 1.45;
+    color: var(--ink);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+    border-radius: var(--radius-sm, 6px);
+    resize: vertical;
+}
+
+.lt-note-text:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--ink) 35%, transparent);
+    outline-offset: 1px;
+}
+
+.lt-note-add,
+.lt-open,
+.lt-read {
+    padding: 3px var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    background: transparent;
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.16));
+    border-radius: var(--radius-sm, 6px);
+    cursor: pointer;
+}
+
+.lt-note-add { margin-top: var(--space-2); }
+
+.lt-note-add:hover,
+.lt-open:hover,
+.lt-read:hover:not(:disabled) {
+    color: var(--ink);
+    border-color: var(--line, rgba(23, 18, 26, 0.3));
+}
+
+.lt-read:disabled { opacity: 0.55; cursor: default; }
+
+.lt-acts {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+    padding: var(--space-2) var(--space-3);
+    border-top: 1px solid var(--line, rgba(23, 18, 26, 0.08));
+}
+
+[data-theme='dark'] .lt-cell {
+    border-color: var(--line, rgba(250, 247, 245, 0.14));
+}
+
+[data-theme='dark'] .lt-notes {
+    background: color-mix(in srgb, var(--surface-2) 82%, #C9A227 18%);
+}
+
+[data-theme='dark'] .atlas-modes,
+[data-theme='dark'] .lt-note-text {
+    border-color: var(--line, rgba(250, 247, 245, 0.14));
+}

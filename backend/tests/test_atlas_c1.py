@@ -191,7 +191,10 @@ def test_a_new_document_carries_arrangement_and_references_only():
                           post_ids=["p1", "p2"], now="T")
     A.assert_no_percept_data(doc)
     for node in doc["nodes"]:
-        assert set(node.keys()) == {"node_id", "post_id", "x", "y", "w", "h"}
+        # T1 widened this by exactly one key: `notes`, the author's freehand slot. It is listed
+        # here rather than the assertion being loosened, so the next addition to a node has to be
+        # a deliberate edit to this line and cannot arrive unnoticed.
+        assert set(node.keys()) == {"node_id", "post_id", "x", "y", "w", "h", "notes"}
     assert doc["edges"] == [] and doc["draft"] is None
 
 
@@ -336,4 +339,4 @@ def test_the_stored_document_never_grows_percept_data_through_a_save():
                                          "grounds": [{"id": "g1"}]}], collection=coll))
     stored = run(A.get_atlas(doc["_id"], collection=coll))
     A.assert_no_percept_data(stored)
-    assert set(stored["nodes"][0].keys()) == {"node_id", "post_id", "x", "y", "w", "h"}
+    assert set(stored["nodes"][0].keys()) == {"node_id", "post_id", "x", "y", "w", "h", "notes"}
