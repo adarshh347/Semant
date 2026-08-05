@@ -9,6 +9,7 @@
  */
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ReactFlowProvider } from '@xyflow/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // T1 moved the document, both saves and the Differential path out of `AtlasCanvas` and up into
@@ -31,6 +32,9 @@ if (typeof globalThis.DOMMatrixReadOnly === 'undefined') {
 
 let container; let root;
 const mount = async (node) => { await act(async () => { root.render(node); }); };
+// A node mounted on its own still needs React Flow's store: since C3/C4 the image node carries
+// handles — the end a binding lands on, and the one a relation is dragged from.
+const mountNode = async (node) => mount(<ReactFlowProvider>{node}</ReactFlowProvider>);
 
 beforeEach(() => {
     container = document.createElement('div');
@@ -74,19 +78,19 @@ const fakeService = (over = {}) => ({
 
 describe('an image node', () => {
     it('shows the picture and counts what is committed on it', async () => {
-        await mount(<AtlasImageNode data={nodeData()} />);
+        await mountNode(<AtlasImageNode data={nodeData()} />);
         expect(container.querySelector('.atlas-node-img').getAttribute('src'))
             .toBe('https://example.invalid/1.jpg');
         expect(container.textContent).toContain('2 percepts');
     });
 
     it('says so plainly when nothing has been committed yet', async () => {
-        await mount(<AtlasImageNode data={nodeData({ grounds: [] })} />);
+        await mountNode(<AtlasImageNode data={nodeData({ grounds: [] })} />);
         expect(container.textContent).toContain('no committed percepts');
     });
 
     it('stays on the canvas when the image could not be read, and says why', async () => {
-        await mount(<AtlasImageNode data={nodeData({
+        await mountNode(<AtlasImageNode data={nodeData({
             readable: false, unreadableReason: 'post:ghost could not be read' })} />);
         const node = container.querySelector('.atlas-node');
         expect(node.getAttribute('data-readable')).toBe('false');
@@ -94,7 +98,7 @@ describe('an image node', () => {
     });
 
     it('renders a withheld suggestion as visible text, never a tooltip', async () => {
-        await mount(<AtlasImageNode data={nodeData({ withheld: 2 })} />);
+        await mountNode(<AtlasImageNode data={nodeData({ withheld: 2 })} />);
         const note = container.querySelector('.atlas-node-withheld');
         expect(note).toBeTruthy();
         expect(note.textContent).toMatch(/2 suggestions not shown/);
@@ -105,7 +109,7 @@ describe('an image node', () => {
     it('offers nothing that could change a percept ON THE NODE', async () => {
         // C2 adds exactly one control, and what it does is LEAVE. There is still no brush, no
         // review chip and no Accept here — a second, smaller Differential is what that would be.
-        await mount(<AtlasImageNode data={nodeData({ onOpen: () => {} })} />);
+        await mountNode(<AtlasImageNode data={nodeData({ onOpen: () => {} })} />);
         const buttons = [...container.querySelectorAll('button')];
         expect(buttons).toHaveLength(1);
         expect(buttons[0].getAttribute('data-open-post')).toBe('p1');
@@ -113,7 +117,7 @@ describe('an image node', () => {
     });
 
     it('shows no way in until one is given', async () => {
-        await mount(<AtlasImageNode data={nodeData()} />);
+        await mountNode(<AtlasImageNode data={nodeData()} />);
         expect(container.querySelectorAll('button').length).toBe(0);
     });
 });
@@ -123,7 +127,7 @@ describe('an image node', () => {
 describe('opening an image in the Differential', () => {
     it('hands back the post id the node stands for', async () => {
         const onOpen = vi.fn();
-        await mount(<AtlasImageNode data={nodeData({ onOpen })} />);
+        await mountNode(<AtlasImageNode data={nodeData({ onOpen })} />);
         await act(async () => {
             container.querySelector('[data-open-post]').dispatchEvent(
                 new MouseEvent('click', { bubbles: true }));
@@ -132,13 +136,13 @@ describe('opening an image in the Differential', () => {
     });
 
     it('carries the nodrag class, or React Flow eats the click', async () => {
-        await mount(<AtlasImageNode data={nodeData({ onOpen: () => {} })} />);
+        await mountNode(<AtlasImageNode data={nodeData({ onOpen: () => {} })} />);
         expect(container.querySelector('[data-open-post]').className).toContain('nodrag');
     });
 
     it('offers no way in on an image that could not be read', async () => {
         // A dead end dressed as an affordance. `flowNodesFromView` withholds the callback.
-        await mount(<AtlasImageNode data={nodeData({
+        await mountNode(<AtlasImageNode data={nodeData({
             readable: false, unreadableReason: 'post:ghost could not be read', onOpen: null })} />);
         expect(container.querySelector('[data-open-post]')).toBe(null);
     });

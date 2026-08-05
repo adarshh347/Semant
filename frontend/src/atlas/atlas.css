@@ -613,3 +613,632 @@
 [data-theme='dark'] .lt-note-text {
     border-color: var(--line, rgba(250, 247, 245, 0.14));
 }
+
+/* ── ATLAS C4: plan mode ─────────────────────────────────────────────────────
+ *
+ * The panel sits BESIDE the canvas rather than over it. An argument and the pictures it is about
+ * have to be readable at the same time — a plan behind a drawer would make a writer choose between
+ * seeing a claim and seeing what it points at, and the whole gate is about keeping the two joined.
+ *
+ * Refusals are styled to be READ, at prose weight and in the flow of the list. Nothing here is
+ * collapsed, greyed to illegibility, or moved below a fold: a claim nothing can carry is the most
+ * useful sentence on this surface.
+ */
+
+.atlas-with-plan {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.atlas-with-plan .atlas-canvas {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.atlas-plan {
+    flex: 0 0 clamp(320px, 28vw, 420px);
+    overflow-y: auto;
+    padding: var(--space-5) var(--space-6);
+    border-left: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+    background: var(--surface);
+}
+
+.atlas-thesis {
+    width: 100%;
+    padding: var(--space-3);
+    font: inherit;
+    color: var(--ink);
+    background: var(--surface-2, var(--surface));
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.16));
+    border-radius: var(--radius-md, 6px);
+    resize: vertical;
+    margin-bottom: var(--space-3);
+}
+
+.atlas-plan-note,
+.atlas-plan-counts {
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+    margin: var(--space-3) 0 0;
+}
+
+.atlas-plan-complete {
+    font-size: var(--fs-small);
+    margin: var(--space-2) 0 var(--space-4);
+}
+
+.atlas-plan-complete.is-false { color: #A66273; }
+.atlas-plan-complete.is-true { color: var(--ink-muted); }
+
+.atlas-banner.is-empty,
+.atlas-banner.is-edited {
+    background: var(--surface-2, rgba(23, 18, 26, 0.03));
+    color: var(--ink);
+}
+
+/* ── the claim list ─────────────────────────────────────────────────────── */
+
+.atlas-claims {
+    list-style: none;
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+    counter-reset: claim;
+}
+
+.atlas-claim-row {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.12));
+    border-radius: var(--radius-md, 6px);
+    background: var(--surface-2, transparent);
+}
+
+.atlas-claim-row.is-struck { border-style: dashed; }
+
+.atlas-claim-row-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+.atlas-claim-move { display: inline-flex; gap: var(--space-1, 4px); }
+
+.atlas-claim-move button {
+    font: inherit;
+    font-size: var(--fs-caption);
+    padding: 2px var(--space-2);
+    color: var(--ink-muted);
+    background: transparent;
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.14));
+    border-radius: var(--radius-sm, 4px);
+    cursor: pointer;
+}
+
+.atlas-claim-move button[disabled] { opacity: 0.35; cursor: not-allowed; }
+
+.atlas-claim-status {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
+    color: var(--ink-muted);
+}
+
+.atlas-claim-status.is-refused { color: #A66273; }
+
+.atlas-claim-edit {
+    width: 100%;
+    font: inherit;
+    color: var(--ink);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px dashed var(--line, rgba(23, 18, 26, 0.18));
+    padding: var(--space-1, 4px) 0;
+    resize: vertical;
+}
+
+.atlas-claim-row.is-struck .atlas-claim-edit { text-decoration: line-through; }
+
+.atlas-claim-stale,
+.atlas-claim-caveat,
+.atlas-claim-why {
+    font-size: var(--fs-caption);
+    color: #A66273;
+    margin: var(--space-2) 0 0;
+}
+
+/* ── one percept line ───────────────────────────────────────────────────── */
+
+.atlas-p-list {
+    list-style: none;
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-1, 4px);
+}
+
+.atlas-p-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+}
+
+.atlas-p-fn { font-weight: 600; color: var(--ink); }
+.atlas-p-act { font-family: var(--font-mono); }
+.atlas-p-ep,
+.atlas-p-img,
+.atlas-p-span { font-family: var(--font-mono); opacity: 0.8; }
+
+/* A refused percept is not dimmed into the background — it is the line a writer most needs. */
+.atlas-p-row.is-unbound .atlas-p-why { color: #A66273; }
+
+.atlas-p-cut {
+    margin-left: auto;
+    font: inherit;
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line, rgba(23, 18, 26, 0.2));
+    cursor: pointer;
+}
+
+.atlas-plan-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+}
+
+.atlas-plain {
+    font: inherit;
+    color: var(--ink-muted);
+    background: transparent;
+    border: 0;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.atlas-plan-accepted {
+    margin-top: var(--space-3);
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+}
+
+/* ── a claim, on the canvas ─────────────────────────────────────────────── */
+
+.atlas-claim {
+    padding: var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.14));
+    border-left: 3px solid var(--accent, #7B2D6B);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 2px rgba(23, 18, 26, 0.06), 0 8px 24px rgba(23, 18, 26, 0.05);
+    font-size: var(--fs-small);
+}
+
+/* Dashed, and the accent bar drops away: a refused claim keeps its place in the argument and
+   stops looking like something that carries. */
+.atlas-claim.is-struck {
+    border-style: dashed;
+    border-left-color: #A66273;
+    background: var(--surface-2, var(--surface));
+}
+
+.atlas-claim-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+}
+
+.atlas-claim-n { font-family: var(--font-mono); font-size: var(--fs-caption); }
+.atlas-claim-of { opacity: 0.5; }
+
+.atlas-claim-text { margin: 0 0 var(--space-2); line-height: 1.4; }
+
+.atlas-claim-percepts,
+.atlas-claim-unbound {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: grid;
+    gap: 2px;
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+}
+
+.atlas-claim-unbound { color: #A66273; }
+
+.atlas-percept { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.atlas-percept-fn { font-weight: 600; color: var(--ink); }
+.atlas-percept-act { font-family: var(--font-mono); }
+.atlas-percept-ep,
+.atlas-percept-span { font-family: var(--font-mono); opacity: 0.8; }
+
+.atlas-claim-reach {
+    margin: var(--space-3) 0 0;
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+}
+
+/* ── the connectors ─────────────────────────────────────────────────────── */
+
+/* Dashed on purpose, and never solid: what a line asserts here is that a percept WOULD resolve.
+   C3's relation edges are real produced percepts and will read as solid. */
+.atlas-canvas .react-flow__edge.atlas-edge path {
+    stroke: var(--ink-muted, rgba(23, 18, 26, 0.45));
+    stroke-dasharray: 6 5;
+    stroke-width: 1.5;
+}
+
+.atlas-canvas .react-flow__edge.is-challenge path { stroke: #A66273; }
+
+.atlas-canvas .react-flow__edge .react-flow__edge-text {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    fill: var(--ink-muted);
+}
+
+/* An endpoint the layout needs, not an affordance — nobody drags a binding into existence. */
+.atlas-handle {
+    width: 6px;
+    height: 6px;
+    background: var(--line, rgba(23, 18, 26, 0.25));
+    border: 0;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* ── ATLAS C3: relation edges ────────────────────────────────────────────────
+ *
+ * A RELATION IS NOT A BINDING, and the two must never be mistaken for one another at a glance.
+ *
+ *   C4 binding   dashed · no arrow · muted ink   · claim → image · "supports · measured"
+ *   C3 relation  SOLID  · arrow    · accent ink  · image ↔ image · "kinship · interpretive"
+ *   a refusal    dotted · no arrow · warning ink · the attempted line, persisted nowhere
+ *
+ * The arrow is not decoration: `compare_views` records a left and a right, and "the façade
+ * prepares the rotunda" is not its own converse.
+ */
+
+.atlas-canvas .react-flow__edge.atlas-relation path {
+    stroke: var(--accent, #7B2D6B);
+    stroke-width: 2;
+    stroke-dasharray: none;                 /* solid — a produced percept, not a proposal */
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation .react-flow__edge-text {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    fill: var(--ink);
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation .react-flow__edge-textbg {
+    fill: var(--surface);
+}
+
+/* An edge whose relation has left the ledger STAYS on the canvas and stops looking like
+   evidence. "Never drawn" and "drawn, then uncommitted" are different facts. */
+.atlas-canvas .react-flow__edge.atlas-relation.is-stale path {
+    stroke: var(--ink-subtle, rgba(23, 18, 26, 0.35));
+    stroke-width: 1.5;
+    stroke-dasharray: 2 4;
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation.is-stale .react-flow__edge-text {
+    fill: #A66273;
+}
+
+/* The line a writer attempted that could not be grounded. Dotted, warning-coloured, no arrow —
+   nothing was established, so nothing may look established. It is never persisted. */
+.atlas-canvas .react-flow__edge.atlas-relation.is-refused path {
+    stroke: #A66273;
+    stroke-width: 1.5;
+    stroke-dasharray: 1 5;
+    stroke-linecap: round;
+}
+
+.atlas-canvas .react-flow__edge.atlas-relation.is-refused .react-flow__edge-text {
+    fill: #A66273;
+    font-style: italic;
+}
+
+/* The one draggable affordance on this canvas. Bigger than the layout handle it sits opposite,
+   because it is a thing a person is meant to find and pull. */
+.atlas-handle.is-draw {
+    width: 11px;
+    height: 11px;
+    background: var(--accent, #7B2D6B);
+    opacity: 0.55;
+    pointer-events: all;
+    cursor: crosshair;
+}
+
+.atlas-handle.is-draw:hover {
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(123, 45, 107, 0.18);
+}
+
+.atlas-rel-count { color: var(--ink-muted); }
+.atlas-rel-stale { color: #A66273; }
+
+/* While a relation is being dragged, every landing point grows. A 6px target is findable with a
+   mouse only by accident, and a gesture this consequential should not depend on precision — the
+   handle is where a claim about two photographs comes to rest. */
+.atlas-canvas .react-flow__pane.connecting .atlas-handle,
+.atlas-canvas.is-connecting .atlas-handle {
+    width: 16px;
+    height: 16px;
+    opacity: 0.9;
+    background: var(--accent, #7B2D6B);
+    box-shadow: 0 0 0 4px rgba(123, 45, 107, 0.15);
+}
+
+/* ── ATLAS T2 — the Scout: ghost edges and their tray ──────────────────────────
+ *
+ * A ghost is the WEAKEST mark that can appear on this canvas and it has to look it. Four kinds of
+ * line cross here now, and a reader must tell them apart before reading any label:
+ *
+ *   C3 relation — solid, arrowed, accent-coloured .... a comparison was run and committed
+ *   C4 binding  — dashed, unarrowed, muted .......... a claim would resolve against this image
+ *   T2 ghost    — DOTTED, unarrowed, greyed, faint .. a model's hunch; nothing has been run
+ *   a refusal   — dotted, warning-coloured .......... the gate looked and said no
+ *
+ * The ghost is deliberately the quietest: greyer than the binding, thinner than the relation, and
+ * translucent. A candidate drawn in the relation style would be a guess wearing the costume of
+ * committed evidence — the exact fabrication the Scout exists to prevent, arriving via CSS.
+ */
+.atlas-canvas .react-flow__edge.atlas-ghost path {
+    stroke: var(--ink-subtle, rgba(23, 18, 26, 0.34));
+    stroke-width: 1.25;
+    stroke-dasharray: 1 6;
+    stroke-linecap: round;
+    opacity: 0.75;
+}
+
+.atlas-canvas .react-flow__edge.atlas-ghost .react-flow__edge-text {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-style: italic;
+    fill: var(--ink-subtle, rgba(23, 18, 26, 0.5));
+}
+
+.atlas-canvas .react-flow__edge.atlas-ghost .react-flow__edge-textbg {
+    fill: var(--surface);
+    opacity: 0.85;
+}
+
+/* The tray. Candidates are listed as well as drawn, because a rationale is a sentence and a
+   sentence on a diagonal line across a canvas is not readable — and the rationale is the only
+   thing that lets a writer decide whether to spend a comparison on the pair. */
+.atlas-scout {
+    padding: var(--space-3) var(--space-8);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+}
+
+.atlas-scout-lede {
+    margin: 0 0 var(--space-2);
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+}
+
+.atlas-scout-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.atlas-scout-item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    font-size: var(--fs-caption);
+}
+
+.atlas-scout-pair {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    color: var(--ink-subtle);
+}
+
+.atlas-scout-why {
+    flex: 1 1 auto;
+    font-family: var(--font-display);
+    font-style: italic;
+    color: var(--ink);
+}
+
+.atlas-scout-go,
+.atlas-scout-confirm,
+.atlas-scout-dismiss {
+    flex: 0 0 auto;
+    padding: 3px var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    background: transparent;
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.16));
+    border-radius: var(--radius-sm, 6px);
+    cursor: pointer;
+}
+
+.atlas-scout-go:hover:not(:disabled),
+.atlas-scout-confirm:hover:not(:disabled),
+.atlas-scout-dismiss:hover {
+    color: var(--ink);
+    border-color: var(--line, rgba(23, 18, 26, 0.3));
+}
+
+.atlas-scout-go:disabled,
+.atlas-scout-confirm:disabled { opacity: 0.55; cursor: default; }
+
+/* What the Scout was not allowed to pass on. A note, not an alarm — it is normal for a model to
+   overreach, and the count is information about the model rather than a fault in the corpus. */
+.atlas-banner.is-dropped {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    list-style: none;
+    color: var(--ink-subtle);
+    background: var(--surface-2);
+}
+
+[data-theme='dark'] .atlas-scout {
+    border-color: var(--line, rgba(250, 247, 245, 0.14));
+}
+
+[data-theme='dark'] .atlas-scout-go,
+[data-theme='dark'] .atlas-scout-confirm,
+[data-theme='dark'] .atlas-scout-dismiss {
+    border-color: var(--line, rgba(250, 247, 245, 0.14));
+}
+
+/* ── C5: the writer ──────────────────────────────────────────────────────────
+   The side column now holds two surfaces. `.atlas-plan` keeps its own width rule for the plan
+   panel; the shared column owns the sizing so switching tabs does not resize the canvas. */
+
+.atlas-side {
+    flex: 0 0 clamp(340px, 32vw, 520px);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-left: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+    background: var(--surface);
+}
+
+.atlas-side .atlas-plan,
+.atlas-side .atlas-writer {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    border-left: 0;
+}
+
+.atlas-side-tabs {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6) 0;
+    border-bottom: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+}
+
+.atlas-tab {
+    padding: var(--space-2) var(--space-4);
+    font: inherit;
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+}
+
+.atlas-tab.is-on {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+}
+
+.atlas-writer {
+    padding: var(--space-5) var(--space-6);
+}
+
+.atlas-h3 {
+    font-family: var(--font-display);
+    font-size: var(--fs-body);
+    margin: var(--space-4) 0 var(--space-2);
+}
+
+.atlas-w-note {
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+    margin: var(--space-2) 0 var(--space-3);
+}
+
+.atlas-w-stubs {
+    list-style: none;
+    margin: 0 0 var(--space-4);
+    padding: 0;
+}
+
+.atlas-w-stub {
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--line, rgba(23, 18, 26, 0.08));
+}
+
+/* A struck claim is dimmed, never hidden: the writer accepted a plan that included this refusal. */
+.atlas-w-stub.is-struck { opacity: 0.6; }
+.atlas-w-stub.is-struck .atlas-w-stub-text { text-decoration: line-through; }
+
+.atlas-w-stub-text { margin: 0 0 var(--space-2); font-size: var(--fs-small); }
+
+.atlas-w-stub-percepts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.atlas-w-p {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    font-size: var(--fs-tiny, 0.75rem);
+    color: var(--ink-muted);
+}
+
+.atlas-w-p.is-unbound { color: #A66273; }
+
+.atlas-w-status {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-3);
+}
+
+/* The quarantine label reads at full weight. A document that is only a proposal has to say so
+   more loudly than it says anything else. */
+.atlas-w-quarantine {
+    font-size: var(--fs-small);
+    font-weight: 600;
+}
+
+.atlas-w-quarantine.is-quarantined { color: #8A6D3B; }
+.atlas-w-quarantine.is-accepted { color: var(--ink-muted); }
+
+.atlas-w-counts { font-size: var(--fs-small); color: var(--ink-muted); }
+.atlas-w-warn { color: #A66273; }
+
+.atlas-w-article {
+    margin: var(--space-4) 0;
+    padding: var(--space-4);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+    border-radius: var(--radius-2, 6px);
+    background: var(--bg);
+}
+
+.atlas-w-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+.atlas-w-cannot {
+    margin: var(--space-2) 0 0;
+    font-size: var(--fs-small);
+    color: #A66273;
+}

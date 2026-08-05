@@ -1,4 +1,5 @@
 import React from 'react';
+import { Handle, Position } from '@xyflow/react';
 import AtlasPerceptStage from './AtlasPerceptStage.jsx';
 import { perceptSummary } from './atlasDocument.js';
 
@@ -37,6 +38,22 @@ export default function AtlasImageNode({ data }) {
                 <div className="atlas-node-cap">
                     <span className="atlas-node-title">{data.postId}</span>
                 </div>
+
+            {/* TWO HANDLES, TWO DIFFERENT ACTS.
+
+                The LEFT target is where C4's claim connectors land and where a C3 relation
+                ARRIVES. A binding is minted by the planner and granted by the gate — never
+                dragged into existence by hand.
+
+                The RIGHT source is C3's, and it IS an affordance: dragging from it to another
+                image asks `compare_views` to name the relation between them. What that produces
+                is a proposal to the gate, not a line — if the comparison cannot be grounded, no
+                edge is kept and the refusal is drawn instead. */}
+            <Handle type="target" position={Position.Left} isConnectable
+                className="atlas-handle" />
+            <Handle type="source" position={Position.Right} isConnectable
+                className="atlas-handle is-draw"
+                title="drag to another image to name the relation between them" />
             </div>
         );
     }
@@ -70,6 +87,22 @@ export default function AtlasImageNode({ data }) {
             {summary.withheldNote && (
                 <div className="atlas-node-withheld" role="note">{summary.withheldNote}</div>
             )}
+
+            {/* TWO HANDLES, TWO DIFFERENT ACTS.
+
+                The LEFT target is where C4's claim connectors land and where a C3 relation
+                ARRIVES. A binding is minted by the planner and granted by the gate — never
+                dragged into existence by hand.
+
+                The RIGHT source is C3's, and it IS an affordance: dragging from it to another
+                image asks `compare_views` to name the relation between them. What that produces
+                is a proposal to the gate, not a line — if the comparison cannot be grounded, no
+                edge is kept and the refusal is drawn instead. */}
+            <Handle type="target" position={Position.Left} isConnectable
+                className="atlas-handle" />
+            <Handle type="source" position={Position.Right} isConnectable
+                className="atlas-handle is-draw"
+                title="drag to another image to name the relation between them" />
         </div>
     );
 }
