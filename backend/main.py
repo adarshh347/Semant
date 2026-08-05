@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import posts, epics, phrases, research, personas, anatomy, taste, manuscript, runs, atlas
+from backend.routers import posts, epics, phrases, research, personas, anatomy, taste, manuscript, runs, atlas, corpora
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
@@ -111,6 +111,8 @@ app.include_router(runs.router, prefix="/api/v1/runs", tags=["Runs"], dependenci
 # ledger and Differential: it stores where each image sits and references percepts by id, never
 # copying them. Writes nothing to any post.
 app.include_router(atlas.router, prefix="/api/v1/atlas", tags=["Atlas"], dependencies=[Depends(require_api_key)])
+# L1 — the curated corpus: a named, ordered walk an Atlas can be opened from and reopened later.
+app.include_router(corpora.router, prefix="/api/v1/corpora", tags=["Corpora"], dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
 @app.get("/health")
