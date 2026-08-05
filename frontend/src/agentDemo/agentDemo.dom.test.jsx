@@ -114,9 +114,26 @@ describe('the full fixture renders with no backend', () => {
         await mountView(runViewFixture());
         expect($$('.ad-epi--measured').length).toBe(2);
         expect(text()).toContain('0.82');
-        // a percept with no confidence shows a dash rather than 0.00
-        const noConf = $$('.ad-produced-item').find((i) => i.textContent.includes('sug_2'));
+        // a percept with no confidence shows a dash rather than 0.00. Found by its RUN-LOCAL REF,
+        // not by an id: a quarantined suggestion has none (`run_surface._suggestion_ref`), and the
+        // fixture now says so the way a live run does.
+        const noConf = $$('.ad-produced-item')
+            .find((i) => i.textContent.includes('run_demo_1:s2#0'));
         expect(noConf.textContent).toContain('—');
+    });
+
+    it('a quarantined item with no id still shows a distinct handle', async () => {
+        // The live shape, and the defect this pins. `run_surface._suggestion_ref` sets `id` to
+        // null for anything not yet accepted — which in a real run is nearly everything — and
+        // offers `ref` (`run:step#n`) as the handle instead. The panel keyed on `id`, so against a
+        // live run every row in a step keyed on the same empty string and the id column rendered
+        // blank. The fixture used to hand out `sug_N` ids no live run produces, which is exactly
+        // the fixture drift the run contract warns about.
+        await mountView(runViewFixture());
+        const handles = $$('.ad-produced-id').map((n) => n.textContent.trim());
+        expect(handles.length).toBeGreaterThan(0);
+        expect(handles.every((h) => h.length > 0)).toBe(true);
+        expect(new Set(handles).size).toBe(handles.length);
     });
 
     it('a mid-flight run shows the rounds so far and no fabricated progress bar', async () => {

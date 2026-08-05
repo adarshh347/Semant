@@ -126,6 +126,15 @@ export function normalizeProduced(raw) {
     const v = raw && typeof raw === 'object' ? raw : {};
     return {
         id: str(v.id),
+        // `ref` IS NOT DECORATION, and dropping it here was a real defect. The server's own rule
+        // (`run_surface._suggestion_ref`): `id` is the descriptor's id where it HAS one and null
+        // where it does not, because "a quarantined suggestion is not a stored record and has no
+        // id until it is accepted, and minting one here would dress a proposal as a thing." `ref`
+        // — `run:step#n` — exists precisely so a reader can point at the item without that
+        // becoming a claim about persistence. In a live run nearly every produced item is
+        // quarantined, so nearly every `id` normalizes to '' and a UI keyed on it keys every row
+        // in a step identically, which React cannot reconcile while the panel is streaming.
+        ref: str(v.ref),
         kind: str(v.kind),
         epistemic_status: str(v.epistemic_status),
         confidence: numOrNull(v.confidence),
