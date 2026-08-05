@@ -195,8 +195,14 @@ describe('the header', () => {
         expect(container.textContent).toContain('1 no longer in the ledger');
     });
 
-    it('says nothing about relations on a canvas where none were drawn', async () => {
+    it('claims no relations on a canvas where none were drawn', async () => {
+        // T2 added a "Suggest relations" ACTION to the header, so the word now appears on an empty
+        // canvas. The property this test is about is unchanged and is asserted directly: no COUNT,
+        // because a canvas that implied it held comparisons nobody ran would be the dishonest
+        // thing. An offer to look is not a claim to have found.
         await mount(<AtlasCanvas atlasId="atlas_1" service={fakeService()} />);
-        expect(container.textContent).not.toContain('relation');
+        expect(container.querySelector('.atlas-rel-count')).toBe(null);
+        expect(container.textContent).not.toMatch(/\d+ relations? drawn/);
+        expect(container.textContent).not.toContain('no longer in the ledger');
     });
 });

@@ -691,3 +691,127 @@
     background: var(--accent, #7B2D6B);
     box-shadow: 0 0 0 4px rgba(123, 45, 107, 0.15);
 }
+
+/* ── ATLAS T2 — the Scout: ghost edges and their tray ──────────────────────────
+ *
+ * A ghost is the WEAKEST mark that can appear on this canvas and it has to look it. Four kinds of
+ * line cross here now, and a reader must tell them apart before reading any label:
+ *
+ *   C3 relation — solid, arrowed, accent-coloured .... a comparison was run and committed
+ *   C4 binding  — dashed, unarrowed, muted .......... a claim would resolve against this image
+ *   T2 ghost    — DOTTED, unarrowed, greyed, faint .. a model's hunch; nothing has been run
+ *   a refusal   — dotted, warning-coloured .......... the gate looked and said no
+ *
+ * The ghost is deliberately the quietest: greyer than the binding, thinner than the relation, and
+ * translucent. A candidate drawn in the relation style would be a guess wearing the costume of
+ * committed evidence — the exact fabrication the Scout exists to prevent, arriving via CSS.
+ */
+.atlas-canvas .react-flow__edge.atlas-ghost path {
+    stroke: var(--ink-subtle, rgba(23, 18, 26, 0.34));
+    stroke-width: 1.25;
+    stroke-dasharray: 1 6;
+    stroke-linecap: round;
+    opacity: 0.75;
+}
+
+.atlas-canvas .react-flow__edge.atlas-ghost .react-flow__edge-text {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-style: italic;
+    fill: var(--ink-subtle, rgba(23, 18, 26, 0.5));
+}
+
+.atlas-canvas .react-flow__edge.atlas-ghost .react-flow__edge-textbg {
+    fill: var(--surface);
+    opacity: 0.85;
+}
+
+/* The tray. Candidates are listed as well as drawn, because a rationale is a sentence and a
+   sentence on a diagonal line across a canvas is not readable — and the rationale is the only
+   thing that lets a writer decide whether to spend a comparison on the pair. */
+.atlas-scout {
+    padding: var(--space-3) var(--space-8);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line, rgba(23, 18, 26, 0.1));
+}
+
+.atlas-scout-lede {
+    margin: 0 0 var(--space-2);
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+}
+
+.atlas-scout-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.atlas-scout-item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    font-size: var(--fs-caption);
+}
+
+.atlas-scout-pair {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    color: var(--ink-subtle);
+}
+
+.atlas-scout-why {
+    flex: 1 1 auto;
+    font-family: var(--font-display);
+    font-style: italic;
+    color: var(--ink);
+}
+
+.atlas-scout-go,
+.atlas-scout-confirm,
+.atlas-scout-dismiss {
+    flex: 0 0 auto;
+    padding: 3px var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    background: transparent;
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.16));
+    border-radius: var(--radius-sm, 6px);
+    cursor: pointer;
+}
+
+.atlas-scout-go:hover:not(:disabled),
+.atlas-scout-confirm:hover:not(:disabled),
+.atlas-scout-dismiss:hover {
+    color: var(--ink);
+    border-color: var(--line, rgba(23, 18, 26, 0.3));
+}
+
+.atlas-scout-go:disabled,
+.atlas-scout-confirm:disabled { opacity: 0.55; cursor: default; }
+
+/* What the Scout was not allowed to pass on. A note, not an alarm — it is normal for a model to
+   overreach, and the count is information about the model rather than a fault in the corpus. */
+.atlas-banner.is-dropped {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    list-style: none;
+    color: var(--ink-subtle);
+    background: var(--surface-2);
+}
+
+[data-theme='dark'] .atlas-scout {
+    border-color: var(--line, rgba(250, 247, 245, 0.14));
+}
+
+[data-theme='dark'] .atlas-scout-go,
+[data-theme='dark'] .atlas-scout-confirm,
+[data-theme='dark'] .atlas-scout-dismiss {
+    border-color: var(--line, rgba(250, 247, 245, 0.14));
+}

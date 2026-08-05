@@ -60,6 +60,7 @@ from pydantic import BaseModel, Field
 from backend.database import post_collection
 from backend.services import atlas_plan as P
 from backend.services import atlas_relation as R
+from backend.services import atlas_scout as S
 from backend.services import atlas_service as A
 
 router = APIRouter()
@@ -405,6 +406,34 @@ async def draw_relation(atlas_id: str, body: RelateRequest):
     # if the write did not land, this is where the surface finds out rather than at reload.
     return {"atlas": A._out(updated),
             "edge": R.hydrate_edge(entry, await _posts_for([source_post, target_post]))}
+
+
+# ── T2: the Scout ────────────────────────────────────────────────────────────
+
+class ScoutRequest(BaseModel):
+    limit: int = 0              # 0 → the module's own ceiling
+
+
+@router.post("/{atlas_id}/scout")
+async def scout_relations(atlas_id: str, body: ScoutRequest):
+    """Ask which pairs might repay comparison. Proposes only; grounds nothing; persists nothing.
+
+    THE ROUTE HAS NO WRITE, and that is the guard rather than a description of one. A candidate
+    returned here is session material: it is not an edge, not a percept, not in the Atlas document
+    and not in the ledger. The only way one becomes a relation is `POST /{atlas_id}/relations` —
+    C3's gate — which runs `compare_views` and can refuse. There is deliberately no route that
+    turns a candidate into an edge directly, because such a route would be a way to draw a line
+    between two photographs without ever looking at them.
+
+    REFUSAL IS 200, like C3's. "The scout could not be reached" and "nothing here is worth
+    comparing" are answers about the corpus and the tooling, not malfunctions of the request.
+    """
+    doc = await _atlas_or_404(atlas_id)
+    ids = [str(n.get("post_id")) for n in doc.get("nodes") or []]
+    posts = await _posts_for(ids)
+    return await asyncio.to_thread(
+        S.propose_relations, doc, posts,
+        limit=body.limit or S.MAX_CANDIDATES)
 
 
 @router.delete("/{atlas_id}/relations/{edge_id}")
