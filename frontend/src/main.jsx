@@ -60,6 +60,9 @@ const StudioPage = React.lazy(() => import('./studio/StudioPage.jsx'));
 // of a showcase. Publishing is a file drop + commit (see writing/README.md).
 const WritingPage = React.lazy(() => import('./writing/WritingPage.jsx'));
 const WritingArticlePage = React.lazy(() => import('./writing/WritingArticlePage.jsx'));
+// ATLAS C1 — the multi-image writing canvas: a corpus on one pan/zoom surface, wearing its
+// committed percepts. The multi-image general case of the Chiasm.
+const AtlasPage = React.lazy(() => import('./atlas/AtlasPage.jsx'));
 // DEV-ONLY · landing-migration checkpoint — the glyph contact sheet, proving the
 // 21 glyphs render identically once migrated into Semant (asset-layer fidelity).
 // Guarded so vite statically drops both the const and its dynamic-import chunk
@@ -117,6 +120,9 @@ const router = createBrowserRouter([
       { path: "lab/manuscript", element: <ManuscriptLab /> },
       // Writing Studio (WS-0A) — writing by orchestration; the manuscript is sacred.
       { path: "studio", element: <StudioPage /> },
+      // ATLAS C1 — the index picks a corpus; the canvas opens over one.
+      { path: "atlas", element: <AtlasPage /> },
+      { path: "atlas/:atlasId", element: <AtlasPage /> },
       // Primary-nav destinations, stubbed on-taste until their full pages land.
       // Atelier = the per-post workspace (/posts/:postId); this is its on-ramp
       // until the route rename. You = the taste/profile hub over Highlights/Epics.

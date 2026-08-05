@@ -1,13 +1,18 @@
 name: frontend
 
-# Runs the Vitest suite on every PR into main and on pushes to main.
-# The `test` job is wired in as a required status check on main (branch
+# Runs the Vitest suite on every PR into main or atlas/integration, and on pushes
+# to either. The `test` job is wired in as a required status check on main (branch
 # protection), so a red suite blocks the merge button.
+#
+# `atlas/integration` is here because the Atlas gates land there rather than on main
+# — the integration→main merge is its own later checkpoint. Without this the whole
+# Atlas programme was merging with no CI at all, and the suite was only ever green
+# because it was being run by hand.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, atlas/integration]
   push:
-    branches: [main]
+    branches: [main, atlas/integration]
 
 # Cancel an in-flight run when a newer commit lands on the same ref.
 concurrency:

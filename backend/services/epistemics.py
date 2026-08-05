@@ -220,21 +220,34 @@ def guard(descriptors: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # differ in kind: `negative_space` and `material_field` are both `brush_field`, but one
 # inverts a mask that already exists and the other reads a learned embedding. Both happen to
 # be `measured` today; keying on the producer is what leaves room for them not to be.
+#
+# ROLES-001 SHRANK THIS TABLE. A producer whose claim IS its organ's or thinker's own output now
+# takes its status from that role's `epistemic_ceiling` (`role_registry`). Keeping both was
+# keeping two tables that had to agree with nothing making them agree — and the drift would have
+# been invisible, because each side reads plausibly on its own. `sam_refine`,
+# `florence_find_parts`, `grounded_sam_find_parts`, `material_field`, `rhythm`, `pressure_zone`,
+# `recession`, `shading`, `fall_of_light`, `semantic_read` and `planner` moved there.
+# `default_status_for` returns exactly what it returned before for every one of them, and
+# `test_role_registry.py` pins the whole mapping against a verbatim copy of the pre-change table.
+#
+# WHAT STAYS IS THE INTERESTING HALF. Every entry below is a producer whose claim is NOT simply
+# its role's output, and each is a case a derived table would have got wrong:
+#
+#   `find_similar`        runs on DINOv2 (ceiling `measured`) and hands back a real extent on
+#                         another image — `visible`, i.e. STRONGER than its organ's ceiling,
+#                         because it is not reporting a measurement at all.
+#   `presence_check`,
+#   `enumerate`           run on the grounding detector (ceiling `visible`) but answer a QUESTION
+#                         instead of minting an extent — `interpretive`, i.e. weaker.
+#   `negative_space`      is `measured` and pure-python (its actuator declares `capability=None`);
+#                         no organ executes it.
+#   the rest              have no single role behind them at all.
 
 _DEFAULTS: Dict[str, EpistemicStatus] = {
     # -- extents: something is there and you can point at it --------------------
-    "sam_refine": EpistemicStatus.VISIBLE,
-    "florence_find_parts": EpistemicStatus.VISIBLE,
-    "grounded_sam_find_parts": EpistemicStatus.VISIBLE,
     "find_similar": EpistemicStatus.VISIBLE,      # a real extent, on another image
     # -- measurements: computed off the signal, no opinion in them --------------
     "negative_space": EpistemicStatus.MEASURED,
-    "material_field": EpistemicStatus.MEASURED,
-    "rhythm": EpistemicStatus.MEASURED,
-    "pressure_zone": EpistemicStatus.MEASURED,
-    "recession": EpistemicStatus.MEASURED,
-    "shading": EpistemicStatus.MEASURED,
-    "fall_of_light": EpistemicStatus.MEASURED,
     "architectural_axis": EpistemicStatus.MEASURED,
     # M5 — NOT measured, and this is the entry that keeps `uncertain` from being decorative.
     #
@@ -249,15 +262,27 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
     # and the change is one line.
     "external_limit": EpistemicStatus.UNCERTAIN,
     # -- readings: a claim ABOUT the picture, resting on it ---------------------
-    # `semantic_read` mints both label proposals and relations, and both are the VLM's reading
-    # rather than the image's testimony — a naming is an interpretation even when the extent
-    # it names is `visible`.
-    "semantic_read": EpistemicStatus.INTERPRETIVE,
+    # (`semantic_read` moved to the `semantic_annotator` role: it mints both label proposals and
+    # relations, and both are the VLM's reading rather than the image's testimony — a naming is
+    # an interpretation even when the extent it names is `visible`. That reasoning is now the
+    # role's ceiling, which is where it belongs, since it is a fact about the thinker.)
     "presence_check": EpistemicStatus.INTERPRETIVE,
     "enumerate": EpistemicStatus.INTERPRETIVE,
     "connect_marks": EpistemicStatus.INTERPRETIVE,
     "compose_percept": EpistemicStatus.INTERPRETIVE,
-    "planner": EpistemicStatus.INTERPRETIVE,      # percept drafts
+    # CONCEPT-SEG-001 — the other half of a SAM 3 result, and the reason this table still exists.
+    #
+    # `concept_segment` (the mask) takes `measured` from the `sam3` organ role. This is the LABEL,
+    # and it has no role because it has no single producer: the concept may come from the
+    # `dissector` thinker, from a fixed `domain_profiles` vocabulary, or from the curator's own
+    # phrase. What they have in common is that none of them is the image — nothing in the picture
+    # says "this is a collar" — so the naming is `interpretive` whoever wrote it.
+    #
+    # Emitting it separately is what lets a wrong naming be rejected WITHOUT discarding a correct
+    # measurement. SF-004-R2 §4.3 is the case: `shoulder fabric` at confidence 0.27–0.43 returned
+    # a clean mask of the background. One status for both would force a choice between trusting
+    # the whole thing and binning the whole thing, and it is neither.
+    "concept_naming": EpistemicStatus.INTERPRETIVE,
     # -- from outside the image -------------------------------------------------
     "historical_source": EpistemicStatus.SOURCED,
 }
@@ -266,11 +291,42 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
 def default_status_for(producer: Optional[str]) -> EpistemicStatus:
     """The status a producer's output carries unless it says otherwise.
 
-    An UNKNOWN producer gets `uncertain`, never a flattering guess. A producer wired after
-    this table was written is exactly the case where a confident default would be wrong, and
-    `uncertain` is both honest and loud enough to get the table updated.
+    ROLES-001: the ROLE behind the producer is asked first. That ordering is the point — a
+    producer wired to a new organ or thinker inherits its ceiling with no edit here, which is
+    the failure mode `model_residency` already documents at length (a thing wired in one place
+    and registered in another, with nothing connecting the two).
+
+    `_DEFAULTS` then covers the producers no single role executes, and only those.
+
+    An UNKNOWN producer gets `uncertain`, never a flattering guess. A producer wired after both
+    tables were written is exactly the case where a confident default would be wrong, and
+    `uncertain` is both honest and loud enough to get one of them updated.
     """
+    # Imported lazily: `role_registry` imports THIS module for the status vocabulary, so a
+    # module-level import here would be a cycle. It also keeps `epistemics` importable on its
+    # own, which is what lets the pure guards be unit-tested with no registry in the picture.
+    from backend.services.role_registry import ceiling_for_producer
+    from_role = ceiling_for_producer(producer)
+    if from_role is not None:
+        return from_role
     return _DEFAULTS.get(str(producer or ""), EpistemicStatus.UNCERTAIN)
+
+
+def classified_producers() -> frozenset:
+    """Every producer that has an EXPLICIT classification, from either table.
+
+    ROLES-001 split the classification across two surfaces — the role's `epistemic_ceiling` and
+    `_DEFAULTS` — so "is this producer classified?" needs one place to be asked. Without it the
+    M5 no-drift guard would have to know about both, and would go stale the moment a third
+    surface appeared.
+
+    The distinction this preserves is the one that matters: an unclassified producer FALLS to
+    `uncertain`, which is safe, and a producer classified AS `uncertain` (`external_limit`) is a
+    deliberate statement. `default_status_for` cannot tell them apart; this can.
+    """
+    from backend.services.role_registry import ROLES
+    from_roles = {p for role in ROLES.values() for p in role.producers}
+    return frozenset(from_roles | set(_DEFAULTS))
 
 
 def stamp(descriptor: Dict[str, Any], *,
