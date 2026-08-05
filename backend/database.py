@@ -104,6 +104,28 @@ manuscript_collection = database.get_collection("manuscripts")
 scene_collection = database.get_collection("scenes")
 scene_version_collection = database.get_collection("scene_versions")
 
+# --- Semant Writer (W1 · the executable document) ---
+# The Writer wraps the orchestration kernel for the manuscript half. It adds no canon of
+# its own: Accept writes THROUGH `manuscript_service` into the scenes above, so the sacred
+# manuscript keeps exactly one owner. What is new here is the ontology, the quarantine and
+# the usage record:
+#   writer_operator_collection: the LEDGER half of the two memories — one doc per operator
+#                               the author has authored (`#create`), the actuator registry
+#                               made author-editable and persisted. Versioned in place, so
+#                               a passage can cite the operator as it stood when it fired.
+#   writer_passage_collection:  the SESSION half — one doc per RENDERED passage, born
+#                               `committed: False`. Accept flips it and copies the prose
+#                               into a scene; Dismiss drops it. Nothing here is canon, and
+#                               a passage that is never accepted never touches a scene.
+#   writer_usage_collection:    instrumentation ONLY (W1 is instrument-now, build-later):
+#                               operator invocations, co-occurrence, accept/reject. Tier 2
+#                               (assemblages) and Tier 3 are data-gated and cannot be built
+#                               without this corpus. Write-behind — a failed write must
+#                               never change what the render or accept path does.
+writer_operator_collection = database.get_collection("writer_operators")
+writer_passage_collection = database.get_collection("writer_passages")
+writer_usage_collection = database.get_collection("writer_usage")
+
 # --- Vision runtime provenance (CIRCULATION-SPINE-001 · P1) ---
 # vision_run_collection: one poll-friendly document per vision operation attempt, with
 # its stage events embedded (mirrors the agent_runs run+step-ledger pattern). This is a

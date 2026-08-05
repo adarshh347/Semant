@@ -8,11 +8,18 @@ name: frontend
 # — the integration→main merge is its own later checkpoint. Without this the whole
 # Atlas programme was merging with no CI at all, and the suite was only ever green
 # because it was being run by hand.
+#
+# `writer/integration` is here for the same reason, and it carries one test that has to
+# run somewhere by contract: Semant Writer W2 enforces "orchestration never reaches the
+# manuscript" (I6) in the ProseMirror schema, and
+# `src/writer/schema/manuscriptExport.test.js` asserts it against the EXPORT. The W2
+# directive requires that assertion to run in CI, so the writer trunk must be a trigger —
+# otherwise the guard exists but nothing is watching it.
 on:
   pull_request:
-    branches: [main, atlas/integration]
+    branches: [main, atlas/integration, writer/integration]
   push:
-    branches: [main, atlas/integration]
+    branches: [main, atlas/integration, writer/integration]
 
 # Cancel an in-flight run when a newer commit lands on the same ref.
 concurrency:

@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import posts, epics, phrases, research, personas, anatomy, taste, manuscript, runs, atlas
+from backend.routers import posts, epics, phrases, research, personas, anatomy, taste, manuscript, runs, atlas, writer
 from backend.routers import retina
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
@@ -104,6 +104,10 @@ app.include_router(taste.brand_router, prefix="/api/v1/taste/brand", tags=["Tast
 app.include_router(phrases.router, dependencies=[Depends(require_api_key)])
 # Writing Studio (WS-0A · the sacred manuscript) — a second app on the same kernel.
 app.include_router(manuscript.router, prefix="/api/v1/manuscript", tags=["Writing Studio"], dependencies=[Depends(require_api_key)])
+# Semant Writer (W1 · the executable document) — the manuscript half of the Chiasmatic
+# circulation, wrapping the same kernel. It owns no canon: Accept writes THROUGH the
+# manuscript service above, so the sacred manuscript keeps exactly one owner.
+app.include_router(writer.router, prefix="/api/v1/writer", tags=["Semant Writer"], dependencies=[Depends(require_api_key)])
 # SURFACE-002 — the corpus run surface: (a set of images + a prompt) → the whole loop, its
 # production record, and (in argue mode) a drafted article. Suggestions-only, like everything it
 # drives: a run never accepts a mark or writes a post.

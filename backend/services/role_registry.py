@@ -171,6 +171,25 @@ _THINKERS: List[Role] = [
         provider="groq",
     ),
     Role(
+        name="manuscript_renderer",
+        kind=RoleKind.THINKER,
+        summary="Renders a manuscript passage from the author's own operator ontology "
+                "(Semant Writer W1 — the render actuator behind a `/` directive).",
+        # INTERPRETIVE, like every thinker. Worth stating why it is not something stronger:
+        # this role's output is prose the AUTHOR has not accepted yet. It is quarantined and
+        # `committed: False` until they do, so the strongest thing it can claim is an opinion
+        # about how their operators read — which is what `interpretive` already means.
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        # Same string as `writer_literary` and `archivist` today, and separate ON PURPOSE.
+        # Until W1 this call site read `llm_service.model`, which resolves to `archivist` —
+        # so rebinding CORPUS SUMMARISATION would silently have changed the author's prose.
+        # That is the coupling-by-coincidence this table exists to make visible: the writer's
+        # renderer and the vision-side literary editor (`writer_literary`) are different jobs
+        # on different halves of the circulation, and either must be rebindable alone.
+        default_model="openai/gpt-oss-120b",
+        provider="groq",
+    ),
+    Role(
         name="story_segmenter",
         kind=RoleKind.THINKER,
         summary="Divides a long story into coherent blocks.",
