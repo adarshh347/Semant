@@ -44,15 +44,84 @@ async def ensure_indexes() -> None:
 
     Idempotent (Mongo no-ops an existing index) and non-fatal: a failure here costs query
     speed, never correctness, and must not take the API down at boot.
+
+    ONE exception to "costs speed, never correctness": `embedding_id_idx` is UNIQUE, and that is
+    a constraint, not an optimisation. `upsert_embedding` writes through
+    `update_one({"embedding_id": …}, …, upsert=True)`, so two concurrent upserts for the same id
+    can both miss on the query and both insert. Without the unique index nothing stops them — and
+    the retina lane found a real pair in the corpus, written 1 ms apart. So this one is reported
+    LOUDLY when it cannot be established, and `unique_index_ready()` lets a caller ask rather
+    than assume.
     """
     try:
         await region_embeddings_collection.create_index("post_id", name="post_id_idx")
-        await region_embeddings_collection.create_index("embedding_id", name="embedding_id_idx")
         # E0: retrieval is space-scoped; stale-detection / re-index are region-scoped.
         await region_embeddings_collection.create_index("space", name="space_idx")
         await region_embeddings_collection.create_index("region_id", name="region_id_idx")
     except Exception as e:
         print(f"⚠️ region_embeddings index creation skipped (non-fatal): {e}")
+
+    await _ensure_unique_embedding_id_index()
+
+
+async def _ensure_unique_embedding_id_index() -> bool:
+    """Establish `embedding_id_idx` as UNIQUE, converting a legacy non-unique one in place.
+
+    Mongo will not quietly change an existing index's options: `create_index` with the same name
+    and different options raises `IndexOptionsConflict`. Every deployment that ran before this
+    change has the non-unique version, so the conversion has to drop and rebuild — otherwise the
+    create fails, the old blanket `except` swallows it, and the service goes on claiming a
+    guarantee it does not have. That silent gap is worse than the duplicate it was meant to
+    prevent, because a race that cannot happen is one nobody checks for.
+
+    Returns True iff the index is unique when this returns. A rebuild that fails on duplicate
+    keys means duplicates are still in the collection: run
+    `scripts/region_embeddings_hygiene.py dedupe --apply` and restart. Never fatal — the API
+    boots either way — but never silent either.
+    """
+    try:
+        existing = await region_embeddings_collection.index_information()
+    except Exception as e:  # noqa: BLE001 — cannot read the index state; say so and move on
+        print(f"⚠️ region_embeddings: could not read index state (non-fatal): {e}")
+        return False
+
+    current = existing.get("embedding_id_idx")
+    if current is not None and current.get("unique"):
+        return True                                   # already correct; nothing to do
+    if current is not None:
+        try:
+            await region_embeddings_collection.drop_index("embedding_id_idx")
+        except Exception as e:  # noqa: BLE001
+            print(f"⚠️ region_embeddings: could not drop the legacy non-unique "
+                  f"embedding_id_idx (non-fatal): {e}")
+            return False
+
+    try:
+        await region_embeddings_collection.create_index(
+            "embedding_id", name="embedding_id_idx", unique=True)
+        return True
+    except Exception as e:  # noqa: BLE001
+        # Loud on purpose. The most likely cause is duplicate `embedding_id`s still present, and
+        # the collection is now running with NO index on the field the read path looks up by.
+        print(f"🚨 region_embeddings: FAILED to create the UNIQUE embedding_id_idx — upserts can "
+              f"still race in duplicates, and `embedding_id` is now UNINDEXED. Most likely cause: "
+              f"duplicate embedding_id rows. Fix with "
+              f"`PYTHONPATH=. python scripts/region_embeddings_hygiene.py dedupe --apply`, "
+              f"then restart. Underlying error: {e}")
+        return False
+
+
+async def unique_index_ready() -> bool:
+    """Is the `embedding_id` uniqueness constraint actually in force right now?
+
+    Exists so a caller can ASK instead of assuming. `ensure_indexes` is non-fatal by design, so
+    'it ran at boot' is not evidence that the constraint holds.
+    """
+    try:
+        info = await region_embeddings_collection.index_information()
+    except Exception:  # noqa: BLE001
+        return False
+    return bool(info.get("embedding_id_idx", {}).get("unique"))
 
 
 def make_embedding_id(post_id: str, region_id: str, model: str = "fashion-clip",
