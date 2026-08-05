@@ -62,6 +62,14 @@ models/*.pt
 *.onnx
 *.ckpt
 models/
+# ...and the same two paths with NO trailing slash. A git worktree does not get its own `models/`
+# or `venv/` directory — it gets a SYMLINK to the main checkout's, and a trailing slash matches
+# only directories, so git sees an untracked FILE. Committing one would put an absolute path to
+# somebody's laptop into a public repo. (The same fact is why a fresh worktree reports SAM2
+# UNAVAILABLE until `models` is linked: the checkpoint path resolves against the repo root, and
+# the refusal is honest enough that it reads as a decision rather than a missing symlink.)
+models
+venv
 # NOT a blanket `*.bin` — that extension is not exclusively weights, and nothing in this repo
 # tracks one today. Add specific paths if a .bin weight ever appears.
 
