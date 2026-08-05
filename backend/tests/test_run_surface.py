@@ -23,6 +23,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 
 import pytest
 from bson.objectid import ObjectId
@@ -483,9 +484,89 @@ def test_argue_mode_composes_an_article_from_what_the_run_CONFIRMED(faked_produc
     d = view.to_dict()
 
     assert d["article"] is not None
-    assert d["article"]["thesis"] == "The facade gathers what the ground disperses."
-    assert "resolved" in d["article"], "M4: citations resolved against the run's own suggestions"
+    # THE ENVELOPE, not the bare draft. This assertion used to read `d["article"]["thesis"]`,
+    # which agreed with the old assembly and disagreed with both the renderer (`draftOf` reads
+    # `article.draft`) and the checked-in `articleFixture.js`. Argue mode never completed a real
+    # run, so nothing was ever in a position to notice the two sides had drifted apart.
+    assert d["article"]["draft"]["thesis"] == "The facade gathers what the ground disperses."
+    # M4: citations resolved against the run's own suggestions — a FLAT {step_id: citation} map,
+    # which is what `ArticleView` indexes into.
+    assert isinstance(d["article"]["resolved"], dict)
+    assert {"version", "draft", "resolved", "images", "counts"} <= set(d["article"])
     assert any("composed against a run of" in n for n in d["notes"])
+
+
+def test_an_argue_view_encodes_to_bson_with_the_article_whole(faked_producers):
+    """THE REGRESSION. Argue mode was dead for as long as it existed: the article was
+    self-referential (`article["resolved"]["draft"] is article`), BSON has no cycle detection,
+    and every argue run died at persist time with `RecursionError` — surfacing to the curator as
+    `run_failed:RecursionError` and `0 rounds`.
+
+    Encoding the real view is the only assertion that would have caught it, so that is what this
+    does — and it checks the article survived WHOLE rather than being emptied to make it fit.
+    """
+    from bson import BSON
+
+    from backend.services import run_store
+    from backend.services.director import argument as A
+    from backend.services.director.composition import LLM
+
+    class _FakeArgumentPlanner:
+        name = "fake_argument"
+        last_notes = ()
+
+        def propose(self, thesis, memory):
+            return [A.make_claim("c0", "The surface concentrates toward one side.",
+                                 [("pressure_zone", {"image": str(_A)}, A.SUPPORT)],
+                                 target_status=A.MEASURED),
+                    A.make_claim("c1", "The rhythm complicates that reading.",
+                                 [("rhythm", {"image": str(_A)}, A.COMPLICATE)],
+                                 target_status=A.MEASURED)]
+
+    class _GroundingLLM(LLM):
+        """A composer that actually cites what it was shown.
+
+        The other argue test's fake returns `grounded_in: []`, so every claim lands in
+        `uncomposed` and the draft has no sections at all. That is fine for what that test
+        asserts, and useless here: "no data lost" has to be checked against an article that has
+        prose and citations in it. So this one echoes back the evidence ids the composer prompt
+        listed, which is what a cooperative model does.
+        """
+
+        def __init__(self):
+            super().__init__(client=None, model="fake/composer")
+
+        def complete(self, system, user):
+            ids = re.findall(r'"id":\s*"([^"]+)"', user)
+            return json.dumps({"prose": "The field gathers toward the left of the frame.",
+                               "grounded_in": ids,
+                               "relevance": [{"id": i, "bears_on_claim": True, "why": "it does"}
+                                             for i in ids],
+                               "qualified": False})
+
+    posts = _posts(_raw_post(_A))
+    view, _, engine = rs.drive_run(
+        rs.RunSpec.of(prompt="The facade gathers what the ground disperses.",
+                      image_ids=[str(_A)], mode=rs.MODE_ARGUE),
+        posts, run_id="run_argue_bson", planner=RuleBasedPlanner(),
+        argument_planner=_FakeArgumentPlanner(), llm=_GroundingLLM())
+    engine.close()
+    d = view.to_dict()
+
+    # No cycle: the guard finds nothing to break on a healthy view.
+    breaks = []
+    run_store.acyclic(d, _breaks=breaks)
+    assert breaks == [], f"the argue view still contains a cycle at {breaks}"
+
+    # And it really encodes — the assertion the old code could not pass.
+    BSON.encode({"view": d})
+
+    # Whole, not merely encodable: the fix must not have bought this by dropping the article.
+    article = d["article"]
+    assert article["draft"]["thesis"] == "The facade gathers what the ground disperses."
+    assert article["draft"]["sections"], "the composed sections survived"
+    assert article["counts"]["citations"] >= 1
+    assert "draft" not in article["resolved"], "the back-pointer is gone"
 
 
 def test_argue_mode_never_turns_a_composition_failure_into_a_failed_run(faked_producers):

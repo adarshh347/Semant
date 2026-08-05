@@ -64,8 +64,16 @@ export default function RunProgress({ view }) {
                                 </div>
                                 {steps.length ? (
                                     <ul className="ad-steps">
+                                        {/* `normalizeStep` guarantees {key,label,note}. A LIVE
+                                            step is an object — rendering the entry directly is
+                                            what white-screened this page ("Objects are not valid
+                                            as a React child") on every run that finished a
+                                            round. */}
                                         {steps.map((s, j) => (
-                                            <li className="ad-step" key={`${s}-${j}`}>{s}</li>
+                                            <li className="ad-step" key={s?.key ?? j}
+                                                title={s?.note || undefined}>
+                                                {s?.label ?? ''}
+                                            </li>
                                         ))}
                                     </ul>
                                 ) : null}

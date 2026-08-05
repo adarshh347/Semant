@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { writerService } from './writerService';
 import WriterEditor from './WriterEditor';
 import OperatorGraph from './graph/OperatorGraph';
+import AssemblageSuggestions from './assemblages/AssemblageSuggestions';
 import './WriterStudio.css';
 
 /**
@@ -23,6 +24,7 @@ export default function WriterStudio({ projectId, manuscriptId = '', sceneId = '
   const [drafting, setDrafting] = useState(false);
   const [draft, setDraft] = useState({ name: '', definition: '' });
   const [showGraph, setShowGraph] = useState(false);
+  const [showPatterns, setShowPatterns] = useState(false);
 
   const loadOperators = useCallback(async () => {
     if (!projectId) return;
@@ -74,6 +76,15 @@ export default function WriterStudio({ projectId, manuscriptId = '', sceneId = '
 
         <button
           type="button"
+          onClick={() => setShowPatterns((p) => !p)}
+          aria-pressed={showPatterns}
+          data-testid="patterns-toggle"
+        >
+          {showPatterns ? 'Hide patterns' : 'Patterns in my operators'}
+        </button>
+
+        <button
+          type="button"
           onClick={() => setShowGraph((g) => !g)}
           aria-pressed={showGraph}
           data-testid="graph-toggle"
@@ -120,6 +131,15 @@ export default function WriterStudio({ projectId, manuscriptId = '', sceneId = '
         {showGraph && (
           <div className="writer-graph-panel">
             <OperatorGraph projectId={projectId} onClose={() => setShowGraph(false)} />
+          </div>
+        )}
+        {showPatterns && (
+          <div className="writer-graph-panel">
+            <AssemblageSuggestions
+              projectId={projectId}
+              onAuthored={loadOperators}
+              onClose={() => setShowPatterns(false)}
+            />
           </div>
         )}
         <WriterEditor
