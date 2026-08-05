@@ -442,6 +442,7 @@ async def render_directive(
     preceding_prose: str = "",
     manuscript_id: str = "",
     scene_id: str = "",
+    run_id: str = "",
 ) -> RenderResult:
     """Fire one `/` directive under its active `//` orchestration.
 
@@ -490,6 +491,7 @@ async def render_directive(
         "directive_line": directive.line,
         "manuscript_id": manuscript_id,
         "scene_id": scene_id,
+        "run_id": run_id,
         "rendered_at": _now_iso(),
     }
 
@@ -557,7 +559,8 @@ async def render_directive(
     await instrument.record(
         instrument.RENDER, project_id, operators=names,
         intents=orchestration,
-        extra={"chars": len(passage), "pulled_operators": pulled_names},
+        extra={"chars": len(passage), "pulled_operators": pulled_names, "run_id": run_id,
+               "directive": directive.raw},
     )
     return RenderResult(
         status=OK, text=passage, provenance=provenance,

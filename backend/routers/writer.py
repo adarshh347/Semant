@@ -43,11 +43,14 @@ from backend.schemas.writer import (
     OperatorCreate,
     OperatorPropose,
     OperatorUpdate,
+    AssemblageCreate,
+    AssemblageDismiss,
     PassageAccept,
     PassageDismiss,
     RelationsUpdate,
 )
 from backend.services.writer import dsl, instrument
+from backend.services.writer import assemblages as assemblages_mod
 from backend.services.writer import relations as relations_mod
 from backend.services.writer.operators import OperatorError, operator_registry
 from backend.services.writer.passages import PassageError, passage_store
@@ -169,6 +172,49 @@ async def set_relations(project_id: str, name: str, request: RelationsUpdate):
         "relations", project_id, operators=[name],
         extra={"relations": [r.model_dump() for r in request.relations]},
     )
+    return op
+
+
+# --- Assemblages (W4 · the Tier-2 capstone) ---
+
+@router.get("/{project_id}/assemblages/suggestions")
+async def assemblage_suggestions(project_id: str, min_blocks: int = assemblages_mod.MIN_BLOCKS):
+    """Clusters that recurred often enough to be worth naming, each CITING its evidence.
+
+    A read over the usage log and the ontology. It proposes and changes nothing — and a
+    candidate whose evidence cannot be produced is dropped rather than shown uncited.
+    """
+    index = await operator_registry.by_name(project_id)
+    suggestions = await assemblages_mod.suggest(project_id, index, min_blocks=min_blocks)
+    return {
+        "suggestions": suggestions,
+        "threshold": min_blocks,
+        "default_threshold": assemblages_mod.MIN_BLOCKS,
+    }
+
+
+@router.post("/{project_id}/assemblages/dismiss")
+async def dismiss_assemblage(project_id: str, request: AssemblageDismiss):
+    """Record a dismissal. The ontology is untouched; the cluster stops nagging."""
+    key = await assemblages_mod.dismiss(project_id, request.members, request.support)
+    return {"dismissed": key, "members": request.members}
+
+
+@router.post("/{project_id}/assemblages")
+async def create_assemblage(project_id: str, request: AssemblageCreate):
+    """The author names the cluster. THIS is the commit — nothing before it changed anything."""
+    try:
+        op = await operator_registry.create_assemblage(
+            project_id,
+            request.name,
+            request.members,
+            rendering_intent=request.rendering_intent,
+            definition=request.definition or "",
+            author=request.author or "",
+        )
+    except OperatorError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    await assemblages_mod.record_authored(project_id, request.name, request.members)
     return op
 
 

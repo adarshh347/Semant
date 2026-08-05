@@ -37,6 +37,9 @@ from uuid import uuid4
 from backend.database import writer_operator_collection
 from backend.services.writer import relations as relations_mod
 
+#: `kind` for a composite operator distilled from a recurring cluster (W4).
+ASSEMBLAGE_KIND = "assemblage"
+
 #: An operator name is a DSL token — it has to survive `/ name(arg)` unambiguously.
 NAME_RE = re.compile(r"^[A-Za-z][\w-]*$")
 
@@ -122,6 +125,87 @@ class OperatorRegistry:
         validated = relations_mod.validate_relations(name, relations, index)
         return await self.update(project_id, name, {"relations": validated})
 
+    async def create_assemblage(
+        self,
+        project_id: str,
+        name: str,
+        member_names: List[str],
+        rendering_intent: str,
+        definition: str = "",
+        author: str = "",
+    ) -> Dict[str, Any]:
+        """Author an assemblage — a composite operator distilled from a recurring cluster.
+
+        AN ASSEMBLAGE IS AN OPERATOR. Same schema, same versioning, same render path; it
+        carries `kind: assemblage` and a `members` list recording what it was distilled
+        from, WITH VERSIONS.
+
+        `members` IS LINEAGE, NOT A BLEND. It records ancestry so the author can ask "what
+        did this come from?" — it is not a render input, and nothing downstream reads it
+        into a prompt. Rendering an assemblage renders ONE span from its own authored
+        intent, exactly like any other operator, which is what keeps composition sequential
+        and provenance able to say which operator produced which prose. The fused-field
+        version, where the members jointly condition one span, is Tier 3 precisely because
+        that answer stops being available.
+
+        If the author wants the members present at render time they add `requires` edges by
+        hand (W3). This never wires them automatically: an edge the author did not draw is
+        an edge they cannot be said to have declared.
+
+        MEMBERS ARE OPERATOR REFERENCES (I5). Each is looked up in the ontology, so an
+        assemblage can no more contain "like Tolstoy" than a `requires` edge could.
+
+        `rendering_intent` is REQUIRED and is the author's. The strawman
+        (`assemblages.strawman`) is only ever a starting point they edit.
+        """
+        # The intent check comes FIRST. `_validate` would otherwise catch a blank intent as
+        # a generic "no definition", and the author would get a message about style priors
+        # when what they actually need to hear is the one thing this gate is about: the
+        # system can show you the recurrence, it cannot tell you what it means.
+        if not (rendering_intent or "").strip():
+            raise OperatorError(
+                f"assemblage '{name}' needs a rendering intent in your own words. The "
+                f"system can show you that these operators recur together; what their "
+                f"recurrence MEANS is the one thing it must not decide for you."
+            )
+        if len(member_names or []) < 2:
+            raise OperatorError(
+                f"assemblage '{name}' needs at least two members — a cluster of one is "
+                f"just the operator it already is"
+            )
+        _validate(name, definition or rendering_intent)
+
+        index = await self.by_name(project_id)
+        members: List[Dict[str, Any]] = []
+        for raw in member_names:
+            member = str(raw or "").strip()
+            op = index.get(member)
+            if op is None:
+                raise OperatorError(
+                    f"`{member}` is not an operator in this project. An assemblage is built "
+                    f"from operators you have defined — that is what keeps it from naming "
+                    f"something your ontology never declared. "
+                    f"Define it first with `#create {member}: …`."
+                )
+            if member == name:
+                raise OperatorError(f"assemblage '{name}' cannot contain itself")
+            if any(m["name"] == member for m in members):
+                continue
+            # The version is part of the lineage: this assemblage was distilled from the
+            # operators AS THEY STOOD, and a later edit to a member does not retroactively
+            # change what it came from.
+            members.append({"name": member, "version": op.get("version")})
+
+        created = await self.create(
+            project_id, name,
+            definition=(definition or "").strip() or rendering_intent.strip(),
+            rendering_intent=rendering_intent.strip(),
+            author=author,
+        )
+        return await self.update(
+            project_id, name, {"kind": ASSEMBLAGE_KIND, "members": members}
+        )
+
     async def resolve(self, project_id: str, names: List[str]) -> Dict[str, Any]:
         """Names → `{"found": {name: operator}, "missing": [name, ...]}`.
 
@@ -198,6 +282,10 @@ class OperatorRegistry:
             "negative_examples": list(negative_examples or []),
             "relations": list(relations or []),
             "author": author or "",
+            # W4 — `operator` or `assemblage`. An assemblage is the same object with a
+            # lineage; the kind is what lets a surface show that without guessing.
+            "kind": "operator",
+            "members": [],
             "version": 1,
             "history": [],
             "created_at": now,
@@ -212,7 +300,8 @@ class OperatorRegistry:
         if not doc:
             return None
 
-        editable = ("definition", "rendering_intent", "examples", "negative_examples", "relations", "author")
+        editable = ("definition", "rendering_intent", "examples", "negative_examples",
+                    "relations", "author", "kind", "members")
         fields = {k: v for k, v in (patch or {}).items() if k in editable and v is not None}
         if not fields:
             return _out(doc)
@@ -225,7 +314,8 @@ class OperatorRegistry:
             )
 
         prior = {k: doc.get(k) for k in ("definition", "rendering_intent", "examples",
-                                         "negative_examples", "relations", "version")}
+                                         "negative_examples", "relations", "members",
+                                         "version")}
         prior["retired_at"] = _now()
         history = list(doc.get("history", []))
         history.append(prior)

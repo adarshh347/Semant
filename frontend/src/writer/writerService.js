@@ -81,6 +81,30 @@ export const writerService = {
     );
   },
 
+  // --- Assemblages (W4) ---
+  // A READ over the usage log. Each suggestion cites the blocks it rests on; a candidate
+  // that cannot be cited is not returned at all.
+  async assemblageSuggestions(projectId) {
+    return json(
+      await fetch(`${BASE}/${projectId}/assemblages/suggestions`),
+      'load assemblage suggestions',
+    );
+  },
+  // Records a dismissal so the cluster stops nagging. Changes NO ontology.
+  async dismissAssemblage(projectId, members, support = 0) {
+    return json(
+      await post(`${BASE}/${projectId}/assemblages/dismiss`, { members, support }),
+      'dismiss suggestion',
+    );
+  },
+  // THE commit. `rendering_intent` is the author's — the system never supplies the meaning.
+  async createAssemblage(projectId, assemblage) {
+    return json(
+      await post(`${BASE}/${projectId}/assemblages`, assemblage),
+      'author assemblage',
+    );
+  },
+
   // --- The loop ---
   // Parse only: the `/` ÷ `//` split, with no model called and nothing stored.
   async parse(projectId, text) {

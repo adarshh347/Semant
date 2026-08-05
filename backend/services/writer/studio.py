@@ -20,6 +20,7 @@ model gets more of the author to work from, never more of the world.
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+from uuid import uuid4
 
 from backend.services.manuscript_service import _strip_html  # canon's own HTML→text
 from backend.services.manuscript_service import manuscript_service
@@ -80,6 +81,12 @@ async def run_block(
     parsed = dsl.parse_block(text)
     canon = await _committed_prose(scene_id)
 
+    # One id per BLOCK RUN. W4's detection counts how many blocks a cluster of operators
+    # recurred in, and a suggestion has to cite those blocks — "these operators appeared
+    # together 7 times" is only checkable if each occurrence has an identity. Without this
+    # the logs record renders but not the unit co-occurrence is actually about.
+    run_id = f"wrun_{uuid4().hex[:12]}"
+
     results: List[Dict[str, Any]] = []
     proposals: List[Dict[str, Any]] = []
     prose_so_far: List[str] = []
@@ -131,6 +138,7 @@ async def run_block(
             preceding_prose=preceding,
             manuscript_id=manuscript_id,
             scene_id=scene_id,
+            run_id=run_id,
         )
 
         entry: Dict[str, Any] = {
@@ -163,6 +171,7 @@ async def run_block(
 
     return {
         "project_id": project_id,
+        "run_id": run_id,
         "manuscript_id": manuscript_id,
         "scene_id": scene_id,
         "results": results,
