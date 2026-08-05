@@ -23,11 +23,17 @@ claimed. Nothing in this module derives meaning from adjacency, and nothing down
 only a drawn edge (a real `compare_views` percept, C3) asserts a relation. `edges` stays empty at
 C1 rather than being seeded from proximity, which is the tempting and wrong shortcut.
 
-THERE IS NO PERSISTED CORPUS TO POINT AT, so `corpus_ref` names one of the two things that actually
-exist on main: an explicit list of post ids (what `POST /runs` itself takes), or a run whose stored
-spec already names them. Either resolves to an ordered tuple of post ids, which is what M1's
-`build_corpus` consumes. Inventing a corpus collection would have been a fifth place a corpus can
-be defined, and the one that nothing else reads.
+`corpus_ref` NAMES WHERE THE ORDER CAME FROM. Three kinds now: an explicit list of post ids (what
+`POST /runs` itself takes), a run whose stored spec already names them, or — since L1 — a curated
+corpus, a named ordered walk that outlives the canvas. All three resolve to an ordered tuple of
+post ids, which is what M1's `build_corpus` consumes.
+
+C1 refused to create the third, on the grounds that a corpus collection would be "a fifth place a
+corpus can be defined, and the one that nothing else reads". That held while a corpus was a list
+typed into a picker and discarded when the canvas closed. It stopped holding once a walk had to be
+reopened and re-sequenced, so `corpus_store` exists on the condition C1 set: it is the one that IS
+read. The resolved post ids stay here alongside the corpus id, so an Atlas never has to consult a
+corpus to know its own images — deleting a walk cannot empty a canvas somebody is working on.
 
 PURE WHERE IT CAN BE. Every shaping decision — the default grid, merging an arrangement, building
 the view — is a module-level function with no database and no clock, so the interesting behaviour
@@ -46,6 +52,11 @@ CONTRACT_VERSION = 1
 # How a corpus can be named. Both resolve to an ordered tuple of post ids; neither invents one.
 CORPUS_POSTS = "posts"      # the curator listed the images
 CORPUS_RUN = "run"          # the images a stored run spanned
+# L1. A named, ordered walk that outlives this canvas (`corpus_store`). The third kind, and the one
+# that answers the question the other two cannot: where did this ORDER come from, and can I open
+# the same walk again next week? The resolved post ids are still stored alongside — an Atlas that
+# had to consult the corpus to know its own images would empty itself the day one was deleted.
+CORPUS_CURATED = "curated"
 
 # The default grid a fresh Atlas lays its images out on, in canvas units. Generous gaps because the
 # first gesture on a new canvas is almost always to drag things apart, and a tight grid reads as an
@@ -117,11 +128,13 @@ def normalize_corpus_ref(raw: Any) -> Dict[str, Any]:
     """
     kind = CORPUS_POSTS
     run_id = None
+    corpus_id = None
     raw_ids: Sequence[Any] = ()
 
     if isinstance(raw, Mapping):
         kind = str(raw.get("kind") or CORPUS_POSTS)
         run_id = raw.get("run_id") or None
+        corpus_id = raw.get("corpus_id") or None
         raw_ids = raw.get("post_ids") or raw.get("image_ids") or ()
     elif isinstance(raw, (list, tuple)):
         raw_ids = raw
@@ -132,10 +145,11 @@ def normalize_corpus_ref(raw: Any) -> Dict[str, Any]:
         if text:
             seen.setdefault(text, None)
 
-    if kind not in (CORPUS_POSTS, CORPUS_RUN):
+    if kind not in (CORPUS_POSTS, CORPUS_RUN, CORPUS_CURATED):
         kind = CORPUS_POSTS
     return {"kind": kind, "post_ids": list(seen.keys()),
-            "run_id": str(run_id) if run_id else None}
+            "run_id": str(run_id) if run_id else None,
+            "corpus_id": str(corpus_id) if corpus_id else None}
 
 
 def post_ids_from_run(run_doc: Optional[Mapping[str, Any]]) -> List[str]:
