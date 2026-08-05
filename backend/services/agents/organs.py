@@ -29,6 +29,15 @@ organ, it is not mine to start, and an agent that shares organs sequentially wil
 through the manager when that lane exists." Collapsing it into `UNKNOWN` would make a correct
 organ name look like a typo, which is the kind of quiet wrongness this project keeps closing.
 
+## WAVE2.5 — what a reading is worth is the organ's to say, not this lane's
+
+A box is an estimate of an extent; a mask is a measurement of one. `nestedness_organ` now derives
+each mark's status from its basis, and this module passes that through without opinion. The
+consequence for an agent is small and it is not a filter: an inadmissible reading is still
+something it genuinely perceived from here, so it stays in the percept field carrying
+`admissible=False`. A body that discarded its own estimates would report a smaller world than it
+has; what an estimate may never do is pass itself off as a measurement.
+
 ## The one thing this module may never do
 
 Ask a language model. There is nothing to import here that could, and
@@ -83,14 +92,16 @@ class OrganBinding:
 
 @dataclass(frozen=True)
 class OrganReading:
-    """One measurement an organ made from the agent's locus.
+    """One reading an organ took from the agent's locus.
 
-    `mark` is the organ's own `measured` mark — RETURNED, never committed. Committing it to a post
+    `mark` is the organ's own grounding mark — RETURNED, never committed. Committing it to a post
     is a curator's act and this wave performs none.
 
-    `epistemic_status` is read off that mark rather than restated here. The organ is the only thing
-    entitled to say what kind of knowing its output is, and a second copy in this dataclass would
-    be a second place for it to be wrong.
+    `epistemic_status` is read off that mark rather than restated here, and under the WAVE2.5
+    ruling it is no longer always `measured`: the organ derives it from the BASIS, so a mask-basis
+    reading is `measured` and a box-basis one is `interpretive`. That is why nothing in this lane
+    names a status of its own — the organ is the only thing entitled to say what kind of knowing
+    its output is, and a second copy here would be a second place for it to be wrong.
     """
     organ: str
     relation: str
@@ -106,6 +117,25 @@ class OrganReading:
     @property
     def epistemic_status(self) -> str:
         return str(self.mark.get(STATUS_KEY) or "")
+
+    @property
+    def basis(self) -> str:
+        return str(self.measurement.get("basis") or "")
+
+    @property
+    def admissible(self) -> bool:
+        """WAVE2.5 — may this reading ground a measured claim, or only propose one?
+
+        Asked of the organ rather than answered here (`nestedness.is_admissible`). It is not a
+        quality threshold: a box containment of 1.000 is inadmissible while a mask containment of
+        0.96 is admitted, because the question is what kind of thing the number is.
+
+        An agent keeps its inadmissible readings — they are genuinely what it perceived from here,
+        and a body that discarded its own estimates would be reporting a smaller world than it has.
+        What they may never do is pass themselves off as measurements, which is why this is a
+        field on every reading rather than a filter on the field.
+        """
+        return nestedness.is_admissible(self.measurement)
 
 
 def resolve(organ_name: str) -> OrganBinding:
@@ -197,7 +227,11 @@ def _readings_from(locus_region: Mapping[str, Any], others: Sequence[Mapping[str
                 continue
             if not measurement["nested"]:
                 continue
-            mark = nestedness.measured_mark(measurement, post_id=post_id, step_id=step_id, now=now)
+            # `grounding_mark`, and the name matters: under the WAVE2.5 ruling this is NOT always a
+            # measured mark. The organ derives the status from the basis, so a box-basis reading
+            # comes back `interpretive` — and this lane passes that through untouched rather than
+            # deciding for itself what its own evidence is worth.
+            mark = nestedness.grounding_mark(measurement, post_id=post_id, step_id=step_id, now=now)
             out.append(OrganReading(
                 organ=nestedness.ORGAN,
                 relation=nestedness.RELATION_NESTED_WITHIN,

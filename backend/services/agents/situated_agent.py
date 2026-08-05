@@ -18,8 +18,9 @@ second agent). One agent, one locus, single image.
 
 `DECISION-measured-private-vs-shared-ledger`, applied twice in the same function call:
 
-    remember()   the agent's episodic, first-person record reads `measured`. It lives on what its
-                 organs measured and does not wait for a human to believe its own eyes.
+    remember()   the agent's episodic, first-person record carries WHAT THE ORGAN SAID — `measured`
+                 on a mask basis. It lives on what its organs measured and does not wait for a
+                 human to believe its own eyes.
     report()     the shared ledger gets a suggestion that stores NO status and derives one from
                  the mark. Proposed until a curator commits.
 
@@ -27,6 +28,19 @@ Both come from the SAME organ reading. That is what makes the distinction legibl
 decorative: a reader can put the private record and the public row side by side, see one say
 `measured` and the other say `proposed`, and know that the difference is not a difference in
 evidence — it is the human act nobody has performed yet.
+
+## WAVE2.5 — the tier an agent gets is the one its geometry earns
+
+The first version of this module wrote `measured` into episodic memory unconditionally, and its
+first real run duly recorded *"golden finial nested within Sky"* at index 0.995 as a measurement.
+The finial is in FRONT of the sky. That is the exact 2D-projection artefact the WAVE2.5 ruling was
+written to end, and an agent is the worst possible place for it, because the sentence arrives in
+the first person.
+
+So nothing here names a status. `remember` copies whatever the organ stamped, and the organ derives
+that from the basis — `mask → measured`, `box → interpretive`. An agent on box geometry gets a
+world of estimates and a memory that says so. The two-tier decision still holds exactly as written;
+what an agent no longer gets is the stronger tier for free.
 
 ## Where confabulation would hide, and what stands in its way
 
@@ -51,7 +65,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 from uuid import uuid4
 
 from backend.schemas.soft_fields import Percept, RegionGround
-from backend.services import epistemics
+from backend.services import nestedness_organ
 from backend.services.agents import observation as obs_mod
 from backend.services.agents import organs
 from backend.services.agents.organs import OrganReading
@@ -109,8 +123,8 @@ class Perception:
     conversion nobody has to write.
 
     `epistemic_status` is read off the organ's mark rather than stored, for the reason
-    `nestedness_organ.measured_mark` gives: the organ that did the measuring is the only thing
-    entitled to say what kind of knowing its output is.
+    `nestedness_organ.grounding_mark` gives: the organ that did the work is the only thing entitled
+    to say what kind of knowing its output is — and since WAVE2.5 that answer varies per reading.
     """
     organ: str
     reading: OrganReading
@@ -133,6 +147,11 @@ class Perception:
             "locus_region_id": self.reading.locus_region_id,
             "other_region_id": self.reading.other_region_id,
             "epistemic_status": self.epistemic_status,
+            # WAVE2.5, carried on every row rather than left to be inferred from the status. A
+            # reader scanning a percept field should be able to see which of these could ground a
+            # claim and which are peripheral signal, without having to know the ruling by heart.
+            "basis": self.reading.basis,
+            "admissible": self.reading.admissible,
             "detail": self.reading.detail,
             "percept": self.percept.model_dump(mode="json"),
             "grounds": [g.model_dump(mode="json") for g in self.grounds],
@@ -320,12 +339,17 @@ def perceive(agent: SituatedAgent, post: Mapping[str, Any], *,
 # ── 3. record — episodic, private, measured ──────────────────────────────────
 
 def remember(agent: SituatedAgent, *, now: str = "") -> List[Dict[str, Any]]:
-    """Write the perception into the agent's first-person memory, as MEASURED evidence.
+    """Write the perception into the agent's first-person memory, as the organ's own evidence.
 
-    This is the yes-half of the decision, and the word `measured` appears here for one reason: the
-    organ computed it from the image signal, and `EpistemicStatus.MEASURED` means exactly that. It
-    is not a confidence, not a vote, and not the agent's opinion of its own reliability — which is
-    why it is copied off the mark rather than chosen here.
+    This is the yes-half of the decision: an agent lives on what its organs measured and does not
+    wait for a curator to believe its own eyes. What it does NOT get is to decide what its eyes
+    said. The status is COPIED off the mark, never chosen here — so a mask-basis reading records
+    `measured` and a box-basis one records `interpretive`, and an agent standing on box geometry
+    ends up with a memory full of estimates that says so.
+
+    Copying rather than choosing is the whole safeguard. The earlier version of this function wrote
+    `EpistemicStatus.MEASURED` itself, which was correct-looking, one line, and wrong for every box
+    reading in the corpus.
 
     Private, and that is a claim about REACH rather than about secrecy: nothing in this list is
     visible to another agent or to the ledger. `report` is the only door out, and it opens onto
@@ -343,9 +367,10 @@ def remember(agent: SituatedAgent, *, now: str = "") -> List[Dict[str, Any]]:
             "relation": perception.reading.relation,
             "direction": perception.reading.direction,
             "other_region_id": perception.reading.other_region_id,
-            # THE PRIVATE VIEW, and the only place in this lane that stores the word.
+            # THE PRIVATE VIEW — whatever the organ stamped, never a word chosen here.
             STATUS_KEY: perception.epistemic_status,
-            "basis": perception.reading.measurement.get("basis"),
+            "basis": perception.reading.basis,
+            "admissible": perception.reading.admissible,
             "nesting_index": perception.reading.measurement.get("nesting_index"),
             "detail": perception.reading.detail,
             "mark_id": str(perception.mark.get("id") or ""),
@@ -404,33 +429,67 @@ def attest(agent: SituatedAgent, claim: Mapping[str, Any]) -> Perception:
         f"is hearsay, not admissible.")
 
 
-def _guard_marks(perceptions: Sequence[Perception]) -> None:
-    """Run every mark this report rests on through the epistemic guard before publishing.
+class MarkMisstated(Exception):
+    """A mark claims a kind of knowing its own basis does not support."""
 
-    Not ceremony. `epistemics.guard` is the single place where a claim's stated kind is checked
-    against the kind its producer is classified as, and until this lane classified
-    `nestedness_organ` the guard REFUSED the organ's own `measured` marks — the organ was unknown
-    to both classification tables, so it was entitled to claim nothing but `uncertain`. Lane M
-    never called the guard, so nothing surfaced it. Calling it here is what makes the honesty floor
-    a check rather than a sentence in a docstring.
+
+def _verify_marks(perceptions: Sequence[Perception]) -> None:
+    """Check every mark this report rests on against the ORGAN'S OWN per-basis rule.
+
+    ## Why not `epistemics.guard`, which is the usual door
+
+    Because `guard` cannot express this producer, and the WAVE2.5 ruling is what made that true.
+    `permitted_statuses` returns `{the producer's classification, uncertain}` — a producer may
+    state its kind or say it is unsure, and nothing else. That was sufficient while every producer
+    had ONE kind. `nestedness_organ` now has two, derived per measurement: `mask → measured`,
+    `box → interpretive`. No single entry admits both, and it is not close:
+
+        classified `measured`      → the organ's legitimate box marks are refused
+        classified `interpretive`  → the organ's legitimate mask marks are refused
+
+    `interpretive` is a WEAKENING of `measured`, and the module's own principle ("a producer is
+    always entitled to say it is not sure, and never entitled to promote its own output") would
+    admit it — but the implementation admits only `uncertain` as the weakening, because until this
+    ruling nothing weakened along any other axis. Widening `permitted_statuses` is the right fix
+    and it is not this lane's to make: it changes behaviour for every measured-ceiling producer in
+    the system, and a lane that quietly widens a wall it merely passes through is how walls stop
+    meaning anything. It is reported instead.
+
+    ## What this checks, which is strictly narrower and strictly stronger
+
+    Per MEASUREMENT rather than per producer: each mark must carry exactly what
+    `nestedness_organ.epistemic_for(basis)` says its basis supports. A box mark stamped `measured`
+    — the pathology the ruling exists to end, and the thing this lane's own first run published —
+    is refused here even though a per-producer table would wave it through.
+
+    `epistemics._DEFAULTS` still classifies the organ, and that entry is still worth having: it
+    states the CEILING (`measured`, what a mask-basis reading may claim) and it fixed the case
+    where the organ was unknown to both tables and `guard()` refused everything it produced.
     """
-    epistemics.guard([{
-        "producer": (p.mark.get("provenance") or {}).get("producer"),
-        "type": p.mark.get("type"),
-        STATUS_KEY: p.mark.get(STATUS_KEY),
-    } for p in perceptions])
+    for perception in perceptions:
+        mark = perception.mark
+        expected = nestedness_organ.epistemic_for(perception.reading.basis)
+        actual = str(mark.get(STATUS_KEY) or "")
+        if actual != expected:
+            raise MarkMisstated(
+                f"mark {mark.get('id')} claims {actual!r} on the "
+                f"{perception.reading.basis!r} basis, which supports {expected!r}. A box is an "
+                f"estimate of an extent and a mask is a measurement of one (WAVE2.5); a claim "
+                f"that outruns its own geometry is the 2D-projection artefact wearing the "
+                f"strongest word the vocabulary has.")
 
 
 def observe(agent: SituatedAgent, claim: Mapping[str, Any], *,
             atlas_id: str = "", now: str = "") -> Dict[str, Any]:
     """One attested claim → one proposed observation. Raises `Hearsay` if no organ backs it."""
     perception = attest(agent, claim)
-    _guard_marks([perception])
+    _verify_marks([perception])
     return obs_mod.observation_entry(
         agent_id=agent.id, post_id=agent.locus.post_id, region_id=agent.locus.region_id,
         organ=perception.organ, relation=perception.reading.relation,
         direction=perception.reading.direction, mark_id=str(perception.mark.get("id") or ""),
-        detail=perception.reading.detail, atlas_id=atlas_id, now=now)
+        detail=perception.reading.detail, basis=perception.reading.basis,
+        atlas_id=atlas_id, now=now)
 
 
 def report(agent: SituatedAgent, *, atlas_id: str = "", now: str = "") -> List[Dict[str, Any]]:
@@ -443,13 +502,13 @@ def report(agent: SituatedAgent, *, atlas_id: str = "", now: str = "") -> List[D
     PARTIAL is the operative word. This is what one body measured from one place, and there is no
     field on the row that would let it be mistaken for a statement about the image.
     """
-    _guard_marks(agent.percept_field)
+    _verify_marks(agent.percept_field)
     return [
         obs_mod.observation_entry(
             agent_id=agent.id, post_id=agent.locus.post_id, region_id=agent.locus.region_id,
             organ=p.organ, relation=p.reading.relation, direction=p.reading.direction,
             mark_id=str(p.mark.get("id") or ""), detail=p.reading.detail,
-            atlas_id=atlas_id, now=now)
+            basis=p.reading.basis, atlas_id=atlas_id, now=now)
         for p in agent.percept_field
     ]
 
@@ -490,8 +549,6 @@ async def run_agent(*, post: Mapping[str, Any], region_id: str,
     The post is hashed before and after regardless. Suggestions-only is a claim this function
     checks rather than makes.
     """
-    from backend.services import nestedness_organ
-
     stamp = now or obs_mod.utc_now()
     post_id = str(post.get("_id") or post.get("id") or "")
     posts = {post_id: post}

@@ -84,7 +84,7 @@ def node_id_for(post_id: str, region_id: str) -> str:
 
 def observation_entry(*, agent_id: str, post_id: str, region_id: str, organ: str,
                       relation: str, direction: str, mark_id: str, detail: str,
-                      atlas_id: str = "", now: str = "") -> Dict[str, Any]:
+                      basis: str = "", atlas_id: str = "", now: str = "") -> Dict[str, Any]:
     """One perception → the row the shared ledger stores. A suggestion, and nothing stronger.
 
     Every field is set explicitly, including the ones whose honest value is empty. That is Lane G's
@@ -109,6 +109,14 @@ def observation_entry(*, agent_id: str, post_id: str, region_id: str, organ: str
         "direction": str(direction),
         # THE GROUNDING. Everything about what kind of claim this is comes from here, at read time.
         "mark_id": str(mark_id),
+        # HOW the reading was taken — `mask` or `box`. A fact about the instrument, not a status,
+        # which is why it is stored while `epistemic_status` is not. WAVE2.5 makes it the thing a
+        # reader filters the blackboard on: a box is an estimate of an extent and may propose but
+        # never ground, so a scan of proposals that could not tell them apart would be a list in
+        # which the 2D-projection artefacts sort to the top. `admissible` is deliberately NOT
+        # stored beside it — it is derivable (`nestedness_organ.is_admissible`), and a stored copy
+        # is a second opinion waiting to disagree.
+        "basis": str(basis),
         "detail": str(detail),
         "source": AGENT_PROPOSED_SOURCE,
         "created_at": stamp,

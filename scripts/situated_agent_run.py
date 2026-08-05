@@ -121,7 +121,14 @@ def _print(transcript: dict, post: dict) -> None:
     for row in transcript["percept_field"]:
         other = _label(post, row["other_region_id"])
         arrow = "within" if row["direction"] == "within" else "contains"
-        print(f"     {arrow:>8}  {other!r:<28} {row['epistemic_status']:<9} {row['detail']}")
+        flag = "  " if row["admissible"] else " ~"
+        print(f"    {flag}{arrow:>8}  {other!r:<26} {row['epistemic_status']:<13} {row['detail']}")
+    inadmissible = [r for r in transcript["percept_field"] if not r["admissible"]]
+    if inadmissible:
+        print(f"     ~ = box basis: an ESTIMATE of an extent, not a measurement of one. "
+              f"{len(inadmissible)} of {len(transcript['percept_field'])}.")
+        print("       It may propose; it may never ground (WAVE2.5). A bounding box in a 2D")
+        print("       projection cannot tell `inside` from `in front of`.")
     if not transcript["percept_field"]:
         print("     (nothing — the organs looked from here and measured nothing. That is a fact")
         print("      about this locus, not a failure to look.)")
@@ -129,7 +136,7 @@ def _print(transcript: dict, post: dict) -> None:
     gods_eye = transcript.get("gods_eye") or {}
     if gods_eye:
         print("\n   PARTIALITY, MEASURED — the same organ, asked without a position")
-        print(f"     the image contains  {gods_eye['total']} measurable nestings")
+        print(f"     the image contains  {gods_eye['total']} nestings the organ can compute")
         print(f"     this agent holds    {gods_eye['agents']}  — every one with its locus as a term")
         print(f"     it cannot see       {gods_eye['unreachable']} nestings between regions it is "
               f"not standing on")
@@ -140,15 +147,17 @@ def _print(transcript: dict, post: dict) -> None:
 
     print("\n3. REMEMBER — episodic, first-person, PRIVATE")
     for row in transcript["memory"]:
-        print(f"     {row['epistemic_status']:<9} {row['detail']}  [mark {row['mark_id']}]")
+        print(f"     {row['epistemic_status']:<13} {row['detail']}  [mark {row['mark_id']}]")
     print("     an agent lives on what its organs measured; it does not wait for a curator")
     print("     to believe its own eyes (DECISION-measured-private-vs-shared-ledger).")
+    print("     What it does NOT get is to decide what its eyes said: the status is copied off")
+    print("     the mark, and the organ derives that from the basis.")
 
     print("\n4. REPORT — the shared ledger, PROPOSED")
     for row in transcript["observations"]:
         print(f"     {row['observation_id']}  agent={row['agent_id']} from={row['node_id']}")
         print(f"       organ={row['organ']} relation={row['relation']}/{row['direction']} "
-              f"source={row['source']}")
+              f"basis={row['basis']} source={row['source']}")
         print(f"       carries epistemic_status? {obs_mod.STATUS_KEY in row}   "
               f"cites mark {row['mark_id']}")
     for both in transcript["hydrated"]:
@@ -179,8 +188,12 @@ async def main_async(args) -> int:
     regions = post.get("region_annotations") or []
     print(f"post {post_id} — {len(regions)} regions")
 
-    region_id = find_region(post, args.locus_label) if args.locus_label else ""
-    if args.locus_label and not region_id:
+    region_id = str(args.locus_region or "")
+    if region_id and not any(str(r.get("id")) == region_id for r in regions):
+        print(f"✗ no region {region_id!r} in this post", file=sys.stderr)
+        return 2
+    region_id = region_id or (find_region(post, args.locus_label) if args.locus_label else "")
+    if args.locus_label and not args.locus_region and not region_id:
         print(f"! no region matching {args.locus_label!r}; falling back to the first region",
               file=sys.stderr)
     region_id = region_id or (str(regions[0].get("id")) if regions else "")
@@ -245,6 +258,10 @@ def main() -> int:
     ap.add_argument("--locus-label", default=DEFAULT_LOCUS_LABEL,
                     help="pick the locus region by label substring (choosing where the agent "
                          "stands, never a gate)")
+    ap.add_argument("--locus-region", default="",
+                    help="pick the locus by region id exactly — the way to stand on a MASKED "
+                         "region, which is what the WAVE2.5 ruling makes the difference between "
+                         "an estimate and a measurement")
     ap.add_argument("--agent-id", default="agent_alpha")
     ap.add_argument("--organ", action="append", default=[],
                     help=f"repeatable; defaults to {organ.ORGAN}")

@@ -9,9 +9,11 @@ are the guard on four claims that would each still LOOK correct from the outside
      it made would be a claim from nowhere wearing a first-person pronoun. §1.
   2. HEARSAY — a claim with no organ behind it is refused, and refused separately when it is about
      somewhere the agent is not standing. §2.
-  3. THE TWO TIERS — the private record reads `measured` and the shared row reads `proposed`, from
-     the SAME reading. The flattering failure (writing `measured` onto the ledger row) is one line
-     and would be invisible. §3.
+  3. THE TWO TIERS — the private record carries what the ORGAN said and the shared row reads
+     `proposed`, from the SAME reading. Two flattering failures live here, each one line and each
+     invisible: writing `measured` onto the ledger row, and writing `measured` into memory for a
+     box-basis reading. The lane shipped the second one once — see
+     `test_a_box_reading_may_not_be_recorded_as_a_measurement`. §3.
   4. NO NARRATION — the package cannot ask a language model. Asserted structurally, over the whole
      package, rather than trusted. §4.
 
@@ -27,7 +29,7 @@ from pathlib import Path
 import pytest
 
 from backend.schemas.soft_fields import Percept
-from backend.services import epistemics, percept_lineage
+from backend.services import epistemics, nestedness_organ, percept_lineage
 from backend.services.agents import observation as obs_mod
 from backend.services.agents import organs
 from backend.services.agents import situated_agent as sa
@@ -55,6 +57,31 @@ def _post(post_id="p1"):
         {"id": "seg_1", "label": "spire", "box": {"x": 0.30, "y": 0.05, "w": 0.35, "h": 0.55}},
         {"id": "seg_2", "label": "plinth", "box": {"x": 0.05, "y": 0.70, "w": 0.20, "h": 0.15}},
         {"id": "seg_3", "label": "ground", "box": {"x": 0.00, "y": 0.60, "w": 1.00, "h": 0.40}},
+    ]}
+
+
+def _masked_post(post_id="pm"):
+    """A post where the locus and its container BOTH carry a mask on one raster.
+
+    Needed because the box fixture above can no longer produce a `measured` reading at all: under
+    the WAVE2.5 ruling a box is an estimate, so every claim off `_post()` is `interpretive`. Without
+    this fixture the whole measured half of the two-tier decision would be untested — which is how
+    a lane ends up proving only the case its corpus happens to have.
+
+    A 10×10 raster: `m_outer` is the left 6×10 block, `m_inner` a 2×2 square inside it.
+    """
+    from backend.services import mask_geometry as mg
+
+    def rle(x0, x1, y0, y1):
+        bits = [0] * 100
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                bits[y * 10 + x] = 1
+        return mg.rle_encode(bits, 10, 10)
+
+    return {"_id": post_id, "region_annotations": [
+        {"id": "m_inner", "label": "part", "mask_rle": rle(1, 3, 1, 3)},
+        {"id": "m_outer", "label": "whole", "mask_rle": rle(0, 6, 0, 10)},
     ]}
 
 
@@ -215,15 +242,52 @@ def test_hearsay_produces_no_observation_at_all():
 
 # ── 4. the two tiers: measured privately, proposed publicly ──────────────────
 
-def test_the_private_record_reads_measured():
-    """The yes-half of the decision: an agent lives on what its organs measured and does not wait
-    for a human to believe its own eyes."""
-    agent, _ = _agent("seg_0")
-    written = sa.remember(agent, now=STAMP)
+def test_the_private_record_reads_what_the_organ_measured_not_what_the_agent_wants():
+    """The yes-half of the decision, and the WAVE2.5 correction to it in one test.
 
-    assert written and all(e[STATUS_KEY] == EpistemicStatus.MEASURED.value for e in written)
-    assert agent.memory == written
-    assert written[0]["mark_id"] and written[0]["basis"] == "box"
+    An agent lives on what its organs measured — but it does not get to decide what its eyes said.
+    On a mask basis the record reads `measured`; on a box basis it reads `interpretive`, because a
+    box is an estimate of an extent and a mask is a measurement of one.
+    """
+    masked, _ = _agent("m_inner", post=_masked_post())
+    measured = sa.remember(masked, now=STAMP)
+    assert measured and all(e[STATUS_KEY] == EpistemicStatus.MEASURED.value for e in measured)
+    assert measured[0]["basis"] == "mask" and measured[0]["admissible"] is True
+
+    boxed, _ = _agent("seg_0")
+    estimated = sa.remember(boxed, now=STAMP)
+    assert estimated and all(
+        e[STATUS_KEY] == EpistemicStatus.INTERPRETIVE.value for e in estimated)
+    assert estimated[0]["basis"] == "box" and estimated[0]["admissible"] is False
+
+    assert boxed.memory == estimated and masked.memory == measured
+
+
+def test_a_box_reading_may_not_be_recorded_as_a_measurement():
+    """THE PATHOLOGY THIS LANE SHIPPED ONCE, kept as a regression.
+
+    The first version of `remember` wrote `EpistemicStatus.MEASURED` itself, and the first real run
+    recorded *'golden finial nested within Sky'* at index 0.995 as a measurement. The finial is in
+    FRONT of the sky; a bounding box in a 2D projection cannot tell `inside` from `in front of`,
+    and the sky's box contains everything under it (WAVE2.5).
+
+    An agent is the worst place in the system for that error, because the sentence arrives in the
+    first person. So the status is COPIED off the mark and `_verify_marks` refuses any mark that
+    outruns its own geometry.
+    """
+    agent, _ = _agent("seg_0")
+    perception = agent.percept_field[0]
+    assert perception.reading.basis == "box"
+    assert perception.epistemic_status == EpistemicStatus.INTERPRETIVE.value
+    assert perception.reading.admissible is False
+
+    forged = sa.Perception(
+        organ=perception.organ, percept=perception.percept, grounds=perception.grounds,
+        reading=organs.OrganReading(
+            **{**vars(perception.reading),
+               "mark": {**perception.mark, STATUS_KEY: EpistemicStatus.MEASURED.value}}))
+    with pytest.raises(sa.MarkMisstated, match="outruns its own geometry|supports"):
+        sa._verify_marks([forged])
 
 
 def test_the_shared_row_stores_no_status_and_reads_proposed():
@@ -242,10 +306,14 @@ def test_the_shared_row_stores_no_status_and_reads_proposed():
 
 def test_the_same_reading_reads_measured_privately_and_proposed_publicly():
     """THE DECISION, in one assertion. Both come from one organ reading, so the difference between
-    them is not a difference in evidence — it is the human act nobody has performed."""
-    agent, post = _agent("seg_0")
+    them is not a difference in evidence — it is the human act nobody has performed.
+
+    On the MASK fixture, because this is the claim about the measured tier and the box corpus
+    cannot make it any more."""
+    post = _masked_post()
+    agent, _ = _agent("m_inner", post=post)
     private = sa.remember(agent, now=STAMP)[0]
-    public = obs_mod.hydrate_observation(sa.report(agent, now=STAMP)[0], {"p1": post})
+    public = obs_mod.hydrate_observation(sa.report(agent, now=STAMP)[0], {"pm": post})
 
     assert private["mark_id"] == public["mark_id"]                 # the same evidence
     assert private[STATUS_KEY] == EpistemicStatus.MEASURED.value   # …read one way privately
@@ -253,17 +321,26 @@ def test_the_same_reading_reads_measured_privately_and_proposed_publicly():
 
 
 def test_committing_the_mark_is_what_moves_the_ledger():
-    """The gap between the two readings is exactly one curator's act, and nothing else closes it."""
-    agent, post = _agent("seg_0")
-    entry = sa.report(agent, now=STAMP)[0]
-    marks = sa.proposed_marks(agent)
+    """The gap between the two readings is exactly one curator's act, and nothing else closes it.
 
-    as_stored = obs_mod.hydrate_observation(entry, {"p1": post})
-    as_committed = obs_mod.hydrate_observation(entry, sa.overlay_posts({"p1": post}, marks))
+    And the tier the commit reveals is the one the GEOMETRY earned, not the strongest available:
+    committing a box-basis mark exposes `interpretive`, never `measured`. A curator's acceptance
+    makes a claim durable; it cannot make an estimate into a measurement.
+    """
+    for post, post_id, region, expected in (
+            (_masked_post(), "pm", "m_inner", EpistemicStatus.MEASURED.value),
+            (_post(), "p1", "seg_0", EpistemicStatus.INTERPRETIVE.value)):
+        agent, _ = _agent(region, post=post)
+        entry = sa.report(agent, now=STAMP)[0]
+        marks = sa.proposed_marks(agent)
 
-    assert as_stored["ledger_status"] == obs_mod.LEDGER_PROPOSED
-    assert as_committed["ledger_status"] == EpistemicStatus.MEASURED.value
-    assert as_committed["live"] is True
+        as_stored = obs_mod.hydrate_observation(entry, {post_id: post})
+        as_committed = obs_mod.hydrate_observation(
+            entry, sa.overlay_posts({post_id: post}, marks))
+
+        assert as_stored["ledger_status"] == obs_mod.LEDGER_PROPOSED
+        assert as_committed["ledger_status"] == expected
+        assert as_committed["live"] is True
 
 
 def test_an_observation_may_not_carry_a_status_of_its_own():
@@ -285,19 +362,48 @@ def test_an_observation_with_no_mark_is_hearsay_with_a_timestamp():
 
 # ── 5. the substrate contracts this lane rests on ────────────────────────────
 
-def test_the_organ_marks_now_pass_the_epistemic_guard():
-    """THE HOLE THIS LANE FOUND. `nestedness_organ` mints `measured` marks and was in NEITHER
-    classification table, so `guard()` refused its own output: a producer nobody classified may
-    claim only `uncertain`. Lane M never routed a mark through the guard, so it never surfaced.
+def test_every_mark_carries_exactly_what_its_basis_supports():
+    """The check this lane runs before publishing anything: per MEASUREMENT, not per producer."""
+    for post, region in ((_masked_post(), "m_inner"), (_post(), "seg_0")):
+        agent, _ = _agent(region, post=post)
+        sa._verify_marks(agent.percept_field)                 # raises if a mark outruns its basis
+        for perception in agent.percept_field:
+            assert perception.epistemic_status == \
+                nestedness_organ.epistemic_for(perception.reading.basis)
+
+
+def test_the_epistemic_guard_cannot_express_this_producer_and_that_is_the_finding():
+    """THE HOLE THIS LANE FOUND, and the shape WAVE2.5 gave it.
+
+    `nestedness_organ` was in NEITHER classification table, so `guard()` refused its own output —
+    a producer nobody classified may claim only `uncertain`, and Lane M never routed a mark through
+    the guard, so nothing surfaced it. This lane classifies it (`_DEFAULTS`), which states the
+    organ's CEILING and fixes the mask path.
+
+    It cannot fix the whole of it, and this test pins WHY rather than hiding it.
+    `permitted_statuses` returns `{classification, uncertain}` — one kind per producer, plus the
+    right to be unsure. WAVE2.5 made this organ emit TWO kinds, derived per measurement, and no
+    single entry admits both. `interpretive` is a weakening of `measured` and the module's own
+    principle would allow it; the implementation allows only `uncertain`, because until this ruling
+    nothing weakened along another axis.
+
+    Widening `permitted_statuses` changes behaviour for every measured-ceiling producer in the
+    system, so it is reported rather than done from here. When it is widened, this test fails —
+    which is the correct way for a documented limitation to expire.
     """
     assert epistemics.default_status_for(NESTEDNESS) is EpistemicStatus.MEASURED
-    assert epistemics.permitted_statuses(NESTEDNESS) == frozenset(
-        {EpistemicStatus.MEASURED, EpistemicStatus.UNCERTAIN})
 
-    agent, _ = _agent("seg_0")
-    sa._guard_marks(agent.percept_field)          # raises if the classification regresses
+    def guarded(basis):
+        mark = nestedness_organ.grounding_mark(
+            {"inner_region_id": "a", "outer_region_id": "b", "basis": basis}, post_id="p")
+        return epistemics.guard([{"producer": NESTEDNESS, "type": mark["type"],
+                                  STATUS_KEY: mark[STATUS_KEY]}])
 
-    # and the ceiling is still a CEILING — the organ may weaken its claim, never promote it
+    guarded("mask")                                    # the ceiling path: accepted
+    with pytest.raises(epistemics.EpistemicViolation, match="may only weaken"):
+        guarded("box")                                 # the legitimate weakening: refused
+
+    # and the ceiling is still a CEILING — the organ may never promote its own output
     with pytest.raises(epistemics.EpistemicViolation):
         epistemics.declare(NESTEDNESS, EpistemicStatus.VISIBLE)
 
@@ -379,8 +485,9 @@ def test_a_full_run_leaves_every_post_byte_identical():
     assert transcript["proposed_marks"]
     assert "visual_marks" not in post
     assert transcript["hydrated"][0]["as_stored"]["ledger_status"] == obs_mod.LEDGER_PROPOSED
+    # box geometry, so committing the mark would reveal an ESTIMATE — never `measured`
     assert transcript["hydrated"][0]["with_proposed_marks"]["ledger_status"] == \
-        EpistemicStatus.MEASURED.value
+        EpistemicStatus.INTERPRETIVE.value
 
 
 def test_persisting_writes_observations_and_touches_no_post():
