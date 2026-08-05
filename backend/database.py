@@ -131,6 +131,15 @@ run_collection = database.get_collection("runs")
 # drawn edge (a real `compare_views` percept, C3) asserts one.
 atlas_collection = database.get_collection("atlases")
 
+# --- Movement axes (WAVE2 · Lane G) ---
+# movement_axis_collection: the discovered dimensions movements run along (nestedness, enclosure,
+# recession). Its own collection rather than an array on one Atlas, because an axis found while
+# reading one corpus is referenced by movements on another, and an embedded one would have to be
+# COPIED to be reused — the drift this architecture keeps closing. An axis holds a name, a relation
+# kind and the ids of what grounds it. It stores NO epistemic status: that is derived at read time
+# from the movements that instantiate it, exactly as a movement edge derives its own from its mark.
+movement_axis_collection = database.get_collection("movement_axes")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""
