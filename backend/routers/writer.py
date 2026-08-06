@@ -50,6 +50,7 @@ from backend.schemas.writer import (
     AlignmentRead,
     FlagDecision,
     LoopClose,
+    RecallQuery,
     RevisionAccept,
     LibraryOp,
     RelationsUpdate,
@@ -58,6 +59,7 @@ from backend.services.writer import dsl, instrument
 from backend.services.writer import alignment as alignment_mod
 from backend.services.writer import assemblages as assemblages_mod
 from backend.services.writer import readings as readings_mod
+from backend.services.writer import recall as recall_mod
 from backend.services.writer import revisions as revisions_mod
 from backend.services.writer import library as library_mod
 from backend.services.writer import relations as relations_mod
@@ -424,6 +426,14 @@ async def parse_block(project_id: str, request: BlockParse):
 @router.post("/{project_id}/run")
 async def run(project_id: str, request: BlockRun):
     """Execute a scripted block. Every render is QUARANTINED — nothing reaches canon here."""
+    # W9 — citations are resolved BEFORE anything renders, so a reference to prose the
+    # author never accepted stops the block rather than silently grounding on nothing.
+    try:
+        cited = await recall_mod.resolve_citations(
+            project_id, [c.model_dump() for c in (request.cited or [])])
+    except recall_mod.RecallError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     return await run_block(
         project_id,
         request.text,
@@ -431,6 +441,23 @@ async def run(project_id: str, request: BlockRun):
         scene_id=request.scene_id or "",
         quarantine=request.quarantine,
         only_directives=request.only_directives,
+        cited=cited,
+    )
+
+
+# --- Recall (W9 · the manuscript's memory of itself) ---
+#
+# RETRIEVAL, NOT NARRATION. This route returns the author's own committed sentences, byte
+# for byte, or nothing. There is no summarise endpoint here and there must never be one: a
+# synthesis of prior material is a render — declared, quarantined, author-committed.
+
+@router.post("/{project_id}/recall")
+async def recall_spans(project_id: str, request: RecallQuery):
+    """The author's own committed prose, ranked. Verbatim, or empty."""
+    return await recall_mod.recall(
+        project_id, request.query,
+        limit=request.limit,
+        include_historical=request.include_historical,
     )
 
 
