@@ -260,17 +260,35 @@ def _grounds_for(reading: OrganReading, *, organ: str, now: str) -> Tuple[Region
     `UndeclaredGround`. The ground would survive every round trip while quietly ceasing to be a
     region ground. `test_situated_agent_wave3.py` pins both halves.
     """
+    # ONE ground or two, depending on what was measured. A relation rests on both its terms; a
+    # FIELD reading rests only on the region it was read over, and `other_region_id` is empty for
+    # one. Emitting a second ground with an empty `region_id` would be a reference to nothing,
+    # sitting in the list a reader trusts to say what the claim stands on.
+    region_ids = [rid for rid in (reading.locus_region_id, reading.other_region_id) if rid]
     return tuple(
         RegionGround(id=f"agnd_{uuid4().hex[:12]}", ground_type="region", actor="auto",
                      detector=organ, region_id=region_id, created_at=now)
-        for region_id in (reading.locus_region_id, reading.other_region_id))
+        for region_id in region_ids)
 
 
 def _percept_for(reading: OrganReading, grounds: Sequence[RegionGround]) -> Percept:
     """What the agent noticed, in the organ's own vocabulary.
 
-    The expression names TWO REGION IDS and a relation. No label, no category, nothing about what
-    either region depicts — the same discipline `nestedness_organ` keeps for its mark detail, and
+    THE EXPRESSION COMES FROM THE ORGAN (`OrganReading.expression`) and is no longer composed here.
+    Composing it here was a real defect and it shipped: this function built `f"{subject} nested
+    within {held}"` from `direction`, which was true while nestedness was the only organ and became
+    false the moment adjacency arrived — a `meets` reading with contact 0.600 minted a percept
+    reading "whole nested within rim", the wrong relation and the inverted direction, in the one
+    field a reader takes for the agent's own account of what it perceived. It survived because that
+    lane asserted on `relation` and on the mark and never on the percept.
+
+    A chroma reading makes the fix structural: it relates nothing, so there is no direction to
+    invert and no second region to name, and any sentence composed from a relation vocabulary would
+    be false by construction. The organ that took the measurement is the only thing that knows how
+    to say it.
+
+    The expression still names REGION IDS and nothing else. No label, no category, nothing about
+    what any region depicts — the same discipline `nestedness_organ` keeps for its mark detail, and
     for the same reason: a sentence a second reader can check against the numbers is the only kind
     an organ is entitled to author.
 
@@ -279,13 +297,16 @@ def _percept_for(reading: OrganReading, grounds: Sequence[RegionGround]) -> Perc
     only what was set, so the percept simply declines to claim a human authorship it does not have.
     Who produced it is on the grounds' `detector` and on the mark's provenance, where it belongs.
     """
-    within = reading.direction == "within"
-    subject, held = ((reading.locus_region_id, reading.other_region_id) if within
-                     else (reading.other_region_id, reading.locus_region_id))
+    if not reading.expression:
+        raise MarkMisstated(
+            f"{reading.organ} returned a reading with no expression. Every organ writes its own "
+            f"sentence since the percept-expression defect; a blank one would become an empty "
+            f"`expression` on a typed percept, which reads as an agent that noticed nothing while "
+            f"holding a measurement that says otherwise.")
     fields: Dict[str, Any] = {
         "id": f"apc_{uuid4().hex[:12]}",
         "kind": AGENT_PERCEPT_KIND,
-        "expression": f"{subject} nested within {held}",
+        "expression": reading.expression,
         "ground_ids": [g.id for g in grounds],
     }
     # PASSED ONLY WHEN THERE IS ONE, never as an explicit None. `SoftFieldModel` emits what was
@@ -316,7 +337,7 @@ def _perceptions_for(readings: Sequence[OrganReading], *, organ: str, locus: Loc
 
 
 def perceive(agent: SituatedAgent, post: Mapping[str, Any], *,
-             step_id: str = AGENT_STEP_ID, now: str = "") -> List[Perception]:
+             step_id: str = AGENT_STEP_ID, now: str = "", image: Any = None) -> List[Perception]:
     """Bind the agent's organs to its locus, invoke them, and populate its percept field.
 
     The world is brought forth by the coupling of this body to this place: change either and the
@@ -338,7 +359,7 @@ def perceive(agent: SituatedAgent, post: Mapping[str, Any], *,
     per_organ: List[Dict[str, Any]] = []
     for organ_name in agent.organ_set:
         readings = organs.invoke(organ_name, post=post, region_id=agent.locus.region_id,
-                                 step_id=step_id, now=stamp)
+                                 step_id=step_id, now=stamp, image=image)
         perceptions = _perceptions_for(readings, organ=organ_name, locus=agent.locus, now=stamp)
         field_.extend(perceptions)
         per_organ.append({"organ": organ_name, "measured": len(perceptions)})
@@ -397,11 +418,17 @@ def remember(agent: SituatedAgent, *, now: str = "") -> List[Dict[str, Any]]:
             STATUS_KEY: perception.epistemic_status,
             "basis": perception.reading.basis,
             "admissible": perception.reading.admissible,
-            "nesting_index": perception.reading.measurement.get("nesting_index"),
             "detail": perception.reading.detail,
             "mark_id": str(perception.mark.get("id") or ""),
             "percept_id": perception.percept.id,
         }
+        # The organ's own headline number, under the organ's own name, and ONLY when there is one.
+        # This used to be a hardcoded `nesting_index`, which put a null claiming a geometry field
+        # into the memory of every non-geometric reading — a shape a reader would take for "the
+        # organ measured no nesting" rather than "this organ measures no such thing".
+        for key in ("nesting_index", "contact_fraction", "warmth_mean"):
+            if key in (perception.reading.measurement or {}):
+                entry[key] = perception.reading.measurement[key]
         written.append(entry)
     agent.memory.extend(written)
     return written
@@ -565,7 +592,7 @@ def overlay_posts(posts: Mapping[str, Mapping[str, Any]],
 async def run_agent(*, post: Mapping[str, Any], region_id: str,
                     organ_set: Sequence[str] = (), agent_id: str = "", temperament: str = "",
                     atlas_id: str = "", persist: bool = False, collection=None,
-                    now: str = "") -> Dict[str, Any]:
+                    now: str = "", image: Any = None) -> Dict[str, Any]:
     """Inhabit → perceive → remember → report, with the transcript a human reads.
 
     `persist=False` runs everything and writes nothing; the observations are minted and VALIDATED
@@ -596,7 +623,7 @@ async def run_agent(*, post: Mapping[str, Any], region_id: str,
                      for b in (organs.resolve(o) for o in agent.organ_set)],
     }
 
-    perceptions = perceive(agent, post, now=stamp)
+    perceptions = perceive(agent, post, now=stamp, image=image)
     transcript["percept_field"] = [p.as_dict() for p in perceptions]
     transcript["trajectory"] = list(agent.trajectory)
 

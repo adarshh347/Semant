@@ -631,14 +631,49 @@ def test_masks_on_different_rasters_fall_back_rather_than_being_resampled():
     assert result["basis"] == "box"
 
 
+class _FlatImage:
+    """The smallest thing `chroma_organ` can read: a uniform raster, no image library involved.
+
+    Here rather than imported from the chroma lane's own tests, because a test that reaches into
+    another test module for a fixture makes the two fail together for reasons neither states.
+    """
+
+    def __init__(self, rgb=(200, 120, 60), size=64):
+        self.rgb, self.size = rgb, size
+
+    def convert(self, _mode):
+        return self
+
+    def resize(self, wh):
+        return _FlatImage(self.rgb, int(wh[0]))
+
+    def getdata(self):
+        return [self.rgb] * (self.size * self.size)
+
+
 def test_every_invocable_organ_has_an_invocation():
     """The two tables in `organs.py` must cover each other. A name in `PURE_PYTHON_ORGANS` with no
     reader would raise at invoke time — which this asserts is unreachable rather than trusting the
-    comment that says so."""
+    comment that says so.
+
+    The chroma lane added a third organ and a second requirement: an organ in `_NEEDS_PIXELS` is
+    handed an image, because what it measures is not in the post document. The coverage claim is
+    unchanged — every invocable organ has an invocation — and this is what invoking one costs now.
+    """
     post = _lattice_post()
     for name in organs.PURE_PYTHON_ORGANS:
-        readings = organs.invoke(name, post=post, region_id="r_rim", now=STAMP)
-        assert readings, f"{name} is invocable but measured nothing at a locus that affords both"
+        image = _FlatImage() if name in organs._NEEDS_PIXELS else None
+        readings = organs.invoke(name, post=post, region_id="r_rim", now=STAMP, image=image)
+        assert readings, f"{name} is invocable but measured nothing at a locus that affords all"
+
+
+def test_an_organ_that_reads_the_signal_refuses_when_handed_no_signal():
+    """An empty field would say the locus has no colour. That is a claim about the picture made
+    from an absence of pixels — the same error a zero contact fraction would be for a pair the
+    adjacency organ cannot measure."""
+    for name in organs._NEEDS_PIXELS:
+        with pytest.raises(organs.OrganRefusal, match="no image was handed"):
+            organs.invoke(name, post=_lattice_post(), region_id="r_rim", now=STAMP)
 
 
 def test_an_agent_may_not_be_built_from_an_organ_that_does_not_exist():

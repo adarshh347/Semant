@@ -148,6 +148,18 @@ _SUBSTRATES: Dict[str, Tuple[str, ...]] = {
     # `adjacency_organ` asks whether A's edge lies against B's. Same substrates, same ruling.
     "nestedness_organ": ("mask", "box"),
     "adjacency_organ": ("mask", "box"),
+    # WAVE3 — the first organ BUILT on this contract rather than retrofitted onto it, and the first
+    # that is not geometry: it reads warmth off the pixels. Same two substrates, and the box path is
+    # a WORSE estimate here than it is for containment — a bounding box around a spire includes the
+    # sky behind it, and sky is the coldest thing in most of this corpus, so a box-basis warmth
+    # reading can be a number about a different subject entirely. That is `interpretive` doing
+    # exactly the work it was widened to do.
+    #
+    # `chroma_naming` — the WORD "warm" — is deliberately NOT here. It is a second producer with an
+    # uncalibrated threshold behind it, interpretive on any substrate, and declaring one would
+    # suggest a substrate could make it something else. §8 of the decision: separably acceptable
+    # halves are two descriptors, not one declaration.
+    "chroma_organ": ("mask", "box"),
 }
 
 #: The IMAGE statuses ordered by strength, strongest first.
@@ -199,6 +211,30 @@ def substrate_ceiling(basis: Optional[str]) -> EpistemicStatus:
     uses when it hands an unknown producer `uncertain`.
     """
     return SUBSTRATE_CEILING.get(str(basis or ""), EpistemicStatus.INTERPRETIVE)
+
+
+def producer_of(descriptor: Mapping[str, Any]) -> Optional[str]:
+    """Which producer a descriptor names, top-level or in its provenance.
+
+    THE SECOND PLACE IS WHY THIS EXISTS. `suggestion_service` descriptors carry a top-level
+    `producer`; ORGAN MARKS do not — `nestedness_organ.grounding_mark` and its two successors put
+    the name under `provenance.producer`, which is the field whose entire job is saying what made
+    a thing. So a mark handed straight to `guard()` read as producer `None`, fell to `uncertain`,
+    and was refused for carrying its own honest `measured` — the exact failure WAVE3 found when
+    `nestedness_organ` was in no classification table, arriving by a different door.
+
+    Both lanes that hit it worked around it in their tests by hand-building a flat descriptor, so
+    the marks the organs actually produce were never the thing being guarded. Reading provenance
+    is not a widening of what may be claimed: it is the guard finding the name that was always
+    there, and it brings the substrate check (below) with it.
+    """
+    flat = descriptor.get("producer")
+    if flat:
+        return str(flat)
+    provenance = descriptor.get("provenance")
+    if isinstance(provenance, Mapping) and provenance.get("producer"):
+        return str(provenance.get("producer"))
+    return None
 
 
 def substrate_of(descriptor: Mapping[str, Any]) -> str:
@@ -410,22 +446,23 @@ def guard(descriptors: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     out: List[Dict[str, Any]] = []
     for d in descriptors:
+        producer = producer_of(d)
         raw = d.get(STATUS_KEY)
         if raw is None:
             raise EpistemicViolation(
-                f"descriptor from producer '{d.get('producer')}' carries no epistemic status — "
+                f"descriptor from producer '{producer}' carries no epistemic status — "
                 f"an untagged claim reads as a confident one")
         status = _coerce(raw)
         if status is None:
             raise EpistemicViolation(f"unknown epistemic status {raw!r}")
-        if status not in permitted_statuses(d.get("producer")):
+        if status not in permitted_statuses(producer):
             raise EpistemicViolation(
-                f"producer '{d.get('producer')}' published a '{status.value}' claim — it is "
-                f"classified '{default_status_for(d.get('producer')).value}' and may only "
+                f"producer '{producer}' published a '{status.value}' claim — it is "
+                f"classified '{default_status_for(producer).value}' and may only "
                 f"weaken that to '{EpistemicStatus.UNCERTAIN.value}'")
         basis = substrate_of(d)
         if basis:
-            assert_substrate_supports(d.get("producer"), basis, status)
+            assert_substrate_supports(producer, basis, status)
         if d.get("type") == SOURCED_STATEMENT_TYPE:
             if status is not EpistemicStatus.SOURCED:
                 raise EpistemicViolation(
@@ -494,6 +531,18 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
     # boundary contact rather than containment, loads no weights, has no roster entry and therefore
     # no role. Born after the ruling, so it never had a `measured_mark` to rename.
     "adjacency_organ": EpistemicStatus.MEASURED,
+    # WAVE3 — the third pure-python organ and the first non-geometric one. `measured` is its MASK
+    # ceiling: warmth averaged per pixel over the region's own shape is computed from the signal,
+    # which is what `measured` means. Same footing as the two above — no weights, no roster entry,
+    # no role — and it declares its substrates in `_SUBSTRATES`, so the box path weakens correctly
+    # instead of being refused.
+    "chroma_organ": EpistemicStatus.MEASURED,
+    # ...and the WORD for that field, which is a different producer and never a measurement. Same
+    # shape as `concept_segment` / `concept_naming` below, for the same reason: emitting the naming
+    # separately is what lets a wrong name be rejected WITHOUT discarding a correct field. Here the
+    # convention is `chroma_organ.WARM_THRESHOLD`, which is uncalibrated and says so — nothing in
+    # the picture votes on where warm begins.
+    "chroma_naming": EpistemicStatus.INTERPRETIVE,
     # M5 — NOT measured, and this is the entry that keeps `uncertain` from being decorative.
     #
     # `external_limit`'s refusal turns on `MIN_PROJECTIVE_SPREAD`, which the producer itself
