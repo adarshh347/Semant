@@ -58,9 +58,10 @@ from backend.services.agents import organs as agent_organs               # noqa:
 from backend.services.agents import situated_agent as sa                 # noqa: E402
 
 #: Two loci in TWO DIFFERENT IMAGES with a measured crossing each to a node in a THIRD image
-#: neither of them starts in. Found by scouting the corpus rather than assumed: a first pass at
-#: k=24 found no cross-image pair at all and only same-image ones, which would have been a weaker
-#: demonstration honestly reported. Widening the seed set (k=36) found these. See the findings §2.
+#: neither of them starts in. Found by scouting the corpus rather than assumed: 18 seeds at k=24
+#: already put 14 nodes within reach of two different images, and 35 seeds at k=36 put 54 there.
+#: Reachability is directional rather than scarce — the destinations concentrate in whichever
+#: images resemble the seeds, because the retina proposes by identity similarity. Findings §2.
 ALPHA_POST = "695be77ea9ea58f1b6aef5eb"
 ALPHA_REGION = "cseg_person_1"
 BETA_POST = "695be8baa9ea58f1b6aef609"
