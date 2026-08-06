@@ -403,3 +403,38 @@ def test_every_module_that_adopts_the_substrate_ruling_declares_itself():
         f"{undeclared} consult the substrate ruling but declare no substrates. Their honest "
         f"weakening will be refused by their own guard — the gap TWO-STATUS-001 closed. Add them "
         f"to `epistemics._SUBSTRATES`.")
+
+
+def test_the_guard_finds_a_producer_named_in_provenance():
+    """A gap the chroma lane hit: ORGAN MARKS were not guardable.
+
+    `suggestion_service` descriptors carry a top-level `producer`. `nestedness_organ.grounding_mark`
+    and its two successors do not — they put the name under `provenance.producer`, which is the
+    field whose entire job is saying what made a thing. So a mark handed straight to `guard()` read
+    as producer `None`, fell to `uncertain`, and was refused for carrying its own honest `measured`.
+
+    Both earlier lanes worked around it by hand-building a flat descriptor in their tests, so the
+    marks the organs ACTUALLY produce were never the thing being guarded — which is how a guard
+    ends up passing on a shape nothing in production has.
+
+    Reading provenance is not a widening of what may be claimed: it is the guard finding a name
+    that was always there. And it brings the substrate check with it, which is the half that
+    matters — the assertion at the bottom did not fire on an organ mark at all before.
+    """
+    from backend.services import chroma_organ, nestedness_organ
+
+    measurement = {"inner_region_id": "a", "outer_region_id": "b", "basis": "box"}
+    mark = nestedness_organ.grounding_mark(measurement, post_id="p")
+    assert "producer" not in mark and mark["provenance"]["producer"] == "nestedness_organ"
+    assert epistemics.producer_of(mark) == "nestedness_organ"
+    assert epistemics.guard([mark]) == [mark]
+
+    # a top-level `producer` still wins, so nothing that already worked changed
+    assert epistemics.producer_of({"producer": "rhythm",
+                                   "provenance": {"producer": "shading"}}) == "rhythm"
+    assert epistemics.producer_of({"type": "brush_field"}) is None
+
+    # and the substrate refusal now reaches a real mark rather than a hand-built descriptor
+    with pytest.raises(EpistemicViolation, match="substrate"):
+        epistemics.guard([{**mark, epistemics.STATUS_KEY: EpistemicStatus.MEASURED.value}])
+    assert chroma_organ.ORGAN in epistemics._SUBSTRATES
