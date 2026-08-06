@@ -368,10 +368,21 @@ def test_the_two_ends_of_one_relation_do_not_map_onto_each_other():
 def test_systematicity_cannot_see_a_similarity_score():
     """The guarantee is the signature: `systematicity` takes two skeletons and nothing else, so no
     retina score can reach it. Pinned because the temptation to 'just blend in' the similarity is
-    exactly how this stops being structure-mapping."""
+    exactly how this stops being structure-mapping.
+
+    WAVE3 note: this asserted the parameter list verbatim, which made it a test of the signature
+    rather than of the guarantee — it failed when the floor audit added a keyword-only
+    `aggregation` carrying no similarity information. What is checked now is the guarantee: the
+    POSITIONAL parameters are the two skeletons, and nothing the function accepts is a score.
+    """
     import inspect
-    params = list(inspect.signature(sm.systematicity).parameters)
-    assert params == ["source", "target"]
+    sig = inspect.signature(sm.systematicity)
+    positional = [n for n, p in sig.parameters.items()
+                  if p.kind is not inspect.Parameter.KEYWORD_ONLY]
+    assert positional == ["source", "target"]
+    assert not any(word in name.lower() for name in sig.parameters
+                   for word in ("score", "similarity", "embedding", "distance", "region"))
+
     score = sm.systematicity(_structure(POST_A, "a_part"), _structure(POST_B, "b_part"))
     assert 0.0 <= score["score"] <= 1.0
     assert set(score["components"]) == {"depth", "siblings", "descendants"}
