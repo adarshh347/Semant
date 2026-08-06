@@ -686,3 +686,136 @@ describe('the alignment reading, offered before Accept', () => {
     }
   });
 });
+
+// ══ W8 — revising a committed span from the editor ══════════════════════════
+
+describe('revision, from the editor', () => {
+  const PREPARED = {
+    lineage_id: 'lin_1',
+    adopted: false,
+    current_version: 1,
+    current_text: RENDERED.text,
+    declared: { operators: { threshold: 1 }, intents: { goal: 'she stops at the door' } },
+    history: [{
+      id: 'ver_1', version: 1, text: RENDERED.text, revised_from: '',
+      declaration_diff: {}, in_response_to: {}, loop_outcome: null,
+    }],
+  };
+
+  async function commitThenRevise() {
+    vi.spyOn(writerService, 'accept').mockResolvedValue({
+      block_id: 'blk_9', lineage_id: 'lin_1', version: 1,
+    });
+    vi.spyOn(writerService, 'prepareRevision').mockResolvedValue(PREPARED);
+    await mount();
+    await seed([directiveNode(['threshold'])]);
+    await renderBlock([RENDERED]);
+    await act(async () => { byTestId('accept-button').click(); });
+    await act(async () => { byTestId('revise-button').click(); });
+  }
+
+  it('a committed span carries its lineage and version', async () => {
+    vi.spyOn(writerService, 'accept').mockResolvedValue({
+      block_id: 'blk_9', lineage_id: 'lin_1', version: 1,
+    });
+    await mount();
+    await seed([directiveNode(['threshold'])]);
+    await renderBlock([RENDERED]);
+    await act(async () => { byTestId('accept-button').click(); });
+
+    const prose = toManuscriptBlocks(editor.state.doc).find((b) => b.content);
+    expect(prose.lineage_id).toBe('lin_1');
+    expect(prose.version).toBe(1);
+  });
+
+  it('revising shows what the passage was declared under, and its history', async () => {
+    await commitThenRevise();
+    expect(byTestId('revision-panel')).not.toBeNull();
+    expect(byTestId('revise-goal').value).toBe('she stops at the door');
+    expect(byTestId('revise-operators').value).toBe('threshold');
+    expect(byTestId('genealogy')).not.toBeNull();
+  });
+
+  it('the re-render goes through the ordinary run path, as a block of declarations',
+    async () => {
+      // Not a revise-specific endpoint: a second render path is where a "polish this"
+      // instruction would eventually land unopposed.
+      await commitThenRevise();
+      await act(async () => {
+        byTestId('revise-avoid').dispatchEvent(new Event('input', { bubbles: true }));
+      });
+
+      vi.spyOn(writerService, 'run').mockResolvedValue({
+        results: [{ ...RENDERED, passage_id: 'psg_rev', text: 'A quieter version.' }],
+        proposals: [], diagnostics: [],
+      });
+      await act(async () => { byTestId('revise-render').click(); });
+
+      const sent = writerService.run.mock.calls.at(-1)[1].text;
+      expect(sent).toContain('// goal: she stops at the door');
+      expect(sent).toContain('/ threshold');
+      // the prose being revised is NOT in what we send — the model never sees it
+      expect(sent).not.toContain(RENDERED.text);
+    });
+
+  it('a proposed revision is quarantined — the manuscript still says the old version',
+    async () => {
+      await commitThenRevise();
+      const before = exportNow();
+
+      vi.spyOn(writerService, 'run').mockResolvedValue({
+        results: [{ ...RENDERED, passage_id: 'psg_rev', text: 'A quieter version.' }],
+        proposals: [], diagnostics: [],
+      });
+      await act(async () => { byTestId('revise-render').click(); });
+
+      expect(byTestId('revision-card')).not.toBeNull();
+      expect(byTestId('revision-proposed-text').textContent).toContain('A quieter version');
+      expect(exportNow()).toBe(before);
+      expect(exportNow()).toContain('The latch gave');
+    });
+
+  it('accepting moves the pointer and the export shows only the new version', async () => {
+    await commitThenRevise();
+    vi.spyOn(writerService, 'run').mockResolvedValue({
+      results: [{ ...RENDERED, passage_id: 'psg_rev', text: 'A quieter version.' }],
+      proposals: [], diagnostics: [],
+    });
+    await act(async () => { byTestId('revise-render').click(); });
+
+    vi.spyOn(writerService, 'acceptRevision').mockResolvedValue({
+      version: { id: 'ver_2', version: 2, text: 'A quieter version.' },
+    });
+    await act(async () => { byTestId('revision-accept').click(); });
+
+    const text = exportNow();
+    expect(text).toContain('A quieter version.');
+    expect(text).not.toContain('The latch gave before she had decided to push it.');
+    expect(byTestId('editor-status').textContent).toContain('v1 is kept');
+  });
+
+  it('dismissing a revision leaves the manuscript exactly as it was', async () => {
+    await commitThenRevise();
+    const before = exportNow();
+
+    vi.spyOn(writerService, 'run').mockResolvedValue({
+      results: [{ ...RENDERED, passage_id: 'psg_rev', text: 'A quieter version.' }],
+      proposals: [], diagnostics: [],
+    });
+    await act(async () => { byTestId('revise-render').click(); });
+    vi.spyOn(writerService, 'dismiss').mockResolvedValue({});
+    await act(async () => { byTestId('revision-dismiss').click(); });
+
+    expect(exportNow()).toBe(before);
+    expect(byTestId('revision-card')).toBeNull();
+  });
+
+  it('says so rather than opening when the caret is not in a committed passage', async () => {
+    await mount();
+    await seed([{ type: 'paragraph', content: [{ type: 'text', text: 'I typed this.' }] }]);
+    await act(async () => { byTestId('revise-button').click(); });
+
+    expect(byTestId('revision-panel')).toBeNull();
+    expect(byTestId('editor-status').textContent).toContain('committed passage');
+  });
+});

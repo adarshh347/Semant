@@ -130,6 +130,37 @@ class FlagDecision(BaseModel):
     note: Optional[str] = ""
 
 
+# --- Revision & genealogy (W8) ---
+
+class FlagReference(BaseModel):
+    """The W7 flag a revision answers.
+
+    Carries the ELEMENT as well as the id: the flag id belongs to one reading and cannot
+    recur, but the declared element it rested on is exactly what a later reading can find
+    again. Without the element, closing the loop would report success unconditionally.
+    """
+    flag_id: str
+    element: Optional[str] = ""
+    reading_id: Optional[str] = ""
+
+
+class RevisionAccept(BaseModel):
+    """Commit a quarantined re-render as the next version of an existing passage.
+
+    Never replaces prose: it appends an immutable version and moves the block's pointer.
+    """
+    passage_id: str
+    lineage_id: str
+    scene_id: str
+    block_id: str
+    in_response_to: Optional[FlagReference] = None
+
+
+class LoopClose(BaseModel):
+    """Record whether re-reading a revision found the divergence it answered still there."""
+    reading_id: str
+
+
 # --- Running a block ---
 
 class BlockRun(BaseModel):

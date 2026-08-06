@@ -33,7 +33,7 @@ from uuid import uuid4
 
 from backend.database import writer_passage_collection
 from backend.services.manuscript_service import manuscript_service
-from backend.services.writer import dsl, instrument
+from backend.services.writer import dsl, instrument, revisions
 from backend.services.writer.dsl import OrchestrationNote
 from backend.services.writer.render import RenderResult
 
@@ -161,6 +161,11 @@ class PassageStore:
         provenance["passage_id"] = passage_id
         provenance["accepted_at"] = _now().isoformat()
 
+        # W8 — a committed passage is version 1 of a LINEAGE from the moment it lands, so
+        # the first thing the author revises already has a history to append to rather than
+        # a special case to adopt. The block carries the lineage id and the version it is
+        # showing: the block IS the current pointer.
+        lineage_id = _gen("lin")
         block = {
             "id": _gen("blk"),
             "type": "paragraph",
@@ -170,10 +175,25 @@ class PassageStore:
             # NOT `model_suggested` — that means still-quarantined, and this is canon now.
             "origin": "user_confirmed",
             "provenance": provenance,
+            "lineage_id": lineage_id,
+            "version": 1,
         }
         blocks = list(scene.get("blocks", []))
         blocks.append(block)
         updated = await manuscript_service.update_scene(target_scene, {"blocks": blocks})
+
+        await revisions.version_store.record(
+            doc.get("project_id", ""),
+            lineage_id=lineage_id,
+            version=1,
+            text=doc.get("text", ""),
+            provenance=provenance,
+            passage_id=passage_id,
+            block_id=block["id"],
+            scene_id=target_scene,
+            manuscript_id=scene.get("manuscript_id", ""),
+            model=doc.get("model", "") or "",
+        )
 
         await writer_passage_collection.update_one(
             {"_id": passage_id},
@@ -191,7 +211,87 @@ class PassageStore:
             intents={i["key"]: i["value"] for i in provenance.get("intents", []) if i.get("key")},
             passage_id=passage_id,
         )
-        return {"passage": await self.get(passage_id), "scene": updated, "block_id": block["id"]}
+        return {"passage": await self.get(passage_id), "scene": updated,
+                "block_id": block["id"], "lineage_id": lineage_id, "version": 1}
+
+    async def accept_revision(
+        self,
+        passage_id: str,
+        *,
+        lineage_id: str,
+        scene_id: str,
+        block_id: str,
+        in_response_to: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Commit a quarantined re-render as the NEXT VERSION of an existing passage.
+
+        WHY THIS LIVES BESIDE `accept` RATHER THAN INSIDE `revisions`. Every guard the first
+        commit applies has to apply here identically — the decided-once check, the missing
+        scene, and above all the invariant-6 leak re-check at the door. A revision arriving
+        by a different route with a lighter set of checks would be exactly the second door
+        into canon this module exists to refuse. So the door is the same door; what differs
+        is only that this one moves a pointer instead of appending a block.
+        """
+        doc = await writer_passage_collection.find_one({"_id": passage_id})
+        if not doc:
+            raise PassageError(f"no such passage: {passage_id}")
+        if doc.get("status") != QUARANTINED:
+            raise PassageError(
+                f"passage {passage_id} is already {doc.get('status')} — a decision is made once"
+            )
+
+        scene = await manuscript_service.get_scene(scene_id)
+        if not scene:
+            raise PassageError(f"no such scene: {scene_id}")
+
+        notes = _notes_from_provenance(doc.get("provenance", {}))
+        leaks = dsl.find_orchestration_leak(doc.get("text", ""), notes)
+        if leaks:
+            raise PassageError(
+                "refusing to commit: orchestration would reach the manuscript — "
+                + "; ".join(leaks)
+            )
+
+        provenance = dict(doc.get("provenance", {}))
+        provenance["passage_id"] = passage_id
+        provenance["accepted_at"] = _now().isoformat()
+
+        committed = await revisions.accept_revision(
+            doc.get("project_id", ""),
+            lineage_id=lineage_id,
+            scene_id=scene_id,
+            block_id=block_id,
+            text=doc.get("text", ""),
+            provenance=provenance,
+            passage_id=passage_id,
+            in_response_to=in_response_to,
+            model=doc.get("model", "") or "",
+        )
+
+        await writer_passage_collection.update_one(
+            {"_id": passage_id},
+            {"$set": {
+                "committed": True,
+                "status": ACCEPTED,
+                "scene_id": scene_id,
+                "block_id": block_id,
+                "lineage_id": lineage_id,
+                "version": committed["version"]["version"],
+                "decided_at": _now(),
+            }},
+        )
+        await instrument.record(
+            instrument.ACCEPT, doc.get("project_id", ""),
+            operators=doc.get("operators", []),
+            intents={i["key"]: i["value"] for i in provenance.get("intents", []) if i.get("key")},
+            passage_id=passage_id,
+        )
+        return {
+            "passage": await self.get(passage_id),
+            "version": committed["version"],
+            "scene": committed["scene"],
+            "declaration_diff": committed["declaration_diff"],
+        }
 
     async def dismiss(self, passage_id: str, reason: str = "") -> Dict[str, Any]:
         """Drop a quarantined passage. Nothing is written to canon; nothing is lost from it."""
