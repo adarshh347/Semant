@@ -249,6 +249,17 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
     # -- measurements: computed off the signal, no opinion in them --------------
     "negative_space": EpistemicStatus.MEASURED,
     "architectural_axis": EpistemicStatus.MEASURED,
+    # WAVE3 — the same case as `negative_space`, one line above: measured, pure python, no organ
+    # role because `role_registry`'s organ half is GENERATED from the model roster and this organ
+    # loads no weights. It belongs here, in the table for producers no role owns.
+    #
+    # It was in NEITHER table until now, and that was not cosmetic. `nestedness_organ.measured_mark`
+    # writes `epistemic_status: measured` directly — correctly, it computes containment off the
+    # segmenter's geometry — but an unclassified producer falls to `uncertain`, so `guard()` refused
+    # the organ's own marks: "producer 'nestedness_organ' published a 'measured' claim — it is
+    # classified 'uncertain'". Lane M never routed them through the guard, so nothing surfaced it.
+    # Wave 3 does (`agents.situated_agent._guard_marks`), which is what turned the hole up.
+    "nestedness_organ": EpistemicStatus.MEASURED,
     # M5 — NOT measured, and this is the entry that keeps `uncertain` from being decorative.
     #
     # `external_limit`'s refusal turns on `MIN_PROJECTIVE_SPREAD`, which the producer itself
