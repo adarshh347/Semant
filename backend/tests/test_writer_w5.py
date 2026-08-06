@@ -28,6 +28,7 @@ from backend.services.writer import dsl, instrument
 from backend.services.writer import library as lib
 from backend.services.writer import operators as op_svc
 from backend.services.writer import passages as psg_svc
+from backend.services.writer import revisions as rev_svc
 from backend.services.writer import render as render_svc
 from backend.services.writer import studio
 from backend.tests.test_writer_w1 import FakeCollection, run
@@ -44,6 +45,9 @@ def store(monkeypatch):
     manuscripts, scenes, versions = FakeCollection(), FakeCollection(), FakeCollection()
     monkeypatch.setattr(op_svc, "writer_operator_collection", ops)
     monkeypatch.setattr(psg_svc, "writer_passage_collection", psgs)
+    # W8 — Accept records an immutable version; it is ledger, not write-behind,
+    # so it must be faked rather than allowed to reach the real collection.
+    monkeypatch.setattr(rev_svc, "writer_passage_version_collection", FakeCollection())
     monkeypatch.setattr(instrument, "writer_usage_collection", usage)
     monkeypatch.setattr(asm, "writer_usage_collection", usage)
     monkeypatch.setattr(lib, "writer_library_collection", libc)

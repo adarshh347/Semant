@@ -26,8 +26,10 @@ event loop despite being sync.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
+from backend.services.retina import geometry as geo_sidecar
+from backend.services.retina import relational as rel
 from backend.services.retina import store as st
 from backend.services.retina.index import index_status
 from backend.services.retina.store import RetinaError, RetinaStore, RetinaUnavailable
@@ -332,6 +334,73 @@ def propose_candidates(**kwargs) -> Dict[str, Any]:
     }
 
 
-__all__ = ["retrieve_candidates", "propose_candidates", "resolve_query", "index_status",
-           "CANDIDATE_KIND", "NOT_A_RELATION", "DEFAULT_ROLE", "DEFAULT_K",
+def propose_for_relation(*, posts: Optional[Mapping[str, Any]] = None,
+                         geometry: Optional[Mapping[str, Any]] = None,
+                         recall_multiplier: int = rel.DEFAULT_RECALL_MULTIPLIER,
+                         weights: Optional[Mapping[str, float]] = None,
+                         **kwargs) -> Dict[str, Any]:
+    """Candidates ordered by how likely they are to STAND IN a relation, not by resemblance.
+
+    Two stages, and the split is the point:
+
+      · **recall** — identity kNN at `k × recall_multiplier`. Cheap, broad, and exactly what the
+        retina has always been: peripheral vision, deliberately over-inclusive.
+      · **re-rank** — order that shortlist by a box-basis relational prior (`relational.py`), then
+        hand back the top `k`.
+
+    The multiplier is what makes this more than a permutation. Re-ranking k into k can only move
+    good candidates up from within the k you already had; widening recall first is what lets a
+    relationally-plausible region at identity rank 30 reach an agent whose budget is 12.
+
+    Falls back to identity order — `ranking: "identity"`, with a `reason` — when there is no
+    geometry to rank on, rather than pretending the order means something it does not. Everything
+    `propose_candidates` guarantees still holds: candidates are not relations, nothing carries an
+    `epistemic_status`, and the kernel grounds on masks and may reject every one of these.
+    """
+    k = int(kwargs.get("k", DEFAULT_K) or DEFAULT_K)
+    multiplier = max(1, int(recall_multiplier or 1))
+    seed_post_id = str(kwargs.get("post_id") or "")
+    seed_region_id = str(kwargs.get("region_id") or "")
+    # The sidecar lives beside the index, so a caller pointing at a different index must be
+    # ranked from THAT index's geometry — not from whatever sits at the default path.
+    store = kwargs.get("store")
+
+    envelope = propose_candidates(**{**kwargs, "k": k * multiplier})
+    recall = {"k": k, "recall_k": k * multiplier, "multiplier": multiplier,
+              "returned": len(envelope.get("candidates") or [])}
+    base = {**envelope, "ranking": "identity", "recall": recall,
+            "prior_note": rel.NOT_A_MEASUREMENT}
+    if envelope.get("status") != "ready":
+        return {**base, "candidates": (envelope.get("candidates") or [])[:k]}
+
+    geo = dict(geometry or {}) or geo_sidecar.geometry_for(posts, store)
+    seed_geometry = geo.get(seed_post_id) or {}
+    seed_skeleton = rel.skeleton_of(seed_geometry, seed_region_id) if seed_geometry else None
+    if seed_skeleton is None:
+        return {**base, "candidates": envelope["candidates"][:k],
+                "reason": (f"no cached geometry for seed {seed_post_id}/{seed_region_id} — "
+                           f"ranked by identity. Run geometry_rebuild(), or pass posts=."),
+                "geometry": geo_sidecar.geometry_status(store)}
+
+    ranked = rel.rerank(envelope["candidates"], seed_skeleton=seed_skeleton, geometry=geo,
+                        weights=weights)
+    kept = ranked[:k]
+    return {
+        **base,
+        "ranking": "relational",
+        "candidates": kept,
+        "seed_skeleton": seed_skeleton,
+        "weights": dict(kept[0]["relational"]["weights"]) if kept else dict(rel.DEFAULT_WEIGHTS),
+        # What the k budget cut, named rather than silently absent — the density lane's rule that a
+        # bounded sweep says what it dropped.
+        "dropped": [{"post_id": c["post_id"], "region_id": c["region_id"],
+                     "identity_rank": c["identity_rank"],
+                     "relational_score": c["relational"]["score"]} for c in ranked[k:]],
+        "geometry": ({"source": "live"} if (geometry or posts)
+                     else geo_sidecar.geometry_status(store)),
+    }
+
+
+__all__ = ["retrieve_candidates", "propose_candidates", "propose_for_relation", "resolve_query",
+           "index_status", "CANDIDATE_KIND", "NOT_A_RELATION", "DEFAULT_ROLE", "DEFAULT_K",
            "RetinaError", "RetinaUnavailable", "UnknownQuery", "AmbiguousQuery"]

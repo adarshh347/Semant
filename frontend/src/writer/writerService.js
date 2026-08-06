@@ -150,6 +150,44 @@ export const writerService = {
     );
   },
 
+  // --- Revision & genealogy (W8) ---
+  // There is no rewrite-in-place call here and there must never be one. A revision is an
+  // ordinary render under changed declarations, quarantined like any other; accepting it
+  // appends an immutable version and moves the block's pointer. Nothing is overwritten.
+  async prepareRevision(projectId, sceneId, blockId) {
+    return json(
+      await fetch(`${BASE}/${projectId}/revision/${sceneId}/${blockId}`),
+      'prepare revision',
+    );
+  },
+  async acceptRevision(projectId, { passageId, lineageId, sceneId, blockId, inResponseTo }) {
+    return json(
+      await post(`${BASE}/${projectId}/revision/accept`, {
+        passage_id: passageId,
+        lineage_id: lineageId,
+        scene_id: sceneId,
+        block_id: blockId,
+        in_response_to: inResponseTo ?? null,
+      }),
+      'accept revision',
+    );
+  },
+  async genealogy(projectId, lineageId) {
+    return json(
+      await fetch(`${BASE}/${projectId}/genealogy/${lineageId}`),
+      'load genealogy',
+    );
+  },
+  // Did revising against a W7 flag clear it? `still_present` is a recorded answer, not a
+  // failure to record — see the calibration signal.
+  async closeRevisionLoop(projectId, versionId, readingId) {
+    return json(
+      await post(`${BASE}/${projectId}/revision/${versionId}/close-loop`,
+        { reading_id: readingId }),
+      'close loop',
+    );
+  },
+
   // --- The loop ---
   // Parse only: the `/` ÷ `//` split, with no model called and nothing stored.
   async parse(projectId, text) {

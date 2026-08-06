@@ -258,8 +258,17 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
     # segmenter's geometry — but an unclassified producer falls to `uncertain`, so `guard()` refused
     # the organ's own marks: "producer 'nestedness_organ' published a 'measured' claim — it is
     # classified 'uncertain'". Lane M never routed them through the guard, so nothing surfaced it.
-    # Wave 3 does (`agents.situated_agent._guard_marks`), which is what turned the hole up.
+    # Wave 3 does (`agents.situated_agent._verify_marks`), which is what turned the hole up.
+    #
+    # WAVE2.5 CAVEAT, and it applies to both organ entries here: this is the CEILING — what a
+    # MASK-basis reading may claim. Since the masks ruling these organs also emit `interpretive` on
+    # the box basis, and `permitted_statuses` cannot express one producer with two kinds. See
+    # `agents.situated_agent._verify_marks`, which checks per MEASUREMENT instead of per producer.
     "nestedness_organ": EpistemicStatus.MEASURED,
+    # WAVE3 dialogue — the second pure-python organ, on exactly the same footing: it measures
+    # boundary contact rather than containment, loads no weights, has no roster entry and therefore
+    # no role. Born after the ruling, so it never had a `measured_mark` to rename.
+    "adjacency_organ": EpistemicStatus.MEASURED,
     # M5 — NOT measured, and this is the entry that keeps `uncertain` from being decorative.
     #
     # `external_limit`'s refusal turns on `MIN_PROJECTIVE_SPREAD`, which the producer itself

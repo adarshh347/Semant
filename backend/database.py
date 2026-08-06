@@ -156,6 +156,25 @@ writer_library_collection = database.get_collection("writer_library")
 # eventually be able to say so. Nothing reads it that way yet — the corpus is not there.
 writer_reading_collection = database.get_collection("writer_readings")
 
+# --- Semant Writer W8 · passage genealogy ---
+# writer_passage_version_collection: one APPEND-ONLY document per committed version of a
+# passage. Nothing in the Writer ever updates or deletes a document in this collection, and
+# that is the whole of W8's canon rule: revising a passage writes a NEW version here and
+# moves a pointer, so no prose the author once committed is ever altered or lost.
+#
+# The CURRENT POINTER is not here — it is the scene block itself, which carries the
+# lineage id and the version number it is showing. That split is deliberate and is what
+# makes "export is current versions only" true BY CONSTRUCTION rather than by discipline:
+# the export walks scene blocks, and a scene block can only ever hold one version, so a
+# historical version has no route into exported prose. It is queryable here and nowhere else.
+#
+# A version carries its ORIGINAL provenance, frozen. It also carries the temporal half W8
+# adds: `revised_from` (its parent version), the DECLARATION DIFF that explains why the
+# prose changed, and — when the revision answered a W7 alignment flag — the id of that flag
+# and, later, whether the divergence actually cleared. That last field is the honest end of
+# the W7 loop: it records whether revising worked, including when it did not.
+writer_passage_version_collection = database.get_collection("writer_passage_versions")
+
 # --- Vision runtime provenance (CIRCULATION-SPINE-001 · P1) ---
 # vision_run_collection: one poll-friendly document per vision operation attempt, with
 # its stage events embedded (mirrors the agent_runs run+step-ledger pattern). This is a
@@ -218,6 +237,17 @@ movement_axis_collection = database.get_collection("movement_axes")
 # reads `proposed` until a curator commits the mark. That is the private-measured / ledger-proposed
 # decision made structural rather than promised.
 agent_observation_collection = database.get_collection("agent_observations")
+
+# --- Joint hypotheses (WAVE3 · two agents, one locus) ---
+# agent_hypothesis_collection: a claim two differently-embodied agents composed at one locus that
+# neither could state alone. Its own collection rather than a `kind` on the observations above,
+# because the two obey DIFFERENT hydration rules and sharing a collection would eventually mean
+# sharing a code path: an observation cites ONE mark and reads whatever that mark says once a
+# curator commits it, while a hypothesis cites TWO and reads `proposed` no matter how many are
+# committed. Agreement is not grounding — two agents concurring is two readings, and a composition
+# becomes measured knowledge only by being re-grounded on new loci. Like the observations it stores
+# NO epistemic status, and unlike them there is no commit that would give it one.
+agent_hypothesis_collection = database.get_collection("agent_hypotheses")
 
 # --- Connection Test Function ---
 async def ping_server():
