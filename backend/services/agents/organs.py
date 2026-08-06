@@ -52,6 +52,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from backend.services import adjacency_organ as adjacency
+from backend.services import chroma_organ as chroma
 from backend.services import nestedness_organ as nestedness
 from backend.services import role_registry
 from backend.services.epistemics import STATUS_KEY, EpistemicStatus
@@ -59,12 +60,33 @@ from backend.services.role_registry import RoleKind
 
 #: The organs this lane can actually invoke, in-process, with no weights to load.
 #:
-#: Two now, and the second was not optional. The dialogue lane needs two agents at one locus to
-#: enact two WORLDS; with one organ between them they enact the same world twice and their
-#: "disagreement" is a difference in bookkeeping. Every registry organ loads weights and resolves
-#: RESIDENT here, so `adjacency_organ` was built for it — boundary contact, which is independent of
-#: containment in both directions (`test_agent_dialogue_wave3.py` pins the 2×2).
-PURE_PYTHON_ORGANS: Tuple[str, ...] = (nestedness.ORGAN, adjacency.ORGAN)
+#: Three now, and each was added for a reason the previous one could not serve.
+#:
+#:   nestedness   is A inside B                geometry
+#:   adjacency    is A's edge against B's      geometry, independent of the first in both directions
+#:   chroma       how warm is A, and which     NOT GEOMETRY — the first sense here that reads the
+#:                way does the warmth run      signal instead of the shape
+#:
+#: The third is the one that makes agent diversity more than a slogan. Two agents carrying the two
+#: geometric organs enact different worlds of the same KIND; an agent carrying chroma enacts one
+#: with almost nothing to say to theirs, which is where cross-modal grounding becomes a real
+#: problem rather than a phrase. `chroma_organ` names that and refuses to solve it here.
+#:
+#: THE CARD FOR THAT LANE SAID "register via the roles registry so `resolve()` reports it", and the
+#: tree still says what it said to WAVE3: the registry's organ half is GENERATED from
+#: `default_roster()` and `test_role_registry` pins that organ roles are never hand-listed. A
+#: weightless organ has no roster entry to generate from. So it lands here, which is what makes
+#: `resolve()` report it RESOLVED — the outcome the card asked for, by the route the tree allows.
+PURE_PYTHON_ORGANS: Tuple[str, ...] = (nestedness.ORGAN, adjacency.ORGAN, chroma.ORGAN)
+
+#: The organs that cannot work from the post document alone, because what they measure is in the
+#: PIXELS. The geometry organs read `region_annotations` and nothing else; chroma reads light.
+#:
+#: The pixels are HANDED IN — `invoke(..., image=...)` — and never fetched. An organ that opened a
+#: URL would stop being pure in the way that matters: it could reach something the caller did not
+#: choose, and a cached `photo_url` is exactly the goes-stale problem `atlas_service` already warns
+#: about. The caller owns where the image came from; the organ owns what is in it.
+_NEEDS_PIXELS: Tuple[str, ...] = (chroma.ORGAN,)
 
 #: How an organ name resolved. Named constants because the refusal reason is reported to a human
 #: and read by a test, and a bare string in both places is two spellings waiting to happen.
@@ -118,6 +140,20 @@ class OrganReading:
     measurement: Dict[str, Any]
     mark: Dict[str, Any]
     detail: str
+    #: HOW THE ORGAN WOULD SAY IT, in one line, written by the organ that measured.
+    #:
+    #: This exists because the alternative shipped a false sentence. `situated_agent._percept_for`
+    #: composed the percept's `expression` from a hardcoded "nested within", which was true while
+    #: nestedness was the only organ and became a lie the moment adjacency arrived: a `meets`
+    #: reading with contact 0.600 minted a percept reading "whole nested within rim" — wrong
+    #: relation AND inverted direction, in the one field a reader takes for the agent's own
+    #: statement of what it perceived. Nothing caught it because that lane's tests asserted on
+    #: `relation` and on the mark, never on the percept.
+    #:
+    #: A field organ makes the defect structural rather than incidental — chroma relates nothing,
+    #: so there is no direction to invert and no second region to name. The organ that took the
+    #: measurement is the only thing that knows how to say it.
+    expression: str = ""
 
     @property
     def epistemic_status(self) -> str:
@@ -155,7 +191,10 @@ def resolve(organ_name: str) -> OrganBinding:
     if name in PURE_PYTHON_ORGANS:
         return OrganBinding(
             name=name, resolution=RESOLVED, invocable=True, role=role,
-            detail=f"{name} — pure geometry, computed in-process from the segmenter's own output")
+            detail=(f"{name} — pure python, computed in-process, no weights to load"
+                    + (" (needs the image: pixels are handed in, never fetched)"
+                       if name in _NEEDS_PIXELS else
+                       " from the segmenter's own output")))
 
     if role is not None and role.kind is RoleKind.ORGAN:
         return OrganBinding(
@@ -229,10 +268,44 @@ def _adjacency_readings(locus_region: Mapping[str, Any], others: Sequence[Mappin
             measurement=measurement,
             mark=adjacency.grounding_mark(measurement, post_id=post_id,
                                           step_id=step_id, now=now),
-            detail=measurement["detail"]))
+            detail=measurement["detail"],
+            expression=f"{locus_id} meets {other_id}"))
 
     out.sort(key=lambda r: -r.measurement["contact_fraction"])
     return out
+
+
+def _chroma_readings(locus_region: Mapping[str, Any], others: Sequence[Mapping[str, Any]], *,
+                     post_id: str, step_id: str, now: str,
+                     image: Any = None) -> List[OrganReading]:
+    """The warmth field at the locus. ONE reading, about ONE region — and that shape is the point.
+
+    Every other reader here returns a list of RELATIONS between the locus and other regions, so the
+    length of a percept field has meant "how many things did I relate myself to". A sense is not
+    like that: the locus is warm or it is not, and `others` is unused because a chromatic relation
+    between two regions is deliberately not in this lane. Grounding one needs the systematicity
+    treatment the floor lane is auditing, and a relation minted here would arrive before the gate
+    that judges it.
+
+    NO PIXELS MEANS NO READING, raised rather than returned empty. An empty field is "the organ
+    looked from here and measured nothing", which for chroma would say the region has no colour.
+    """
+    measurement = chroma.measure(locus_region, image)
+    locus_id = str(locus_region.get("id") or "")
+    return [OrganReading(
+        organ=chroma.ORGAN,
+        relation=chroma.FIELD_WARMTH,
+        # NOT a direction — there is no second term to be on either side of. The word says what the
+        # reading is instead, so nothing downstream can read a relation into it.
+        direction="field",
+        locus_region_id=locus_id,
+        # EMPTY, and deliberately: a field relates the locus to nothing. Filling this with the
+        # locus's own id would make it look like a self-relation to every reader that counts terms.
+        other_region_id="",
+        measurement=measurement,
+        mark=chroma.grounding_mark(measurement, post_id=post_id, step_id=step_id, now=now),
+        detail=measurement["detail"],
+        expression=f"{locus_id} reads {measurement['warmth_mean']:+.3f} on the warm/cool axis")]
 
 
 def _readings_from(locus_region: Mapping[str, Any], others: Sequence[Mapping[str, Any]], *,
@@ -283,14 +356,18 @@ def _readings_from(locus_region: Mapping[str, Any], others: Sequence[Mapping[str
                 other_region_id=other_id,
                 measurement=measurement,
                 mark=mark,
-                detail=measurement["detail"]))
+                detail=measurement["detail"],
+                # Named off the MEASUREMENT rather than off `direction`, so the part and the whole
+                # are whichever the organ actually put in each argument slot.
+                expression=(f"{measurement['inner_region_id']} nested within "
+                            f"{measurement['outer_region_id']}")))
 
     out.sort(key=lambda r: -r.measurement["nesting_index"])
     return out
 
 
 def invoke(organ_name: str, *, post: Mapping[str, Any], region_id: str,
-           step_id: str = "", now: str = "") -> List[OrganReading]:
+           step_id: str = "", now: str = "", image: Any = None) -> List[OrganReading]:
     """Point one organ at one locus and return what it measured. The only way into a percept field.
 
     Raises `OrganRefusal` when the organ cannot be invoked here, and when the locus does not exist
@@ -307,10 +384,20 @@ def invoke(organ_name: str, *, post: Mapping[str, Any], region_id: str,
             f"nothing to stand on, and every reading from a phantom locus would be about "
             f"somewhere else")
 
-    readers = {nestedness.ORGAN: _readings_from, adjacency.ORGAN: _adjacency_readings}
+    if binding.name in _NEEDS_PIXELS and image is None:
+        raise OrganRefusal(
+            f"{binding.name} reads the signal, and no image was handed to this invocation. "
+            f"Returning an empty field here would say the locus has no colour, which is a claim "
+            f"about the picture made from an absence of pixels — the same error a zero contact "
+            f"fraction would be for an unmeasurable pair.")
+
+    readers = {nestedness.ORGAN: _readings_from, adjacency.ORGAN: _adjacency_readings,
+               chroma.ORGAN: _chroma_readings}
     reader = readers.get(binding.name)
     if reader is not None:
-        return reader(locus_region, _regions(post), post_id=post_id, step_id=step_id, now=now)
+        kwargs = {"image": image} if binding.name in _NEEDS_PIXELS else {}
+        return reader(locus_region, _regions(post), post_id=post_id, step_id=step_id, now=now,
+                      **kwargs)
 
     # Unreachable while every entry in `PURE_PYTHON_ORGANS` has a reader, and kept so that adding a
     # third organ without wiring its invocation fails here rather than returning a confident empty
