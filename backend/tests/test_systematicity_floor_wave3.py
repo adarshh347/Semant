@@ -1,29 +1,28 @@
 """
-WAVE3 — the systematicity floor, audited: what the number is made of and what it does not cover.
+WAVE3 — the systematicity score: agreement is agreement about things that exist.
 
-The corpus numbers live in `scripts/systematicity_floor_audit.py` and cannot live here — they need
-Mongo and 129,564 scored pairs. What belongs in the suite is everything the audit CONCLUDED, in a
-form that breaks if someone quietly undoes it:
+Two lanes' worth of claims live here. The floor lane audited `MIN_SYSTEMATICITY` and found the
+score partly measuring absence; this lane changed the aggregation so it does not, and re-derived
+the floor — which turned out to have no derivation left. The corpus numbers live in
+`scripts/systematicity_floor_audit.py` and cannot live here (Mongo, 129,564 scored pairs). What
+belongs in the suite is everything both lanes CONCLUDED, in a form that breaks if it is undone:
 
-  1. **the floor is derived, not typed.** `MIN_SYSTEMATICITY` is `ONE_COMPONENT_SHARE + eps`, so
-     the number and its reason cannot drift apart the way they did between WAVE2 and WAVE3. Its
-     one defensible job — standing above the exact-1/3 atom — is asserted directly.
+  1. **absence abstains.** A component neither side has no longer counts toward agreement. The
+     old rule stays runnable so the comparison remains a measurement rather than a memory.
   2. **the decomposition is honest.** `live`, `earned` and `absence_share` describe the same three
-     components the score is built from, and a shared absence is reported as one rather than
-     silently banked.
-  3. **the default did not move.** An audit that reshaped what grounds while claiming to
-     characterise a threshold would be the taste-fitting the lane forbade. `shape` stays the
-     default; `present` is runnable and off.
+     components the score is built from, and shared absence is reported rather than banked.
+  3. **the floor has no derivation left**, and the arithmetic showing why is a test rather than a
+     paragraph. So is the fact that the two principled-sounding replacements were measured and
+     refuted.
   4. **the floor is nesting's.** `relational_structure` is nesting-shaped, and a test shows what
      it does to a symmetric relation rather than leaving that to a docstring.
 
-The one claim NOT tested here is the interesting one — that the floor separates by +20.3 points
-against the held-out criterion. That is a fact about this corpus, not about this code, and pinning
-a corpus statistic in a unit test would make the suite fail when the corpus grows, which is the
-wrong thing to be told.
+Two claims are deliberately NOT tested here. The separation figures (+20.3 → +25.7) are facts about
+this corpus, not this code — pinning them would make the suite fail when the corpus grows, which is
+the wrong thing to be told. And the residual inversion is likewise a corpus statistic; what IS
+pinned is the mechanism behind it, since that is a property of the rule.
 """
 import inspect
-import re
 
 import pytest
 
@@ -41,63 +40,100 @@ def skeleton(region_id="r", *, depth=1, siblings=0, descendants=0, parent="p"):
 
 # ── 1. the floor is derived, and its one job is provable ─────────────────────────────────────
 
-def test_the_floor_is_derived_from_one_components_worth_of_agreement():
-    """Not a typed-in 0.34. The number now follows from the reason, so editing one without the
-    other is impossible rather than merely discouraged."""
+def test_the_shape_derivation_still_holds_for_the_aggregation_it_was_about():
+    """The floor lane's derivation was not wrong; it was scoped. Under `shape` there are always
+    three components, one of them is always exactly a third, and 2,178 corpus pairs sit on that
+    value. This keeps the arithmetic checkable now that the default has moved off it."""
     assert sm.ONE_COMPONENT_SHARE == pytest.approx(1 / 3)
-    assert sm.MIN_SYSTEMATICITY == pytest.approx(
-        round(sm.ONE_COMPONENT_SHARE + sm.SYSTEMATICITY_EPSILON, 5))
+    assert round(sm.ONE_COMPONENT_SHARE + sm.SYSTEMATICITY_EPSILON, 5) == sm.MIN_SYSTEMATICITY
+
+    one_only = sm.systematicity(skeleton(depth=2, siblings=3, descendants=4),
+                                skeleton(depth=2, siblings=0, descendants=0),
+                                aggregation=sm.AGGREGATION_SHAPE)
+    # depth agrees 1.0; siblings 3-vs-0 and descendants 4-vs-0 both align to 0.
+    assert one_only["score"] == pytest.approx(1 / 3, abs=1e-6)
+    assert one_only["score"] < sm.MIN_SYSTEMATICITY
 
 
-def test_the_floor_still_sits_where_it_did():
-    """The audit characterised the floor; it did not move it. If this changes, something reshaped
-    what grounds — which is a different lane with a different burden of proof."""
+def test_the_floor_did_not_move_so_the_before_after_measures_one_thing():
+    """DELIBERATE, and the reason is methodological rather than conservative. Separation is flat
+    across 0.15–0.60 (+25.7 to +29.6, non-monotonic), so no value is measurably better and picking
+    the argmax of a flat noisy curve is fitting. Holding it constant isolates the aggregation
+    change: move both and the before/after measures two things and attributes neither."""
     assert sm.MIN_SYSTEMATICITY == 0.34
 
 
-def test_the_floor_excludes_exactly_one_components_worth_and_nothing_more():
-    """THE FLOOR'S ONE DEFENSIBLE JOB. A pair agreeing perfectly on one component and not at all
-    on the other two scores exactly 1/3 — 2,178 real pairs sit on that value — and is refused.
-    A hair more than one component's worth passes. Everything between is a free parameter."""
-    one_only = sm.systematicity(skeleton(depth=2, siblings=3, descendants=4),
-                                skeleton(depth=2, siblings=0, descendants=0))
-    # depth agrees 1.0; siblings 3-vs-0 and descendants 4-vs-0 both align to 0.
-    assert one_only["shape_score"] == pytest.approx(1 / 3, abs=1e-6)
-    assert one_only["shape_score"] < sm.MIN_SYSTEMATICITY
+def test_one_components_worth_is_not_a_single_number_under_present():
+    """WHY THE DERIVATION DIED, as arithmetic rather than as a claim.
 
-    a_hair_more = sm.systematicity(skeleton(depth=2, siblings=3, descendants=4),
-                                   skeleton(depth=2, siblings=1, descendants=0))
-    assert a_hair_more["shape_score"] > sm.MIN_SYSTEMATICITY
-
-
-def test_the_floor_is_not_a_bare_literal_any_more():
-    """The audit found NO valley near the floor — a smooth unimodal continuum — so the magnitude
-    beyond 1/3 is arbitrary. The lane's deliverable was to stop that being a silent setting, and
-    the structural form of "not silent" is that the free part has its own name: you cannot edit
-    the threshold without editing something called `EPSILON`.
-
-    Asserted against the source rather than the value, because `MIN_SYSTEMATICITY == 0.34` would
-    still pass if someone typed the literal back in.
+    The floor lane derived `MIN_SYSTEMATICITY` from `ONE_COMPONENT_SHARE + eps`, and that was
+    correct — for `shape`, where the mean was always over three components, so one of them was
+    always exactly a third. `present` averages over the LIVE components, so the score of a pair
+    that agrees on exactly one is 1/3, 1/2 or 1/1 depending on how many were live. No scalar
+    floor expresses "more than one predicate" across all three cases, which is why the number
+    above is now an operating point and not a derivation.
     """
-    assert 0 < sm.SYSTEMATICITY_EPSILON < 0.05
-    source = inspect.getsource(sm)
-    assert re.search(r"^MIN_SYSTEMATICITY\s*=\s*[0-9.]+\s*$", source, re.M) is None
-    assert re.search(r"^MIN_SYSTEMATICITY\s*=.*ONE_COMPONENT_SHARE", source, re.M) is not None
+    live_three = sm.systematicity(skeleton(depth=2, siblings=3, descendants=4),
+                                  skeleton(depth=2, siblings=0, descendants=0))
+    assert live_three["live"] == ["depth", "descendants", "siblings"]
+    assert live_three["score"] == pytest.approx(1 / 3)
+
+    live_two = sm.systematicity(skeleton(depth=2, siblings=3, descendants=0),
+                                skeleton(depth=2, siblings=0, descendants=0))
+    assert live_two["live"] == ["depth", "siblings"]
+    assert live_two["score"] == pytest.approx(1 / 2)
+
+    live_one = sm.systematicity(skeleton(depth=2, siblings=0, descendants=0),
+                                skeleton(depth=2, siblings=0, descendants=0))
+    assert live_one["live"] == ["depth"]
+    assert live_one["score"] == pytest.approx(1.0)
+
+
+def test_the_adaptive_floor_that_would_have_been_principled_was_measured_and_rejected():
+    """`score > 1/live` generalises the WAVE2 intent exactly, and it is worse: +18.5 points
+    against the held-out criterion versus +25.7 for the flat floor, because it refuses all 894
+    single-live pairs and those pairs' containers map 54.1% of the time against a 30.8% base.
+
+    Kept as a test because the rule is attractive enough that someone will propose it again. The
+    arithmetic it turns on is here; the corpus numbers are in the audit script.
+    """
+    live_one = sm.systematicity(skeleton(depth=2, siblings=0, descendants=0),
+                                skeleton(depth=2, siblings=0, descendants=0))
+    # A mean over one component cannot exceed 1/1, so the adaptive rule refuses every such pair
+    # however perfectly it agrees.
+    assert live_one["score"] == 1.0
+    assert not live_one["score"] > 1 / len(live_one["live"])
 
 
 # ── 2. the decomposition is honest about shared absence ──────────────────────────────────────
 
-def test_a_component_neither_side_has_is_reported_as_absence_not_banked_as_agreement():
-    """`_alignment` scores 0-vs-0 as 1.0, and the audit measured what that costs: pairs with no
-    siblings and no descendants on either side average 0.842, the highest bucket in the corpus,
-    while the score FALLS as real structure rises. The credit is still paid — changing that is not
-    this lane's to do — but it can no longer be paid invisibly."""
+def test_a_component_neither_side_has_no_longer_counts_toward_agreement():
+    """THE CHANGE. `_alignment` still scores 0-vs-0 as 1.0 — it is a pairwise primitive and that
+    is a defensible thing for it to say — but the score no longer AVERAGES that in. Under `shape`
+    two shared absences banked two thirds of a perfect score; under `present` they abstain."""
+    poor = skeleton(depth=2, siblings=0, descendants=0)
+    rich_ish = skeleton(depth=4, siblings=0, descendants=0)
+    verdict = sm.systematicity(poor, rich_ish)
+    assert verdict["live"] == ["depth"]
+    assert verdict["absence_share"] == pytest.approx(2 / 3)
+    assert verdict["score"] == verdict["components"]["depth"] == pytest.approx(0.5)
+    assert verdict["shape_score"] == pytest.approx((0.5 + 1.0 + 1.0) / 3)
+
+
+def test_withdrawing_the_credit_does_not_make_a_one_component_mean_stable():
+    """THE RESIDUAL, PINNED AS A MECHANISM. `present` fixes the free credit and not the variance:
+    where siblings and descendants are absent on both sides the score is depth alone, so a pair
+    with no structure at all whose depths happen to match still scores 1.0.
+
+    On the corpus the zero-structure bucket falls 0.842 → 0.525 and remains the highest of any
+    bucket. The inversion is 79% removed, not eliminated, and this is why — it is a property of
+    averaging one number, not of what the rule credits.
+    """
     verdict = sm.systematicity(skeleton(depth=2, siblings=0, descendants=0),
                                skeleton(depth=2, siblings=0, descendants=0))
-    assert verdict["shape_score"] == 1.0
-    assert verdict["absence_share"] == pytest.approx(2 / 3)
     assert verdict["live"] == ["depth"]
-    assert verdict["earned"] == ["depth"]
+    assert verdict["score"] == 1.0          # still the maximum, on no structure whatsoever
+    assert verdict["shape_score"] == 1.0
 
 
 def test_a_component_only_one_side_has_is_live_and_earns_nothing():
@@ -140,24 +176,29 @@ def test_every_verdict_carries_both_readings_even_when_it_maps():
         assert key in mapped["systematicity"]
 
 
-# ── 3. the default did not move ──────────────────────────────────────────────────────────────
+# ── 3. the default moved, deliberately and with the old one kept runnable ────────────────────
 
-def test_shape_is_the_default_aggregation():
-    """THE CLAIM THAT KEEPS THIS AN AUDIT. `present` measures better on both criteria the audit
-    used, and adopting it here would have been a silent reshaping of what grounds under cover of
-    characterising a threshold. It is runnable and off, the way #150 kept identity ranking."""
-    assert sm.systematicity(skeleton(), skeleton())["aggregation"] == sm.AGGREGATION_SHAPE
-    assert sm.AGGREGATIONS == (sm.AGGREGATION_SHAPE, sm.AGGREGATION_PRESENT)
+def test_present_is_the_default_aggregation():
+    """The floor lane measured `present` better and refused to adopt it under cover of an audit.
+    This lane is that adoption, with its own before/after: separation +20.3 → +25.7 against the
+    held-out criterion, and the poverty inversion 79% removed."""
+    assert sm.DEFAULT_AGGREGATION == sm.AGGREGATION_PRESENT
+    assert sm.systematicity(skeleton(), skeleton())["aggregation"] == sm.AGGREGATION_PRESENT
+    assert sm.structure_map(skeleton("a", parent="pa"),
+                            skeleton("b", parent="pb"))["systematicity"]["aggregation"] \
+        == sm.AGGREGATION_PRESENT
 
 
-def test_the_alternative_aggregation_is_runnable():
-    """A better rule that cannot be run is a claim, not a finding."""
-    source = skeleton(depth=2, siblings=0, descendants=0)
-    target = skeleton(depth=4, siblings=0, descendants=0)
-    shape = sm.structure_map(source, target)
-    present = sm.structure_map(source, target, aggregation=sm.AGGREGATION_PRESENT)
+def test_the_rule_that_was_replaced_is_still_runnable():
+    """A claim of improvement that cannot be re-measured against what it improved on is not a
+    measurement. `shape` stays, the way #150 kept `ranking="identity"`."""
+    source = skeleton(depth=2, siblings=0, descendants=4)
+    target = skeleton(depth=4, siblings=0, descendants=1)
+    present = sm.structure_map(source, target)
+    shape = sm.structure_map(source, target, aggregation=sm.AGGREGATION_SHAPE)
+    # siblings are 0-vs-0: `shape` banks a free 1/3 for it, `present` abstains.
     assert shape["systematicity"]["score"] > present["systematicity"]["score"]
-    assert present["systematicity"]["aggregation"] == sm.AGGREGATION_PRESENT
+    assert shape["systematicity"]["aggregation"] == sm.AGGREGATION_SHAPE
 
 
 def test_an_unknown_aggregation_raises_rather_than_falling_back():
@@ -168,13 +209,13 @@ def test_an_unknown_aggregation_raises_rather_than_falling_back():
 
 def test_the_score_key_still_means_what_the_gate_reads():
     """`score` is what `structure_map` compares to the floor. It must follow the aggregation, or
-    the two readings would be reported honestly and the gate would still read the old one."""
-    source = skeleton(depth=2, siblings=0, descendants=0)
-    target = skeleton(depth=4, siblings=0, descendants=0)
-    assert sm.systematicity(source, target)["score"] == \
-        sm.systematicity(source, target)["shape_score"]
-    alt = sm.systematicity(source, target, aggregation=sm.AGGREGATION_PRESENT)
-    assert alt["score"] == alt["present_score"]
+    both readings would be reported honestly and the gate would still read the old one."""
+    source = skeleton(depth=2, siblings=0, descendants=4)
+    target = skeleton(depth=4, siblings=0, descendants=1)
+    default = sm.systematicity(source, target)
+    assert default["score"] == default["present_score"] != default["shape_score"]
+    alt = sm.systematicity(source, target, aggregation=sm.AGGREGATION_SHAPE)
+    assert alt["score"] == alt["shape_score"]
 
 
 def test_systematicity_still_cannot_see_a_similarity_score():
