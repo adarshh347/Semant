@@ -1,0 +1,174 @@
+/*
+ * Semant Writer · W10 — registers and the depth view.
+ *
+ * House pattern of the other writer surfaces. One deliberate restraint: registers further
+ * down the author's ladder are NOT styled as heavier, darker or more prominent. A visual
+ * hierarchy would assert that a later layer is deeper, which is exactly the judgement this
+ * system does not make — the order is the author's ladder, and the styling says nothing
+ * about it.
+ */
+
+.writer-registers,
+.writer-depth {
+  margin: 0.9rem 0;
+  border: 1px solid rgb(0 0 0 / 0.14);
+  border-radius: 6px;
+  font-size: 0.86rem;
+}
+
+.writer-registers__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid rgb(0 0 0 / 0.08);
+}
+
+.writer-registers__head h4 { margin: 0; font-size: 0.86rem; }
+.writer-registers__head button { margin-left: auto; }
+
+.writer-registers__note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.76rem;
+  opacity: 0.7;
+}
+
+.writer-registers__empty {
+  padding: 0.8rem 0.9rem;
+  font-size: 0.82rem;
+}
+
+.writer-registers__empty p { margin: 0 0 0.5rem; opacity: 0.8; }
+
+.writer-registers__list {
+  margin: 0;
+  padding: 0.5rem 0.9rem;
+  list-style: none;
+}
+
+.writer-register {
+  display: grid;
+  grid-template-columns: 10rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+}
+
+@media (max-width: 640px) {
+  .writer-register { grid-template-columns: 1fr; }
+}
+
+.writer-register input {
+  padding: 0.25rem 0.45rem;
+  border: 1px solid rgb(0 0 0 / 0.18);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.writer-register input:focus-visible { outline: 1px solid currentColor; }
+
+.writer-register__moves { display: flex; gap: 0.2rem; }
+
+.writer-registers__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid rgb(0 0 0 / 0.08);
+}
+
+.writer-registers__status {
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
+
+.writer-registers__error {
+  margin: 0;
+  padding: 0 0.9rem 0.7rem;
+  color: rgb(190 70 60);
+  font-size: 0.8rem;
+}
+
+/* ── the depth view ───────────────────────────────────────────────────────── */
+
+.writer-depth__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.6rem 0.9rem;
+}
+
+.writer-depth__empty {
+  margin: 0;
+  padding: 0.2rem 0.9rem 0.9rem;
+  font-size: 0.82rem;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.writer-depth__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.writer-depth__span {
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid rgb(0 0 0 / 0.06);
+}
+
+.writer-depth__span blockquote {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-left: 2px solid rgb(0 0 0 / 0.16);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.writer-depth__span footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  font-size: 0.76rem;
+}
+
+/* Every tag looks the same. No layer is styled as weightier than another. */
+.writer-depth__tag {
+  padding: 0.05rem 0.4rem;
+  border: 1px solid rgb(0 0 0 / 0.18);
+  border-radius: 999px;
+}
+
+.writer-depth__untagged { opacity: 0.65; font-style: italic; }
+.writer-depth__version { margin-left: auto; opacity: 0.6; }
+
+.writer-registers button,
+.writer-depth button {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid rgb(0 0 0 / 0.2);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.writer-registers button:hover:not(:disabled),
+.writer-depth button:hover:not(:disabled) { border-color: currentColor; }
+
+.writer-registers button:disabled,
+.writer-depth button:disabled { opacity: 0.45; cursor: default; }
+
+.writer-registers button:focus-visible,
+.writer-depth button:focus-visible { outline: 1px solid currentColor; }
+
+.writer-depth button[aria-pressed='true'] { border-color: currentColor; font-weight: 600; }

@@ -129,6 +129,14 @@ class FakeCollection:
             if _match(d, query):
                 _apply_set(d, update.get("$set", {}), array_filters)
                 return _UpdateResult(1, 1)
+        if upsert:
+            # W10 — the register vocabulary is written with upsert, so a fake that silently
+            # dropped the first write would make an empty ladder look like a working one.
+            doc = dict(query)
+            _apply_set(doc, update.get("$set", {}), array_filters)
+            doc.setdefault("_id", doc.get("_id") or f"upsert_{len(self.docs)}")
+            self.docs[doc["_id"]] = copy.deepcopy(doc)
+            return _UpdateResult(0, 1)
         return _UpdateResult(0, 0)
 
     async def delete_one(self, query):
@@ -468,8 +476,12 @@ def test_render_carries_operator_versions_and_intents(store, threshold_operator,
         # `source` is W3's marking: this one was typed by the author, not pulled by an edge.
         # `library_ref`/`author` are W5's: null here because this operator was defined in
         # this project rather than carried in from the author's library.
+        # `register` is W10's: the layer this operator carried WHEN IT FIRED, stamped rather
+        # than looked up later. Empty here because no ladder is declared — and empty stays
+        # valid forever, since an operator predating the author's registers is not
+        # retroactively assigned a depth.
         {"name": "threshold", "version": 1, "id": threshold_operator["id"],
-         "source": "direct", "library_ref": None, "author": None}
+         "source": "direct", "library_ref": None, "author": None, "register": ""}
     ]
     assert result.provenance["pulled_operators"] == []
     assert result.provenance["intents"] == [{"key": "goal", "value": "cross it"}]

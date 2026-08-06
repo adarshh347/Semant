@@ -14,6 +14,8 @@ import { WriterActionsContext } from './views/WriterActions';
 import RevisionPanel from './revision/RevisionPanel';
 import RecallPanel from './recall/RecallPanel';
 import CitedSpans from './recall/CitedSpans';
+import RegisterPanel from './registers/RegisterPanel';
+import DepthView from './registers/DepthView';
 import './WriterEditor.css';
 
 /**
@@ -79,6 +81,9 @@ export default function WriterEditor({
   // auto-citation, and the server refuses anything that is not committed canon.
   const [recalling, setRecalling] = useState(false);
   const [cited, setCited] = useState([]);
+  // W10 — the author's ladder, and the manuscript read along it. Both are views:
+  // opening either writes nothing, and the depth view makes no model call at all.
+  const [panel, setPanel] = useState('');
 
   const editor = useEditor({
     extensions: useMemo(() => writerExtensions(), []),
@@ -388,6 +393,18 @@ export default function WriterEditor({
     ));
   }, []);
 
+  // ── W10: the author's layers ──────────────────────────────────────────────
+
+  const onLoadRegisters = useCallback(
+    async () => writerService.registers(projectId), [projectId]);
+  const onRegisterTemplate = useCallback(
+    async () => writerService.registerTemplate(), []);
+  const onDeclareRegisters = useCallback(
+    async (registers) => writerService.declareRegisters(projectId, registers),
+    [projectId]);
+  const onLoadDepth = useCallback(
+    async () => writerService.depth(projectId), [projectId]);
+
   const onDismissRevision = useCallback(
     async (passageId) => {
       await writerService.dismiss(passageId);
@@ -460,6 +477,24 @@ export default function WriterEditor({
           </button>
           <button
             type="button"
+            onClick={() => setPanel((p) => (p === 'registers' ? '' : 'registers'))}
+            aria-pressed={panel === 'registers'}
+            data-testid="registers-toggle"
+            title="Name the layers you work in"
+          >
+            Layers
+          </button>
+          <button
+            type="button"
+            onClick={() => setPanel((p) => (p === 'depth' ? '' : 'depth'))}
+            aria-pressed={panel === 'depth'}
+            data-testid="depth-toggle"
+            title="Read your manuscript by the layers you named"
+          >
+            Depth
+          </button>
+          <button
+            type="button"
             onClick={() => setRecalling((r) => !r)}
             aria-pressed={recalling}
             data-testid="recall-toggle"
@@ -478,6 +513,19 @@ export default function WriterEditor({
           <span className="writer-editor__status" data-testid="editor-status">{status}</span>
           {error && <span className="writer-editor__error" data-testid="editor-error">{error}</span>}
         </div>
+
+        {panel === 'registers' && (
+          <RegisterPanel
+            onLoad={onLoadRegisters}
+            onDeclare={onDeclareRegisters}
+            onLoadTemplate={onRegisterTemplate}
+            onClose={() => setPanel('')}
+          />
+        )}
+
+        {panel === 'depth' && (
+          <DepthView onLoad={onLoadDepth} onClose={() => setPanel('')} />
+        )}
 
         <CitedSpans cited={cited} onUncite={onUncite} />
 
