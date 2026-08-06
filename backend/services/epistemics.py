@@ -44,7 +44,7 @@ PURE MODULE. No database, no network, no model. It is a vocabulary and two guard
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 
 class EpistemicStatus(str, Enum):
@@ -77,6 +77,93 @@ SOURCED_STATEMENT_TYPE = "sourced_statement"
 STATUS_KEY = "epistemic_status"
 
 
+# ── the substrate contract (TWO-STATUS-001) ──────────────────────────────────
+#
+# WHAT WAS MISSING, and it was not what three lanes' summaries said it was.
+#
+# The reported gap was "a producer emits two kinds per measurement and the guard admits one".
+# Half of that is already solved and has been since CONCEPT-SEG-001: a SAM 3 result IS a
+# `measured` mask plus an `interpretive` label, and it is carried as TWO DESCRIPTORS under two
+# producer names (`concept_segment`, `concept_naming`), precisely so a wrong naming can be
+# rejected without discarding a correct measurement. Nothing here changes that, and any new
+# producer whose outputs are separable should keep doing it that way — two descriptors is a
+# better answer than one descriptor with two statuses, because the curator can act on them
+# separately.
+#
+# The half that was NOT solved is different, and WAVE2.5 created it. `nestedness_organ` emits
+# ONE output whose KIND DEPENDS ON THE SUBSTRATE it was computed from:
+#
+#     the same organ, the same code path, the same pair of regions
+#       on two masks   → a per-pixel intersection      → `measured`
+#       on two boxes   → an estimate of an extent      → `interpretive`
+#
+# There is no second output to split off. There is one output that is a measurement on Monday
+# and a reading on Tuesday depending on what geometry the corpus happens to carry — and
+# `permitted_statuses` could express exactly one kind per producer, so the organ's honest box
+# weakening was refused BY ITS OWN GUARD.
+#
+# WHY NOT JUST LET ANY PRODUCER WEAKEN TO ANY LOWER STATUS. Because `interpretive` is not
+# `measured` with less confidence, it is a DIFFERENT SPECIES of claim — "a reading ABOUT the
+# image" versus "computed from the image signal". A segmenter publishing `interpretive` is not
+# being humble, it is miscategorising its own extent, and the existing
+# `("find_similar", "interpretive")` refusal is right to catch it. `uncertain` remains the one
+# universal weakening because it is the only status that is an ABSTENTION rather than a
+# different claim: "the producer will not vouch for which of the above".
+#
+# So the widening is DECLARED, not general. A producer names the substrates it computes on;
+# this table says what each substrate can support; and `guard` checks each descriptor against
+# the substrate it says it used. A producer that declares nothing is governed exactly as before.
+
+#: What kind of knowing each substrate can support. THE WAVE2.5 RULING, in one dict, moved here
+#: from `nestedness_organ` because a second organ needed it and a copied ruling is two rulings.
+#:
+#: The ruling was forced by a real reading, and the number is worth keeping in front of whoever
+#: edits this: `cseg_golden_finial_7` measured against `region_2` ('Sky') on the BOX basis scored
+#: containment 1.000, nesting index 0.999, `measured`. The finial is in FRONT of the sky. A
+#: bounding box in a 2D projection cannot tell `inside` from `in front of`, and the sky's box
+#: contains everything under it.
+#:
+#: A box may still propose. It may never ground.
+SUBSTRATE_CEILING: Dict[str, "EpistemicStatus"] = {
+    "mask": EpistemicStatus.MEASURED,       # per-pixel: computed from the signal
+    "box": EpistemicStatus.INTERPRETIVE,    # an estimate of an extent — a reading
+}
+
+#: The descriptor key naming which substrate this particular output was computed from.
+#: DELIBERATELY NOT the bare `basis`: `suggestion_service.presence_reading` already ships a
+#: top-level `basis` in an unrelated vocabulary (`verified` / `not_detected`), and a guard that
+#: read that key would start refusing a producer it has nothing to say about.
+SUBSTRATE_KEY = "epistemic_basis"
+
+#: Producers that DECLARE they compute on more than one substrate, and which ones.
+#:
+#: Being in this table is what buys a producer the right to emit more than one kind — and it
+#: buys nothing else. The kinds themselves come from `SUBSTRATE_CEILING` above, so a producer
+#: cannot declare that ITS boxes are measurements: the mis-declaration is not refused, it is
+#: unsayable. That is deliberate. A refusal can be argued with in a code review; an
+#: inexpressible claim cannot.
+_SUBSTRATES: Dict[str, Tuple[str, ...]] = {
+    # WAVE2.5 / WAVE3. Both compute pure geometry over whatever the corpus carries, and take the
+    # box path when either side lacks a mask. `nestedness_organ` asks whether A is inside B;
+    # `adjacency_organ` asks whether A's edge lies against B's. Same substrates, same ruling.
+    "nestedness_organ": ("mask", "box"),
+    "adjacency_organ": ("mask", "box"),
+}
+
+#: The IMAGE statuses ordered by strength, strongest first.
+#:
+#: It exists to CHECK THE TABLES — that a declared substrate never exceeds its producer's
+#: ceiling — and for no other purpose. In particular it deliberately does NOT govern
+#: `permitted_statuses`: "weaker" is not a licence, or `sam_refine` could publish `interpretive`
+#: and call it modesty. The ordering is real (ROLES-001 already reasons in it: `find_similar` is
+#: "STRONGER than its organ's ceiling", `presence_check` "weaker"), and it is still not a
+#: permission. `sourced` is absent because it is not on this scale at all — that is the wall.
+IMAGE_STRENGTH: Tuple["EpistemicStatus", ...] = (
+    EpistemicStatus.VISIBLE, EpistemicStatus.MEASURED,
+    EpistemicStatus.INTERPRETIVE, EpistemicStatus.UNCERTAIN,
+)
+
+
 class EpistemicViolation(Exception):
     """An attempt to move a claim across the wall, or to publish one that already crossed.
 
@@ -98,34 +185,119 @@ def _coerce(status: Any) -> Optional[EpistemicStatus]:
         return None
 
 
+def declared_substrates(producer: Optional[str]) -> Tuple[str, ...]:
+    """The substrates this producer says it computes on. Empty for producers that declare none."""
+    return _SUBSTRATES.get(str(producer or ""), ())
+
+
+def substrate_ceiling(basis: Optional[str]) -> EpistemicStatus:
+    """What kind of knowing an output computed on this substrate can be.
+
+    An UNRECOGNISED substrate is `interpretive`, not an error and not `measured`. A basis nobody
+    has ruled on is exactly the case where a confident answer would be wrong, and the
+    conservative direction is the only safe default — the same reasoning `default_status_for`
+    uses when it hands an unknown producer `uncertain`.
+    """
+    return SUBSTRATE_CEILING.get(str(basis or ""), EpistemicStatus.INTERPRETIVE)
+
+
+def substrate_of(descriptor: Mapping[str, Any]) -> str:
+    """Which substrate a descriptor says it was computed from, or "".
+
+    Two places are read, because two shapes exist and both are honest. A flat `epistemic_basis`
+    is what a new producer should write. An organ mark already carries `measurement.basis` — it
+    has since WAVE2.5, it is what `is_admissible` reads, and requiring organs to ALSO write a
+    flat copy would be storing one fact twice in a document where the two copies could disagree.
+
+    The bare `basis` key is deliberately not consulted: see `SUBSTRATE_KEY`.
+    """
+    flat = descriptor.get(SUBSTRATE_KEY)
+    if flat:
+        return str(flat)
+    measurement = descriptor.get("measurement")
+    if isinstance(measurement, Mapping) and measurement.get("basis"):
+        return str(measurement.get("basis"))
+    return ""
+
+
 def permitted_statuses(producer: Optional[str]) -> frozenset:
     """The statuses a given producer's output is allowed to carry.
 
-    THE WHOLE RULE, in one place: a producer may claim what its table entry says, or it may
-    claim `uncertain`. Nothing else.
+    THE RULE: a producer may claim what its table entry says, or any kind its DECLARED
+    substrates support, or it may claim `uncertain`. Nothing else.
 
-    That asymmetry is the generalized wall. `uncertain` is the only move available because it
-    is the only one that makes a claim WEAKER — a producer is always entitled to say it is not
-    sure, and never entitled to promote its own output. Without the asymmetry the guard would
-    be a spell-checker: it would catch `visble` and wave through a semantic reading arriving
-    tagged `measured`, which is the crossing that actually matters.
+    The asymmetry is the generalized wall. `uncertain` is the one universal move because it is
+    the only status that is an ABSTENTION rather than a different claim — a producer is always
+    entitled to say it is not sure, and never entitled to promote its own output. Without the
+    asymmetry the guard would be a spell-checker: it would catch `visble` and wave through a
+    semantic reading arriving tagged `measured`, which is the crossing that actually matters.
+
+    TWO-STATUS-001 ADDS THE SECOND CLAUSE AND NOTHING ELSE. It is not "anything weaker is
+    allowed": `interpretive` is a different SPECIES of claim from `measured`, not a humbler
+    version of it, so `find_similar` publishing `interpretive` is still refused and should be.
+    What a declaration buys is the right to emit the kinds its own substrates actually support,
+    each only on the substrate that supports it — which `guard` then checks per descriptor.
+    A producer that declares no substrate is governed exactly as it was before.
 
     A WALLED default (`sourced`) admits no alternative at all, not even `uncertain`. A
     quotation whose relevance is thin is still a quotation; its weakness belongs in
     `confidence`, and moving it to `uncertain` would put it in the image-status family it can
-    never belong to.
+    never belong to. A walled producer with a declared substrate would be a contradiction, and
+    `assert_substrate_tables_agree` refuses to let one exist.
     """
     default = default_status_for(producer)
     if default in WALLED_STATUSES:
         return frozenset({default})
-    return frozenset({default, EpistemicStatus.UNCERTAIN})
+    declared = {substrate_ceiling(b) for b in declared_substrates(producer)}
+    return frozenset({default, EpistemicStatus.UNCERTAIN}) | declared
 
 
-def declare(producer: Optional[str], status: Any) -> EpistemicStatus:
+def assert_substrate_tables_agree() -> None:
+    """The two tables must not drift, and the drift would be invisible from either side alone.
+
+    Three invariants, each a way the declaration could quietly become a promotion:
+
+      1. a declared producer must be classified — otherwise its ceiling is `uncertain` and the
+         declaration would be the only thing granting it `measured`, which is a producer
+         classifying itself.
+      2. no declared substrate may exceed the producer's ceiling. A ceiling that a declaration
+         can rise above is not a ceiling.
+      3. no walled producer may declare a substrate. `sourced` is not on the image scale at all.
+
+    Called by the tests rather than at import, because a module that raises on import is a
+    module that cannot be read to find out why.
+    """
+    strength = {s: i for i, s in enumerate(IMAGE_STRENGTH)}
+    for producer, bases in _SUBSTRATES.items():
+        ceiling = default_status_for(producer)
+        if producer not in classified_producers():
+            raise EpistemicViolation(
+                f"'{producer}' declares substrates {bases} but is in no classification table — "
+                f"its ceiling would be 'uncertain' and the declaration would be the only thing "
+                f"granting it anything stronger, which is a producer classifying itself")
+        if ceiling in WALLED_STATUSES:
+            raise EpistemicViolation(
+                f"'{producer}' is '{ceiling.value}' and may not declare substrates — a claim "
+                f"from outside the image was not computed from any of them")
+        for basis in bases:
+            kind = substrate_ceiling(basis)
+            if strength.get(kind, len(strength)) < strength.get(ceiling, len(strength)):
+                raise EpistemicViolation(
+                    f"'{producer}' declares substrate '{basis}' supporting '{kind.value}', which "
+                    f"is stronger than its ceiling '{ceiling.value}' — a ceiling a declaration "
+                    f"can rise above is not a ceiling")
+
+
+def declare(producer: Optional[str], status: Any, *, basis: str = "") -> EpistemicStatus:
     """A producer declaring the kind of its own output. Refuses an unpermitted claim.
 
     This is the write-side twin of `guard`'s read-side check, and they consult the same
-    `permitted_statuses` so they cannot drift into disagreeing about what is legal.
+    `permitted_statuses` and the same `assert_substrate_supports` so they cannot drift into
+    disagreeing about what is legal.
+
+    `basis` names the substrate this particular output was computed from. Optional, and omitting
+    it checks exactly what this function checked before TWO-STATUS-001 — an organ that passes it
+    gets the stricter per-output check as well, which is the whole point of declaring.
     """
     target = _coerce(status)
     if target is None:
@@ -136,7 +308,41 @@ def declare(producer: Optional[str], status: Any) -> EpistemicStatus:
             f"producer '{producer}' may not claim '{target.value}' — it is classified "
             f"'{default_status_for(producer).value}' and may only weaken that to "
             f"'{EpistemicStatus.UNCERTAIN.value}'")
+    if basis:
+        assert_substrate_supports(producer, basis, target)
     return target
+
+
+def assert_substrate_supports(producer: Optional[str], basis: str,
+                              status: EpistemicStatus) -> None:
+    """The per-output half of the contract: this KIND, on THIS substrate, from THIS producer.
+
+    Only declared producers are checked. That is not leniency towards the rest — an undeclared
+    producer is already held to one kind, so there is nothing a substrate could add — it is what
+    keeps this from reading a key it does not own (`presence_reading.basis` is a different
+    vocabulary entirely; see `SUBSTRATE_KEY`).
+
+    Strict equality, not "at most". A mask-basis reading tagged `interpretive` is as wrong as a
+    box-basis one tagged `measured`: the substrate does not put a cap on the kind, it DETERMINES
+    it. `uncertain` remains available on either, because abstaining is always allowed.
+
+    This is the refusal the guard did not have before TWO-STATUS-001 — the finial-in-sky class.
+    Declaring substrates widens what a producer may emit; this is the price, and it is a strictly
+    stronger check than the one that existed when the producer could only ever say one thing.
+    """
+    if not declared_substrates(producer):
+        return
+    if status is EpistemicStatus.UNCERTAIN:
+        return
+    expected = substrate_ceiling(basis)
+    if status is not expected:
+        raise EpistemicViolation(
+            f"producer '{producer}' published a '{status.value}' claim computed on the "
+            f"'{basis}' substrate, which supports '{expected.value}'. A box is an estimate and a "
+            f"mask is a measurement — the substrate does not cap the kind, it decides it. "
+            f"(`cseg_golden_finial_7` scored containment 1.000 against 'Sky' on boxes: the finial "
+            f"is in FRONT of the sky.) Only '{EpistemicStatus.UNCERTAIN.value}' is available on "
+            f"any substrate.")
 
 
 def retag(descriptor: Dict[str, Any], status: EpistemicStatus) -> Dict[str, Any]:
@@ -146,6 +352,12 @@ def retag(descriptor: Dict[str, Any], status: EpistemicStatus) -> Dict[str, Any]
     its producer's classification, and a walled (`sourced`) claim may not be moved at all.
     Returns a NEW descriptor — the original is left alone, so a caller holding the pre-edit item
     still holds the truth about what the producer actually claimed.
+
+    TWO-STATUS-001 gives it the substrate check too, and it had to. A declared producer may now
+    emit two kinds, so `permitted_statuses` alone would let a mask-basis mark be retagged
+    `interpretive` — and `guard` would then refuse the descriptor `retag` had just blessed. Two
+    guards that disagree are one guard plus a hole; `test_retag_and_guard_agree_on_what_is_legal`
+    exists to say so.
     """
     target = _coerce(status)
     if target is None:
@@ -160,6 +372,9 @@ def retag(descriptor: Dict[str, Any], status: EpistemicStatus) -> Dict[str, Any]
             f"cannot retag a '{descriptor.get('producer')}' claim as '{target.value}': "
             f"a producer's output may only be weakened to "
             f"'{EpistemicStatus.UNCERTAIN.value}', never promoted")
+    basis = substrate_of(descriptor)
+    if basis:
+        assert_substrate_supports(descriptor.get("producer"), basis, target)
     return {**descriptor, STATUS_KEY: target.value}
 
 
@@ -172,7 +387,7 @@ def guard(descriptors: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     place where a claim's stated kind is checked against the kind its producer is classified as,
     on every path into the quarantine.
 
-    Five ways a descriptor fails, all of them the same underlying error — a claim presenting
+    Six ways a descriptor fails, all of them the same underlying error — a claim presenting
     itself as better-founded than it is:
 
       1. no status at all. An untagged descriptor reaching review is indistinguishable from a
@@ -181,8 +396,13 @@ def guard(descriptors: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
       3. a status its producer may not claim — the improper crossing (see `permitted_statuses`).
          This is the generalized wall: not just sourced→visible, but interpretive→measured,
          uncertain→visible, and every other promotion.
-      4. a `sourced_statement` carrying any status other than `sourced`.
-      5. a `sourced_statement` with no citation (`external_source_service`: no source, no
+      4. TWO-STATUS-001 — a kind its own SUBSTRATE does not support. Checked only for producers
+         that declared substrates, and it is the check that pays for the widening: a producer
+         that may now emit two kinds must say which one this output is, and be held to it.
+         Refusal 3 asks "may this producer ever claim that?"; this asks "may it claim that
+         HERE?", and before this lane nothing asked the second question at the guard at all.
+      5. a `sourced_statement` carrying any status other than `sourced`.
+      6. a `sourced_statement` with no citation (`external_source_service`: no source, no
          claim — the research twin of "no ground → no mark").
 
     Raising rather than filtering is deliberate. A silently dropped laundered claim is a bug
@@ -203,6 +423,9 @@ def guard(descriptors: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 f"producer '{d.get('producer')}' published a '{status.value}' claim — it is "
                 f"classified '{default_status_for(d.get('producer')).value}' and may only "
                 f"weaken that to '{EpistemicStatus.UNCERTAIN.value}'")
+        basis = substrate_of(d)
+        if basis:
+            assert_substrate_supports(d.get("producer"), basis, status)
         if d.get("type") == SOURCED_STATEMENT_TYPE:
             if status is not EpistemicStatus.SOURCED:
                 raise EpistemicViolation(
@@ -260,10 +483,12 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
     # classified 'uncertain'". Lane M never routed them through the guard, so nothing surfaced it.
     # Wave 3 does (`agents.situated_agent._verify_marks`), which is what turned the hole up.
     #
-    # WAVE2.5 CAVEAT, and it applies to both organ entries here: this is the CEILING — what a
-    # MASK-basis reading may claim. Since the masks ruling these organs also emit `interpretive` on
-    # the box basis, and `permitted_statuses` cannot express one producer with two kinds. See
-    # `agents.situated_agent._verify_marks`, which checks per MEASUREMENT instead of per producer.
+    # BOTH ORGAN ENTRIES ARE CEILINGS, not stamps — what a MASK-basis reading may claim. Since
+    # WAVE2.5 these organs also emit `interpretive` on the box basis, and until TWO-STATUS-001
+    # `permitted_statuses` could not express one producer with two kinds, so the organ's honest box
+    # weakening was refused by its own guard. Two lanes reported that and pinned it rather than
+    # widening from a feature lane; `_SUBSTRATES` above is where it was finally closed, and the
+    # entries here are what it is a ceiling ON.
     "nestedness_organ": EpistemicStatus.MEASURED,
     # WAVE3 dialogue — the second pure-python organ, on exactly the same footing: it measures
     # boundary contact rather than containment, loads no weights, has no roster entry and therefore

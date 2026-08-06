@@ -372,40 +372,53 @@ def test_every_mark_carries_exactly_what_its_basis_supports():
                 nestedness_organ.epistemic_for(perception.reading.basis)
 
 
-def test_the_epistemic_guard_cannot_express_this_producer_and_that_is_the_finding():
-    """THE HOLE THIS LANE FOUND, and the shape WAVE2.5 gave it.
+def test_the_epistemic_guard_can_now_express_this_producer_and_still_holds_its_ceiling():
+    """THE HOLE THIS LANE FOUND — closed by TWO-STATUS-001, and this test is the receipt.
 
-    `nestedness_organ` was in NEITHER classification table, so `guard()` refused its own output —
-    a producer nobody classified may claim only `uncertain`, and Lane M never routed a mark through
-    the guard, so nothing surfaced it. This lane classifies it (`_DEFAULTS`), which states the
-    organ's CEILING and fixes the mask path.
+    HISTORY, because the shape of the hole is the argument for how it was closed.
+    `nestedness_organ` was in NEITHER classification table, so `guard()` refused its own output: a
+    producer nobody classified may claim only `uncertain`, and Lane M never routed a mark through
+    the guard, so nothing surfaced it. WAVE3 classified it, which stated the organ's CEILING and
+    fixed the mask path — and could not fix the rest, because `permitted_statuses` returned
+    `{classification, uncertain}`, one kind per producer, while WAVE2.5 had made this organ emit
+    two kinds derived per measurement. The organ's honest box weakening was refused by its own
+    guard. This test pinned that, and failed when it was fixed, which is how a documented
+    limitation is supposed to expire.
 
-    It cannot fix the whole of it, and this test pins WHY rather than hiding it.
-    `permitted_statuses` returns `{classification, uncertain}` — one kind per producer, plus the
-    right to be unsure. WAVE2.5 made this organ emit TWO kinds, derived per measurement, and no
-    single entry admits both. `interpretive` is a weakening of `measured` and the module's own
-    principle would allow it; the implementation allows only `uncertain`, because until this ruling
-    nothing weakened along another axis.
+    WHAT CLOSED IT is narrower than "let a producer weaken freely", and deliberately so —
+    `interpretive` is a different SPECIES of claim from `measured`, not a humbler version, so a
+    blanket ordering would have let a segmenter publish `interpretive` and call it modesty. The
+    organ instead DECLARES its substrates (`epistemics._SUBSTRATES`), one table says what each
+    substrate supports, and the guard checks this output against the substrate it names.
 
-    Widening `permitted_statuses` changes behaviour for every measured-ceiling producer in the
-    system, so it is reported rather than done from here. When it is widened, this test fails —
-    which is the correct way for a documented limitation to expire.
+    So the widening comes with a refusal the guard did not have before, asserted below: the same
+    organ, the same status, on the wrong substrate, is now caught.
     """
     assert epistemics.default_status_for(NESTEDNESS) is EpistemicStatus.MEASURED
+    assert epistemics.permitted_statuses(NESTEDNESS) == frozenset(
+        {EpistemicStatus.MEASURED, EpistemicStatus.INTERPRETIVE, EpistemicStatus.UNCERTAIN})
 
-    def guarded(basis):
-        mark = nestedness_organ.grounding_mark(
-            {"inner_region_id": "a", "outer_region_id": "b", "basis": basis}, post_id="p")
+    def guarded(basis, status=None):
+        measurement = {"inner_region_id": "a", "outer_region_id": "b", "basis": basis}
+        mark = nestedness_organ.grounding_mark(measurement, post_id="p")
         return epistemics.guard([{"producer": NESTEDNESS, "type": mark["type"],
-                                  STATUS_KEY: mark[STATUS_KEY]}])
+                                  "measurement": measurement,
+                                  STATUS_KEY: status or mark[STATUS_KEY]}])
 
-    guarded("mask")                                    # the ceiling path: accepted
-    with pytest.raises(epistemics.EpistemicViolation, match="may only weaken"):
-        guarded("box")                                 # the legitimate weakening: refused
+    guarded("mask")     # the ceiling path: measured, accepted as it always was
+    guarded("box")      # THE LEGITIMATE WEAKENING, refused until TWO-STATUS-001
+
+    # THE RETAINED REFUSAL — and it is stronger than what stood here before. The organ may emit
+    # `measured`, and may not emit it about an estimate. This is the finial-in-sky class: a
+    # box-basis containment of 1.000 that would read as a measurement of what is inside what.
+    with pytest.raises(epistemics.EpistemicViolation, match="substrate"):
+        guarded("box", EpistemicStatus.MEASURED.value)
 
     # and the ceiling is still a CEILING — the organ may never promote its own output
     with pytest.raises(epistemics.EpistemicViolation):
         epistemics.declare(NESTEDNESS, EpistemicStatus.VISIBLE)
+    with pytest.raises(epistemics.EpistemicViolation, match="substrate"):
+        epistemics.declare(NESTEDNESS, EpistemicStatus.MEASURED, basis="box")
 
 
 def test_an_agent_percept_is_neither_an_expression_percept_nor_a_draft():
