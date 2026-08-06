@@ -52,6 +52,7 @@ try:                                    # pragma: no cover - import shape
 except Exception:                       # pragma: no cover - slim deploy without numpy
     _np = None
 
+from backend.services import epistemics
 from backend.services import mask_geometry as mg
 from backend.services import region_geometry as rg
 from backend.services.epistemics import STATUS_KEY, EpistemicStatus
@@ -96,10 +97,15 @@ MIN_AREA = 1e-6
 #: region is worse than no mask, because the organ then reports it as the STRONGER evidence.
 #:
 #: So the discipline is epistemic, not geometric. A box may still propose; it may never ground.
-BASIS_EPISTEMIC = {
-    "mask": EpistemicStatus.MEASURED.value,       # per-pixel intersection: computed from the signal
-    "box":  EpistemicStatus.INTERPRETIVE.value,   # an estimate of an extent — a reading, not a measurement
-}
+#:
+#: TWO-STATUS-001 MOVED THE RULING to `epistemics.SUBSTRATE_CEILING` and left this name pointing at
+#: it. A second organ needed the same table and `adjacency_organ` re-exported it from here, which
+#: made this module the ruling's home by accident; the guard now needs it too, and a ruling three
+#: modules deep is one that will eventually be edited in only one of them. The name and the string
+#: values are unchanged, because the name is what `movement_kernel`, the tests and the WAVE2.5
+#: finding all cite.
+BASIS_EPISTEMIC = {basis: status.value
+                   for basis, status in epistemics.SUBSTRATE_CEILING.items()}
 
 #: The one basis a cross-image movement may be grounded on. Named once so the organ, the kernel's
 #: admissibility gate and the tests cannot drift into three opinions about it.
@@ -108,8 +114,12 @@ ADMISSIBLE_BASIS = "mask"
 
 def epistemic_for(basis: str) -> str:
     """What kind of knowing a measurement on this basis is. Unknown bases are `interpretive` —
-    the conservative direction, and the only safe default for a basis nobody has ruled on."""
-    return BASIS_EPISTEMIC.get(str(basis), EpistemicStatus.INTERPRETIVE.value)
+    the conservative direction, and the only safe default for a basis nobody has ruled on.
+
+    Delegated to `epistemics.substrate_ceiling` since TWO-STATUS-001, so the organ that STAMPS the
+    status and the guard that CHECKS it read one table. They disagreed for exactly as long as
+    there were two tables, and the disagreement was invisible from either side."""
+    return epistemics.substrate_ceiling(basis).value
 
 
 def is_admissible(measurement: Optional[Mapping[str, Any]]) -> bool:
