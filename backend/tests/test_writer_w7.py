@@ -155,6 +155,20 @@ def test_a_flag_quoting_text_that_is_not_in_the_passage_is_dropped(store, ontolo
     assert any("not in the passage" in d for d in dropped)
 
 
+def test_a_flag_quoting_nothing_at_all_is_dropped(store, ontology):
+    """No span means the flag is a verdict on the passage as a whole.
+
+    That is the shape a quality score takes, and the author cannot locate it to judge it.
+    """
+    elements = align.declared_elements(provenance(), ontology)
+    kept, dropped = align.ground_flags(
+        [{"element": "intent:avoid", "span": "", "divergence": "the tone is off throughout"}],
+        elements, PASSAGE,
+    )
+    assert kept == []
+    assert any("quoted nothing" in d for d in dropped)
+
+
 def test_a_grounded_flag_survives_and_carries_what_it_rests_on(store, ontology):
     elements = align.declared_elements(provenance(), ontology)
     kept, dropped = align.ground_flags(
@@ -426,3 +440,84 @@ def test_an_unconfigured_model_is_unavailable_not_aligned(store, ontology, monke
     result = read()
     assert result.status != align.ALIGNED
     assert result.status == "unavailable"
+
+
+@pytest.mark.parametrize("reply", [
+    "this is not json at all",
+    '["flags"]',                       # JSON, but not an object
+    '{"notes": "looks fine to me"}',   # an object, but no list of flags
+    '{"flags": "none"}',               # a `flags` key that is not a list
+])
+def test_a_reply_that_cannot_be_read_is_an_error_not_aligned(store, ontology, monkeypatch,
+                                                             reply):
+    """The same rule as an unreachable model, one layer in.
+
+    Zero PARSED flags and zero FOUND flags are different facts. Reporting an unreadable
+    reply as `aligned` would put the most reassuring answer behind the least reliable
+    moment, and the author would have no way to tell it from a real clean reading.
+    """
+    _stub(monkeypatch, reply)
+    result = read()
+    assert result.status != align.ALIGNED
+    assert result.status == "error"
+    assert result.flags == ()
+    assert result.diagnostics
+
+
+# ══ malformed provenance is skipped, not raised on ══════════════════════════
+
+@pytest.mark.parametrize("prov", [
+    {"intents": ["avoid melodrama"], "operators": [{"name": "restraint", "version": 1}]},
+    {"intents": [{"key": "avoid", "value": "melodrama"}], "operators": ["restraint"]},
+    {"intents": "avoid melodrama", "operators": None},
+    "not a provenance record at all",
+])
+def test_malformed_provenance_does_not_crash_the_reading(store, ontology, prov):
+    """A read-only diagnostic must not 500 on a request that changes nothing."""
+    elements = align.declared_elements(prov, ontology)
+    assert all(isinstance(e, dict) and e["id"] and e["declared"] for e in elements)
+
+
+def test_a_malformed_stamp_is_skipped_and_the_good_ones_still_measured(store, ontology):
+    elements = align.declared_elements(
+        {"intents": [{"key": "avoid", "value": "melodrama"}, "junk", None],
+         "operators": [{"name": "restraint", "version": 1}, "junk"]},
+        ontology,
+    )
+    ids = {e["id"] for e in elements}
+    assert "intent:avoid" in ids and "operator:restraint:intent" in ids
+
+
+def test_a_second_decision_on_the_same_flag_loses(store, ontology, monkeypatch):
+    """Compare-and-set, not check-then-write — one judgement, one calibration record."""
+    _stub(monkeypatch, '{"flags": [{"element": "intent:avoid", "span": "She waited.", '
+                       '"divergence": "x"}]}')
+    reading = run(rdg.store(PROJECT, read()))
+    flag_id = reading["flags"][0]["id"]
+
+    run(rdg.decide(reading["id"], flag_id, rdg.DISMISSED))
+    with pytest.raises(rdg.ReadingError, match="already dismissed"):
+        run(rdg.decide(reading["id"], flag_id, rdg.ACTED))
+
+    after = run(rdg.get(reading["id"]))
+    assert after["flags"][0]["state"] == rdg.DISMISSED
+    events = run(instrument.usage_for_project(PROJECT, limit=200))
+    decisions = [e for e in events
+                 if e["event"] in (align.FLAG_DISMISSED, align.FLAG_ACTED)]
+    assert len(decisions) == 1
+
+
+def test_deciding_one_flag_leaves_the_others_alone(store, ontology, monkeypatch):
+    """The write updates ONE element rather than replacing the array."""
+    _stub(monkeypatch, '{"flags": ['
+                       '{"element": "intent:avoid", "span": "She waited.", "divergence": "a"}, '
+                       '{"element": "operator:restraint:intent", "span": "The latch gave", '
+                       ' "divergence": "b"}]}')
+    reading = run(rdg.store(PROJECT, read()))
+    first, second = reading["flags"][0]["id"], reading["flags"][1]["id"]
+
+    run(rdg.decide(reading["id"], first, rdg.ACTED))
+    run(rdg.decide(reading["id"], second, rdg.DISMISSED))
+
+    states = {f["id"]: f["state"] for f in run(rdg.get(reading["id"]))["flags"]}
+    assert states == {first: rdg.ACTED, second: rdg.DISMISSED}

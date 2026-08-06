@@ -85,26 +85,33 @@ UNDECLARED_ISSUE_PROSE = (
 
 
 async def prove(keep: bool) -> int:
-    section("fixture")
-    await fixture.drop(quiet=True)
-    ms = await manuscript_service.create_manuscript(
-        "W7 fixture manuscript", synopsis="A scratch manuscript for the W7 live proof."
-    )
-    await manuscript_collection.update_one(
-        {"_id": ms["id"]}, {"$set": {"fixture_marker": fixture.MARKER}}
-    )
-    ms = await manuscript_service.add_chapter(ms["id"], "Chapter one")
-    scene = await manuscript_service.add_scene(ms["id"], ms["chapters"][0]["id"], "Scene one")
-    manuscript_id, scene_id = ms["id"], scene["id"]
-    project = manuscript_id
-    print(f"  manuscript {manuscript_id}  scene {scene_id}")
+    manuscript_id = ""
 
-    guard = await manuscript_collection.find_one({"_id": manuscript_id})
-    if (guard or {}).get("fixture_marker") != fixture.MARKER:
-        print("REFUSING: this manuscript is not a fixture this script made.")
-        return 1
-
+    # THE PROTECTED REGION STARTS BEFORE THE FIRST WRITE, not after the setup. The docstring
+    # promises this script leaves nothing behind unless `--keep` is passed, and a `try` that
+    # opened after the fixture was built would break that promise on exactly the two paths
+    # where it matters most: a raise during setup, and the marker guard returning early.
     try:
+        section("fixture")
+        await fixture.drop(quiet=True)
+        ms = await manuscript_service.create_manuscript(
+            "W7 fixture manuscript", synopsis="A scratch manuscript for the W7 live proof."
+        )
+        await manuscript_collection.update_one(
+            {"_id": ms["id"]}, {"$set": {"fixture_marker": fixture.MARKER}}
+        )
+        ms = await manuscript_service.add_chapter(ms["id"], "Chapter one")
+        scene = await manuscript_service.add_scene(
+            ms["id"], ms["chapters"][0]["id"], "Scene one")
+        manuscript_id, scene_id = ms["id"], scene["id"]
+        project = manuscript_id
+        print(f"  manuscript {manuscript_id}  scene {scene_id}")
+
+        guard = await manuscript_collection.find_one({"_id": manuscript_id})
+        if (guard or {}).get("fixture_marker") != fixture.MARKER:
+            print("REFUSING: this manuscript is not a fixture this script made.")
+            return 1
+
         # ── the ontology ─────────────────────────────────────────────────────
         section("the author's declarations")
         await operator_registry.create(
@@ -285,7 +292,7 @@ async def prove(keep: bool) -> int:
         return 1 if FAILURES else 0
 
     finally:
-        if keep:
+        if keep and manuscript_id:
             print(f"\n(fixture kept: manuscript {manuscript_id})")
         else:
             await fixture.drop(quiet=True)

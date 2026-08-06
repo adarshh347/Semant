@@ -97,6 +97,22 @@ def _now_iso() -> str:
 
 # ── the declared standard ────────────────────────────────────────────────────
 
+def _entries(provenance: Any, key: str) -> List[Dict[str, Any]]:
+    """The dict entries under `key`, and nothing else.
+
+    Provenance arrives from a request body and from direct callers, so it is not guaranteed
+    to have the shape it should. A malformed entry is SKIPPED rather than raised on: this is
+    a read-only diagnostic, and the honest failure for "one of your stamps is not a stamp"
+    is to measure against the ones that are, not to 500 on a request that changes nothing.
+    """
+    if not isinstance(provenance, dict):
+        return []
+    value = provenance.get(key)
+    if not isinstance(value, list):
+        return []
+    return [entry for entry in value if isinstance(entry, dict)]
+
+
 def declared_elements(
     provenance: Dict[str, Any],
     operators_by_name: Dict[str, Dict[str, Any]],
@@ -116,8 +132,8 @@ def declared_elements(
     """
     elements: List[Dict[str, Any]] = []
 
-    for intent in (provenance or {}).get("intents", []) or []:
-        key, value = intent.get("key"), (intent.get("value") or "").strip()
+    for intent in _entries(provenance, "intents"):
+        key, value = intent.get("key"), str(intent.get("value") or "").strip()
         if key and value:
             elements.append({
                 "id": f"intent:{key}",
@@ -129,9 +145,9 @@ def declared_elements(
                 "polarity": "avoid" if key == "avoid" else "toward",
             })
 
-    for stamp in (provenance or {}).get("operators", []) or []:
+    for stamp in _entries(provenance, "operators"):
         name = stamp.get("name")
-        operator = operators_by_name.get(name) or {}
+        operator = (operators_by_name or {}).get(name) or {}
         version = stamp.get("version")
 
         intent = (operator.get("rendering_intent") or "").strip()
@@ -248,9 +264,12 @@ def ground_flags(
          that was not offered, is the model bringing a standard of its own. That is the
          exact thing §2 forbids, and it cannot be fixed by rewording — it is dropped.
 
-      2. THE SPAN MUST BE IN THE PASSAGE. A quoted span that does not appear in the prose
-         is a flag about text that does not exist. Whitespace is normalised before
-         comparing, because a model reflowing a line is not the same as inventing one.
+      2. THE SPAN MUST BE IN THE PASSAGE, AND MUST EXIST. A quoted span that does not
+         appear in the prose is a flag about text that does not exist; an ABSENT span is a
+         flag the author cannot locate, which in practice reads as a verdict on the passage
+         as a whole — the closest thing to a quality score this can produce. Both are
+         dropped. Whitespace is normalised before comparing, because a model reflowing a
+         line is not the same as inventing one.
 
     Dropping is silent to the author and LOUD in the diagnostics: they should see a clean
     reading, and the operator of the system should be able to see how often the model tried
@@ -279,7 +298,13 @@ def ground_flags(
             continue
 
         span = str(raw.get("span") or "").strip()
-        if span and _normalise(span) not in haystack:
+        if not span:
+            diagnostics.append(
+                "dropped a flag that quoted nothing: without a span it is a judgement on "
+                "the passage as a whole, which is the shape a quality score takes"
+            )
+            continue
+        if _normalise(span) not in haystack:
             diagnostics.append(
                 f"dropped a flag quoting text that is not in the passage: {span[:60]!r}"
             )
@@ -319,16 +344,25 @@ async def _call_model(system: str, user: str) -> Tuple[str, Optional[str]]:
     return await asyncio.to_thread(_blocking), model
 
 
-def _parse(raw: str) -> Tuple[List[Dict[str, Any]], List[str]]:
+def _parse(raw: str) -> Tuple[Optional[List[Dict[str, Any]]], List[str]]:
+    """The model's reply → its flags, or `None` if the reply could not be read.
+
+    `None` IS NOT AN EMPTY LIST, and the distinction is the same one that keeps an
+    unreachable model from reading as clean. `aligned` means the passage was measured and
+    nothing diverged. A reply that could not be parsed was not measured, and reporting it
+    as `aligned` would put the system's most reassuring answer behind its least reliable
+    moment. Fail closed: an unreadable reply is an error the author can re-run, and a false
+    `aligned` is a lie they have no way to catch.
+    """
     try:
         data = json.loads((raw or "").strip())
     except (ValueError, TypeError):
-        return [], ["the reading did not come back as JSON; no flags were taken from it"]
+        return None, ["the reading did not come back as JSON; no flags were taken from it"]
     if not isinstance(data, dict):
-        return [], ["the reading came back as JSON that was not an object"]
+        return None, ["the reading came back as JSON that was not an object"]
     flags = data.get("flags")
     if not isinstance(flags, list):
-        return [], []
+        return None, ["the reading came back without a list of flags"]
     return flags, []
 
 
@@ -380,6 +414,17 @@ async def read_alignment(
                                measured_against=tuple(elements))
 
     raw_flags, diagnostics = _parse(raw)
+    if raw_flags is None:
+        # Could-not-read is not looked-and-found-nothing. See `_parse`.
+        return AlignmentResult(
+            status=ERROR,
+            detail="The reading came back in a form this could not read, so nothing was "
+                   "taken from it. Nothing was measured — try it again.",
+            measured_against=tuple(elements),
+            diagnostics=tuple(diagnostics),
+            model=model,
+        )
+
     flags, dropped = ground_flags(raw_flags, elements, passage)
     diagnostics.extend(dropped)
 

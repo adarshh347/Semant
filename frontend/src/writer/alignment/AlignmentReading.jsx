@@ -143,7 +143,12 @@ function Measured({ elements, model }) {
   if (!elements?.length) return null;
   return (
     <div className="writer-reading__measured">
-      <button type="button" onClick={() => setOpen((o) => !o)} data-testid="show-measured">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        data-testid="show-measured"
+        aria-expanded={open}
+      >
         {open ? 'hide what this was measured against' : 'what was this measured against?'}
       </button>
       {open && (

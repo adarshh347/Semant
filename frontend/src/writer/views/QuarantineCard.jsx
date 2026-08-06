@@ -205,7 +205,16 @@ export default function QuarantineCard({ node, getPos, editor }) {
           reading={reading}
           busy={busy}
           onDecide={async (flagId, state) => {
-            setReading(await onDecideFlag(reading.id, flagId, state));
+            // A decision is made once, so a second one comes back 400 — and a rejection
+            // swallowed here would leave the flag showing as open with nothing said. Route
+            // it to the same error line the other actions use.
+            setError('');
+            try {
+              const next = await onDecideFlag(reading.id, flagId, state);
+              if (next) setReading(next);
+            } catch (err) {
+              setError(err.message || 'that decision did not go through');
+            }
           }}
         />
       )}

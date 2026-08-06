@@ -21,6 +21,7 @@ forced deterministically. The LIVE proof against Groq is `scripts/writer_w1_proo
 """
 import asyncio
 import copy
+import re
 
 import pytest
 
@@ -69,9 +70,40 @@ def _match(doc, query):
         if isinstance(v, dict) and "$in" in v:
             if doc.get(k) not in v["$in"]:
                 return False
+        elif isinstance(v, dict) and "$elemMatch" in v:
+            # Enough of `$elemMatch` for a compare-and-set on an array element — the shape
+            # `readings.decide` uses to make "a decision is made once" atomic.
+            items = doc.get(k)
+            if not isinstance(items, list) or not any(
+                isinstance(i, dict) and all(i.get(ik) == iv for ik, iv in v["$elemMatch"].items())
+                for i in items
+            ):
+                return False
         elif doc.get(k) != v:
             return False
     return True
+
+
+_POSITIONAL = re.compile(r"^(?P<array>\w+)\.\$\[(?P<ident>\w+)\]\.(?P<field>\w+)$")
+
+
+def _apply_set(doc, changes, array_filters):
+    """`$set`, including `array.$[f].field` paths against `array_filters`."""
+    by_ident = {}
+    for af in array_filters or []:
+        for key, value in af.items():
+            ident, _, field = key.partition(".")
+            by_ident.setdefault(ident, {})[field] = value
+
+    for path, value in changes.items():
+        m = _POSITIONAL.match(path)
+        if not m:
+            doc[path] = value
+            continue
+        criteria = by_ident.get(m["ident"], {})
+        for item in doc.get(m["array"]) or []:
+            if isinstance(item, dict) and all(item.get(k) == v for k, v in criteria.items()):
+                item[m["field"]] = value
 
 
 class FakeCollection:
@@ -91,10 +123,10 @@ class FakeCollection:
     def find(self, query=None, projection=None):
         return _Cursor([copy.deepcopy(d) for d in self.docs.values() if _match(d, query)])
 
-    async def update_one(self, query, update, upsert=False):
+    async def update_one(self, query, update, upsert=False, array_filters=None):
         for d in self.docs.values():
             if _match(d, query):
-                d.update(update.get("$set", {}))
+                _apply_set(d, update.get("$set", {}), array_filters)
                 return _UpdateResult(1, 1)
         return _UpdateResult(0, 0)
 

@@ -114,19 +114,35 @@ async def decide(reading_id: str, flag_id: str, state: str, note: str = "") -> D
     if not doc:
         raise ReadingError(f"no such reading: {reading_id}")
 
-    flags = list(doc.get("flags", []))
-    target = next((f for f in flags if f.get("id") == flag_id), None)
+    target = next((f for f in doc.get("flags", []) if f.get("id") == flag_id), None)
     if target is None:
         raise ReadingError(f"no such flag on this reading: {flag_id}")
-    if target.get("state") != OPEN:
-        raise ReadingError(
-            f"flag {flag_id} is already {target.get('state')} — a decision is made once"
-        )
 
-    target["state"] = state
-    target["note"] = note or ""
-    target["decided_at"] = _now()
-    await writer_reading_collection.update_one({"_id": reading_id}, {"$set": {"flags": flags}})
+    # DECIDED ONCE, AND ATOMICALLY. The read above is for the error message; the write is
+    # what enforces it. Matching `state: OPEN` inside the query makes this a compare-and-set,
+    # so of two concurrent decisions on the same flag exactly one lands — a check-then-write
+    # would let both through and instrument both, and the calibration signal would record a
+    # dismissal and an action for one judgement.
+    #
+    # It also updates the ONE flag by position rather than replacing the array. Rewriting the
+    # whole list would let a decision on flag A silently revert a concurrent decision on
+    # flag B, which is the quieter half of the same bug.
+    result = await writer_reading_collection.update_one(
+        {"_id": reading_id, "flags": {"$elemMatch": {"id": flag_id, "state": OPEN}}},
+        {"$set": {
+            "flags.$[f].state": state,
+            "flags.$[f].note": note or "",
+            "flags.$[f].decided_at": _now(),
+        }},
+        array_filters=[{"f.id": flag_id}],
+    )
+    if not result.matched_count:
+        current = next((f for f in (await writer_reading_collection.find_one(
+            {"_id": reading_id}) or {}).get("flags", []) if f.get("id") == flag_id), {})
+        raise ReadingError(
+            f"flag {flag_id} is already {current.get('state', 'decided')} — "
+            f"a decision is made once"
+        )
 
     # THE CALIBRATION SIGNAL. Which operator the flag cited, and what the author made of it.
     await instrument.record(
