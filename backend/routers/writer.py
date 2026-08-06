@@ -50,6 +50,8 @@ from backend.schemas.writer import (
     AlignmentRead,
     FlagDecision,
     LoopClose,
+    RecallQuery,
+    RegisterDeclare,
     RevisionAccept,
     LibraryOp,
     RelationsUpdate,
@@ -58,6 +60,8 @@ from backend.services.writer import dsl, instrument
 from backend.services.writer import alignment as alignment_mod
 from backend.services.writer import assemblages as assemblages_mod
 from backend.services.writer import readings as readings_mod
+from backend.services.writer import recall as recall_mod
+from backend.services.writer import registers as registers_mod
 from backend.services.writer import revisions as revisions_mod
 from backend.services.writer import library as library_mod
 from backend.services.writer import relations as relations_mod
@@ -91,6 +95,7 @@ async def create_operator(project_id: str, request: OperatorCreate):
             negative_examples=request.negative_examples,
             relations=[r.model_dump() for r in request.relations],
             author=request.author or "",
+            register=request.register or "",
         )
     except OperatorError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -424,6 +429,14 @@ async def parse_block(project_id: str, request: BlockParse):
 @router.post("/{project_id}/run")
 async def run(project_id: str, request: BlockRun):
     """Execute a scripted block. Every render is QUARANTINED — nothing reaches canon here."""
+    # W9 — citations are resolved BEFORE anything renders, so a reference to prose the
+    # author never accepted stops the block rather than silently grounding on nothing.
+    try:
+        cited = await recall_mod.resolve_citations(
+            project_id, [c.model_dump() for c in (request.cited or [])])
+    except recall_mod.RecallError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     return await run_block(
         project_id,
         request.text,
@@ -431,6 +444,65 @@ async def run(project_id: str, request: BlockRun):
         scene_id=request.scene_id or "",
         quarantine=request.quarantine,
         only_directives=request.only_directives,
+        cited=cited,
+    )
+
+
+# --- Depth registers (W10 · the author's cognitive layers) ---
+#
+# NO DEFAULT LADDER. A fresh project's vocabulary is EMPTY and stays empty until the author
+# declares one — whatever shipped as a default would become what most authors keep, so the
+# default would be the imposed taxonomy however reasonable it read. The classic ladder is
+# available from /registers/template as an UNSAVED proposal to edit and commit, or ignore.
+
+@router.get("/{project_id}/registers")
+async def list_registers(project_id: str):
+    """The author's layers, in the author's order. Empty until they declare some."""
+    return {"registers": await registers_mod.vocabulary(project_id)}
+
+
+@router.get("/registers/template")
+async def register_template():
+    """The classic ladder, UNSAVED. A suggestion the author edits and commits, or not."""
+    return registers_mod.propose_template()
+
+
+@router.put("/{project_id}/registers")
+async def declare_registers(project_id: str, request: RegisterDeclare):
+    """The author-confirmed write. Refuses to orphan a register an operator still carries."""
+    try:
+        return await registers_mod.declare(
+            project_id, [r.model_dump() for r in request.registers])
+    except registers_mod.RegisterError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/{project_id}/depth")
+async def depth_view(project_id: str):
+    """Which committed spans work at which of the author's layers.
+
+    PURELY DERIVED, and there is no model call on this path. It reads the register each
+    operator carried when it fired, off the span's own provenance. A generated reading of
+    what the book means at a layer would be fabrication on the axis where it is hardest to
+    catch, and there is nowhere in this route to produce one.
+    """
+    spans = await recall_mod.committed_spans(project_id)
+    return await registers_mod.depth_view(project_id, spans)
+
+
+# --- Recall (W9 · the manuscript's memory of itself) ---
+#
+# RETRIEVAL, NOT NARRATION. This route returns the author's own committed sentences, byte
+# for byte, or nothing. There is no summarise endpoint here and there must never be one: a
+# synthesis of prior material is a render — declared, quarantined, author-committed.
+
+@router.post("/{project_id}/recall")
+async def recall_spans(project_id: str, request: RecallQuery):
+    """The author's own committed prose, ranked. Verbatim, or empty."""
+    return await recall_mod.recall(
+        project_id, request.query,
+        limit=request.limit,
+        include_historical=request.include_historical,
     )
 
 

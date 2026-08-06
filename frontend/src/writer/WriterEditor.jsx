@@ -12,6 +12,10 @@ import {
 import { exportManuscriptText, toManuscriptBlocks } from './schema/manuscriptExport';
 import { WriterActionsContext } from './views/WriterActions';
 import RevisionPanel from './revision/RevisionPanel';
+import RecallPanel from './recall/RecallPanel';
+import CitedSpans from './recall/CitedSpans';
+import RegisterPanel from './registers/RegisterPanel';
+import DepthView from './registers/DepthView';
 import './WriterEditor.css';
 
 /**
@@ -72,6 +76,14 @@ export default function WriterEditor({
   // W8 — the lineage the author is revising, or null. Opening this panel changes nothing;
   // it is a view onto what a committed span was declared under, plus its history.
   const [revising, setRevising] = useState(null);
+  // W9 — the recall panel, and the committed passages the author has marked as
+  // grounding for the next render. Empty unless they put something here: there is no
+  // auto-citation, and the server refuses anything that is not committed canon.
+  const [recalling, setRecalling] = useState(false);
+  const [cited, setCited] = useState([]);
+  // W10 — the author's ladder, and the manuscript read along it. Both are views:
+  // opening either writes nothing, and the depth view makes no model call at all.
+  const [panel, setPanel] = useState('');
 
   const editor = useEditor({
     extensions: useMemo(() => writerExtensions(), []),
@@ -143,6 +155,9 @@ export default function WriterEditor({
     try {
       const out = await writerService.run(projectId, {
         text, manuscriptId, sceneId, onlyDirectives,
+        // Only the identity travels — the server re-reads the prose from the ledger, so a
+        // stale copy held in this component can never become what the render rested on.
+        cited: cited.map((c) => ({ lineage_id: c.lineage_id, version: c.version })),
       });
       const results = out.results ?? [];
       insertResults(results);
@@ -350,6 +365,46 @@ export default function WriterEditor({
     [editor, projectId],
   );
 
+  // ── W9: recall & cite ─────────────────────────────────────────────────────
+  //
+  // Recall is READ-ONLY. It returns the author's own committed sentences and this component
+  // does nothing with them but show them and let the author mark one as grounding. There is
+  // deliberately no "insert this into the manuscript" path here: copying prior prose into
+  // the book would be the model deciding to repeat the author.
+
+  const onRecall = useCallback(
+    async ({ query, includeHistorical }) =>
+      writerService.recall(projectId, { query, includeHistorical }),
+    [projectId],
+  );
+
+  const onCite = useCallback((span) => {
+    setCited((current) => (
+      current.some((c) => c.lineage_id === span.lineage_id && c.version === span.version)
+        ? current
+        : [...current, span]
+    ));
+    setStatus('The next render will be asked to stay consistent with that passage.');
+  }, []);
+
+  const onUncite = useCallback((span) => {
+    setCited((current) => current.filter(
+      (c) => !(c.lineage_id === span.lineage_id && c.version === span.version),
+    ));
+  }, []);
+
+  // ── W10: the author's layers ──────────────────────────────────────────────
+
+  const onLoadRegisters = useCallback(
+    async () => writerService.registers(projectId), [projectId]);
+  const onRegisterTemplate = useCallback(
+    async () => writerService.registerTemplate(), []);
+  const onDeclareRegisters = useCallback(
+    async (registers) => writerService.declareRegisters(projectId, registers),
+    [projectId]);
+  const onLoadDepth = useCallback(
+    async () => writerService.depth(projectId), [projectId]);
+
   const onDismissRevision = useCallback(
     async (passageId) => {
       await writerService.dismiss(passageId);
@@ -422,6 +477,33 @@ export default function WriterEditor({
           </button>
           <button
             type="button"
+            onClick={() => setPanel((p) => (p === 'registers' ? '' : 'registers'))}
+            aria-pressed={panel === 'registers'}
+            data-testid="registers-toggle"
+            title="Name the layers you work in"
+          >
+            Layers
+          </button>
+          <button
+            type="button"
+            onClick={() => setPanel((p) => (p === 'depth' ? '' : 'depth'))}
+            aria-pressed={panel === 'depth'}
+            data-testid="depth-toggle"
+            title="Read your manuscript by the layers you named"
+          >
+            Depth
+          </button>
+          <button
+            type="button"
+            onClick={() => setRecalling((r) => !r)}
+            aria-pressed={recalling}
+            data-testid="recall-toggle"
+            title="Search what you have already committed"
+          >
+            Recall
+          </button>
+          <button
+            type="button"
             onClick={() => setFocusMode((f) => !f)}
             aria-pressed={focusMode}
             data-testid="focus-toggle"
@@ -431,6 +513,31 @@ export default function WriterEditor({
           <span className="writer-editor__status" data-testid="editor-status">{status}</span>
           {error && <span className="writer-editor__error" data-testid="editor-error">{error}</span>}
         </div>
+
+        {panel === 'registers' && (
+          <RegisterPanel
+            onLoad={onLoadRegisters}
+            onDeclare={onDeclareRegisters}
+            onLoadTemplate={onRegisterTemplate}
+            onClose={() => setPanel('')}
+          />
+        )}
+
+        {panel === 'depth' && (
+          <DepthView onLoad={onLoadDepth} onClose={() => setPanel('')} />
+        )}
+
+        <CitedSpans cited={cited} onUncite={onUncite} />
+
+        {recalling && (
+          <RecallPanel
+            onRecall={onRecall}
+            cited={cited}
+            onCite={onCite}
+            onUncite={onUncite}
+            onClose={() => setRecalling(false)}
+          />
+        )}
 
         <div className="writer-editor__page">
           <EditorContent editor={editor} />

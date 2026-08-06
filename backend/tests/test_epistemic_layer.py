@@ -133,6 +133,25 @@ def test_retag_and_guard_agree_on_what_is_legal():
             assert retag_ok == (status in allowed), (producer, status)
 
 
+@pytest.mark.parametrize("basis", ["mask", "box"])
+def test_retag_and_guard_agree_on_a_declared_producer_too(basis):
+    """TWO-STATUS-001 is where the two could most easily have parted company: a declared producer
+    may claim two kinds, so `permitted_statuses` alone would let `retag` bless a mask-basis mark as
+    `interpretive` that `guard` would then refuse. Whatever `retag` accepts must survive `guard`,
+    and whatever it refuses must be refused there too."""
+    for status in EpistemicStatus:
+        d = {"producer": "nestedness_organ", "type": "relation_mark",
+             epistemics.SUBSTRATE_KEY: basis,
+             epistemics.STATUS_KEY: epistemics.substrate_ceiling(basis).value}
+        try:
+            retagged = epistemics.retag(d, status)
+        except EpistemicViolation:
+            with pytest.raises(EpistemicViolation):
+                epistemics.guard([{**d, epistemics.STATUS_KEY: status.value}])
+            continue
+        assert epistemics.guard([retagged]) == [retagged], (basis, status)
+
+
 # ── 3. `sourced` stays sourced, everywhere ──────────────────────────────────
 
 def test_a_sourced_producer_admits_no_alternative_at_all():
@@ -227,3 +246,160 @@ def test_uncertain_is_not_the_universal_answer():
         strokes=[{"points": [[0.5, 0.5]], "radius": 0.05}], run_id="run1",
         adapter="cpu_perceptual", latency_ms=1.0, confidence=0.42, threshold=0.05)
     assert d[epistemics.STATUS_KEY] == "measured"
+
+
+# ── 5. TWO-STATUS-001: one producer, two kinds, decided by the substrate ────
+#
+# The gap three lanes reported, and the shape of the fix. WAVE2.5 created producers whose output
+# is a MEASUREMENT on one substrate and a READING on another — the same organ, the same code path,
+# the same pair of regions, differing only in whether the corpus carried masks. `permitted_statuses`
+# could express one kind per producer, so the organ's honest box weakening was refused by its own
+# guard, and two lanes pinned that rather than widening a shared contract from a feature lane.
+#
+# These tests hold the two halves of the fix apart, because the second is what makes the first
+# safe: a producer may DECLARE the substrates it computes on (widening what it may emit), and is
+# then held to the substrate it names on every single output (a refusal that did not exist).
+
+
+def test_a_declared_producer_may_emit_the_kinds_its_substrates_support():
+    """THE WIDENING. Both kinds admitted from one producer, each on its own substrate."""
+    for basis, expected in (("mask", EpistemicStatus.MEASURED),
+                            ("box", EpistemicStatus.INTERPRETIVE)):
+        d = {"producer": "nestedness_organ", "type": "relation_mark",
+             epistemics.SUBSTRATE_KEY: basis, epistemics.STATUS_KEY: expected.value}
+        assert epistemics.guard([d]) == [d]
+        assert epistemics.declare("nestedness_organ", expected, basis=basis) is expected
+
+
+def test_a_declared_producer_is_held_to_the_substrate_it_names():
+    """THE RETAINED REFUSAL — the price of the widening, and the finial-in-sky class.
+
+    `cseg_golden_finial_7` scored containment 1.000 and index 0.999 against 'Sky' on the BOX
+    basis. The finial is in FRONT of the sky. Nothing about declaring substrates lets a producer
+    call that a measurement, and the check is STRICT rather than a cap: a mask-basis reading
+    tagged `interpretive` is as wrong as a box-basis one tagged `measured`, because the substrate
+    does not bound the kind, it decides it.
+    """
+    def guarded(basis, status):
+        return epistemics.guard([{"producer": "nestedness_organ", "type": "relation_mark",
+                                  epistemics.SUBSTRATE_KEY: basis,
+                                  epistemics.STATUS_KEY: status.value}])
+
+    with pytest.raises(EpistemicViolation, match="substrate"):
+        guarded("box", EpistemicStatus.MEASURED)
+    with pytest.raises(EpistemicViolation, match="substrate"):
+        guarded("mask", EpistemicStatus.INTERPRETIVE)
+    # abstaining is always available, on either substrate
+    guarded("box", EpistemicStatus.UNCERTAIN)
+    guarded("mask", EpistemicStatus.UNCERTAIN)
+
+
+def test_an_unruled_substrate_is_interpretive_and_never_measured():
+    """A basis nobody has ruled on is exactly where a confident answer would be wrong — the same
+    reasoning that hands an unknown PRODUCER `uncertain`."""
+    assert epistemics.substrate_ceiling("depth_field") is EpistemicStatus.INTERPRETIVE
+    assert epistemics.substrate_ceiling("") is EpistemicStatus.INTERPRETIVE
+    with pytest.raises(EpistemicViolation, match="substrate"):
+        epistemics.declare("nestedness_organ", EpistemicStatus.MEASURED, basis="depth_field")
+
+
+@pytest.mark.parametrize("producer,improper", [
+    ("find_similar", "interpretive"),     # an extent reported as a reading is not modesty
+    ("sam_refine", "measured"),
+    ("semantic_read", "measured"),
+    ("rhythm", "visible"),
+])
+def test_the_widening_did_not_reach_producers_that_declared_nothing(producer, improper):
+    """THE HONESTY FLOOR OF THIS LANE: additive to what is admitted, subtractive to nothing that
+    was caught.
+
+    Every one of these was refused before TWO-STATUS-001 and is refused after. The tempting
+    version of this fix — "a producer may weaken to any lower status" — would have admitted the
+    first row, and it should not: `interpretive` is a different SPECIES of claim from `measured`
+    or `visible`, not a humbler grade of it. `uncertain` is the only universal weakening because
+    it is the only status that is an abstention rather than a different claim.
+    """
+    with pytest.raises(EpistemicViolation):
+        epistemics.guard([{"producer": producer, "type": "brush_field",
+                           epistemics.STATUS_KEY: improper}])
+    assert epistemics.permitted_statuses(producer) == frozenset(
+        {epistemics.default_status_for(producer), EpistemicStatus.UNCERTAIN})
+
+
+def test_an_undeclared_producer_is_not_checked_against_a_key_it_does_not_own():
+    """`presence_reading` ships a top-level `basis` in an entirely different vocabulary
+    (`verified` / `not_detected`). A guard that read the bare key would start refusing a producer
+    it has nothing to say about — so the substrate check reads `epistemic_basis` (or an organ
+    mark's `measurement.basis`) and is gated on the producer having declared at all."""
+    reading = ss.presence_verdict([], phrase="a lion", run_id="run1", detector_fired=True)
+    assert reading["basis"] == "detector_proposed_but_unverified"
+    assert epistemics.substrate_of(reading) == ""
+    assert epistemics.guard([reading]) == [reading]
+
+
+def test_the_declaration_and_the_classification_cannot_drift():
+    """Two tables that must agree, with nothing making them agree — the failure ROLES-001 already
+    documents. Checked rather than trusted: a declared producer must be classified, no declared
+    substrate may exceed its producer's ceiling, and no walled producer may declare one."""
+    epistemics.assert_substrate_tables_agree()
+    for producer in epistemics._SUBSTRATES:
+        assert producer in epistemics.classified_producers()
+        assert epistemics.default_status_for(producer) not in epistemics.WALLED_STATUSES
+
+
+def test_the_organ_and_the_guard_read_one_ruling():
+    """The organ STAMPS the status and the guard CHECKS it. While those were two tables they
+    disagreed, and the disagreement was invisible from either side."""
+    from backend.services import adjacency_organ, nestedness_organ
+
+    assert nestedness_organ.BASIS_EPISTEMIC == {
+        b: s.value for b, s in epistemics.SUBSTRATE_CEILING.items()}
+    assert adjacency_organ.BASIS_EPISTEMIC is nestedness_organ.BASIS_EPISTEMIC
+    for basis in epistemics.SUBSTRATE_CEILING:
+        assert nestedness_organ.epistemic_for(basis) == \
+            epistemics.substrate_ceiling(basis).value == \
+            adjacency_organ.epistemic_for(basis)
+
+
+def test_a_sourced_producer_still_admits_nothing_at_all():
+    """The wall is untouched by the widening, and would be the worst thing to widen by accident."""
+    assert epistemics.declared_substrates("historical_source") == ()
+    assert epistemics.permitted_statuses("historical_source") == \
+        frozenset({EpistemicStatus.SOURCED})
+
+
+def test_every_module_that_adopts_the_substrate_ruling_declares_itself():
+    """THE NO-DRIFT GUARD for the new table, and the answer to "which producers were migrated".
+
+    The card that opened this lane said to migrate every measured-ceiling producer. Enumerated,
+    there are eleven, and only two compute on more than one substrate — the other nine
+    (`rhythm`, `shading`, `recession`, `fall_of_light`, `pressure_zone`, `material_field`,
+    `negative_space`, `architectural_axis`, `concept_segment`) each read the image signal one way
+    and emit one kind. Declaring a single substrate for each would grant them nothing and add nine
+    entries that can go stale, so they are deliberately absent.
+
+    "Deliberately absent" is worth exactly nothing as a comment, so it is a scan instead. A module
+    that adopts the ruling — by consulting `substrate_ceiling` or exposing `epistemic_for` — is a
+    module whose output kind varies with its substrate, and it must appear in `_SUBSTRATES`. The
+    next organ that adopts the ruling and forgets to declare fails here rather than shipping a
+    producer whose honest weakening its own guard refuses, which is the exact bug this lane closed.
+    """
+    import re
+    from pathlib import Path
+
+    services = Path(__file__).resolve().parents[1] / "services"
+    adopters = set()
+    for path in sorted(services.glob("*.py")):
+        source = path.read_text()
+        if "substrate_ceiling" not in source and "def epistemic_for" not in source:
+            continue
+        organ = re.search(r'^ORGAN\s*=\s*"([^"]+)"', source, re.M)
+        if organ:
+            adopters.add(organ.group(1))
+
+    assert adopters, "the scan found nothing — a guard that scans nothing passes vacuously"
+    undeclared = sorted(adopters - set(epistemics._SUBSTRATES))
+    assert not undeclared, (
+        f"{undeclared} consult the substrate ruling but declare no substrates. Their honest "
+        f"weakening will be refused by their own guard — the gap TWO-STATUS-001 closed. Add them "
+        f"to `epistemics._SUBSTRATES`.")

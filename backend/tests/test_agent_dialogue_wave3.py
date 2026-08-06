@@ -542,31 +542,42 @@ def test_the_adjacency_organ_is_pure():
         assert hit is None, f"adjacency_organ.py:{lineno} imports {hit.group(0)!r} — not pure"
 
 
-def test_the_adjacency_organ_is_classified_and_inherits_the_same_documented_gap():
-    """The hole the situated-agent lane found, not reopened — and the half of it that stays open,
-    named here rather than left for the next lane to rediscover.
+def test_the_adjacency_organ_is_classified_and_the_gap_it_inherited_is_closed():
+    """This lane inherited the situated-agent lane's gap, reported it a second time and pinned it a
+    second time. TWO-STATUS-001 closed it; this is the same test read the other way round.
 
-    Classified, so `guard()` no longer refuses the organ's own mask marks (an unclassified producer
-    falls to `uncertain`, which is what refused `nestedness_organ` before WAVE3). Still gapped, for
-    exactly the reason `test_the_epistemic_guard_cannot_express_this_producer_and_that_is_the
-    _finding` gives: `permitted_statuses` is one kind per producer plus `uncertain`, and this organ
-    emits two kinds derived per measurement. Its legitimate box weakening is refused.
+    What was gapped: `permitted_statuses` was one kind per producer plus `uncertain`, and this
+    organ emits two kinds derived per measurement, so its legitimate box weakening was refused by
+    its own guard. Two lanes declined to widen it from a feature lane, because widening touches
+    every measured-ceiling producer in the system.
 
-    Widening `permitted_statuses` would change behaviour for every measured-ceiling producer in the
-    system, so this lane reports the gap and does not widen it from here. When someone does, this
-    test fails — the correct way for a documented limitation to expire.
+    What it was NOT closed by is worth stating, because that version would have looked equivalent
+    and been wrong: "any producer may weaken to any lower status". That would let `find_similar`
+    publish `interpretive` about a real extent, which is miscategorisation wearing the clothes of
+    modesty. The organ DECLARES the substrates it computes on instead, one table says what each
+    substrate supports, and the widening is paid for by a per-output check — the assertion at the
+    bottom of this test, which nothing in the guard was doing before.
     """
     assert adj.ORGAN in epistemics.classified_producers()
     assert epistemics.default_status_for(adj.ORGAN) is EpistemicStatus.MEASURED
+    assert epistemics.permitted_statuses(adj.ORGAN) == frozenset(
+        {EpistemicStatus.MEASURED, EpistemicStatus.INTERPRETIVE, EpistemicStatus.UNCERTAIN})
 
-    def guarded(region):
-        mark = adj.grounding_mark(adj.measure(region, WHOLE), post_id="prim", now=STAMP)
+    def guarded(region, status=None):
+        measurement = adj.measure(region, WHOLE)
+        mark = adj.grounding_mark(measurement, post_id="prim", now=STAMP)
         return epistemics.guard([{"producer": adj.ORGAN, "type": mark["type"],
-                                  STATUS_KEY: mark[STATUS_KEY]}])
+                                  "measurement": measurement,
+                                  STATUS_KEY: status or mark[STATUS_KEY]}])
 
-    guarded(RIM)                                       # the mask ceiling: accepted
-    with pytest.raises(epistemics.EpistemicViolation, match="may only weaken"):
-        guarded({"id": "b_in", "box": {"x": 0.10, "y": 0.10, "w": 0.10, "h": 0.10}})
+    boxed = {"id": "b_in", "box": {"x": 0.10, "y": 0.10, "w": 0.10, "h": 0.10}}
+    guarded(RIM)        # the mask ceiling: measured, accepted as it always was
+    guarded(boxed)      # the honest box weakening: interpretive, refused until TWO-STATUS-001
+
+    # THE RETAINED REFUSAL, and it did not exist before the widening: boundary contact off two
+    # bounding boxes is an estimate, and no declaration lets the organ call it a measurement.
+    with pytest.raises(epistemics.EpistemicViolation, match="substrate"):
+        guarded(boxed, EpistemicStatus.MEASURED.value)
 
     # and the ceiling is a CEILING — the organ may never promote its own output
     with pytest.raises(epistemics.EpistemicViolation):

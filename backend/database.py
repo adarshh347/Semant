@@ -261,3 +261,19 @@ async def ping_server():
         return False
         # Optionally, you could raise an exception here to stop the app
         # raise RuntimeError(f"Could not connect to MongoDB: {e}")
+# --- Semant Writer W10 · depth registers ---
+# writer_register_collection: one document per project holding the author's ORDERED register
+# vocabulary — the names they give the layers of their own work.
+#
+# IT STARTS EMPTY AND STAYS EMPTY UNTIL THE AUTHOR DECLARES SOMETHING, and that is the whole
+# guard. There is no seeded ladder here, because whatever ships as the default becomes what
+# most authors keep — so a default IS the imposed taxonomy, however reasonable it reads. The
+# familiar surface/psychological/philosophical ladder exists in `registers.py` as a TEMPLATE
+# that `propose_template()` returns unsaved, and the author edits and commits it or ignores
+# it entirely.
+#
+# `order` records the author's ladder so the depth view can show it in their sequence.
+# Nothing in this codebase compares two registers, treats a later one as "deeper", or scores
+# a passage by where its registers sit: the meaning of the ladder is the author's and is
+# never read here.
+writer_register_collection = database.get_collection("writer_registers")

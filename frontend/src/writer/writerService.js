@@ -30,6 +30,13 @@ const post = (url, body) =>
     body: JSON.stringify(body ?? {}),
   });
 
+const put = (url, body) =>
+  fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
+  });
+
 const patch = (url, body) =>
   fetch(url, {
     method: 'PATCH',
@@ -188,6 +195,41 @@ export const writerService = {
     );
   },
 
+  // --- Depth registers (W10) ---
+  // The author's own layers. There is NO DEFAULT LADDER: a fresh project returns an empty
+  // vocabulary, and the classic ladder is available only as an unsaved template to edit and
+  // commit. Whatever shipped as a default would become what most authors keep.
+  async registers(projectId) {
+    return json(await fetch(`${BASE}/${projectId}/registers`), 'load registers');
+  },
+  async registerTemplate() {
+    return json(await fetch(`${BASE}/registers/template`), 'load register template');
+  },
+  async declareRegisters(projectId, registers) {
+    return json(
+      await put(`${BASE}/${projectId}/registers`, { registers }),
+      'declare registers',
+    );
+  },
+  // Derived from provenance. No model call on this path and no interpretation — it reports
+  // which layers a span was MADE at, never what it means at them.
+  async depth(projectId) {
+    return json(await fetch(`${BASE}/${projectId}/depth`), 'load depth view');
+  },
+
+  // --- Recall (W9) ---
+  // RETRIEVAL, NOT NARRATION. Returns the author's own committed sentences, byte for byte,
+  // or nothing. There is no `summarise` call here and there must never be one — a synthesis
+  // of prior material is a render: declared, quarantined, author-committed.
+  async recall(projectId, { query, limit = 5, includeHistorical = false }) {
+    return json(
+      await post(`${BASE}/${projectId}/recall`, {
+        query, limit, include_historical: includeHistorical,
+      }),
+      'recall',
+    );
+  },
+
   // --- The loop ---
   // Parse only: the `/` ÷ `//` split, with no model called and nothing stored.
   async parse(projectId, text) {
@@ -196,7 +238,9 @@ export const writerService = {
   // Execute a block. Every render comes back QUARANTINED; nothing reaches the manuscript.
   // `onlyDirectives` is BLOCK SCOPE (W3 §1): the indices of the directives still pending.
   // `null`/omitted runs the whole block, which is the explicit re-run-everything action.
-  async run(projectId, { text, manuscriptId, sceneId, quarantine = true, onlyDirectives = null }) {
+  async run(projectId, {
+    text, manuscriptId, sceneId, quarantine = true, onlyDirectives = null, cited = null,
+  }) {
     return json(
       await post(`${BASE}/${projectId}/run`, {
         text,
@@ -204,6 +248,9 @@ export const writerService = {
         scene_id: sceneId ?? '',
         quarantine,
         only_directives: onlyDirectives,
+        // W9 — committed passages this block should stay consistent with. Author-chosen:
+        // there is no auto-citation, and the server refuses anything not in canon.
+        cited: cited ?? null,
       }),
       'run block',
     );

@@ -59,6 +59,8 @@ from backend.services import role_registry
 from backend.services.director.execution import ERROR, OK, UNAVAILABLE
 from backend.services.llm_service import llm_service
 from backend.services.writer import dsl, instrument, library, relations
+from backend.services.writer import recall as recall_mod
+from backend.services.writer import registers as registers_mod
 from backend.services.writer.dsl import Directive, OrchestrationNote
 from backend.services.writer.operators import operator_registry
 
@@ -157,6 +159,8 @@ def build_render_prompt(
     arguments: Optional[Dict[str, str]] = None,
     preceding_prose: str = "",
     required: Sequence[Dict[str, Any]] = (),
+    cited: Sequence[Dict[str, str]] = (),
+    foreground: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
     """The render contract as `{system, user}`. PURE — testable without a network.
 
@@ -191,6 +195,44 @@ def build_render_prompt(
         parts.append("")
         for op in required:
             parts.append(operator_registry.as_evidence(op))
+            parts.append("")
+
+    if foreground:
+        # W10 — the author asked to work at a layer they named. What goes in the prompt is
+        # a POINTER AT THEIR OWN OPERATORS, never an instruction about depth: no "be more
+        # philosophical", no gloss on what the register means. The register's meaning lives
+        # in the operators tagged with it, and those are already above in full.
+        names_at = ", ".join(f"`{n}`" for n in foreground["operators"])
+        parts.append(
+            f"THE AUTHOR HAS ASKED TO FOREGROUND THE LAYER THEY CALL "
+            f"\"{foreground['registers']}\". In their ontology that layer is carried by "
+            f"{names_at}. Let that operator's work lead the passage and let the others "
+            f"support it. This is a matter of emphasis among the operators above — do not "
+            f"reach for some general idea of what that word means, and do not name the "
+            f"layer in the prose:"
+        )
+        parts.append("")
+
+    if cited:
+        # W9 — the author's OWN COMMITTED PROSE, verbatim, as grounding. This is the purest
+        # material in the prompt: not a declaration about how to write, but writing they
+        # already accepted into the book.
+        #
+        # It says STAY CONSISTENT WITH, not CONTINUE FROM or MATCH THE STYLE OF. The author
+        # cited these passages to keep the new one from contradicting them; reading that as
+        # "write more like this" would let committed prose act as a style reference, which
+        # is the author's own voice arriving through a door that was not built for it — and
+        # it would make the cited text an instruction the author never gave.
+        parts.append(
+            "PASSAGES THE AUTHOR HAS ALREADY COMMITTED AND ASKED YOU TO STAY CONSISTENT "
+            "WITH. This is their own accepted prose, quoted exactly. Treat what it "
+            "establishes as true, and do not contradict it. Do NOT continue it, retell it, "
+            "quote it back, or take it as a style to imitate — render the directive below:"
+        )
+        parts.append("")
+        for citation in cited:
+            parts.append(f"[{citation['label']}]")
+            parts.append(citation["text"])
             parts.append("")
 
     if orchestration:
@@ -296,7 +338,20 @@ _PRIOR_SURNAMES = (
 _STYLE_BY_REFERENCE = _PRIOR_PHRASES + _PRIOR_SURNAMES
 
 #: `avoid` is exempt: telling the model NOT to sound like something imports nothing.
-_REFERENCE_CHECKED_KEYS = tuple(k for k in dsl.ORCHESTRATION_KEYS if k != "avoid")
+#:
+#: `register` (W10) is exempt for the opposite reason — it is checked by something STRICTER.
+#: A register value must name one of the author's DECLARED registers or the render refuses,
+#: and declaring a name is precisely the act that grounds it. That is the same remedy this
+#: heuristic's own refusal points at ("#create it, in your words"), applied in advance.
+#:
+#: Leaving it in would over-refuse on the author's own vocabulary: an author who names a
+#: layer `noir` because that is what the layer IS to them would be told they cannot use
+#: their own declared word — a false positive against a grounded reference, which is the one
+#: case this list should never fire on. An UNDECLARED value like `//register: like Tolstoy`
+#: is still refused, and refused harder: it names no register at all.
+_REFERENCE_CHECKED_KEYS = tuple(
+    k for k in dsl.ORCHESTRATION_KEYS if k not in ("avoid", "register")
+)
 
 
 def _suggested_operator_name(marker: str) -> str:
@@ -370,6 +425,66 @@ def _thin_operator_warnings(operators: Sequence[Dict[str, Any]]) -> List[str]:
     return out
 
 
+def _register_refusal(
+    requested: Sequence[str],
+    declared: Sequence[str],
+    participating: Sequence[Dict[str, Any]],
+) -> Optional[str]:
+    """W10's load-bearing render guard: depth is realized, never fabricated.
+
+    THE FAILURE THIS EXISTS TO PREVENT. "Render this more philosophically" with nothing
+    behind it is the model's idea of philosophical, which is priors — the depth axis is
+    unusually good at hiding that, because prose written to a generic notion of depth reads
+    impressive and the author has no way to see that it came from nowhere they declared.
+
+    So `//register` FOREGROUNDS the author's own register-tagged operators and can do
+    nothing else. Three refusals, each naming what would make it work:
+
+      1. the register is not one the author declared — `registers.require` handles that;
+      2. no operator in this render carries it — refuse here, because the note would then
+         have nothing to act through and the only way to honour it would be to invent;
+      3. it is honoured — the prompt names WHICH of the author's operators carry it, which
+         is a pointer at their own declarations rather than an instruction about depth.
+
+    Case 2 is the one worth being strict about. The tempting alternative is to let the
+    render proceed and quietly ignore the note; that is worse than refusing, because the
+    author would read the result as prose written at their register when nothing about it
+    was.
+    """
+    if not requested:
+        return None
+
+    tagged = sorted({
+        op.get("name") for op in participating
+        if (op.get("register") or "") in requested and op.get("name")
+    })
+    if tagged:
+        return None
+
+    if not declared:
+        return (
+            f"`// register: {', '.join(requested)}` — you have not declared any registers "
+            f"yet, so there is no layer of yours for this to work at. Name the layers you "
+            f"work in first; there is no default ladder here because the ladder is yours."
+        )
+
+    unknown = [r for r in requested if r not in declared]
+    if unknown:
+        return (
+            f"`// register: {', '.join(unknown)}` names no register you declared. You have: "
+            f"{', '.join(declared)}."
+        )
+
+    return (
+        f"`// register: {', '.join(requested)}` — none of the operators in this directive "
+        f"carry that register, so there is nothing of yours for it to foreground. Rendering "
+        f"anyway would mean inventing what that layer sounds like, which is exactly the "
+        f"depth you did not declare.\n\n"
+        f"Tag an operator with it (an operator's register is editable, and retagging bumps "
+        f"its version), or invoke one that already carries it."
+    )
+
+
 def _author_refusal(found: Dict[str, Any], manuscript_author: str) -> Optional[str]:
     """I5 ACROSS AUTHORS (W5). An operator another person declared may not render here.
 
@@ -394,6 +509,10 @@ def _preflight(
     names: Sequence[str],
     orchestration: Dict[str, str],
     manuscript_author: str = "",
+    *,
+    requested_registers: Sequence[str] = (),
+    declared_registers: Sequence[str] = (),
+    participating: Sequence[Dict[str, Any]] = (),
 ) -> Optional[str]:
     """The refusal reason, or None to proceed. Cheap, certain, and before any spend."""
     if not names:
@@ -418,6 +537,14 @@ def _preflight(
     by_reference = _style_by_reference(orchestration)
     if by_reference:
         return by_reference
+
+    # W10 — the author's-ladder wall. AFTER the style check, because a `// voice: like
+    # Tolstoy` alongside a register is still a priors import first and a depth question
+    # second, and the author should be told about the import.
+    no_depth = _register_refusal(
+        requested_registers, declared_registers, participating)
+    if no_depth:
+        return no_depth
 
     # A structural contradiction the parser can see without a model: the directive
     # invokes what the staging forbids. The model would have to choose which of the
@@ -507,6 +634,7 @@ async def render_directive(
     scene_id: str = "",
     run_id: str = "",
     manuscript_author: str = "",
+    cited: Sequence[Dict[str, Any]] = (),
 ) -> RenderResult:
     """Fire one `/` directive under its active `//` orchestration.
 
@@ -531,6 +659,14 @@ async def render_directive(
     )
     pulled = [ontology[n] for n in pulled_names if n in ontology]
 
+    # W10 — which of the author's layers this directive was asked to foreground, and
+    # which operators actually carry them. Resolved before provenance is built, because
+    # provenance records the request, and before the model, like every other wall.
+    requested_registers = registers_mod.parse_register_intent(
+        orchestration.get("register", ""))
+    declared_registers = await registers_mod.names(project_id) if requested_registers else []
+    participating = [found[n] for n in names if n in found] + list(pulled)
+
     def _stamp(op: Dict[str, Any], source: str) -> Dict[str, Any]:
         return {
             "name": op.get("name"),
@@ -546,6 +682,11 @@ async def render_directive(
             # taken from; nothing reads it to fetch anything.
             "library_ref": op.get("library_ref"),
             "author": op.get("author") or None,
+            # W10 — the layer this operator carried AT THE MOMENT IT FIRED. Stamped rather
+            # than looked up later: retagging an operator bumps its version but the prose
+            # already committed was made at the old layer, and a depth view that read the
+            # CURRENT tag would silently rewrite the history of the book's layers.
+            "register": op.get("register") or "",
         }
 
     provenance: Dict[str, Any] = {
@@ -561,6 +702,13 @@ async def render_directive(
         "manuscript_id": manuscript_id,
         "scene_id": scene_id,
         "run_id": run_id,
+        # W9, I4 — which committed passages this one was asked to stay consistent with.
+        # Recorded whether or not the render succeeds, for the same reason the operators
+        # are: what the author asked for is part of the record, not just what came back.
+        "cited": recall_mod.citation_stamps(cited),
+        # W10, I4 — the layer the author asked to foreground. Recorded whether or not the
+        # render succeeds, like the operators: what they asked for is part of the record.
+        "registers": list(requested_registers),
         "rendered_at": _now_iso(),
     }
 
@@ -569,7 +717,12 @@ async def render_directive(
     if manuscript_id and not manuscript_author:
         manuscript_author = await _manuscript_author(manuscript_id)
 
-    refusal = _preflight(resolved, names, orchestration, manuscript_author)
+    refusal = _preflight(
+        resolved, names, orchestration, manuscript_author,
+        requested_registers=requested_registers,
+        declared_registers=declared_registers,
+        participating=participating,
+    )
     if refusal:
         await instrument.record(
             instrument.REFUSAL, project_id, operators=names,
@@ -583,6 +736,17 @@ async def render_directive(
         arguments=arguments,
         preceding_prose=preceding_prose,
         required=pulled,
+        cited=recall_mod.as_grounding(cited),
+        foreground=(
+            {
+                "registers": ", ".join(requested_registers),
+                "operators": sorted({
+                    op["name"] for op in participating
+                    if (op.get("register") or "") in requested_registers
+                }),
+            }
+            if requested_registers else None
+        ),
     )
 
     try:

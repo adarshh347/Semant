@@ -47,7 +47,14 @@ class OperatorPropose(BaseModel):
 
 
 class OperatorCreate(BaseModel):
-    """The author-confirmed write. `definition` is required: see `operators._validate`."""
+    """The author-confirmed write. `definition` is required: see `operators._validate`.
+
+    `register` keeps that name deliberately — it is the domain term and what `//register`
+    is called. Pydantic emits a shadowing warning because `ABCMeta.register` exists on the
+    METACLASS; instance access is unaffected (the W10 suite asserts a round trip), and
+    renaming the wire field to dodge a metaclass name would make the API disagree with the
+    DSL for no behavioural gain.
+    """
     name: str
     definition: str
     rendering_intent: Optional[str] = ""
@@ -55,6 +62,10 @@ class OperatorCreate(BaseModel):
     negative_examples: List[str] = Field(default_factory=list)
     relations: List[OperatorRelation] = Field(default_factory=list)
     author: Optional[str] = ""
+    # W10 — which of the author's DECLARED layers this operator works at. Must name a
+    # register they declared; an undeclared string is refused, the same way a `requires`
+    # target must be a real operator.
+    register: Optional[str] = ""
 
 
 class OperatorUpdate(BaseModel):
@@ -65,6 +76,8 @@ class OperatorUpdate(BaseModel):
     negative_examples: Optional[List[str]] = None
     relations: Optional[List[OperatorRelation]] = None
     author: Optional[str] = None
+    # Retagging changes what the operator IS, so it bumps the version like any other edit.
+    register: Optional[str] = None
 
 
 # --- Assemblages (W4) ---
@@ -161,6 +174,50 @@ class LoopClose(BaseModel):
     reading_id: str
 
 
+# --- Recall & cite (W9) ---
+
+class RecallQuery(BaseModel):
+    """Search the author's own committed prose.
+
+    Retrieval only. There is no `summarise` flag here and there must never be one — a
+    synthesis of prior material is a RENDER, quarantined and author-committed, not a recall.
+    """
+    query: str
+    limit: int = 5
+    # Current versions by default: a superseded version is prose the author has already
+    # replaced, and grounding new work on it would be a quieter version of citing something
+    # they never accepted.
+    include_historical: bool = False
+
+
+# --- Depth registers (W10) ---
+
+class RegisterEntry(BaseModel):
+    """One layer of the author's own work, in their words."""
+    name: str
+    description: Optional[str] = ""
+
+
+class RegisterDeclare(BaseModel):
+    """The author's ORDERED register vocabulary. Replaces whatever was there.
+
+    There is no default and no partial merge: the author hands over the ladder as they want
+    it, in the order they want it. An empty list is legal — it means they have no depth axis,
+    which is the state every project starts in.
+    """
+    registers: List[RegisterEntry]
+
+
+class Citation(BaseModel):
+    """A committed passage a render is asked to stay consistent with.
+
+    Names a LINEAGE, optionally pinned to a version. Only committed versions resolve —
+    `resolve_citations` refuses anything else (I3).
+    """
+    lineage_id: str
+    version: Optional[int] = None
+
+
 # --- Running a block ---
 
 class BlockRun(BaseModel):
@@ -179,6 +236,10 @@ class BlockRun(BaseModel):
     # whole block, which is the explicit "re-run everything" action. Omitting this is
     # therefore the safe default for any caller with no notion of what is satisfied.
     only_directives: Optional[List[int]] = None
+    # W9 — committed passages this block should stay consistent with. Author-driven: there
+    # is no auto-citation, and an empty list means the render rests on the declared
+    # operators alone, exactly as it did before W9.
+    cited: Optional[List[Citation]] = None
 
 
 class BlockParse(BaseModel):
