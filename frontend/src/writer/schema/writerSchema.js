@@ -76,6 +76,29 @@ export const ManuscriptParagraph = Paragraph.extend({
         parseHTML: (el) => el.getAttribute('data-block-id'),
         renderHTML: (attrs) => (attrs.blockId ? { 'data-block-id': attrs.blockId } : {}),
       },
+      // W8 — which passage lineage this span belongs to, and which version of it is on
+      // the page. THE PARAGRAPH IS THE CURRENT POINTER: it holds exactly one version, so
+      // a superseded version has no route into the export.
+      //
+      // `keepOnSplit: false` for the same reason as the two above, and it matters more
+      // here rather than less. A split that carried the lineage would leave two paragraphs
+      // both claiming to be version N of one passage, and accepting a revision would move
+      // a pointer that two different pieces of prose believed they were.
+      lineageId: {
+        default: null,
+        keepOnSplit: false,
+        parseHTML: (el) => el.getAttribute('data-lineage-id'),
+        renderHTML: (attrs) => (attrs.lineageId ? { 'data-lineage-id': attrs.lineageId } : {}),
+      },
+      version: {
+        default: null,
+        keepOnSplit: false,
+        parseHTML: (el) => {
+          const raw = el.getAttribute('data-version');
+          return raw ? Number(raw) : null;
+        },
+        renderHTML: (attrs) => (attrs.version ? { 'data-version': String(attrs.version) } : {}),
+      },
     };
   },
 });
