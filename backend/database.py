@@ -142,6 +142,20 @@ writer_usage_collection = database.get_collection("writer_usage")
 # can never silently redefine the language under Book A's committed prose.
 writer_library_collection = database.get_collection("writer_library")
 
+# --- Semant Writer W7 · the alignment reading ---
+# writer_reading_collection: one doc per alignment reading — the flags it raised, the
+# declared elements it measured against, and the model that produced it. Readings are
+# DIAGNOSTICS: a flag is a quarantined suggestion the author dismisses or acts on, and
+# nothing in this collection is prose or can become prose. It exists so a flag has an
+# identity to dismiss, and so the reading is itself auditable — the editor is held to the
+# same standard as the composer.
+#
+# It is also where the calibration signal accrues: every flag records the operator it cited
+# and what the author did about it. An operator whose renders are repeatedly flagged as
+# diverging from its own intent is miscalibrated, and this is the record that will
+# eventually be able to say so. Nothing reads it that way yet — the corpus is not there.
+writer_reading_collection = database.get_collection("writer_readings")
+
 # --- Vision runtime provenance (CIRCULATION-SPINE-001 · P1) ---
 # vision_run_collection: one poll-friendly document per vision operation attempt, with
 # its stage events embedded (mirrors the agent_runs run+step-ledger pattern). This is a

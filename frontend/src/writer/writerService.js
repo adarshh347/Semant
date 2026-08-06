@@ -125,6 +125,31 @@ export const writerService = {
     return json(await post(`${BASE}/${projectId}/library/pull`, { author, name }), 'pull');
   },
 
+  // --- The alignment reading (W7) ---
+  // Diagnoses; never writes. There is no rewrite call here and there must never be one —
+  // what to do about a flag is the author's, through the render loop.
+  async readAlignment(projectId, { text, provenance, passageId, blockId, sceneId, manuscriptId }) {
+    return json(
+      await post(`${BASE}/${projectId}/alignment/read`, {
+        text,
+        provenance: provenance ?? {},
+        passage_id: passageId ?? '',
+        block_id: blockId ?? '',
+        scene_id: sceneId ?? '',
+        manuscript_id: manuscriptId ?? '',
+      }),
+      'read alignment',
+    );
+  },
+  // The author's judgement on one flag. `acted` records that they took it seriously; it
+  // applies nothing.
+  async decideFlag(readingId, flagId, state, note = '') {
+    return json(
+      await post(`${BASE}/alignment/readings/${readingId}/flags/${flagId}`, { state, note }),
+      'decide flag',
+    );
+  },
+
   // --- The loop ---
   // Parse only: the `/` ÷ `//` split, with no model called and nothing stored.
   async parse(projectId, text) {

@@ -106,6 +106,30 @@ class LibraryOp(BaseModel):
     name: str
 
 
+# --- The alignment reading (W7) ---
+
+class AlignmentRead(BaseModel):
+    """Read a passage against its OWN declared standard.
+
+    `provenance` is what makes the reading possible and what bounds it: a passage is measured
+    against the operators and `//` intents that made it, and against nothing else. Passing
+    prose with no provenance is allowed and returns `no_provenance` — the honest answer, not
+    a critique against operators it was never made from.
+    """
+    text: str
+    provenance: Dict[str, Any] = Field(default_factory=dict)
+    passage_id: Optional[str] = ""
+    block_id: Optional[str] = ""
+    scene_id: Optional[str] = ""
+    manuscript_id: Optional[str] = ""
+
+
+class FlagDecision(BaseModel):
+    """The author's response to one flag. `acted` is a judgement, never an applied fix."""
+    state: str          # dismissed | acted
+    note: Optional[str] = ""
+
+
 # --- Running a block ---
 
 class BlockRun(BaseModel):

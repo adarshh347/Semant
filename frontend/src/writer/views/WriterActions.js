@@ -13,6 +13,9 @@ export const WriterActionsContext = createContext({
   onAccept: async () => {},
   onDismiss: async () => {},
   onCreateOperator: async () => {},
+  // W7 — read a passage against its own declared standard. Diagnoses; writes nothing.
+  onReadAlignment: async () => null,
+  onDecideFlag: async () => {},
   onInspectOperator: () => {},
   operators: [],
 });
