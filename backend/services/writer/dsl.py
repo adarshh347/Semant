@@ -38,7 +38,12 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 #: The orchestration vocabulary. A `//` note outside this set is retained but inert.
-ORCHESTRATION_KEYS: Tuple[str, ...] = ("goal", "arc", "priority", "avoid", "voice")
+#: W10 added `register`: which of the AUTHOR'S declared layers to foreground. It is a
+#: `//` note like the rest, so it is stripped from the page (I6) and recorded to
+#: provenance (I4) with no extra machinery — the wall already covers it.
+ORCHESTRATION_KEYS: Tuple[str, ...] = (
+    "goal", "arc", "priority", "avoid", "voice", "register",
+)
 _KNOWN = frozenset(ORCHESTRATION_KEYS)
 
 # ── notation ─────────────────────────────────────────────────────────────────────

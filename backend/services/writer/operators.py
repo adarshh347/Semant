@@ -37,6 +37,7 @@ from uuid import uuid4
 from backend.database import writer_operator_collection
 from backend.services.writer import instrument
 from backend.services.writer import library
+from backend.services.writer import registers as registers_mod
 from backend.services.writer import relations as relations_mod
 
 #: `kind` for a composite operator distilled from a recurring cluster (W4).
@@ -454,6 +455,7 @@ class OperatorRegistry:
         kind: str = "operator",
         members: Optional[List[Dict[str, Any]]] = None,
         library_ref: Optional[Dict[str, Any]] = None,
+        register: str = "",
     ) -> Dict[str, Any]:
         """The explicit author-confirmed write. Raises on a duplicate name.
 
@@ -463,6 +465,17 @@ class OperatorRegistry:
         the author's edits — a passage pinned to "v1" should mean the first thing they had.
         """
         _validate(name, definition)
+        # W10 — a register is a REFERENCE to one the author declared, never free text. The
+        # same discipline as a `requires` target being an operator rather than a string:
+        # otherwise the model's word for a layer walks into the ontology unannounced.
+        if register:
+            # Re-raised as an OperatorError so the operator API has ONE error type: the
+            # caller is creating an operator, and "your register is not declared" is a
+            # reason that creation failed, not a separate kind of failure to handle.
+            try:
+                await registers_mod.require(project_id, register)
+            except registers_mod.RegisterError as exc:
+                raise OperatorError(str(exc)) from exc
         if relations:
             index = await self.by_name(project_id)
             # The operator being created is itself a valid target for its own edges to be
@@ -493,6 +506,10 @@ class OperatorRegistry:
             # version this copy was taken from. Nullable, so every pre-W5 operator is valid
             # as it stands. It is a RECORD, never a live link: nothing reads it to fetch.
             "library_ref": library_ref,
+            # W10 — which of the AUTHOR'S declared layers this operator works at. Empty is
+            # the honest default and stays valid forever: an operator that predates the
+            # author's ladder is not retroactively assigned a depth.
+            "register": register or "",
             "version": 1,
             "history": [],
             "created_at": now,
@@ -508,12 +525,21 @@ class OperatorRegistry:
             return None
 
         editable = ("definition", "rendering_intent", "examples", "negative_examples",
-                    "relations", "author", "kind", "members", "library_ref")
+                    "relations", "author", "kind", "members", "library_ref", "register")
         fields = {k: v for k, v in (patch or {}).items() if k in editable and v is not None}
         if not fields:
             return _out(doc)
         if "definition" in fields:
             _validate(name, fields["definition"])
+        # W10 — retagging CHANGES WHAT THE OPERATOR IS, so it versions like any other edit.
+        # A passage rendered by `interiority` at register `surface` rests on different
+        # grounding than one rendered after the author moved it to `interior`, and
+        # provenance has to be able to tell those apart.
+        if fields.get("register"):
+            try:
+                await registers_mod.require(project_id, fields["register"])
+            except registers_mod.RegisterError as exc:
+                raise OperatorError(str(exc)) from exc
         if "relations" in fields:
             index = await self.by_name(project_id)
             fields["relations"] = relations_mod.validate_relations(
@@ -522,7 +548,7 @@ class OperatorRegistry:
 
         prior = {k: doc.get(k) for k in ("definition", "rendering_intent", "examples",
                                          "negative_examples", "relations", "members",
-                                         "library_ref", "version")}
+                                         "library_ref", "register", "version")}
         prior["retired_at"] = _now()
         history = list(doc.get("history", []))
         history.append(prior)
