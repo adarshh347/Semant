@@ -49,6 +49,8 @@ from backend.schemas.writer import (
     PassageDismiss,
     AlignmentRead,
     FlagDecision,
+    LoopClose,
+    RevisionAccept,
     LibraryOp,
     RelationsUpdate,
 )
@@ -56,6 +58,7 @@ from backend.services.writer import dsl, instrument
 from backend.services.writer import alignment as alignment_mod
 from backend.services.writer import assemblages as assemblages_mod
 from backend.services.writer import readings as readings_mod
+from backend.services.writer import revisions as revisions_mod
 from backend.services.writer import library as library_mod
 from backend.services.writer import relations as relations_mod
 from backend.services.writer.operators import OperatorError, operator_registry
@@ -327,6 +330,66 @@ async def decide_flag(reading_id: str, flag_id: str, request: FlagDecision):
     try:
         return await readings_mod.decide(reading_id, flag_id, request.state, request.note or "")
     except readings_mod.ReadingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+# --- Revision & genealogy (W8 · the temporal axis) ---
+#
+# There is no rewrite-in-place endpoint here and there must never be one. Revising appends
+# an immutable version and moves the block's pointer; every prior version stays exactly as
+# the author committed it. The re-render itself goes through the ORDINARY render route —
+# there is deliberately no revision-specific render call, because a second render path is
+# where a "polish this" instruction would eventually get added.
+
+@router.get("/{project_id}/revision/{scene_id}/{block_id}")
+async def prepare_revision(project_id: str, scene_id: str, block_id: str):
+    """What a committed block was declared under, and its genealogy. Read-only."""
+    try:
+        return await revisions_mod.prepare(project_id, scene_id, block_id)
+    except revisions_mod.RevisionError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/{project_id}/revision/accept")
+async def accept_revision(project_id: str, request: RevisionAccept):
+    """The author commits a re-render as the next version. Nothing is replaced."""
+    try:
+        return await passage_store.accept_revision(
+            request.passage_id,
+            lineage_id=request.lineage_id,
+            scene_id=request.scene_id,
+            block_id=request.block_id,
+            in_response_to=(request.in_response_to.model_dump()
+                            if request.in_response_to else None),
+        )
+    except (PassageError, revisions_mod.RevisionError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/{project_id}/genealogy/{lineage_id}")
+async def passage_genealogy(project_id: str, lineage_id: str):
+    """Every version of one passage, oldest first, with what changed at each step."""
+    return await revisions_mod.version_store.history(lineage_id)
+
+
+@router.get("/{project_id}/genealogy/{lineage_id}/v{version}")
+async def resolve_passage_version(project_id: str, lineage_id: str, version: int):
+    """A superseded version, exactly as it was committed (W5's resolver, temporal half)."""
+    found = await revisions_mod.version_store.resolve(lineage_id, version)
+    if not found:
+        raise HTTPException(status_code=404, detail=f"no version {version} of {lineage_id}")
+    return found
+
+
+@router.post("/{project_id}/revision/{version_id}/close-loop")
+async def close_revision_loop(project_id: str, version_id: str, request: LoopClose):
+    """Did revising against a W7 flag clear it? `still_present` is a recorded answer."""
+    reading = await readings_mod.get(request.reading_id)
+    if not reading:
+        raise HTTPException(status_code=404, detail=f"no such reading: {request.reading_id}")
+    try:
+        return await revisions_mod.close_loop(version_id, reading)
+    except revisions_mod.RevisionError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
 

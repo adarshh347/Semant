@@ -108,6 +108,12 @@ export function toManuscriptBlocks(doc) {
       // is in this list by construction.
       origin: node.attrs?.provenance ? 'user_confirmed' : 'human',
       provenance: node.attrs?.provenance || null,
+      // W8 — the block IS the current pointer, so it carries which lineage and which
+      // version it is showing. Exactly one version travels with a block, which is why
+      // "export is current versions only" needs no filter: there is no second one here
+      // to leave out.
+      lineage_id: node.attrs?.lineageId || undefined,
+      version: node.attrs?.version || undefined,
     });
   });
 
@@ -143,7 +149,12 @@ export function manuscriptBlocksToDoc(blocks) {
       });
       return {
         type: 'paragraph',
-        attrs: { provenance: block.provenance ?? null, blockId: block.id ?? null },
+        attrs: {
+          provenance: block.provenance ?? null,
+          blockId: block.id ?? null,
+          lineageId: block.lineage_id ?? null,
+          version: block.version ?? null,
+        },
         content: nodes,
       };
     })

@@ -11,6 +11,7 @@ import {
 } from './schema/writerDoc';
 import { exportManuscriptText, toManuscriptBlocks } from './schema/manuscriptExport';
 import { WriterActionsContext } from './views/WriterActions';
+import RevisionPanel from './revision/RevisionPanel';
 import './WriterEditor.css';
 
 /**
@@ -68,6 +69,9 @@ export default function WriterEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  // W8 — the lineage the author is revising, or null. Opening this panel changes nothing;
+  // it is a view onto what a committed span was declared under, plus its history.
+  const [revising, setRevising] = useState(null);
 
   const editor = useEditor({
     extensions: useMemo(() => writerExtensions(), []),
@@ -218,6 +222,10 @@ export default function WriterEditor({
       const paragraphs = proseToParagraphs(node.attrs.text, {
         provenance,
         blockId: result?.block_id ?? null,
+        // W8 — a committed span is version 1 of a lineage from the moment it lands, so the
+        // first thing the author revises already has a history to append to.
+        lineageId: result?.lineage_id ?? null,
+        version: result?.lineage_id ? 1 : null,
       });
 
       // Mark the directive satisfied BEFORE the card is replaced, so the position lookup
@@ -282,6 +290,74 @@ export default function WriterEditor({
     [],
   );
 
+  // ── W8: revising a committed span ─────────────────────────────────────────
+  //
+  // The re-render goes through `run` — the SAME call the Render button makes. There is no
+  // revise-and-render service method, deliberately: a second render path is where a "make
+  // it better" instruction would eventually be added with no first-render caller to object.
+
+  const onPrepareRevision = useCallback(
+    async (scene, blockId) => writerService.prepareRevision(projectId, scene, blockId),
+    [projectId],
+  );
+
+  const onRevisionRender = useCallback(
+    async (text) => writerService.run(projectId, {
+      text, manuscriptId, sceneId, quarantine: true,
+    }),
+    [projectId, manuscriptId, sceneId],
+  );
+
+  const onAcceptRevision = useCallback(
+    async ({ passageId, lineageId, sceneId: scene, blockId, inResponseTo }) => {
+      // The gate runs first, as it does for a first Accept: if this throws, the document is
+      // untouched and the manuscript still says what it said.
+      const result = await writerService.acceptRevision(projectId, {
+        passageId, lineageId, sceneId: scene, blockId, inResponseTo,
+      });
+
+      // Move the POINTER in the document: replace the paragraph's text and bump its version.
+      // The prior version is not here to lose — it is in the ledger's version history, and
+      // this surface has no way to reach in and change it.
+      const { state } = editor;
+      let target = null;
+      state.doc.descendants((node, pos) => {
+        if (node.type.name === 'paragraph' && node.attrs.blockId === blockId) {
+          target = { node, pos };
+          return false;
+        }
+        return true;
+      });
+      if (target) {
+        const replacement = proseToParagraphs(result.version.text, {
+          ...target.node.attrs,
+          version: result.version.version,
+          lineageId,
+        });
+        editor
+          .chain()
+          .focus(null, { scrollIntoView: false })
+          .insertContentAt(
+            { from: target.pos, to: target.pos + target.node.nodeSize }, replacement,
+          )
+          .run();
+      }
+      setStatus(
+        `v${result.version.version} is now current. v${result.version.version - 1} is kept.`,
+      );
+      return result;
+    },
+    [editor, projectId],
+  );
+
+  const onDismissRevision = useCallback(
+    async (passageId) => {
+      await writerService.dismiss(passageId);
+      setStatus('Kept the version you had.');
+    },
+    [],
+  );
+
   const onInspectOperator = useCallback(
     (name) => setInspecting(operators.find((o) => o.name === name) || { name, missing: true }),
     [operators],
@@ -328,6 +404,24 @@ export default function WriterEditor({
           </button>
           <button
             type="button"
+            onClick={() => {
+              const { $from } = editor.state.selection;
+              const paragraph = $from.node($from.depth);
+              const { lineageId, blockId } = paragraph?.attrs || {};
+              if (!lineageId || !blockId) {
+                setStatus('Put the caret in a committed passage to revise it.');
+                return;
+              }
+              setRevising({ lineageId, blockId });
+            }}
+            disabled={busy}
+            data-testid="revise-button"
+            title="Change what you declared and render this passage again"
+          >
+            Revise
+          </button>
+          <button
+            type="button"
             onClick={() => setFocusMode((f) => !f)}
             aria-pressed={focusMode}
             data-testid="focus-toggle"
@@ -341,6 +435,20 @@ export default function WriterEditor({
         <div className="writer-editor__page">
           <EditorContent editor={editor} />
         </div>
+
+        {revising && (
+          <RevisionPanel
+            key={`${revising.lineageId}:${revising.blockId}`}
+            lineageId={revising.lineageId}
+            blockId={revising.blockId}
+            sceneId={sceneId}
+            onPrepare={onPrepareRevision}
+            onRender={onRevisionRender}
+            onAcceptRevision={onAcceptRevision}
+            onDismiss={onDismissRevision}
+            onClose={() => setRevising(null)}
+          />
+        )}
 
         {inspecting && (
           <aside className="writer-inspector" data-testid="operator-inspector">
