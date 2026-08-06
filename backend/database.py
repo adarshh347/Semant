@@ -205,6 +205,17 @@ movement_axis_collection = database.get_collection("movement_axes")
 # decision made structural rather than promised.
 agent_observation_collection = database.get_collection("agent_observations")
 
+# --- Joint hypotheses (WAVE3 · two agents, one locus) ---
+# agent_hypothesis_collection: a claim two differently-embodied agents composed at one locus that
+# neither could state alone. Its own collection rather than a `kind` on the observations above,
+# because the two obey DIFFERENT hydration rules and sharing a collection would eventually mean
+# sharing a code path: an observation cites ONE mark and reads whatever that mark says once a
+# curator commits it, while a hypothesis cites TWO and reads `proposed` no matter how many are
+# committed. Agreement is not grounding — two agents concurring is two readings, and a composition
+# becomes measured knowledge only by being re-grounded on new loci. Like the observations it stores
+# NO epistemic status, and unlike them there is no commit that would give it one.
+agent_hypothesis_collection = database.get_collection("agent_hypotheses")
+
 # --- Connection Test Function ---
 async def ping_server():
     """Checks if the MongoDB server is responsive."""
