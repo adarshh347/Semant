@@ -267,6 +267,21 @@ export default function WriterEditor({
     [projectId, loadOperators],
   );
 
+  // W7 — the alignment reading. Read-only: it returns diagnostics and this component does
+  // nothing with them but show them. There is no path from a flag to an edit here, and
+  // adding one would make the reading a rewriter.
+  const onReadAlignment = useCallback(
+    async ({ text, provenance, passageId }) => writerService.readAlignment(projectId, {
+      text, provenance, passageId, sceneId, manuscriptId,
+    }),
+    [projectId, sceneId, manuscriptId],
+  );
+
+  const onDecideFlag = useCallback(
+    async (readingId, flagId, state) => writerService.decideFlag(readingId, flagId, state),
+    [],
+  );
+
   const onInspectOperator = useCallback(
     (name) => setInspecting(operators.find((o) => o.name === name) || { name, missing: true }),
     [operators],
@@ -282,9 +297,11 @@ export default function WriterEditor({
 
   const actions = useMemo(
     () => ({
-      onAccept, onDismiss, onCreateOperator, onInspectOperator, onRerenderDirective, operators,
+      onAccept, onDismiss, onCreateOperator, onInspectOperator, onRerenderDirective,
+      onReadAlignment, onDecideFlag, operators,
     }),
-    [onAccept, onDismiss, onCreateOperator, onInspectOperator, onRerenderDirective, operators],
+    [onAccept, onDismiss, onCreateOperator, onInspectOperator, onRerenderDirective,
+     onReadAlignment, onDecideFlag, operators],
   );
 
   return (

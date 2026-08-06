@@ -171,6 +171,24 @@ _THINKERS: List[Role] = [
         provider="groq",
     ),
     Role(
+        name="alignment_reader",
+        kind=RoleKind.THINKER,
+        summary="Reads a passage against the author's own declared standard and reports "
+                "where it diverges (Semant Writer W7 — the alignment reading).",
+        # INTERPRETIVE, and the ceiling is doing real work here. This role's output is a
+        # reading ABOUT prose — never evidence in it, and never prose itself. It says
+        # "these words diverge from what you declared", which is an opinion about a
+        # conformance, and calling it anything stronger would let a diagnosis start
+        # sounding like a fact about the writing.
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        # Same default as the renderer, and separate ON PURPOSE: rebinding the model that
+        # WRITES the author's prose must not silently change the model that JUDGES it.
+        # A composer and its critic sharing a binding by accident is the coupling ROLES-001
+        # exists to make visible.
+        default_model="openai/gpt-oss-120b",
+        provider="groq",
+    ),
+    Role(
         name="manuscript_renderer",
         kind=RoleKind.THINKER,
         summary="Renders a manuscript passage from the author's own operator ontology "
