@@ -47,11 +47,15 @@ from backend.schemas.writer import (
     AssemblageDismiss,
     PassageAccept,
     PassageDismiss,
+    AlignmentRead,
+    FlagDecision,
     LibraryOp,
     RelationsUpdate,
 )
 from backend.services.writer import dsl, instrument
+from backend.services.writer import alignment as alignment_mod
 from backend.services.writer import assemblages as assemblages_mod
+from backend.services.writer import readings as readings_mod
 from backend.services.writer import library as library_mod
 from backend.services.writer import relations as relations_mod
 from backend.services.writer.operators import OperatorError, operator_registry
@@ -276,6 +280,53 @@ async def pull_from_library(project_id: str, request: LibraryOp):
         return await operator_registry.pull_from_library(
             project_id, request.author, request.name)
     except OperatorError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+# --- The alignment reading (W7 · the honest editor) ---
+#
+# Diagnoses; never writes. There is no rewrite endpoint here and there must never be one:
+# the reading says where the prose diverges from what the author declared, and what to do
+# about it goes back through the render loop as the author's own action.
+
+@router.post("/{project_id}/alignment/read")
+async def read_alignment(project_id: str, request: AlignmentRead):
+    """Measure a passage against its own provenance. Returns diagnostics only.
+
+    `aligned` and `thin` are RESULTS, not failures — a reading with nothing to say is the
+    expected outcome for prose doing what its author asked.
+    """
+    result = await alignment_mod.read_alignment(
+        project_id,
+        request.text,
+        request.provenance or {},
+        await operator_registry.by_name(project_id),
+    )
+    reading = await readings_mod.store(
+        project_id, result,
+        passage_id=request.passage_id or "",
+        block_id=request.block_id or "",
+        scene_id=request.scene_id or "",
+        manuscript_id=request.manuscript_id or "",
+    )
+    return reading
+
+
+@router.get("/{project_id}/alignment/readings")
+async def list_readings(project_id: str, scene_id: str = ""):
+    return await readings_mod.list_for(project_id, scene_id=scene_id)
+
+
+@router.post("/alignment/readings/{reading_id}/flags/{flag_id}")
+async def decide_flag(reading_id: str, flag_id: str, request: FlagDecision):
+    """Dismiss a flag (false alarm) or mark it acted (real divergence).
+
+    Neither applies anything. This records the author's judgement — the calibration signal
+    — and the prose changes only if they go and re-render it themselves.
+    """
+    try:
+        return await readings_mod.decide(reading_id, flag_id, request.state, request.note or "")
+    except readings_mod.ReadingError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
 

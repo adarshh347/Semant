@@ -615,3 +615,74 @@ describe('I6 — `//` never reaches the manuscript', () => {
     expect(exportNow()).not.toContain('the door');
   });
 });
+
+// ══ W7 — the reading on a quarantined render ════════════════════════════════
+
+describe('the alignment reading, offered before Accept', () => {
+  const READING = (over = {}) => ({
+    id: 'rdg_1',
+    status: 'flagged',
+    detail: '',
+    model: 'openai/gpt-oss-120b',
+    measured_against: [{ id: 'intent:avoid', declared: 'melodrama' }],
+    flags: [{
+      id: 'flg_1',
+      element: 'intent:avoid',
+      element_kind: 'intent',
+      operator: null,
+      operator_version: null,
+      declared: 'melodrama',
+      span: 'She waited.',
+      divergence: 'this leans on the pause for feeling',
+      state: 'open',
+    }],
+    ...over,
+  });
+
+  async function readOn(reading) {
+    vi.spyOn(writerService, 'readAlignment').mockResolvedValue(reading);
+    await mount();
+    await seed([directiveNode(['threshold'])]);
+    await renderBlock([RENDERED]);
+    await act(async () => { byTestId('read-alignment').click(); });
+  }
+
+  it('reads the quarantined passage against its own provenance, and writes nothing', async () => {
+    await readOn(READING());
+
+    expect(writerService.readAlignment).toHaveBeenCalledWith('ms_1', expect.objectContaining({
+      text: RENDERED.text,
+      provenance: RENDERED.provenance,
+      passageId: 'psg_1',
+    }));
+    expect(byTestId('reading-flag')).not.toBeNull();
+    expect(byTestId('flag-element').textContent).toContain('melodrama');
+    // still quarantined, still not canon
+    expect(byTestId('quarantine-card')).not.toBeNull();
+    expect(exportNow()).toBe('');
+  });
+
+  it('a refused decision is shown to the author rather than swallowed', async () => {
+    // `decide` is once-only: a second one comes back 400. A rejection with no catch would
+    // leave the flag reading as open with nothing said.
+    await readOn(READING());
+    vi.spyOn(writerService, 'decideFlag').mockRejectedValue(
+      new Error('flag flg_1 is already dismissed — a decision is made once'),
+    );
+
+    await act(async () => { byTestId('flag-dismissed').click(); });
+
+    expect(container.querySelector('.writer-card__error').textContent)
+      .toContain('a decision is made once');
+    expect(exportNow()).toBe('');
+  });
+
+  it('offers no way to apply a flag to the prose', async () => {
+    await readOn(READING());
+    const labels = [...container.querySelectorAll('button')]
+      .map((b) => b.textContent.trim().toLowerCase());
+    for (const forbidden of ['rewrite', 'fix', 'apply', 'replace', 'improve']) {
+      expect(labels.some((l) => l.includes(forbidden))).toBe(false);
+    }
+  });
+});

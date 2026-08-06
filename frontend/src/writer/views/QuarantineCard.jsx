@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { useWriterActions } from './WriterActions';
+import AlignmentReading from '../alignment/AlignmentReading';
 
 /**
  * An unaccepted render, on screen. This is I1 and I2 made visible.
@@ -31,11 +32,15 @@ function suggestedOperator(refusal) {
 
 export default function QuarantineCard({ node, getPos, editor }) {
   const { passageId, status, text, refusal, provenance, diagnostics = [], directive } = node.attrs;
-  const { onAccept, onDismiss, onCreateOperator } = useWriterActions();
+  const { onAccept, onDismiss, onCreateOperator, onReadAlignment, onDecideFlag } =
+    useWriterActions();
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [defining, setDefining] = useState(false);
+  // W7 — the reading is offered on a quarantined render too, so the author can check it
+  // against what they declared BEFORE it becomes canon.
+  const [reading, setReading] = useState(null);
   const [definition, setDefinition] = useState('');
 
   const suggested = suggestedOperator(refusal);
@@ -166,6 +171,18 @@ export default function QuarantineCard({ node, getPos, editor }) {
         <span className="writer-card__note">Nothing is in the manuscript until you accept it.</span>
         <button
           type="button"
+          data-testid="read-alignment"
+          disabled={busy}
+          onClick={() => act(async () => {
+            setReading(await onReadAlignment({ text, provenance, passageId }));
+            setBusy(false);
+          })}
+          title="Where does this diverge from what you declared?"
+        >
+          Read alignment
+        </button>
+        <button
+          type="button"
           data-testid="accept-button"
           disabled={busy}
           onClick={() => act(() => onAccept(passageId, getPos(), node))}
@@ -182,6 +199,25 @@ export default function QuarantineCard({ node, getPos, editor }) {
         </button>
       </footer>
       {error && <p className="writer-card__error">{error}</p>}
+
+      {reading && (
+        <AlignmentReading
+          reading={reading}
+          busy={busy}
+          onDecide={async (flagId, state) => {
+            // A decision is made once, so a second one comes back 400 — and a rejection
+            // swallowed here would leave the flag showing as open with nothing said. Route
+            // it to the same error line the other actions use.
+            setError('');
+            try {
+              const next = await onDecideFlag(reading.id, flagId, state);
+              if (next) setReading(next);
+            } catch (err) {
+              setError(err.message || 'that decision did not go through');
+            }
+          }}
+        />
+      )}
     </NodeViewWrapper>
   );
 }
