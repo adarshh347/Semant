@@ -1,9 +1,11 @@
 """
 Simulation Engine · Lane 3 — the retina routes: what is near this, and what is indexed.
 
-    GET  /api/v1/retina/status       what the index holds, and what the build skipped
-    POST /api/v1/retina/candidates   a region or a vector → its nearest neighbours
-    POST /api/v1/retina/rebuild      re-derive the index from `region_embeddings`
+    GET  /api/v1/retina/status                what the index holds, and what the build skipped
+    POST /api/v1/retina/candidates            a region or a vector → its nearest neighbours
+    POST /api/v1/retina/candidates/relational a region → neighbours likely to STAND IN a relation
+    POST /api/v1/retina/rebuild               re-derive the index from `region_embeddings`
+    POST /api/v1/retina/geometry/rebuild      re-derive the extents the relational prior reads
 
 PROPOSAL ONLY, and structurally so — there is no write path here to misuse. `/candidates`
 reads a memory-mapped index and returns neighbours with similarity scores; it creates no
@@ -91,6 +93,52 @@ def retina_candidates(req: CandidatesRequest) -> Dict[str, Any]:
     if code != 200:
         raise HTTPException(status_code=code, detail=envelope)
     return envelope
+
+
+class RelationalCandidatesRequest(BaseModel):
+    """`region_id` + `post_id` only — a relational prior needs to know where the seed SITS, and a
+    raw vector says nothing about that. This is why the relational route does not accept the
+    `embedding` form the identity route does: it would have to guess, and a guessed seed skeleton
+    would silently rank on the wrong shape."""
+    region_id: str
+    post_id: str
+    space: Optional[str] = None
+    role: Optional[str] = retina.DEFAULT_ROLE
+    k: int = Field(default=retina.DEFAULT_K, ge=1, le=200)
+    recall_multiplier: int = Field(default=retina.DEFAULT_RECALL_MULTIPLIER, ge=1, le=20)
+    exclude_post_id: Optional[str] = None
+    exclude_self: bool = True
+
+
+@router.post("/candidates/relational")
+def retina_candidates_relational(req: RelationalCandidatesRequest) -> Dict[str, Any]:
+    """Neighbours ordered by how likely they are to stand in a relation, not by resemblance.
+
+    Still proposals, under exactly the terms `/candidates` states: `grounded: false`, no
+    `epistemic_status`, no relation asserted. What changes is the ORDER — and the order is derived
+    from box-basis extents, which are an estimate. The envelope reports `ranking`, so a caller can
+    tell a relational ordering from the identity fallback the route returns when the geometry
+    sidecar has not been built.
+    """
+    envelope = retina.propose_for_relation(
+        region_id=req.region_id, post_id=req.post_id, space=req.space, role=req.role, k=req.k,
+        recall_multiplier=req.recall_multiplier, exclude_post_id=req.exclude_post_id,
+        exclude_self=req.exclude_self)
+    code = _HTTP_FOR.get(envelope.get("status"), 500)
+    if code != 200:
+        raise HTTPException(status_code=code, detail=envelope)
+    return envelope
+
+
+@router.post("/geometry/rebuild")
+async def retina_geometry_rebuild() -> Dict[str, Any]:
+    """Re-derive every region's extent from the corpus. Reads posts, writes none.
+
+    Separate from `/rebuild` because the two caches have different sources — the index mirrors
+    `region_embeddings`, this mirrors `region_annotations` — and a mask sweep moves one without
+    moving the other. Folding them into one call would make it impossible to say which is stale.
+    """
+    return await retina.geometry_rebuild()
 
 
 @router.post("/rebuild")

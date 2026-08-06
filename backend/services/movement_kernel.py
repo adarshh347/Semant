@@ -90,6 +90,13 @@ DEFAULT_K = 12
 #: does not exist is worse than no movement, and the cost of the guard is one set lookup.
 SENTINEL_POST_IDS = frozenset({"s", "scratch-in-memory", "scratch", ""})
 
+#: WAVE3 — which question the retina is asked. `relational` orders candidates by how likely they
+#: are to STAND IN a relation; `identity` orders them by resemblance, which is what this kernel
+#: asked for before and is kept so the baseline stays runnable rather than merely remembered.
+#: Only `propose` reads this. Nothing downstream of the proposal knows which ranking produced it.
+RANKING_RELATIONAL = "relational"
+RANKING_IDENTITY = "identity"
+
 #: WAVE2.5 RULING — a pair whose geometry is only boxes. Refused at the grounding step, and
 #: RECORDED, exactly like `surface_only`: a refusal is evidence about the corpus, not a failure.
 #:
@@ -219,20 +226,36 @@ def seed(post: Mapping[str, Any], *, region_id: str = "", min_index: float = 0.0
 # ── stage 2: propose (the retina) ────────────────────────────────────────────
 
 def propose(seeded: Mapping[str, Any], *, k: int = DEFAULT_K, store=None,
-            retina_module=None) -> Dict[str, Any]:
+            retina_module=None, ranking: str = RANKING_RELATIONAL,
+            posts: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
     """Ask the retina where else to look. Candidates, explicitly not relations.
 
     Returns the envelope rather than a bare list so a cold or unavailable index stays
     distinguishable from "looked and found nothing" — the retina's own rule, kept here because a
     kernel that read an unbuilt index as "nothing is near this" would report a false negative about
     the corpus.
+
+    `ranking` chooses WHICH question the retina is asked, and nothing else in this file changes
+    with it. `relational` asks for candidates likely to STAND IN a relation; `identity` asks for
+    look-alikes, which is what this asked for before WAVE3 and is kept so the baseline stays
+    runnable rather than merely remembered. A retina predating relational retrieval — or a test
+    double standing in for one — carries no `propose_for_relation` and is asked the old question
+    rather than erroring.
+
+    THE PROPOSER CHANGED; THE DECIDER DID NOT. Everything downstream reads exactly the candidate
+    envelope it always did and is free to refuse every candidate a better ranking supplied. That
+    is why this lane reports a measured hit rate rather than asserting an improvement.
     """
     from backend.services import retina as _retina
     retina_module = retina_module or _retina
 
-    envelope = retina_module.propose_candidates(
-        region_id=str(seeded["region_id"]), post_id=str(seeded["post_id"]),
-        k=int(k), exclude_post_id=str(seeded["post_id"]), store=store)
+    query = {"region_id": str(seeded["region_id"]), "post_id": str(seeded["post_id"]),
+             "k": int(k), "exclude_post_id": str(seeded["post_id"]), "store": store}
+    ask_relationally = getattr(retina_module, "propose_for_relation", None)
+    if ranking == RANKING_RELATIONAL and callable(ask_relationally):
+        envelope = ask_relationally(posts=posts, **query)
+    else:
+        envelope = retina_module.propose_candidates(**query)
 
     kept, skipped = [], []
     for c in envelope.get("candidates") or []:
@@ -542,6 +565,7 @@ async def run_kernel(*, post_a: Mapping[str, Any], posts: Mapping[str, Mapping[s
                      store=None, retina_module=None,
                      collection=None, axis_collection=None,
                      min_systematicity: float = sm.MIN_SYSTEMATICITY,
+                     ranking: str = RANKING_RELATIONAL, live_geometry: bool = False,
                      now: str = "") -> Dict[str, Any]:
     """The whole kernel, end to end. Returns the run transcript.
 
@@ -568,7 +592,11 @@ async def run_kernel(*, post_a: Mapping[str, Any], posts: Mapping[str, Mapping[s
     transcript["seed"] = seeded
 
     # ── 2. propose ──
-    proposal = propose(seeded, k=k, store=store, retina_module=retina_module)
+    # `live_geometry` reads extents straight from `posts` instead of the retina's cached sidecar:
+    # never stale, and it costs a mask decode per region. Off by default because a kernel run
+    # should not pay for a cache the retina rebuilds in one step.
+    proposal = propose(seeded, k=k, store=store, retina_module=retina_module,
+                       ranking=ranking, posts=posts if live_geometry else None)
     transcript["retina"] = proposal
 
     # ── 3+4. map, then ground ──
