@@ -161,6 +161,32 @@ class LoopClose(BaseModel):
     reading_id: str
 
 
+# --- Recall & cite (W9) ---
+
+class RecallQuery(BaseModel):
+    """Search the author's own committed prose.
+
+    Retrieval only. There is no `summarise` flag here and there must never be one — a
+    synthesis of prior material is a RENDER, quarantined and author-committed, not a recall.
+    """
+    query: str
+    limit: int = 5
+    # Current versions by default: a superseded version is prose the author has already
+    # replaced, and grounding new work on it would be a quieter version of citing something
+    # they never accepted.
+    include_historical: bool = False
+
+
+class Citation(BaseModel):
+    """A committed passage a render is asked to stay consistent with.
+
+    Names a LINEAGE, optionally pinned to a version. Only committed versions resolve —
+    `resolve_citations` refuses anything else (I3).
+    """
+    lineage_id: str
+    version: Optional[int] = None
+
+
 # --- Running a block ---
 
 class BlockRun(BaseModel):
@@ -179,6 +205,10 @@ class BlockRun(BaseModel):
     # whole block, which is the explicit "re-run everything" action. Omitting this is
     # therefore the safe default for any caller with no notion of what is satisfied.
     only_directives: Optional[List[int]] = None
+    # W9 — committed passages this block should stay consistent with. Author-driven: there
+    # is no auto-citation, and an empty list means the render rests on the declared
+    # operators alone, exactly as it did before W9.
+    cited: Optional[List[Citation]] = None
 
 
 class BlockParse(BaseModel):

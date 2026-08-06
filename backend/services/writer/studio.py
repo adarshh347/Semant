@@ -65,6 +65,7 @@ async def run_block(
     scene_id: str = "",
     quarantine: bool = True,
     only_directives: Optional[List[int]] = None,
+    cited: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Parse a block and execute it. Returns the ordered outcome of the whole block.
 
@@ -151,6 +152,11 @@ async def run_block(
             scene_id=scene_id,
             run_id=run_id,
             manuscript_author=manuscript_author,
+            # W9 — the committed passages the author asked this block to stay consistent
+            # with. Resolved by the caller (only committed canon survives that), and applied
+            # to every directive in the block: the author cited them for this piece of work,
+            # not for one line of it.
+            cited=cited or (),
         )
 
         entry: Dict[str, Any] = {
