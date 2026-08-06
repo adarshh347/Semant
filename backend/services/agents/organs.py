@@ -51,15 +51,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
+from backend.services import adjacency_organ as adjacency
 from backend.services import nestedness_organ as nestedness
 from backend.services import role_registry
 from backend.services.epistemics import STATUS_KEY, EpistemicStatus
 from backend.services.role_registry import RoleKind
 
-#: The organs this lane can actually invoke, in-process, with no weights to load. One entry today.
-#: A table rather than an `if`, because the second entry is the whole point and it should cost a
-#: line rather than a refactor.
-PURE_PYTHON_ORGANS: Tuple[str, ...] = (nestedness.ORGAN,)
+#: The organs this lane can actually invoke, in-process, with no weights to load.
+#:
+#: Two now, and the second was not optional. The dialogue lane needs two agents at one locus to
+#: enact two WORLDS; with one organ between them they enact the same world twice and their
+#: "disagreement" is a difference in bookkeeping. Every registry organ loads weights and resolves
+#: RESIDENT here, so `adjacency_organ` was built for it — boundary contact, which is independent of
+#: containment in both directions (`test_agent_dialogue_wave3.py` pins the 2×2).
+PURE_PYTHON_ORGANS: Tuple[str, ...] = (nestedness.ORGAN, adjacency.ORGAN)
 
 #: How an organ name resolved. Named constants because the refusal reason is reported to a human
 #: and read by a test, and a bare string in both places is two spellings waiting to happen.
@@ -192,6 +197,44 @@ def _regions(post: Mapping[str, Any]) -> List[Dict[str, Any]]:
     return [dict(r) for r in (post.get("region_annotations") or []) if isinstance(r, Mapping)]
 
 
+def _adjacency_readings(locus_region: Mapping[str, Any], others: Sequence[Mapping[str, Any]], *,
+                        post_id: str, step_id: str, now: str) -> List[OrganReading]:
+    """Every meeting the adjacency organ can measure FROM THE LOCUS. A different world, same place.
+
+    One direction only, and that is a fact about the measurement rather than a simplification:
+    `contact_fraction` is normalized by the FIRST region's boundary, so `measure(locus, other)`
+    answers "how much of MY edge lies against that one" — which is the only version of the question
+    an agent standing here can ask. The reciprocal is a fact about the other region's boundary, and
+    an agent that reported it would be speaking for somewhere it is not.
+    """
+    out: List[OrganReading] = []
+    locus_id = str(locus_region.get("id") or "")
+
+    for other in others:
+        other_id = str(other.get("id") or "")
+        if not other_id or other_id == locus_id:
+            continue
+        try:
+            measurement = adjacency.measure(locus_region, other)
+        except adjacency.AdjacencyRefusal:
+            continue
+        if not measurement["adjacent"]:
+            continue
+        out.append(OrganReading(
+            organ=adjacency.ORGAN,
+            relation=adjacency.RELATION_MEETS,
+            direction="meets",
+            locus_region_id=locus_id,
+            other_region_id=other_id,
+            measurement=measurement,
+            mark=adjacency.grounding_mark(measurement, post_id=post_id,
+                                          step_id=step_id, now=now),
+            detail=measurement["detail"]))
+
+    out.sort(key=lambda r: -r.measurement["contact_fraction"])
+    return out
+
+
 def _readings_from(locus_region: Mapping[str, Any], others: Sequence[Mapping[str, Any]], *,
                    post_id: str, step_id: str, now: str) -> List[OrganReading]:
     """Every nesting the organ can measure WITH THE LOCUS AS ONE OF ITS TERMS.
@@ -264,12 +307,14 @@ def invoke(organ_name: str, *, post: Mapping[str, Any], region_id: str,
             f"nothing to stand on, and every reading from a phantom locus would be about "
             f"somewhere else")
 
-    if binding.name == nestedness.ORGAN:
-        return _readings_from(locus_region, _regions(post), post_id=post_id,
-                              step_id=step_id, now=now)
+    readers = {nestedness.ORGAN: _readings_from, adjacency.ORGAN: _adjacency_readings}
+    reader = readers.get(binding.name)
+    if reader is not None:
+        return reader(locus_region, _regions(post), post_id=post_id, step_id=step_id, now=now)
 
-    # Unreachable while `PURE_PYTHON_ORGANS` has one entry, and kept so that adding a second entry
-    # without wiring its invocation fails here rather than returning a confident empty field.
+    # Unreachable while every entry in `PURE_PYTHON_ORGANS` has a reader, and kept so that adding a
+    # third organ without wiring its invocation fails here rather than returning a confident empty
+    # field. `test_agent_dialogue_wave3.py` asserts the two tables cover each other.
     raise OrganRefusal(
         f"{binding.name} resolves as invocable but this module has no invocation for it — "
         f"a silent empty reading would be indistinguishable from 'measured nothing'")
