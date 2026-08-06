@@ -59,6 +59,7 @@ from backend.services import role_registry
 from backend.services.director.execution import ERROR, OK, UNAVAILABLE
 from backend.services.llm_service import llm_service
 from backend.services.writer import dsl, instrument, library, relations
+from backend.services.writer import recall as recall_mod
 from backend.services.writer.dsl import Directive, OrchestrationNote
 from backend.services.writer.operators import operator_registry
 
@@ -157,6 +158,7 @@ def build_render_prompt(
     arguments: Optional[Dict[str, str]] = None,
     preceding_prose: str = "",
     required: Sequence[Dict[str, Any]] = (),
+    cited: Sequence[Dict[str, str]] = (),
 ) -> Dict[str, str]:
     """The render contract as `{system, user}`. PURE — testable without a network.
 
@@ -191,6 +193,28 @@ def build_render_prompt(
         parts.append("")
         for op in required:
             parts.append(operator_registry.as_evidence(op))
+            parts.append("")
+
+    if cited:
+        # W9 — the author's OWN COMMITTED PROSE, verbatim, as grounding. This is the purest
+        # material in the prompt: not a declaration about how to write, but writing they
+        # already accepted into the book.
+        #
+        # It says STAY CONSISTENT WITH, not CONTINUE FROM or MATCH THE STYLE OF. The author
+        # cited these passages to keep the new one from contradicting them; reading that as
+        # "write more like this" would let committed prose act as a style reference, which
+        # is the author's own voice arriving through a door that was not built for it — and
+        # it would make the cited text an instruction the author never gave.
+        parts.append(
+            "PASSAGES THE AUTHOR HAS ALREADY COMMITTED AND ASKED YOU TO STAY CONSISTENT "
+            "WITH. This is their own accepted prose, quoted exactly. Treat what it "
+            "establishes as true, and do not contradict it. Do NOT continue it, retell it, "
+            "quote it back, or take it as a style to imitate — render the directive below:"
+        )
+        parts.append("")
+        for citation in cited:
+            parts.append(f"[{citation['label']}]")
+            parts.append(citation["text"])
             parts.append("")
 
     if orchestration:
@@ -507,6 +531,7 @@ async def render_directive(
     scene_id: str = "",
     run_id: str = "",
     manuscript_author: str = "",
+    cited: Sequence[Dict[str, Any]] = (),
 ) -> RenderResult:
     """Fire one `/` directive under its active `//` orchestration.
 
@@ -561,6 +586,10 @@ async def render_directive(
         "manuscript_id": manuscript_id,
         "scene_id": scene_id,
         "run_id": run_id,
+        # W9, I4 — which committed passages this one was asked to stay consistent with.
+        # Recorded whether or not the render succeeds, for the same reason the operators
+        # are: what the author asked for is part of the record, not just what came back.
+        "cited": recall_mod.citation_stamps(cited),
         "rendered_at": _now_iso(),
     }
 
@@ -583,6 +612,7 @@ async def render_directive(
         arguments=arguments,
         preceding_prose=preceding_prose,
         required=pulled,
+        cited=recall_mod.as_grounding(cited),
     )
 
     try:

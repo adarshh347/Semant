@@ -1,0 +1,189 @@
+/*
+ * Semant Writer · W9 — recall and cite.
+ *
+ * House pattern of the other writer surfaces: quiet borders, inherited colour, nothing
+ * competing with prose. A recalled span is set as a quotation and NOT visually chopped —
+ * no max-height with a fade, no line clamp. A clamp is an ellipsis by another means, and
+ * this panel's one job is to show the author's words as they wrote them.
+ */
+
+.writer-recall {
+  margin: 0.9rem 0;
+  border: 1px solid rgb(0 0 0 / 0.14);
+  border-radius: 6px;
+  font-size: 0.86rem;
+}
+
+.writer-recall__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid rgb(0 0 0 / 0.08);
+}
+
+.writer-recall__head h4 {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.writer-recall__head button { margin-left: auto; }
+
+.writer-recall__note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.76rem;
+  opacity: 0.7;
+}
+
+.writer-recall__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+}
+
+.writer-recall__form input[type='text'],
+.writer-recall__form input:not([type]) {
+  flex: 1 1 16rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid rgb(0 0 0 / 0.18);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.writer-recall__historical {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-basis: 100%;
+  font-size: 0.76rem;
+  opacity: 0.75;
+}
+
+.writer-recall__count {
+  margin: 0;
+  padding: 0 0.9rem 0.4rem;
+  font-size: 0.76rem;
+  opacity: 0.7;
+}
+
+.writer-recall__empty {
+  margin: 0;
+  padding: 0.2rem 0.9rem 0.9rem;
+  font-size: 0.82rem;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.writer-recall__error {
+  margin: 0;
+  padding: 0 0.9rem 0.7rem;
+  color: rgb(190 70 60);
+  font-size: 0.8rem;
+}
+
+.writer-recall__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.writer-span {
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid rgb(0 0 0 / 0.06);
+}
+
+/* The author's own prose. pre-wrap keeps the two-tier cadence; no clamp, no fade. */
+.writer-span__text {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-left: 2px solid rgb(0 0 0 / 0.16);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.writer-span__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.writer-span__where {
+  margin-right: auto;
+  font-size: 0.76rem;
+  opacity: 0.7;
+}
+
+.writer-span__version,
+.writer-cited__version { opacity: 0.7; }
+
+/* ── the citation strip ───────────────────────────────────────────────────── */
+
+.writer-cited {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 0.5rem 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px dashed rgb(0 0 0 / 0.2);
+  border-radius: 5px;
+  font-size: 0.78rem;
+}
+
+.writer-cited__label { opacity: 0.75; }
+
+.writer-cited ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.writer-cited li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid rgb(0 0 0 / 0.18);
+  border-radius: 999px;
+}
+
+.writer-recall button,
+.writer-cited button {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid rgb(0 0 0 / 0.2);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.writer-cited li button {
+  padding: 0 0.2rem;
+  border: none;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.writer-recall button:hover:not(:disabled),
+.writer-cited button:hover:not(:disabled) { border-color: currentColor; }
+
+.writer-cited li button:hover { opacity: 1; }
+
+.writer-recall button:disabled { opacity: 0.45; cursor: default; }
+
+.writer-recall button:focus-visible,
+.writer-cited button:focus-visible { outline: 1px solid currentColor; }

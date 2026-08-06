@@ -188,6 +188,19 @@ export const writerService = {
     );
   },
 
+  // --- Recall (W9) ---
+  // RETRIEVAL, NOT NARRATION. Returns the author's own committed sentences, byte for byte,
+  // or nothing. There is no `summarise` call here and there must never be one — a synthesis
+  // of prior material is a render: declared, quarantined, author-committed.
+  async recall(projectId, { query, limit = 5, includeHistorical = false }) {
+    return json(
+      await post(`${BASE}/${projectId}/recall`, {
+        query, limit, include_historical: includeHistorical,
+      }),
+      'recall',
+    );
+  },
+
   // --- The loop ---
   // Parse only: the `/` ÷ `//` split, with no model called and nothing stored.
   async parse(projectId, text) {
@@ -196,7 +209,9 @@ export const writerService = {
   // Execute a block. Every render comes back QUARANTINED; nothing reaches the manuscript.
   // `onlyDirectives` is BLOCK SCOPE (W3 §1): the indices of the directives still pending.
   // `null`/omitted runs the whole block, which is the explicit re-run-everything action.
-  async run(projectId, { text, manuscriptId, sceneId, quarantine = true, onlyDirectives = null }) {
+  async run(projectId, {
+    text, manuscriptId, sceneId, quarantine = true, onlyDirectives = null, cited = null,
+  }) {
     return json(
       await post(`${BASE}/${projectId}/run`, {
         text,
@@ -204,6 +219,9 @@ export const writerService = {
         scene_id: sceneId ?? '',
         quarantine,
         only_directives: onlyDirectives,
+        // W9 — committed passages this block should stay consistent with. Author-chosen:
+        // there is no auto-citation, and the server refuses anything not in canon.
+        cited: cited ?? null,
       }),
       'run block',
     );

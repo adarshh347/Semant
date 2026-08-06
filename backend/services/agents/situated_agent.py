@@ -6,13 +6,19 @@ from nowhere in particular. This inhabits a locus inside one, and everything it 
 around, and `_perceptions_for` is where it bites: an agent may only hold measurements that have
 its own locus as one of their terms.
 
-## The loop this wave builds, and the two it does not
+## The loop this module builds, and the one it still does not
 
-    inhabit   →   perceive   →   record (private)   →   report (shared)          ← this lane
-                                                    →   move → converse         ← the next lanes
+    inhabit   →   perceive   →   record (private)   →   report (shared)          ← this module
+              ↖   move                                                           ← `movement.py`
+                                                    →   converse                 ← the next lane
 
-No movement (that lane is gated on the retina/density rebuild) and no dialogue (that needs a
-second agent). One agent, one locus, single image.
+Movement arrived with the retina/density rebuild and lives in `agents.movement`: it reads the
+grounded edges reaching this agent's node, walks one, and hands the agent back here to perceive
+again from somewhere else. What is still absent is dialogue, which needs a second agent.
+
+Everything below is written for ONE locus at a time, and that does not change when the agent can
+move — a step replaces the locus and empties the percept field, so `perceive` is always perceiving
+from exactly one place.
 
 ## The one line running through all of it
 
@@ -73,6 +79,15 @@ from backend.services.epistemics import STATUS_KEY, EpistemicStatus
 from backend.services.movement_kernel import assert_posts_unchanged, posts_fingerprint
 
 AGENT_STEP_ID = "wave3_situated_agent:perceive"
+
+#: What a trajectory entry RECORDS. Two kinds now that the agent can move, and a reader of a walk
+#: has to be able to tell "I looked from here" from "I went there" — they are the two things that
+#: happen to an agent and they have nothing else in common.
+#:
+#: `movement.py` owns the step; the constant lives here so the dependency points one way (movement
+#: knows about the agent; the agent does not need to know about movement to write its own row).
+TRAJECTORY_PERCEIVE = "perceive"
+TRAJECTORY_STEP = "step"
 
 #: The `kind` an agent's percept carries, and it is deliberately NEITHER of the two lineages
 #: `percept_lineage` names. An expression percept is the curator's durable act of noticing; a draft
@@ -167,9 +182,12 @@ class SituatedAgent:
     dicts and a position. That asymmetry is what makes a population of agents affordable on a 16 GB
     machine, and it is why nothing here holds a model, opens a socket, or caches a tensor.
 
-    `horizon` from the situatedness finding's data shape is deliberately absent: it is the set of
-    grounded axes this agent could move along, and this wave has no movement. An empty field
-    claiming a reachable world would be worse than no field.
+    `horizon` — the grounded movements reachable from this locus — is the field the first wave
+    deliberately left off, because an empty field claiming a reachable world is worse than no
+    field. It is populated by `agents.movement.horizon`, which fills it from the graph rather than
+    from anything this module computes: an agent READS the crossings the kernel grounded, and
+    grounds none of its own. It empties on every step, because a reachable world is reachable
+    *from somewhere*.
     """
     id: str
     locus: Locus
@@ -178,6 +196,10 @@ class SituatedAgent:
     percept_field: List[Perception] = field(default_factory=list)
     trajectory: List[Dict[str, Any]] = field(default_factory=list)
     memory: List[Dict[str, Any]] = field(default_factory=list)
+    #: `List[movement.Reach]`, typed loosely on purpose — importing `movement` here would make the
+    #: dependency circular, and the agent does not need to know what a movement is in order to hold
+    #: the ones it was handed.
+    horizon: List[Any] = field(default_factory=list)
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -187,6 +209,7 @@ class SituatedAgent:
             "organ_set": list(self.organ_set),
             "temperament": self.temperament,
             "percept_field": [p.as_dict() for p in self.percept_field],
+            "horizon": [r.as_dict() for r in self.horizon],
             "trajectory": list(self.trajectory),
             "memory": list(self.memory),
         }
@@ -323,6 +346,9 @@ def perceive(agent: SituatedAgent, post: Mapping[str, Any], *,
     agent.percept_field = field_
     agent.trajectory.append({
         "at": stamp,
+        # WHICH KIND OF ENTRY. A trajectory that mixed looking and going without saying which is
+        # which would read as a walk with twice as many stops as the agent made.
+        "kind": TRAJECTORY_PERCEIVE,
         "locus": agent.locus.as_dict(),
         "node_id": agent.locus.node_id,
         "organ_set": list(agent.organ_set),

@@ -154,6 +154,9 @@ describe('WriterEditor — the surface', () => {
       manuscriptId: 'ms_1',
       sceneId: 'sc_1',
       onlyDirectives: [0],
+      // W9 — empty unless the author cited something. There is no auto-citation, so an
+      // ordinary render rests on the declared operators alone exactly as it did before.
+      cited: [],
     });
   });
 });
