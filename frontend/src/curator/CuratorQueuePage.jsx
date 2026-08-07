@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import CommitAction from './CommitAction';
 import EvidenceTable from './EvidenceTable';
+import ProposalMasks from './ProposalMasks';
 import StatusPair from './StatusPair';
 import {
     LEDGER_COMMITTED, LEDGER_PROPOSED, commitProposal, fetchProposal, fetchQueue,
@@ -168,6 +169,9 @@ export default function CuratorQueuePage() {
                                 ledgerStatus={open.ledger_status}
                                 detail={open.detail_ledger}
                             />
+
+                            <h3 className="cur-h3">the geometry, on the photograph</h3>
+                            <ProposalMasks proposal={open} />
 
                             <h3 className="cur-h3">the evidence, as the producer measured it</h3>
                             <EvidenceTable evidence={open.evidence} subject={open.subject} />
