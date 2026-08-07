@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from backend.routers import posts, epics, phrases, research, personas, anatomy, taste, manuscript, runs, atlas, corpora, writer
 from backend.routers import retina
+from backend.routers import curator
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
@@ -124,6 +125,12 @@ app.include_router(corpora.router, prefix="/api/v1/corpora", tags=["Corpora"], d
 # only, and there is no write path here to misuse: it returns candidates with similarity
 # scores, never relations, and grounding one into a claim is a later organ's job.
 app.include_router(retina.router, prefix="/api/v1/retina", tags=["Retina"], dependencies=[Depends(require_api_key)])
+
+# WAVE3 — the curator surface. Every lane in this system ends "proposed until a curator commits";
+# this is the first route where a curator can. Two reads and one write, and the write is the only
+# thing in the system that changes durable status: it appends a producer's mark to a post's ledger
+# because a person accepted it. Nothing here commits on its own, and there is no bulk accept.
+app.include_router(curator.router, prefix="/api/v1/curator", tags=["Curator"], dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
 @app.get("/health")
