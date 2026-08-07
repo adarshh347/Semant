@@ -96,18 +96,35 @@ UNFOOTED_BOX = "box_footing"
 #: The selection rules this lane offers. A dict rather than an `if`, so the rule an agent used is a
 #: value that can be recorded on the step and read back, rather than a branch nobody can cite.
 #:
-#: Both are deliberately dull. "Most shared structure" and "most re-measured" are properties of the
-#: GRAPH, not preferences of the agent, and neither consults a label, an embedding or a history of
-#: where this agent has been. The moment a policy reads any of those, the agent has acquired an
-#: interest — which is a real and interesting lane, and it is not this one.
+#: All of them are deliberately dull. "Most shared structure", "most re-measured" and "most cleanly
+#: ordered" are properties of the GRAPH, not preferences of the agent, and none consults a label, an
+#: embedding or a history of where this agent has been. The moment a policy reads any of those, the
+#: agent has acquired an interest — which is a real and interesting lane, and it is not this one.
 POLICY_SYSTEMATICITY = "strongest_systematicity"
 POLICY_WEIGHT = "heaviest"
+
+#: WAVE3 — the rule for the DEPTH axis, and it exists because neither of the others can serve it.
+#:
+#: An `in_front_of` edge carries **no systematicity**: structure-mapping is how an analogy between
+#: two images is judged, and an occlusion is not an analogy — it is a fact about one scene. So it
+#: scores 0.0 under `strongest_systematicity`, and an agent on that policy would never take a depth
+#: step while any geometric edge was reachable. That is not a default to paper over; it is the two
+#: axes being incommensurable, the same wall `depth_organ` puts between its own readings and every
+#: other sense's.
+#:
+#: This rule reads the one number an occlusion mark does carry — how cleanly the two cell
+#: distributions are ordered — and is a property of the measurement, like the others.
+POLICY_ORDERING = "clearest_ordering"
+
 POLICIES: Dict[str, str] = {
     POLICY_SYSTEMATICITY: ("take the reachable edge whose structure-map score is highest; ties "
                            "broken by weight, then by the destination node id"),
     POLICY_WEIGHT: ("take the reachable edge with the most concentration — the movement this "
                     "corpus has re-measured most; ties broken by systematicity, then by the "
                     "destination node id"),
+    POLICY_ORDERING: ("take the reachable edge whose cited measurement orders its two ends most "
+                      "cleanly — the depth axis, where nothing carries a structure-map score; "
+                      "ties broken by weight, then by the destination node id"),
 }
 
 #: TRAJECTORY DECAY — a hook, deliberately not implemented.
@@ -247,6 +264,27 @@ class Reach:
         return str(((self.mark or {}).get("measurement") or {}).get("basis") or "")
 
     @property
+    def ordering(self) -> float:
+        """How cleanly the cited measurement orders its two ends — the depth axis's only score.
+
+        0.0 when the mark carries none, which is every geometric crossing: containment says nothing
+        about which end is nearer, and reading a default as an ordering would invent one.
+        """
+        return float(((self.mark or {}).get("measurement") or {}).get("separation") or 0.0)
+
+    @property
+    def relation(self) -> str:
+        """What the cited mark says this crossing IS. Read off the mark, never named here.
+
+        Both places, because the two organs put it in different ones: `nestedness_organ` nests it
+        inside `measurement`, `occlusion_organ` carries it on the mark. Neither is wrong and this
+        lane does not get to legislate mark shape — it gets to read what is there.
+        """
+        mark = self.mark or {}
+        return str(mark.get("relation")
+                   or (mark.get("measurement") or {}).get("relation") or "")
+
+    @property
     def ledger_status(self) -> str:
         """What the SHARED record says, which is `proposed` until a curator commits the mark."""
         if self.ledger.get("live") and self.ledger.get("epistemic"):
@@ -270,6 +308,11 @@ class Reach:
             "detail": self.detail,
             "systematicity": self.edge.get("systematicity"),
             "weight": self.edge.get("weight"),
+            # The depth axis's own score, and the relation the mark names. Both `None`/empty on a
+            # geometric crossing rather than defaulted, because a containment does not order its
+            # ends and a zero here would read as one that orders them badly.
+            "ordering": self.ordering or None,
+            "relation": self.relation or None,
             "mark_id": self.mark_id,
             "basis": self.basis,
             # BOTH READINGS on every row. The private one decides whether the agent may walk; the
@@ -277,6 +320,48 @@ class Reach:
             "epistemic": self.epistemic,
             "ledger_status": self.ledger_status,
         }
+
+
+#: The keys an organ's mark may use to name the regions it measured.
+#:
+#: More than one vocabulary, because more than one relation now grounds a crossing and they do not
+#: describe their ends alike: containment has an `inner`/`outer`, occlusion has a `front`/`back`,
+#: and neither name would be honest for the other — a thing in front of another is not inside it,
+#: which is the entire subject of the occlusion lane.
+#:
+#: Read as a SET rather than as a schema. This lane does not get to say what an organ must call its
+#: ends; it gets to ask which regions a mark is about, and refuse the crossing if the answer does
+#: not include one of the edge's own endpoints.
+MARK_REGION_KEYS: Tuple[str, ...] = (
+    "inner_region_id", "outer_region_id",       # nestedness, adjacency
+    "front_region_id", "back_region_id",        # occlusion
+    "a_region_id", "b_region_id", "region_id",
+)
+
+
+def measured_nodes(mark: Optional[Mapping[str, Any]]) -> set:
+    """Which loci this mark is actually about, as node ids.
+
+    The check `_admits` makes with it is the one that is easy to leave out, because every other
+    property of a misapplied mark is impeccable: well-formed, mask-basis, honestly stamped, and
+    about a different pair. Generalising the vocabulary widens what can be READ here; it does not
+    weaken the test, which still demands that the mark name an end of this very crossing.
+    """
+    if not mark:
+        return set()
+    post_id = str(mark.get("post_id") or "")
+    region_ids = set()
+    for source in (mark, mark.get("measurement") or {}):
+        if not isinstance(source, Mapping):
+            continue
+        for key in MARK_REGION_KEYS:
+            value = source.get(key)
+            if value:
+                region_ids.add(str(value))
+        for value in (source.get("region_ids") or []):
+            if value:
+                region_ids.add(str(value))
+    return {obs_mod.node_id_for(post_id, region_id) for region_id in region_ids}
 
 
 def _cited_mark(edge: Mapping[str, Any],
@@ -328,13 +413,12 @@ def _admits(edge: Mapping[str, Any], mark: Optional[Mapping[str, Any]]) -> Tuple
             f"carry an agent to another image. VISIBLE, and not reachable")
 
     endpoints = {str(edge.get("source_node")), str(edge.get("target_node"))}
-    measured_node = obs_mod.node_id_for(str(mark.get("post_id") or ""),
-                                        str(measurement.get("inner_region_id") or ""))
-    if measured_node not in endpoints:
+    measured = measured_nodes(mark)
+    if not measured & endpoints:
         return False, UNREACHABLE_ELSEWHERE, (
-            f"mark {mark.get('id')} measures {measured_node} and this movement runs between "
-            f"{sorted(endpoints)}. A measurement of some other pair is not evidence about this "
-            f"crossing, however well-formed it is")
+            f"mark {mark.get('id')} measures {sorted(measured) or 'nothing this lane can name'} "
+            f"and this movement runs between {sorted(endpoints)}. A measurement of some other pair "
+            f"is not evidence about this crossing, however well-formed it is")
 
     return True, "", (
         f"{basis} basis at the measured end, {stated} — the crossing this movement names was "
@@ -447,6 +531,8 @@ def select(entries: Sequence[Reach], *, policy: str = POLICY_SYSTEMATICITY) -> O
         return None
     if policy == POLICY_WEIGHT:
         key = lambda r: (r.weight, r.systematicity, r.other_node)       # noqa: E731
+    elif policy == POLICY_ORDERING:
+        key = lambda r: (r.ordering, r.weight, r.other_node)            # noqa: E731
     else:
         key = lambda r: (r.systematicity, r.weight, r.other_node)       # noqa: E731
     return max(candidates, key=key)
@@ -525,6 +611,11 @@ def step(agent: SituatedAgent, reach: Reach, *, policy: str = POLICY_SYSTEMATICI
         "ledger_status": reach.ledger_status,
         "systematicity": reach.edge.get("systematicity"),
         "weight": reach.edge.get("weight"),
+        # WAVE3 — what kind of crossing this was. A depth step and an analogy step are both steps
+        # and they are not the same event: one moved the agent within a scene, the other between
+        # two pictures that share a shape.
+        "relation": reach.relation or None,
+        "ordering": reach.ordering or None,
         # WHY THIS EDGE — the rule, spelled out, not the preference the agent does not have.
         "policy": policy,
         "rule": POLICIES.get(policy, ""),
