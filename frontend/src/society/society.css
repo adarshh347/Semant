@@ -1,0 +1,63 @@
+/* SOCIETY — the meeting surface.
+ *
+ * Layered ON TOP of `cognition.css` rather than beside it: the status marks, the refusal rows and
+ * the shell are shared deliberately, because `measured` / `interpretive` / `proposed` must look the
+ * same everywhere in this app. A second palette for them is a second place the distinction can
+ * soften. Only what is genuinely new to a MEETING gets a `soc-` rule here.
+ *
+ * Editorial tokens only; no hard-coded hex, so this follows light and dark like everything else. */
+
+.soc-h2 {
+    font-size: .78rem; letter-spacing: .08em; text-transform: uppercase;
+    opacity: .6; font-weight: 500; margin: 2rem 0 .75rem;
+}
+
+.soc-member-list, .soc-verdicts, .soc-hyp-list, .soc-hold-list {
+    list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem;
+}
+
+.soc-member { display: flex; flex-wrap: wrap; gap: .6rem; align-items: baseline; }
+.soc-member-id { font-family: ui-monospace, monospace; font-size: .85rem; }
+.soc-classes { margin: .8rem 0 0; font-size: .8rem; opacity: .7; font-family: ui-monospace, monospace; }
+
+/* ── the partition ─────────────────────────────────────────────────────── */
+
+.soc-verdict {
+    padding: .75rem 1rem; border: 1px solid var(--line); border-radius: .35rem;
+    border-left-width: 3px; background: var(--surface);
+}
+/* The three outcomes read differently at a glance — by border weight and style, not colour alone,
+   so the partition survives a monochrome screen. */
+.soc-verdict--composed        { border-left-style: solid; }
+.soc-verdict--coexistent      { border-left-style: dashed; }
+.soc-verdict--incommensurable { border-left-style: dotted; opacity: .9; }
+.soc-verdict--undetermined    { border-left-style: dotted; opacity: .7; }
+
+.soc-verdict-head { display: flex; flex-wrap: wrap; gap: .75rem; align-items: baseline; }
+.soc-pair { font-family: ui-monospace, monospace; font-size: .84rem; }
+.soc-outcome {
+    font-size: .7rem; letter-spacing: .06em; text-transform: uppercase;
+    padding: .1rem .4rem; border: 1px solid var(--line); border-radius: .2rem;
+}
+.soc-outcome-gloss { margin: .35rem 0 0; font-size: .82rem; }
+.soc-verdict-detail { margin: .3rem 0 0; font-size: .8rem; opacity: .7; line-height: 1.5; }
+
+/* ── a composed claim ──────────────────────────────────────────────────── */
+
+.soc-hypothesis {
+    padding: .85rem 1rem; border: 1px solid var(--line); border-radius: .35rem;
+    background: var(--surface);
+}
+.soc-hyp-head { display: flex; flex-wrap: wrap; gap: .6rem; align-items: baseline; }
+.soc-claim { font-weight: 600; font-size: .92rem; }
+.soc-hyp-agents { margin: .35rem 0 .5rem; font-size: .82rem; opacity: .8; }
+.soc-rests { list-style: none; margin: 0; padding: 0 0 0 .75rem; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: .3rem; }
+.soc-rest { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; font-size: .8rem; }
+.soc-rest-agent { font-family: ui-monospace, monospace; }
+.soc-hyp-ledger { margin: .6rem 0 0; font-size: .78rem; opacity: .65; font-style: italic; }
+
+/* ── holding ───────────────────────────────────────────────────────────── */
+
+.soc-hold { display: flex; flex-wrap: wrap; gap: .6rem; align-items: baseline; font-size: .84rem; }
+.soc-hold-row { display: inline-flex; gap: .5rem; align-items: baseline; }
+.soc-refusals { margin-top: .9rem; padding-top: .7rem; border-top: 1px dashed var(--line); }
