@@ -5,6 +5,7 @@ from backend.routers import retina
 from backend.routers import curator
 from backend.routers import cognition
 from backend.routers import society
+from backend.routers import scene
 from backend.routers import constellation
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
@@ -145,6 +146,13 @@ app.include_router(cognition.router, prefix="/api/v1/cognition", tags=["Cognitio
 # partition of what holds between them — composed, coexistent, incommensurable. The joint claims it
 # returns are `proposed` and there is no route here that could commit one.
 app.include_router(society.router, prefix="/api/v1/society", tags=["Society"], dependencies=[Depends(require_api_key)])
+
+# WAVE4 — the scene view. The engine has grounded nesting, adjacency, occlusion and chromatic
+# rhyme on regions for three waves and there has been nowhere to SEE them on the picture they were
+# measured from. Two reads, no write: committing is the curator's single route above, and this one
+# shows what exists at its true status — `epistemic` re-derived from the recorded basis on every
+# read, so nothing can be promoted by editing a cache.
+app.include_router(scene.router, prefix="/api/v1/scene", tags=["Scene"], dependencies=[Depends(require_api_key)])
 
 # WAVE4 — the constellation: the neighbourhood of loci reachable from one, stitched by the
 # relations that were actually PERSISTED. Read-only, and structurally so: there is no write path
