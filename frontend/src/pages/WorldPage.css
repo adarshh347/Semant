@@ -1,0 +1,199 @@
+/* WAVE4 — the front door.
+ *
+ * Entirely on the app's existing tokens (index.css / tokens.css). No new palette, no new type
+ * scale: a landing page that invented its own look would be the first thing a person sees and the
+ * least like the rest of the app.
+ *
+ * The one thing this sheet is careful about: a surface that is not answering must not look like a
+ * dimmer version of a link. It is not a door at all, so it does not get a hover, a pointer or the
+ * accent — it gets the same treatment an absent reading gets everywhere else in this system.
+ */
+
+.world-page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: var(--space-12) var(--space-6) var(--space-24);
+    color: var(--ink);
+}
+
+/* ── the opening ───────────────────────────────────────────────────────────── */
+
+.world-eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+    margin: 0 0 var(--space-3);
+}
+
+.world-head h1 {
+    font-family: var(--font-display);
+    font-size: var(--fs-h1);
+    line-height: 1.1;
+    letter-spacing: var(--tracking-tight);
+    max-width: 18ch;
+    margin: 0 0 var(--space-5);
+}
+
+.world-lede {
+    max-width: 60ch;
+    font-size: var(--fs-body-lg);
+    line-height: 1.6;
+    color: var(--ink-muted);
+    margin: 0;
+}
+
+.world-lede em { font-style: italic; color: var(--ink); }
+
+/* ── the epistemic reality ─────────────────────────────────────────────────── */
+
+.world-truth {
+    margin: var(--space-14) 0 var(--space-12);
+    padding: var(--space-6);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+}
+
+.world-truth h2,
+.world-surfaces h2 {
+    font-size: var(--fs-small);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    color: var(--ink-subtle);
+    margin: 0 0 var(--space-4);
+}
+
+.world-truth-body p {
+    max-width: 68ch;
+    margin: 0 0 var(--space-3);
+    line-height: 1.6;
+    color: var(--ink-muted);
+}
+
+.world-truth-body b { color: var(--ink); font-weight: 600; }
+
+.world-count {
+    font-family: var(--font-mono);
+    font-size: var(--fs-small);
+    line-height: 1.6;
+    color: var(--ink-muted);
+    margin: var(--space-4) 0 0;
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--line);
+}
+
+.world-count b { color: var(--ink); }
+.world-count span { display: block; margin-top: var(--space-2); font-family: var(--font-sans); }
+.world-count--pending { color: var(--ink-subtle); }
+
+/* Zero committed is the honest state, not an error — it is marked, not alarmed. */
+.world-count--none b { color: var(--accent); }
+
+/* ── the five surfaces ─────────────────────────────────────────────────────── */
+
+.world-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.world-card { display: flex; }
+
+.world-card > a,
+.world-card > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-5);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 180ms var(--ease), box-shadow 180ms var(--ease),
+                transform 180ms var(--ease);
+}
+
+.world-card > a:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.world-card > a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .world-card > a { transition: none; }
+    .world-card > a:hover { transform: none; }
+}
+
+.world-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.world-card-name {
+    font-family: var(--font-display);
+    font-size: var(--fs-h3);
+    letter-spacing: var(--tracking-tight);
+}
+
+.world-card-what { font-size: var(--fs-small); color: var(--ink); }
+
+.world-card-honest {
+    font-size: var(--fs-small);
+    line-height: 1.55;
+    color: var(--ink-muted);
+}
+
+/* A surface that is not answering is not a dim door — it is not a door. No pointer, no hover,
+   no accent; the same quiet an absent reading gets everywhere else in this system. */
+.world-card.is-unreachable > div {
+    border-style: dashed;
+    background: none;
+    cursor: default;
+}
+
+.world-card.is-unreachable .world-card-name,
+.world-card.is-unreachable .world-card-what { color: var(--ink-subtle); }
+
+.world-state {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    padding: 1px 7px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--line-strong);
+    color: var(--ink-subtle);
+    white-space: nowrap;
+}
+
+.world-state[data-state='live'] { border-color: var(--accent); color: var(--accent); }
+.world-state[data-state='unreachable'] { border-style: dashed; }
+
+/* ── the close ─────────────────────────────────────────────────────────────── */
+
+.world-foot {
+    margin-top: var(--space-12);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--line);
+}
+
+.world-foot p {
+    max-width: 66ch;
+    margin: 0;
+    font-size: var(--fs-small);
+    line-height: 1.6;
+    color: var(--ink-subtle);
+}
