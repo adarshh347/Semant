@@ -34,6 +34,8 @@ const LandingPage = React.lazy(() => import('./pages/LandingPage.jsx'));
 const GalleryPage = React.lazy(() => import('./pages/GalleryPage.jsx'));
 const PostDetailPage = React.lazy(() => import('./components/PostDetailPage.jsx'));
 const ReadDeeperPage = React.lazy(() => import('./pages/ReadDeeperPage.jsx'));
+// WAVE4 — the scene view: a picture with the relations grounded on it, each at its true status.
+const ScenePage = React.lazy(() => import('./pages/ScenePage.jsx'));
 const RegionSurfaceLab = React.lazy(() => import('./pages/RegionSurfaceLab.jsx'));
 const RefineLab = React.lazy(() => import('./pages/RefineLab.jsx'));
 const DifferentialLab = React.lazy(() => import('./pages/DifferentialLab.jsx')); // DEV-ONLY · CIRCUIT-001 P2E-B harness
@@ -101,6 +103,8 @@ const router = createBrowserRouter([
       // Track F — the audience's "read deeper" pause (Écart), the lite variant of the
       // creator's Visual pane.
       { path: "read/:postId", element: <ReadDeeperPage /> },
+      { path: "scene", element: <ScenePage /> },
+      { path: "scene/:postId", element: <ScenePage /> },
       // Track D Phase 1 — dev harness for RegionSurface, before it is mounted for real.
       { path: "lab/region-surface/:postId", element: <RegionSurfaceLab /> },
       { path: "lab/refine/:postId", element: <RefineLab /> },

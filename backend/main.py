@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.routers import posts, epics, phrases, research, personas, anatomy, taste, manuscript, runs, atlas, corpora, writer
 from backend.routers import retina
 from backend.routers import curator
+from backend.routers import scene
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
@@ -131,6 +132,13 @@ app.include_router(retina.router, prefix="/api/v1/retina", tags=["Retina"], depe
 # thing in the system that changes durable status: it appends a producer's mark to a post's ledger
 # because a person accepted it. Nothing here commits on its own, and there is no bulk accept.
 app.include_router(curator.router, prefix="/api/v1/curator", tags=["Curator"], dependencies=[Depends(require_api_key)])
+
+# WAVE4 — the scene view. The engine has grounded nesting, adjacency, occlusion and chromatic
+# rhyme on regions for three waves and there has been nowhere to SEE them on the picture they were
+# measured from. Two reads, no write: committing is the curator's single route above, and this one
+# shows what exists at its true status — `epistemic` re-derived from the recorded basis on every
+# read, so nothing can be promoted by editing a cache.
+app.include_router(scene.router, prefix="/api/v1/scene", tags=["Scene"], dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
 @app.get("/health")
