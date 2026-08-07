@@ -92,6 +92,9 @@ class MeetingView(BaseModel):
     held: Dict[str, List[Dict[str, Any]]]
     refusals_to_hold: List[RefusalToHoldView]
     journeys: Dict[str, Any]
+    #: The full walk each member took to get here — the cognition view's own shape, so the two
+    #: surfaces render it with one component rather than two that can disagree about a refusal.
+    walks: Dict[str, Any]
     outcomes: Dict[str, int]
     convened: bool
     detail: str
@@ -129,13 +132,22 @@ async def read_meeting(post_id: str = Query(...), region_id: str = "", atlas_id:
 
     agents: List[sa.SituatedAgent] = []
     journeys: Dict[str, Any] = {}
+    walks: Dict[str, Any] = {}
     for body in DEFAULT_BODIES:
         agent = sa.inhabit(agent_id=f"agent_{body['organ'].split('_')[0]}",
                            post_id=str(post["_id"]), region_id=region,
                            organ_set=(body["organ"],), temperament=body["temperament"])
         # WALKED, not placed. `convene` refuses a group that did not travel, and shortcutting that
         # here would be staging the meeting this surface exists to show honestly.
-        cognition.walk(agent, graph, posts, marks=marks, steps=steps)
+        #
+        # KEPT rather than discarded (WAVE4 · journeys). This call already produced the whole walk
+        # view — stations, perceptions, refusals with their reasons, the character that chose each
+        # step — and the first version of this route threw it away and rebuilt a legs-only
+        # `journey` beside it. Nothing new is computed here; what changed is that the work already
+        # done is no longer dropped on the floor. `journeys` stays because it is the shape
+        # `earned_hypothesis` carries, and the two are different things: a journey is provenance of
+        # POSITION for a claim, a walk is what there is to watch.
+        walks[agent.id] = cognition.walk(agent, graph, posts, marks=marks, steps=steps)
         agents.append(agent)
         journeys[agent.id] = meeting.journey(agent)
 
@@ -160,6 +172,7 @@ async def read_meeting(post_id: str = Query(...), region_id: str = "", atlas_id:
         "held": {aid: soc.held_beliefs(rows) for aid, rows in held.items()},
         "refusals_to_hold": refusals,
         "journeys": journeys,
+        "walks": walks,
         "outcomes": outcomes,
         "convened": True,
         "detail": (
