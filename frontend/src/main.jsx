@@ -34,6 +34,9 @@ const LandingPage = React.lazy(() => import('./pages/LandingPage.jsx'));
 const GalleryPage = React.lazy(() => import('./pages/GalleryPage.jsx'));
 const PostDetailPage = React.lazy(() => import('./components/PostDetailPage.jsx'));
 const ReadDeeperPage = React.lazy(() => import('./pages/ReadDeeperPage.jsx'));
+// WAVE4 — the front door. Five views landed with routes and, mostly, no way to reach them; this
+// orients across them and states the epistemic reality at the threshold.
+const WorldPage = React.lazy(() => import('./pages/WorldPage.jsx'));
 // WAVE4 — the scene view: a picture with the relations grounded on it, each at its true status.
 const ScenePage = React.lazy(() => import('./pages/ScenePage.jsx'));
 const RegionSurfaceLab = React.lazy(() => import('./pages/RegionSurfaceLab.jsx'));
@@ -113,6 +116,7 @@ const router = createBrowserRouter([
       // Track F — the audience's "read deeper" pause (Écart), the lite variant of the
       // creator's Visual pane.
       { path: "read/:postId", element: <ReadDeeperPage /> },
+      { path: "world", element: <WorldPage /> },
       { path: "scene", element: <ScenePage /> },
       { path: "scene/:postId", element: <ScenePage /> },
       // Track D Phase 1 — dev harness for RegionSurface, before it is mounted for real.
