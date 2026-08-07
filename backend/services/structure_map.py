@@ -158,6 +158,17 @@ SYSTEMATICITY_EPSILON = 0.00667
 MIN_SYSTEMATICITY = 0.34
 
 
+#: How far up the containment chain higher-order structure is read. Two rungs: the container, and
+#: the container's container. Bounded because the third or fourth container of anything in this
+#: corpus is the frame, and every frame maps to every other frame — an agreement that says nothing.
+MAX_HIGHER_ORDER_DEPTH = 2
+
+#: How much of the score comes from relations-between-relations rather than from the pair's own
+#: component counts. **0.0 = off**, and off until a measurement says otherwise: see the module
+#: docstring for the sweep and the verdict.
+HIGHER_ORDER_WEIGHT = 0.0
+
+
 def _alignment(a: float, b: float) -> float:
     """How well two structural counts agree, in [0,1].
 
@@ -172,6 +183,50 @@ def _alignment(a: float, b: float) -> float:
     return (min(a, b) / hi) if hi > 0 else 1.0
 
 
+def _counts_for(pairs: Sequence[Mapping[str, Any]], rid: str) -> Dict[str, Any]:
+    """One rung's structural counts, and the id of the thing above it. The shared arithmetic
+    behind both a skeleton and every ancestor of one."""
+    containers = [m for m in pairs if str(m.get("inner_region_id")) == rid]
+    contained = [m for m in pairs if str(m.get("outer_region_id")) == rid]
+    containers = sorted(containers, key=lambda m: -float(m.get("scale_ratio") or 0.0))
+    parent_id = str(containers[0].get("outer_region_id")) if containers else ""
+    siblings = ({str(m.get("inner_region_id")) for m in pairs
+                 if str(m.get("outer_region_id")) == parent_id
+                 and str(m.get("inner_region_id")) != rid} if parent_id else set())
+    return {
+        "region_id": rid,
+        "parent_id": parent_id,
+        "depth": len({str(m.get("outer_region_id")) for m in containers}),
+        "sibling_count": len(siblings),
+        "descendant_count": len({str(m.get("inner_region_id")) for m in contained}),
+        "sibling_ids": sorted(siblings),
+        "descendant_ids": sorted({str(m.get("inner_region_id")) for m in contained}),
+        "_containers": containers,
+    }
+
+
+def _ancestor_chain(pairs: Sequence[Mapping[str, Any]], rid: str,
+                    max_depth: int = MAX_HIGHER_ORDER_DEPTH) -> List[Dict[str, Any]]:
+    """The containment chain above a region, nearest first, bounded and cycle-guarded.
+
+    Each rung carries its OWN counts, so higher-order agreement can be read off two skeletons
+    without a lookup table, a second argument, or a change at any call site. Bounded because the
+    fourth container of anything in this corpus is the frame, and the frame maps to every frame.
+    """
+    chain, seen, current = [], {rid}, rid
+    for _ in range(max(0, int(max_depth))):
+        counts = _counts_for(pairs, current)
+        parent_id = counts["parent_id"]
+        if not parent_id or parent_id in seen:      # no container, or a cycle the organ allowed
+            break
+        seen.add(parent_id)
+        rung = _counts_for(pairs, parent_id)
+        chain.append({k: rung[k] for k in
+                      ("region_id", "parent_id", "depth", "sibling_count", "descendant_count")})
+        current = parent_id
+    return chain
+
+
 def relational_structure(regions: Sequence[Mapping[str, Any]], region_id: str, *,
                          measurements: Optional[Sequence[Mapping[str, Any]]] = None
                          ) -> Dict[str, Any]:
@@ -183,32 +238,28 @@ def relational_structure(regions: Sequence[Mapping[str, Any]], region_id: str, *
     """
     rid = str(region_id)
     pairs = list(measurements or [])
-    containers = [m for m in pairs if str(m.get("inner_region_id")) == rid]
-    contained = [m for m in pairs if str(m.get("outer_region_id")) == rid]
-
-    # The immediate container is the SMALLEST thing that holds it — the tightest true parent, not
-    # the whole frame. Ordering by scale_ratio descending puts the snuggest fit first.
-    containers.sort(key=lambda m: -float(m.get("scale_ratio") or 0.0))
+    counts = _counts_for(pairs, rid)
+    containers = counts["_containers"]
     parent = containers[0] if containers else None
-    parent_id = str(parent.get("outer_region_id")) if parent else ""
-
-    siblings = ([str(m.get("inner_region_id")) for m in pairs
-                 if str(m.get("outer_region_id")) == parent_id
-                 and str(m.get("inner_region_id")) != rid] if parent_id else [])
+    parent_id = counts["parent_id"]
 
     return {
         "region_id": rid,
         "relation": RELATION_NESTED_WITHIN,
         "parent_id": parent_id,
         "parent_measurement": dict(parent) if parent else None,
+        # The containment chain upward, each rung carrying its own counts. Riding on the skeleton
+        # is what lets `systematicity` read higher-order structure with no new argument and no
+        # change at any call site — the kernel keeps handing over two skeletons as it always did.
+        "ancestors": _ancestor_chain(pairs, rid),
         # Chain depth: how many distinct things measurably contain it. The temple's finial sits in
         # the spire which sits in the structure — depth 2 — and that nesting-of-nesting is exactly
         # the higher-order structure systematicity is about.
-        "depth": len({str(m.get("outer_region_id")) for m in containers}),
-        "sibling_ids": sorted(set(siblings)),
-        "sibling_count": len(set(siblings)),
-        "descendant_ids": sorted({str(m.get("inner_region_id")) for m in contained}),
-        "descendant_count": len({str(m.get("inner_region_id")) for m in contained}),
+        "depth": counts["depth"],
+        "sibling_ids": counts["sibling_ids"],
+        "sibling_count": counts["sibling_count"],
+        "descendant_ids": counts["descendant_ids"],
+        "descendant_count": counts["descendant_count"],
         "has_relation": bool(parent_id),
         "region_count": len(regions or []),
     }
@@ -220,8 +271,67 @@ COMPONENTS = (("depth", "depth"), ("siblings", "sibling_count"),
               ("descendants", "descendant_count"))
 
 
+def _component_agreement(source: Mapping[str, Any], target: Mapping[str, Any],
+                         aggregation: str) -> Dict[str, Any]:
+    """One rung's agreement: the three alignments, and which of them had anything to compare.
+
+    Shared by the pair itself and by every ancestor rung, so higher-order structure is scored by
+    exactly the rule first-order structure is scored by — one level up, and nothing else different.
+    """
+    values, live_flags = {}, {}
+    for name, field in COMPONENTS:
+        a = float(source.get(field, 0) or 0)
+        b = float(target.get(field, 0) or 0)
+        values[name] = _alignment(a, b)
+        live_flags[name] = not (a <= 0 and b <= 0)
+    live = [n for n, is_live in live_flags.items() if is_live]
+    absent_total = sum(values[n] for n, is_live in live_flags.items() if not is_live)
+    shape = sum(values.values()) / 3.0
+    present = (sum(values[n] for n in live) / len(live)) if live else 1.0
+    return {"values": values, "live": live,
+            "earned": [n for n in live if values[n] > 0],
+            "absence": absent_total / 3.0,
+            "score": shape if aggregation == AGGREGATION_SHAPE else present}
+
+
+def higher_order_agreement(source: Mapping[str, Any], target: Mapping[str, Any], *,
+                           aggregation: str = DEFAULT_AGGREGATION) -> Dict[str, Any]:
+    """How far up the two containment chains the correspondence keeps holding.
+
+    Gentner's systematicity is about relations BETWEEN relations: a part in a whole is a relation,
+    and that whole itself sitting in something is the higher-order structure that makes the first
+    relation worth mapping. `relational_structure` now carries each region's ancestor chain, so
+    that is readable here from the two skeletons alone.
+
+    Returns a per-level score and the number of levels both chains actually reached. Levels only
+    one chain has are NOT scored as disagreement and not scored as agreement — a chain that ends
+    is an absence of evidence about a rung that does not exist, which is the same discipline
+    `present` applies to a component neither side has.
+    """
+    source_chain = list(source.get("ancestors") or [])
+    target_chain = list(target.get("ancestors") or [])
+    levels = []
+    for rung_source, rung_target in zip(source_chain, target_chain):
+        agreement = _component_agreement(rung_source, rung_target, aggregation)
+        levels.append({"source": rung_source.get("region_id"),
+                       "target": rung_target.get("region_id"),
+                       "score": round(agreement["score"], 6),
+                       "live": agreement["live"]})
+    depth = len(levels)
+    return {
+        "levels": levels,
+        "depth": depth,
+        "score": round(sum(v["score"] for v in levels) / depth, 6) if depth else None,
+        # How far each chain went on its own — an asymmetry worth seeing, because a pair whose
+        # chains stop at different heights is a weaker analogy than the shared rungs suggest.
+        "source_depth": len(source_chain),
+        "target_depth": len(target_chain),
+    }
+
+
 def systematicity(source: Mapping[str, Any], target: Mapping[str, Any], *,
-                  aggregation: str = DEFAULT_AGGREGATION) -> Dict[str, Any]:
+                  aggregation: str = DEFAULT_AGGREGATION,
+                  higher_order_weight: float = HIGHER_ORDER_WEIGHT) -> Dict[str, Any]:
     """How much connected relational structure the two skeletons share, in [0,1].
 
     Three components, each an alignment of a structural count:
@@ -247,42 +357,50 @@ def systematicity(source: Mapping[str, Any], target: Mapping[str, Any], *,
     recomputing anything, and `insystematic` stops being a bare number.
 
     `aggregation="present"` averages only the live components — absence abstains rather than
-    agreeing. It is measurably better on both audited criteria and it is NOT the default, because
-    reshaping what grounds is a decision to take deliberately and not as a side effect of an audit.
+    agreeing. It is the default since WAVE3; `shape` stays runnable so what it replaced remains
+    measurable.
+
+    ## `higher_order_weight`
+
+    Blends in agreement one and two containers up (`higher_order_agreement`). Gentner's claim is
+    that relations between relations weigh more than attribute matches, so this is the term the
+    theory actually asks for. It is a parameter and it is **off by default**, because the
+    measurement did not support turning it on — see the module docstring.
     """
     if aggregation not in AGGREGATIONS:
         raise ValueError(f"aggregation must be one of {AGGREGATIONS}, got {aggregation!r}")
 
-    values, live_flags = {}, {}
-    for name, field in COMPONENTS:
-        a = float(source.get(field, 0) or 0)
-        b = float(target.get(field, 0) or 0)
-        values[name] = _alignment(a, b)
-        # "Live" means there was something to compare, on at least one side. Absence on BOTH is
-        # not disagreement — it is the absence of evidence, which is why it gets its own name.
-        live_flags[name] = not (a <= 0 and b <= 0)
-
-    live = [n for n, is_live in live_flags.items() if is_live]
-    earned = [n for n in live if values[n] > 0]
-    absent_total = sum(values[n] for n, is_live in live_flags.items() if not is_live)
-
+    first = _component_agreement(source, target, aggregation)
+    values, live, earned = first["values"], first["live"], first["earned"]
     shape = sum(values.values()) / 3.0
     present = (sum(values[n] for n in live) / len(live)) if live else 1.0
-    score = shape if aggregation == AGGREGATION_SHAPE else present
+    first_order = shape if aggregation == AGGREGATION_SHAPE else present
+
+    higher = higher_order_agreement(source, target, aggregation=aggregation)
+    weight = max(0.0, min(1.0, float(higher_order_weight)))
+    if weight > 0 and higher["score"] is not None:
+        score = (1.0 - weight) * first_order + weight * higher["score"]
+    else:
+        # No shared rung above the pair, or the term is off: the pair's own agreement IS the
+        # score. Not penalised for having no container — a chain that ends is not a disagreement.
+        score = first_order
 
     return {
         "score": round(score, 6),
         "aggregation": aggregation,
         "components": {n: round(v, 6) for n, v in values.items()},
-        # The same pair read the other way, always present, so the two rules can be compared on
-        # any live result without re-deriving one from the other.
+        # The same pair read the other ways, always present, so the rules can be compared on any
+        # live result without re-deriving one from another.
         "shape_score": round(shape, 6),
         "present_score": round(present, 6),
+        "first_order_score": round(first_order, 6),
+        "higher_order": higher,
+        "higher_order_weight": round(weight, 6),
         "live": sorted(live),
         "earned": sorted(earned),
         # How much of `shape_score` is agreement about nothing being there. 0.667 means two of the
         # three components agreed only in that neither side had any.
-        "absence_share": round(absent_total / 3.0, 6),
+        "absence_share": round(first["absence"], 6),
         "source_shape": {k: source.get(k) for k in ("depth", "sibling_count", "descendant_count")},
         "target_shape": {k: target.get(k) for k in ("depth", "sibling_count", "descendant_count")},
     }
@@ -290,7 +408,8 @@ def systematicity(source: Mapping[str, Any], target: Mapping[str, Any], *,
 
 def structure_map(source: Mapping[str, Any], target: Mapping[str, Any], *,
                   min_systematicity: float = MIN_SYSTEMATICITY,
-                  aggregation: str = DEFAULT_AGGREGATION) -> Dict[str, Any]:
+                  aggregation: str = DEFAULT_AGGREGATION,
+                  higher_order_weight: float = HIGHER_ORDER_WEIGHT) -> Dict[str, Any]:
     """Map one relational skeleton onto another. The guard, as a verdict.
 
     Returns `{status, reason, detail, systematicity, correspondences, …}`. `status` is `mapped`
@@ -322,7 +441,8 @@ def structure_map(source: Mapping[str, Any], target: Mapping[str, Any], *,
                            "instances of it — mapping a relation onto itself proves nothing"),
                 "systematicity": None, "correspondences": []}
 
-    sys_score = systematicity(source, target, aggregation=aggregation)
+    sys_score = systematicity(source, target, aggregation=aggregation,
+                              higher_order_weight=higher_order_weight)
     if sys_score["score"] < float(min_systematicity):
         return {"status": "refused", "reason": "insystematic",
                 # The refusal names what it is made of. A bare "0.31 < 0.34" tells a reader
