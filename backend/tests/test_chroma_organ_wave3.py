@@ -52,12 +52,23 @@ class Raster:
 
     @classmethod
     def split(cls, left, right, size=64):
-        """Left half one colour, right half another — a raster with a known warmth gradient."""
+        """Left half one colour, right half another — a raster with a known warmth gradient.
+
+        Returned as a DECLARED FRAME (`chroma_organ.image_frame`), not a bare image, because
+        ORGAN-PROVENANCE-001 made that the organ's contract: the mask's coordinates are the frame's
+        coordinates, and an image that is not that frame produces a confident number about a
+        different subject. The fixtures declare it the same way a real caller has to.
+        """
         px = [left if x < size // 2 else right for _ in range(size) for x in range(size)]
-        return cls(px, size)
+        return chroma.image_frame(cls(px, size), source="fixture:split")
 
     @classmethod
     def flat(cls, rgb, size=64):
+        return chroma.image_frame(cls([rgb] * (size * size), size), source="fixture:flat")
+
+    @classmethod
+    def raw(cls, rgb, size=64):
+        """The undeclared image, for the tests that check the refusal."""
         return cls([rgb] * (size * size), size)
 
     def convert(self, _mode):
@@ -154,6 +165,55 @@ def test_an_organ_with_no_pixels_refuses_rather_than_reading_grey():
         chroma.measure(LEFT, None)
 
 
+def test_a_bare_image_is_refused_because_it_declares_no_frame():
+    """ORGAN-PROVENANCE-001. The organ used to take any image and index the region's mask against
+    it, which is only meaningful if the image IS the frame the mask was drawn on."""
+    with pytest.raises(chroma.ChromaRefusal, match="bare image"):
+        chroma.measure(LEFT, Raster.raw(WARM))
+
+
+def test_a_frame_that_admits_it_is_a_crop_is_refused():
+    frame = chroma.image_frame(Raster.raw(WARM), source="fixture", whole_frame=False)
+    with pytest.raises(chroma.ChromaRefusal, match="not the whole picture"):
+        chroma.measure(LEFT, frame)
+
+
+def test_a_frame_that_names_no_source_is_refused():
+    frame = chroma.image_frame(Raster.raw(WARM), source="")
+    with pytest.raises(chroma.ChromaRefusal, match="names no source"):
+        chroma.measure(LEFT, frame)
+
+
+def test_the_reading_that_made_this_a_rule():
+    """THE AUDIT FINDING, kept as a test so nobody has to take the docstring's word for it.
+
+    The same region, the same call, two images that differ only in framing. Before the frame
+    contract both produced a `measured` mark of identical shape, and the sign of the answer was
+    opposite. Nothing downstream could have told them apart.
+    """
+    class Shifted(Raster):
+        def __init__(self, size=64, off=0):
+            super().__init__([], size)
+            self.off = off
+
+        def resize(self, wh):
+            return Shifted(int(wh[0]), self.off)
+
+        def getdata(self):
+            return [(WARM if (x + self.off) < self.size // 2 else COOL)
+                    for _ in range(self.size) for x in range(self.size)]
+
+    on_frame = chroma.measure(LEFT, chroma.image_frame(Shifted(), source="frame"))
+    shifted = chroma.measure(LEFT, chroma.image_frame(Shifted(off=32), source="other"))
+
+    assert on_frame["warmth_mean"] > 0.5 and shifted["warmth_mean"] < -0.5, \
+        "the fixture must actually flip the sign or this test proves nothing"
+    # ...and now the two marks are distinguishable, which is the whole fix
+    a = chroma.grounding_mark(on_frame, post_id="p")["provenance"]["image_source"]
+    b = chroma.grounding_mark(shifted, post_id="p")["provenance"]["image_source"]
+    assert a == "frame" and b == "other" and a != b
+
+
 def test_it_reads_no_label_and_no_category():
     """What it says must be checkable against the numbers, so it may not be about what the region
     depicts. Same reading from the same pixels whatever the region is called."""
@@ -214,6 +274,7 @@ def test_the_mark_names_its_substrate_in_the_contracts_own_key():
     mark = chroma.grounding_mark(chroma.measure(LEFT, Raster.flat(WARM)), post_id="p")
     assert mark[epistemics.SUBSTRATE_KEY] == "mask"
     assert epistemics.substrate_of(mark) == "mask"
+    assert mark["provenance"]["image_source"] == "fixture:flat"
 
 
 def test_the_organ_declares_its_substrates():
