@@ -1,0 +1,126 @@
+/* COGNITION — the walk surface.
+ *
+ * Editorial tokens only (--bg / --surface / --ink / --line / --accent …), already redefined under
+ * the app's dark scheme, so this follows light and dark without a second palette. No hard-coded
+ * hex, for the same reason `agentDemo.css` has none.
+ *
+ * Its own stylesheet and its own `cog-` prefix: nothing here leaks into /agent or /differential,
+ * and nothing there is depended on.
+ *
+ * ONE RULE IS LOAD-BEARING RATHER THAN DECORATIVE: `measured`, `interpretive` and `proposed` must
+ * be visibly distinct. A surface where they look alike is a surface where the difference stops
+ * mattering, and that difference is what the whole system is arranged around. They differ by
+ * weight and border as well as colour, so the distinction survives a monochrome screen and does
+ * not rest on colour alone. */
+
+.cog-shell {
+    max-width: 84rem;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3rem);
+    color: var(--ink);
+}
+
+.cog-head { max-width: 46rem; display: flex; flex-direction: column; gap: .6rem; }
+.cog-title { font-size: clamp(1.6rem, 3.5vw, 2.4rem); line-height: 1.1; margin: 0; }
+.cog-lede { color: var(--ink-2, var(--ink)); opacity: .8; line-height: 1.55; margin: 0; }
+
+/* ── controls ──────────────────────────────────────────────────────────── */
+
+.cog-controls {
+    display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;
+    margin: 2rem 0 1.5rem; padding: 1rem 1.25rem;
+    border: 1px solid var(--line); border-radius: .5rem; background: var(--surface);
+}
+.cog-field { display: flex; flex-direction: column; gap: .35rem; min-width: 11rem; }
+.cog-field span { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; opacity: .65; }
+.cog-field input, .cog-field select {
+    padding: .5rem .65rem; border: 1px solid var(--line); border-radius: .35rem;
+    background: var(--bg); color: var(--ink); font: inherit;
+}
+.cog-go {
+    padding: .55rem 1.4rem; border: 1px solid var(--accent, var(--ink)); border-radius: .35rem;
+    background: var(--accent, transparent); color: var(--bg, var(--ink));
+    font: inherit; cursor: pointer;
+}
+.cog-go[disabled] { opacity: .5; cursor: progress; }
+
+.cog-error { color: var(--danger, crimson); margin: 1rem 0; }
+
+/* ── the bright line ───────────────────────────────────────────────────── */
+
+.cog-brightline {
+    display: flex; flex-direction: column; gap: .4rem;
+    margin-bottom: 2rem; padding: 1rem 1.25rem;
+    border-left: 3px solid var(--accent, var(--ink)); background: var(--surface);
+}
+.cog-brightline p { margin: 0; font-size: .92rem; }
+.cog-brightline span { opacity: .7; }
+.cog-ok { font-weight: 600; }
+.cog-warn { font-weight: 700; color: var(--danger, crimson); }
+.cog-neutral { opacity: .8; }
+
+/* ── the walks ─────────────────────────────────────────────────────────── */
+
+.cog-walks { display: grid; gap: 2rem; }
+@media (min-width: 62rem) {
+    .cog-walks--pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.cog-walk { min-width: 0; border: 1px solid var(--line); border-radius: .5rem; overflow: hidden; }
+.cog-walk-head { padding: 1rem 1.25rem; background: var(--surface); border-bottom: 1px solid var(--line); }
+.cog-walk-title { margin: 0 0 .35rem; font-size: 1.05rem; letter-spacing: .02em; }
+.cog-character { margin: 0; font-size: .86rem; opacity: .8; line-height: 1.5; }
+.cog-prefers { display: block; margin-top: .25rem; font-size: .78rem; opacity: .7; }
+.cog-organs { margin: .5rem 0 0; font-size: .78rem; opacity: .65; }
+
+.cog-stream { list-style: none; margin: 0; padding: 0; }
+
+/* ── a station ─────────────────────────────────────────────────────────── */
+
+.cog-station { padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); }
+.cog-station-head { display: flex; flex-wrap: wrap; gap: .75rem; align-items: baseline; margin-bottom: .6rem; }
+.cog-node { font-family: ui-monospace, monospace; font-size: .85rem; }
+.cog-station-tally { font-size: .75rem; opacity: .6; }
+
+.cog-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
+.cog-percept, .cog-refusal { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; font-size: .85rem; }
+.cog-percept-said { flex: 1 1 14rem; min-width: 0; }
+.cog-percept-meta { font-size: .74rem; opacity: .55; font-family: ui-monospace, monospace; }
+
+.cog-empty { margin: .25rem 0 0; font-size: .82rem; opacity: .6; font-style: italic; }
+
+/* THE STATUS MARKS. Distinct by weight and border as well as colour, so the difference does not
+   rest on colour alone — a monochrome reader must still see three different things. */
+.cog-status {
+    font-size: .7rem; letter-spacing: .06em; text-transform: uppercase;
+    padding: .1rem .4rem; border-radius: .2rem; white-space: nowrap;
+}
+.cog-status--measured    { font-weight: 700; border: 1px solid var(--accent, var(--ink)); }
+.cog-status--interpretive{ font-weight: 400; border: 1px dashed var(--line); opacity: .85; }
+.cog-status--proposed    { font-weight: 400; border: 1px dotted var(--line); opacity: .75; font-style: italic; }
+.cog-status--other       { font-weight: 400; border: 1px solid var(--line); opacity: .6; }
+
+/* ── refusals: information, styled as such rather than as errors ──────── */
+
+.cog-refusals { margin-top: .85rem; padding-top: .7rem; border-top: 1px dashed var(--line); }
+.cog-sub { margin: 0 0 .45rem; font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; opacity: .6; font-weight: 500; }
+.cog-refusal-tag { font-family: ui-monospace, monospace; font-size: .76rem; opacity: .85; }
+.cog-refusal-gloss { flex: 1 1 14rem; min-width: 0; opacity: .75; }
+/* A refusal about the TRAVELLER reads differently from one about the crossing — the two families
+   `movement` keeps apart must not collapse into one visual thing here either. */
+.cog-refusal[data-about="traveller"] .cog-refusal-tag { border-bottom: 1px solid var(--line); }
+
+.cog-ended { margin: .8rem 0 0; font-size: .82rem; opacity: .75; }
+
+/* ── a step ────────────────────────────────────────────────────────────── */
+
+.cog-step { display: flex; gap: .85rem; padding: .85rem 1.25rem; background: var(--surface); border-bottom: 1px solid var(--line); }
+.cog-step-arrow { width: 2px; background: var(--accent, var(--ink)); opacity: .5; flex: 0 0 2px; }
+/* A step WITHIN one picture is a different event from one between pictures, and reads as one. */
+.cog-step--within .cog-step-arrow { background: repeating-linear-gradient(to bottom, var(--line) 0 4px, transparent 4px 8px); opacity: 1; }
+.cog-step-body { display: flex; flex-direction: column; gap: .25rem; font-size: .82rem; min-width: 0; }
+.cog-step-kind { font-weight: 600; }
+.cog-step-axis, .cog-step-rule { opacity: .7; font-size: .78rem; }
+.cog-step-arrival { opacity: .55; font-size: .76rem; font-style: italic; }
+
+.cog-tally { padding: .85rem 1.25rem; font-size: .78rem; opacity: .65; background: var(--surface); }
