@@ -61,3 +61,40 @@
 .soc-hold { display: flex; flex-wrap: wrap; gap: .6rem; align-items: baseline; font-size: .84rem; }
 .soc-hold-row { display: inline-flex; gap: .5rem; align-items: baseline; }
 .soc-refusals { margin-top: .9rem; padding-top: .7rem; border-top: 1px dashed var(--line); }
+
+/* ── the journeys, beside the encounter (WAVE4 · journeys) ─────────────── */
+/* Layered on the same tokens, and the walk itself is rendered by `WalkStream` with
+   `cognition.css` — one palette, one set of honesty rules. Nothing here restyles a refusal, a
+   status mark or a step; if it did, this surface could drift from /cognition about what a
+   refusal looks like, which is exactly the drift the shared component prevents. */
+
+.soc-convergence { margin-top: 1.5rem; }
+.soc-convergence-lede { margin: 0 0 1rem; font-size: .85rem; opacity: .75; line-height: 1.55; max-width: 46rem; }
+.soc-journeys { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .75rem; }
+
+.soc-journey { border: 1px solid var(--line); border-radius: .35rem; padding: .75rem 1rem; background: var(--surface); }
+.soc-journey-head {
+    display: flex; flex-wrap: wrap; gap: .75rem; align-items: baseline; width: 100%;
+    background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit;
+    cursor: pointer; text-align: left;
+}
+.soc-journey-char { font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; opacity: .7; }
+.soc-journey-toggle { margin-left: auto; font-family: ui-monospace, monospace; opacity: .55; }
+.soc-arrival { margin: .45rem 0 0; font-size: .82rem; }
+.soc-journey-detail { margin: .25rem 0 0; font-size: .78rem; opacity: .65; }
+
+/* The convergence itself: three journeys, one arrow, then the partition. */
+.soc-converge-arrow {
+    margin: 1rem 0 0; text-align: center; font-size: 1.4rem; opacity: .4; line-height: 1;
+}
+
+/* ── a group that could not meet ──────────────────────────────────────── */
+/* Deliberately NOT the error style. "Nobody travelled far enough" is a finding about the graph,
+   not a fault — and rendering it as a failure would lose that. */
+.soc-untravelled {
+    margin: 1.5rem 0; padding: 1rem 1.25rem;
+    border: 1px dashed var(--line); border-radius: .35rem; background: var(--surface);
+}
+.soc-untravelled .soc-h2 { margin-top: 0; }
+.soc-untravelled-detail { margin: 0 0 .6rem; font-size: .86rem; }
+.soc-untravelled-note { margin: 0; font-size: .8rem; opacity: .7; line-height: 1.55; max-width: 44rem; }

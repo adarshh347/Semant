@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import Convergence from './Convergence.jsx';
 import { API_URL } from '../config/api';
 import '../cognition/cognition.css';
 import './society.css';
@@ -100,17 +101,22 @@ export default function SocietyPage({ client = null }) {
     const [regionId, setRegionId] = useState('');
     const [meeting, setMeeting] = useState(null);
     const [error, setError] = useState('');
+    const [untravelled, setUntravelled] = useState(false);
     const [busy, setBusy] = useState(false);
 
     const convene = useCallback(async () => {
         if (!postId.trim()) { setError('a post id is needed — a society meets somewhere'); return; }
-        setBusy(true); setError(''); setMeeting(null);
+        setBusy(true); setError(''); setUntravelled(false); setMeeting(null);
         try {
             setMeeting(await fetchMeeting.meeting({
                 post_id: postId.trim(), region_id: regionId.trim(), steps: 2,
             }));
         } catch (err) {
-            setError(err.message || String(err));
+            const detail = err.message || String(err);
+            setError(detail);
+            // The 409 family, told apart by the guards' own words rather than by a status code the
+            // client would have to carry separately.
+            setUntravelled(/travell|walked|society|perceiv/i.test(detail));
         } finally {
             setBusy(false);
         }
@@ -146,7 +152,20 @@ export default function SocietyPage({ client = null }) {
                 </button>
             </form>
 
-            {error && <p className="cog-error" role="alert">{error}</p>}
+            {/* A GROUP THAT COULD NOT MEET is a different finding from one that met and composed
+                nothing, and the two must not render alike. The route says so with a 409; this says
+                so with its own block rather than the generic error line. */}
+            {error && (untravelled
+                ? <section className="soc-untravelled" role="alert">
+                    <h2 className="soc-h2">nobody travelled far enough</h2>
+                    <p className="soc-untravelled-detail">{error}</p>
+                    <p className="soc-untravelled-note">
+                        This is not an empty partition. No meeting happened at all — a meeting is
+                        earned by travel, and this group could not reach one another. What the
+                        graph affords, rather than what these bodies found.
+                    </p>
+                  </section>
+                : <p className="cog-error" role="alert">{error}</p>)}
 
             {meeting && (
                 <>
@@ -170,6 +189,8 @@ export default function SocietyPage({ client = null }) {
                             )}
                         </p>
                     </section>
+
+                    <Convergence walks={meeting.walks} nodeId={meeting.node_id} />
 
                     <section className="soc-partition">
                         <h2 className="soc-h2">the partition</h2>

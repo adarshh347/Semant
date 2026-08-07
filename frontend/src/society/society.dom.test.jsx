@@ -112,3 +112,77 @@ describe('TestRefusalIsRefused', () => {
         expect(holds.textContent).toContain('holds nothing here');
     });
 });
+
+describe('TestJourneysConverge', () => {
+    it('renders one journey per member, with its character and where it arrived', async () => {
+        await convene();
+        const journeys = container.querySelectorAll('.soc-journey');
+        expect(journeys).toHaveLength(3);
+
+        const text = container.textContent;
+        expect(text).toContain('analogy_seeker');
+        expect(text).toContain('contact_seeker');
+        expect(text).toContain('depth_seeker');
+        // The arrival is accounted for even while the walk is folded — otherwise collapsing would
+        // hide the one thing the convergence is claiming.
+        expect(container.querySelectorAll('.soc-arrival')).toHaveLength(3);
+        expect(container.querySelector('.soc-arrival').textContent).toContain('vm_pMeet:rim');
+    });
+
+    it('expands a journey into the cognition view\'s own walk rendering', async () => {
+        await convene();
+        expect(container.querySelector('.cog-walk')).toBeNull();
+
+        await act(async () => { container.querySelector('.soc-journey-head').click(); });
+        // WalkStream's own markup — not a second renderer written here.
+        expect(container.querySelector('.cog-walk')).not.toBeNull();
+        expect(container.querySelector('.cog-station')).not.toBeNull();
+        expect(container.querySelector('.cog-step-arrival').textContent).toContain('empty field');
+    });
+
+    it('shows a refusal met on the way, in the shared refusal style', async () => {
+        await convene();
+        const heads = [...container.querySelectorAll('.soc-journey-head')];
+        const adjacency = heads.find((h) => h.textContent.includes('agent_adjacency'));
+        await act(async () => { adjacency.click(); });
+
+        const refusal = container.querySelector('.cog-refusal');
+        expect(refusal).not.toBeNull();
+        expect(refusal.textContent).toContain('could not ground — interpretive_basis');
+    });
+
+    it('places the convergence before the partition', async () => {
+        await convene();
+        const convergence = container.querySelector('.soc-convergence');
+        const partition = container.querySelector('.soc-partition');
+        expect(convergence.compareDocumentPosition(partition) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
+    });
+});
+
+describe('TestUntravelledIsItsOwnFinding', () => {
+    const refusing = {
+        meeting: async () => {
+            throw new Error('agent alpha has walked 0 measured crossing(s) and this meeting requires 1');
+        },
+    };
+
+    it('renders "nobody travelled far enough" as a finding, not as an error line', async () => {
+        await act(() => root.render(<SocietyPage client={refusing} />));
+        const input = container.querySelector('.cog-field input');
+        const setValue = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value').set;
+        await act(async () => {
+            setValue.call(input, 'pA');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        await act(async () => { container.querySelector('.cog-go').click(); });
+        await act(async () => { await Promise.resolve(); });
+
+        expect(container.querySelector('.soc-untravelled')).not.toBeNull();
+        expect(container.textContent).toContain('nobody travelled far enough');
+        expect(container.textContent).toContain('This is not an empty partition');
+        // And NOT the generic error line — the two findings must not render alike.
+        expect(container.querySelector('p.cog-error')).toBeNull();
+    });
+});
