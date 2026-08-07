@@ -11,9 +11,14 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import SocietyPage from './SocietyPage.jsx';
 import meetingFixture from './societyFixture.js';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 let container;
 let root;
@@ -79,7 +84,11 @@ describe('TestNoCrossSenseNumber', () => {
         expect(row.textContent).toContain('no common scale');
         expect(row.textContent).toContain('no shared frame');
         // Nothing quantitative anywhere in that row — a similarity is exactly what must not appear.
-        expect(row.textContent).not.toMatch(/0\.\d+/);
+        //
+        // `/0\.\d+/` was too narrow to be a guard: it catches `0.87` and misses `87%`, `.87`,
+        // `0,87` and `87 of 100`, which are the same lie in different notation. A comparison
+        // smuggled in as a percentage is not less of a comparison.
+        expect(row.textContent).not.toMatch(/\d/);
     });
 
     it('renders all three outcomes distinguishably', async () => {
@@ -87,6 +96,25 @@ describe('TestNoCrossSenseNumber', () => {
         expect(container.querySelector('.soc-verdict--composed')).not.toBeNull();
         expect(container.querySelector('.soc-verdict--coexistent')).not.toBeNull();
         expect(container.querySelector('.soc-verdict--incommensurable')).not.toBeNull();
+    });
+
+    it('gives those three outcomes three different treatments', async () => {
+        // Three classes in the markup say nothing about three appearances on screen. Off the
+        // stylesheet, because that is the only place this claim lives: an incommensurable verdict
+        // drawn like a composed one tells a reader the senses combined when they refused to.
+        const css = fs.readFileSync(path.join(HERE, 'society.css'), 'utf8');
+        const rule = (name) => {
+            const m = css.match(new RegExp(`\\.soc-verdict--${name}\\s*\\{([^}]*)\\}`));
+            return m ? m[1].replace(/\s+/g, ' ').trim() : null;
+        };
+        const names = ['composed', 'coexistent', 'incommensurable', 'undetermined'];
+        const rules = names.map(rule);
+        expect(rules.every(Boolean)).toBe(true);
+        expect(new Set(rules).size).toBe(names.length);
+        // The distinction is border STYLE, not opacity — a difference that survives greyscale.
+        expect(rule('composed')).toMatch(/border-left-style:\s*solid/);
+        expect(rule('coexistent')).toMatch(/border-left-style:\s*dashed/);
+        expect(rule('incommensurable')).toMatch(/border-left-style:\s*dotted/);
     });
 
     it('shows the comparability partition', async () => {
