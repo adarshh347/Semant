@@ -118,7 +118,9 @@ def _society(organ_sets=None, *, image=None):
     compose, and one that cannot be about the same thing as either.
     """
     organ_sets = organ_sets or [(nest.ORGAN,), (adj.ORGAN,), (chroma.ORGAN,)]
-    image = image or FakeImage()
+    # A DECLARED frame, not a bare stub: ORGAN-PROVENANCE-001 made that chroma's contract, and a
+    # fixture that skipped the declaration would be exercising a call shape no real caller can use.
+    image = image or chroma.image_frame(FakeImage(), source="fixture:society")
     posts = {pid: _post(pid) for pid in ("pA", "pB", "pC", "pMeet")}
     far = _mark(posts["pMeet"], "r_rim", "r_whole")
     graph = {"edges": [
@@ -143,7 +145,7 @@ def test_the_meeting_locus_needs_two_organs_to_describe():
     regions = {str(r["id"]): r for r in _post("p")["region_annotations"]}
     assert nest.measure(regions["r_rim"], regions["r_whole"])["nested"]
     assert adj.measure(regions["r_rim"], regions["r_whole"])["adjacent"]
-    assert chroma.measure(regions["r_rim"], FakeImage())["basis"] == "mask"
+    assert chroma.measure(regions["r_rim"], chroma.image_frame(FakeImage(), source="fixture"))["basis"] == "mask"
 
 
 # ── 1. the comparability partition ─────────────────────────────────────────

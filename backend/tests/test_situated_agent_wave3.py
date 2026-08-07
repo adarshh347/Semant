@@ -399,11 +399,17 @@ def test_the_epistemic_guard_can_now_express_this_producer_and_still_holds_its_c
         {EpistemicStatus.MEASURED, EpistemicStatus.INTERPRETIVE, EpistemicStatus.UNCERTAIN})
 
     def guarded(basis, status=None):
+        """THE MARK THE ORGAN ACTUALLY PRODUCES, since ORGAN-PROVENANCE-001.
+
+        This used to hand `guard()` a flat descriptor rebuilt from the mark's fields, because when
+        it was written a real mark read as producer `None` — `grounding_mark` names the producer in
+        `provenance`, and the guard only looked at the top level. #158 fixed that for organ marks in
+        general and this test kept its stand-in, so what was being guarded was a shape nothing in
+        production has. Passing the mark itself is the whole point of the test.
+        """
         measurement = {"inner_region_id": "a", "outer_region_id": "b", "basis": basis}
         mark = nestedness_organ.grounding_mark(measurement, post_id="p")
-        return epistemics.guard([{"producer": NESTEDNESS, "type": mark["type"],
-                                  "measurement": measurement,
-                                  STATUS_KEY: status or mark[STATUS_KEY]}])
+        return epistemics.guard([mark if status is None else {**mark, STATUS_KEY: status}])
 
     guarded("mask")     # the ceiling path: measured, accepted as it always was
     guarded("box")      # THE LEGITIMATE WEAKENING, refused until TWO-STATUS-001

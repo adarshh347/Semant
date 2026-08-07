@@ -323,6 +323,11 @@ def _chroma_readings(locus_region: Mapping[str, Any], others: Sequence[Mapping[s
     NO PIXELS MEANS NO READING, raised rather than returned empty. An empty field is "the organ
     looked from here and measured nothing", which for chroma would say the region has no colour.
     """
+    # FORWARDED, never declared here. `image` is a chroma image frame
+    # (`chroma_organ.image_frame`) since ORGAN-PROVENANCE-001, and this module deliberately does
+    # not construct one: whether the pixels are the whole frame is a fact only the caller who
+    # fetched them knows, and asserting it on their behalf is the laundering the contract exists
+    # to stop. A bare image reaches `chroma.measure` and is refused there, with the reason.
     measurement = chroma.measure(locus_region, image)
     locus_id = str(locus_region.get("id") or "")
     return [OrganReading(

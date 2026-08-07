@@ -146,6 +146,66 @@ def is_admissible(measurement: Optional[Mapping[str, Any]]) -> bool:
 
 # ── sampling: the only thing here that touches an image ──────────────────────
 
+def image_frame(image: Any, *, source: str, whole_frame: bool = True) -> Dict[str, Any]:
+    """An image + WHERE IT CAME FROM → the frame this organ accepts. Mirrors `depth_organ`.
+
+    ORGAN-PROVENANCE-001 added this, and the audit that found it is worth repeating because the
+    number is unpleasant. `measure` used to take a bare image and index the region's mask against
+    whatever it was handed. Hand it the frame and hand it a crop of the same frame, and the SAME
+    region gives:
+
+        on the frame   warmth +0.6923
+        on a crop      warmth -0.6923
+
+    Same call, same region, same mark shape, `measured` both times — and the sign flipped, because
+    the mask's coordinates are the frame's coordinates and mean nothing against a crop. There was no
+    way to tell the two marks apart afterwards: the mark named the organ, the basis and the region,
+    and nothing at all about the pixels it read.
+
+    `depth_organ` closed exactly this for itself (`assert_field_valid`), for exactly this reason —
+    "a cropped field and a frame field are the same shape". This is the same contract one modality
+    over, and the asymmetry it corrects is a real one: the geometry organs read the POST'S OWN
+    `region_annotations`, so there is no second artifact that could be the wrong one. Chroma and
+    depth read an artifact handed in from outside, and only an external artifact can silently be a
+    different picture.
+
+    `source` is free-form on purpose — a `photo_url`, a fixture name, a run id. What matters is that
+    something identifies the pixels; this module cannot check a URL and does not pretend to.
+    """
+    return {"image": image, "source": str(source), "whole_frame": bool(whole_frame)}
+
+
+def assert_frame_valid(frame: Optional[Mapping[str, Any]]) -> None:
+    """Raise unless this is an image frame that says what it is and where it came from."""
+    if frame is None:
+        raise ChromaRefusal(
+            "no pixels were handed to the organ. A chromatic reading with no image behind it is "
+            "not a dim reading, it is not a reading — and an agent bound to this organ with no "
+            "image perceives NOTHING, which `organs.invoke` must report as such")
+
+    if not isinstance(frame, Mapping) or "image" not in frame:
+        raise ChromaRefusal(
+            "a bare image is no longer enough: wrap it with `chroma_organ.image_frame(image, "
+            "source=...)`. The mask's coordinates are the FRAME's coordinates, so an image that is "
+            "not that frame produces a confident number about a different subject — and the mark "
+            "is identical either way. See `image_frame` for the reading that made this a rule.")
+
+    if frame.get("image") is None:
+        raise ChromaRefusal("the frame carries no image")
+
+    if not frame.get("whole_frame"):
+        raise ChromaRefusal(
+            "this frame declares it is not the whole picture. The region's mask is indexed in the "
+            "FRAME's coordinate space; against a crop those coordinates address different pixels, "
+            "and the reading would be a measurement of somewhere else")
+
+    if not str(frame.get("source") or ""):
+        raise ChromaRefusal(
+            "this frame names no source. A mark whose provenance says nothing about the pixels it "
+            "read cannot be told apart from one read off a fixture, and this organ mints "
+            "`measured` claims")
+
+
 def sample_rgb(image: Any, size: int = SAMPLE) -> Tuple[List[Tuple[int, int, int]], int, int]:
     """An image → a flat row-major list of (r, g, b) at `size × size`.
 
@@ -159,10 +219,7 @@ def sample_rgb(image: Any, size: int = SAMPLE) -> Tuple[List[Tuple[int, int, int
     where it came from.
     """
     if image is None:
-        raise ChromaRefusal(
-            "no pixels were handed to the organ. A chromatic reading with no image behind it is "
-            "not a dim reading, it is not a reading — and an agent bound to this organ with no "
-            "image perceives NOTHING, which `organs.invoke` must report as such")
+        raise ChromaRefusal("no pixels were handed to the organ")
     rgb = image.convert("RGB").resize((int(size), int(size)))
     return [tuple(px[:3]) for px in rgb.getdata()], int(size), int(size)
 
@@ -292,15 +349,20 @@ def _gradient(warmth: Sequence[float], member: Sequence[int], h: int, w: int,
 
 # ── the measurement ─────────────────────────────────────────────────────────
 
-def measure(region: Mapping[str, Any], image: Any, *, size: int = SAMPLE) -> Dict[str, Any]:
+def measure(region: Mapping[str, Any], frame: Optional[Mapping[str, Any]], *,
+            size: int = SAMPLE) -> Dict[str, Any]:
     """Read the warmth field over one region. The organ's whole job.
+
+    `frame` is a declared image frame (`image_frame`), not a bare image — see `assert_frame_valid`
+    for why, and for the +0.6923 / -0.6923 reading that made it a requirement.
 
     Reads no label, no category and no embedding — it cannot tell you what the region depicts, which
     is exactly why what it says is checkable.
     """
     if region is None:
         raise ChromaRefusal("a region is required")
-    pixels, h, w = sample_rgb(image, size)
+    assert_frame_valid(frame)
+    pixels, h, w = sample_rgb(frame["image"], size)
 
     member = _mask_bits(region, h, w)
     basis = "mask"
@@ -335,6 +397,8 @@ def measure(region: Mapping[str, Any], image: Any, *, size: int = SAMPLE) -> Dic
         "sample_size": h,
         "coverage": round(len(idx) / float(h * w), 6),
         "basis": basis,
+        "source": {"image": str(frame.get("source") or ""),
+                   "whole_frame": bool(frame.get("whole_frame"))},
         "basis_detail": (
             "per-pixel over the region's own mask" if basis == "mask" else
             "per-pixel over the BOUNDING BOX — an ESTIMATE, and a poor one here: a box around a "
@@ -420,13 +484,17 @@ def grounding_mark(measurement: Mapping[str, Any], *, post_id: str,
             "step_id": str(step_id) or None,
             "producer": ORGAN,
             "adapter": f"chroma:{basis}",
+            # WHICH PIXELS. Without this the mark is the same shape whatever image it read, which
+            # is how a crop reading and a frame reading became indistinguishable.
+            "image_source": (measurement.get("source") or {}).get("image"),
             "organ_version": ORGAN_VERSION,
         },
         "created_at": now,
     }
 
 
-def read_regions(regions: Sequence[Mapping[str, Any]], image: Any) -> List[Dict[str, Any]]:
+def read_regions(regions: Sequence[Mapping[str, Any]],
+                 frame: Optional[Mapping[str, Any]]) -> List[Dict[str, Any]]:
     """Every region this organ can read, warmest first. The god's-eye sweep.
 
     Present for the same reason `nestedness_organ.find_nested_pairs` is — so a situated field can be
@@ -436,7 +504,7 @@ def read_regions(regions: Sequence[Mapping[str, Any]], image: Any) -> List[Dict[
     out: List[Dict[str, Any]] = []
     for region in regions or []:
         try:
-            out.append(measure(region, image))
+            out.append(measure(region, frame))
         except ChromaRefusal:
             continue
     out.sort(key=lambda m: -m["warmth_mean"])
