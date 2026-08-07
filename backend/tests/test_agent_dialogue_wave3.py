@@ -656,23 +656,45 @@ def test_every_invocable_organ_has_an_invocation():
     reader would raise at invoke time — which this asserts is unreachable rather than trusting the
     comment that says so.
 
-    The chroma lane added a third organ and a second requirement: an organ in `_NEEDS_PIXELS` is
-    handed an image, because what it measures is not in the post document. The coverage claim is
-    unchanged — every invocable organ has an invocation — and this is what invoking one costs now.
+    The claim is unchanged as the sensorium grows; what changes is what invoking an organ COSTS.
+    Two requirement tables exist now and this test is the one place that has to satisfy both:
+
+        _NEEDS_PIXELS   chroma — the image, because colour is not in the post document
+        _NEEDS_DEPTH    depth  — a field a MODEL produced, for the same reason and at more expense
+
+    A third table would fail here first, which is the intent: an organ added to
+    `PURE_PYTHON_ORGANS` without its input wired raises `OrganRefusal` rather than returning a
+    confident empty field, and this is where that shows up.
     """
     post = _lattice_post()
     for name in organs.PURE_PYTHON_ORGANS:
-        image = _FlatImage() if name in organs._NEEDS_PIXELS else None
-        readings = organs.invoke(name, post=post, region_id="r_rim", now=STAMP, image=image)
+        kwargs = {}
+        if name in organs._NEEDS_PIXELS:
+            kwargs["image"] = _FlatImage()
+        if name in organs._NEEDS_DEPTH:
+            kwargs["depth_field"] = _flat_depth()
+        readings = organs.invoke(name, post=post, region_id="r_rim", now=STAMP, **kwargs)
         assert readings, f"{name} is invocable but measured nothing at a locus that affords all"
 
 
-def test_an_organ_that_reads_the_signal_refuses_when_handed_no_signal():
-    """An empty field would say the locus has no colour. That is a claim about the picture made
-    from an absence of pixels — the same error a zero contact fraction would be for a pair the
-    adjacency organ cannot measure."""
-    for name in organs._NEEDS_PIXELS:
-        with pytest.raises(organs.OrganRefusal, match="no image was handed"):
+def _flat_depth(grid=16):
+    """A uniform depth field, with the provenance `depth_organ` requires. No model involved —
+    which is the point of the organ being pure: its behaviour is testable without the weights."""
+    from backend.services import depth_organ as dep
+
+    return dep.depth_field({"depth": [4.0] * (grid * grid), "grid": grid},
+                           adapter=dep.SOURCE_ADAPTER, model="depth_anything_v2_small",
+                           revision="5426e4f0f36572d16453bbda7a8389317b1bef99")
+
+
+@pytest.mark.parametrize("table,missing", [("_NEEDS_PIXELS", "no image was handed"),
+                                           ("_NEEDS_DEPTH", "none was handed")])
+def test_an_organ_that_reads_a_signal_refuses_when_handed_no_signal(table, missing):
+    """An empty field would say the locus has no colour, or no depth. Either is a claim about the
+    picture made from an absence of evidence — the same error a zero contact fraction would be for
+    a pair the adjacency organ cannot measure."""
+    for name in getattr(organs, table):
+        with pytest.raises(organs.OrganRefusal, match=missing):
             organs.invoke(name, post=_lattice_post(), region_id="r_rim", now=STAMP)
 
 
