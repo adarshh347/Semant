@@ -172,6 +172,26 @@ describe('the two statuses are never one', () => {
         expect(container.textContent).not.toMatch(/uncertain/);
     });
 
+    it('carries each status VALUE into the DOM, so the treatments land on something', async () => {
+        // The stylesheet test below proves four distinct rules exist. It cannot prove anything
+        // reaches them: dropping `cur-badge--${epistemic}` from the badge leaves all four values
+        // rendering identically on screen with every CSS assertion still green. That is the same
+        // shape as the assertion this wave already caught checking nothing — a guard one layer
+        // away from the thing it guards.
+        for (const value of ['measured', 'interpretive']) {
+            await mount(<StatusPair epistemic={value} ledgerStatus="proposed" />);
+            expect($(`.cur-badge--epistemic.cur-badge--${value}`)).not.toBeNull();
+        }
+        for (const value of ['proposed', 'committed']) {
+            await mount(<StatusPair epistemic="measured" ledgerStatus={value} />);
+            expect($(`.cur-badge--ledger.cur-badge--${value}`)).not.toBeNull();
+        }
+        // and the two families never share an element — one badge saying both would be the
+        // collapse in its most direct form
+        await mount(<StatusPair epistemic="measured" ledgerStatus="proposed" />);
+        expect($('.cur-badge--epistemic.cur-badge--ledger')).toBeNull();
+    });
+
     it('gives every status value its own visual treatment', () => {
         // Read off the stylesheet, because this is a claim about pixels that no DOM query reaches:
         // a UI where `measured` and `committed` looked alike would be the collapse the read path
