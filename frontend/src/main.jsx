@@ -49,6 +49,7 @@ const ArticleLab = React.lazy(() => import('./pages/ArticleLab.jsx')); // DEV-ON
 const AgentDemoPage = React.lazy(() => import('./agentDemo/AgentDemoPage.jsx'));
 const CognitionPage = React.lazy(() => import('./cognition/CognitionPage.jsx'));
 const SocietyPage = React.lazy(() => import('./society/SocietyPage.jsx'));
+const RunSurfacePage = React.lazy(() => import('./runSurface/RunSurfacePage.jsx'));
 const HighlightsPage = React.lazy(() => import('./pages/HighlightsPage.jsx'));
 const TextFeedPage = React.lazy(() => import('./pages/TextFeedPage.jsx'));
 const EpicsPage = React.lazy(() => import('./pages/EpicsPage.jsx'));
@@ -134,6 +135,9 @@ const router = createBrowserRouter([
       // WAVE4 — watch agents MEET: several bodies walked to one locus, and the partition of what
       // holds between them — composed, coexistent, incommensurable. Read-only.
       { path: "society", element: <SocietyPage /> },
+      // WAVE4 — the run surface: drive the agents rather than read what they did. Same endpoints
+      // as /cognition and /society, with the dials exposed. Derives and proposes; commits nothing.
+      { path: "run", element: <RunSurfacePage /> },
       { path: "feed", element: <TextFeedPage /> },
       { path: "epics", element: <EpicsPage /> },
       { path: "epics/:id", element: <EpicEditorPage /> },
