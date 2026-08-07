@@ -160,6 +160,12 @@ _SUBSTRATES: Dict[str, Tuple[str, ...]] = {
     # suggest a substrate could make it something else. §8 of the decision: separably acceptable
     # halves are two descriptors, not one declaration.
     "chroma_organ": ("mask", "box"),
+    # WAVE3 — the depth organ, and here the box argument stops being an analogy. For containment a
+    # box is a loose extent; for chroma a box around a spire includes cold sky. For DEPTH a box
+    # around the finial includes the sky it is IN FRONT OF, so a box-basis reading is the arithmetic
+    # mean of a thing and the thing behind it — which is the `cseg_golden_finial_7` failure itself,
+    # arriving in the one modality that could otherwise have detected it.
+    "depth_organ": ("mask", "box"),
 }
 
 #: The IMAGE statuses ordered by strength, strongest first.
@@ -543,6 +549,14 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
     # convention is `chroma_organ.WARM_THRESHOLD`, which is uncalibrated and says so — nothing in
     # the picture votes on where warm begins.
     "chroma_naming": EpistemicStatus.INTERPRETIVE,
+    # WAVE3 — the depth organ's MASK ceiling. Unlike the three organs above it, this one is not pure
+    # arithmetic over the segmenter's output: a weighted model (`depth_anything_v2_small`, on the
+    # roster since VISION-MODEL-MATRIX-001, ceiling `measured` from `Capability.DEPTH`) produces the
+    # field, and this organ reads a region out of it. Both are `measured` and they agree, which is
+    # the point of `Capability.DEPTH` being in `_CAPABILITY_CEILING` — a sense may not claim more
+    # than the model behind it, and `test_depth_organ_wave3` checks the two tables against each
+    # other rather than trusting that they were written on the same afternoon.
+    "depth_organ": EpistemicStatus.MEASURED,
     # M5 — NOT measured, and this is the entry that keeps `uncertain` from being decorative.
     #
     # `external_limit`'s refusal turns on `MIN_PROJECTIVE_SPREAD`, which the producer itself

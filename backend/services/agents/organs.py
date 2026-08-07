@@ -53,6 +53,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from backend.services import adjacency_organ as adjacency
 from backend.services import chroma_organ as chroma
+from backend.services import depth_organ as depth
 from backend.services import nestedness_organ as nestedness
 from backend.services import role_registry
 from backend.services.epistemics import STATUS_KEY, EpistemicStatus
@@ -77,7 +78,28 @@ from backend.services.role_registry import RoleKind
 #: `default_roster()` and `test_role_registry` pins that organ roles are never hand-listed. A
 #: weightless organ has no roster entry to generate from. So it lands here, which is what makes
 #: `resolve()` report it RESOLVED — the outcome the card asked for, by the route the tree allows.
-PURE_PYTHON_ORGANS: Tuple[str, ...] = (nestedness.ORGAN, adjacency.ORGAN, chroma.ORGAN)
+PURE_PYTHON_ORGANS: Tuple[str, ...] = (nestedness.ORGAN, adjacency.ORGAN, chroma.ORGAN,
+                                       depth.ORGAN)
+
+#: THE FOURTH ENTRY NEEDS A WORD, because its card asked for it to go somewhere else.
+#:
+#: `depth_organ` was specified as "the first organ since SAM-3 to go through the roster/residency
+#: path — NOT `PURE_PYTHON_ORGANS`". Two things on the tree redirect that, and neither is a
+#: technicality:
+#:
+#:   1. THE ROSTER ENTRY ALREADY EXISTS. `depth_anything_v2_small` has been an `AdapterSpec` with
+#:      `Capability.DEPTH` since VISION-MODEL-MATRIX-001, `role_registry` already generates an
+#:      organ role from it with ceiling `measured`, and `DepthAdapter` already implements
+#:      load/unload/infer against `ModelManager`. There was nothing to add.
+#:   2. THAT ROLE AND THIS ORGAN ARE NOT THE SAME THING. The role is the MODEL — one inference per
+#:      image, GPU-resident, evicting DINOv2 when it loads. This is the SENSE: pure arithmetic that
+#:      reads one region out of the field the model produced. `resolve()` reports the model
+#:      RESIDENT, correctly, because this lane still may not start it; the sense is invocable
+#:      because there is nothing to start.
+#:
+#: So the table is unchanged in meaning: it lists what executes in-process with no weights to load.
+#: `depth_organ` qualifies, and the weights are somebody else's residency problem — which is what
+#: `_NEEDS_DEPTH` below makes explicit rather than leaving to a reader's charity.
 
 #: The organs that cannot work from the post document alone, because what they measure is in the
 #: PIXELS. The geometry organs read `region_annotations` and nothing else; chroma reads light.
@@ -87,6 +109,15 @@ PURE_PYTHON_ORGANS: Tuple[str, ...] = (nestedness.ORGAN, adjacency.ORGAN, chroma
 #: choose, and a cached `photo_url` is exactly the goes-stale problem `atlas_service` already warns
 #: about. The caller owns where the image came from; the organ owns what is in it.
 _NEEDS_PIXELS: Tuple[str, ...] = (chroma.ORGAN,)
+
+#: The organs that need a field a MODEL produced, handed in the same way pixels are.
+#:
+#: This is where the residency cost lives, and naming it here is the honest alternative to
+#: pretending a weighted sense is free. An agent perceiving through `depth_organ` is downstream of
+#: a GPU model that had to be loaded, that evicted whatever else was resident, and that runs ONCE
+#: PER IMAGE rather than once per region — so a population of agents at many loci in one picture
+#: shares one inference. That sharing is the whole reason the sense is separate from the model.
+_NEEDS_DEPTH: Tuple[str, ...] = (depth.ORGAN,)
 
 #: How an organ name resolved. Named constants because the refusal reason is reported to a human
 #: and read by a test, and a bare string in both places is two spellings waiting to happen.
@@ -194,6 +225,8 @@ def resolve(organ_name: str) -> OrganBinding:
             detail=(f"{name} — pure python, computed in-process, no weights to load"
                     + (" (needs the image: pixels are handed in, never fetched)"
                        if name in _NEEDS_PIXELS else
+                       f" (needs a depth field from {depth.SOURCE_ADAPTER}: handed in, and THAT "
+                       f"model is residency-managed)" if name in _NEEDS_DEPTH else
                        " from the segmenter's own output")))
 
     if role is not None and role.kind is RoleKind.ORGAN:
@@ -308,6 +341,32 @@ def _chroma_readings(locus_region: Mapping[str, Any], others: Sequence[Mapping[s
         expression=f"{locus_id} reads {measurement['warmth_mean']:+.3f} on the warm/cool axis")]
 
 
+def _depth_readings(locus_region: Mapping[str, Any], others: Sequence[Mapping[str, Any]], *,
+                    post_id: str, step_id: str, now: str,
+                    depth_field: Any = None) -> List[OrganReading]:
+    """The depth field at the locus. ONE reading, about ONE region, like chroma and unlike the two
+    geometry organs — `others` is unused because this lane mints no occlusion RELATION.
+
+    That deferral is the point rather than a shortcut. `in_front_of` is the relation this
+    measurement exists to ground, it is what would finally answer the `cseg_golden_finial_7`
+    question the WAVE2.5 ruling could only route around, and it needs the systematicity gate the
+    floor lane is reworking. A relation minted here would arrive before the gate that judges it.
+    """
+    measurement = depth.measure(locus_region, depth_field)
+    locus_id = str(locus_region.get("id") or "")
+    return [OrganReading(
+        organ=depth.ORGAN,
+        relation=depth.FIELD_DEPTH,
+        direction="field",
+        locus_region_id=locus_id,
+        other_region_id="",
+        measurement=measurement,
+        mark=depth.grounding_mark(measurement, post_id=post_id, step_id=step_id, now=now),
+        detail=measurement["detail"],
+        expression=(f"{locus_id} sits at depth {measurement['depth_mean']:.4f} with "
+                    f"{measurement['frame_rank']:.0%} of the frame behind it"))]
+
+
 def _readings_from(locus_region: Mapping[str, Any], others: Sequence[Mapping[str, Any]], *,
                    post_id: str, step_id: str, now: str) -> List[OrganReading]:
     """Every nesting the organ can measure WITH THE LOCUS AS ONE OF ITS TERMS.
@@ -367,7 +426,8 @@ def _readings_from(locus_region: Mapping[str, Any], others: Sequence[Mapping[str
 
 
 def invoke(organ_name: str, *, post: Mapping[str, Any], region_id: str,
-           step_id: str = "", now: str = "", image: Any = None) -> List[OrganReading]:
+           step_id: str = "", now: str = "", image: Any = None,
+           depth_field: Any = None) -> List[OrganReading]:
     """Point one organ at one locus and return what it measured. The only way into a percept field.
 
     Raises `OrganRefusal` when the organ cannot be invoked here, and when the locus does not exist
@@ -384,6 +444,13 @@ def invoke(organ_name: str, *, post: Mapping[str, Any], region_id: str,
             f"nothing to stand on, and every reading from a phantom locus would be about "
             f"somewhere else")
 
+    if binding.name in _NEEDS_DEPTH and depth_field is None:
+        raise OrganRefusal(
+            f"{binding.name} reads a depth field, and none was handed to this invocation. An empty "
+            f"field here would say the locus has no depth — a claim about what is in front of what, "
+            f"made from an absence of evidence, in the one organ built to stop exactly that. The "
+            f"field comes from {depth.SOURCE_ADAPTER} and the caller runs it.")
+
     if binding.name in _NEEDS_PIXELS and image is None:
         raise OrganRefusal(
             f"{binding.name} reads the signal, and no image was handed to this invocation. "
@@ -392,10 +459,14 @@ def invoke(organ_name: str, *, post: Mapping[str, Any], region_id: str,
             f"fraction would be for an unmeasurable pair.")
 
     readers = {nestedness.ORGAN: _readings_from, adjacency.ORGAN: _adjacency_readings,
-               chroma.ORGAN: _chroma_readings}
+               chroma.ORGAN: _chroma_readings, depth.ORGAN: _depth_readings}
     reader = readers.get(binding.name)
     if reader is not None:
-        kwargs = {"image": image} if binding.name in _NEEDS_PIXELS else {}
+        kwargs: Dict[str, Any] = {}
+        if binding.name in _NEEDS_PIXELS:
+            kwargs["image"] = image
+        if binding.name in _NEEDS_DEPTH:
+            kwargs["depth_field"] = depth_field
         return reader(locus_region, _regions(post), post_id=post_id, step_id=step_id, now=now,
                       **kwargs)
 

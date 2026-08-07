@@ -337,7 +337,8 @@ def _perceptions_for(readings: Sequence[OrganReading], *, organ: str, locus: Loc
 
 
 def perceive(agent: SituatedAgent, post: Mapping[str, Any], *,
-             step_id: str = AGENT_STEP_ID, now: str = "", image: Any = None) -> List[Perception]:
+             step_id: str = AGENT_STEP_ID, now: str = "", image: Any = None,
+             depth_field: Any = None) -> List[Perception]:
     """Bind the agent's organs to its locus, invoke them, and populate its percept field.
 
     The world is brought forth by the coupling of this body to this place: change either and the
@@ -359,7 +360,8 @@ def perceive(agent: SituatedAgent, post: Mapping[str, Any], *,
     per_organ: List[Dict[str, Any]] = []
     for organ_name in agent.organ_set:
         readings = organs.invoke(organ_name, post=post, region_id=agent.locus.region_id,
-                                 step_id=step_id, now=stamp, image=image)
+                                 step_id=step_id, now=stamp, image=image,
+                                 depth_field=depth_field)
         perceptions = _perceptions_for(readings, organ=organ_name, locus=agent.locus, now=stamp)
         field_.extend(perceptions)
         per_organ.append({"organ": organ_name, "measured": len(perceptions)})
@@ -426,7 +428,7 @@ def remember(agent: SituatedAgent, *, now: str = "") -> List[Dict[str, Any]]:
         # This used to be a hardcoded `nesting_index`, which put a null claiming a geometry field
         # into the memory of every non-geometric reading — a shape a reader would take for "the
         # organ measured no nesting" rather than "this organ measures no such thing".
-        for key in ("nesting_index", "contact_fraction", "warmth_mean"):
+        for key in ("nesting_index", "contact_fraction", "warmth_mean", "depth_mean"):
             if key in (perception.reading.measurement or {}):
                 entry[key] = perception.reading.measurement[key]
         written.append(entry)
@@ -592,7 +594,7 @@ def overlay_posts(posts: Mapping[str, Mapping[str, Any]],
 async def run_agent(*, post: Mapping[str, Any], region_id: str,
                     organ_set: Sequence[str] = (), agent_id: str = "", temperament: str = "",
                     atlas_id: str = "", persist: bool = False, collection=None,
-                    now: str = "", image: Any = None) -> Dict[str, Any]:
+                    now: str = "", image: Any = None, depth_field: Any = None) -> Dict[str, Any]:
     """Inhabit → perceive → remember → report, with the transcript a human reads.
 
     `persist=False` runs everything and writes nothing; the observations are minted and VALIDATED
@@ -623,7 +625,7 @@ async def run_agent(*, post: Mapping[str, Any], region_id: str,
                      for b in (organs.resolve(o) for o in agent.organ_set)],
     }
 
-    perceptions = perceive(agent, post, now=stamp, image=image)
+    perceptions = perceive(agent, post, now=stamp, image=image, depth_field=depth_field)
     transcript["percept_field"] = [p.as_dict() for p in perceptions]
     transcript["trajectory"] = list(agent.trajectory)
 
