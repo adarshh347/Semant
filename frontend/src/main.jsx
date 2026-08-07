@@ -42,6 +42,7 @@ const ArticleLab = React.lazy(() => import('./pages/ArticleLab.jsx')); // DEV-ON
 // Its OWN route and shell, deliberately not folded into /differential, which is the manual
 // instrument and has diverged from this on purpose.
 const AgentDemoPage = React.lazy(() => import('./agentDemo/AgentDemoPage.jsx'));
+const CognitionPage = React.lazy(() => import('./cognition/CognitionPage.jsx'));
 const HighlightsPage = React.lazy(() => import('./pages/HighlightsPage.jsx'));
 const TextFeedPage = React.lazy(() => import('./pages/TextFeedPage.jsx'));
 const EpicsPage = React.lazy(() => import('./pages/EpicsPage.jsx'));
@@ -110,6 +111,9 @@ const router = createBrowserRouter([
       { path: "lab/article", element: <ArticleLab /> },
       // AGENT-DEMO — a real user surface, not a lab: images + a prompt, and the run in the open.
       { path: "agent", element: <AgentDemoPage /> },
+      // WAVE4 — watch a being think within an image: an agent's walk, its measured perceptions,
+      // its honest refusals, and the character that shaped where it went. Read-only.
+      { path: "cognition", element: <CognitionPage /> },
       { path: "feed", element: <TextFeedPage /> },
       { path: "epics", element: <EpicsPage /> },
       { path: "epics/:id", element: <EpicEditorPage /> },
