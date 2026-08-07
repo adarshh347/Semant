@@ -277,3 +277,18 @@ async def ping_server():
 # a passage by where its registers sit: the meaning of the ladder is the author's and is
 # never read here.
 writer_register_collection = database.get_collection("writer_registers")
+
+
+# --- WAVE3 · the curator surface ---
+# curator_proposal_collection: the queue of measured-but-uncommitted marks awaiting a human.
+#
+# ITS OWN COLLECTION, and the reason is that a proposal is not yet ledger content. The ledger is
+# `post.visual_marks`, and putting a proposal there would make it indistinguishable from an
+# accepted one to every `hydrate_*` in the system — which all derive "has this been accepted" from
+# exactly that presence. A proposal has to live somewhere the ledger is not.
+#
+# A row here stores the mark a producer measured and NO STATUS: what kind of knowing it is comes
+# off the mark, and whether the world has accepted it comes off whether that mark is in the post.
+# `curator.assert_valid_proposal` refuses `epistemic_status`, `committed` and `status` outright,
+# the way Lane G refuses a status on a movement edge and WAVE3 refuses one on an observation.
+curator_proposal_collection = database.get_collection("curator_proposals")
