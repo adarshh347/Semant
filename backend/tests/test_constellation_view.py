@@ -93,17 +93,20 @@ def _atlas(edge_id, a_post, a_region, b_post, b_region, *, mark_id="vm_nest_x"):
 
 # ── 1. only persisted relations are edges ──────────────────────────────────
 
-def test_the_module_reads_three_named_sources_and_nothing_else():
-    """A retina candidate the kernel refused was never written down. The guard is not a filter —
-    it is that there is nowhere for a refusal to come from. Asserted so that the day something
-    starts persisting candidates, the omission is a decision rather than an accident."""
+def test_the_view_reads_the_one_store_rather_than_naming_its_own_sources():
+    """WAVE4.5 MOVED THIS GUARD, and the move is the lane.
+
+    This function used to read three sources itself and was asserted to read exactly those three.
+    It now reads `derived_relations`, the one home — so the guard that matters ("a refused
+    candidate has nowhere to come from") belongs on the store, and is asserted there. What is left
+    to check here is that this view no longer holds its own opinion about where relations live.
+    """
     import inspect
     body = inspect.getsource(C.load_edges)
-    assert "edges_from_ledger" in body
-    assert "edges_from_proposals" in body
-    assert "edges_from_atlas" in body
-    # nothing that could reach a retina, a kernel or a candidate
-    for absent in ("retina", "propose_candidates", "candidate", "run_kernel", "structure_map"):
+    assert "derived_relations" in body
+    for named_here in ("edges_from_ledger", "edges_from_proposals", "edges_from_atlas"):
+        assert named_here not in body, f"{named_here} — the view is naming a source again"
+    for absent in ("retina", "propose_candidates", "run_kernel", "structure_map"):
         assert absent not in body, absent
 
 
