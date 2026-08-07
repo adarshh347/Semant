@@ -160,6 +160,9 @@ _SUBSTRATES: Dict[str, Tuple[str, ...]] = {
     # suggest a substrate could make it something else. §8 of the decision: separably acceptable
     # halves are two descriptors, not one declaration.
     "chroma_organ": ("mask", "box"),
+    # WAVE3 — the chromatic relation. Two regions, two frames, one shape correlation; the weaker
+    # basis governs, so one box on either side makes the whole reading an estimate.
+    "chromatic_relation": ("mask", "box"),
     # WAVE3 — the depth organ, and here the box argument stops being an analogy. For containment a
     # box is a loose extent; for chroma a box around a spire includes cold sky. For DEPTH a box
     # around the finial includes the sky it is IN FRONT OF, so a box-basis reading is the arithmetic
@@ -556,6 +559,9 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
     # convention is `chroma_organ.WARM_THRESHOLD`, which is uncalibrated and says so — nothing in
     # the picture votes on where warm begins.
     "chroma_naming": EpistemicStatus.INTERPRETIVE,
+    # WAVE3 — chroma's cross-image relation, on the same footing as the occlusion relation: a
+    # correspondence computed per cell over both regions' own masks is computed from the signal.
+    "chromatic_relation": EpistemicStatus.MEASURED,
     # WAVE3 — the depth organ's MASK ceiling. Unlike the three organs above it, this one is not pure
     # arithmetic over the segmenter's output: a weighted model (`depth_anything_v2_small`, on the
     # roster since VISION-MODEL-MATRIX-001, ceiling `measured` from `Capability.DEPTH`) produces the
