@@ -1,0 +1,394 @@
+/* WAVE4 — the scene view.
+ *
+ * THE ONE RULE THIS SHEET KEEPS: a relation must look like what it IS.
+ *
+ *   measured (mask basis)      solid stroke
+ *   interpretive (box basis)   dashed stroke
+ *   proposed                   hollow marker
+ *   committed                  filled marker
+ *
+ * Status is carried by STROKE, not by hue, so it survives greyscale, print and colour-blindness.
+ * Hue distinguishes the KIND of relation — which is the dimension where being wrong is merely
+ * confusing, rather than the dimension where being wrong is a false claim.
+ *
+ * Everything below is on the app's tokens (index.css / tokens.css). No new palette.
+ */
+
+.scene-page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6) var(--space-16);
+    color: var(--ink);
+}
+
+.scene-head h1 {
+    font-family: var(--font-display);
+    font-size: var(--fs-h1);
+    letter-spacing: var(--tracking-tight);
+    margin: 0 0 var(--space-2);
+}
+
+.scene-lede {
+    max-width: 62ch;
+    color: var(--ink-muted);
+    font-size: var(--fs-body-lg);
+    line-height: 1.55;
+    margin: 0 0 var(--space-6);
+}
+
+.scene-lede b { color: var(--ink); font-weight: 600; }
+
+/* ── the index ─────────────────────────────────────────────────────────────── */
+
+.scene-index {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.scene-index button {
+    width: 100%;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    overflow: hidden;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+
+.scene-index button:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-md);
+}
+
+.scene-index img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+}
+
+.scene-index-blank {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    background: var(--surface-2);
+    color: var(--ink-subtle);
+    font-size: var(--fs-caption);
+}
+
+.scene-index-meta {
+    display: block;
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    font-size: var(--fs-small);
+}
+
+.scene-index-meta strong { display: block; }
+.scene-index-meta > span { color: var(--ink-muted); }
+
+.scene-index-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+.scene-index-counts em {
+    font-style: normal;
+    font-size: var(--fs-caption);
+    font-family: var(--font-mono);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--ink-muted);
+}
+
+/* A kind with nothing derived reads as absent rather than as a zero worth noticing. */
+.scene-index-counts em[data-zero='true'] { opacity: 0.45; }
+
+/* ── the kind filter ───────────────────────────────────────────────────────── */
+
+.scene-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+}
+
+.scene-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    color: var(--ink-muted);
+    font-size: var(--fs-small);
+    cursor: pointer;
+}
+
+.scene-chip.is-on {
+    border-color: var(--accent);
+    color: var(--ink);
+    background: var(--accent-soft);
+}
+
+.scene-chip b { font-family: var(--font-mono); }
+
+.scene-chip-absent {
+    font-style: normal;
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+}
+
+.scene-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    background: currentColor;
+}
+
+/* HUE = KIND. Four relations, four families from the app's own six-hue set. */
+.scene-swatch--nesting { background: var(--amethyst); }
+.scene-swatch--adjacency { background: var(--indigo); }
+.scene-swatch--occlusion { background: var(--plum); }
+.scene-swatch--rhyme { background: var(--clay); }
+.scene-swatch--committed { background: var(--ink); }
+
+/* ── the stage ─────────────────────────────────────────────────────────────── */
+
+.scene-stage {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
+    align-items: start;
+}
+
+@media (max-width: 960px) {
+    .scene-stage { grid-template-columns: 1fr; }
+}
+
+.scene-frame {
+    position: relative;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+}
+
+.scene-frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* The overlay letterboxes exactly as the image does — same box, same rule. See the component. */
+.scene-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.scene-region {
+    fill: none;
+    stroke: var(--ink-inverse);
+    stroke-width: 1.5;
+    opacity: 0.35;
+    vector-effect: non-scaling-stroke;
+}
+
+/* A region with no mask is drawn from its BOX, and says so in the same vocabulary the relations
+   use: dashed means an estimate of an extent. */
+.scene-region.is-box {
+    stroke-dasharray: 4 4;
+    opacity: 0.25;
+}
+
+.scene-region.is-hot {
+    opacity: 1;
+    stroke: var(--accent);
+    stroke-width: 2.5;
+}
+
+.scene-link line {
+    stroke-width: 2.5;
+    vector-effect: non-scaling-stroke;
+    fill: none;
+}
+
+.scene-link circle { stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+
+/* STROKE = STATUS. Solid where the geometry is a mask; dashed where it is a box.
+   This is the distinction the founding pathology turns on and it must survive greyscale. */
+.scene-link.is-measured line { stroke-dasharray: none; }
+.scene-link.is-interpretive line { stroke-dasharray: 7 5; opacity: 0.85; }
+
+/* FILL = LEDGER. Hollow until a curator commits it. */
+.scene-link.is-proposed circle { fill: none; }
+.scene-link.is-committed circle { fill: currentColor; }
+
+.scene-link--nesting { color: var(--amethyst); }
+.scene-link--adjacency { color: var(--indigo); }
+.scene-link--occlusion { color: var(--plum); }
+.scene-link--rhyme { color: var(--clay); }
+.scene-link--committed { color: var(--ink); }
+
+.scene-link line, .scene-link circle { stroke: currentColor; }
+
+/* ── the side panel ────────────────────────────────────────────────────────── */
+
+.scene-side { display: grid; gap: var(--space-4); }
+
+.scene-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    padding: var(--space-4);
+}
+
+.scene-card h2 {
+    font-size: var(--fs-small);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    color: var(--ink-subtle);
+    margin: 0 0 var(--space-3);
+}
+
+.scene-card p { margin: 0 0 var(--space-2); font-size: var(--fs-small); color: var(--ink-muted); }
+.scene-card code { font-family: var(--font-mono); font-size: var(--fs-caption); }
+
+.scene-warn { color: var(--mulberry); }
+.scene-prov { font-family: var(--font-mono); font-size: var(--fs-caption); }
+.scene-kinds { font-family: var(--font-mono); font-size: var(--fs-caption); }
+
+.scene-tally { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.scene-tally li { font-size: var(--fs-small); font-family: var(--font-mono); }
+
+.scene-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-3);
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.scene-list li {
+    border: 1px solid var(--line);
+    border-left-width: 3px;
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    background: var(--surface);
+    font-size: var(--fs-small);
+}
+
+/* The same stroke vocabulary in the list: a solid left edge is measured, a dashed one is not. */
+.scene-list li.is-measured { border-left-color: var(--ink); }
+.scene-list li.is-interpretive {
+    border-left-color: var(--ink-subtle);
+    border-left-style: dashed;
+}
+
+.scene-list-pair {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+}
+
+.scene-list-pair code {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+}
+
+.scene-list-pair em { font-style: normal; color: var(--ink-muted); }
+
+.scene-jump {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--accent);
+    font-size: var(--fs-caption);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.scene-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+.scene-badges b, .scene-tally b {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    font-weight: 500;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line-strong);
+    color: var(--ink-muted);
+}
+
+/* MEASURED is the only status that gets ink. Everything weaker stays quiet, so the strongest
+   claim is also the one that looks strongest — and never the other way round. */
+.scene-badges b[data-status='measured'], .scene-tally b[data-status='measured'] {
+    color: var(--ink);
+    border-color: var(--ink);
+}
+
+.scene-badges b[data-status='interpretive'], .scene-tally b[data-status='interpretive'] {
+    border-style: dashed;
+}
+
+.scene-badges b[data-status='misstated'] {
+    color: var(--on-fill);
+    background: var(--mulberry);
+    border-color: var(--mulberry);
+}
+
+.scene-badges b[data-ledger='committed'], .scene-tally b[data-ledger='committed'] {
+    background: var(--ink);
+    color: var(--ink-inverse);
+    border-color: var(--ink);
+}
+
+.scene-badges b[data-ledger='proposed'], .scene-tally b[data-ledger='proposed'] {
+    background: none;
+}
+
+.scene-basis { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--ink-subtle); }
+
+.scene-detail {
+    margin: var(--space-2) 0 0;
+    color: var(--ink-muted);
+    font-size: var(--fs-caption);
+    line-height: 1.45;
+}
+
+.scene-supersedes {
+    margin: var(--space-1) 0 0;
+    font-size: var(--fs-caption);
+    color: var(--plum);
+}
+
+.scene-empty, .scene-error {
+    color: var(--ink-muted);
+    font-size: var(--fs-small);
+    padding: var(--space-4) 0;
+}
+
+.scene-error { color: var(--mulberry); font-family: var(--font-mono); }

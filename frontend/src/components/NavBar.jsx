@@ -24,6 +24,7 @@ const PRIMARY_LINKS = [
 // Demoted tooling — reachable, not shouting. Behind the "Tools" overflow now;
 // moves under ⌘K in the Foundation pass. (Highlights/Epics fold into "You".)
 const TOOLS_LINKS = [
+  ['/scene', 'Scene'],
   ['/research', 'Research'],
   ['/unconceal', 'Unconceal'],
   ['/anatomy', 'Anatomy'],
