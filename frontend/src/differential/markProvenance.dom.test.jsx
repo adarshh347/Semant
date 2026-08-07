@@ -1,6 +1,9 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { summarizeProvenance } from './suggestionQuarantine';
 import { makeVisualMark, normalizeMark } from './visualMarks';
 
@@ -35,6 +38,8 @@ function SuggestionLine({ base }) {
         </p>
     );
 }
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 let container;
 let root;
@@ -104,5 +109,33 @@ describe('the suggestion line in the refine inspector', () => {
         expect(line).toBeTruthy();
         expect(line.className).not.toContain('error');
         expect(line.className).not.toContain('warn');
+    });
+});
+
+describe('the chip above is the chip the workspace actually renders', () => {
+    // The two components in this file are stand-ins — the real workspace is too heavy to mount in
+    // a bare jsdom, and the header says so honestly. What the header does NOT do is stop the
+    // stand-in drifting from the original: if the workspace started printing a confidence beside
+    // the chip, every test above would stay green while the number shipped. This pins the seam.
+    const source = fs.readFileSync(
+        path.join(HERE, 'DifferentialWorkspace.jsx'), 'utf8');
+
+    it('renders every provenance chip through summarizeProvenance', () => {
+        const chips = [...source.matchAll(/diff-mark-prov-chip[^>]*>([^<]*)</g)]
+            .map((m) => m[1]);
+        expect(chips.length).toBeGreaterThan(0);   // else the scan proves nothing
+        for (const body of chips) {
+            expect(body).toContain('summarizeProvenance(');
+        }
+    });
+
+    it('formats no confidence anywhere near a provenance chip', () => {
+        // The chip's own vocabulary is words. A percentage, a fixed-point number or a score field
+        // beside it would turn "Model suggestion — not accepted" into a claim about how sure the
+        // model is, which is exactly what a suggestion is not allowed to say.
+        for (const [index] of [...source.matchAll(/diff-mark-prov/g)].map((m) => [m.index])) {
+            const window = source.slice(index, index + 400);
+            expect(window).not.toMatch(/confidence|toFixed\(|\bscore\b|%`/);
+        }
     });
 });

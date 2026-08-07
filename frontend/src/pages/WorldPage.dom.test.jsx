@@ -30,7 +30,7 @@ const fail = () => Promise.resolve({ ok: false, json: async () => ({}) });
 
 /** Every probe answers; the curator queue reports `total` for the filter it was given. */
 function stubAll({ proposed = 13, committed = 0, unreachable = [] } = {}) {
-    global.fetch = vi.fn((url) => {
+    globalThis.fetch = vi.fn((url) => {
         const path = String(url);
         if (unreachable.some((frag) => path.includes(frag))) return fail();
         if (path.includes('/curator/queue')) {
@@ -51,7 +51,7 @@ async function mount() {
 }
 
 beforeEach(() => {
-    realFetch = global.fetch;
+    realFetch = globalThis.fetch;
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -60,7 +60,7 @@ beforeEach(() => {
 afterEach(() => {
     act(() => root.unmount());
     container.remove();
-    global.fetch = realFetch;
+    globalThis.fetch = realFetch;
     vi.restoreAllMocks();
 });
 
@@ -136,7 +136,7 @@ describe('liveness is probed, not declared', () => {
     it('probes every surface it advertises', async () => {
         stubAll();
         await mount();
-        const called = global.fetch.mock.calls.map(([url]) => String(url));
+        const called = globalThis.fetch.mock.calls.map(([url]) => String(url));
         for (const fragment of ['/scene/', '/cognition/', '/society/', '/constellation/',
                                 '/curator/']) {
             expect(called.some((u) => u.includes(fragment))).toBe(true);
@@ -148,7 +148,11 @@ describe('it is read-only', () => {
     it('issues no write of any kind', async () => {
         stubAll();
         await mount();
-        for (const [, init] of global.fetch.mock.calls) {
+        // A loop over an empty list passes every assertion inside it. If the page ever stopped
+        // issuing requests — or the stub stopped being reached — this would go on reporting that
+        // nothing it sent was a write: true, and worth nothing.
+        expect(globalThis.fetch.mock.calls.length).toBeGreaterThan(0);
+        for (const [, init] of globalThis.fetch.mock.calls) {
             const method = String((init && init.method) || 'GET').toUpperCase();
             expect(['GET', 'HEAD']).toContain(method);
         }
