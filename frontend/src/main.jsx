@@ -44,6 +44,7 @@ const ArticleLab = React.lazy(() => import('./pages/ArticleLab.jsx')); // DEV-ON
 // Its OWN route and shell, deliberately not folded into /differential, which is the manual
 // instrument and has diverged from this on purpose.
 const AgentDemoPage = React.lazy(() => import('./agentDemo/AgentDemoPage.jsx'));
+const CognitionPage = React.lazy(() => import('./cognition/CognitionPage.jsx'));
 const HighlightsPage = React.lazy(() => import('./pages/HighlightsPage.jsx'));
 const TextFeedPage = React.lazy(() => import('./pages/TextFeedPage.jsx'));
 const EpicsPage = React.lazy(() => import('./pages/EpicsPage.jsx'));
@@ -67,6 +68,10 @@ const WritingArticlePage = React.lazy(() => import('./writing/WritingArticlePage
 // ATLAS C1 — the multi-image writing canvas: a corpus on one pan/zoom surface, wearing its
 // committed percepts. The multi-image general case of the Chiasm.
 const AtlasPage = React.lazy(() => import('./atlas/AtlasPage.jsx'));
+
+// WAVE4 — the curator's queue. The one surface where a proposal becomes part of the shared
+// record, and the only place in the app that writes to the ledger.
+const CuratorQueuePage = React.lazy(() => import('./curator/CuratorQueuePage.jsx'));
 // DEV-ONLY · landing-migration checkpoint — the glyph contact sheet, proving the
 // 21 glyphs render identically once migrated into Semant (asset-layer fidelity).
 // Guarded so vite statically drops both the const and its dynamic-import chunk
@@ -114,6 +119,9 @@ const router = createBrowserRouter([
       { path: "lab/article", element: <ArticleLab /> },
       // AGENT-DEMO — a real user surface, not a lab: images + a prompt, and the run in the open.
       { path: "agent", element: <AgentDemoPage /> },
+      // WAVE4 — watch a being think within an image: an agent's walk, its measured perceptions,
+      // its honest refusals, and the character that shaped where it went. Read-only.
+      { path: "cognition", element: <CognitionPage /> },
       { path: "feed", element: <TextFeedPage /> },
       { path: "epics", element: <EpicsPage /> },
       { path: "epics/:id", element: <EpicEditorPage /> },
@@ -130,6 +138,7 @@ const router = createBrowserRouter([
       { path: "writer", element: <WriterPage /> },
       { path: "writer/:manuscriptId", element: <WriterPage /> },
       // ATLAS C1 — the index picks a corpus; the canvas opens over one.
+      { path: "curator", element: <CuratorQueuePage /> },
       { path: "atlas", element: <AtlasPage /> },
       { path: "atlas/:atlasId", element: <AtlasPage /> },
       // Primary-nav destinations, stubbed on-taste until their full pages land.
