@@ -7,6 +7,7 @@ from backend.routers import cognition
 from backend.routers import society
 from backend.routers import scene
 from backend.routers import constellation
+from backend.routers import relations
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
@@ -159,6 +160,12 @@ app.include_router(scene.router, prefix="/api/v1/scene", tags=["Scene"], depende
 # in that router. It draws no edge that was not committed to a post, filed in the curator's queue,
 # or stored on an Atlas — a candidate the kernel refused was never written down and cannot appear.
 app.include_router(constellation.router, prefix="/api/v1/constellation", tags=["Constellation"], dependencies=[Depends(require_api_key)])
+
+# WAVE4.5 — the derived-relation store. Every view above now reads ONE store underneath; this route
+# answers the question none of them could: how many relations exist, how many are durable, and how
+# many a person has accepted. 2,755 derived against 14 durable against 0 committed — reported apart,
+# because one total would erase the finding. Read-only; the commit surface is the curator's.
+app.include_router(relations.router, prefix="/api/v1/relations", tags=["Relations"], dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
 @app.get("/health")

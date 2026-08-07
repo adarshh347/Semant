@@ -58,6 +58,8 @@ SPAN_BETWEEN = "between_images"
 SOURCE_LEDGER = "ledger"          # committed to a post's visual_marks
 SOURCE_PROPOSAL = "proposal"      # filed in the curator's queue, awaiting a human
 SOURCE_ATLAS = "atlas"            # a movement edge on an Atlas document
+#: WAVE4.5 — the rebuildable store. The many, and never durable.
+SOURCE_DERIVED = "derived"
 
 #: Ledger vocabulary, mirrored from `curator` so a reader of this module's output does not have to
 #: learn a second set of words for the same two states.
@@ -346,40 +348,77 @@ def tally(edges: Sequence[Mapping[str, Any]], nodes: Sequence[Mapping[str, Any]]
 
 # ── loading ─────────────────────────────────────────────────────────────────
 
-async def load_edges(*, posts_collection=None, atlas=None, proposals=None) -> Dict[str, Any]:
-    """Every persisted relation in the corpus, from all three durable places. Reads, never writes.
+async def load_edges(*, posts_collection=None, atlas=None, proposals=None,
+                     derived=None, include_derived: bool = True) -> Dict[str, Any]:
+    """Every grounded relation in the corpus, as constellation edges. Reads, never writes.
 
-    The whole corpus rather than a neighbourhood, because the walk needs the adjacency before it
-    knows what is adjacent — and because there are fourteen of them. A corpus where that stopped
-    being true would want an index; saying so here is cheaper than pretending this scales.
+    ## The three named sources became one call (WAVE4.5)
+
+    This function used to read the ledger, the curator's queue and the Atlas itself — three sources
+    a viewer had to know about, and a fourth it did not: the derived cache the scene view had built
+    and nothing else could see. That is why this lane counted **fourteen** edges while **2,755**
+    relations had been measured.
+
+    `derived_relations.load` is now the one home. It knows all four origins, re-derives `epistemic`
+    from the basis on every read, and labels each row with where it came from — so a reader can
+    still tell a committed relation from a rebuildable one, which is the distinction that made
+    three sources worth keeping apart in the first place.
+
+    `include_derived=False` gives the durable world alone. It is what makes the gap reportable
+    rather than merely stated, and it is how the earlier behaviour of this function is still
+    reachable.
     """
-    if posts_collection is None:
-        from backend.database import post_collection as posts_collection
-    if atlas is None:
-        from backend.database import atlas_collection as atlas
-    if proposals is None:
-        from backend.database import curator_proposal_collection as proposals
+    from backend.services import derived_relations as store
 
-    posts: Dict[str, Dict[str, Any]] = {}
-    async for post in posts_collection.find({}):
-        posts[str(post["_id"])] = post
-
-    atlas_docs = [doc async for doc in atlas.find({})]
-    filed = [doc async for doc in proposals.find({})]
-
-    edges = [
-        *edges_from_ledger(posts),
-        *edges_from_proposals(filed),
-        *edges_from_atlas(atlas_docs, posts),
-    ]
+    loaded = await store.load(posts_collection=posts_collection, atlas=atlas,
+                              proposals=proposals, derived=derived,
+                              include_derived=include_derived)
+    edges = [_edge_from(row) for row in loaded["relations"]]
     return {
         "edges": edges,
-        "posts": posts,
+        "posts": loaded["posts"],
+        "census": store.census(loaded["relations"]),
+        "cache": loaded["cache"],
         "sources": {
             "ledger_relation_marks": sum(1 for e in edges if e["source"] == SOURCE_LEDGER),
             "curator_proposals": sum(1 for e in edges if e["source"] == SOURCE_PROPOSAL),
             "atlas_movement_edges": sum(1 for e in edges if e["source"] == SOURCE_ATLAS),
+            "derived_relations": sum(1 for e in edges if e["source"] == SOURCE_DERIVED),
         },
+    }
+
+
+def _edge_from(row: Mapping[str, Any]) -> Dict[str, Any]:
+    """One store relation → the edge shape this view has always drawn.
+
+    A thin adapter, deliberately: the store owns what a relation IS, and this owns what a
+    constellation edge needs on top of it — `span`, `directed`, and the ids the walk traverses.
+    `span` is still derived from the endpoints here, never carried, so a caller cannot declare an
+    occlusion a crossing.
+    """
+    a_node, b_node = str(row.get("source_node") or ""), str(row.get("target_node") or "")
+    a, b = parse_node_id(a_node), parse_node_id(b_node)
+    same_image = bool(a and b and a[0] == b[0])
+    # `in_front_of` has a near end and a far end; a nesting or a rhyme as stored does not orient a
+    # traversal. A renderer drawing an arrow needs to know which, and guessing would invent one.
+    directed = str(row.get("relation") or "") == "in_front_of"
+    return {
+        "edge_id": str(row.get("ref") or f"{row.get('origin')}:{a_node}->{b_node}"),
+        "source": str(row.get("origin") or ""),
+        "axis": str(row.get("axis") or ""),
+        "relation": str(row.get("relation") or ""),
+        "a_node": a_node,
+        "b_node": b_node,
+        "span": SPAN_WITHIN if same_image else SPAN_BETWEEN,
+        "directed": directed,
+        "front_node": a_node if directed else "",
+        "epistemic": row.get("epistemic"),
+        "ledger_status": str(row.get("ledger_status") or LEDGER_PROPOSED),
+        "basis": str(row.get("basis") or ""),
+        "evidence": {**dict(row.get("numbers") or {}),
+                     **({"contradicts": row["supersedes"]} if row.get("supersedes") else {}),
+                     "queued_for_curation": bool(row.get("queued"))},
+        "detail": str(row.get("detail") or ""),
     }
 
 
