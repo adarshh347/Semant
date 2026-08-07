@@ -32,6 +32,7 @@ from pathlib import Path
 import pytest
 
 from backend.services import adjacency_organ as adj
+from backend.services import chroma_organ
 from backend.services import epistemics, nestedness_organ as nest
 from backend.services.agents import dialogue as dlg
 from backend.services.agents import observation as obs_mod
@@ -564,11 +565,11 @@ def test_the_adjacency_organ_is_classified_and_the_gap_it_inherited_is_closed():
         {EpistemicStatus.MEASURED, EpistemicStatus.INTERPRETIVE, EpistemicStatus.UNCERTAIN})
 
     def guarded(region, status=None):
-        measurement = adj.measure(region, WHOLE)
-        mark = adj.grounding_mark(measurement, post_id="prim", now=STAMP)
-        return epistemics.guard([{"producer": adj.ORGAN, "type": mark["type"],
-                                  "measurement": measurement,
-                                  STATUS_KEY: status or mark[STATUS_KEY]}])
+        """THE MARK THE ORGAN ACTUALLY PRODUCES, since ORGAN-PROVENANCE-001 — see the twin note in
+        `test_situated_agent_wave3`. This lane inherited the stand-in habit from that one, which is
+        how the same untested shape reached two organs."""
+        mark = adj.grounding_mark(adj.measure(region, WHOLE), post_id="prim", now=STAMP)
+        return epistemics.guard([mark if status is None else {**mark, STATUS_KEY: status}])
 
     boxed = {"id": "b_in", "box": {"x": 0.10, "y": 0.10, "w": 0.10, "h": 0.10}}
     guarded(RIM)        # the mask ceiling: measured, accepted as it always was
@@ -670,7 +671,7 @@ def test_every_invocable_organ_has_an_invocation():
     for name in organs.PURE_PYTHON_ORGANS:
         kwargs = {}
         if name in organs._NEEDS_PIXELS:
-            kwargs["image"] = _FlatImage()
+            kwargs["image"] = chroma_organ.image_frame(_FlatImage(), source="fixture:flat")
         if name in organs._NEEDS_DEPTH:
             kwargs["depth_field"] = _flat_depth()
         readings = organs.invoke(name, post=post, region_id="r_rim", now=STAMP, **kwargs)

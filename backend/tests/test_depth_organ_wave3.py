@@ -26,6 +26,7 @@ from pathlib import Path
 
 import pytest
 
+from backend.services import chroma_organ
 from backend.services import depth_organ as depth
 from backend.services import epistemics, nestedness_organ as nest
 from backend.services.agents import organs
@@ -446,7 +447,7 @@ def test_every_invocable_organ_still_has_an_invocation():
     for name in organs.PURE_PYTHON_ORGANS:
         kwargs = {}
         if name in organs._NEEDS_PIXELS:
-            kwargs["image"] = _FlatImage()
+            kwargs["image"] = chroma_organ.image_frame(_FlatImage(), source="fixture:flat")
         if name in organs._NEEDS_DEPTH:
             kwargs["depth_field"] = _near_left()
         readings = organs.invoke(name, post=post, region_id="r_near", now=STAMP, **kwargs)
