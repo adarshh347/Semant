@@ -4,6 +4,7 @@ from backend.routers import posts, epics, phrases, research, personas, anatomy, 
 from backend.routers import retina
 from backend.routers import curator
 from backend.routers import cognition
+from backend.routers import society
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
@@ -138,6 +139,11 @@ app.include_router(curator.router, prefix="/api/v1/curator", tags=["Curator"], d
 # that can disagree with its own trajectory, and this surface exists so that what you watch is what
 # actually happened.
 app.include_router(cognition.router, prefix="/api/v1/cognition", tags=["Cognition"], dependencies=[Depends(require_api_key)])
+
+# WAVE4 — the society surface. One READ: a differently-bodied group WALKED to one locus, and the
+# partition of what holds between them — composed, coexistent, incommensurable. The joint claims it
+# returns are `proposed` and there is no route here that could commit one.
+app.include_router(society.router, prefix="/api/v1/society", tags=["Society"], dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
 @app.get("/health")
