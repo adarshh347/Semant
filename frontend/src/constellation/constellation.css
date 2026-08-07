@@ -1,0 +1,108 @@
+/* WAVE4 — the constellation view.
+ *
+ * Design tokens only, the vocabulary the rest of the app uses. Nothing here defines a new colour.
+ *
+ * THE ONE THING THIS FILE IS FOR is making three facts about a line readable at once without any
+ * two of them sharing a channel:
+ *
+ *     span            which column(s) the line lives in, plus a class
+ *     epistemic       the DASH pattern — solid / dashed / dotted
+ *     ledger_status   the WIDTH — thin while proposed, heavy once committed
+ *
+ * Each is also written on the edge's label, so none of this is load-bearing alone.
+ */
+
+.con-page { max-width: 1400px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-16); }
+
+.con-header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-6); margin-bottom: var(--space-6); }
+.con-eyebrow { display: inline-block; font-size: var(--fs-caption); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--accent); margin-bottom: var(--space-2); }
+.con-title { font-family: var(--font-display); font-size: var(--fs-h1); line-height: 1.05; letter-spacing: var(--tracking-tight); color: var(--ink); margin: 0 0 var(--space-2); }
+.con-sub { font-size: var(--fs-body); color: var(--ink-muted); line-height: 1.55; margin: 0; max-width: 66ch; }
+.con-back { color: var(--ink-muted); text-decoration: none; font-size: var(--fs-small); white-space: nowrap; }
+.con-back:hover { color: var(--accent); }
+
+.con-error { color: var(--accent-deep); font-size: var(--fs-small); margin: 0 0 var(--space-3); }
+.con-muted { font-size: var(--fs-small); color: var(--ink-subtle); font-style: italic; line-height: 1.6; max-width: 62ch; }
+.con-note { font-size: var(--fs-caption); color: var(--ink-subtle); line-height: 1.55; margin: var(--space-2) 0 0; max-width: 66ch; }
+.con-h2 { font-size: var(--fs-small); text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--accent); margin: 0 0 var(--space-2); }
+.con-h3 { font-size: var(--fs-small); text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--accent); margin: var(--space-6) 0 var(--space-3); }
+
+.con-body { display: grid; grid-template-columns: minmax(230px, 24%) 1fr; gap: var(--space-8); align-items: start; }
+@media (max-width: 980px) { .con-body { grid-template-columns: 1fr; } }
+
+/* ── the seed list ───────────────────────────────────────────────────────── */
+.con-side { position: sticky; top: var(--space-6); }
+.con-seeds { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 46vh; overflow-y: auto; }
+.con-seed { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; background: transparent; border: 1px solid transparent; border-left: 3px solid transparent; border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); cursor: pointer; font-family: inherit; }
+.con-seed:hover { background: var(--surface-2); }
+.con-seed.is-open { border-left-color: var(--accent); background: var(--surface-2); }
+.con-seed-region { font-size: var(--fs-caption); color: var(--ink); font-family: var(--font-mono, monospace); }
+.con-seed-meta { display: flex; justify-content: space-between; gap: var(--space-3); font-size: var(--fs-caption); color: var(--ink-subtle); }
+.con-seed-degree { font-variant-numeric: tabular-nums; }
+
+/* ── controls ────────────────────────────────────────────────────────────── */
+.con-controls { display: flex; align-items: center; gap: var(--space-2); border-bottom: 1px solid var(--line); padding-bottom: var(--space-3); margin-bottom: var(--space-4); }
+.con-controls-label { font-size: var(--fs-caption); text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--ink-subtle); margin-right: var(--space-2); }
+.con-depth { font-family: inherit; font-size: var(--fs-caption); min-width: 28px; padding: 0.2rem 0.5rem; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-muted); border-radius: var(--radius-sm); cursor: pointer; }
+.con-depth.is-on { border-color: var(--accent); color: var(--accent-deep, var(--accent)); }
+.con-counts { margin-left: auto; font-size: var(--fs-caption); color: var(--ink-muted); }
+.con-counts strong { color: var(--ink); }
+
+/* ── the graph ───────────────────────────────────────────────────────────── */
+.con-graphwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); padding: var(--space-3); }
+.con-graph { display: block; min-width: 100%; }
+
+/* A picture is a PLACE, and drawing it as one is what makes "this edge stays inside a picture"
+ * visible before any stroke is read. */
+.con-columnbox { fill: var(--surface-2); stroke: var(--line); stroke-width: 1; }
+.con-columnlabel { font-size: 10px; fill: var(--ink-subtle); text-anchor: middle; font-family: var(--font-mono, monospace); letter-spacing: 0.04em; }
+
+.con-nodedot { fill: var(--ink-subtle); }
+.con-node.is-seed .con-nodedot { fill: var(--accent); }
+.con-nodelabel { font-size: 11px; fill: var(--ink); font-family: var(--font-mono, monospace); }
+.con-node.is-seed .con-nodelabel { fill: var(--accent-deep, var(--accent)); font-weight: 600; }
+.con-nodehop { font-size: 9px; fill: var(--ink-subtle); }
+
+.con-edgegroup { cursor: pointer; }
+.con-edgelabel { font-size: 9px; fill: var(--ink-subtle); text-anchor: end; pointer-events: none; }
+.con-edgegroup.is-active .con-edgelabel { fill: var(--ink); }
+.con-arrowhead { fill: var(--ink-subtle); }
+
+/* epistemic — the DASH */
+.con-edge { stroke: var(--ink-subtle); }
+.con-edge--measured { stroke: var(--accent); stroke-dasharray: none; }
+.con-edge--interpretive { stroke: var(--ink-muted); stroke-dasharray: 7 4; }
+/* A third state, not a shade of the second: an edge whose mark is in no ledger cannot say what
+ * kind of knowing it is, and folding that into `interpretive` would put a producer's word into an
+ * absence's mouth. */
+.con-edge--unreadable { stroke: var(--ink-subtle); stroke-dasharray: 1.5 4; }
+
+/* ledger — the WIDTH */
+.con-edge--proposed { stroke-width: 1.4; }
+.con-edge--committed { stroke-width: 3.2; }
+
+/* span — a second channel beside the columns, so a screenshot of one column still says which */
+.con-edge--between_images { stroke-linecap: round; opacity: 0.95; }
+.con-edge--within_image { stroke-linecap: butt; }
+.con-edgegroup.is-active .con-edge { stroke: var(--accent-deep, var(--accent)); }
+
+/* ── legend ──────────────────────────────────────────────────────────────── */
+.con-legend { margin-top: var(--space-6); }
+.con-legend ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.con-legend li { display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-caption); color: var(--ink-muted); }
+.con-swatch { display: inline-block; width: 44px; height: 0; border-top-style: solid; flex: none; border-top-color: var(--ink-subtle); border-top-width: 1.4px; }
+.con-swatch.con-edge--measured { border-top-color: var(--accent); border-top-style: solid; }
+.con-swatch.con-edge--interpretive { border-top-color: var(--ink-muted); border-top-style: dashed; }
+.con-swatch.con-edge--unreadable { border-top-color: var(--ink-subtle); border-top-style: dotted; }
+.con-swatch.con-edge--committed { border-top-width: 3.2px; }
+.con-swatch.con-edge--between_images { border-top-color: var(--accent); }
+
+/* ── edge detail + bound ─────────────────────────────────────────────────── */
+.con-edgedetail { border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); margin-top: var(--space-5); }
+.con-edgedetail-claim { font-size: var(--fs-small); color: var(--ink); line-height: 1.55; margin: 0 0 var(--space-3); }
+.con-dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-2) var(--space-4); margin: 0; font-size: var(--fs-caption); }
+.con-dl dt { color: var(--ink-subtle); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.con-dl dd { margin: 0; color: var(--ink); font-family: var(--font-mono, monospace); }
+
+.con-bound { margin-top: var(--space-6); border-top: 1px solid var(--line); padding-top: var(--space-3); }
+.con-bound strong { color: var(--ink); }

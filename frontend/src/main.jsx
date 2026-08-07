@@ -70,6 +70,10 @@ const WritingArticlePage = React.lazy(() => import('./writing/WritingArticlePage
 // committed percepts. The multi-image general case of the Chiasm.
 const AtlasPage = React.lazy(() => import('./atlas/AtlasPage.jsx'));
 
+// WAVE4 — the constellation: the neighbourhood of loci reachable from one, stitched by the
+// relations that were persisted. Read-only.
+const ConstellationPage = React.lazy(() => import('./constellation/ConstellationPage.jsx'));
+
 // WAVE4 — the curator's queue. The one surface where a proposal becomes part of the shared
 // record, and the only place in the app that writes to the ledger.
 const CuratorQueuePage = React.lazy(() => import('./curator/CuratorQueuePage.jsx'));
@@ -143,6 +147,7 @@ const router = createBrowserRouter([
       { path: "writer/:manuscriptId", element: <WriterPage /> },
       // ATLAS C1 — the index picks a corpus; the canvas opens over one.
       { path: "curator", element: <CuratorQueuePage /> },
+      { path: "constellation", element: <ConstellationPage /> },
       { path: "atlas", element: <AtlasPage /> },
       { path: "atlas/:atlasId", element: <AtlasPage /> },
       // Primary-nav destinations, stubbed on-taste until their full pages land.
