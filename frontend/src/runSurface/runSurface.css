@@ -1,0 +1,22 @@
+/* RUN SURFACE — the control page.
+ *
+ * Almost nothing here. The page imports `cognition.css` and `society.css` and renders through
+ * their components, so the status marks, refusal rows, walk streams and partition all look
+ * exactly as they do on the surfaces that own them. A third palette would be a third place the
+ * measured/interpretive/proposed distinction could soften.
+ *
+ * Only the two things genuinely new to a CONTROL surface get a rule: the steps field, and the
+ * refusal block — which is styled as a FINDING rather than an error, because that is what it is. */
+
+.run-steps input { width: 5rem; }
+
+.run-refusal {
+    margin: 1.5rem 0; padding: 1rem 1.25rem;
+    border: 1px dashed var(--line); border-radius: .35rem; background: var(--surface);
+}
+.run-refusal .soc-h2 { margin-top: 0; }
+.run-refusal-detail { margin: 0 0 .6rem; font-size: .86rem; }
+.run-refusal-note { margin: 0; font-size: .8rem; opacity: .7; line-height: 1.55; max-width: 44rem; }
+
+/* Only a genuine failure reads as one. Everything else is the system telling you something. */
+.run-refusal--error { border-style: solid; border-color: var(--danger, crimson); }
