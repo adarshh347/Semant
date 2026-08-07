@@ -358,13 +358,21 @@ async def sweep(args) -> dict:
         url = str(post.get("photo_url") or "")
         if url and (args.depth or args.chroma):
             try:
-                image = await fetch_image(url)
+                pixels = await fetch_image(url)
+                # A DECLARED FRAME, not a bare image (ORGAN-PROVENANCE-001): the mask's
+                # coordinates are the frame's coordinates, so an image cropped differently from
+                # the one the masks were drawn on indexes the wrong pixels and reports a warmth
+                # about somewhere else. `source` is the URL these pixels came from, so a mark can
+                # say what it read.
+                image = chroma.image_frame(pixels, source=url, whole_frame=True)
             except Exception as exc:                                     # noqa: BLE001
                 record["depth_failures"].append(
                     {"post_id": post_id, "stage": "image", "detail": repr(exc)[:120]})
         if image is not None and args.depth:
             try:
-                field = await depth_field_for(image, grid=DEPTH_GRID)
+                # The depth model takes the PIXELS; chroma takes the declared frame. Both
+                # read the same image, and each is handed the shape its own contract names.
+                field = await depth_field_for(image["image"], grid=DEPTH_GRID)
             except Exception as exc:                                     # noqa: BLE001
                 record["depth_failures"].append(
                     {"post_id": post_id, "stage": "depth", "detail": repr(exc)[:120]})

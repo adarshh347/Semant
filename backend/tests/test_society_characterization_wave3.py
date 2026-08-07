@@ -91,6 +91,13 @@ class FakeImage:
                 for i in range(self.size * self.size)]
 
 
+def _frame():
+    """A DECLARED frame, not a bare image (ORGAN-PROVENANCE-001). The mask's coordinates are the
+    frame's coordinates, so an image framed differently from the one the masks were drawn on
+    indexes the wrong pixels — and `source` is what lets a mark say which pixels it read."""
+    return chroma.image_frame(FakeImage(), source="test:warm-left", whole_frame=True)
+
+
 def _field(grid=8, *, near_left=True):
     """A synthetic whole-frame depth field, with provenance — the organ refuses one without it.
 
@@ -149,7 +156,7 @@ def test_the_compatibility_leak_guard_still_fires_under_the_sweeps_own_agents(mo
     silently a comparison. Checked with the agents the sweep itself builds."""
     post = _post()
     geo = sweep.stand(post, "r_rim", (nest.ORGAN,), agent_id="alpha")
-    chr_ = sweep.stand(post, "r_rim", (chroma.ORGAN,), agent_id="gamma", image=FakeImage())
+    chr_ = sweep.stand(post, "r_rim", (chroma.ORGAN,), agent_id="gamma", image=_frame())
     assert geo is not None and chr_ is not None
     assert soc.relate(geo, chr_).outcome == soc.INCOMMENSURABLE
 
@@ -275,7 +282,7 @@ def test_a_field_pair_is_coexistent_too_and_is_counted_separately():
     relation organs that could have composed and did not. Counted apart so the table cannot imply
     otherwise."""
     post = _post()
-    census = sweep.census_at(post, "r_rim", image=FakeImage(), depth_field=_field())
+    census = sweep.census_at(post, "r_rim", image=_frame(), depth_field=_field())
     row = next(r for r in census["pairs"] if {r["left"], r["right"]} == {"gamma", "delta"})
     assert row["outcome"] == soc.COEXISTENT
     assert row["left_arity"] == [1] and row["right_arity"] == [1]
@@ -288,7 +295,7 @@ def test_the_distribution_is_reported_by_body_pair_and_not_only_overall():
     """A single column would hide that one outcome belongs almost entirely to one kind of pairing —
     which is the sweep's main result."""
     post = _post()
-    tally = sweep.tally([sweep.census_at(post, "r_rim", image=FakeImage(), depth_field=_field())])
+    tally = sweep.tally([sweep.census_at(post, "r_rim", image=_frame(), depth_field=_field())])
     assert tally["pair_verdicts"] == 6 and tally["loci"] == 1
     assert set(tally["by_body_pair"]) == {
         "adjacency_organ × chroma_organ", "adjacency_organ × depth_organ",
