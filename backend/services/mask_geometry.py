@@ -318,6 +318,18 @@ def mask_to_crops(rle: dict, image) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # canonicalisation — the single entry the save path calls
 # ─────────────────────────────────────────────────────────────────────────────
+#: The keys that say WHO DREW THIS MASK, as opposed to what was done to it afterwards.
+#:
+#: Named here because this is the module that would otherwise drop them, and imported by
+#: `region_provenance` rather than re-listed there — two lists of maker keys would disagree, and
+#: the one that disagreed quietly would be the one deciding whether a mask is attributed.
+#:
+#: `method` is deliberately NOT a maker key: "sam3-concept-segment" and "sam-refine-box" both
+#: describe an operation, and an operation is not an author. `recovery` and `via` likewise.
+MAKER_KEYS = frozenset({"adapter", "model", "checkpoint", "revision",
+                        "preprocessing_version", "device", "drawn_by"})
+
+
 def canonicalize_geometry(region: dict, *, default_mask_size: Optional[Tuple[int, int]] = None,
                           provenance: Optional[dict] = None) -> dict:
     """Make a region's geometry canonical and stamp lineage, IN PLACE, preserving `id`.
@@ -331,8 +343,40 @@ def canonicalize_geometry(region: dict, *, default_mask_size: Optional[Tuple[int
 
     `geometry_rev` bumps whenever a mask identity is (re)derived; `geometry_provenance`
     records kind + method (+ any caller-supplied fields for the observability contract).
+
+    THE MAKER SURVIVES RE-CANONICALIZATION (REGION-PROV-001), and it did not before.
+
+    This function used to ASSIGN `geometry_provenance` wholesale, so any later pass over a region
+    replaced whoever drew it. One `apply_mask_to_region` refine turned
+
+        {kind, method: sam3-concept-segment, adapter: sam3, model: facebook/sam3, prompt: finial}
+
+    into
+
+        {kind, method: sam-refine-box, recovery: vision-f}
+
+    — the segmenter, the checkpoint and the prompt gone. `save-region-annotations` re-canonicalizes
+    EVERY region on EVERY save, so one save of a dissected post erased sixty makers at once. On the
+    real corpus that is 28 of 420 masked regions with no recorded maker, and none of them were
+    never-recorded: they were attributed and then overwritten.
+
+    That matters because of what a mask now carries. `nestedness_organ` grounds `measured`
+    containment on masks and only on masks (DECISION-movement-grounds-only-on-masks), and Lane M's
+    rule is that "a wrong mask is worse than none" — so a `measured` relation was resting on
+    geometry of unrecorded origin, with nothing left saying whose it was.
+
+    The rule is the one ORGAN-PROVENANCE-001 arrived at for organs, one level down: THE DRAWER
+    DECLARES. A re-canonicalization is not a drawing — it re-derives polygons from a mask that
+    already exists — so it may say what it did (`method`, `recovery`) and may not overwrite who
+    made the thing it is deriving from. A caller that genuinely IS the new drawer says so by
+    passing maker keys itself, and those win.
     """
     prov_extra = dict(provenance or {})
+    prior = region.get("geometry_provenance")
+    # The maker, carried forward — unless this caller declares one, in which case it IS the drawer.
+    inherited = ({k: v for k, v in prior.items()
+                  if k in MAKER_KEYS and k not in prov_extra and v not in (None, "")}
+                 if isinstance(prior, dict) and not (MAKER_KEYS & set(prov_extra)) else {})
 
     rle = region.get("mask_rle")
     rings = region.get("polygons")
@@ -347,7 +391,7 @@ def canonicalize_geometry(region: dict, *, default_mask_size: Optional[Tuple[int
         region["box"] = rle_bbox_norm(rle)
         region["geometry_rev"] = int(region.get("geometry_rev") or 0) + 1
         region["geometry_provenance"] = {"kind": "mask", "method": "rle",
-                                         "size": [h, w], **prov_extra}
+                                         "size": [h, w], **inherited, **prov_extra}
         return region
 
     if isinstance(rings, list) and any(len(r) >= 3 for r in rings) and default_mask_size:
@@ -362,13 +406,13 @@ def canonicalize_geometry(region: dict, *, default_mask_size: Optional[Tuple[int
         region["box"] = rle_bbox_norm(new_rle)
         region["geometry_rev"] = int(region.get("geometry_rev") or 0) + 1
         region["geometry_provenance"] = {"kind": "mask", "method": "polygons",
-                                         "size": [h, w], **prov_extra}
+                                         "size": [h, w], **inherited, **prov_extra}
         return region
 
     # legacy: box-only or single-ring polygon — retained explicitly, geometry untouched.
     if not region.get("geometry_provenance"):
         kind = "polygon" if (region.get("polygon") and len(region["polygon"]) >= 3) else "box"
-        region["geometry_provenance"] = {"kind": f"legacy-{kind}", **prov_extra}
+        region["geometry_provenance"] = {"kind": f"legacy-{kind}", **inherited, **prov_extra}
     return region
 
 
