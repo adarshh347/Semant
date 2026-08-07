@@ -6,6 +6,7 @@ from backend.routers import curator
 from backend.routers import cognition
 from backend.routers import society
 from backend.routers import scene
+from backend.routers import constellation
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
@@ -152,6 +153,12 @@ app.include_router(society.router, prefix="/api/v1/society", tags=["Society"], d
 # shows what exists at its true status — `epistemic` re-derived from the recorded basis on every
 # read, so nothing can be promoted by editing a cache.
 app.include_router(scene.router, prefix="/api/v1/scene", tags=["Scene"], dependencies=[Depends(require_api_key)])
+
+# WAVE4 — the constellation: the neighbourhood of loci reachable from one, stitched by the
+# relations that were actually PERSISTED. Read-only, and structurally so: there is no write path
+# in that router. It draws no edge that was not committed to a post, filed in the curator's queue,
+# or stored on an Atlas — a candidate the kernel refused was never written down and cannot appear.
+app.include_router(constellation.router, prefix="/api/v1/constellation", tags=["Constellation"], dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
 @app.get("/health")
