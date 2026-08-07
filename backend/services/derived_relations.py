@@ -71,6 +71,15 @@ data and the status is a conclusion, and the conclusion is recomputed.
 `ledger_status` is `committed` only for the `ledger` origin. Nothing else in this module can
 produce that word.
 
+### The same relation can appear under two origins, and it is not deduplicated
+
+On this corpus the thirteen occlusions are in the store **twice** — once `derived`, because the
+organs still compute them, and once `proposal`, because the occlusion lane filed them. Collapsing
+the pair would mean choosing which copy is the fact, and that is exactly the question `derive the
+many, commit the few` answers BY NOT MAKING ONE DURABLE. So both are shown, with different origins,
+and a reader who wants relations rather than rows reads `by_origin` — which is the other reason
+`census` never reports a total.
+
 ## What cannot enter
 
 A candidate the retina proposed and the kernel refused. Not by a filter — by there being nowhere

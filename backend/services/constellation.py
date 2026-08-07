@@ -349,8 +349,8 @@ def tally(edges: Sequence[Mapping[str, Any]], nodes: Sequence[Mapping[str, Any]]
 # ── loading ─────────────────────────────────────────────────────────────────
 
 async def load_edges(*, posts_collection=None, atlas=None, proposals=None,
-                     derived=None, include_derived: bool = True) -> Dict[str, Any]:
-    """Every grounded relation in the corpus, as constellation edges. Reads, never writes.
+                     derived=None, include_derived: bool = False) -> Dict[str, Any]:
+    """The DURABLE relations in the corpus, as constellation edges. Reads, never writes.
 
     ## The three named sources became one call (WAVE4.5)
 
@@ -364,9 +364,17 @@ async def load_edges(*, posts_collection=None, atlas=None, proposals=None,
     still tell a committed relation from a rebuildable one, which is the distinction that made
     three sources worth keeping apart in the first place.
 
-    `include_derived=False` gives the durable world alone. It is what makes the gap reportable
-    rather than merely stated, and it is how the earlier behaviour of this function is still
-    reachable.
+    ## `include_derived` DEFAULTS TO FALSE, and that is this view's own ruling
+
+    Delegating to the store made the derived world reachable from here, and switching it on by
+    default would take this graph from fourteen edges to 2,769 — silently overturning the finding
+    this view exists to show: **a constellation is a world an agent can WALK**, and a relation
+    nobody has filed is not somewhere it can go. Padding the graph with measured-but-unfiled
+    candidates would draw exactly the world #178 refused to draw.
+
+    So the delegation is about having ONE store with four origins, not about this view showing all
+    four. The derived count is reported — by `/api/v1/relations/status`, whose job is the census —
+    and the caller who wants it here can ask.
     """
     from backend.services import derived_relations as store
 

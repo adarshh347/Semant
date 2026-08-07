@@ -110,6 +110,19 @@ def test_the_view_reads_the_one_store_rather_than_naming_its_own_sources():
         assert absent not in body, absent
 
 
+def test_the_graph_still_draws_only_the_durable_world_by_default():
+    """WAVE4.5 CAUGHT THIS THE HARD WAY. Delegating to the store made the derived world reachable
+    from here, and the delegation shipped with `include_derived=True` — which took this graph from
+    14 edges to 2,769 the moment a cache existed on disk. It was invisible until a build was run.
+
+    A constellation is a world an agent can WALK, and a relation nobody has filed is not somewhere
+    it can go. Padding the graph with measured-but-unfiled candidates draws exactly the world #178
+    refused to draw. The census belongs to `/api/v1/relations/status`; this view stays durable.
+    """
+    import inspect
+    assert inspect.signature(C.load_edges).parameters["include_derived"].default is False
+
+
 def test_a_filed_proposal_is_an_edge_and_carries_its_evidence():
     edges = C.edges_from_proposals([_proposal("p1", "pA", "r_part", "r_whole")])
     assert len(edges) == 1
@@ -298,7 +311,11 @@ def wired(monkeypatch):
     real_load = C.load_edges
 
     async def _load(**_kw):
-        return await real_load(posts_collection=posts, atlas=atlas, proposals=proposals)
+        # `derived={}` EXPLICITLY. Without it the store falls through to the on-disk cache, and
+        # this fixture would pass or fail depending on whether anybody had run the build — which
+        # is exactly how the delegation's default leaked 2,755 real relations into these fakes.
+        return await real_load(posts_collection=posts, atlas=atlas, proposals=proposals,
+                               derived={})
     monkeypatch.setattr(R.constellation, "load_edges", _load)
 
     app = FastAPI()

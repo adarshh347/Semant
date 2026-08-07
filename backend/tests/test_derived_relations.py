@@ -366,3 +366,26 @@ def test_the_router_has_no_write_path():
     source = Path(R.__file__).read_text()
     for verb in ("@router.post", "@router.put", "@router.patch", "@router.delete"):
         assert verb not in source, verb
+
+
+# ── 6. the same relation from two origins is shown twice, on purpose ───────
+
+def test_a_filed_relation_and_the_derived_row_it_came_from_both_appear():
+    """MEASURED ON THE CORPUS: the 13 occlusions are in the store twice — once `derived` (the
+    organs still compute them) and once `proposal` (the occlusion lane filed them). They are NOT
+    deduplicated, and that is the decision rather than an oversight.
+
+    Collapsing them would mean choosing which copy is the fact, and that is precisely the question
+    `derive the many, commit the few` answers BY NOT MAKING ONE DURABLE. A reader who wants the
+    relations rather than the rows reads `by_origin`, which is why the census never reports a total.
+    """
+    rows = [*store.from_derived_cache(_cache()), *store.from_proposals([_proposal()])]
+    occlusions = [r for r in rows if r["kind"] == "occlusion"]
+
+    assert len(occlusions) == 2, "the derived row and the filed one, both present"
+    assert {r["origin"] for r in occlusions} == {store.ORIGIN_DERIVED, store.ORIGIN_PROPOSAL}
+    assert len({(r["source_node"], r["target_node"]) for r in occlusions}) == 1, "one relation"
+
+    census = store.census(rows)
+    assert census["by_kind"]["occlusion"] == 2
+    assert census["derived"] == 2 and census["durable"] == 1
