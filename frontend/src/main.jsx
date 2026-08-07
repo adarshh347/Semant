@@ -45,6 +45,7 @@ const ArticleLab = React.lazy(() => import('./pages/ArticleLab.jsx')); // DEV-ON
 // instrument and has diverged from this on purpose.
 const AgentDemoPage = React.lazy(() => import('./agentDemo/AgentDemoPage.jsx'));
 const CognitionPage = React.lazy(() => import('./cognition/CognitionPage.jsx'));
+const SocietyPage = React.lazy(() => import('./society/SocietyPage.jsx'));
 const HighlightsPage = React.lazy(() => import('./pages/HighlightsPage.jsx'));
 const TextFeedPage = React.lazy(() => import('./pages/TextFeedPage.jsx'));
 const EpicsPage = React.lazy(() => import('./pages/EpicsPage.jsx'));
@@ -122,6 +123,9 @@ const router = createBrowserRouter([
       // WAVE4 — watch a being think within an image: an agent's walk, its measured perceptions,
       // its honest refusals, and the character that shaped where it went. Read-only.
       { path: "cognition", element: <CognitionPage /> },
+      // WAVE4 — watch agents MEET: several bodies walked to one locus, and the partition of what
+      // holds between them — composed, coexistent, incommensurable. Read-only.
+      { path: "society", element: <SocietyPage /> },
       { path: "feed", element: <TextFeedPage /> },
       { path: "epics", element: <EpicsPage /> },
       { path: "epics/:id", element: <EpicEditorPage /> },
