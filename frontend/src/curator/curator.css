@@ -1,0 +1,128 @@
+/* WAVE4 — the curator surface.
+ *
+ * Design tokens only (--ink, --surface, --line, --accent, --space-*, --fs-*), the same vocabulary
+ * `UnconcealQueuePage.css` and the rest of the app use. Nothing here defines a new colour: the two
+ * status vocabularies borrow the tokens that already exist so this page cannot drift from the
+ * app's palette.
+ *
+ * THE ONE THING THIS FILE IS FOR is making four words unmistakable — `measured`, `interpretive`,
+ * `proposed`, `committed` — and never letting two of them look alike. See `.cur-badge`.
+ */
+
+.cur-page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6) var(--space-16);
+}
+
+.cur-header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-6); margin-bottom: var(--space-6); }
+.cur-eyebrow { display: inline-block; font-size: var(--fs-caption); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--accent); margin-bottom: var(--space-2); }
+.cur-title { font-family: var(--font-display); font-size: var(--fs-h1); line-height: 1.05; letter-spacing: var(--tracking-tight); color: var(--ink); margin: 0 0 var(--space-2); max-width: 22ch; }
+.cur-sub { font-size: var(--fs-body); color: var(--ink-muted); line-height: 1.55; margin: 0; max-width: 62ch; }
+.cur-back { color: var(--ink-muted); text-decoration: none; font-size: var(--fs-small); white-space: nowrap; }
+.cur-back:hover { color: var(--accent); }
+
+.cur-error { color: var(--accent-deep); font-size: var(--fs-small); margin: 0 0 var(--space-3); }
+.cur-muted { font-size: var(--fs-small); color: var(--ink-subtle); font-style: italic; line-height: 1.6; max-width: 60ch; }
+
+.cur-counts { display: flex; gap: var(--space-5); align-items: baseline; font-size: var(--fs-small); color: var(--ink-muted); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: var(--space-3) 0; margin-bottom: var(--space-6); }
+.cur-counts strong { color: var(--ink); font-size: var(--fs-body); }
+.cur-counts-total { margin-left: auto; color: var(--ink-subtle); }
+
+/* ── the two panes ───────────────────────────────────────────────────────── */
+.cur-body { display: grid; grid-template-columns: minmax(260px, 34%) 1fr; gap: var(--space-8); align-items: start; }
+@media (max-width: 900px) { .cur-body { grid-template-columns: 1fr; } }
+
+.cur-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); position: sticky; top: var(--space-6); max-height: 78vh; overflow-y: auto; }
+.cur-row { width: 100%; text-align: left; display: flex; flex-direction: column; gap: var(--space-2); background: var(--surface); border: 1px solid var(--line); border-left: 3px solid transparent; border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); cursor: pointer; font-family: inherit; }
+.cur-row:hover { border-color: var(--line-strong); }
+.cur-row.is-open { border-left-color: var(--accent); background: var(--surface-2); }
+.cur-row-claim { font-size: var(--fs-small); color: var(--ink); line-height: 1.45; }
+.cur-row-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.cur-row-producer { font-size: var(--fs-caption); color: var(--ink-subtle); font-family: var(--font-mono, monospace); }
+
+/* The row dot is a SECOND channel for the ledger status, not a replacement for the badge in the
+ * detail pane: a list has to be scannable, and a scannable list must not become the only place a
+ * status appears. Shape differs as well as colour — filled for committed, hollow for proposed —
+ * so the distinction survives without colour vision. */
+.cur-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.cur-dot--proposed { border: 1.5px solid var(--ink-subtle); background: transparent; }
+.cur-dot--committed { background: var(--accent); border: 1.5px solid var(--accent); }
+
+.cur-detail { min-width: 0; }
+.cur-detail-title { font-family: var(--font-display); font-size: var(--fs-h2); line-height: 1.15; color: var(--ink); margin: 0 0 var(--space-2); }
+.cur-detail-sub { font-size: var(--fs-caption); color: var(--ink-subtle); margin: 0 0 var(--space-5); }
+.cur-detail-sub code, .cur-confirm-what code { font-family: var(--font-mono, monospace); background: var(--surface-2); padding: 0.1em 0.35em; border-radius: var(--radius-sm); }
+.cur-h3 { font-size: var(--fs-small); text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--accent); margin: var(--space-6) 0 var(--space-3); }
+
+/* ── the two statuses ────────────────────────────────────────────────────── */
+/* THE WHOLE POINT OF THIS FILE.
+ *
+ * `epistemic` is an OUTLINE badge and `ledger` is a FILLED one, so the two never read as the same
+ * kind of claim even at a glance and even in greyscale. Within each, the weaker value is quieter:
+ * `interpretive` is dashed (an estimate, and it should look like one) and `proposed` is hollow (an
+ * unaccepted claim should not look like an accomplishment).
+ *
+ * No value shares a treatment with any other. A UI where `measured` and `committed` looked alike
+ * would be the pixel-level version of exactly the collapse the read path refuses. */
+.cur-statuspair { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); }
+.cur-statusrow { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+.cur-statuslabel { font-size: var(--fs-caption); color: var(--ink-subtle); text-transform: uppercase; letter-spacing: var(--tracking-wide); min-width: 10ch; }
+.cur-statusgloss { font-size: var(--fs-small); color: var(--ink-muted); line-height: 1.55; margin: var(--space-3) 0 0; max-width: 62ch; }
+.cur-statusdetail { font-size: var(--fs-caption); color: var(--ink-subtle); line-height: 1.5; margin: var(--space-2) 0 0; max-width: 62ch; font-style: italic; }
+
+.cur-badge { display: inline-block; font-size: var(--fs-caption); letter-spacing: var(--tracking-wide); text-transform: uppercase; padding: 0.2rem 0.65rem; border-radius: var(--radius-pill); font-weight: 600; }
+
+/* epistemic — OUTLINE, always */
+.cur-badge--epistemic { background: transparent; }
+.cur-badge--measured { border: 1.5px solid var(--accent); color: var(--accent-deep, var(--accent)); }
+.cur-badge--interpretive { border: 1.5px dashed var(--ink-subtle); color: var(--ink-muted); }
+.cur-badge--unknown { border: 1.5px dotted var(--ink-subtle); color: var(--ink-subtle); text-transform: none; font-weight: 400; font-style: italic; }
+
+/* ledger — FILLED, always */
+.cur-badge--ledger { border: 1.5px solid transparent; }
+.cur-badge--proposed { background: var(--surface); border-color: var(--line-strong); color: var(--ink-muted); }
+.cur-badge--committed { background: var(--accent); color: var(--accent-ink, #fff); }
+
+/* ── the evidence ────────────────────────────────────────────────────────── */
+.cur-evidence { border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); }
+.cur-ev-claim { font-size: var(--fs-body); color: var(--ink); line-height: 1.5; margin: 0 0 var(--space-4); }
+.cur-ev-table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+.cur-ev-table th { text-align: left; font-weight: 500; color: var(--ink-muted); padding: var(--space-2) var(--space-3) var(--space-2) 0; vertical-align: top; width: 46%; }
+.cur-ev-table td { padding: var(--space-2) 0; vertical-align: top; color: var(--ink); }
+.cur-ev-table tr + tr th, .cur-ev-table tr + tr td { border-top: 1px solid var(--line); }
+.cur-ev-note { display: block; font-size: var(--fs-caption); color: var(--ink-subtle); font-weight: 400; line-height: 1.45; margin-top: 0.15rem; }
+.cur-ev-num { font-family: var(--font-mono, monospace); font-variant-numeric: tabular-nums; }
+.cur-ev-str { font-family: var(--font-mono, monospace); }
+/* Absent is SHOWN absent — never zero, never omitted. A dropped row is a curator deciding
+ * without a number they would have wanted; a zero reads as a measurement. */
+.cur-ev-missing { font-size: var(--fs-caption); color: var(--ink-subtle); font-style: italic; }
+.cur-ev-contradicts { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.cur-ev-contradicts h4 { font-size: var(--fs-caption); text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--ink-subtle); margin: 0 0 var(--space-2); }
+.cur-ev-contradicts p, .cur-ev-detail { font-size: var(--fs-small); color: var(--ink-muted); line-height: 1.6; margin: 0; }
+.cur-ev-detail { margin-top: var(--space-4); font-family: var(--font-mono, monospace); font-size: var(--fs-caption); }
+
+/* ── the commit ──────────────────────────────────────────────────────────── */
+.cur-commit { border: 1px solid var(--line-strong); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+.cur-commit--done { border-color: var(--accent); background: var(--surface-2); }
+.cur-commit-done { font-size: var(--fs-body); color: var(--ink); margin: 0; }
+.cur-commit-note { font-size: var(--fs-caption); color: var(--ink-subtle); line-height: 1.55; margin: 0; max-width: 60ch; }
+
+.cur-field { display: flex; flex-direction: column; gap: var(--space-1, 0.25rem); }
+.cur-field-label { font-size: var(--fs-caption); color: var(--ink-subtle); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.cur-input { padding: 0.55rem 0.75rem; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: var(--fs-small); }
+.cur-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.cur-btn { font-family: inherit; font-size: var(--fs-small); font-weight: 600; border-radius: var(--radius-pill); padding: 0.5rem 1.1rem; cursor: pointer; border: 1px solid transparent; }
+.cur-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.cur-btn--primary { background: var(--surface); border-color: var(--line-strong); color: var(--ink); align-self: flex-start; }
+.cur-btn--primary:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-deep, var(--accent)); }
+.cur-btn--commit { background: var(--accent); color: var(--accent-ink, #fff); }
+.cur-btn--ghost { background: transparent; border-color: var(--line-strong); color: var(--ink-muted); }
+
+.cur-confirm { border-top: 1px solid var(--line); padding-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.cur-confirm-what { font-size: var(--fs-small); color: var(--ink-muted); line-height: 1.6; margin: 0; max-width: 62ch; }
+.cur-confirm-what strong { color: var(--ink); }
+.cur-confirm-row { display: flex; gap: var(--space-3); }
+
+.cur-committed-flash { font-size: var(--fs-small); color: var(--accent-deep, var(--accent)); margin: var(--space-3) 0 0; }
