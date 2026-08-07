@@ -157,25 +157,46 @@ def report_valley(rows) -> dict:
 
 def report_absence(rows) -> dict:
     print(f"\n3. THE 0-vs-0 TRAP — is the score propped up by shared absence?")
-    buckets = collections.defaultdict(list)
+    shape_b, present_b = collections.defaultdict(list), collections.defaultdict(list)
     for r in rows:
-        buckets[min(r["structure"], 12)].append(r["shape"])
-    print(f"   mean shape score by total sibling+descendant structure across both sides:")
-    for b in sorted(buckets):
-        print(f"     structure={b:>2}{'+' if b == 12 else ' '} n={len(buckets[b]):>6} "
-              f"mean={stats.mean(buckets[b]):.4f}")
+        shape_b[min(r["structure"], 12)].append(r["shape"])
+        present_b[min(r["structure"], 12)].append(r["present"])
+    print(f"   mean score by total sibling+descendant structure across both sides:")
+    print(f"     {'structure':>10} {'n':>7} {'shape':>8} {'present':>9}")
+    for b in sorted(shape_b):
+        print(f"     {b:>9}{'+' if b == 12 else ' '} {len(shape_b[b]):>7} "
+              f"{stats.mean(shape_b[b]):>8.4f} {stats.mean(present_b[b]):>9.4f}")
+
     r_shape = pearson([r["structure"] for r in rows], [r["shape"] for r in rows])
     r_present = pearson([r["structure"] for r in rows], [r["present"] for r in rows])
     print(f"\n   pearson(real structure, shape score)   = {r_shape:+.4f}   "
-          f"← the score FALLS as structure rises")
+          f"← the score FELL as structure rose")
     print(f"   pearson(real structure, present score) = {r_present:+.4f}   "
-          f"← abstention removes the inversion")
-    above = [r for r in rows if r["shape"] >= sm.MIN_SYSTEMATICITY]
-    propped = [r for r in above if r["shape"] - r["absence_share"] < sm.MIN_SYSTEMATICITY]
-    print(f"\n   of {len(above)} pairs above the floor, {len(propped)} "
-          f"({len(propped) / max(1, len(above)):.1%}) would fall below it without the credit")
-    print(f"   they got for components neither side has.")
+          f"← most of the inversion removed")
+
+    # THE HONEST RESIDUAL. `present` withdraws the free credit; it does not make a mean over one
+    # live component stable. Where siblings and descendants are absent on both sides the score is
+    # depth alone, and a structurally poor pair whose depths happen to match still lands at 1.0.
+    zero = [r for r in rows if r["structure"] == 0]
+    some = [r for r in rows if r["structure"] > 0]
+    gap_shape = stats.mean([r["shape"] for r in zero]) - stats.mean([r["shape"] for r in some])
+    gap_present = (stats.mean([r["present"] for r in zero])
+                   - stats.mean([r["present"] for r in some]))
+    print(f"\n   the residual, stated rather than rounded away:")
+    print(f"     structure==0 minus structure>0, shape:   {gap_shape:+.4f}")
+    print(f"     structure==0 minus structure>0, present: {gap_present:+.4f}")
+    print(f"   The absence bucket is STILL the highest under `present`. The free credit is gone;")
+    print(f"   what remains is that a mean over one live component is volatile — a different")
+    print(f"   defect, and not this rule's to fix.")
+
+    floor = sm.MIN_SYSTEMATICITY
+    above = [r for r in rows if r["shape"] >= floor]
+    propped = [r for r in above if r["shape"] - r["absence_share"] < floor]
+    print(f"\n   under `shape`, of {len(above)} pairs above the floor, {len(propped)} "
+          f"({len(propped) / max(1, len(above)):.1%}) would fall below it")
+    print(f"   without the credit they got for components neither side has.")
     return {"pearson_shape": r_shape, "pearson_present": r_present,
+            "gap_shape": round(gap_shape, 4), "gap_present": round(gap_present, 4),
             "above": len(above), "propped": len(propped)}
 
 
@@ -188,10 +209,13 @@ def report_separation(rows) -> dict:
           f"{'held|fail':>10} {'sep':>8}")
     out = {}
     for label, ok in (
-        (f"CURRENT  shape >= {floor}", lambda r: r["shape"] >= floor),
-        ("         shape >= 0.50", lambda r: r["shape"] >= 0.50),
-        ("         shape >= 0.70", lambda r: r["shape"] >= 0.70),
-        (f"present >= {floor}", lambda r: r["present"] >= floor),
+        (f"CURRENT  present >= {floor}", lambda r: r["present"] >= floor),
+        (f"WAS      shape >= {floor}", lambda r: r["shape"] >= floor),
+        ("         present >= 0.20", lambda r: r["present"] >= 0.20),
+        ("         present >= 0.40", lambda r: r["present"] >= 0.40),
+        ("         present >= 0.50", lambda r: r["present"] >= 0.50),
+        ("adaptive present > 1/live (rejected)",
+         lambda r: r["present"] > 1 / max(1, r["live"])),
         ("live >= 2 (rejected)", lambda r: r["live"] >= 2),
     ):
         passed = [r for r in rows if ok(r)]
@@ -201,10 +225,14 @@ def report_separation(rows) -> dict:
         print(f"   {label:<38} {len(passed):>7} {len(passed) / len(rows):>6.1%} "
               f"{pa:>9.1%} {pb:>9.1%} {pa - pb:>+8.1%}")
         out[label.strip()] = round(pa - pb, 4)
-    print(f"\n   → the floor DOES work (+20 points is not noise), and `present` beats it.")
-    print(f"   → 'live >= 2' is REFUTED: pairs whose only live component is depth sit deep in a")
-    print(f"     chain, and their containers map MORE often than average. The plausible rule is")
-    print(f"     the wrong one, which is why the criterion had to be external.")
+    print(f"\n   → `present` beats `shape` by ~5 points at the same floor. That is the change.")
+    print(f"   → SEPARATION IS FLAT across present >= 0.20..0.50. No value is measurably better,")
+    print(f"     so the floor is held where it was: picking the argmax of a flat curve is fitting,")
+    print(f"     and moving the floor too would leave the before/after measuring two things.")
+    print(f"   → BOTH principled-sounding structural rules are REFUTED by the external criterion.")
+    print(f"     'live >= 2' and 'present > 1/live' each refuse the 894 single-live pairs, whose")
+    print(f"     containers map 54.1% of the time against a {base:.1%} base. Twice now the")
+    print(f"     plausible rule has been the wrong one — which is why the criterion is external.")
     return out
 
 
@@ -262,16 +290,18 @@ async def main_async(args) -> int:
         record["adjacency"] = report_adjacency(posts)
 
     print(f"\nVERDICT")
-    print(f"  provenance   CHOSEN, not fitted or inherited — WAVE2 (e3e8525), 'a stated, tunable")
-    print(f"               floor', never checked against data until now.")
-    print(f"  shape        PRINCIPLED. 1/3 is one component's worth of agreement and 2,178 pairs")
-    print(f"               sit exactly on it; the floor's job is to stand above them.")
-    print(f"  magnitude    FREE. No valley anywhere near it. Now declared as")
-    print(f"               ONE_COMPONENT_SHARE + SYSTEMATICITY_EPSILON rather than a bare 0.34.")
-    print(f"  effect       DEFENSIBLE. +20.3 points against a criterion it never reads.")
-    print(f"  best rule    NOT THIS ONE. `present` aggregation scores +25.7 and removes the")
-    print(f"               poverty inversion. Offered runnable, not adopted — reshaping what")
-    print(f"               grounds is its own lane, with its own before/after.")
+    print(f"  aggregation  `present` IS NOW THE DEFAULT. +25.7 against the held-out criterion vs")
+    print(f"               +20.3 for `shape`, and the poverty inversion goes -0.14 -> -0.03.")
+    print(f"  residual     NOT FULLY CLOSED, and said so. The zero-structure bucket is still the")
+    print(f"               highest under `present`. Withdrawing the free credit does not make a")
+    print(f"               mean over one live component stable; that is the next question.")
+    print(f"  floor shape  DERIVATION DEAD. 1/3 was one component's worth only because `shape`")
+    print(f"               always averaged three. Under `present` it is 1/3, 1/2 or 1/1 by live")
+    print(f"               count, and no scalar expresses it.")
+    print(f"  floor value  FREE, and HELD at {sm.MIN_SYSTEMATICITY} deliberately: separation is flat, so no")
+    print(f"               value is better, and moving it would confound the before/after.")
+    print(f"  rejected     `present > 1/live` (+18.5) and `live >= 2` (-23.5). Both refuse the 894")
+    print(f"               single-live pairs, which are the BEST pairs by the external criterion.")
     print(f"  two organs   ONE FLOOR IS NOT ENOUGH."
           + ("" if args.adjacency else " (re-run with --adjacency for the numbers)"))
     print()

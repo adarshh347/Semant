@@ -27,41 +27,48 @@ is the same discipline `retina.store` uses when it makes a cross-space compariso
 rather than discouraged, and `movement_graph.strengthen` uses when it refuses to move a weight on
 anything but a measurement.
 
-## The floor, audited (WAVE3)
+## Agreement is agreement about things that exist (WAVE3)
 
-`MIN_SYSTEMATICITY` was set to a bare `0.34` in WAVE2 with the note "a stated, tunable floor" and
-never checked. It is the line between *a feature coincided* and *a structure genuinely maps*, so it
-fabricates in both directions if wrong, and it was worth auditing rather than inheriting.
-`scripts/systematicity_floor_audit.py` scored all **129,564** cross-image gate-eligible pairs in the
-corpus. Three findings, all now encoded above:
+`_alignment` scores 0-vs-0 as 1.0 — and until WAVE3 the score averaged all three components, so a
+component NEITHER side had was paid full marks. The floor audit
+(`scripts/systematicity_floor_audit.py`, 129,564 cross-image gate-eligible pairs) measured what
+that cost, and it was an inversion rather than a rounding error:
 
-  1. **There is no valley.** The distribution is a smooth unimodal hump peaking at 0.50–0.55; the
-     bins flanking 1/3 hold 1,264 and 1,590 pairs. **The magnitude of the floor is a free
-     parameter** and is now declared as one (`SYSTEMATICITY_EPSILON`) rather than implied to be a
-     measurement.
-  2. **The shape of the rule is principled.** 2,178 pairs (1.68%) score exactly 1/3 — an atom, not
-     a smear — and sitting just above it is precisely the stated intent: more than one component's
-     worth of agreement. `MIN_SYSTEMATICITY` is now derived from `ONE_COMPONENT_SHARE` so the
-     number and its reason cannot drift apart again.
-  3. **The floor is defensible, and is not the best rule available.** Against a held-out criterion
-     the gate never reads — *do the two CONTAINERS also map?*, a system extending past the pair —
-     it separates by **+20.3 points** (36.2% vs 15.9%). Real work. But `_alignment` pays full marks
-     for 0-vs-0, so pairs with no siblings and no descendants on either side average **0.842**, the
-     highest bucket in the corpus, while the score *falls* as real structure rises (pearson −0.14).
-     Averaging over only the live components (`aggregation="present"`) removes that inversion and
-     lifts the separation to **+25.7 points**.
+    mean score by total sibling+descendant structure across both sides
+      structure =  0    n =   894    0.842      <- the highest bucket in the corpus
+      structure =  4    n =  2830    0.572
+      structure = 11    n =  4230    0.444
+    pearson(real structure, score) = -0.14      the score FELL as structure rose
 
-(3) is offered runnable and is **not** the default. Reshaping what grounds is a decision to take
-deliberately, with its own before/after, not as a side effect of an audit that was asked to
-characterise a threshold. What this lane changes is what you can SEE: every verdict now carries
-`live`, `earned` and `absence_share`, so `insystematic` reports what it is made of.
+**The rule meant to reward systems rewarded structural poverty**, and 45.6% of everything that
+passed the floor depended on credit for components neither side had. Two regions agreeing that
+neither of them contains anything is not a shared system of relations; it is a shared absence, and
+Gentner's principle is about the relations that are *there*.
 
-**One floor does not cover two organs.** `relational_structure` is nesting-shaped — it hard-codes
-`RELATION_NESTED_WITHIN`, and it picks the immediate parent by `scale_ratio`, a field only the
-nestedness organ sets. Run it over `adjacency_organ`'s output and it still returns a skeleton, but
-"parent" then means *the neighbour that happened to sort first* and the three components no longer
-measure three independent things. The floor is calibrated on nesting and says nothing about
-adjacency; a relation-specific floor is owed before adjacency movement is built on this gate.
+So the default aggregation is now `present`: **a component counts toward agreement only where at
+least one side has structure.** Absence abstains instead of agreeing. Measured against a held-out
+criterion the gate never reads — *do the two CONTAINERS also map?*, a system extending past the
+pair itself — this raises separation from **+20.3 to +25.7 points** and takes the inversion from
+−0.14 to −0.03. `shape` stays runnable so the thing it replaced remains measurable.
+
+Honest about the residual: −0.03 is **not zero**. The inversion is 79% removed, not eliminated.
+
+### The floor did not survive the change, and is now free
+
+WAVE3's floor lane derived `MIN_SYSTEMATICITY` as `ONE_COMPONENT_SHARE + eps` — a real derivation,
+valid only for `shape`, where there were always exactly three components. Under `present` the mean
+is over the LIVE components, so "one component's worth" is 1/3, 1/2 or 1/1 depending on how many
+were live, and no scalar expresses it. The adaptive rule that would — `score > 1/live` — was
+measured and is **worse** (+18.5 vs +25.7): it refuses all 894 single-live pairs, whose containers
+map 54.1% of the time against a 30.8% base rate. See `MIN_SYSTEMATICITY` for why the number is held
+where it is anyway.
+
+**One floor still does not cover two organs.** `relational_structure` is nesting-shaped — it
+hard-codes `RELATION_NESTED_WITHIN`, and it picks the immediate parent by `scale_ratio`, a field
+only the nestedness organ sets. Run it over `adjacency_organ`'s output and it still returns a
+skeleton, but "parent" then means *the neighbour that happened to sort first*, and where that
+organ's directional contact measure comes out symmetric, `depth` and `descendant_count` stop being
+independent counts. A relation-specific floor is owed before adjacency movement is built here.
 
 ## What this module does NOT do
 
@@ -96,46 +103,70 @@ REFUSED_NO_SOURCE_RELATION = "no_source_relation"
 #: the other is how a graph starts asserting things nobody measured.
 REFUSED_INVERTED = "inverted"
 
-#: What one component's worth of agreement is worth, given three components averaged. The floor
-#: exists to sit just above this: a mapping whose entire agreement is one component is one shared
-#: predicate with nothing holding it up — a coincidence with two elements rather than a system.
-#: This is the only principled quantity in the floor.
-ONE_COMPONENT_SHARE = 1.0 / 3.0
-
-#: How far above `ONE_COMPONENT_SHARE` to stand. **A FREE PARAMETER, and declared as one.**
-#:
-#: WAVE3 audited the score distribution over all 129,564 cross-image gate-eligible pairs in the
-#: corpus (`scripts/systematicity_floor_audit.py`). There is **no valley** near the floor: the
-#: distribution is a smooth unimodal hump peaking at 0.50–0.55, and the bins on either side of
-#: 1/3 hold 1,264 and 1,590 pairs. Nothing in the data selects this number. What the data does
-#: show is a real atom — 2,178 pairs (1.68%) score exactly 1/3 — and the floor's one defensible
-#: job is to sit above it. Any epsilon does that; this one is arbitrary and small.
-#:
-#: So the SHAPE of the rule is principled and the MAGNITUDE is not, and both facts now live in
-#: the code rather than in someone's memory of a lane.
-SYSTEMATICITY_EPSILON = 0.00667
-
-#: Below this a mapping is one shared predicate with nothing holding it up. DERIVED, so the
-#: rationale cannot drift away from the number the way it did between WAVE2 and WAVE3.
-#:
-#: It is defensible, and measured to be so. Against a held-out criterion this gate never reads —
-#: do the two CONTAINERS also map, a system extending past the pair itself? — it separates by
-#: **+20.3 points**: 36.2% of the pairs it admits have mapping containers, against 15.9% of the
-#: pairs it refuses. That is real work, not a line nobody vouched for.
-MIN_SYSTEMATICITY = round(ONE_COMPONENT_SHARE + SYSTEMATICITY_EPSILON, 5)
-
 #: How the three components are combined.
 #:
-#:   `shape`    all three averaged, 0-vs-0 counted as perfect agreement. The WAVE2 rule and still
-#:              the default — silently changing what grounds is not this lane's to do.
-#:   `present`  averaged over components where at least one side HAS structure. Absence abstains
-#:              instead of agreeing.
+#:   `present`  averaged over the components where at least one side HAS structure. Absence
+#:              abstains rather than agreeing. THE DEFAULT since WAVE3.
+#:   `shape`    all three averaged, 0-vs-0 counted as perfect agreement. The WAVE2 rule, kept
+#:              runnable so the change it replaced stays measurable rather than remembered.
 #:
-#: `present` measures better on both audited criteria (see the module docstring) and is offered
-#: RUNNABLE rather than adopted, the way #150 kept `ranking="identity"` runnable.
+#: The switch is justified in the module docstring and by `scripts/systematicity_floor_audit.py`,
+#: not by taste: `shape` made structural poverty outscore structure, and `present` does not.
 AGGREGATION_SHAPE = "shape"
 AGGREGATION_PRESENT = "present"
-AGGREGATIONS = (AGGREGATION_SHAPE, AGGREGATION_PRESENT)
+AGGREGATIONS = (AGGREGATION_PRESENT, AGGREGATION_SHAPE)
+
+#: The default. Named rather than repeated at three call sites, so switching it is one edit and
+#: every signature agrees about what it was.
+DEFAULT_AGGREGATION = AGGREGATION_PRESENT
+
+#: What one component's worth of agreement came to under `shape`: three components, always three,
+#: so one of them was always exactly a third. **Dead as a derivation** — kept because it is what
+#: `AGGREGATION_SHAPE` still means and because the arithmetic below is the clearest statement of
+#: why it does not survive.
+ONE_COMPONENT_SHARE = 1.0 / 3.0
+
+#: Retained for `AGGREGATION_SHAPE` only: the epsilon that put the WAVE2 floor above the 1/3 atom.
+SYSTEMATICITY_EPSILON = 0.00667
+
+#: Below this a mapping does not clear the bar. **A FREE PARAMETER, with no derivation left.**
+#:
+#: WAVE3's floor audit derived this from `ONE_COMPONENT_SHARE + SYSTEMATICITY_EPSILON` — a real
+#: derivation, and one that died with the aggregation it assumed. Under `present` the score is a
+#: mean over the LIVE components, so "one component's worth" is no longer a single number:
+#:
+#:     live = 3  →  1/3 = 0.333     49.2% of pairs
+#:     live = 2  →  1/2 = 0.500     50.1% of pairs
+#:     live = 1  →  1/1 = 1.000      0.7% of pairs
+#:
+#: No scalar expresses "more than one predicate" across all three, and the adaptive rule that
+#: does — `score > 1/live` — was MEASURED and is worse: **+18.5 points** against the held-out
+#: criterion versus +25.7 for this flat floor. It refuses all 894 single-live pairs, and those
+#: pairs' containers map 54.1% of the time against a 30.8% base rate. They are the best pairs in
+#: the corpus and the principled-sounding rule throws every one of them away. That is the second
+#: time in two lanes that the plausible structural rule lost to the external criterion.
+#:
+#: So the value is held at what it was, deliberately and for a stated reason:
+#:
+#:   · separation is FLAT across 0.15–0.60 (+25.7 to +29.6, non-monotonic). Nothing selects a
+#:     value, and picking the argmax of a flat noisy curve is fitting.
+#:   · holding it constant isolates the aggregation change. Move both and the before/after
+#:     measures two things at once and attributes neither.
+#:
+#: It is now an OPERATING POINT — it says how much of the corpus the gate admits (56.2% under
+#: `present`, against 73.4% under `shape`) and nothing about where truth begins.
+MIN_SYSTEMATICITY = 0.34
+
+
+#: How far up the containment chain higher-order structure is read. Two rungs: the container, and
+#: the container's container. Bounded because the third or fourth container of anything in this
+#: corpus is the frame, and every frame maps to every other frame — an agreement that says nothing.
+MAX_HIGHER_ORDER_DEPTH = 2
+
+#: How much of the score comes from relations-between-relations rather than from the pair's own
+#: component counts. **0.0 = off**, and off until a measurement says otherwise: see the module
+#: docstring for the sweep and the verdict.
+HIGHER_ORDER_WEIGHT = 0.0
 
 
 def _alignment(a: float, b: float) -> float:
@@ -152,6 +183,50 @@ def _alignment(a: float, b: float) -> float:
     return (min(a, b) / hi) if hi > 0 else 1.0
 
 
+def _counts_for(pairs: Sequence[Mapping[str, Any]], rid: str) -> Dict[str, Any]:
+    """One rung's structural counts, and the id of the thing above it. The shared arithmetic
+    behind both a skeleton and every ancestor of one."""
+    containers = [m for m in pairs if str(m.get("inner_region_id")) == rid]
+    contained = [m for m in pairs if str(m.get("outer_region_id")) == rid]
+    containers = sorted(containers, key=lambda m: -float(m.get("scale_ratio") or 0.0))
+    parent_id = str(containers[0].get("outer_region_id")) if containers else ""
+    siblings = ({str(m.get("inner_region_id")) for m in pairs
+                 if str(m.get("outer_region_id")) == parent_id
+                 and str(m.get("inner_region_id")) != rid} if parent_id else set())
+    return {
+        "region_id": rid,
+        "parent_id": parent_id,
+        "depth": len({str(m.get("outer_region_id")) for m in containers}),
+        "sibling_count": len(siblings),
+        "descendant_count": len({str(m.get("inner_region_id")) for m in contained}),
+        "sibling_ids": sorted(siblings),
+        "descendant_ids": sorted({str(m.get("inner_region_id")) for m in contained}),
+        "_containers": containers,
+    }
+
+
+def _ancestor_chain(pairs: Sequence[Mapping[str, Any]], rid: str,
+                    max_depth: int = MAX_HIGHER_ORDER_DEPTH) -> List[Dict[str, Any]]:
+    """The containment chain above a region, nearest first, bounded and cycle-guarded.
+
+    Each rung carries its OWN counts, so higher-order agreement can be read off two skeletons
+    without a lookup table, a second argument, or a change at any call site. Bounded because the
+    fourth container of anything in this corpus is the frame, and the frame maps to every frame.
+    """
+    chain, seen, current = [], {rid}, rid
+    for _ in range(max(0, int(max_depth))):
+        counts = _counts_for(pairs, current)
+        parent_id = counts["parent_id"]
+        if not parent_id or parent_id in seen:      # no container, or a cycle the organ allowed
+            break
+        seen.add(parent_id)
+        rung = _counts_for(pairs, parent_id)
+        chain.append({k: rung[k] for k in
+                      ("region_id", "parent_id", "depth", "sibling_count", "descendant_count")})
+        current = parent_id
+    return chain
+
+
 def relational_structure(regions: Sequence[Mapping[str, Any]], region_id: str, *,
                          measurements: Optional[Sequence[Mapping[str, Any]]] = None
                          ) -> Dict[str, Any]:
@@ -163,32 +238,28 @@ def relational_structure(regions: Sequence[Mapping[str, Any]], region_id: str, *
     """
     rid = str(region_id)
     pairs = list(measurements or [])
-    containers = [m for m in pairs if str(m.get("inner_region_id")) == rid]
-    contained = [m for m in pairs if str(m.get("outer_region_id")) == rid]
-
-    # The immediate container is the SMALLEST thing that holds it — the tightest true parent, not
-    # the whole frame. Ordering by scale_ratio descending puts the snuggest fit first.
-    containers.sort(key=lambda m: -float(m.get("scale_ratio") or 0.0))
+    counts = _counts_for(pairs, rid)
+    containers = counts["_containers"]
     parent = containers[0] if containers else None
-    parent_id = str(parent.get("outer_region_id")) if parent else ""
-
-    siblings = ([str(m.get("inner_region_id")) for m in pairs
-                 if str(m.get("outer_region_id")) == parent_id
-                 and str(m.get("inner_region_id")) != rid] if parent_id else [])
+    parent_id = counts["parent_id"]
 
     return {
         "region_id": rid,
         "relation": RELATION_NESTED_WITHIN,
         "parent_id": parent_id,
         "parent_measurement": dict(parent) if parent else None,
+        # The containment chain upward, each rung carrying its own counts. Riding on the skeleton
+        # is what lets `systematicity` read higher-order structure with no new argument and no
+        # change at any call site — the kernel keeps handing over two skeletons as it always did.
+        "ancestors": _ancestor_chain(pairs, rid),
         # Chain depth: how many distinct things measurably contain it. The temple's finial sits in
         # the spire which sits in the structure — depth 2 — and that nesting-of-nesting is exactly
         # the higher-order structure systematicity is about.
-        "depth": len({str(m.get("outer_region_id")) for m in containers}),
-        "sibling_ids": sorted(set(siblings)),
-        "sibling_count": len(set(siblings)),
-        "descendant_ids": sorted({str(m.get("inner_region_id")) for m in contained}),
-        "descendant_count": len({str(m.get("inner_region_id")) for m in contained}),
+        "depth": counts["depth"],
+        "sibling_ids": counts["sibling_ids"],
+        "sibling_count": counts["sibling_count"],
+        "descendant_ids": counts["descendant_ids"],
+        "descendant_count": counts["descendant_count"],
         "has_relation": bool(parent_id),
         "region_count": len(regions or []),
     }
@@ -200,8 +271,67 @@ COMPONENTS = (("depth", "depth"), ("siblings", "sibling_count"),
               ("descendants", "descendant_count"))
 
 
+def _component_agreement(source: Mapping[str, Any], target: Mapping[str, Any],
+                         aggregation: str) -> Dict[str, Any]:
+    """One rung's agreement: the three alignments, and which of them had anything to compare.
+
+    Shared by the pair itself and by every ancestor rung, so higher-order structure is scored by
+    exactly the rule first-order structure is scored by — one level up, and nothing else different.
+    """
+    values, live_flags = {}, {}
+    for name, field in COMPONENTS:
+        a = float(source.get(field, 0) or 0)
+        b = float(target.get(field, 0) or 0)
+        values[name] = _alignment(a, b)
+        live_flags[name] = not (a <= 0 and b <= 0)
+    live = [n for n, is_live in live_flags.items() if is_live]
+    absent_total = sum(values[n] for n, is_live in live_flags.items() if not is_live)
+    shape = sum(values.values()) / 3.0
+    present = (sum(values[n] for n in live) / len(live)) if live else 1.0
+    return {"values": values, "live": live,
+            "earned": [n for n in live if values[n] > 0],
+            "absence": absent_total / 3.0,
+            "score": shape if aggregation == AGGREGATION_SHAPE else present}
+
+
+def higher_order_agreement(source: Mapping[str, Any], target: Mapping[str, Any], *,
+                           aggregation: str = DEFAULT_AGGREGATION) -> Dict[str, Any]:
+    """How far up the two containment chains the correspondence keeps holding.
+
+    Gentner's systematicity is about relations BETWEEN relations: a part in a whole is a relation,
+    and that whole itself sitting in something is the higher-order structure that makes the first
+    relation worth mapping. `relational_structure` now carries each region's ancestor chain, so
+    that is readable here from the two skeletons alone.
+
+    Returns a per-level score and the number of levels both chains actually reached. Levels only
+    one chain has are NOT scored as disagreement and not scored as agreement — a chain that ends
+    is an absence of evidence about a rung that does not exist, which is the same discipline
+    `present` applies to a component neither side has.
+    """
+    source_chain = list(source.get("ancestors") or [])
+    target_chain = list(target.get("ancestors") or [])
+    levels = []
+    for rung_source, rung_target in zip(source_chain, target_chain):
+        agreement = _component_agreement(rung_source, rung_target, aggregation)
+        levels.append({"source": rung_source.get("region_id"),
+                       "target": rung_target.get("region_id"),
+                       "score": round(agreement["score"], 6),
+                       "live": agreement["live"]})
+    depth = len(levels)
+    return {
+        "levels": levels,
+        "depth": depth,
+        "score": round(sum(v["score"] for v in levels) / depth, 6) if depth else None,
+        # How far each chain went on its own — an asymmetry worth seeing, because a pair whose
+        # chains stop at different heights is a weaker analogy than the shared rungs suggest.
+        "source_depth": len(source_chain),
+        "target_depth": len(target_chain),
+    }
+
+
 def systematicity(source: Mapping[str, Any], target: Mapping[str, Any], *,
-                  aggregation: str = AGGREGATION_SHAPE) -> Dict[str, Any]:
+                  aggregation: str = DEFAULT_AGGREGATION,
+                  higher_order_weight: float = HIGHER_ORDER_WEIGHT) -> Dict[str, Any]:
     """How much connected relational structure the two skeletons share, in [0,1].
 
     Three components, each an alignment of a structural count:
@@ -227,42 +357,50 @@ def systematicity(source: Mapping[str, Any], target: Mapping[str, Any], *,
     recomputing anything, and `insystematic` stops being a bare number.
 
     `aggregation="present"` averages only the live components — absence abstains rather than
-    agreeing. It is measurably better on both audited criteria and it is NOT the default, because
-    reshaping what grounds is a decision to take deliberately and not as a side effect of an audit.
+    agreeing. It is the default since WAVE3; `shape` stays runnable so what it replaced remains
+    measurable.
+
+    ## `higher_order_weight`
+
+    Blends in agreement one and two containers up (`higher_order_agreement`). Gentner's claim is
+    that relations between relations weigh more than attribute matches, so this is the term the
+    theory actually asks for. It is a parameter and it is **off by default**, because the
+    measurement did not support turning it on — see the module docstring.
     """
     if aggregation not in AGGREGATIONS:
         raise ValueError(f"aggregation must be one of {AGGREGATIONS}, got {aggregation!r}")
 
-    values, live_flags = {}, {}
-    for name, field in COMPONENTS:
-        a = float(source.get(field, 0) or 0)
-        b = float(target.get(field, 0) or 0)
-        values[name] = _alignment(a, b)
-        # "Live" means there was something to compare, on at least one side. Absence on BOTH is
-        # not disagreement — it is the absence of evidence, which is why it gets its own name.
-        live_flags[name] = not (a <= 0 and b <= 0)
-
-    live = [n for n, is_live in live_flags.items() if is_live]
-    earned = [n for n in live if values[n] > 0]
-    absent_total = sum(values[n] for n, is_live in live_flags.items() if not is_live)
-
+    first = _component_agreement(source, target, aggregation)
+    values, live, earned = first["values"], first["live"], first["earned"]
     shape = sum(values.values()) / 3.0
     present = (sum(values[n] for n in live) / len(live)) if live else 1.0
-    score = shape if aggregation == AGGREGATION_SHAPE else present
+    first_order = shape if aggregation == AGGREGATION_SHAPE else present
+
+    higher = higher_order_agreement(source, target, aggregation=aggregation)
+    weight = max(0.0, min(1.0, float(higher_order_weight)))
+    if weight > 0 and higher["score"] is not None:
+        score = (1.0 - weight) * first_order + weight * higher["score"]
+    else:
+        # No shared rung above the pair, or the term is off: the pair's own agreement IS the
+        # score. Not penalised for having no container — a chain that ends is not a disagreement.
+        score = first_order
 
     return {
         "score": round(score, 6),
         "aggregation": aggregation,
         "components": {n: round(v, 6) for n, v in values.items()},
-        # The same pair read the other way, always present, so the two rules can be compared on
-        # any live result without re-deriving one from the other.
+        # The same pair read the other ways, always present, so the rules can be compared on any
+        # live result without re-deriving one from another.
         "shape_score": round(shape, 6),
         "present_score": round(present, 6),
+        "first_order_score": round(first_order, 6),
+        "higher_order": higher,
+        "higher_order_weight": round(weight, 6),
         "live": sorted(live),
         "earned": sorted(earned),
         # How much of `shape_score` is agreement about nothing being there. 0.667 means two of the
         # three components agreed only in that neither side had any.
-        "absence_share": round(absent_total / 3.0, 6),
+        "absence_share": round(first["absence"], 6),
         "source_shape": {k: source.get(k) for k in ("depth", "sibling_count", "descendant_count")},
         "target_shape": {k: target.get(k) for k in ("depth", "sibling_count", "descendant_count")},
     }
@@ -270,7 +408,8 @@ def systematicity(source: Mapping[str, Any], target: Mapping[str, Any], *,
 
 def structure_map(source: Mapping[str, Any], target: Mapping[str, Any], *,
                   min_systematicity: float = MIN_SYSTEMATICITY,
-                  aggregation: str = AGGREGATION_SHAPE) -> Dict[str, Any]:
+                  aggregation: str = DEFAULT_AGGREGATION,
+                  higher_order_weight: float = HIGHER_ORDER_WEIGHT) -> Dict[str, Any]:
     """Map one relational skeleton onto another. The guard, as a verdict.
 
     Returns `{status, reason, detail, systematicity, correspondences, …}`. `status` is `mapped`
@@ -302,7 +441,8 @@ def structure_map(source: Mapping[str, Any], target: Mapping[str, Any], *,
                            "instances of it — mapping a relation onto itself proves nothing"),
                 "systematicity": None, "correspondences": []}
 
-    sys_score = systematicity(source, target, aggregation=aggregation)
+    sys_score = systematicity(source, target, aggregation=aggregation,
+                              higher_order_weight=higher_order_weight)
     if sys_score["score"] < float(min_systematicity):
         return {"status": "refused", "reason": "insystematic",
                 # The refusal names what it is made of. A bare "0.31 < 0.34" tells a reader
