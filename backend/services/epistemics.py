@@ -166,6 +166,13 @@ _SUBSTRATES: Dict[str, Tuple[str, ...]] = {
     # mean of a thing and the thing behind it — which is the `cseg_golden_finial_7` failure itself,
     # arriving in the one modality that could otherwise have detected it.
     "depth_organ": ("mask", "box"),
+    # WAVE3 — the RELATION the depth reading exists to ground: is A in front of B, or are they at
+    # one depth. The first producer here whose box path fails for a reason of its own rather than
+    # by inheritance: an occlusion read off two boxes is the pathology offered as the evidence for
+    # itself, because each box's depth already averages its subject with whatever that subject
+    # occludes. Measured on the finial pair, the masks order it 0.9987 and the boxes collapse to
+    # 0.7773 — a box does not merely blur the ordering here, it loses it.
+    "occlusion_organ": ("mask", "box"),
 }
 
 #: The IMAGE statuses ordered by strength, strongest first.
@@ -557,6 +564,14 @@ _DEFAULTS: Dict[str, EpistemicStatus] = {
     # than the model behind it, and `test_depth_organ_wave3` checks the two tables against each
     # other rather than trusting that they were written on the same afternoon.
     "depth_organ": EpistemicStatus.MEASURED,
+    # WAVE3 — the occlusion RELATION over that field, and the first entry here that is a relation
+    # between two regions rather than a reading of one. Its ceiling is `measured` for the same
+    # reason `depth_organ`'s is and no further: it adds no model, it compares two readings of a
+    # field somebody else measured, and it may not claim more than that field allows. What it
+    # contributes is an ORDER — a claim answered by whether two cell distributions overlap, not by
+    # how far apart their means are, because inverse depth compresses distance and the founding
+    # pathology lives in exactly the far-field regime where it compresses hardest.
+    "occlusion_organ": EpistemicStatus.MEASURED,
     # M5 — NOT measured, and this is the entry that keeps `uncertain` from being decorative.
     #
     # `external_limit`'s refusal turns on `MIN_PROJECTIVE_SPREAD`, which the producer itself
