@@ -244,6 +244,29 @@ def _box_cells(region: Mapping[str, Any], grid: int) -> Optional[List[float]]:
     return out
 
 
+def region_cells(region: Mapping[str, Any], grid: int):
+    """Which cells of a `grid × grid` field this region occupies, and on what basis.
+
+    Public because a RELATION over depth needs the cells themselves and not only their mean: an
+    ordering claim — "is A in front of B" — is answered by comparing two DISTRIBUTIONS, and a mean
+    throws away exactly the evidence. `occlusion_organ` reads this rather than re-deriving
+    coverage, so the two organs cannot come to disagree about what a region covers.
+
+    Raises `DepthRefusal` on geometry it cannot place. Returns fewer than `MIN_CELLS` without
+    complaint: how few is too few depends on the claim being made, and that is the caller's.
+    """
+    coverage = _mask_cells(region, grid)
+    basis = "mask"
+    if coverage is None:
+        coverage = _box_cells(region, grid)
+        basis = "box"
+    if coverage is None:
+        raise DepthRefusal(
+            f"region {region.get('id')!r} carries neither a valid mask nor a valid box — there is "
+            f"nowhere to read")
+    return [i for i in range(grid * grid) if coverage[i] >= MIN_CELL_COVERAGE], basis
+
+
 def _gradient(depth: Sequence[float], coverage: Sequence[float], grid: int) -> Dict[str, Any]:
     """Which way depth runs across the region — the near centroid minus the far one.
 
