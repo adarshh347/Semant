@@ -226,6 +226,7 @@ async def main_async(args) -> int:
         return 2
     print(f"image {image.size[0]}×{image.size[1]}", file=sys.stderr)
 
+    frame = chroma.image_frame(image, source=photo_url, whole_frame=True)
     before = sa.posts_fingerprint({post_id: post})
 
     geo = sa.inhabit(agent_id=GEO, post_id=post_id, region_id=region_id,
@@ -234,7 +235,7 @@ async def main_async(args) -> int:
                       organ_set=(chroma.ORGAN,))
     try:
         sa.perceive(geo, post, image=None)
-        sa.perceive(chr_, post, image=image)
+        sa.perceive(chr_, post, image=frame)
     except organs.OrganRefusal as e:
         print(f"✗ an agent could not perceive: {e}", file=sys.stderr)
         return 1
@@ -258,8 +259,11 @@ async def main_async(args) -> int:
 
     # The same region read both ways, so the contract is a number rather than a claim.
     region = next(r for r in post["region_annotations"] if str(r.get("id")) == region_id)
-    by_mask = chroma.measure(region, image)
-    by_box = chroma.measure({"id": region_id, "box": nestedness._box_of(region)}, image)
+    # THIS script fetched the pixels, so THIS script is what can honestly say they are the whole
+    # frame and where they came from. The organ refuses a bare image (ORGAN-PROVENANCE-001).
+    frame = chroma.image_frame(image, source=photo_url, whole_frame=True)
+    by_mask = chroma.measure(region, frame)
+    by_box = chroma.measure({"id": region_id, "box": nestedness._box_of(region)}, frame)
     boxed_mark = chroma.grounding_mark(by_box, post_id=post_id)
     try:
         epistemics.guard([{**boxed_mark, STATUS_KEY: "measured"}])
