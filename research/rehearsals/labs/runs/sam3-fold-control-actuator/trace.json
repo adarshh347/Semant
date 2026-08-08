@@ -1,0 +1,171 @@
+{
+  "schema_version": "single-actuator-trace.v1",
+  "lab_id": "sam3-concept-segment",
+  "run_id": "sam3-fold-control-actuator",
+  "mode": "actuator_direct",
+  "actuator_lock": "concept_segment",
+  "captured_at": "2026-08-08T16:00:56+00:00",
+  "manifest": {
+    "schema_version": "single-actuator-manifest.v1",
+    "lab_id": "sam3-concept-segment",
+    "run_id": "sam3-fold-control-actuator",
+    "title": "Fold control \u2014 through the production actuator",
+    "why": "The same image and the same phrase as `sam3-fold-control-organ`, executed through the real Director runner instead of straight into the organ. Nothing else differs, which is what makes the pair an instrument: any gap between the two runs is the `concept_segment` WRAPPER \u2014 image plumbing, region conversion, the two-status descriptors, the epistemic guard, the provenance stamp \u2014 and cannot be anything else.\nThis is the arm that would have caught the `architectural_axis` class of bug, where a producer ships, the mark never renders, and nothing fails loudly in between.\n",
+    "actuator_lock": "concept_segment",
+    "mode": "actuator_direct",
+    "call_budget": 1,
+    "image": {
+      "source": "local_fixture",
+      "path": "research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg",
+      "sha256": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4"
+    },
+    "prompt": null,
+    "control_phrase": "drapery fold",
+    "allowed_params": [
+      "phrase"
+    ],
+    "model_expectation": {
+      "checkpoint": "facebook/sam3",
+      "preprocessing_version": "sam3-pcs-v1",
+      "conf": 0.25,
+      "imgsz": 1024,
+      "max_instances": 16
+    },
+    "warm_or_cold": "warm",
+    "repeat_count": 1,
+    "expected_condition": "positive",
+    "review": {
+      "protocol": "human_visual",
+      "gold_mask_path": null,
+      "questions": [
+        "Did every instance the organ measured survive into a proposed region?",
+        "Is each extent `measured` and each naming `interpretive`, as two separate descriptors?",
+        "Was any naming withheld below the 0.50 floor \u2014 and did its extent still come through?"
+      ]
+    },
+    "pair_with": "sam3-fold-control-organ"
+  },
+  "environment": {
+    "git_commit": "e3fa9e7ec7054d76c96a46e56b96c09e6544f947",
+    "git_dirty": true,
+    "platform": "Darwin 25.5.0 arm64",
+    "python": "3.12.13",
+    "device": "mps",
+    "weights_present": true,
+    "weights_id": "sam3.pt",
+    "runtime_available": true,
+    "checkpoint": "facebook/sam3",
+    "preprocessing_version": "sam3-pcs-v1",
+    "conf": 0.25,
+    "imgsz": 1024,
+    "naming_floor": 0.5,
+    "torch_version": "2.13.0",
+    "imgsz_effective": null,
+    "imgsz_note": "requested only. Ultralytics rounds imgsz up to a multiple of the model stride inside the inference call and does not write the rounded value back to predictor.args, so the effective size cannot be read from this seam. Observed in the SAM 3 runs: a requested 1024 was logged as 1036. Recorded as absent rather than filled in with the request."
+  },
+  "prompt_receipt": {
+    "original_prompt": null,
+    "prompt_sha256": null,
+    "control_phrase": "drapery fold",
+    "planner_role": null,
+    "planner_model": null,
+    "planner_status": "not_applicable",
+    "planner_detail": null,
+    "raw_proposal": null
+  },
+  "decision_receipt": {
+    "catalogue_shown": [
+      {
+        "actuator": "concept_segment",
+        "does": "Measure every instance of a named concept, as real pixel masks.",
+        "requires": [
+          "image",
+          "phrase"
+        ],
+        "produces": [
+          "region",
+          "mark"
+        ],
+        "params_you_may_set": [
+          "phrase"
+        ]
+      }
+    ],
+    "selected_actuator": "concept_segment",
+    "selected_phrase": "drapery fold",
+    "phrase_source": "control",
+    "refused_actions": [],
+    "dropped_params": [],
+    "planner_notes": []
+  },
+  "invocations": [
+    {
+      "call_index": 1,
+      "call_budget": 1,
+      "actuator": "concept_segment",
+      "adapter": "sam3",
+      "kind": "actuator",
+      "started_at": 1786204842.51458,
+      "ended_at": 1786204856.213703,
+      "latency_ms": 13699.1,
+      "warm": false,
+      "load_ms": 2.3,
+      "outcome": "empty",
+      "error": null
+    }
+  ],
+  "organ_observation": {
+    "status": "empty",
+    "concept": "drapery fold",
+    "instance_count": 0,
+    "truncated": null,
+    "latency_ms": 13696.9,
+    "device": "mps",
+    "model": "facebook/sam3",
+    "error": null,
+    "detail": "no instance of 'drapery fold' measured",
+    "instances": [],
+    "repeats": [],
+    "max_pairwise_iou": null
+  },
+  "actuator_observation": {
+    "status": "empty",
+    "detail": "no instance of 'drapery fold' measured",
+    "adapter": "sam3",
+    "model": "facebook/sam3",
+    "confidence": null,
+    "proposed_regions": [],
+    "descriptors": [],
+    "conversion": {
+      "instances": 0,
+      "proposed_regions": 0,
+      "measured_descriptors": 0,
+      "interpretive_descriptors": 0,
+      "naming_withheld": 0,
+      "dropped": 0,
+      "survived": true,
+      "statuses_seen": []
+    },
+    "post_sha256_before": "1fd6ccdb590bff258ca429c1d734f713955ec500b58d8a5af9012cff96ec1bf7",
+    "post_sha256_after": "1fd6ccdb590bff258ca429c1d734f713955ec500b58d8a5af9012cff96ec1bf7"
+  },
+  "invariance": {
+    "image_sha256_before": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "image_sha256_after": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "image_unchanged": true,
+    "actuators_called": [
+      "concept_segment"
+    ],
+    "lock_held": true,
+    "database_writes_attempted": [],
+    "post_mutated": false,
+    "post_sha256_before": "1fd6ccdb590bff258ca429c1d734f713955ec500b58d8a5af9012cff96ec1bf7",
+    "post_sha256_after": "1fd6ccdb590bff258ca429c1d734f713955ec500b58d8a5af9012cff96ec1bf7"
+  },
+  "artifacts": {
+    "overlay": null,
+    "contact_sheet": null,
+    "review": "review.md",
+    "observations": []
+  }
+}

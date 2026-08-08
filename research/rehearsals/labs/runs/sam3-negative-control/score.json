@@ -1,0 +1,59 @@
+{
+  "schema_version": "single-actuator-score.v1",
+  "lab_id": "sam3-concept-segment",
+  "run_id": "sam3-negative-control",
+  "mode": "organ_direct",
+  "expected_condition": "negative",
+  "measured": {
+    "availability": "available",
+    "planner_valid": null,
+    "actuator_leakage": false,
+    "planner_requested_unlocked": [],
+    "invocation_count": 1,
+    "call_budget": 1,
+    "budget_respected": true,
+    "lock_held": true,
+    "cold_or_warm": "cold",
+    "latency_ms": 13963.3,
+    "load_ms": 2.1,
+    "instance_count": 0,
+    "truncated": false,
+    "mask_area_px": [],
+    "mask_area_fraction": [],
+    "mask_bounds": [],
+    "max_pairwise_iou": null,
+    "all_masks_well_formed": true,
+    "conversion_survival": null,
+    "two_status_preserved": null,
+    "repeat_stability": null,
+    "invariants_held": true,
+    "violations": []
+  },
+  "review": {
+    "status": "pending",
+    "protocol": "human_visual",
+    "concept_binding": null,
+    "coverage": null,
+    "boundary_quality": null,
+    "false_positives": null,
+    "false_negatives": null,
+    "iou_vs_gold": null,
+    "gold_mask_present": false,
+    "empty_means": null,
+    "reviewer": null,
+    "reviewed_at": null,
+    "notes": ""
+  },
+  "verdict": {
+    "harness": "clean",
+    "semantic_correctness": "not_established",
+    "attribution": "negative_control_empty_as_expected",
+    "attribution_detail": "'bicycle' is not in this picture and the organ returned nothing, which is the pass condition for a negative control"
+  },
+  "pair": {
+    "paired_run": "sam3-fold-control-organ",
+    "control_phrase": "bicycle",
+    "orchestrated_phrase": "bicycle",
+    "phrases_agree": null
+  }
+}

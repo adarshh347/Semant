@@ -1,0 +1,213 @@
+{
+  "schema_version": "single-actuator-trace.v1",
+  "lab_id": "sam3-concept-segment",
+  "run_id": "sam3-fold-warm-repeat",
+  "mode": "organ_direct",
+  "actuator_lock": "concept_segment",
+  "captured_at": "2026-08-08T16:02:56+00:00",
+  "manifest": {
+    "schema_version": "single-actuator-manifest.v1",
+    "lab_id": "sam3-concept-segment",
+    "run_id": "sam3-fold-warm-repeat",
+    "title": "Warm, repeated \u2014 is the organ deterministic?",
+    "why": "The same frozen call issued three times against a resident model. Two things come out of it and they are separate: a WARM latency to set beside the cold receipt in `sam3-fold-control-organ`, and an answer to whether identical input yields identical masks.\nThe second matters more than it looks. Every comparison in this lab \u2014 control against orchestrated, organ against actuator \u2014 assumes that a difference between two runs means something. If the organ is not deterministic on repeated identical input, that assumption is false and every attribution in the matrix needs an error bar it does not currently have.\nA repeat is not a retry. The call is byte-identical, no planner runs, and each repeat gets its own budget-of-one firewall, so nothing here can search for a better result.\n",
+    "actuator_lock": "concept_segment",
+    "mode": "organ_direct",
+    "call_budget": 1,
+    "image": {
+      "source": "local_fixture",
+      "path": "research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg",
+      "sha256": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4"
+    },
+    "prompt": null,
+    "control_phrase": "drapery fold",
+    "allowed_params": [
+      "phrase"
+    ],
+    "model_expectation": {
+      "checkpoint": "facebook/sam3",
+      "preprocessing_version": "sam3-pcs-v1",
+      "conf": 0.25,
+      "imgsz": 1024,
+      "max_instances": 16
+    },
+    "warm_or_cold": "warm",
+    "repeat_count": 3,
+    "reproducibility": {
+      "seed": null,
+      "deterministic_framer": false,
+      "note": "No planner runs in this mode, so there is no phrase stability to measure here. Phrase stability needs repeated PLANNER calls, which would break the one-call discipline that makes Arm C readable \u2014 `compare` answers it across separate orchestrated runs instead.\n"
+    },
+    "expected_condition": "positive",
+    "review": {
+      "protocol": "human_visual",
+      "gold_mask_path": null,
+      "questions": [
+        "Were the mask hashes identical across all three runs?",
+        "If not, how far apart were the instance counts \u2014 and does any comparison in this lab survive that?"
+      ]
+    },
+    "pair_with": "sam3-fold-control-organ"
+  },
+  "environment": {
+    "git_commit": "e3fa9e7ec7054d76c96a46e56b96c09e6544f947",
+    "git_dirty": true,
+    "platform": "Darwin 25.5.0 arm64",
+    "python": "3.12.13",
+    "device": "mps",
+    "weights_present": true,
+    "weights_id": "sam3.pt",
+    "runtime_available": true,
+    "checkpoint": "facebook/sam3",
+    "preprocessing_version": "sam3-pcs-v1",
+    "conf": 0.25,
+    "imgsz": 1024,
+    "naming_floor": 0.5,
+    "torch_version": "2.13.0",
+    "imgsz_effective": null,
+    "imgsz_note": "requested only. Ultralytics rounds imgsz up to a multiple of the model stride inside the inference call and does not write the rounded value back to predictor.args, so the effective size cannot be read from this seam. Observed in the SAM 3 runs: a requested 1024 was logged as 1036. Recorded as absent rather than filled in with the request."
+  },
+  "prompt_receipt": {
+    "original_prompt": null,
+    "prompt_sha256": null,
+    "control_phrase": "drapery fold",
+    "planner_role": null,
+    "planner_model": null,
+    "planner_status": "not_applicable",
+    "planner_detail": null,
+    "raw_proposal": null
+  },
+  "decision_receipt": {
+    "catalogue_shown": [
+      {
+        "actuator": "concept_segment",
+        "does": "Measure every instance of a named concept, as real pixel masks.",
+        "requires": [
+          "image",
+          "phrase"
+        ],
+        "produces": [
+          "region",
+          "mark"
+        ],
+        "params_you_may_set": [
+          "phrase"
+        ]
+      }
+    ],
+    "selected_actuator": "concept_segment",
+    "selected_phrase": "drapery fold",
+    "phrase_source": "control",
+    "refused_actions": [],
+    "dropped_params": [],
+    "planner_notes": []
+  },
+  "invocations": [
+    {
+      "call_index": 1,
+      "call_budget": 1,
+      "actuator": "concept_segment",
+      "adapter": "sam3",
+      "kind": "organ",
+      "started_at": 1786204951.986045,
+      "ended_at": 1786204966.058455,
+      "latency_ms": 14072.4,
+      "warm": false,
+      "load_ms": 2.2,
+      "outcome": "empty",
+      "error": null
+    }
+  ],
+  "organ_observation": {
+    "status": "empty",
+    "concept": "drapery fold",
+    "instance_count": 0,
+    "truncated": false,
+    "latency_ms": 14071.8,
+    "device": "mps",
+    "model": "facebook/sam3",
+    "error": null,
+    "detail": null,
+    "instances": [],
+    "repeats": [
+      {
+        "repeat": 2,
+        "status": "empty",
+        "instance_count": 0,
+        "latency_ms": 5358.1,
+        "mask_hashes": [],
+        "invocations": [
+          {
+            "call_index": 1,
+            "call_budget": 1,
+            "actuator": "concept_segment",
+            "adapter": "sam3",
+            "kind": "organ",
+            "started_at": 1786204966.0586061,
+            "ended_at": 1786204971.416812,
+            "latency_ms": 5358.2,
+            "warm": true,
+            "load_ms": 0.0,
+            "outcome": "empty",
+            "error": null
+          }
+        ]
+      },
+      {
+        "repeat": 3,
+        "status": "empty",
+        "instance_count": 0,
+        "latency_ms": 5256.4,
+        "mask_hashes": [],
+        "invocations": [
+          {
+            "call_index": 1,
+            "call_budget": 1,
+            "actuator": "concept_segment",
+            "adapter": "sam3",
+            "kind": "organ",
+            "started_at": 1786204971.416893,
+            "ended_at": 1786204976.673315,
+            "latency_ms": 5256.4,
+            "warm": true,
+            "load_ms": 0.0,
+            "outcome": "empty",
+            "error": null
+          }
+        ]
+      }
+    ],
+    "max_pairwise_iou": null,
+    "repeat_stability": {
+      "repeats": 3,
+      "identical_mask_hashes": true,
+      "instance_counts": [
+        0,
+        0,
+        0
+      ],
+      "min_pairwise_iou": null,
+      "phrase_stable": null
+    }
+  },
+  "actuator_observation": null,
+  "invariance": {
+    "image_sha256_before": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "image_sha256_after": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "image_unchanged": true,
+    "actuators_called": [
+      "concept_segment"
+    ],
+    "lock_held": true,
+    "database_writes_attempted": [],
+    "post_mutated": false,
+    "post_sha256_before": null,
+    "post_sha256_after": null
+  },
+  "artifacts": {
+    "overlay": null,
+    "contact_sheet": null,
+    "review": "review.md",
+    "observations": []
+  }
+}
