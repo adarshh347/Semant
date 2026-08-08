@@ -1,0 +1,310 @@
+{
+  "schema_version": "attunement-lexicon.v1",
+  "title": "The attunement lexicon",
+  "what_this_is": [
+    "The deterministic vocabulary of looking, shared by the Differential frontend planner",
+    "(CIRCUIT-001 P2B) and the backend inquiry mind (HARNESS-001A).",
+    "There is no model here. This lexicon does not detect a gaze; it notices that the person SAID",
+    "'gaze', and offers a way to mark one. Everything keyed on it is attributed to the prompt —",
+    "'you said X', never 'the system saw X'."
+  ],
+  "blocks": {
+    "lexicon": "image cues — things a curator might mark ON a picture. Read by BOTH runtimes. Frozen: its behaviour is pinned by the sculpture fixture.",
+    "writing_cues": "output cues that name a kind of WRITING. Read by both runtimes.",
+    "sides": "spatial hints. A hint is never geometry.",
+    "inquiry_cues": "cues about the SHAPE OF A QUESTION over a corpus — comparison, distinction, speculation. Backend-only: the frontend planner proposes marks on one image and has no use for them.",
+    "demand_cues": "cues that say what KIND of knowing a clause asks for. Backend-only.",
+    "output_cues": "cues that name the artefact the person asked for. Backend-only.",
+    "corpus_terms": "words that name what the corpus IS rather than something in a picture. Backend-only.",
+    "known_unresolved": "phrases DECLARED unoperationalisable, with the reason. Backend-only.",
+    "remainder_rules": "when a meaning is not exhausted by the measurements that bear on it. Backend-only."
+  },
+
+  "matching": {
+    "case": "lower",
+    "rule": "substring against the lowercased prompt",
+    "word_rule": "a cue listed under `word_cues` must match at BOTH word boundaries (\\bcue\\b)",
+    "why_word_cues": [
+      "Substring matching is right for the prefix cues the lexicon depends on — 'illuminat' must catch",
+      "'illuminated' and 'illumination'. It is wrong for a short cue that lives inside unrelated words.",
+      "'lit' fires inside 'sensuality', 'quality' and 'political'; 'gather' fires inside 'together';",
+      "'arm' fires inside 'warm' and 'army'; 'apart' fires inside 'apartment'. Each of those makes a",
+      "card say 'you said \"lit\"' to somebody who said 'sensuality', which is the one thing a planner",
+      "attributing everything to the prompt must never do.",
+      "This is the third lexicon defect a fixture has caught, after 'aesthetic' and 'against the'."
+    ],
+    "longest_wins": "a cue contained by another matched cue is dropped, so 'shoulder' cannot be swallowed by a shorter overlapping cue",
+    "side_window": 42
+  },
+
+  "lexicon": [
+    {
+      "key": "gaze",
+      "cues": ["gaze", "looking at", "looks toward", "looks at", "eyeline", "eyes", "stare", "glance", "address", "points toward", "directed at"],
+      "proposes": ["trace:gaze_address", "field:gaze_field"]
+    },
+    {
+      "key": "light",
+      "cues": ["lighting", "light", "illuminat", "glow", "highlight", "bright", "radian"],
+      "word_cues": ["lit", "sunlit", "backlit", "moonlit"],
+      "proposes": ["field:light_field"]
+    },
+    {
+      "key": "shadow",
+      "cues": ["shadowed", "shadow", "darkness", "dark side", "unlit", "obscur", "gloom"],
+      "proposes": ["field:shadow_field"]
+    },
+    {
+      "key": "fold",
+      "cues": ["folding", "folds", "fold", "drapery", "drape", "pleat", "shoulder"],
+      "word_cues": ["gather", "gathers", "gathered", "gathering"],
+      "proposes": ["field:fold"]
+    },
+    {
+      "key": "architecture",
+      "cues": ["architecture", "architectural", "structure", "structural", "wall", "column", "facade", "façade", "building", "axis"],
+      "proposes": ["trace:architectural_axis"]
+    },
+    {
+      "key": "recession",
+      "cues": ["background", "behind", "recede", "recession", "depth", "distance"],
+      "proposes": ["field:background_recession"]
+    },
+    {
+      "key": "material",
+      "cues": ["material", "stone", "marble", "bronze", "flesh", "fabric", "texture", "surface"],
+      "proposes": ["field:material_field"]
+    },
+    {
+      "key": "rhythm",
+      "cues": ["rhythm", "repeat", "repetition", "pattern", "series", "recurr"],
+      "proposes": ["field:rhythm"]
+    },
+    {
+      "key": "gesture",
+      "cues": ["gesture", "reaching", "reaches", "turning", "twist"],
+      "word_cues": ["arm", "arms", "hand", "hands"],
+      "proposes": ["trace:gesture"]
+    },
+    {
+      "key": "threshold",
+      "cues": ["threshold", "edge", "boundary", "seam", "transition"],
+      "proposes": ["field:threshold"],
+      "note": "not 'against the': too generic, already belongs to `tension`, and it made the fixture propose a threshold nobody had mentioned"
+    },
+    {
+      "key": "comparison",
+      "cues": ["compare", "comparison", "kinship", "motif", "echo", "rhyme", "like the", "similar to", "reminds"],
+      "proposes": ["connect:motif_echo"]
+    },
+    {
+      "key": "tension",
+      "cues": ["against", "tension", "opposed", "contrast", "versus", "push", "pressure"],
+      "proposes": ["connect:contrast"]
+    },
+    {
+      "key": "negative",
+      "cues": ["negative space", "emptiness", "void", "absence"],
+      "word_cues": ["gap", "gaps"],
+      "proposes": ["field:negative_space"]
+    }
+  ],
+
+  "writing_cues": [
+    { "mode": "art_critique", "cues": ["critique", "criticism", "critical", "review"] },
+    { "mode": "philosophical_note", "cues": ["philosophical", "philosophy", "ontolog", "phenomenolog"] },
+    { "mode": "youtube_script", "cues": ["script", "youtube", "video", "voiceover"] },
+    { "mode": "research_note", "cues": ["research", "reference", "source", "citation"] },
+    { "mode": "caption", "cues": ["caption"] },
+    { "mode": "question_list", "cues": ["question", "ask myself", "what if"] },
+    { "mode": "description", "cues": ["describe", "description", "write", "note", "essay", "passage"] }
+  ],
+  "writing_cues_note": "'aesthetic' was here and is deliberately not: a cue that fires on a common descriptive noun makes the panel offer an essay every time somebody says what they see.",
+
+  "sides": [
+    { "key": "left", "cues": ["left"] },
+    { "key": "right", "cues": ["right"] },
+    { "key": "upper", "cues": ["upper", "top", "above"] },
+    { "key": "lower", "cues": ["lower", "bottom", "below", "beneath"] },
+    { "key": "centre", "cues": ["centre", "center", "middle"] }
+  ],
+
+  "field_colours": {
+    "light_field": "#E8C46A",
+    "shadow_field": "#4A4A6A",
+    "atmosphere_field": "#B9C7D6",
+    "material_field": "#B08A6A",
+    "pressure_zone": "#9E5A5A",
+    "gaze_field": "#7A5E8E",
+    "negative_space": "#9A909E",
+    "threshold": "#5E8E7A",
+    "fold": "#8A6E9E",
+    "rhythm": "#6A8ABF",
+    "background_recession": "#8E9AA6",
+    "external_limit": "#A8741C"
+  },
+
+  "ground_role_suggestions": {
+    "gaze": "anchor",
+    "light": "atmosphere",
+    "shadow": "counterforce",
+    "fold": "rhythm",
+    "architecture": "support",
+    "threshold": "threshold",
+    "tension": "pressure",
+    "material": "support",
+    "recession": "atmosphere",
+    "rhythm": "rhythm"
+  },
+
+  "labels": {
+    "fold": { "template": "{cue} — folding structure{side}" },
+    "gaze_address": { "template": "the {cue} she points toward", "collapse": ["the the ", "the "] },
+    "architectural_axis": { "template": "{cue} axis{side}" },
+    "default": { "template": "{cue}{side}" }
+  },
+
+  "fixtures": {
+    "sculpture": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on the left face and lower section against the shadowed right side."
+  },
+
+  "inquiry_cues": [
+    {
+      "key": "comparison",
+      "cues": ["relations between", "relation between", "between", "compare", "comparison", "common way", "in common", "alongside"],
+      "word_cues": ["both", "shared"],
+      "proposes": ["connect:similarity"],
+      "attention_category": "comparison",
+      "why": "the question sets two or more things beside each other"
+    },
+    {
+      "key": "distinction",
+      "cues": ["drift apart", "diverge", "difference", "where they part", "distinction", "against"],
+      "word_cues": ["differ", "differs", "unlike", "apart"],
+      "proposes": ["connect:contrast"],
+      "attention_category": "distinction",
+      "why": "the question asks where things stop agreeing"
+    },
+    {
+      "key": "speculation",
+      "cues": ["hybrid", "give birth", "could give", "what if", "imagine", "invent", "speculat", "would look like", "new style", "yet to exist"],
+      "proposes": [],
+      "attention_category": "speculation",
+      "why": "the question asks about something that does not exist. NOTHING is proposed: there is no act that measures what is not there."
+    },
+    {
+      "key": "sequence",
+      "cues": ["read this, then", "in order", "sequence", "progression", "over time"],
+      "proposes": ["trace:comparison_path"],
+      "attention_category": "sequence"
+    }
+  ],
+
+  "demand_cues": [
+    {
+      "kind": "measurable",
+      "cues": ["fold", "folds", "folding", "drapery", "pleat", "segment", "mask", "outline", "contour", "boundary", "how many", "count", "adjacen", "occlu", "nested", "depth", "colour", "color", "chroma", "size", "area", "position"],
+      "why": "names something an organ could put a number or an extent on — once one actually runs"
+    },
+    {
+      "kind": "interpretive",
+      "cues": ["aesthetic", "style", "sensual", "sensuality", "beauty", "beautiful", "grace", "mood", "feeling", "expressive", "erotic", "tender", "spiritual", "serene", "meaning", "reads as", "quality"],
+      "why": "names a reading ABOUT a picture. A reading is not a weak measurement; it is a different species of claim."
+    },
+    {
+      "kind": "sourced",
+      "cues": ["renaissance", "buddha", "buddhist", "gandhara", "gothic", "baroque", "hellenistic", "byzantine", "history", "historical", "influence", "period", "century", "tradition", "school of", "workshop of", "attributed", "provenance", "dated"],
+      "why": "names a claim from OUTSIDE the picture, which must arrive with a citation and may never be laundered into something the picture shows"
+    },
+    {
+      "kind": "imagined",
+      "cues": ["hybrid", "give birth", "could give birth", "what if", "imagine", "invent", "speculat", "new style", "would look like", "generate", "yet to exist", "might become"],
+      "why": "names something that does not exist. No picture can be measured for it, and no source can cite it."
+    }
+  ],
+
+  "output_cues": [
+    { "output": "comparison", "cues": ["relations between", "relation between", "compare", "comparison", "difference between", "where they differ", "drift apart", "in common", "common way"] },
+    { "output": "article", "cues": ["article", "essay", "write up", "piece about"] },
+    { "output": "map", "cues": ["map of", "atlas of", "chart", "diagram"] },
+    { "output": "list", "cues": ["list of", "enumerate", "inventory"] },
+    { "output": "reading", "cues": ["reading of", "interpret", "interpretation", "close reading"] }
+  ],
+
+  "human_only_requests": [
+    {
+      "action": "challenge_percept",
+      "cues": ["challenge this percept", "challenge the percept", "challenge this reading", "counter-reading", "counter reading", "contradict this percept", "argue against this percept"],
+      "why": "only a person may author a challenge — it is the human's veto over the circuit (P1 addendum §3.1). The request is RECORDED so that asking for it is not erased; the act itself is not proposed, because a machine proposing its own veto is not a veto."
+    }
+  ],
+
+  "corpus_terms": [
+    "sculpture", "sculptures", "statue", "statues", "relief", "reliefs", "carving", "carvings",
+    "painting", "paintings", "photograph", "photographs", "photo", "photos", "image", "images",
+    "picture", "pictures", "portrait", "portraits", "drawing", "drawings", "figure", "figures"
+  ],
+  "corpus_terms_why": "these name what the corpus IS. They are recorded as corpus selectors, not as unresolved terms and not as anything visible in a picture.",
+
+  "known_unresolved": [
+    {
+      "phrase": "way of unfolding",
+      "why": "names a MANNER — how a form unfolds across its surface. A fold can be marked; the way of folding cannot. No act in the grammar and no organ in the sensorium is scoped to a manner."
+    },
+    {
+      "phrase": "fold-level",
+      "why": "names a LEVEL OF ANALYSIS rather than a thing in a picture. No act is scoped to a level, so nothing can be proposed that answers 'at the level of folds'."
+    },
+    {
+      "phrase": "unfolding sensuality",
+      "why": "binds a manner to a reading. Neither half is measurable and the compound is not decomposable into acts without pretending one of them is."
+    }
+  ],
+
+  "remainder_rules": {
+    "always_remainder_kinds": ["interpretive", "imagined"],
+    "why_by_kind": {
+      "interpretive": "a reading about a picture is never exhausted by what can be measured on it",
+      "imagined": "what does not exist yet cannot be measured on any picture, nor cited from any source"
+    },
+    "named": [
+      {
+        "term": "sensuality",
+        "contributing_measurements": ["fold", "material_field", "light_field"],
+        "why": "fold geometry, surface material and the fall of light can CONTRIBUTE to a reading of sensuality. None of them, alone or together, constitutes one. Decomposing the word into the measurements that bear on it and then calling the result 'sensuality measured' is the exact fabrication this frame exists to prevent."
+      },
+      {
+        "term": "style",
+        "contributing_measurements": ["fold", "rhythm", "material_field"],
+        "why": "a style is a family resemblance across many works. Measurements on one picture bear on it and never settle it."
+      },
+      {
+        "term": "aesthetic",
+        "contributing_measurements": ["light_field", "shadow_field", "fold"],
+        "why": "an aesthetic is a judgement. The measurements it rests on are not the judgement."
+      }
+    ]
+  },
+
+  "unresolved": {
+    "min_length": 5,
+    "max_terms": 12,
+    "token_pattern": "letters, optionally hyphen-joined",
+    "stopwords": [
+      "about", "above", "after", "again", "against", "along", "already", "also", "although",
+      "always", "among", "another", "anything", "around", "because", "become", "becomes",
+      "been", "before", "being", "below", "beside", "between", "beyond", "could", "would",
+      "should", "doing", "does", "done", "during", "each", "either", "enough", "even", "every",
+      "explore", "explores", "exploring", "from", "further", "give", "gives", "given", "going",
+      "have", "having", "here", "however", "into", "itself", "just", "less", "like", "made",
+      "make", "makes", "many", "maybe", "might", "more", "most", "much", "must", "never",
+      "next", "nothing", "often", "once", "only", "other", "others", "over", "perhaps",
+      "please", "quite", "rather", "really", "same", "seem", "seems", "shall", "since",
+      "some", "something", "still", "such", "than", "that", "their", "them", "then", "there",
+      "these", "they", "thing", "things", "this", "those", "though", "through", "thus",
+      "together", "toward", "towards", "under", "until", "upon", "very", "want", "wants",
+      "were", "what", "when", "where", "whether", "which", "while", "will", "with", "within",
+      "without", "your", "yours"
+    ]
+  }
+}
