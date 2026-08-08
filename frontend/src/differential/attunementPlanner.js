@@ -20,9 +20,28 @@
 // the actual words it keyed on — so the card can say *you said "gaze"* rather than implying
 // Semant saw one. UI copy must read "Suggested acts", never "Detected".
 
+// ── HARNESS-001A: WHERE THE CUES NOW LIVE ────────────────────────────────────
+//
+// The cue vocabulary moved OUT of this file into `contracts/attunement-lexicon.v1.json`,
+// because a second runtime now reads it: the backend inquiry mind frames a prompt from the
+// same cues. Two lexicons would be two systems that both claim to know what "fold" means,
+// and they would disagree within a week.
+//
+// THE PLANNING STAYED. Which acts a cue proposes, how a label is built, what is suppressed
+// when the post already has regions, the side-hint window — all still here, all exported
+// under exactly the names they were.
+//
+// The contract carries blocks this planner deliberately does NOT read (`inquiry_cues`,
+// `demand_cues`, `output_cues`, `corpus_terms`, `known_unresolved`): those are about the
+// shape of a QUESTION over a corpus, and this planner proposes marks on ONE image. Reading
+// them here would change what the panel suggests, and the sculpture fixture is the pin that
+// says it must not.
+import LEXICON_CONTRACT from '../contracts/attunement-lexicon.v1.json';
 import {
     normalizeAction, validateActionList, actionId,
 } from './perceptualActions';
+
+export const LEXICON_SCHEMA_VERSION = LEXICON_CONTRACT.schema_version;
 
 /**
  * The lexicon. Each entry: the cues that fire it, and the acts it proposes.
@@ -32,75 +51,7 @@ import {
  * inspectable, and deliberately conservative: over-proposing is not free — a panel of
  * fourteen cards is a panel nobody reads.
  */
-export const LEXICON = [
-    {
-        key: 'gaze',
-        cues: ['gaze', 'looking at', 'looks toward', 'looks at', 'eyeline', 'eyes', 'stare', 'glance', 'address', 'points toward', 'directed at'],
-        proposes: ['trace:gaze_address', 'field:gaze_field'],
-    },
-    {
-        key: 'light',
-        cues: ['lighting', 'light', 'illuminat', 'lit', 'glow', 'highlight', 'bright', 'radian'],
-        proposes: ['field:light_field'],
-    },
-    {
-        key: 'shadow',
-        cues: ['shadowed', 'shadow', 'darkness', 'dark side', 'unlit', 'obscur', 'gloom'],
-        proposes: ['field:shadow_field'],
-    },
-    {
-        key: 'fold',
-        cues: ['folding', 'folds', 'fold', 'drapery', 'drape', 'pleat', 'gather', 'shoulder'],
-        proposes: ['field:fold'],
-    },
-    {
-        key: 'architecture',
-        cues: ['architecture', 'architectural', 'structure', 'structural', 'wall', 'column', 'facade', 'façade', 'building', 'axis'],
-        proposes: ['trace:architectural_axis'],
-    },
-    {
-        key: 'recession',
-        cues: ['background', 'behind', 'recede', 'recession', 'depth', 'distance'],
-        proposes: ['field:background_recession'],
-    },
-    {
-        key: 'material',
-        cues: ['material', 'stone', 'marble', 'bronze', 'flesh', 'fabric', 'texture', 'surface'],
-        proposes: ['field:material_field'],
-    },
-    {
-        key: 'rhythm',
-        cues: ['rhythm', 'repeat', 'repetition', 'pattern', 'series', 'recurr'],
-        proposes: ['field:rhythm'],
-    },
-    {
-        key: 'gesture',
-        cues: ['gesture', 'reaching', 'reaches', 'arm', 'hand', 'turning', 'twist'],
-        proposes: ['trace:gesture'],
-    },
-    {
-        key: 'threshold',
-        // Not 'against the': it is too generic, it already belongs to `tension`, and it
-        // made the fixture propose a threshold nobody had mentioned.
-        cues: ['threshold', 'edge', 'boundary', 'seam', 'transition'],
-        proposes: ['field:threshold'],
-    },
-    {
-        key: 'comparison',
-        cues: ['compare', 'comparison', 'kinship', 'motif', 'echo', 'rhyme', 'like the', 'similar to', 'reminds'],
-        proposes: ['connect:motif_echo'],
-    },
-    {
-        key: 'tension',
-        cues: ['against', 'tension', 'opposed', 'contrast', 'versus', 'push', 'pressure'],
-        proposes: ['connect:contrast'],
-    },
-    {
-        key: 'negative',
-        cues: ['negative space', 'emptiness', 'void', 'absence', 'gap'],
-        proposes: ['field:negative_space'],
-    },
-];
+export const LEXICON = LEXICON_CONTRACT.lexicon;
 
 /**
  * Writing intents, kept separate: every cue here must name an OUTPUT the curator wants, not
@@ -111,24 +62,30 @@ export const LEXICON = [
  * fires on a common descriptive noun makes the panel offer to write an essay every time
  * somebody says what they are looking at.
  */
-export const WRITING_CUES = [
-    { mode: 'art_critique', cues: ['critique', 'criticism', 'critical', 'review'] },
-    { mode: 'philosophical_note', cues: ['philosophical', 'philosophy', 'ontolog', 'phenomenolog'] },
-    { mode: 'youtube_script', cues: ['script', 'youtube', 'video', 'voiceover'] },
-    { mode: 'research_note', cues: ['research', 'reference', 'source', 'citation'] },
-    { mode: 'caption', cues: ['caption'] },
-    { mode: 'question_list', cues: ['question', 'ask myself', 'what if'] },
-    { mode: 'description', cues: ['describe', 'description', 'write', 'note', 'essay', 'passage'] },
-];
+export const WRITING_CUES = LEXICON_CONTRACT.writing_cues;
 
 const norm = (s) => String(s || '').toLowerCase();
 
+const escapeRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Does a whole-word cue appear? `\bcue\b`, and only for cues the contract lists under
+ * `word_cues`.
+ *
+ * Substring matching is right for the prefix cues the lexicon depends on — 'illuminat' has to
+ * catch 'illuminated' and 'illumination'. It is wrong for a short cue that lives inside
+ * unrelated words: 'lit' fires inside "sensuality", 'gather' inside "together", 'arm' inside
+ * "warm". Each of those makes a card say *you said "lit"* to somebody who said "sensuality",
+ * which is the one thing a planner that attributes everything to the prompt must never do.
+ */
+const wordCuePresent = (t, cue) => new RegExp(`\\b${escapeRe(norm(cue))}\\b`).test(t);
+
 /** Which cues actually appear, longest-first so a longer phrase wins its substring. */
-function matchCues(text, cues) {
+function matchCues(text, cues, wordCues = []) {
     const t = norm(text);
-    return [...cues]
+    return [...cues.filter((c) => t.includes(c)),
+            ...wordCues.filter((c) => wordCuePresent(t, c))]
         .sort((a, b) => b.length - a.length)
-        .filter((c) => t.includes(c))
         .filter((c, _i, kept) => !kept.some((other) => other !== c && other.includes(c)));
 }
 
@@ -136,7 +93,7 @@ function matchCues(text, cues) {
 export function detectCues(prompt) {
     const hits = [];
     for (const entry of LEXICON) {
-        const matched = matchCues(prompt, entry.cues);
+        const matched = matchCues(prompt, entry.cues, entry.word_cues || []);
         if (matched.length) hits.push({ key: entry.key, matched, proposes: entry.proposes });
     }
     return hits;
@@ -145,7 +102,7 @@ export function detectCues(prompt) {
 /** The manuscript mode the prompt asks for, or null. Most specific wins over 'description'. */
 export function detectWritingMode(prompt) {
     for (const w of WRITING_CUES) {
-        if (matchCues(prompt, w.cues).length) return w.mode;
+        if (matchCues(prompt, w.cues, w.word_cues || []).length) return w.mode;
     }
     return null;
 }
@@ -155,13 +112,8 @@ export function detectWritingMode(prompt) {
 // card, so a proposal points somewhere rather than floating. It is a HINT and nothing else:
 // no geometry is derived from it, and it never becomes a box.
 
-const SIDES = [
-    { key: 'left', cues: ['left'] },
-    { key: 'right', cues: ['right'] },
-    { key: 'upper', cues: ['upper', 'top', 'above'] },
-    { key: 'lower', cues: ['lower', 'bottom', 'below', 'beneath'] },
-    { key: 'centre', cues: ['centre', 'center', 'middle'] },
-];
+const SIDES = LEXICON_CONTRACT.sides;
+const SIDE_WINDOW = LEXICON_CONTRACT.matching.side_window;
 
 /** The side words nearest a cue, as a plain phrase, or ''. */
 export function sideHintFor(prompt, cue) {
@@ -169,19 +121,15 @@ export function sideHintFor(prompt, cue) {
     const at = t.indexOf(norm(cue));
     if (at < 0) return '';
     // A local window either side of the cue: near enough to be about it.
-    const window = t.slice(Math.max(0, at - 42), Math.min(t.length, at + norm(cue).length + 42));
+    const window = t.slice(Math.max(0, at - SIDE_WINDOW),
+                           Math.min(t.length, at + norm(cue).length + SIDE_WINDOW));
     const found = SIDES.filter((s) => s.cues.some((c) => window.includes(c))).map((s) => s.key);
     return found.length ? found.join(' / ') : '';
 }
 
 // ── the planner ──────────────────────────────────────────────────────────────
 
-const FIELD_COLOUR = {
-    light_field: '#E8C46A', shadow_field: '#4A4A6A', atmosphere_field: '#B9C7D6',
-    material_field: '#B08A6A', pressure_zone: '#9E5A5A', gaze_field: '#7A5E8E',
-    negative_space: '#9A909E', threshold: '#5E8E7A', fold: '#8A6E9E',
-    rhythm: '#6A8ABF', background_recession: '#8E9AA6', external_limit: '#A8741C',
-};
+const FIELD_COLOUR = LEXICON_CONTRACT.field_colours;
 
 function excerpt(prompt, max = 120) {
     const s = String(prompt || '').trim().replace(/\s+/g, ' ');
@@ -352,22 +300,22 @@ export function planFromPrompt(prompt, {
     };
 }
 
+const LABEL_TEMPLATES = LEXICON_CONTRACT.labels;
+
 function labelFromCue(hit, role, hint) {
     const base = hit.matched[0];
     const side = hint ? ` (${hint})` : '';
-    if (role === 'fold') return `${base} — folding structure${side}`;
-    if (role === 'gaze_address') return `the ${base} she points toward`.replace('the the ', 'the ');
-    if (role === 'architectural_axis') return `${base} axis${side}`;
-    return `${base}${side}`;
+    const rule = LABEL_TEMPLATES[role] || LABEL_TEMPLATES.default;
+    let out = String(rule.template).replace('{cue}', base).replace('{side}', side);
+    // `the the gaze` — the one collapse the templates need, declared beside the template
+    // that causes it rather than hidden in a conditional here.
+    if (Array.isArray(rule.collapse)) out = out.replace(rule.collapse[0], rule.collapse[1]);
+    return out;
 }
 
 /** Which ground roles the fired cues would plausibly want. Candidates, never assignments. */
 function suggestRoles(cues) {
-    const map = {
-        gaze: 'anchor', light: 'atmosphere', shadow: 'counterforce', fold: 'rhythm',
-        architecture: 'support', threshold: 'threshold', tension: 'pressure',
-        material: 'support', recession: 'atmosphere', rhythm: 'rhythm',
-    };
+    const map = LEXICON_CONTRACT.ground_role_suggestions;
     const out = {};
     for (const c of cues) if (map[c.key]) out[c.key] = map[c.key];
     return out;
@@ -413,5 +361,7 @@ export const QUICK_CHIPS = [
     { key: 'counter_reading', label: 'Ask for counter-reading' },
 ];
 
-/** The fixture this planner was built against. Kept beside it so the test cannot drift. */
-export const SCULPTURE_FIXTURE = 'The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on the left face and lower section against the shadowed right side.';
+/** The fixture this planner was built against. In the contract so BOTH runtimes plan the
+ *  same sentence and a drift in either shows up as a changed fixture rather than as two
+ *  planners quietly diverging on different inputs. */
+export const SCULPTURE_FIXTURE = LEXICON_CONTRACT.fixtures.sculpture;
