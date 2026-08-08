@@ -1,0 +1,78 @@
+{
+  "suite_id": "sam3-fold-phrase-matrix",
+  "locks": {
+    "phrases_sha256": "c5096c9dfae9871cb6b3c042414fd1a21a2ffd84d7295db482748d7b17358476",
+    "fixtures_sha256": "08f8a8ed56065792ee056f4f35f387414400153edcc585c442062d1745581ddb"
+  },
+  "collection_started_at": "2026-08-08T17:10:58+00:00",
+  "actuator_lock": "concept_segment",
+  "call_budget": 1,
+  "fixtures": [
+    {
+      "fixture_id": "pieta",
+      "sha256": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4"
+    },
+    {
+      "fixture_id": "angel_of_grief",
+      "sha256": "c5055621ef8782c18898b650941abb4cadca8dc22942c3f1c5021156f1fc3ab5"
+    },
+    {
+      "fixture_id": "veiled_funerary",
+      "sha256": "570b295451587ab2fa1495e792ed071510798f1790f6fc2bbfc6e85da832dd19"
+    },
+    {
+      "fixture_id": "carved_figure",
+      "sha256": "12eaa7e7a44d17cf7ee6514181a6bcf319ccd7f1b6117d27947fb0ec583c89f4"
+    }
+  ],
+  "phrases": [
+    {
+      "family": "availability_control",
+      "role": "availability_control",
+      "phrases": [
+        "face"
+      ]
+    },
+    {
+      "family": "object_scope",
+      "role": "object_scope",
+      "phrases": [
+        "robe",
+        "garment",
+        "drapery"
+      ]
+    },
+    {
+      "family": "fold_target",
+      "role": "fold_target",
+      "phrases": [
+        "robe folds",
+        "drapery folds",
+        "folded drapery",
+        "fabric folds",
+        "creases"
+      ]
+    },
+    {
+      "family": "replication_control",
+      "role": "replication_control",
+      "phrases": [
+        "drapery fold"
+      ]
+    },
+    {
+      "family": "adversarial_abstraction",
+      "role": "adversarial_abstraction",
+      "phrases": [
+        "sensuality"
+      ]
+    },
+    {
+      "family": "negative_control",
+      "role": "negative_control",
+      "phrases": [
+        "bicycle"
+      ]
+    }
+  ]
+}

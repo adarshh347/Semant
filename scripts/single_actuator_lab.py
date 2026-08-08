@@ -24,7 +24,8 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from single_actuator_lab_support import arms, contract, observe, report, scoring, visuals  # noqa: E402
+from single_actuator_lab_support import (arms, contract, matrix, observe, report,  # noqa: E402
+                                         scoring, visuals)
 from single_actuator_lab_support.firewall import Firewall  # noqa: E402
 
 
@@ -266,6 +267,180 @@ def replay(run_path: str, *, out_path: Optional[str] = None) -> Dict[str, Any]:
             "live_calls": len(fw.attempts)}
 
 
+# ── matrix (HARNESS-001C2) ────────────────────────────────────────────────────────────────────
+#
+# Extends this CLI rather than opening a second harness, per the directive. A matrix is many
+# captures, and every one of them goes through the same `capture()` above with the same firewall
+# and the same budget of one — a matrix of N cells is N budgets of one, never one budget of N.
+
+def matrix_plan(suite_id: str, *, suites_dir: str = matrix.SUITES_DIR,
+                write: bool = False) -> Dict[str, Any]:
+    """Enumerate every capture the suite calls for, WITHOUT running any of them.
+
+    `--write` fills the suite's `lock` block with the digests its content actually hashes to.
+    That is legal only before collection begins; afterwards `assert_locks_unchanged` refuses,
+    because writing fresh digests over a frozen experiment is precisely the edit the lock exists
+    to prevent.
+    """
+    suite = matrix.check_suite(matrix.load_suite(suite_id, suites_dir=suites_dir),
+                               source=suite_id)
+    if write:
+        if matrix.collection_started(suite["suite_id"]):
+            raise SystemExit(
+                f"refusing to rewrite the locks for {suite['suite_id']!r}: collection has already "
+                f"begun. Start a new suite id rather than re-freezing this one.")
+        _write_locks(suite_id, suite, suites_dir)
+        suite = matrix.check_suite(matrix.load_suite(suite_id, suites_dir=suites_dir),
+                                   source=suite_id)
+    return matrix.plan(suite)
+
+
+def matrix_live(suite_id: str, *, suites_dir: Optional[str] = None,
+                runs_root: Optional[str] = None, planner_client: Any = None,
+                only: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Collect the pre-registered matrix. Refuses if the frozen list moved."""
+    suite = matrix.check_suite(matrix.load_suite(suite_id, suites_dir=suites_dir),
+                               source=suite_id)
+    return matrix.run_live(suite, capture, runs_root=runs_root, now=_now(), only=only,
+                           planner_client=planner_client)
+
+
+def matrix_replay(suite_id: str, *, suites_dir: Optional[str] = None,
+                  runs_root: Optional[str] = None) -> Dict[str, Any]:
+    """Rebuild every frozen cell from its observations. Zero live calls, enforced per cell."""
+    suite = matrix.check_suite(matrix.load_suite(suite_id, suites_dir=suites_dir),
+                               source=suite_id)
+    matrix.assert_locks_unchanged(suite, runs_root=runs_root)
+    rows, divergences, live = [], 0, 0
+    for cell in matrix.plan_cells(suite):
+        run_path = contract.run_dir(cell["run_id"], runs_root or contract.RUNS_ROOT)
+        if not contract.is_frozen(run_path):
+            continue
+        out = replay(run_path)
+        live += out["live_calls"]
+        divergences += len(out["divergences"])
+        rows.append({"run_id": cell["run_id"], "live_calls": out["live_calls"],
+                     "divergences": out["divergences"]})
+    return {"suite_id": suite["suite_id"], "replayed": len(rows), "live_calls": live,
+            "divergences": divergences, "rows": rows}
+
+
+def matrix_report(suite_id: str, *, suites_dir: Optional[str] = None,
+                  runs_root: Optional[str] = None) -> Dict[str, Any]:
+    suite = matrix.check_suite(matrix.load_suite(suite_id, suites_dir=suites_dir),
+                               source=suite_id)
+    return matrix.report(suite, runs_root=runs_root)
+
+
+def render_matrix_report(out: Dict[str, Any]) -> str:
+    """The phrase-response curve as a table a person can read, and an explicit refusal."""
+    curve = out["response_curve"]
+    lines = [f"# {out['suite_id']} — phrase-response curve", ""]
+
+    fixtures = sorted(curve["by_fixture"])
+    lines.append("| phrase | family | " + " | ".join(fixtures) + " | hit-rate |")
+    lines.append("|---|---|" + "---|" * (len(fixtures) + 1))
+    for phrase, row in curve["by_phrase"].items():
+        cells = []
+        for fixture in fixtures:
+            per = row["per_fixture"].get(fixture)
+            cells.append("—" if per is None else
+                         (f"**{per['instances']}**" if per["status"] == "ok"
+                          else per["status"][:5]))
+        rate = "—" if row["hit_rate"] is None else f"{row['hit_rate']:.2f}"
+        lines.append(f"| `{phrase}` | {row['family']} | " + " | ".join(cells) + f" | {rate} |")
+    lines.append("")
+
+    lines.append("## Availability gate")
+    lines.append("")
+    for fixture, gate in sorted(out["availability"].items()):
+        mark = "yes" if gate["demonstrated"] else "**NO**"
+        lines.append(f"- `{fixture}`: instrument demonstrated {mark} "
+                     f"(`{gate['phrase']}` → {gate['instances']} instance(s))")
+    if curve["gated_out"]:
+        lines.append(f"- gated out of the curve: {', '.join(curve['gated_out'])} — every empty "
+                     f"on these is uninterpretable, not a phrase failure")
+    lines.append("")
+
+    eq = out["wrapper_equivalence"]
+    lines.append("## Wrapper equivalence (organ-direct vs production actuator)")
+    lines.append("")
+    lines.append(f"- pairs {len(eq['pairs'])}, of which informative (non-empty) "
+                 f"{eq['informative_pairs']}, empty {eq['empty_pairs']}")
+    lines.append(f"- equivalent: **{eq['equivalent']}** — established by {eq['established_by']}")
+    for m in eq["mismatches"]:
+        lines.append(f"- MISMATCH: {m}")
+    lines.append("")
+
+    fvo = out["fold_vs_object_extent"]
+    lines.append("## Does a fold phrase measure anything a scope phrase does not?")
+    lines.append("")
+    lines.append(f"*{fvo['note']}*")
+    lines.append("")
+    for fixture, data in sorted(fvo["by_fixture"].items()):
+        if not data.get("comparable"):
+            lines.append(f"- `{fixture}`: not comparable — {data['why']}")
+            continue
+        lines.append(f"- `{fixture}`: fold-vs-scope overlap ranges "
+                     f"{data['min_iou']}–{data['max_iou']}"
+                     + (" (some byte-identical)" if data["any_byte_identical"] else ""))
+    lines.append("")
+
+    ps = out["planner_stability"]
+    lines.append("## Planner stability")
+    lines.append("")
+    lines.append(f"- {ps['samples']} planning-only sample(s), SAM invocations "
+                 f"{ps.get('sam_invocations')}")
+    lines.append(f"- verdict: **{ps['verdict']}** · distribution {ps.get('distribution')}")
+    if ps.get("reached_beyond_lock"):
+        lines.append(f"- reached beyond the lock: {', '.join(ps['reached_beyond_lock'])}")
+    lines.append("")
+
+    inv = out["invariants"]
+    lines.append("## Invariants")
+    lines.append("")
+    lines.append(f"- captures {inv['captures']} · invocations {inv['invocations']} · lock held "
+                 f"{inv['lock_held']} · database writes {inv['database_writes']} · source "
+                 f"mutations {inv['source_mutations']}")
+    for v in inv["violations"]:
+        lines.append(f"- VIOLATION: {v}")
+    lines.append("")
+
+    decision = out["bounded_decision"]
+    lines.append("## Bounded decision")
+    lines.append("")
+    lines.append(f"**{decision['value']}** — {decision['why']}")
+    lines.append("")
+    lines.append(f"> These may never be derived by scoring code: "
+                 f"{', '.join(decision['may_not_be_derived_by_machine'])}. A hit-rate is a count "
+                 f"of runs that returned instances. It is not a claim that any instance is the "
+                 f"thing the phrase named, however high it climbs.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _write_locks(suite_id: str, suite: Dict[str, Any], suites_dir: str) -> None:
+    """Rewrite just the two digest lines in the suite file, in place.
+
+    Text substitution rather than a YAML round-trip on purpose: the suite is a pre-registration
+    document whose comments carry most of its meaning, and a dump-and-rewrite would silently
+    delete every one of them.
+    """
+    import re
+    path = suite_id if os.path.exists(suite_id) else matrix.suite_path(suite_id, suites_dir)
+    computed = matrix.compute_locks(suite)
+    with open(path, "r") as fh:
+        text = fh.read()
+    for key in ("phrases_sha256", "fixtures_sha256"):
+        text, n = re.subn(rf'(^\s*{key}:\s*)"[0-9a-f]{{64}}"',
+                          lambda m: f'{m.group(1)}"{computed[key]}"', text, count=1,
+                          flags=re.MULTILINE)
+        if n != 1:
+            raise SystemExit(f"could not locate a `{key}` line to freeze in {path}")
+    with open(path, "w") as fh:
+        fh.write(text)
+
+
 # ── compare / validate ────────────────────────────────────────────────────────────────────────
 
 def compare(run_paths: List[str]) -> Dict[str, Any]:
@@ -326,6 +501,28 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_val.add_argument("--run")
     p_val.add_argument("--manifest")
 
+    # HARNESS-001C2. `--plan/--live/--replay/--report` are declared as flags on one subcommand
+    # rather than four subcommands, matching the card's spelling against this parser's shape.
+    p_mat = sub.add_parser("matrix", help="run a pre-registered phrase-robustness suite")
+    p_mat.add_argument("--suite", required=True)
+    p_mat.add_argument("--suites-dir", default=matrix.SUITES_DIR)
+    mode = p_mat.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--plan", action="store_true",
+                      help="enumerate every planned capture; runs nothing")
+    mode.add_argument("--live", action="store_true", help="collect the matrix")
+    mode.add_argument("--replay", action="store_true",
+                      help="rebuild every frozen cell with zero live calls")
+    mode.add_argument("--report", action="store_true",
+                      help="the phrase-response curve and bounded attribution")
+    mode.add_argument("--render", action="store_true",
+                      help="regenerate overlays and contact sheets from frozen observations; "
+                           "zero live calls. They are a pure function of the checked-in fixture "
+                           "and the frozen masks, so they are not committed.")
+    p_mat.add_argument("--freeze", action="store_true",
+                       help="--plan only: write the computed digests into the suite's lock "
+                            "block. Legal only before collection begins.")
+    p_mat.add_argument("--json", action="store_true")
+
     args = parser.parse_args(argv)
 
     if args.command == "capture":
@@ -380,6 +577,72 @@ def main(argv: Optional[List[str]] = None) -> int:
                 bad = bad or bool(errors)
             return 1 if bad else 0
         print("validate needs --run or --manifest")
+        return 2
+
+    if args.command == "matrix":
+        if args.plan:
+            planned = matrix_plan(args.suite, suites_dir=args.suites_dir, write=args.freeze)
+            if args.json:
+                import json
+                print(json.dumps(planned, indent=2))
+            else:
+                print(f"suite       {planned['suite_id']}  ·  locked to "
+                      f"{planned['actuator_lock']}")
+                print(f"fixtures    {', '.join(planned['fixtures'])}")
+                print(f"phrases     {len(planned['phrases'])} in "
+                      f"{len(planned['families'])} families")
+                print(f"captures    {planned['capture_count']}  ·  SAM invocations planned "
+                      f"{planned['sam_invocations_planned']} (budget "
+                      f"{planned['call_budget']} each)")
+                print(f"planner     {planned['planner_samples']} sample(s), grants SAM "
+                      f"attempts: {planned['planner_grants_sam_attempts']}")
+                print(f"locks       declared match content: "
+                      f"{planned['locks_declared_match_content']}")
+                if not planned["locks_declared_match_content"]:
+                    print(f"            computed phrases  "
+                          f"{planned['computed_locks']['phrases_sha256']}")
+                    print(f"            computed fixtures "
+                          f"{planned['computed_locks']['fixtures_sha256']}")
+                    print("            → re-run with --freeze (only before collection begins)")
+            return 0 if planned["locks_declared_match_content"] else 1
+
+        if args.live:
+            out = matrix_live(args.suite, suites_dir=args.suites_dir)
+            captured = [c for c in out["cells"] if c["status"] == "captured"]
+            frozen = [c for c in out["cells"] if c["status"] == "already_frozen"]
+            print(f"suite       {out['suite_id']}")
+            print(f"captured    {len(captured)}  ·  already frozen (skipped) {len(frozen)}")
+            for c in captured:
+                print(f"  {c['fixture_id']:16} {c['mode']:16} {c['phrase']!r:22} "
+                      f"{c['organ_status']:12} {c['instances']} inst")
+            p = out["planner"]
+            print(f"planner     {len(p['samples'])} planning-only sample(s), "
+                  f"SAM invocations {p['total_sam_invocations']}")
+            return 0
+
+        if args.replay:
+            out = matrix_replay(args.suite, suites_dir=args.suites_dir)
+            print(f"replayed {out['replayed']} cell(s): live calls {out['live_calls']}, "
+                  f"divergences {out['divergences']}")
+            return 1 if (out["live_calls"] or out["divergences"]) else 0
+
+        if args.render:
+            suite = matrix.check_suite(
+                matrix.load_suite(args.suite, suites_dir=args.suites_dir), source=args.suite)
+            out = matrix.render_artifacts(suite)
+            print(f"rendered {len(out['rendered'])} cell(s), skipped {out['skipped']} "
+                  f"(empty or not collected); live calls {out['live_calls']}")
+            return 0
+
+        if args.report:
+            out = matrix_report(args.suite, suites_dir=args.suites_dir)
+            if args.json:
+                import json
+                print(json.dumps(out, indent=2))
+            else:
+                print(render_matrix_report(out))
+            return 0 if out["invariants"]["lock_held"] else 1
+
         return 2
 
     return 2

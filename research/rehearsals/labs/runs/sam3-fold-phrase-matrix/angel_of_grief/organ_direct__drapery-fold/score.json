@@ -1,0 +1,65 @@
+{
+  "schema_version": "single-actuator-score.v1",
+  "lab_id": "sam3-fold-phrase-matrix",
+  "run_id": "sam3-fold-phrase-matrix/angel_of_grief/organ_direct__drapery-fold",
+  "mode": "organ_direct",
+  "expected_condition": "open",
+  "measured": {
+    "availability": "available",
+    "planner_valid": null,
+    "actuator_leakage": false,
+    "planner_requested_unlocked": [],
+    "invocation_count": 1,
+    "call_budget": 1,
+    "budget_respected": true,
+    "lock_held": true,
+    "cold_or_warm": "warm",
+    "latency_ms": 6676.7,
+    "load_ms": 0.0,
+    "instance_count": 1,
+    "truncated": false,
+    "mask_area_px": [
+      26862
+    ],
+    "mask_area_fraction": [
+      0.077457
+    ],
+    "mask_bounds": [
+      {
+        "x": 0.209804,
+        "y": 0.464706,
+        "w": 0.407843,
+        "h": 0.432353
+      }
+    ],
+    "max_pairwise_iou": null,
+    "all_masks_well_formed": true,
+    "conversion_survival": null,
+    "two_status_preserved": null,
+    "repeat_stability": null,
+    "invariants_held": true,
+    "violations": []
+  },
+  "review": {
+    "status": "pending",
+    "protocol": "human_visual",
+    "concept_binding": null,
+    "coverage": null,
+    "boundary_quality": null,
+    "false_positives": null,
+    "false_negatives": null,
+    "iou_vs_gold": null,
+    "gold_mask_present": false,
+    "empty_means": null,
+    "reviewer": null,
+    "reviewed_at": null,
+    "notes": ""
+  },
+  "verdict": {
+    "harness": "clean",
+    "semantic_correctness": "not_established",
+    "attribution": "organ_succeeded",
+    "attribution_detail": "the organ measured 1 instance(s) of 'drapery fold'. Whether those instances ARE that concept is not established here"
+  },
+  "pair": null
+}

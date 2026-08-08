@@ -1,0 +1,270 @@
+{
+  "schema_version": "single-actuator-trace.v1",
+  "lab_id": "sam3-fold-phrase-matrix",
+  "run_id": "sam3-fold-phrase-matrix/pieta/organ_direct__garment",
+  "mode": "organ_direct",
+  "actuator_lock": "concept_segment",
+  "captured_at": "2026-08-08T17:11:26+00:00",
+  "manifest": {
+    "schema_version": "single-actuator-manifest.v1",
+    "lab_id": "sam3-fold-phrase-matrix",
+    "run_id": "sam3-fold-phrase-matrix/pieta/organ_direct__garment",
+    "title": "pieta \u00b7 'garment' \u00b7 organ_direct",
+    "why": "Matrix cell from the pre-registered suite 'sam3-fold-phrase-matrix': family 'object_scope' (role 'object_scope') against fixture 'pieta'. The phrase was frozen before any live call in this lane and may not be changed now.",
+    "actuator_lock": "concept_segment",
+    "mode": "organ_direct",
+    "call_budget": 1,
+    "image": {
+      "source": "local_fixture",
+      "path": "research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg",
+      "sha256": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+      "note": "Marble group in a dark, heavily textured apse. Deep drapery over the knees; a cross above; two faces."
+    },
+    "prompt": null,
+    "control_phrase": "garment",
+    "allowed_params": [
+      "phrase"
+    ],
+    "model_expectation": {
+      "checkpoint": "facebook/sam3",
+      "preprocessing_version": "sam3-pcs-v1",
+      "conf": 0.25,
+      "imgsz": 1024,
+      "max_instances": 16
+    },
+    "warm_or_cold": "warm",
+    "repeat_count": 1,
+    "expected_condition": "open",
+    "review": {
+      "protocol": "human_visual",
+      "gold_mask_path": null,
+      "questions": [
+        "For each non-empty fold-target mask: is it LOCAL FOLD GEOMETRY, or the garment as a whole?",
+        "Where the object_scope family succeeded and fold_target failed on the same fixture, does the overlay show folds that were there to be found?",
+        "Does `face` land on faces on every fixture \u2014 i.e. is the availability gate honest?",
+        "On the Angel of Grief versus the Piet\u00e0: does the untreated image behave differently from the texture-blended one for the SAME phrase?"
+      ]
+    },
+    "pair_with": null
+  },
+  "environment": {
+    "git_commit": "42bc42d39ba04c2fe8184aec3246936a06424739",
+    "git_dirty": true,
+    "platform": "Darwin 25.5.0 arm64",
+    "python": "3.12.13",
+    "device": "mps",
+    "weights_present": true,
+    "weights_id": "sam3.pt",
+    "runtime_available": true,
+    "checkpoint": "facebook/sam3",
+    "preprocessing_version": "sam3-pcs-v1",
+    "conf": 0.25,
+    "imgsz": 1024,
+    "naming_floor": 0.5,
+    "torch_version": "2.13.0",
+    "imgsz_effective": null,
+    "imgsz_note": "requested only. Ultralytics rounds imgsz up to a multiple of the model stride inside the inference call and does not write the rounded value back to predictor.args, so the effective size cannot be read from this seam. Observed in the SAM 3 runs: a requested 1024 was logged as 1036. Recorded as absent rather than filled in with the request."
+  },
+  "prompt_receipt": {
+    "original_prompt": null,
+    "prompt_sha256": null,
+    "control_phrase": "garment",
+    "planner_role": null,
+    "planner_model": null,
+    "planner_status": "not_applicable",
+    "planner_detail": null,
+    "raw_proposal": null
+  },
+  "decision_receipt": {
+    "catalogue_shown": [
+      {
+        "actuator": "concept_segment",
+        "does": "Measure every instance of a named concept, as real pixel masks.",
+        "requires": [
+          "image",
+          "phrase"
+        ],
+        "produces": [
+          "region",
+          "mark"
+        ],
+        "params_you_may_set": [
+          "phrase"
+        ]
+      }
+    ],
+    "selected_actuator": "concept_segment",
+    "selected_phrase": "garment",
+    "phrase_source": "control",
+    "refused_actions": [],
+    "dropped_params": [],
+    "planner_notes": []
+  },
+  "invocations": [
+    {
+      "call_index": 1,
+      "call_budget": 1,
+      "actuator": "concept_segment",
+      "adapter": "sam3",
+      "kind": "organ",
+      "started_at": 1786209081.012844,
+      "ended_at": 1786209086.826729,
+      "latency_ms": 5813.9,
+      "warm": true,
+      "load_ms": 0.0,
+      "outcome": "ok",
+      "error": null
+    }
+  ],
+  "organ_observation": {
+    "status": "ok",
+    "concept": "garment",
+    "instance_count": 6,
+    "truncated": false,
+    "latency_ms": 5803.0,
+    "device": "mps",
+    "model": "facebook/sam3",
+    "error": null,
+    "detail": null,
+    "instances": [
+      {
+        "index": 0,
+        "confidence": 0.6691,
+        "mask_rle_sha256": "ba26aedb23711272cacb628a24e25d26e31200a355f2acf5ade25cfebee82413",
+        "area_px": 12475,
+        "area_fraction": 0.033724,
+        "bounds": {
+          "x": 0.341912,
+          "y": 0.582353,
+          "w": 0.286765,
+          "h": 0.236765
+        },
+        "mask_size": [
+          680,
+          544
+        ],
+        "well_formed": true
+      },
+      {
+        "index": 1,
+        "confidence": 0.5806,
+        "mask_rle_sha256": "f4bd448dceeadf41ca80aba42f80a87979a4fa7ec45af7a4858e2f4cab46a6a8",
+        "area_px": 3614,
+        "area_fraction": 0.00977,
+        "bounds": {
+          "x": 0.4375,
+          "y": 0.582353,
+          "w": 0.170956,
+          "h": 0.088235
+        },
+        "mask_size": [
+          680,
+          544
+        ],
+        "well_formed": true
+      },
+      {
+        "index": 2,
+        "confidence": 0.3783,
+        "mask_rle_sha256": "53d78d56572243f402672efeec700e6d6bf49ac924acca39a38182f94b6277be",
+        "area_px": 4086,
+        "area_fraction": 0.011046,
+        "bounds": {
+          "x": 0.4375,
+          "y": 0.558824,
+          "w": 0.181985,
+          "h": 0.202941
+        },
+        "mask_size": [
+          680,
+          544
+        ],
+        "well_formed": true
+      },
+      {
+        "index": 3,
+        "confidence": 0.3397,
+        "mask_rle_sha256": "2782a6d4db39b2b651348cee04c2c298589a32b54524e92d4a11850b050f1134",
+        "area_px": 2089,
+        "area_fraction": 0.005647,
+        "bounds": {
+          "x": 0.386029,
+          "y": 0.626471,
+          "w": 0.152574,
+          "h": 0.082353
+        },
+        "mask_size": [
+          680,
+          544
+        ],
+        "well_formed": true
+      },
+      {
+        "index": 4,
+        "confidence": 0.2768,
+        "mask_rle_sha256": "8349551c0da4566ffefc887cd28f465f9931c17b1fdace9bb643e38f33d67a5b",
+        "area_px": 4335,
+        "area_fraction": 0.011719,
+        "bounds": {
+          "x": 0.386029,
+          "y": 0.589706,
+          "w": 0.189338,
+          "h": 0.119118
+        },
+        "mask_size": [
+          680,
+          544
+        ],
+        "well_formed": true
+      },
+      {
+        "index": 5,
+        "confidence": 0.2727,
+        "mask_rle_sha256": "c9b921d358f2bdef8f1be7b381af82e2efebf03fd8ccda57d65c428c29556616",
+        "area_px": 884,
+        "area_fraction": 0.00239,
+        "bounds": {
+          "x": 0.450368,
+          "y": 0.657353,
+          "w": 0.090074,
+          "h": 0.051471
+        },
+        "mask_size": [
+          680,
+          544
+        ],
+        "well_formed": true
+      }
+    ],
+    "repeats": [],
+    "max_pairwise_iou": 0.884023
+  },
+  "actuator_observation": null,
+  "invariance": {
+    "image_sha256_before": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "image_sha256_after": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "image_unchanged": true,
+    "actuators_called": [
+      "concept_segment"
+    ],
+    "lock_held": true,
+    "database_writes_attempted": [],
+    "post_mutated": false,
+    "post_sha256_before": null,
+    "post_sha256_after": null
+  },
+  "artifacts": {
+    "overlay": "overlay.png",
+    "contact_sheet": "contact-sheet.png",
+    "review": "review.md",
+    "observations": [
+      "observations/instance-000.json",
+      "observations/instance-001.json",
+      "observations/instance-002.json",
+      "observations/instance-003.json",
+      "observations/instance-004.json",
+      "observations/instance-005.json",
+      "observations/masks.json"
+    ]
+  }
+}
