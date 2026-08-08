@@ -57,8 +57,22 @@ class FrameRefused(Exception):
     a half-read frame would produce a run whose gaps are artefacts of the intake."""
 
 
+def _plain(value: Any) -> Any:
+    """An enum member down to its value; anything else unchanged.
+
+    `InquiryFrame.model_dump()` — the plain call, which is what Lane A hands over and what the
+    directive says to pass unaltered — leaves `mode` as an `InquiryMode` member, not a string.
+    `InquiryMode` subclasses `str`, so `str(member)` is `'InquiryMode.EXPLORE'` and NOT `'explore'`:
+    the coercion looks like it worked and produces a mode nothing downstream can match. Only
+    `model_dump(mode="json")` flattens it, and requiring that of the caller would put the seam's
+    representation problem in the caller's hands.
+    """
+    return getattr(value, "value", value)
+
+
 def _text_of(entry: Any) -> str:
     """The words in an entry, whatever shape Lane A wrapped them in."""
+    entry = _plain(entry)
     if isinstance(entry, str):
         return entry.strip()
     if isinstance(entry, Mapping):
@@ -101,17 +115,44 @@ class ProposedAction:
                    source=str(d.get("source") or ""), raw=dict(d.get("raw") or {}))
 
 
+#: Where a Perceptual Action Grammar act keeps its role and its words. The grammar declares its
+#: `enums` per PAYLOAD key (`payload.field_role`, `payload.relation_role`), so the payload is the
+#: real home of both; the top level is tried first only so a caller that flattens an act by hand
+#: keeps working.
+_ROLE_KEYS: Tuple[str, ...] = ("role", "field_role", "trace_role", "relation_role", "mode",
+                               "challenge_type", "requested_reading_type")
+_PHRASE_KEYS: Tuple[str, ...] = ("phrase", "text", "query", "label", "draft_text")
+
+
+def _first_of(sources: Tuple[Mapping[str, Any], ...], keys: Tuple[str, ...]) -> str:
+    for source in sources:
+        for key in keys:
+            value = source.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    return ""
+
+
 def _action_of(entry: Any) -> ProposedAction:
+    """One act, normalised to (type, role, phrase) + the original.
+
+    IT LOOKS IN THE PAYLOAD, and that is the whole A→B reconciliation. Reading only the top level
+    made every real `brush_field` arrive with an empty role and an empty phrase, and
+    `derive_goals` names a goal from `action.phrase or action.role`: the acts survived the seam
+    and the words inside them did not, so a goal derived from "brush the fold" was
+    indistinguishable from one derived from an act that said nothing at all.
+    """
     if isinstance(entry, str):
         return ProposedAction(type=entry.strip(), raw={"type": entry.strip()})
     if isinstance(entry, Mapping):
         raw = {str(k): v for k, v in entry.items()}
+        payload = entry.get("payload")
+        sources: Tuple[Mapping[str, Any], ...] = (
+            (entry, payload) if isinstance(payload, Mapping) else (entry,))
         return ProposedAction(
             type=str(entry.get("type") or entry.get("action") or "").strip(),
-            role=str(entry.get("role") or entry.get("field_role") or
-                     entry.get("relation_role") or "").strip(),
-            phrase=str(entry.get("phrase") or entry.get("text") or
-                       entry.get("query") or "").strip(),
+            role=_first_of(sources, _ROLE_KEYS),
+            phrase=_first_of(sources, _PHRASE_KEYS),
             target=str(entry.get("target") or "").strip(),
             source=str(entry.get("source") or "").strip(),
             raw=raw)
@@ -226,7 +267,7 @@ def accept(mapping: Mapping[str, Any]) -> AcceptedFrame:
     return AcceptedFrame(
         inquiry_id=str(mapping.get("inquiry_id") or ""),
         prompt=prompt,                       # VERBATIM. Never rewritten, expanded or clarified.
-        mode=str(mapping.get("mode") or "explore"),
+        mode=str(_plain(mapping.get("mode")) or "explore"),
         attentions=_list("attentions"),
         epistemic_demands=_list("epistemic_demands"),
         proposed_actions=actions,
