@@ -15,6 +15,14 @@ The reconciliation is to correct the guess, not to add a compatibility alias: an
 two names for one thing and no reason to prefer either, and the next reader would have to find out
 by grepping which one was real. The test now calls the real framer and pushes its real
 `model_dump()` through this intake.
+
+## HARNESS-001B2: the demands and terms are TYPED
+
+`epistemic_demands` and `unresolved_terms` were tuples of strings, which threw away two fields Lane
+A had already filled in: `DemandKind` and, for each unresolvable term, the framer's own reason. That
+was not merely lossy — re-deriving the kind from the words turned "way of unfolding", which Lane A
+marks `unresolved`, into a MEASURED criterion. They are `Demand` and `Term` now, and the assertions
+below read `.text` where they used to compare strings.
 """
 from __future__ import annotations
 
@@ -22,8 +30,11 @@ import pytest
 
 from backend.services.inquiry import frame_prompt
 from backend.services.inquiry_engine import fixtures
-from backend.services.inquiry_engine.frame import (REQUIRED_KEYS, SCHEMA_VERSION, AcceptedFrame,
-                                                   FrameRefused, accept)
+from backend.services.inquiry_engine import capability as cap
+from backend.services.inquiry_engine import engine as eng
+from backend.services.inquiry_engine.frame import (DEMAND_KIND_TO_CLAUSE, REQUIRED_KEYS,
+                                                   SCHEMA_VERSION, AcceptedFrame, FrameRefused,
+                                                   accept)
 
 #: The wave's acceptance rehearsal, byte for byte. Lane A, Lane B and Lane C all use this sentence.
 FOLD_PROMPT = (
@@ -90,7 +101,7 @@ def test_structured_entries_are_read_and_the_adjustment_is_recorded_rather_than_
              "unresolved_terms": [{"term": "fold curvature"}]}
     accepted = accept(frame)
     assert accepted.attentions == ("nestedness", "adjacency")
-    assert accepted.unresolved_terms == ("fold curvature",)
+    assert [t.text for t in accepted.unresolved_terms] == ["fold curvature"]
     assert any("attentions" in a for a in accepted.adjustments)
     assert any("unresolved_terms" in a for a in accepted.adjustments)
 
@@ -148,7 +159,7 @@ def test_the_real_frames_structured_entries_are_read_rather_than_refused():
     reshaped them, which is what makes the seam inspectable rather than assumed."""
     accepted = accept(frame_prompt(FOLD_PROMPT, CORPUS).model_dump())
     assert "folding" in accepted.attentions
-    assert "sensuality" in accepted.epistemic_demands
+    assert "sensuality" in {d.text for d in accepted.epistemic_demands}
     assert "sensuality" in accepted.semantic_remainder
     assert accepted.unresolved_terms
     assert any("attentions" in a for a in accepted.adjustments)
@@ -190,5 +201,90 @@ def test_the_imagined_half_of_the_real_prompt_is_carried_and_never_satisfied():
     frame = frame_prompt(FOLD_PROMPT, CORPUS)
     assert any(d.kind.value == "imagined" for d in frame.epistemic_demands)
     run = run_inquiry(frame.model_dump(), now="2026-08-08T12:00:00Z")
-    assert "hybrid" in run.frame.epistemic_demands
+    assert "hybrid" in {d.text for d in run.frame.epistemic_demands}
     assert all(g.status != "satisfied" for g in run.goals)
+
+
+# ── 6. HARNESS-001B2 — the fields the string form was throwing away ──────────
+
+def test_the_declared_demand_kind_is_read_and_never_re_derived():
+    """THE CORRECTNESS FIX, not a tidy-up.
+
+    Lane A marks "way of unfolding" `unresolved` — "names a MANNER … no organ in the sensorium is
+    scoped to a manner". Re-deriving the kind from the words found `fold` inside `unfolding` and
+    produced a MEASURED criterion: a clause the framer explicitly refused to operationalise became
+    one this engine could report having produced.
+    """
+    accepted = accept(frame_prompt(FOLD_PROMPT, CORPUS).model_dump())
+    by_text = {d.text: d for d in accepted.epistemic_demands}
+
+    assert by_text["sensuality"].kind == "interpretive"
+    assert by_text["hybrid"].kind == "imagined"
+    assert by_text["folding"].kind == "measurable"
+    # `measurable` is a CAPACITY and `measured` is a CLAIM. Mapping one to the other is the whole
+    # job of this table, and Lane A named the distinction deliberately.
+    assert by_text["folding"].mode == "measured"
+    assert DEMAND_KIND_TO_CLAUSE["measurable"] == "measured"
+    assert by_text["way of unfolding"].declares_gap is True
+    assert by_text["way of unfolding"].mode == "", "a gap must not become a clause mode"
+
+
+def test_a_manner_lane_a_refused_never_routes_to_a_measuring_instrument():
+    """The regression this seam owes: `unfolding` must not reach the fold-extent instrument."""
+    for manner in ("way of unfolding", "unfolding sensuality"):
+        need_key = cap.need_for_term(manner)
+        # It may route to nothing, or to something that measures nothing — never to an instrument.
+        # ("unfolding sensuality" reaches `interpretive_judgement` through `sensuality`, which is
+        # correct: it is a reading either way and no organ is offered for it.)
+        assert need_key in (None, "interpretive_judgement"), manner
+        if need_key:
+            assert cap.NEEDS[need_key].demands != "measured", manner
+            assert not cap.NEEDS[need_key].actuators and not cap.NEEDS[need_key].organs, manner
+
+    # …while the words the framer DID mean still route. Without this the fix would be a mute.
+    assert cap.need_for_term("folding") == "extent_of_a_named_thing"
+    assert cap.need_for_term("fold-level") == "extent_of_a_named_thing"
+
+
+def test_a_gap_lane_a_declared_is_transported_with_lane_a_s_own_reason():
+    """Lane A's `unresolved` demands and terms are findings made one layer up. Re-deriving them
+    would either produce a worse reason or report the term as an unknown instrument — which reads
+    as a table error here rather than as a considered refusal there."""
+    accepted = accept(frame_prompt(FOLD_PROMPT, CORPUS).model_dump())
+    _inquiry, goals, _notes = eng.derive(accepted, ids=eng._Ids(run_id="r"))
+
+    declared = [g for g in goals if g.declared_gap]
+    assert declared, "no framer-declared gap survived the derivation"
+
+    source = {t.text: t.why for t in accepted.unresolved_terms}
+    source.update({d.text: d.why for d in accepted.epistemic_demands if d.declares_gap})
+    for goal in declared:
+        assert goal.declared_gap == source[goal.phrase]      # verbatim, not a paraphrase
+        assert goal.criteria == (), "a declared gap must not also carry a satisfiable criterion"
+
+    manner = [g for g in goals if g.phrase == "way of unfolding"]
+    assert manner and "manner" in manner[0].declared_gap
+
+
+def test_the_framers_reason_survives_into_the_runs_capability_gaps():
+    """End to end: Lane A's sentence about why nothing can measure a manner reaches the run's
+    `gaps`, where a reader sees it — not a version of it this engine composed."""
+    frame = frame_prompt(FOLD_PROMPT, CORPUS)
+    run = eng.run_inquiry(frame.model_dump(), now="2026-08-08T12:00:00Z")
+    reasons = " ".join(u for gap in run.gaps for u in gap.unmet)
+    assert "manner" in reasons, "the framer's own words did not reach the run"
+    assert all(g.status != "satisfied" for g in run.goals)
+
+
+def test_no_lane_a_demand_or_term_is_silently_dropped():
+    """A dropped clause is invisible in the run. Every demand and term must become a criterion, a
+    goal, or a recorded note — never nothing."""
+    accepted = accept(frame_prompt(FOLD_PROMPT, CORPUS).model_dump())
+    inquiry, goals, notes = eng.derive(accepted, ids=eng._Ids(run_id="r"))
+
+    accounted = {c.clause for c in inquiry.criteria} | {g.phrase for g in goals} | set(notes)
+    for demand in accepted.epistemic_demands:
+        assert (demand.text in accounted or demand.clause in accounted
+                or any(demand.text in n for n in notes)), f"demand {demand.text!r} vanished"
+    for term in accepted.unresolved_terms:
+        assert term.text in accounted, f"unresolved term {term.text!r} vanished"
