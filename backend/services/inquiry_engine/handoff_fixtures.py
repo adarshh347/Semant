@@ -115,7 +115,14 @@ def committed_region(region_id: str = "committed_ground_0") -> Dict[str, Any]:
         "proposed": False,
         "geometry_rev": 0,
     }
-    mask_geometry.canonicalize_geometry(region, provenance={"method": "fixture"})
+    # REGION-PROV-001: THE DRAWER DECLARES ITSELF. This fixture cuts a mask, so it names the
+    # maker like any other drawing path — a Region whose origin is unrecorded can end up grounding
+    # a `measured` claim with nothing left saying whose geometry it was, and the guard in
+    # `test_region_provenance.py` refuses exactly that. It caught this fixture, correctly.
+    mask_geometry.canonicalize_geometry(region, provenance={
+        "adapter": "handoff_fixtures", "model": FAKE_MODEL,
+        "method": "fixture-committed-region",
+    })
     return region
 
 

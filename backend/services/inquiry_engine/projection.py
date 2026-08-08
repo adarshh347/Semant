@@ -43,7 +43,7 @@ PURE apart from the adapters it is handed. No database, no network, no clock it 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from backend.services.inquiry_engine.world import (EXECUTION_UNAVAILABLE, MEASURED_ABSENCE,
                                                    NO_LOCUS, ORGAN_REFUSED, PLANNER_EMPTY,

@@ -18,7 +18,6 @@ from __future__ import annotations
 import pytest
 
 from backend.services import sam3_concept_service, suggestion_service
-from backend.services.director import real_actuators
 from backend.services.inquiry_engine import handoff_fixtures as fx
 from backend.services.inquiry_engine.world import (POINTER_TARGET_MISSING, DeltaRefused, PostDelta,
                                                    PreparedWorldDelta, assert_projectable,

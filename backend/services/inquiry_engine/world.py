@@ -49,8 +49,8 @@ PURE. No database, no network, no model, no clock it was not handed.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 # ── refusal reasons ──────────────────────────────────────────────────────────
 #: Six named reasons, and the reason there are six rather than one `no_new_evidence`: each names a
