@@ -48,6 +48,7 @@ PURE. No database, no network, no model, no clock it was not handed.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -117,8 +118,12 @@ NEEDS: Dict[str, Need] = {
         summary="the real pixel extent of a concept the curator named",
         actuators=("concept_segment", "grounded_sam_find_parts"),
         requires_phrase=True,
+        # `folding` is listed EXPLICITLY now that matching is boundary-aware. It used to be
+        # caught by `fold` as a substring — along with `unfolding`, which is the word Lane A uses
+        # for the manner it says nothing can measure. One of those two was a lucky hit and the
+        # other was the bug; listing the intended one and dropping the accident separates them.
         terms=("segment", "outline", "extent", "mask", "cut out", "every instance", "drapery",
-               "fold", "folds"),
+               "fold", "folds", "folding", "fold-level"),
     ),
     "parts_of_the_image": Need(
         key="parts_of_the_image",
@@ -185,8 +190,13 @@ NEEDS: Dict[str, Need] = {
             "measurement of how a surface TURNS. A monocular depth field orders regions front to "
             "back; it does not yield the local normal a fold's morphology is a claim about, and "
             "reading one off it would be a derivative nobody measured."),
-        terms=("fold curvature", "surface normal", "surface normals", "curvature", "how the fold "
-               "turns", "fold morphology", "unfolding"),
+        # `unfolding` was here and is deliberately gone. It is a MANNER word, and this need is
+        # specifically curvature and surface normals; matching it meant Lane A's "way of unfolding"
+        # — which the framer refused for being a manner at all — came back as a confident gap
+        # against an instrument that is not what it was talking about. Every remaining term names
+        # the measurement, not the manner.
+        terms=("fold curvature", "surface normal", "surface normals", "curvature",
+               "how the fold turns", "fold morphology"),
     ),
     "interpretive_judgement": Need(
         key="interpretive_judgement",
@@ -598,17 +608,25 @@ def resolve_action(action: Any, *, evidence_returned: int = 0, phrase: str = "",
 def need_for_term(term: str) -> Optional[str]:
     """Which declared need a curator's word belongs to, or None.
 
-    Deliberately dumb, and the same shape as `director.planner._score`: phrase containment, longest
+    Deliberately dumb, and the same shape as `director.planner._score`: phrase matching, longest
     match wins, no stemming and no embeddings. None means REFUSE — the caller reports a gap naming
     the term rather than routing it to the nearest-looking instrument. A cleverer matcher would
     produce confident gaps against the wrong organ, which reads as a considered finding.
+
+    ON WORD BOUNDARIES, which is not a tidy-up. Bare substring containment found `fold` inside
+    `unfolding`, so Lane A's "way of unfolding" — a term it explicitly marks unresolvable, "no organ
+    in the sensorium is scoped to a manner" — routed to the fold-extent instrument and became a
+    clause this engine could report having measured. A boundary match keeps `fold-level` (a hyphen
+    IS a boundary) and drops `unfolding`, which is exactly the distinction the framer was making.
     """
-    text = f" {str(term or '').strip().lower()} "
+    text = str(term or "").strip().lower()
+    if not text:
+        return None
     best: Optional[str] = None
     best_score = 0
     for key, need in NEEDS.items():
         for word in need.terms:
-            if word in text and len(word) > best_score:
+            if len(word) > best_score and re.search(rf"\b{re.escape(word)}\b", text):
                 best, best_score = key, len(word)
     return best
 
