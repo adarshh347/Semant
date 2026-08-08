@@ -295,6 +295,36 @@ def matrix_plan(suite_id: str, *, suites_dir: str = matrix.SUITES_DIR,
     return matrix.plan(suite)
 
 
+def matrix_live(suite_id: str, *, suites_dir: Optional[str] = None,
+                runs_root: Optional[str] = None, planner_client: Any = None,
+                only: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Collect the pre-registered matrix. Refuses if the frozen list moved."""
+    suite = matrix.check_suite(matrix.load_suite(suite_id, suites_dir=suites_dir),
+                               source=suite_id)
+    return matrix.run_live(suite, capture, runs_root=runs_root, now=_now(), only=only,
+                           planner_client=planner_client)
+
+
+def matrix_replay(suite_id: str, *, suites_dir: Optional[str] = None,
+                  runs_root: Optional[str] = None) -> Dict[str, Any]:
+    """Rebuild every frozen cell from its observations. Zero live calls, enforced per cell."""
+    suite = matrix.check_suite(matrix.load_suite(suite_id, suites_dir=suites_dir),
+                               source=suite_id)
+    matrix.assert_locks_unchanged(suite, runs_root=runs_root)
+    rows, divergences, live = [], 0, 0
+    for cell in matrix.plan_cells(suite):
+        run_path = contract.run_dir(cell["run_id"], runs_root or contract.RUNS_ROOT)
+        if not contract.is_frozen(run_path):
+            continue
+        out = replay(run_path)
+        live += out["live_calls"]
+        divergences += len(out["divergences"])
+        rows.append({"run_id": cell["run_id"], "live_calls": out["live_calls"],
+                     "divergences": out["divergences"]})
+    return {"suite_id": suite["suite_id"], "replayed": len(rows), "live_calls": live,
+            "divergences": divergences, "rows": rows}
+
+
 def _write_locks(suite_id: str, suite: Dict[str, Any], suites_dir: str) -> None:
     """Rewrite just the two digest lines in the suite file, in place.
 
@@ -477,7 +507,28 @@ def main(argv: Optional[List[str]] = None) -> int:
                           f"{planned['computed_locks']['fixtures_sha256']}")
                     print("            → re-run with --freeze (only before collection begins)")
             return 0 if planned["locks_declared_match_content"] else 1
-        print("matrix: --live, --replay and --report arrive with the runner")
+
+        if args.live:
+            out = matrix_live(args.suite, suites_dir=args.suites_dir)
+            captured = [c for c in out["cells"] if c["status"] == "captured"]
+            frozen = [c for c in out["cells"] if c["status"] == "already_frozen"]
+            print(f"suite       {out['suite_id']}")
+            print(f"captured    {len(captured)}  ·  already frozen (skipped) {len(frozen)}")
+            for c in captured:
+                print(f"  {c['fixture_id']:16} {c['mode']:16} {c['phrase']!r:22} "
+                      f"{c['organ_status']:12} {c['instances']} inst")
+            p = out["planner"]
+            print(f"planner     {len(p['samples'])} planning-only sample(s), "
+                  f"SAM invocations {p['total_sam_invocations']}")
+            return 0
+
+        if args.replay:
+            out = matrix_replay(args.suite, suites_dir=args.suites_dir)
+            print(f"replayed {out['replayed']} cell(s): live calls {out['live_calls']}, "
+                  f"divergences {out['divergences']}")
+            return 1 if (out["live_calls"] or out["divergences"]) else 0
+
+        print("matrix: --report arrives with the scoring")
         return 2
 
     return 2

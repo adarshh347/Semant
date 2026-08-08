@@ -345,3 +345,200 @@ def plan(suite: Dict[str, Any]) -> Dict[str, Any]:
         "computed_locks": computed,
         "declared_locks": suite.get("lock"),
     }
+
+
+# ── running the matrix ────────────────────────────────────────────────────────────────────────
+
+def fixture_by_id(suite: Dict[str, Any], fixture_id: str) -> Dict[str, Any]:
+    for fixture in suite["fixtures"]:
+        if fixture["fixture_id"] == fixture_id:
+            return fixture
+    raise SuiteError(f"no fixture {fixture_id!r} in suite {suite['suite_id']!r}")
+
+
+def cell_manifest(suite: Dict[str, Any], cell: Dict[str, Any], *,
+                  warm: bool) -> Dict[str, Any]:
+    """One matrix cell → a `single-actuator-manifest.v1`.
+
+    Synthesised rather than checked in as 56 near-identical YAML files: the SUITE is the
+    pre-registered artifact, and 56 hand-written manifests would be 56 places for the frozen
+    phrase to drift from it. Each still carries the full manifest contract, so every capture goes
+    through exactly the same `capture()` and the same firewall as a hand-written one — a matrix
+    cell is not a lighter kind of run.
+    """
+    fixture = fixture_by_id(suite, cell["fixture_id"])
+    return {
+        "schema_version": contract.MANIFEST_VERSION,
+        "lab_id": suite["suite_id"],
+        "run_id": cell["run_id"],
+        "title": f"{cell['fixture_id']} · {cell['phrase']!r} · {cell['mode']}",
+        "why": (f"Matrix cell from the pre-registered suite {suite['suite_id']!r}: family "
+                f"{cell['family']!r} (role {cell['role']!r}) against fixture "
+                f"{cell['fixture_id']!r}. The phrase was frozen before any live call in this "
+                f"lane and may not be changed now."),
+        "actuator_lock": suite["actuator_lock"],
+        "mode": cell["mode"],
+        "call_budget": suite["call_budget"],
+        "image": {
+            "source": "local_fixture",
+            "path": fixture["path"],
+            "sha256": fixture["sha256"],
+            "note": (fixture["provenance"].get("observed") or "")[:400],
+        },
+        "prompt": None,
+        "control_phrase": cell["phrase"],
+        "allowed_params": ["phrase"],
+        "model_expectation": {
+            "checkpoint": "facebook/sam3",
+            "preprocessing_version": "sam3-pcs-v1",
+            "conf": 0.25,
+            "imgsz": 1024,
+            "max_instances": 16,
+        },
+        # The FIRST capture of a live matrix pays the cold start; the rest run against a resident
+        # predictor in the same process. Recorded per capture from what was measured, never from
+        # what this field asked for.
+        "warm_or_cold": "warm" if warm else "cold",
+        "repeat_count": 1,
+        "expected_condition": _expected_condition(cell["role"]),
+        "review": {
+            "protocol": "human_visual",
+            "gold_mask_path": None,
+            "questions": list((suite.get("review") or {}).get("questions") or []),
+        },
+        # A matrix cell's pair is the SAME phrase on the SAME fixture through the other arm.
+        # Declared here so `compare` attributes only across a stated pairing.
+        "pair_with": (cell_run_id(suite["suite_id"], cell["fixture_id"], cell["phrase"],
+                                  "organ_direct")
+                      if cell["arm"] == "wrapper_equivalence" else None),
+    }
+
+
+def _expected_condition(role: Optional[str]) -> str:
+    """The role's pre-registered expectation, as the manifest's own vocabulary.
+
+    `fold_target` is `open` and not `positive`: whether local fold geometry is findable here is
+    the QUESTION, and declaring it positive in advance would write the hoped-for answer into the
+    record that is supposed to settle it.
+    """
+    return {
+        "availability_control": "positive",
+        "object_scope": "open",
+        "fold_target": "open",
+        "replication_control": "open",
+        "adversarial_abstraction": "adversarial",
+        "negative_control": "negative",
+    }.get(role or "", "open")
+
+
+def run_live(suite: Dict[str, Any], capture_fn: Any, *, runs_root: Optional[str] = None,
+             now: Optional[str] = None, only: Optional[List[str]] = None,
+             planner_client: Any = None) -> Dict[str, Any]:
+    """Collect the matrix. One capture per cell, each with its own budget of one.
+
+    NO RETRIES, ANYWHERE. An empty result is a result and is recorded as one. A runner that
+    re-issued a call on empty would convert the matrix's most important observation — that a
+    frozen phrase returns nothing — into a sampling artifact, and would do it invisibly.
+
+    Cells already frozen are SKIPPED rather than re-run, so an interrupted collection resumes
+    without spending a second attempt on anything already measured.
+    """
+    runs_root = runs_root or contract.RUNS_ROOT
+    assert_locks_unchanged(suite, runs_root=runs_root)
+    marker = begin_collection(suite, runs_root=runs_root, captured_at=now)
+
+    cells = plan_cells(suite)
+    if only:
+        cells = [c for c in cells if c["fixture_id"] in only or c["run_id"] in only]
+
+    results: List[Dict[str, Any]] = []
+    warm = False
+    for cell in cells:
+        run_path = contract.run_dir(cell["run_id"], runs_root)
+        if contract.is_frozen(run_path):
+            results.append({**cell, "status": "already_frozen", "run_path": run_path})
+            warm = True
+            continue
+        manifest = cell_manifest(suite, cell, warm=warm)
+        manifest_path = os.path.join(run_path, "manifest.json")
+        contract.write_json(manifest_path, manifest)
+        out = capture_fn(manifest_path, runs_root=runs_root)
+        warm = True                       # the predictor is resident for the rest of the process
+        organ = out["trace"]["organ_observation"]
+        results.append({
+            **cell,
+            "status": "captured",
+            "run_path": out["run_path"],
+            "organ_status": organ["status"],
+            "instances": organ["instance_count"],
+            "attribution": out["score"]["verdict"]["attribution"],
+        })
+
+    planner = sample_planner(suite, client=planner_client, runs_root=runs_root, now=now)
+    return {"suite_id": suite["suite_id"], "marker": marker, "cells": results,
+            "planner": planner}
+
+
+# ── planner stability, which spends no SAM attempts ───────────────────────────────────────────
+
+def sample_planner(suite: Dict[str, Any], *, client: Any = None,
+                   runs_root: Optional[str] = None, now: Optional[str] = None,
+                   ) -> Dict[str, Any]:
+    """Independent planner receipts for the unchanged prompt. PLANNING ONLY.
+
+    The suite declares `planning_only: true` in advance and this function honours it
+    structurally: it calls `firewall.authorize`, never `firewall.invoke`. The firewall therefore
+    records what the planner asked for and what was refused, and its `attempts` list stays empty
+    — so a planner receipt cannot be mistaken for an organ result by anything downstream, and
+    `sam_invocations: 0` is a measured property of the run rather than a claim in a docstring.
+
+    C1 called the planner once per capture and happened to receive `folded drapery` twice. That
+    is not stability, and this exists because it was reported as if it might be.
+    """
+    from .firewall import Firewall
+    from . import planner as lab_planner
+
+    runs_root = runs_root or contract.RUNS_ROOT
+    sampling = suite["planner_sampling"]
+    samples: List[Dict[str, Any]] = []
+
+    for index in range(int(sampling["samples"])):
+        fw = Firewall(suite["actuator_lock"], call_budget=suite["call_budget"])
+        proposal = lab_planner.propose(sampling["prompt"], firewall=fw, client=client)
+        selected: Optional[Dict[str, Any]] = None
+        for step in proposal.steps:
+            auth = fw.authorize(step.actuator, step.params)
+            if auth.allowed and selected is None:
+                selected = {"actuator": auth.actuator, "params": dict(auth.params)}
+            # every remaining step is still put to the firewall, so its refusal is recorded
+        fw.dropped_params.extend(proposal.dropped)
+        samples.append({
+            "sample": index + 1,
+            "kind": "planning_only",         # never an organ observation; see the docstring
+            "planner_status": proposal.status,
+            "model": proposal.model,
+            "role": proposal.role,
+            "selected_actuator": (selected or {}).get("actuator"),
+            "selected_phrase": ((selected or {}).get("params") or {}).get("phrase"),
+            "declared_params": (selected or {}).get("params") or {},
+            "refused_out_of_lock": fw.requested_unlocked(),
+            "refusals": [r.to_dict() for r in fw.refusals],
+            "dropped_params": list(fw.dropped_params),
+            "raw_proposal": proposal.raw,
+            "sam_invocations": len(fw.attempts),      # must be 0, and is asserted to be
+            "notes": list(proposal.notes),
+        })
+
+    payload = {
+        "suite_id": suite["suite_id"],
+        "prompt": sampling["prompt"],
+        "prompt_sha256": contract.sha256_bytes(sampling["prompt"].encode("utf-8")),
+        "planning_only": True,
+        "declared_model_contract": sampling.get("model_contract"),
+        "sampled_at": now,
+        "samples": samples,
+        "total_sam_invocations": sum(s["sam_invocations"] for s in samples),
+    }
+    contract.write_json(os.path.join(runs_root, suite["suite_id"], "planner-samples.json"),
+                        payload)
+    return payload

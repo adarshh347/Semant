@@ -21,9 +21,15 @@ SCRIPTS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))), "scripts")
 if SCRIPTS not in sys.path:
     sys.path.insert(0, SCRIPTS)
+# This directory too, so the C1 fakes can be reused rather than copied. Two FakeSams that drifted
+# apart would let the matrix tests pass against a stub the lab tests no longer describe.
+TESTS = os.path.dirname(os.path.abspath(__file__))
+if TESTS not in sys.path:
+    sys.path.insert(0, TESTS)
 
 import single_actuator_lab as lab                                    # noqa: E402
 from single_actuator_lab_support import contract, matrix             # noqa: E402
+from test_single_actuator_lab import FakePlanner, FakeSam, _mask     # noqa: E402
 
 SUITE_ID = "sam3-fold-phrase-matrix"
 
@@ -38,6 +44,19 @@ PRE_REGISTERED = {
     "adversarial_abstraction": ["sensuality"],
     "negative_control": ["bicycle"],
 }
+
+
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    """Belt and braces: no test in this file may reach a planner API.
+
+    Passing a fake client is the per-test discipline, and discipline is what gets forgotten. This
+    empties the key so a test that omits one records `planner_unavailable` instead of quietly
+    calling out — which is how five real API calls per test hid behind a suite that merely looked
+    slow (3% CPU, two minutes of wall clock, and nothing in the output saying why).
+    """
+    from backend.config import settings
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "", raising=False)
 
 
 @pytest.fixture
@@ -317,3 +336,206 @@ def test_plan_runs_nothing(suite, monkeypatch):
     monkeypatch.setattr(sam, "load", _boom)
     planned = lab.matrix_plan(SUITE_ID)
     assert planned["capture_count"] == 56
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# 6. The runner — on fakes, no model anywhere
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+#: Every runner test passes this. `run_live` with `planner_client=None` resolves a REAL Groq
+#: client from settings, and a developer `.env` with a live key would make the focused suite
+#: call the network five times per test — found by a profile showing 3% CPU and two minutes of
+#: wall clock. A test that reaches the internet is not a fast test and is not a hermetic one.
+_NO_NETWORK = FakePlanner({"steps": [{"actuator": "concept_segment",
+                                      "params": {"phrase": "folded drapery"}}]})
+
+
+@pytest.fixture
+def tiny_suite(tmp_path, suite):
+    """A two-fixture, four-phrase suite over real checked-in images, so the runner is exercised
+    end to end without 56 captures. The fixtures and their hashes are real; only the size of the
+    matrix is reduced."""
+    small = copy.deepcopy(suite)
+    small["suite_id"] = "tiny-suite"
+    small["fixtures"] = small["fixtures"][:2]
+    small["phrase_families"] = [
+        {"family": "availability_control", "role": "availability_control", "phrases": ["face"]},
+        {"family": "fold_target", "role": "fold_target", "phrases": ["robe folds", "creases"]},
+        {"family": "negative_control", "role": "negative_control", "phrases": ["bicycle"]},
+    ]
+    small["arms"]["wrapper_equivalence"]["phrases"] = ["face"]
+    small["lock"] = matrix.compute_locks(small)
+    path = tmp_path / "tiny-suite.yaml"
+    import yaml
+    path.write_text(yaml.safe_dump(small))
+    return small, str(tmp_path)
+
+
+@pytest.fixture
+def sam(monkeypatch):
+    def _install(fake):
+        import backend.services.sam3_concept_service as real
+        for name in ("weights_path", "is_available", "device", "load", "unload",
+                     "segment_concept"):
+            monkeypatch.setattr(real, name, getattr(fake, name))
+        from single_actuator_lab_support import arms as arms_mod
+        monkeypatch.setattr(arms_mod, "_svc", lambda: real)
+        original = contract.environment_receipt
+        monkeypatch.setattr(contract, "environment_receipt",
+                            lambda m: {**original(m), "runtime_available": True,
+                                       "weights_present": True, "device": "cpu"})
+        return real
+    return _install
+
+
+def test_the_runner_captures_every_cell_with_its_own_budget_of_one(tmp_path, tiny_suite, sam):
+    small, suites_dir = tiny_suite
+    sam(FakeSam([{"index": 0, "mask_rle": _mask(680, 544, 10, 60, 10, 60), "confidence": 0.8}]))
+    runs = str(tmp_path / "runs")
+
+    out = matrix.run_live(small, lab.capture, planner_client=_NO_NETWORK, runs_root=runs, now="t0")
+    cells = out["cells"]
+    assert len(cells) == 2 * 4 + 2 * 1 == 10
+    assert all(c["status"] == "captured" for c in cells)
+
+    for cell in cells:
+        trace = contract.read_json(os.path.join(cell["run_path"], "trace.json"))
+        assert len(trace["invocations"]) == 1
+        assert trace["invocations"][0]["call_budget"] == 1
+        assert trace["invariance"]["lock_held"] is True
+        assert trace["invariance"]["database_writes_attempted"] == []
+        assert trace["invariance"]["image_unchanged"] is True
+
+
+def test_an_empty_cell_is_never_retried(tmp_path, tiny_suite, sam):
+    """The matrix's most important observation is that a frozen phrase returns nothing. A runner
+    that re-issued on empty would convert that into a sampling artifact, invisibly."""
+    small, _ = tiny_suite
+    fake = FakeSam([])
+    sam(fake)
+    runs = str(tmp_path / "runs")
+    out = matrix.run_live(small, lab.capture, planner_client=_NO_NETWORK, runs_root=runs, now="t0")
+    assert fake.calls == len(out["cells"]) == 10, "a cell was called more than once"
+    assert all(c["organ_status"] == "empty" for c in out["cells"])
+
+
+def test_a_second_live_run_skips_frozen_cells_rather_than_spending_again(tmp_path, tiny_suite,
+                                                                        sam):
+    small, _ = tiny_suite
+    fake = FakeSam([])
+    sam(fake)
+    runs = str(tmp_path / "runs")
+    matrix.run_live(small, lab.capture, planner_client=_NO_NETWORK, runs_root=runs, now="t0")
+    first = fake.calls
+    again = matrix.run_live(small, lab.capture, planner_client=_NO_NETWORK, runs_root=runs, now="t1")
+    assert fake.calls == first, "a resumed collection re-spent a budget on a frozen cell"
+    assert all(c["status"] == "already_frozen" for c in again["cells"])
+
+
+def test_the_first_capture_is_cold_and_the_rest_are_warm(tmp_path, tiny_suite, sam):
+    """Measured, not declared: `warm` is read off what the loader actually reported."""
+    small, _ = tiny_suite
+    sam(FakeSam([]))
+    runs = str(tmp_path / "runs")
+    out = matrix.run_live(small, lab.capture, planner_client=_NO_NETWORK, runs_root=runs, now="t0")
+    warmth = []
+    for cell in out["cells"]:
+        trace = contract.read_json(os.path.join(cell["run_path"], "trace.json"))
+        warmth.append(trace["invocations"][0]["warm"])
+    assert warmth[0] is False and all(warmth[1:]), warmth
+
+
+def test_the_runner_refuses_when_the_frozen_phrases_moved(tmp_path, tiny_suite, sam):
+    small, _ = tiny_suite
+    sam(FakeSam([]))
+    runs = str(tmp_path / "runs")
+    matrix.run_live(small, lab.capture, planner_client=_NO_NETWORK, runs_root=runs, now="t0")
+
+    edited = copy.deepcopy(small)
+    edited["phrase_families"][1]["phrases"].append("cloth folds")
+    edited["lock"] = matrix.compute_locks(edited)
+    with pytest.raises(matrix.LockViolation, match="changed after collection began"):
+        matrix.run_live(edited, lab.capture, planner_client=_NO_NETWORK, runs_root=runs, now="t1")
+
+
+def test_cell_manifests_carry_the_full_manifest_contract(tiny_suite):
+    """A matrix cell is not a lighter kind of run: its synthesised manifest validates against the
+    same schema and goes through the same firewall as a hand-written one."""
+    small, _ = tiny_suite
+    for cell in matrix.plan_cells(small):
+        manifest = matrix.cell_manifest(small, cell, warm=True)
+        assert contract.validate(manifest, "manifest") == [], cell["run_id"]
+
+
+def test_a_fold_target_cell_is_declared_open_not_positive(tiny_suite):
+    """Whether local fold geometry is findable is the QUESTION. Declaring it positive would write
+    the hoped-for answer into the record meant to settle it."""
+    small, _ = tiny_suite
+    conditions = {c["role"]: matrix.cell_manifest(small, c, warm=True)["expected_condition"]
+                  for c in matrix.plan_cells(small)}
+    assert conditions["fold_target"] == "open"
+    assert conditions["availability_control"] == "positive"
+    assert conditions["negative_control"] == "negative"
+
+
+# ── planner sampling ──────────────────────────────────────────────────────────────────────────
+
+def test_planner_samples_spend_no_sam_attempts(tmp_path, tiny_suite, sam):
+    """Structural, not promised: `sample_planner` calls authorize and never invoke."""
+    small, _ = tiny_suite
+    fake = FakeSam([{"index": 0, "mask_rle": _mask(680, 544, 5, 40, 5, 40), "confidence": 0.9}])
+    sam(fake)
+    runs = str(tmp_path / "runs")
+    client = FakePlanner({"steps": [{"actuator": "concept_segment",
+                                     "params": {"phrase": "folded drapery"}}]})
+    out = matrix.sample_planner(small, client=client, runs_root=runs, now="t0")
+    assert fake.calls == 0, "a planner sample called the organ"
+    assert out["total_sam_invocations"] == 0
+    assert len(out["samples"]) == small["planner_sampling"]["samples"] >= 5
+    assert all(s["sam_invocations"] == 0 for s in out["samples"])
+    assert client.calls == len(out["samples"]), "one call per sample, no re-prompt loop"
+
+
+def test_a_planner_receipt_cannot_masquerade_as_an_organ_empty(tmp_path, tiny_suite, sam):
+    """A planning-only receipt has no organ observation and says what kind of thing it is."""
+    small, _ = tiny_suite
+    sam(FakeSam([]))
+    runs = str(tmp_path / "runs")
+    out = matrix.sample_planner(small, client=FakePlanner({"steps": []}), runs_root=runs)
+    for sample in out["samples"]:
+        assert sample["kind"] == "planning_only"
+        assert "organ_observation" not in sample
+        assert "instance_count" not in sample
+    assert out["planning_only"] is True
+
+
+def test_planner_reach_beyond_the_lock_is_refused_and_recorded(tmp_path, tiny_suite, sam):
+    small, _ = tiny_suite
+    sam(FakeSam([]))
+    runs = str(tmp_path / "runs")
+    client = FakePlanner({"steps": [
+        {"actuator": "semantic_read", "params": {"question": "compare the traditions"}},
+        {"actuator": "concept_segment", "params": {"phrase": "drapery folds"}}]})
+    out = matrix.sample_planner(small, client=client, runs_root=runs)
+    for sample in out["samples"]:
+        assert sample["refused_out_of_lock"] == ["semantic_read"]
+        assert sample["selected_phrase"] == "drapery folds"
+        assert sample["sam_invocations"] == 0
+
+
+# ── replay ────────────────────────────────────────────────────────────────────────────────────
+
+def test_every_matrix_cell_replays_with_zero_live_calls(tmp_path, tiny_suite, sam, monkeypatch):
+    small, suites_dir = tiny_suite
+    fake = FakeSam([{"index": 0, "mask_rle": _mask(680, 544, 8, 50, 8, 50), "confidence": 0.7}])
+    sam(fake)
+    runs = str(tmp_path / "runs")
+    matrix.run_live(small, lab.capture, planner_client=_NO_NETWORK, runs_root=runs, now="t0")
+    spent = fake.calls
+
+    for cell in matrix.plan_cells(small):
+        run_path = contract.run_dir(cell["run_id"], runs)
+        out = lab.replay(run_path)
+        assert out["live_calls"] == 0
+        assert out["divergences"] == []
+    assert fake.calls == spent, "replay called the organ"
