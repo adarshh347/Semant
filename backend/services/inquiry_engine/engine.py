@@ -222,7 +222,9 @@ def derive(frame: AcceptedFrame, *, ids: _Ids, post_id: str = "", region_id: str
                     else declared_gap or f"nothing declared serves {phrase!r}")))
 
     for action in frame.proposed_actions:
-        words = action.phrase or action.role or ""
+        # THE CONCEPT, not the caption. `action.phrase` falls back to a grammar `label` — a UI
+        # string — and this goal's words become an open-vocabulary segmentation query downstream.
+        words = action.concept or ""
         # The act is CARRIED, not flattened to the need. Three public acts have rules of their own
         # in `capability.resolve_action` and a goal reduced to a need would lose all three.
         need_key = cap.need_for_term(words) or cap.need_for_action(action.type) or ""

@@ -213,6 +213,22 @@ class ProposedAction:
     source: str = ""
     raw: Dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def concept(self) -> str:
+        """The words to hand an OPEN-VOCABULARY FINDER, which are not always the words to show.
+
+        `phrase` takes an act's `label` when nothing more specific is there, and a grammar label is
+        a UI string: Lane A's fold act is labelled "Brush fold". Handed to `concept_segment` that
+        becomes the segmentation query — the model is asked to find "Brush fold" in a photograph,
+        the proposed regions come back named `cseg_Brush_fold_0`, and nothing anywhere fails. The
+        run just quietly asks the wrong question.
+
+        The ROLE is the curator's concept (`field_role: "fold"`, from the attention term they
+        actually used), so it wins here and only here. `phrase` is unchanged for every other
+        consumer — a display string is the right thing to display.
+        """
+        return self.role or self.phrase
+
     def to_dict(self) -> Dict[str, Any]:
         return {"type": self.type, "role": self.role, "phrase": self.phrase,
                 "target": self.target, "source": self.source, "raw": dict(self.raw)}
