@@ -7,24 +7,32 @@ and strict where it must be (the contract, and the prompt).
 
 ## The cross-lane test
 
-`test_lane_a_real_frame_passes_through_the_intake_unchanged` is SKIPPED until Lane A merges, and it
-skips out loud with a reason rather than being absent. A test that does not exist yet is invisible;
-a skip is in the summary line where a reader can see the shape of what is not covered.
+`test_lane_a_real_frame_passes_through_the_intake_unchanged` was SKIPPED while the two lanes were
+built in parallel, pointing at a GUESSED module name (`backend.services.prompt_mind`). Lane A has
+landed and built `backend.services.inquiry`, with its schema in `backend.schemas.inquiry`.
+
+The reconciliation is to correct the guess, not to add a compatibility alias: an alias would leave
+two names for one thing and no reason to prefer either, and the next reader would have to find out
+by grepping which one was real. The test now calls the real framer and pushes its real
+`model_dump()` through this intake.
 """
 from __future__ import annotations
 
-import importlib.util
-
 import pytest
 
+from backend.services.inquiry import frame_prompt
 from backend.services.inquiry_engine import fixtures
 from backend.services.inquiry_engine.frame import (REQUIRED_KEYS, SCHEMA_VERSION, AcceptedFrame,
                                                    FrameRefused, accept)
 
-HAS_LANE_A = importlib.util.find_spec("backend.services.prompt_mind") is not None
-LANE_A_SKIP = ("Lane A (`feat/prompt-decision-mind`) has not merged. Until it does, Lane B accepts "
-               "`inquiry-frame.v1` by shape and does not import Lane A — the board's rule for "
-               "building the two in parallel.")
+#: The wave's acceptance rehearsal, byte for byte. Lane A, Lane B and Lane C all use this sentence.
+FOLD_PROMPT = (
+    "Explore the fold-level aesthetic and style relations between Renaissance and Buddha "
+    "sculptures, their common way of unfolding sensuality, where they drift apart, and what "
+    "hybrid styles they could give birth to."
+)
+CORPUS = {"post_ids": ["fixture_renaissance_01", "fixture_buddha_01"],
+          "titles": ["Piet\u00e0, marble", "Seated Buddha, Gandhara schist"]}
 
 
 # ── 1. what intake refuses ───────────────────────────────────────────────────
@@ -117,16 +125,70 @@ def test_an_accepted_frame_survives_its_own_serialization():
     assert AcceptedFrame.from_dict(accepted.to_dict()) == accepted
 
 
-# ── 5. the cross-lane contract test, waiting for Lane A ──────────────────────
+# ── 5. the cross-lane contract test, now that Lane A has landed ──────────────
 
-@pytest.mark.skipif(not HAS_LANE_A, reason=LANE_A_SKIP)
 def test_lane_a_real_frame_passes_through_the_intake_unchanged():
-    """After Lane A merges: its real `InquiryFrame.model_dump()` goes into this intake unchanged.
+    """Lane A's real `InquiryFrame.model_dump()`, into this intake, unaltered.
 
-    If the shapes differ, the fix is a normaliser in `frame.py` and nothing downstream moves — the
-    intake adapter, not either engine, owns any representation adjustment.
+    Not a fixture shaped like one: `frame_prompt` runs the deterministic framer over the shared
+    attunement lexicon and the Perceptual Action Grammar, and what comes out is what Lane A hands
+    anybody.
     """
-    from backend.services.prompt_mind import InquiryFrame      # type: ignore  # noqa: F401
-    raise AssertionError(
-        "Lane A has merged: replace this body with a real frame built by Lane A, passed through "
-        "`accept()` unchanged, and assert the derived goal hierarchy is non-empty.")
+    frame = frame_prompt(FOLD_PROMPT, CORPUS)
+    accepted = accept(frame.model_dump())
+
+    assert accepted.inquiry_id == frame.inquiry_id
+    assert accepted.prompt == frame.prompt == FOLD_PROMPT
+    assert accepted.mode == frame.mode.value
+    assert accepted.raw == frame.model_dump()          # carried whole; nothing dropped
+
+
+def test_the_real_frames_structured_entries_are_read_rather_than_refused():
+    """Lane A emits mappings, not strings, for every list field. The intake reads them and SAYS it
+    reshaped them, which is what makes the seam inspectable rather than assumed."""
+    accepted = accept(frame_prompt(FOLD_PROMPT, CORPUS).model_dump())
+    assert "folding" in accepted.attentions
+    assert "sensuality" in accepted.epistemic_demands
+    assert "sensuality" in accepted.semantic_remainder
+    assert accepted.unresolved_terms
+    assert any("attentions" in a for a in accepted.adjustments)
+
+
+def test_the_acts_words_survive_the_seam_and_not_only_the_acts():
+    """The one reconciliation this seam actually needed.
+
+    A Perceptual Action Grammar act keeps its role and its label in `payload`, because the grammar
+    declares its `enums` per payload key. Reading only the top level let every `brush_field`
+    through with an empty role and an empty phrase — and `derive_goals` names a goal from
+    `phrase or role`, so the words were lost exactly where they were about to be used.
+    """
+    accepted = accept(frame_prompt(FOLD_PROMPT, CORPUS).model_dump())
+    brush = [a for a in accepted.proposed_actions if a.type == "brush_field"]
+    assert brush, "the fold prompt proposes a brush_field"
+    assert brush[0].role == "fold"
+    assert brush[0].phrase
+    connects = [a for a in accepted.proposed_actions if a.type == "connect_marks"]
+    assert {a.role for a in connects} == {"similarity", "contrast"}
+
+
+def test_a_real_frame_derives_a_non_empty_goal_hierarchy():
+    """The point of the seam: Lane A's frame produces Lane B's goals, with no fixture between."""
+    from backend.services.inquiry_engine.engine import run_inquiry
+
+    run = run_inquiry(frame_prompt(FOLD_PROMPT, CORPUS).model_dump(), now="2026-08-08T12:00:00Z")
+    assert run.frame.prompt == FOLD_PROMPT         # unrewritten, all the way down
+    assert [g for g in run.goals if g.kind == "inquiry"]
+    assert [g for g in run.goals if g.kind == "evidence"]
+    assert run.stop_reason
+
+
+def test_the_imagined_half_of_the_real_prompt_is_carried_and_never_satisfied():
+    """`hybrid` is Lane A's `imagined` demand. It must arrive, be named, and stay unsatisfiable —
+    dropping it is the quietest possible way to lose the hardest half of the prompt."""
+    from backend.services.inquiry_engine.engine import run_inquiry
+
+    frame = frame_prompt(FOLD_PROMPT, CORPUS)
+    assert any(d.kind.value == "imagined" for d in frame.epistemic_demands)
+    run = run_inquiry(frame.model_dump(), now="2026-08-08T12:00:00Z")
+    assert "hybrid" in run.frame.epistemic_demands
+    assert all(g.status != "satisfied" for g in run.goals)
