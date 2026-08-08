@@ -1,0 +1,148 @@
+{
+  "suite_id": "sam3-fold-phrase-matrix",
+  "prompt": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures, their common way of unfolding sensuality, where they drift apart, and what hybrid styles they could give birth to.",
+  "prompt_sha256": "71890ec1c9e9ae2670792949b797ad80c7c417e139df9a893f0c11810a5b3519",
+  "planning_only": true,
+  "declared_model_contract": {
+    "role": "step_planner",
+    "model": null,
+    "temperature": null,
+    "response_format": "json_object"
+  },
+  "sampled_at": "2026-08-08T17:10:58+00:00",
+  "samples": [
+    {
+      "sample": 1,
+      "kind": "planning_only",
+      "planner_status": "empty",
+      "model": "openai/gpt-oss-120b",
+      "role": "step_planner",
+      "selected_actuator": null,
+      "selected_phrase": null,
+      "declared_params": {},
+      "refused_out_of_lock": [],
+      "refusals": [],
+      "dropped_params": [],
+      "raw_proposal": {
+        "steps": []
+      },
+      "sam_invocations": 0,
+      "notes": [
+        "the planner proposed no steps"
+      ]
+    },
+    {
+      "sample": 2,
+      "kind": "planning_only",
+      "planner_status": "ok",
+      "model": "openai/gpt-oss-120b",
+      "role": "step_planner",
+      "selected_actuator": "concept_segment",
+      "selected_phrase": "sculpture",
+      "declared_params": {
+        "phrase": "sculpture"
+      },
+      "refused_out_of_lock": [],
+      "refusals": [],
+      "dropped_params": [],
+      "raw_proposal": {
+        "steps": [
+          {
+            "actuator": "concept_segment",
+            "params": {
+              "phrase": "sculpture"
+            },
+            "note": "captures both Renaissance and Buddha sculptures for visual comparison"
+          }
+        ]
+      },
+      "sam_invocations": 0,
+      "notes": []
+    },
+    {
+      "sample": 3,
+      "kind": "planning_only",
+      "planner_status": "ok",
+      "model": "openai/gpt-oss-120b",
+      "role": "step_planner",
+      "selected_actuator": "concept_segment",
+      "selected_phrase": "drapery",
+      "declared_params": {
+        "phrase": "drapery"
+      },
+      "refused_out_of_lock": [],
+      "refusals": [],
+      "dropped_params": [],
+      "raw_proposal": {
+        "steps": [
+          {
+            "actuator": "concept_segment",
+            "params": {
+              "phrase": "drapery"
+            },
+            "note": "captures the visible folds in the sculptures"
+          }
+        ]
+      },
+      "sam_invocations": 0,
+      "notes": []
+    },
+    {
+      "sample": 4,
+      "kind": "planning_only",
+      "planner_status": "ok",
+      "model": "openai/gpt-oss-120b",
+      "role": "step_planner",
+      "selected_actuator": "concept_segment",
+      "selected_phrase": "fabric folds",
+      "declared_params": {
+        "phrase": "fabric folds"
+      },
+      "refused_out_of_lock": [],
+      "refusals": [],
+      "dropped_params": [],
+      "raw_proposal": {
+        "steps": [
+          {
+            "actuator": "concept_segment",
+            "params": {
+              "phrase": "fabric folds"
+            },
+            "note": "captures the folds in clothing of both Renaissance and Buddha sculptures"
+          }
+        ]
+      },
+      "sam_invocations": 0,
+      "notes": []
+    },
+    {
+      "sample": 5,
+      "kind": "planning_only",
+      "planner_status": "ok",
+      "model": "openai/gpt-oss-120b",
+      "role": "step_planner",
+      "selected_actuator": "concept_segment",
+      "selected_phrase": "fold",
+      "declared_params": {
+        "phrase": "fold"
+      },
+      "refused_out_of_lock": [],
+      "refusals": [],
+      "dropped_params": [],
+      "raw_proposal": {
+        "steps": [
+          {
+            "actuator": "concept_segment",
+            "params": {
+              "phrase": "fold"
+            },
+            "note": "capture visible folds on sculptures for style comparison"
+          }
+        ]
+      },
+      "sam_invocations": 0,
+      "notes": []
+    }
+  ],
+  "total_sam_invocations": 0
+}

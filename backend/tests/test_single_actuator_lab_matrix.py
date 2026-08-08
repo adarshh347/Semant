@@ -855,3 +855,126 @@ def test_overlays_regenerate_from_frozen_observations_with_zero_live_calls(tmp_p
     assert fake.calls == spent, "rendering called the organ"
     assert out["rendered"], "nothing was rebuilt"
     assert all(p.exists() for p in overlays), "an overlay was not restored"
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# 9. The checked-in evidence — replayed, with zero live calls
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+COLLECTED = os.path.join(contract.RUNS_ROOT, SUITE_ID)
+has_evidence = pytest.mark.skipif(
+    not os.path.exists(os.path.join(COLLECTED, "collection.json")),
+    reason="the sam3-fold-phrase-matrix evidence is not present in this checkout")
+
+
+@has_evidence
+def test_the_committed_collection_marker_matches_the_committed_suite(suite):
+    """The frozen experiment and the suite in the tree must still agree. If they ever diverge,
+    the phrases were edited after collection and every number below is about a different
+    experiment than the one the suite describes."""
+    marker = contract.read_json(os.path.join(COLLECTED, "collection.json"))
+    assert marker["locks"] == matrix.compute_locks(suite)
+    assert matrix.assert_locks_unchanged(suite) is not None
+
+
+@has_evidence
+def test_every_committed_cell_replays_with_zero_live_calls_and_zero_divergence(suite,
+                                                                              monkeypatch):
+    """The whole matrix, rebuilt from frozen observations. No model, no GPU, no network."""
+    import backend.services.sam3_concept_service as sam_svc
+
+    def _boom(*a, **k):
+        raise AssertionError("replay reached the organ")
+
+    monkeypatch.setattr(sam_svc, "segment_concept", _boom)
+    monkeypatch.setattr(sam_svc, "load", _boom)
+
+    replayed = 0
+    for cell in matrix.plan_cells(suite):
+        run_path = contract.run_dir(cell["run_id"])
+        if not contract.is_frozen(run_path):
+            continue
+        out = lab.replay(run_path)
+        assert out["live_calls"] == 0, cell["run_id"]
+        assert out["divergences"] == [], cell["run_id"]
+        replayed += 1
+    assert replayed == 56, f"expected 56 frozen cells, replayed {replayed}"
+
+
+@has_evidence
+def test_every_committed_cell_schema_validates(suite):
+    for cell in matrix.plan_cells(suite):
+        run_path = contract.run_dir(cell["run_id"])
+        if not contract.is_frozen(run_path):
+            continue
+        results = lab.validate_run(run_path)
+        assert all(errors == [] for errors in results.values()), (cell["run_id"], results)
+
+
+@has_evidence
+def test_the_committed_evidence_holds_every_invariant(suite):
+    out = matrix.report(suite)
+    inv = out["invariants"]
+    assert inv["captures"] == 56
+    assert inv["invocations"] == 56, "one invocation per capture, no more and no fewer"
+    assert inv["lock_held"] is True
+    assert inv["database_writes"] == 0
+    assert inv["source_mutations"] == 0
+    assert inv["violations"] == []
+
+
+@has_evidence
+def test_the_committed_masks_preserve_measured_geometry_and_interpretive_naming(suite):
+    """The two-status contract, checked on the checked-in records rather than on fakes."""
+    from backend.services.epistemics import EpistemicStatus
+    seen_measured = seen_interpretive = 0
+    for cell in matrix.plan_cells(suite):
+        if cell["mode"] != "actuator_direct":
+            continue
+        run_path = contract.run_dir(cell["run_id"])
+        if not contract.is_frozen(run_path):
+            continue
+        trace = contract.read_json(os.path.join(run_path, "trace.json"))
+        actuator = trace.get("actuator_observation") or {}
+        for descriptor in actuator.get("descriptors") or []:
+            if descriptor["producer"] == "concept_segment":
+                assert descriptor["status"] == EpistemicStatus.MEASURED.value
+                assert descriptor["geometry_kind"] == "raster_mask"
+                assert descriptor["label"] == ""
+                seen_measured += 1
+            elif descriptor["producer"] == "concept_naming":
+                assert descriptor["status"] == EpistemicStatus.INTERPRETIVE.value
+                assert descriptor["geometry_kind"] == "region_ref"
+                seen_interpretive += 1
+    assert seen_measured and seen_interpretive, "no two-status evidence was collected"
+
+
+@has_evidence
+def test_the_committed_planner_samples_spent_no_attempts(suite):
+    payload = contract.read_json(os.path.join(COLLECTED, "planner-samples.json"))
+    assert payload["planning_only"] is True
+    assert payload["total_sam_invocations"] == 0
+    assert len(payload["samples"]) >= 5
+    for sample in payload["samples"]:
+        assert sample["kind"] == "planning_only"
+        assert sample["sam_invocations"] == 0
+
+
+@has_evidence
+def test_the_availability_gate_was_open_on_every_committed_fixture(suite):
+    """Recorded because it is the precondition for reading anything else in the matrix: had a
+    fixture's control failed, its whole column would be uninterpretable rather than a finding."""
+    gate = matrix.availability_by_fixture(matrix.collect_records(suite))
+    assert set(gate) == {f["fixture_id"] for f in suite["fixtures"]}
+    for fixture, data in gate.items():
+        assert data["demonstrated"] is True, fixture
+
+
+@has_evidence
+def test_the_committed_evidence_claims_no_semantic_correctness(suite):
+    out = matrix.report(suite)
+    assert out["review"]["semantic_correctness"] == "not_established"
+    assert out["review"]["cells_reviewed"] == 0
+    assert out["bounded_decision"]["value"] == matrix.NOT_ESTABLISHED
+    written = {c["attribution"] for c in out["cells"] if c.get("collected")}
+    assert not (written & matrix.REVIEW_ONLY)
