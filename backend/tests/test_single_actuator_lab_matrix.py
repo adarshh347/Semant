@@ -13,6 +13,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import pathlib
 import sys
 
 import pytest
@@ -776,3 +777,81 @@ def test_the_rendered_report_refuses_in_words_too(tmp_path, tiny_suite, sam):
     assert "not_established" in text
     assert "is not a claim that any instance is the thing the phrase named" in text
     assert "instrument_class_gap" in text
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# 8. Post-hoc extent comparison, and regenerable artifacts
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+def test_the_extent_comparison_is_marked_post_hoc_and_reports_raw_overlaps(tmp_path, tiny_suite,
+                                                                           sam):
+    """It was added AFTER collection because the masks suggested it. Saying so is the whole
+    point of having pre-registered anything — and it emits no threshold, because a cutoff chosen
+    after seeing the numbers is a cutoff chosen to make them say something."""
+    small, _ = tiny_suite
+    small["phrase_families"].append(
+        {"family": "object_scope", "role": "object_scope", "phrases": ["drapery"]})
+    small["lock"] = matrix.compute_locks(small)
+    mask = _mask(680, 544, 5, 60, 5, 60)
+    runs = _collect(tmp_path, small, FakeSam([]), sam, phrase_results={
+        "face": [{"index": 0, "mask_rle": mask, "confidence": 0.9}],
+        "drapery": [{"index": 0, "mask_rle": mask, "confidence": 0.6}],
+        "robe folds": [{"index": 0, "mask_rle": mask, "confidence": 0.4}]})
+
+    out = matrix.report(small, runs_root=runs)["fold_vs_object_extent"]
+    assert out["post_hoc"] is True
+    assert "not pre-registered" in out["note"]
+
+    fixture = small["fixtures"][0]["fixture_id"]
+    data = out["by_fixture"][fixture]
+    assert data["comparable"] is True
+    # Identical masks in the fake, so the overlap is total and byte-identity is visible.
+    assert data["max_iou"] == pytest.approx(1.0)
+    assert data["any_byte_identical"] is True
+    # No verdict key anywhere in the payload — the numbers are reported and not adjudicated.
+    # (Checked structurally: the word "threshold" DOES appear, in the note explaining why there
+    # isn't one, so a substring search would fail for the right reason and the wrong cause.)
+    def _keys(node):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                yield k
+                yield from _keys(v)
+        elif isinstance(node, list):
+            for v in node:
+                yield from _keys(v)
+
+    forbidden = {"threshold", "verdict", "resolves_to_object", "is_object_extent", "passed"}
+    assert not (set(_keys(out)) & forbidden), set(_keys(out)) & forbidden
+    for comparison in data["comparisons"]:
+        assert set(comparison) == {"fold_phrase", "scope_phrase", "max_iou", "identical_hash"}
+
+
+def test_the_extent_comparison_says_when_it_cannot_compare(tmp_path, tiny_suite, sam):
+    small, _ = tiny_suite
+    runs = _collect(tmp_path, small, FakeSam([]), sam)
+    out = matrix.report(small, runs_root=runs)["fold_vs_object_extent"]
+    for data in out["by_fixture"].values():
+        assert data["comparable"] is False
+        assert "returned anything" in data["why"]
+
+
+def test_overlays_regenerate_from_frozen_observations_with_zero_live_calls(tmp_path, tiny_suite,
+                                                                          sam):
+    """The images are eleven megabytes for the real matrix and a pure function of the
+    checked-in fixture plus the frozen masks, so they are rebuilt rather than committed."""
+    small, _ = tiny_suite
+    fake = FakeSam([])
+    runs = _collect(tmp_path, small, fake, sam, phrase_results={
+        "face": [{"index": 0, "mask_rle": _mask(680, 544, 5, 60, 5, 60), "confidence": 0.9}]})
+    spent = fake.calls
+
+    overlays = list(pathlib.Path(runs).rglob("overlay.png"))
+    assert overlays, "no overlay was produced to begin with"
+    for path in overlays:
+        path.unlink()
+
+    out = matrix.render_artifacts(small, runs_root=runs)
+    assert out["live_calls"] == 0
+    assert fake.calls == spent, "rendering called the organ"
+    assert out["rendered"], "nothing was rebuilt"
+    assert all(p.exists() for p in overlays), "an overlay was not restored"

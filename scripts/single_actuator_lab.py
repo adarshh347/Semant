@@ -372,6 +372,20 @@ def render_matrix_report(out: Dict[str, Any]) -> str:
         lines.append(f"- MISMATCH: {m}")
     lines.append("")
 
+    fvo = out["fold_vs_object_extent"]
+    lines.append("## Does a fold phrase measure anything a scope phrase does not?")
+    lines.append("")
+    lines.append(f"*{fvo['note']}*")
+    lines.append("")
+    for fixture, data in sorted(fvo["by_fixture"].items()):
+        if not data.get("comparable"):
+            lines.append(f"- `{fixture}`: not comparable — {data['why']}")
+            continue
+        lines.append(f"- `{fixture}`: fold-vs-scope overlap ranges "
+                     f"{data['min_iou']}–{data['max_iou']}"
+                     + (" (some byte-identical)" if data["any_byte_identical"] else ""))
+    lines.append("")
+
     ps = out["planner_stability"]
     lines.append("## Planner stability")
     lines.append("")
@@ -500,6 +514,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                       help="rebuild every frozen cell with zero live calls")
     mode.add_argument("--report", action="store_true",
                       help="the phrase-response curve and bounded attribution")
+    mode.add_argument("--render", action="store_true",
+                      help="regenerate overlays and contact sheets from frozen observations; "
+                           "zero live calls. They are a pure function of the checked-in fixture "
+                           "and the frozen masks, so they are not committed.")
     p_mat.add_argument("--freeze", action="store_true",
                        help="--plan only: write the computed digests into the suite's lock "
                             "block. Legal only before collection begins.")
@@ -607,6 +625,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"replayed {out['replayed']} cell(s): live calls {out['live_calls']}, "
                   f"divergences {out['divergences']}")
             return 1 if (out["live_calls"] or out["divergences"]) else 0
+
+        if args.render:
+            suite = matrix.check_suite(
+                matrix.load_suite(args.suite, suites_dir=args.suites_dir), source=args.suite)
+            out = matrix.render_artifacts(suite)
+            print(f"rendered {len(out['rendered'])} cell(s), skipped {out['skipped']} "
+                  f"(empty or not collected); live calls {out['live_calls']}")
+            return 0
 
         if args.report:
             out = matrix_report(args.suite, suites_dir=args.suites_dir)

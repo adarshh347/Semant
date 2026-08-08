@@ -840,6 +840,7 @@ def report(suite: Dict[str, Any], *, runs_root: Optional[str] = None) -> Dict[st
         "availability": gate,
         "response_curve": response_curve(suite, records, gate),
         "wrapper_equivalence": wrapper_equivalence(records),
+        "fold_vs_object_extent": fold_vs_object_extent(suite, records, runs_root=runs_root),
         "planner_stability": planner_stability(planner),
         "cells": records,
         "invariants": invariants,
@@ -860,3 +861,124 @@ def report(suite: Dict[str, Any], *, runs_root: Optional[str] = None) -> Dict[st
                     "phrase-response curve and nothing about whether any mask is a fold"),
         },
     }
+
+
+# ── does a fold phrase measure anything a scope phrase does not? ──────────────────────────────
+
+#: POST-HOC. This analysis was not in the pre-registration; it was added after collection because
+#: the collected masks suggested it, and saying so is the whole point of having pre-registered
+#: anything. It is admissible where a new PHRASE would not be, for one reason: it adds no call,
+#: touches no frozen list, and re-reads masks already measured. Nothing about the experiment
+#: changes — only what is computed from it.
+#:
+#: DELIBERATELY THRESHOLD-FREE. It would be easy to declare "IoU >= 0.95 means the fold phrase
+#: resolved to the object" and emit a tidy boolean. A cutoff chosen after seeing the numbers is a
+#: cutoff chosen to make them say something, so this reports the raw overlaps and lets a reader
+#: judge. No boolean, no verdict, no threshold constant anywhere in this function.
+
+def fold_vs_object_extent(suite: Dict[str, Any], records: List[Dict[str, Any]], *,
+                          runs_root: Optional[str] = None) -> Dict[str, Any]:
+    """For each fixture: how much does a fold-target mask overlap an object-scope mask?
+
+    The question this answers is narrow and machine-observable: when a fold phrase and a scope
+    phrase both return something on the same picture, do they return the SAME REGION? That is
+    geometry, not semantics — it says nothing about whether either extent is correct for either
+    word, and `semantic_correctness` is untouched by it.
+    """
+    from . import observe
+    runs_root = runs_root or contract.RUNS_ROOT
+
+    def _masks(record: Dict[str, Any]) -> List[Dict[str, Any]]:
+        path = os.path.join(record.get("run_path") or "", "observations", "masks.json")
+        if not record.get("run_path") or not os.path.exists(path):
+            return []
+        return contract.read_json(path).get("masks") or []
+
+    scope_roles = {"object_scope"}
+    fold_roles = {"fold_target", "replication_control"}
+    out: Dict[str, Any] = {}
+
+    for fixture in suite["fixtures"]:
+        fid = fixture["fixture_id"]
+        rows = [r for r in records
+                if r.get("collected") and r["fixture_id"] == fid
+                and r["mode"] == "organ_direct" and r["organ_status"] == "ok"]
+        scope = {r["phrase"]: _masks(r) for r in rows if r["role"] in scope_roles}
+        folds = {r["phrase"]: _masks(r) for r in rows if r["role"] in fold_roles}
+        if not scope or not folds:
+            out[fid] = {"comparable": False,
+                        "why": ("no scope phrase returned anything" if not scope
+                                else "no fold phrase returned anything")}
+            continue
+        comparisons = []
+        for fold_phrase, fold_masks in folds.items():
+            for scope_phrase, scope_masks in scope.items():
+                best = None
+                for a in fold_masks:
+                    for b in scope_masks:
+                        iou = observe.rle_iou(a, b)
+                        if iou is not None and (best is None or iou > best):
+                            best = iou
+                comparisons.append({"fold_phrase": fold_phrase, "scope_phrase": scope_phrase,
+                                    "max_iou": best,
+                                    "identical_hash": bool(
+                                        fold_masks and scope_masks
+                                        and observe.rle_sha256(fold_masks[0])
+                                        == observe.rle_sha256(scope_masks[0]))})
+        ious = [c["max_iou"] for c in comparisons if c["max_iou"] is not None]
+        out[fid] = {
+            "comparable": True,
+            "comparisons": comparisons,
+            "min_iou": min(ious) if ious else None,
+            "max_iou": max(ious) if ious else None,
+            "any_byte_identical": any(c["identical_hash"] for c in comparisons),
+        }
+    return {
+        "post_hoc": True,
+        "note": ("Added after collection, not pre-registered. Admissible because it spends no "
+                 "call and changes no frozen list — it re-reads masks already measured. Raw "
+                 "overlaps only: a threshold chosen after seeing these numbers would be a "
+                 "threshold chosen to make them say something."),
+        "by_fixture": out,
+    }
+
+
+def render_artifacts(suite: Dict[str, Any], *, runs_root: Optional[str] = None) -> Dict[str, Any]:
+    """Regenerate every overlay and contact sheet from FROZEN observations. Zero live calls.
+
+    The images are the apparatus for the half of the score a machine may not fill in, and they
+    are also eleven megabytes of PNG for a 56-cell matrix. They do not need to be committed,
+    because they are a pure function of two things that are: the checked-in fixture and the
+    frozen `observations/masks.json`. One command rebuilds them all without touching a model.
+
+    Declared rather than silent. A matrix whose overlays were simply absent would look like a
+    matrix that never made any, and "regenerate with --render" is the difference between an
+    omission and a build step.
+    """
+    from . import visuals
+    runs_root = runs_root or contract.RUNS_ROOT
+    assert_locks_unchanged(suite, runs_root=runs_root)
+
+    rendered, skipped = [], []
+    for cell in plan_cells(suite):
+        run_path = contract.run_dir(cell["run_id"], runs_root)
+        masks_path = os.path.join(run_path, "observations", "masks.json")
+        if not contract.is_frozen(run_path) or not os.path.exists(masks_path):
+            skipped.append(cell["run_id"])
+            continue
+        trace = contract.read_json(os.path.join(run_path, "trace.json"))
+        masks = contract.read_json(masks_path).get("masks") or []
+        if not masks:
+            skipped.append(cell["run_id"])
+            continue
+        image_path = os.path.join(contract.REPO_ROOT, trace["manifest"]["image"]["path"])
+        instances = [dict(i, mask_rle=m)
+                     for i, m in zip(trace["organ_observation"]["instances"], masks)]
+        overlay = visuals.render_overlay(image_path, instances,
+                                         os.path.join(run_path, "overlay.png"))
+        sheet = visuals.render_contact_sheet(image_path, instances,
+                                             os.path.join(run_path, "contact-sheet.png"))
+        rendered.append({"run_id": cell["run_id"], "overlay": bool(overlay),
+                         "contact_sheet": bool(sheet)})
+    return {"suite_id": suite["suite_id"], "rendered": rendered, "skipped": len(skipped),
+            "live_calls": 0}
