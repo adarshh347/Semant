@@ -276,6 +276,29 @@ def test_a_frame_refuses_a_term_that_is_both_measurable_and_left_over():
                                                 "contributing_measurements": []}]})
 
 
+def test_the_overlap_guard_cannot_be_slipped_by_a_duplicate_term():
+    """Keyed by a dict, `sensuality` recorded as both measurable and interpretive would pass the
+    guard whenever the interpretive demand happened to come second. The guard would then be
+    decided by list order rather than by what the frame says."""
+    frame = frame_prompt("the folds gather at the shoulder", CORPUS)
+    demands = [{"clause": "c", "term": "grip", "kind": "measurable", "why": "…"},
+               {"clause": "c", "term": "grip", "kind": "interpretive", "why": "…"}]
+    with pytest.raises(ValidationError, match="cannot both"):
+        InquiryFrame(**{**frame.model_dump(), "epistemic_demands": demands,
+                        "semantic_remainder": [{"term": "grip", "why": "…",
+                                                "contributing_measurements": []}]})
+
+
+def test_a_measurable_demand_with_no_term_is_still_guarded_by_its_clause():
+    frame = frame_prompt("the folds gather at the shoulder", CORPUS)
+    with pytest.raises(ValidationError, match="cannot both"):
+        InquiryFrame(**{**frame.model_dump(),
+                        "epistemic_demands": [{"clause": "the raised hand", "term": None,
+                                               "kind": "measurable", "why": "…"}],
+                        "semantic_remainder": [{"term": "the raised hand", "why": "…",
+                                                "contributing_measurements": []}]})
+
+
 def test_the_schema_version_is_pinned():
     frame = frame_prompt("the folds gather at the shoulder", CORPUS)
     with pytest.raises(ValidationError):
