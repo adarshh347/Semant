@@ -24,7 +24,8 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from single_actuator_lab_support import arms, contract, observe, report, scoring, visuals  # noqa: E402
+from single_actuator_lab_support import (arms, contract, matrix, observe, report,  # noqa: E402
+                                         scoring, visuals)
 from single_actuator_lab_support.firewall import Firewall  # noqa: E402
 
 
@@ -266,6 +267,56 @@ def replay(run_path: str, *, out_path: Optional[str] = None) -> Dict[str, Any]:
             "live_calls": len(fw.attempts)}
 
 
+# ── matrix (HARNESS-001C2) ────────────────────────────────────────────────────────────────────
+#
+# Extends this CLI rather than opening a second harness, per the directive. A matrix is many
+# captures, and every one of them goes through the same `capture()` above with the same firewall
+# and the same budget of one — a matrix of N cells is N budgets of one, never one budget of N.
+
+def matrix_plan(suite_id: str, *, suites_dir: str = matrix.SUITES_DIR,
+                write: bool = False) -> Dict[str, Any]:
+    """Enumerate every capture the suite calls for, WITHOUT running any of them.
+
+    `--write` fills the suite's `lock` block with the digests its content actually hashes to.
+    That is legal only before collection begins; afterwards `assert_locks_unchanged` refuses,
+    because writing fresh digests over a frozen experiment is precisely the edit the lock exists
+    to prevent.
+    """
+    suite = matrix.check_suite(matrix.load_suite(suite_id, suites_dir=suites_dir),
+                               source=suite_id)
+    if write:
+        if matrix.collection_started(suite["suite_id"]):
+            raise SystemExit(
+                f"refusing to rewrite the locks for {suite['suite_id']!r}: collection has already "
+                f"begun. Start a new suite id rather than re-freezing this one.")
+        _write_locks(suite_id, suite, suites_dir)
+        suite = matrix.check_suite(matrix.load_suite(suite_id, suites_dir=suites_dir),
+                                   source=suite_id)
+    return matrix.plan(suite)
+
+
+def _write_locks(suite_id: str, suite: Dict[str, Any], suites_dir: str) -> None:
+    """Rewrite just the two digest lines in the suite file, in place.
+
+    Text substitution rather than a YAML round-trip on purpose: the suite is a pre-registration
+    document whose comments carry most of its meaning, and a dump-and-rewrite would silently
+    delete every one of them.
+    """
+    import re
+    path = suite_id if os.path.exists(suite_id) else matrix.suite_path(suite_id, suites_dir)
+    computed = matrix.compute_locks(suite)
+    with open(path, "r") as fh:
+        text = fh.read()
+    for key in ("phrases_sha256", "fixtures_sha256"):
+        text, n = re.subn(rf'(^\s*{key}:\s*)"[0-9a-f]{{64}}"',
+                          lambda m: f'{m.group(1)}"{computed[key]}"', text, count=1,
+                          flags=re.MULTILINE)
+        if n != 1:
+            raise SystemExit(f"could not locate a `{key}` line to freeze in {path}")
+    with open(path, "w") as fh:
+        fh.write(text)
+
+
 # ── compare / validate ────────────────────────────────────────────────────────────────────────
 
 def compare(run_paths: List[str]) -> Dict[str, Any]:
@@ -326,6 +377,24 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_val.add_argument("--run")
     p_val.add_argument("--manifest")
 
+    # HARNESS-001C2. `--plan/--live/--replay/--report` are declared as flags on one subcommand
+    # rather than four subcommands, matching the card's spelling against this parser's shape.
+    p_mat = sub.add_parser("matrix", help="run a pre-registered phrase-robustness suite")
+    p_mat.add_argument("--suite", required=True)
+    p_mat.add_argument("--suites-dir", default=matrix.SUITES_DIR)
+    mode = p_mat.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--plan", action="store_true",
+                      help="enumerate every planned capture; runs nothing")
+    mode.add_argument("--live", action="store_true", help="collect the matrix")
+    mode.add_argument("--replay", action="store_true",
+                      help="rebuild every frozen cell with zero live calls")
+    mode.add_argument("--report", action="store_true",
+                      help="the phrase-response curve and bounded attribution")
+    p_mat.add_argument("--freeze", action="store_true",
+                       help="--plan only: write the computed digests into the suite's lock "
+                            "block. Legal only before collection begins.")
+    p_mat.add_argument("--json", action="store_true")
+
     args = parser.parse_args(argv)
 
     if args.command == "capture":
@@ -380,6 +449,35 @@ def main(argv: Optional[List[str]] = None) -> int:
                 bad = bad or bool(errors)
             return 1 if bad else 0
         print("validate needs --run or --manifest")
+        return 2
+
+    if args.command == "matrix":
+        if args.plan:
+            planned = matrix_plan(args.suite, suites_dir=args.suites_dir, write=args.freeze)
+            if args.json:
+                import json
+                print(json.dumps(planned, indent=2))
+            else:
+                print(f"suite       {planned['suite_id']}  ·  locked to "
+                      f"{planned['actuator_lock']}")
+                print(f"fixtures    {', '.join(planned['fixtures'])}")
+                print(f"phrases     {len(planned['phrases'])} in "
+                      f"{len(planned['families'])} families")
+                print(f"captures    {planned['capture_count']}  ·  SAM invocations planned "
+                      f"{planned['sam_invocations_planned']} (budget "
+                      f"{planned['call_budget']} each)")
+                print(f"planner     {planned['planner_samples']} sample(s), grants SAM "
+                      f"attempts: {planned['planner_grants_sam_attempts']}")
+                print(f"locks       declared match content: "
+                      f"{planned['locks_declared_match_content']}")
+                if not planned["locks_declared_match_content"]:
+                    print(f"            computed phrases  "
+                          f"{planned['computed_locks']['phrases_sha256']}")
+                    print(f"            computed fixtures "
+                          f"{planned['computed_locks']['fixtures_sha256']}")
+                    print("            → re-run with --freeze (only before collection begins)")
+            return 0 if planned["locks_declared_match_content"] else 1
+        print("matrix: --live, --replay and --report arrive with the runner")
         return 2
 
     return 2

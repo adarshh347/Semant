@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:labs/phrase-matrix-suite.schema.json",
+  "title": "Phrase-Matrix Suite (pre-registration)",
+  "description": "A PRE-REGISTERED experiment: the fixtures, the phrases and the arm plan, all written down BEFORE any live inference.\n\nThe point of pre-registration is narrow and load-bearing. An open-vocabulary organ can be made to look good by trying phrases until one lands, and the resulting number is not a hit-rate — it is the outcome of a search, reported as if it were a measurement. So the phrase list is frozen and hashed here, and `lock` records the digest. Once collection starts the runner recomputes that digest and refuses to proceed if it moved.\n\nThis file therefore has one job the schema cannot enforce and a human must: it has to be written before anyone knows what the answers are.",
+  "type": "object",
+  "required": ["schema_version", "suite_id", "actuator_lock", "call_budget", "lock", "fixtures", "phrase_families", "arms", "planner_sampling", "review"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "phrase-matrix-suite.v1" },
+    "suite_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string" },
+    "why": { "type": "string" },
+    "pre_registered_at": {
+      "type": "string",
+      "description": "When the phrases were frozen. Prose, for the reader; the digest in `lock` is what the runner enforces."
+    },
+
+    "actuator_lock": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Inherited from HARNESS-001C unchanged: exactly one actuator, for every capture in the suite."
+    },
+    "call_budget": {
+      "const": 1,
+      "description": "Per capture. A matrix of N captures is N budgets of one, never one budget of N — a shared pool is a pool something can borrow against."
+    },
+
+    "lock": {
+      "type": "object",
+      "required": ["phrases_sha256", "fixtures_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "phrases_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Digest over the frozen phrase families. Recomputed at every `--live` and every `--report`; a mismatch after collection has begun is fatal, because a phrase list edited mid-collection turns measurement into result-searching and leaves no trace otherwise."
+        },
+        "fixtures_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Digest over the fixture ids and their content hashes. Swapping an image under a stable id would silently change what every phrase was tested against."
+        }
+      }
+    },
+
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["fixture_id", "path", "sha256", "width", "height", "provenance"],
+        "additionalProperties": false,
+        "properties": {
+          "fixture_id": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "width": { "type": "integer", "minimum": 1 },
+          "height": { "type": "integer", "minimum": 1 },
+          "bytes": { "type": "integer", "minimum": 1 },
+          "provenance": {
+            "type": "object",
+            "required": ["source", "documented_subject", "documented_tradition", "reproduction_vs_depiction"],
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "type": "string",
+                "description": "Where the claim comes from — a repo path, not a recollection."
+              },
+              "documented_subject": {
+                "type": ["string", "null"],
+                "description": "What the REPOSITORY says this shows. Null when the repo says nothing; an identification made by looking at it is not documentation and belongs in `observed`."
+              },
+              "documented_tradition": {
+                "type": ["string", "null"],
+                "description": "Culture/period ONLY where the repo sources it. Null is the honest and common value: recognising a sculpture is not the same as the repository documenting it."
+              },
+              "reproduction_vs_depiction": {
+                "type": ["string", "null"],
+                "enum": ["depiction", "reproduction", "composite", null]
+              },
+              "known_confounds": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Image conditions the repo already records as affecting results — e.g. a blended grain/texture layer. Declared HERE, before collection, so a fixture cannot be blamed for a result after the fact."
+              },
+              "observed": {
+                "type": ["string", "null"],
+                "description": "What is visible, marked as observation rather than documentation."
+              }
+            }
+          },
+          "role": {
+            "type": "string",
+            "enum": ["primary", "control_condition", "additional"],
+            "description": "`control_condition` marks a fixture included to vary ONE declared image condition against the primary."
+          }
+        }
+      }
+    },
+
+    "phrase_families": {
+      "type": "array",
+      "minItems": 1,
+      "description": "FROZEN before the first live call. Members may not be added afterwards for any reason, and least of all in response to a failure.",
+      "items": {
+        "type": "object",
+        "required": ["family", "role", "phrases"],
+        "additionalProperties": false,
+        "properties": {
+          "family": { "type": "string", "minLength": 1 },
+          "role": {
+            "type": "string",
+            "enum": ["availability_control", "object_scope", "fold_target", "adversarial_abstraction", "negative_control", "replication_control"],
+            "description": "`availability_control` is the gate: if it returns nothing on a fixture, NO phrase failure on that fixture may be attributed to the phrase, because the instrument was not shown to be working there."
+          },
+          "phrases": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "expectation": {
+            "type": ["string", "null"],
+            "description": "What the family is for. Never a prediction the scoring may consult — recorded so a reader can see what was expected before the numbers arrived."
+          },
+          "justification": {
+            "type": ["string", "null"],
+            "description": "Required for anything added to the card's own list. Only legal BEFORE the first live call."
+          }
+        }
+      }
+    },
+
+    "arms": {
+      "type": "object",
+      "required": ["full_matrix", "wrapper_equivalence"],
+      "additionalProperties": false,
+      "properties": {
+        "full_matrix": {
+          "type": "object",
+          "required": ["mode", "fixtures", "families"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "type": "string", "enum": ["organ_direct", "actuator_direct"] },
+            "fixtures": { "type": "string", "enum": ["all"] },
+            "families": { "type": "string", "enum": ["all"] },
+            "note": { "type": "string" }
+          }
+        },
+        "wrapper_equivalence": {
+          "type": "object",
+          "required": ["mode", "fixtures", "phrases"],
+          "additionalProperties": false,
+          "description": "The representative subset run through the PRODUCTION actuator on every image, so wrapper equivalence is tested beyond the original fixture.",
+          "properties": {
+            "mode": { "type": "string", "enum": ["actuator_direct"] },
+            "fixtures": { "type": "string", "enum": ["all"] },
+            "phrases": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "note": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "planner_sampling": {
+      "type": "object",
+      "required": ["samples", "prompt", "planning_only"],
+      "additionalProperties": false,
+      "properties": {
+        "samples": {
+          "type": "integer",
+          "minimum": 5,
+          "description": "At least five independent receipts. One repeat that happened to agree is not stability."
+        },
+        "prompt": { "type": "string", "minLength": 1 },
+        "planning_only": {
+          "const": true,
+          "description": "Declared IN ADVANCE, as the directive requires: planner samples never grant SAM attempts. A planning-only receipt is not an organ result and the scoring may not read it as one."
+        },
+        "model_contract": {
+          "type": "object",
+          "description": "Model, version and sampling settings under which the samples are comparable. Receipts from different contracts are not evidence about the same thing.",
+          "properties": {
+            "role": { "type": ["string", "null"] },
+            "model": { "type": ["string", "null"] },
+            "temperature": { "type": ["number", "null"] },
+            "response_format": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+
+    "expected_invariants": {
+      "type": "object",
+      "description": "Structural claims the suite asserts about EVERY capture. Machine-checkable, and checked.",
+      "properties": {
+        "invocations_per_capture": { "type": "integer" },
+        "lock_held": { "type": "boolean" },
+        "database_writes": { "type": "integer" },
+        "source_mutations": { "type": "integer" },
+        "replay_live_calls": { "type": "integer" }
+      }
+    },
+
+    "review": {
+      "type": "object",
+      "required": ["protocol"],
+      "additionalProperties": false,
+      "properties": {
+        "protocol": { "type": "string", "enum": ["human_visual", "gold_mask", "none_required"] },
+        "questions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

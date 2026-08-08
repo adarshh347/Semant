@@ -1,0 +1,229 @@
+schema_version: phrase-matrix-suite.v1
+suite_id: sam3-fold-phrase-matrix
+title: "SAM 3 phrase robustness: is the fold failure the wording, the picture, or the instrument?"
+pre_registered_at: "2026-08-08, before any live call in this lane"
+
+why: >
+  HARNESS-001C measured, on ONE image, that `face` returned three masks while `drapery fold`,
+  `folded drapery`, `folding architecture`, `sensuality` and `bicycle` returned none, and that
+  `robe folds` returned a single low-confidence mask covering the garment. That is enough to
+  reject "produced nothing" as one undifferentiated failure. It is not enough to say whether the
+  instability belongs to the wording, to that picture, or to concept segmentation as an
+  instrument for fold geometry.
+
+  Two things make this lane necessary rather than merely wider.
+
+  First, C1's attribution was under-determined in a way one image cannot reveal. The repository
+  independently documents that the Pietà fixture CARRIES A BLENDED GRAIN/TEXTURE LAYER — a
+  reproduction confound recorded in `runs/006-narrative-overreach/source-notes.md`,
+  `R2/HW-L4-a5-a6-decision-memo.md` and `R2/HW-L4-next-rehearsal-directive-draft.md`, none of
+  which were written for this lane. C1 concluded "the difference is carried entirely by the
+  wording" from a single fixture that has a known image-condition confound sitting under every
+  row of it. That conclusion was over-stated, and this suite is built to test it: the Angel of
+  Grief is documented by the same notes as an UNTREATED daylight photograph with no
+  post-processing layer, which makes it the control the C1 result never had.
+
+  Second, five phrases on one picture is not a curve.
+
+  This lane does not improve SAM, search for a phrase that happens to win, or build an organ.
+
+actuator_lock: concept_segment
+call_budget: 1
+
+# Digests over the two things that must not move once collection begins. Computed by
+# `matrix --plan`; re-checked at every --live and --report. See phrase-matrix-suite.schema.json.
+lock:
+  phrases_sha256: "c5096c9dfae9871cb6b3c042414fd1a21a2ffd84d7295db482748d7b17358476"
+  fixtures_sha256: "08f8a8ed56065792ee056f4f35f387414400153edcc585c442062d1745581ddb"
+
+# ── the material ──────────────────────────────────────────────────────────────────────────────
+# Four fixtures, all already checked in. Nothing was downloaded for this lane.
+#
+# ON TRADITION, AND WHY THREE OF FOUR SAY `null`. The card asks for material from at least two
+# documented traditions "if existing metadata honestly supports that statement. Otherwise
+# describe only what the repository provenance proves." It does not. The 003 source-notes record
+# `title` null, `description` empty, no catalogue number and NO ICONOGRAPHIC IDENTIFICATION
+# ATTEMPTED; the 002 collage's culture labels are noted as the plate's own captions with no
+# verified attribution behind them. I can recognise what several of these depict. Recognising a
+# sculpture is not the repository documenting it, and writing my recognition into a provenance
+# field would manufacture exactly the sourced-looking metadata the field exists to record.
+# So `documented_tradition` is null wherever the repo is silent, and what I can see goes in
+# `observed`, marked as observation.
+fixtures:
+  - fixture_id: pieta
+    path: research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg
+    sha256: 8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4
+    width: 544
+    height: 680
+    bytes: 90000
+    role: primary
+    provenance:
+      source: research/rehearsals/runs/002F-single-object-followup/score.md
+      documented_subject: "Michelangelo's Pietà photographed in situ in its chapel (post 695be77ea9ea58f1b6aef5eb)"
+      documented_tradition: null
+      reproduction_vs_depiction: depiction
+      known_confounds:
+        - "carries a blended grain/texture layer — recorded as a reproduction confound in runs/006-narrative-overreach/source-notes.md and R2/HW-L4-a5-a6-decision-memo.md, found by an earlier probe and not by this lane"
+      observed: "Marble group in a dark, heavily textured apse. Deep drapery over the knees; a cross above; two faces."
+
+  - fixture_id: angel_of_grief
+    path: research/rehearsals/fixtures/006-narrative-overreach/angel-of-grief-rotunda.jpg
+    sha256: c5055621ef8782c18898b650941abb4cadca8dc22942c3f1c5021156f1fc3ab5
+    width: 510
+    height: 680
+    bytes: 70836
+    role: control_condition
+    provenance:
+      source: research/rehearsals/runs/006-narrative-overreach/source-notes.md
+      documented_subject: "a winged marble figure collapsed face-down across the lid of a tomb chest, in a colonnaded rotunda (post 695be817a9ea58f1b6aef5fa)"
+      documented_tradition: null
+      reproduction_vs_depiction: depiction
+      known_confounds: []
+      observed: >
+        THE CONTROL FOR THE PIETÀ'S CONFOUND. The same notes that record the Pietà's blended
+        grain/texture layer describe this as "an untreated daylight snapshot of a monument in
+        situ, with no post-processing layer". It carries heavy classical drapery across the
+        torso and trailing leg — as legible a fold as the corpus holds — in good light. If a
+        fold phrase works here and not on the Pietà, the C1 finding was about the picture.
+
+  - fixture_id: veiled_funerary
+    path: research/rehearsals/fixtures/004-gesture-and-address/neighbour-veiled-funerary.jpg
+    sha256: 570b295451587ab2fa1495e792ed071510798f1790f6fc2bbfc6e85da832dd19
+    width: 500
+    height: 666
+    bytes: 52519
+    role: additional
+    provenance:
+      source: research/rehearsals/runs/004-gesture-and-address/source-notes.md
+      documented_subject: "neighbour fixture, post 695be790a9ea58f1b6aef5ef, 500x666"
+      documented_tradition: null
+      reproduction_vs_depiction: depiction
+      known_confounds:
+        - "monochrome, and carries a visible photographer's watermark in the lower right; neither was introduced by this lane"
+      observed: "Close-up of a veiled stone head. Cloth is present as a veil over the hair and shoulders, but this is a tight crop — fold geometry is scarce by framing, not necessarily by instrument."
+
+  - fixture_id: carved_figure
+    path: research/rehearsals/fixtures/003-sensory-disagreement/carved-figure-close.jpg
+    sha256: 12eaa7e7a44d17cf7ee6514181a6bcf319ccd7f1b6117d27947fb0ec583c89f4
+    width: 452
+    height: 679
+    bytes: 52470
+    role: additional
+    provenance:
+      source: research/rehearsals/runs/003-sensory-disagreement/source-notes.md
+      documented_subject: "a close-up of one carved stone figure — headdress, face in profile, shoulder, torso, raised arm, with relief carving behind"
+      documented_tradition: null
+      reproduction_vs_depiction: depiction
+      known_confounds:
+        - "the 003 notes record title null, description empty, and no catalogue/collection/date/material; a probe's guess of 'basalt or granite' is recorded there as unverified"
+      observed: "Warm dark stone, raking light. A carved sash crosses the torso and a garment gathers at the waist; the figure is otherwise largely bare."
+
+# ── the phrases, frozen ───────────────────────────────────────────────────────────────────────
+# Twelve phrases in six families. Eleven are the card's own list, verbatim. One is added, before
+# any live call, with its justification recorded — which is the only time anything may be added.
+#
+# AFTER THE FIRST LIVE CALL NOTHING HERE MAY CHANGE. Not a spelling, not a plural, and above all
+# not a new synonym in response to an empty result. `lock.phrases_sha256` is what makes that a
+# fact about the run rather than a promise about my conduct.
+phrase_families:
+  - family: availability_control
+    role: availability_control
+    phrases: ["face"]
+    expectation: >
+      The gate. `face` returned three instances on the Pietà in C1, so the instrument works on at
+      least one fixture here. If it returns nothing on some fixture, NO phrase failure on that
+      fixture may be attributed to the phrase — the instrument was not shown to be working there,
+      and every empty below it is uninterpretable rather than informative.
+
+  - family: object_scope
+    role: object_scope
+    phrases: ["robe", "garment", "drapery"]
+    expectation: >
+      The whole cloth object, named three ways. Separates "cannot find cloth at all" from "finds
+      cloth, cannot find folds in it" — which are different capability claims and were
+      indistinguishable in C1, where the only non-empty fold-adjacent phrase returned the garment.
+
+  - family: fold_target
+    role: fold_target
+    phrases: ["robe folds", "drapery folds", "folded drapery", "fabric folds", "creases"]
+    expectation: >
+      The thing the inquiry actually wants: local fold geometry, not the garment carrying it.
+      Five wordings, so a single miss is not read as a capability.
+
+  - family: replication_control
+    role: replication_control
+    phrases: ["drapery fold"]
+    justification: >
+      Added before any live call in this lane. C1's exact phrase, kept so this suite can say
+      whether its one-image result REPRODUCES rather than assuming it. It is worth its own row
+      for a second reason: it differs from the frozen `drapery folds` by a single character, so
+      the pair is a direct measurement of how much a plural costs — which is the lane's whole
+      question in miniature. This is a replication control, not a synonym search: it was C1's
+      phrase before any result here was known, and it is not permitted to grow.
+
+  - family: adversarial_abstraction
+    role: adversarial_abstraction
+    phrases: ["sensuality"]
+    expectation: >
+      A word from the wave's prompt that names nothing a segmenter can find. Whatever it returns
+      establishes nothing about any image; it probes the organ's willingness to answer an
+      unanswerable question, which is the failure mode SF-004-R2 caught on a painting.
+
+  - family: negative_control
+    role: negative_control
+    phrases: ["bicycle"]
+    expectation: >
+      The control whose PASS is an empty result. If this returns instances anywhere, every
+      positive row in the matrix is weakened, because the organ is answering the prompt rather
+      than the picture.
+
+# ── the arm plan ──────────────────────────────────────────────────────────────────────────────
+arms:
+  full_matrix:
+    mode: organ_direct
+    fixtures: all
+    families: all
+    note: >
+      12 phrases x 4 fixtures = 48 captures through the cheapest arm that retains the same organ
+      call. Each is its own firewall with its own budget of one; a matrix of 48 captures is 48
+      budgets of one, never one budget of 48.
+
+  wrapper_equivalence:
+    mode: actuator_direct
+    fixtures: all
+    phrases: ["face", "drapery"]
+    note: >
+      8 captures. `face` because C1 showed it is the phrase most likely to be non-empty, and an
+      equivalence test on an empty result tests nothing — C1's own fold actuator run was empty
+      and therefore established no wrapper property at all. `drapery` because a second,
+      structurally different phrase guards against equivalence that holds only for the one case
+      it was checked on. Any mismatch here is an INTEGRATION DEFECT, not an organ finding.
+
+# ── planner stability ─────────────────────────────────────────────────────────────────────────
+planner_sampling:
+  samples: 5
+  planning_only: true
+  prompt: >-
+    Explore the fold-level aesthetic and style relations between Renaissance and Buddha
+    sculptures, their common way of unfolding sensuality, where they drift apart, and what hybrid
+    styles they could give birth to.
+  model_contract:
+    role: step_planner
+    model: null            # resolved from role_registry at run time and recorded per receipt
+    temperature: null      # provider default; recorded per receipt, never assumed
+    response_format: json_object
+
+expected_invariants:
+  invocations_per_capture: 1
+  lock_held: true
+  database_writes: 0
+  source_mutations: 0
+  replay_live_calls: 0
+
+review:
+  protocol: human_visual
+  questions:
+    - "For each non-empty fold-target mask: is it LOCAL FOLD GEOMETRY, or the garment as a whole?"
+    - "Where the object_scope family succeeded and fold_target failed on the same fixture, does the overlay show folds that were there to be found?"
+    - "Does `face` land on faces on every fixture — i.e. is the availability gate honest?"
+    - "On the Angel of Grief versus the Pietà: does the untreated image behave differently from the texture-blended one for the SAME phrase?"
