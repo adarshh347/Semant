@@ -24,6 +24,14 @@ from __future__ import annotations
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from backend.services import mask_geometry
+from backend.services import sam3_concept_service as _real_sam3
+
+#: Bound HERE, at import, and deliberately not looked up later. The fake replaces
+#: `sys.modules["backend.services.sam3_concept_service"]`, so a fake that re-imported the module
+#: by name to reach `instances_to_regions` would find ITSELF — an infinite recursion that surfaces
+#: as a `RecursionError` inside the runner and is reported as a failed step, i.e. as the very
+#: "nothing was captured" this lane exists to distinguish from a real empty.
+_instances_to_regions = _real_sam3.instances_to_regions
 
 #: Small enough to encode in pure python instantly, big enough that the inner mask has a real
 #: margin inside the outer one rather than sharing an edge with it.
@@ -140,8 +148,7 @@ class FakeSam3Service:
 
     @staticmethod
     def instances_to_regions(result: Dict[str, Any], *, prefix: str = "cseg"):
-        from backend.services import sam3_concept_service
-        return sam3_concept_service.instances_to_regions(result, prefix=prefix)
+        return _instances_to_regions(result, prefix=prefix)
 
 
 class EmptySam3Service(FakeSam3Service):
