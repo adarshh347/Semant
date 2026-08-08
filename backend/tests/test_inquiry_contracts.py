@@ -58,9 +58,13 @@ def test_the_frontend_mirror_is_byte_identical_to_the_canonical_contract():
     bundle cannot import from the repo root. A copy nothing pins is a second contract."""
     for name in (GRAMMAR_FILE, LEXICON_FILE):
         canonical = (CONTRACTS_DIR / name).read_bytes()
-        mirror = (MIRROR_DIR / name).read_bytes()
-        assert mirror == canonical, (f"frontend/src/contracts/{name} has drifted from "
-                                     f"contracts/{name} — run python scripts/contracts_sync.py")
+        mirror_path = MIRROR_DIR / name
+        fix = f"run python scripts/contracts_sync.py"
+        # `.read_bytes()` on an absent file raises before the assertion message is reached, and
+        # absence is the LIKELIEST failure — it happens whenever the sync script has not run.
+        assert mirror_path.exists(), f"frontend/src/contracts/{name} is missing — {fix}"
+        assert mirror_path.read_bytes() == canonical, (
+            f"frontend/src/contracts/{name} has drifted from contracts/{name} — {fix}")
 
 
 def test_the_sync_script_reports_the_tree_as_in_sync():
@@ -169,6 +173,44 @@ def test_the_word_cues_still_fire_on_the_whole_word():
     assert "light" in {h["key"] for h in lexicon.detect_cues("the figure is lit from the left")}
     assert "fold" in {h["key"] for h in lexicon.detect_cues("the cloth gathers at the waist")}
     assert "gesture" in {h["key"] for h in lexicon.detect_cues("her arm reaches out")}
+
+
+def test_a_word_cue_in_one_entry_does_not_fire_a_substring_cue_in_another():
+    """The defect the word-boundary fix introduced, and the reason the fix needed a second pass.
+
+    `unlit` was a substring cue on `shadow`, and adding `sunlit`/`moonlit` as word cues on
+    `light` put a word INSIDE that substring. The longest-wins drop never compares the two,
+    because each entry is matched independently — so "a sunlit courtyard" fired `shadow` and
+    reported the matched cue as "unlit". Exactly the class of defect this pass exists to remove,
+    reintroduced one entry over.
+    """
+    fired = {hit["key"]: hit["matched"] for hit in lexicon.detect_cues("a sunlit courtyard")}
+    assert "light" in fired
+    assert "shadow" not in fired
+
+
+def test_unlit_still_fires_on_the_whole_word():
+    assert "shadow" in {h["key"] for h in lexicon.detect_cues("the unlit side of the head")}
+
+
+def test_a_side_word_is_a_hint_the_lexicon_understands_and_not_an_unresolved_term():
+    """`lower`, `upper` and `right` become `target_hint` on a brushed field. Reporting them as
+    terms nothing can operationalise would be false twice: the lexicon read them, and the frame
+    would be claiming ignorance of a word it had just used."""
+    from backend.services.inquiry import frame_prompt
+    frame = frame_prompt("the light on the lower left face and the upper right side")
+    unresolved = {u.term for u in frame.unresolved_terms}
+    assert not (unresolved & {"lower", "upper", "right", "centre", "middle", "bottom", "beneath"})
+
+
+def test_the_gaze_label_reads_as_english_whichever_cue_won():
+    """`longest_wins` picks 'points toward' over 'gaze' on the sculpture fixture, and the old
+    template ("the {cue} she points toward") then produced 'the points toward she points toward'
+    on a card a curator reads. The template no longer assumes the cue is a noun."""
+    for cue in ("gaze", "points toward", "eyes"):
+        label = lexicon.label_from_cue(cue, "gaze_address", "")
+        assert label.startswith(cue)
+        assert "she points toward" not in label
 
 
 def test_the_prefix_cues_the_lexicon_depends_on_still_match_inside_a_word():

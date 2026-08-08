@@ -213,6 +213,29 @@ def test_a_model_cannot_call_one_term_both_measurable_and_left_over():
     assert any(r.what == "sensuality" for r in frame.refusals)
 
 
+def test_a_measurable_demand_with_no_term_is_guarded_by_its_clause_and_never_escapes():
+    """The two guards must key the same way. Keyed only on `term` here, a measurable demand with
+    an empty term slipped past this refusal and died inside the `InquiryFrame(...)` construction,
+    where a model's contradiction surfaced as a ValidationError somebody reads as a schema bug."""
+    payload = {**GOOD,
+               "epistemic_demands": [{"clause": "the raised hand", "kind": "measurable",
+                                      "why": "an extent"}],
+               "semantic_remainder": [{"term": "the raised hand", "why": "…",
+                                       "contributing_measurements": []}]}
+    frame = _framer(payload).frame(PROMPT, CORPUS)      # must not raise
+    assert frame.semantic_remainder == []
+    assert any(r.what == "the raised hand" for r in frame.refusals)
+
+
+def test_last_notes_does_not_report_a_stale_fallback_after_a_success():
+    framer = ModelInquiryFramer(client=FakeClient(GOOD, raise_with=TimeoutError("slow")))
+    framer.frame(PROMPT, CORPUS)
+    assert any("TimeoutError" in note for note in framer.last_notes)
+    framer._client = FakeClient(GOOD)
+    framer.frame(PROMPT, CORPUS)
+    assert not any("TimeoutError" in note for note in framer.last_notes)
+
+
 def test_the_frame_notes_an_interpretive_demand_with_no_remainder_rather_than_inventing_one():
     payload = {**GOOD, "semantic_remainder": []}
     frame = _framer(payload).frame(PROMPT, CORPUS)
