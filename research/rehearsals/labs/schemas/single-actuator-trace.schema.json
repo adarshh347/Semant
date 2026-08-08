@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:labs/single-actuator-trace.schema.json",
+  "title": "Single-Actuator Lab Trace",
+  "description": "The frozen record of one capture. It records BOUNDARIES, not just the final masks: what the environment was, what the planner saw and proposed, what was selected and what was refused, every invocation attempted (including blocked ones), what the organ returned, what the actuator wrapper made of it, and what did not change. A trace that recorded only masks could not tell a prompt failure from an organ failure, which is the one thing this lab exists to do.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "lab_id",
+    "run_id",
+    "mode",
+    "actuator_lock",
+    "manifest",
+    "environment",
+    "prompt_receipt",
+    "decision_receipt",
+    "invocations",
+    "organ_observation",
+    "invariance"
+  ],
+  "properties": {
+    "schema_version": { "const": "single-actuator-trace.v1" },
+    "lab_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "mode": {
+      "type": "string",
+      "enum": ["organ_direct", "actuator_direct", "prompt_orchestrated", "replay"]
+    },
+    "actuator_lock": { "type": "string", "minLength": 1 },
+    "captured_at": { "type": ["string", "null"] },
+    "manifest": {
+      "type": "object",
+      "description": "A frozen copy of the manifest that produced this run, so the trace is self-describing after the manifest file moves on."
+    },
+
+    "environment": {
+      "type": "object",
+      "required": [
+        "git_commit", "platform", "python", "device",
+        "weights_present", "runtime_available", "checkpoint"
+      ],
+      "properties": {
+        "git_commit": { "type": ["string", "null"] },
+        "git_dirty": { "type": ["boolean", "null"] },
+        "platform": { "type": "string" },
+        "python": { "type": "string" },
+        "device": { "type": ["string", "null"] },
+        "weights_present": {
+          "type": "boolean",
+          "description": "PRESENCE only. The full path is deliberately not frozen — a checkpoint path is machine-local and often carries a username."
+        },
+        "weights_id": {
+          "type": ["string", "null"],
+          "description": "A safe identifier (basename), never the path."
+        },
+        "runtime_available": { "type": "boolean" },
+        "checkpoint": { "type": ["string", "null"] },
+        "preprocessing_version": { "type": ["string", "null"] },
+        "conf": { "type": ["number", "null"] },
+        "imgsz": {
+          "type": ["integer", "null"],
+          "description": "The size REQUESTED. Not necessarily the one used."
+        },
+        "imgsz_effective": {
+          "type": ["integer", "null"],
+          "description": "The size inference actually ran at. Null in v1 and expected to be: Ultralytics rounds imgsz up to a multiple of the model stride inside the inference call (a requested 1024 was logged as 1036) and does not write the rounded value back to predictor.args, so this seam cannot read it. Absent rather than echoing the request, which would look like a confirmation that the rounding did not occur. See imgsz_note."
+        },
+        "imgsz_note": { "type": ["string", "null"] },
+        "naming_floor": { "type": ["number", "null"] },
+        "torch_version": { "type": ["string", "null"] }
+      }
+    },
+
+    "prompt_receipt": {
+      "type": "object",
+      "required": ["original_prompt", "prompt_sha256", "planner_status"],
+      "properties": {
+        "original_prompt": {
+          "type": ["string", "null"],
+          "description": "The user's words, UNCHANGED. Never a cleaned-up paraphrase — the point of the lab is to see what the real prompt does."
+        },
+        "prompt_sha256": { "type": ["string", "null"] },
+        "control_phrase": { "type": ["string", "null"] },
+        "planner_role": { "type": ["string", "null"] },
+        "planner_model": { "type": ["string", "null"] },
+        "planner_status": {
+          "type": "string",
+          "enum": ["ok", "unavailable", "deterministic_framer", "not_applicable", "error", "empty"],
+          "description": "`unavailable` is never quietly replaced by the control phrase — that substitution would make an orchestration failure look like an orchestration success."
+        },
+        "planner_detail": { "type": ["string", "null"] },
+        "raw_proposal": {
+          "description": "The planner's structured output verbatim, before clamping. Null when no planner ran."
+        }
+      }
+    },
+
+    "decision_receipt": {
+      "type": "object",
+      "required": ["catalogue_shown", "selected_actuator", "selected_phrase", "refused_actions", "dropped_params"],
+      "properties": {
+        "catalogue_shown": {
+          "type": "array",
+          "description": "Exactly what vocabulary the planner was shown. If this has more than one entry in a locked lab, the lab is broken and the trace says so.",
+          "items": { "type": "object" }
+        },
+        "selected_actuator": { "type": ["string", "null"] },
+        "selected_phrase": { "type": ["string", "null"] },
+        "phrase_source": {
+          "type": ["string", "null"],
+          "enum": ["control", "planner", "deterministic_framer", null]
+        },
+        "refused_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["actuator", "reason"],
+            "properties": {
+              "actuator": { "type": ["string", "null"] },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "not_the_locked_actuator",
+                  "unknown_actuator",
+                  "call_budget_exhausted",
+                  "no_phrase",
+                  "replay_mode_forbids_calls",
+                  "capability_unavailable"
+                ]
+              },
+              "detail": { "type": "string" },
+              "params": { "type": "object" }
+            }
+          }
+        },
+        "dropped_params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["actuator", "keys"],
+            "properties": {
+              "actuator": { "type": "string" },
+              "keys": { "type": "array", "items": { "type": "string" } },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "planner_notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "invocations": {
+      "type": "array",
+      "description": "Every call that actually reached the instrument, in order. Refused attempts live in decision_receipt.refused_actions, so an apparent success can always be checked against what was blocked.",
+      "items": {
+        "type": "object",
+        "required": ["call_index", "call_budget", "actuator", "kind", "outcome"],
+        "properties": {
+          "call_index": { "type": "integer", "minimum": 1 },
+          "call_budget": { "type": "integer", "minimum": 1 },
+          "actuator": { "type": "string" },
+          "adapter": { "type": ["string", "null"] },
+          "kind": { "type": "string", "enum": ["organ", "actuator"] },
+          "started_at": { "type": ["number", "null"] },
+          "ended_at": { "type": ["number", "null"] },
+          "latency_ms": { "type": ["number", "null"] },
+          "warm": { "type": ["boolean", "null"] },
+          "load_ms": { "type": ["number", "null"] },
+          "outcome": { "type": "string", "enum": ["ok", "empty", "unavailable", "error"] },
+          "error": { "type": ["string", "null"] }
+        }
+      }
+    },
+
+    "organ_observation": {
+      "type": "object",
+      "required": ["status", "concept", "instance_count", "instances"],
+      "description": "What SAM 3 returned. `empty`, `unavailable` and `error` are three DIFFERENT statuses and are never collapsed: an empty result is an answer, an unavailable organ is a non-answer, and an error is a fault.",
+      "properties": {
+        "status": { "type": "string", "enum": ["ok", "empty", "unavailable", "error"] },
+        "concept": { "type": ["string", "null"] },
+        "instance_count": { "type": "integer", "minimum": 0 },
+        "truncated": { "type": ["boolean", "null"] },
+        "latency_ms": { "type": ["number", "null"] },
+        "device": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] },
+        "error": { "type": ["string", "null"] },
+        "detail": { "type": ["string", "null"] },
+        "instances": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["index", "mask_rle_sha256", "area_px", "well_formed"],
+            "properties": {
+              "index": { "type": "integer", "minimum": 0 },
+              "confidence": { "type": ["number", "null"] },
+              "mask_rle_sha256": { "type": "string" },
+              "area_px": { "type": "integer", "minimum": 0 },
+              "area_fraction": { "type": ["number", "null"] },
+              "bounds": { "type": ["object", "null"] },
+              "mask_size": { "type": ["array", "null"] },
+              "well_formed": { "type": "boolean" }
+            }
+          }
+        },
+        "repeats": {
+          "type": "array",
+          "description": "One entry per extra repeat of the same locked call.",
+          "items": { "type": "object" }
+        }
+      }
+    },
+
+    "actuator_observation": {
+      "type": ["object", "null"],
+      "description": "Modes B and C only: what the production concept_segment wrapper made of the same organ result. Null in organ_direct, because nothing ran there to observe.",
+      "properties": {
+        "status": { "type": "string", "enum": ["ok", "empty", "unavailable", "error"] },
+        "detail": { "type": ["string", "null"] },
+        "adapter": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] },
+        "confidence": { "type": ["number", "null"] },
+        "proposed_regions": { "type": "array", "items": { "type": "object" } },
+        "descriptors": {
+          "type": "array",
+          "description": "The quarantined suggestion descriptors, summarised. The two-status claim (measured extent / interpretive naming) is visible here or it did not survive.",
+          "items": { "type": "object" }
+        },
+        "conversion": {
+          "type": "object",
+          "description": "What survived the wrapper, counted. A drop between instance_count and measured_descriptors is a WRAPPER failure and is attributable as one."
+        }
+      }
+    },
+
+    "invariance": {
+      "type": "object",
+      "required": ["image_sha256_before", "image_sha256_after", "image_unchanged", "actuators_called", "lock_held", "database_writes_attempted"],
+      "properties": {
+        "image_sha256_before": { "type": "string" },
+        "image_sha256_after": { "type": "string" },
+        "image_unchanged": { "type": "boolean" },
+        "actuators_called": { "type": "array", "items": { "type": "string" } },
+        "lock_held": {
+          "type": "boolean",
+          "description": "True iff every call that reached an instrument named the manifest's single lock."
+        },
+        "database_writes_attempted": {
+          "type": "array",
+          "description": "Instrumented, not merely forbidden by import discipline: the production runner imports route modules transitively, so an import ban would be a false guarantee.",
+          "items": { "type": "object" }
+        },
+        "post_mutated": { "type": "boolean" },
+        "post_sha256_before": { "type": ["string", "null"] },
+        "post_sha256_after": { "type": ["string", "null"] }
+      }
+    },
+
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "overlay": { "type": ["string", "null"] },
+        "contact_sheet": { "type": ["string", "null"] },
+        "review": { "type": ["string", "null"] },
+        "observations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "replay": {
+      "type": ["object", "null"],
+      "description": "Present only on a replay trace: what it was rebuilt from and the proof that it called nothing.",
+      "properties": {
+        "source_run": { "type": "string" },
+        "live_calls": { "const": 0 },
+        "matches_source": { "type": "boolean" },
+        "divergences": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

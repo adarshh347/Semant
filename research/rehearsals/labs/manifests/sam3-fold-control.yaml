@@ -1,0 +1,51 @@
+schema_version: single-actuator-manifest.v1
+lab_id: sam3-concept-segment
+run_id: sam3-fold-control-organ
+title: "Fold control — the organ alone"
+
+why: >
+  The paired control for the orchestrated run. One image, one explicit phrase a human chose,
+  the organ called directly with no Director step and no suggestion conversion in the way.
+  Whatever comes back is SAM 3's answer and nothing else's — which is the only thing that lets
+  a later failure be attributed to the phrase or to the wrapper rather than to the model.
+
+actuator_lock: concept_segment
+mode: organ_direct
+call_budget: 1
+
+image:
+  source: local_fixture
+  path: research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg
+  sha256: 8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4
+  note: >
+    Michelangelo's Pietà in situ. Chosen because the wave's prompt is about FOLDS and this is a
+    Renaissance sculpture whose drapery is the most legible thing in the frame — the robe over
+    Mary's knees carries deep, unambiguous folds a reviewer can check by eye. It is also a hard
+    case in a useful way: the marble is lit against a dark, heavily textured apse, so a mask
+    that wanders into the background is visible immediately rather than plausible.
+
+prompt: null
+control_phrase: "drapery fold"
+allowed_params: ["phrase"]
+
+model_expectation:
+  checkpoint: facebook/sam3
+  preprocessing_version: sam3-pcs-v1
+  conf: 0.25
+  imgsz: 1024
+  max_instances: 16
+
+warm_or_cold: cold
+repeat_count: 1
+
+expected_condition: positive
+
+review:
+  protocol: human_visual
+  gold_mask_path: null
+  questions:
+    - "Do the returned masks sit on actual drapery folds of the Pietà, or on the marble as a whole?"
+    - "Did it find the deep folds over the knees, or only the most contrasted edge?"
+    - "Is anything masked that is not cloth at all — the apse, the cross, the plinth?"
+
+pair_with: sam3-fold-orchestrated

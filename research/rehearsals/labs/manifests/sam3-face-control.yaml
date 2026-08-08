@@ -1,0 +1,48 @@
+schema_version: single-actuator-manifest.v1
+lab_id: sam3-concept-segment
+run_id: sam3-face-control
+title: "A concept anyone can check by eye"
+
+why: >
+  The floor of the matrix. `face` on a fixture containing two of them (Mary's, tilted down;
+  Christ's, fallen back) is the one run where a reviewer needs no expertise and no gold mask to
+  say whether the organ was right. Every harder phrase in this lab is read against it: if `face`
+  fails here, nothing else in the matrix says anything about phrases at all, because the organ
+  itself is not working on this picture.
+
+  It also probes the plural claim. Two faces are visibly present, so `instance_count` is
+  checkable rather than merely plausible.
+
+actuator_lock: concept_segment
+mode: organ_direct
+call_budget: 1
+
+image:
+  source: local_fixture
+  path: research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg
+  sha256: 8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4
+
+prompt: null
+control_phrase: "face"
+allowed_params: ["phrase"]
+
+model_expectation:
+  checkpoint: facebook/sam3
+  preprocessing_version: sam3-pcs-v1
+  conf: 0.25
+  imgsz: 1024
+  max_instances: 16
+
+warm_or_cold: warm
+repeat_count: 1
+
+expected_condition: positive
+
+review:
+  protocol: human_visual
+  gold_mask_path: null
+  questions:
+    - "Two faces are visible. How many did it return, and are they the faces?"
+    - "Did it mask any of the painted figures in the apse behind the sculpture?"
+
+pair_with: null

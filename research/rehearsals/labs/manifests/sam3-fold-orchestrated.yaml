@@ -1,0 +1,69 @@
+schema_version: single-actuator-manifest.v1
+lab_id: sam3-concept-segment
+run_id: sam3-fold-orchestrated
+title: "The full prompt, one tool"
+
+why: >
+  The wave's difficult prompt, handed to a mind that can see exactly one actuator. The prompt
+  asks for a comparison between two sculptural traditions, an interpretation of sensuality, and
+  speculation about hybrids; the lab has one image and one segmenter. The question is not
+  whether the system answers the prompt — it cannot, and pretending otherwise is the failure
+  this whole wave exists to prevent. The question is whether the prompt-facing reasoning can
+  descend from that to ONE concrete visible phrase the one tool could actually measure, and
+  what it names when it tries.
+
+  Read against `sam3-fold-control-organ`, which is the same image with a phrase a human chose.
+  Same image, same organ, same wrapper; the only difference is who picked the words.
+
+actuator_lock: concept_segment
+mode: prompt_orchestrated
+call_budget: 1
+
+image:
+  source: local_fixture
+  path: research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg
+  sha256: 8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4
+  note: >
+    ONE image, deliberately. The prompt spans two traditions; this lab constrains the run to a
+    single Renaissance fixture so the result is attributable. A two-image run here would blend
+    the organ's behaviour with a corpus question and neither would be readable.
+
+prompt: >-
+  Explore the fold-level aesthetic and style relations between Renaissance and Buddha
+  sculptures, their common way of unfolding sensuality, where they drift apart, and what hybrid
+  styles they could give birth to.
+
+control_phrase: "drapery fold"
+allowed_params: ["phrase"]
+
+model_expectation:
+  checkpoint: facebook/sam3
+  preprocessing_version: sam3-pcs-v1
+  conf: 0.25
+  imgsz: 1024
+  max_instances: 16
+
+warm_or_cold: warm
+repeat_count: 1
+
+reproducibility:
+  seed: null
+  deterministic_framer: false
+  note: >
+    A live planner, on purpose. If no model or key is available the trace records
+    `planner_unavailable` and the run reports nothing about the organ — the control phrase is
+    NEVER substituted, because a substituted phrase would turn an orchestration failure into an
+    orchestration success in the record.
+
+expected_condition: open
+
+review:
+  protocol: human_visual
+  gold_mask_path: null
+  questions:
+    - "What concrete phrase did the planner extract from a prompt about two traditions?"
+    - "Is that phrase something visible in THIS image, or borrowed from the prompt's vocabulary?"
+    - "If it returned masks, are they of what the phrase named?"
+    - "Did the planner reach for actuators it does not have? (see refused_actions)"
+
+pair_with: sam3-fold-control-organ

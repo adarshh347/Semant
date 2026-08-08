@@ -1,0 +1,49 @@
+schema_version: single-actuator-manifest.v1
+lab_id: sam3-concept-segment
+run_id: sam3-fold-control-actuator
+title: "Fold control — through the production actuator"
+
+why: >
+  The same image and the same phrase as `sam3-fold-control-organ`, executed through the real
+  Director runner instead of straight into the organ. Nothing else differs, which is what makes
+  the pair an instrument: any gap between the two runs is the `concept_segment` WRAPPER —
+  image plumbing, region conversion, the two-status descriptors, the epistemic guard, the
+  provenance stamp — and cannot be anything else.
+
+  This is the arm that would have caught the `architectural_axis` class of bug, where a producer
+  ships, the mark never renders, and nothing fails loudly in between.
+
+actuator_lock: concept_segment
+mode: actuator_direct
+call_budget: 1
+
+image:
+  source: local_fixture
+  path: research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg
+  sha256: 8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4
+
+prompt: null
+control_phrase: "drapery fold"
+allowed_params: ["phrase"]
+
+model_expectation:
+  checkpoint: facebook/sam3
+  preprocessing_version: sam3-pcs-v1
+  conf: 0.25
+  imgsz: 1024
+  max_instances: 16
+
+warm_or_cold: warm
+repeat_count: 1
+
+expected_condition: positive
+
+review:
+  protocol: human_visual
+  gold_mask_path: null
+  questions:
+    - "Did every instance the organ measured survive into a proposed region?"
+    - "Is each extent `measured` and each naming `interpretive`, as two separate descriptors?"
+    - "Was any naming withheld below the 0.50 floor — and did its extent still come through?"
+
+pair_with: sam3-fold-control-organ

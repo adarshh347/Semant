@@ -29,6 +29,8 @@ runs/
 !research/rehearsals/runs/**
 !research/rehearsals/foundry/runs/
 !research/rehearsals/foundry/runs/**
+!research/rehearsals/labs/runs/
+!research/rehearsals/labs/runs/**
 .ds-sync/
 ds-bundle/
 .design-sync/.cache/

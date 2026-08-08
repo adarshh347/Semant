@@ -1,0 +1,46 @@
+schema_version: single-actuator-manifest.v1
+lab_id: sam3-concept-segment
+run_id: sam3-fold-synonym-architecture
+title: "Fold synonym — folding architecture"
+
+why: >
+  The third fold phrase, and the one that should behave differently. `folding architecture` uses
+  the same root word but names a different KIND of thing, and this image contains real
+  architecture — the apse, the cross, the plinth — behind the cloth. If the organ binds on the
+  word `folding` and masks the drapery anyway, that is a measurable case of the phrase's head
+  noun being ignored; if it masks the apse, that is the phrase working and the concept being
+  absent. Both are findings, and they are not the same finding.
+
+actuator_lock: concept_segment
+mode: organ_direct
+call_budget: 1
+
+image:
+  source: local_fixture
+  path: research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg
+  sha256: 8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4
+
+prompt: null
+control_phrase: "folding architecture"
+allowed_params: ["phrase"]
+
+model_expectation:
+  checkpoint: facebook/sam3
+  preprocessing_version: sam3-pcs-v1
+  conf: 0.25
+  imgsz: 1024
+  max_instances: 16
+
+warm_or_cold: warm
+repeat_count: 1
+
+expected_condition: open
+
+review:
+  protocol: human_visual
+  gold_mask_path: null
+  questions:
+    - "Did it mask cloth (binding on `folding`) or built structure (binding on `architecture`)?"
+    - "If it returned nothing, is that the honest answer for this picture?"
+
+pair_with: sam3-fold-control-organ

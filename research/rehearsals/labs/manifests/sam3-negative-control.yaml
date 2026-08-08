@@ -1,0 +1,45 @@
+schema_version: single-actuator-manifest.v1
+lab_id: sam3-concept-segment
+run_id: sam3-negative-control
+title: "A concept that is not there"
+
+why: >
+  The control whose PASS is an empty result. SAM 3 will return a confident, well-formed mask for
+  very nearly any phrase — the SF-004-R2 spike watched it mask the background of a painting for
+  `shoulder fabric` at 0.27–0.43 — so the interesting question is not whether it finds things
+  but whether it declines to. If this run comes back with instances, every positive run in the
+  matrix is weakened, because the organ is answering the prompt rather than the picture.
+
+actuator_lock: concept_segment
+mode: organ_direct
+call_budget: 1
+
+image:
+  source: local_fixture
+  path: research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg
+  sha256: 8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4
+
+prompt: null
+control_phrase: "bicycle"
+allowed_params: ["phrase"]
+
+model_expectation:
+  checkpoint: facebook/sam3
+  preprocessing_version: sam3-pcs-v1
+  conf: 0.25
+  imgsz: 1024
+  max_instances: 16
+
+warm_or_cold: warm
+repeat_count: 1
+
+expected_condition: negative
+
+review:
+  protocol: human_visual
+  gold_mask_path: null
+  questions:
+    - "There is no bicycle in this photograph. Did the organ return nothing?"
+    - "If it returned something, what did it mask — and what does that say about every positive run?"
+
+pair_with: sam3-fold-control-organ

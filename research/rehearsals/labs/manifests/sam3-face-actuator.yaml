@@ -1,0 +1,55 @@
+schema_version: single-actuator-manifest.v1
+lab_id: sam3-concept-segment
+run_id: sam3-face-control-actuator
+title: "Face, through the production actuator — the two statuses on real data"
+
+why: >
+  `sam3-fold-control-actuator` was meant to exercise the wrapper, and it cannot: the organ
+  returns nothing for `drapery fold` on this image, so there is no conversion to observe. An
+  empty result tests the empty path and nothing else, and a matrix whose only actuator run is
+  empty would let a wrapper bug sit undetected behind an honest zero.
+
+  `face` returns three instances at naming confidences 0.81, 0.47 and 0.35 — which is the
+  single most useful thing in this matrix, because it straddles the 0.50 naming floor. It
+  should produce three MEASURED extents and one INTERPRETIVE naming, with two namings withheld
+  and their extents still standing. That is SF-004-R §5.3 executed on real pixels rather than
+  asserted on fakes: the measurement does not become false because the word attached to it is
+  doubtful.
+
+  Paired with `sam3-face-control`, which is the same image and phrase straight into the organ.
+  Any difference between the two is the wrapper.
+
+actuator_lock: concept_segment
+mode: actuator_direct
+call_budget: 1
+
+image:
+  source: local_fixture
+  path: research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg
+  sha256: 8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4
+
+prompt: null
+control_phrase: "face"
+allowed_params: ["phrase"]
+
+model_expectation:
+  checkpoint: facebook/sam3
+  preprocessing_version: sam3-pcs-v1
+  conf: 0.25
+  imgsz: 1024
+  max_instances: 16
+
+warm_or_cold: warm
+repeat_count: 1
+
+expected_condition: positive
+
+review:
+  protocol: human_visual
+  gold_mask_path: null
+  questions:
+    - "Did all three extents survive into proposed regions, with the same masks the organ measured?"
+    - "Did exactly one naming clear the 0.50 floor, and did the other two extents still come through?"
+    - "Is each extent `measured` and each surviving naming `interpretive` — two separate claims?"
+
+pair_with: sam3-face-control

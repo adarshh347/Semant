@@ -1,0 +1,59 @@
+schema_version: single-actuator-manifest.v1
+lab_id: sam3-concept-segment
+run_id: sam3-fold-warm-repeat
+title: "Warm, repeated — is the organ deterministic?"
+
+why: >
+  The same frozen call issued three times against a resident model. Two things come out of it
+  and they are separate: a WARM latency to set beside the cold receipt in
+  `sam3-fold-control-organ`, and an answer to whether identical input yields identical masks.
+
+  The second matters more than it looks. Every comparison in this lab — control against
+  orchestrated, organ against actuator — assumes that a difference between two runs means
+  something. If the organ is not deterministic on repeated identical input, that assumption is
+  false and every attribution in the matrix needs an error bar it does not currently have.
+
+  A repeat is not a retry. The call is byte-identical, no planner runs, and each repeat gets its
+  own budget-of-one firewall, so nothing here can search for a better result.
+
+actuator_lock: concept_segment
+mode: organ_direct
+call_budget: 1
+
+image:
+  source: local_fixture
+  path: research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg
+  sha256: 8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4
+
+prompt: null
+control_phrase: "drapery fold"
+allowed_params: ["phrase"]
+
+model_expectation:
+  checkpoint: facebook/sam3
+  preprocessing_version: sam3-pcs-v1
+  conf: 0.25
+  imgsz: 1024
+  max_instances: 16
+
+warm_or_cold: warm
+repeat_count: 3
+
+reproducibility:
+  seed: null
+  deterministic_framer: false
+  note: >
+    No planner runs in this mode, so there is no phrase stability to measure here. Phrase
+    stability needs repeated PLANNER calls, which would break the one-call discipline that makes
+    Arm C readable — `compare` answers it across separate orchestrated runs instead.
+
+expected_condition: positive
+
+review:
+  protocol: human_visual
+  gold_mask_path: null
+  questions:
+    - "Were the mask hashes identical across all three runs?"
+    - "If not, how far apart were the instance counts — and does any comparison in this lab survive that?"
+
+pair_with: sam3-fold-control-organ
