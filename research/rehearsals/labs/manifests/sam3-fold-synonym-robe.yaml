@@ -1,0 +1,46 @@
+schema_version: single-actuator-manifest.v1
+lab_id: sam3-concept-segment
+run_id: sam3-fold-synonym-robe
+title: "Fold synonym — robe folds"
+
+why: >
+  One of three phrases for the same visible thing (`drapery fold`, `robe folds`, `folding
+  architecture`). An open-vocabulary organ is only useful if near-synonyms land near each other;
+  if the three produce wildly different masks of the same cloth, then the phrase is doing far
+  more work than the picture and every fold result in the wave is a result about wording.
+
+  Read against `sam3-fold-control-organ` and `sam3-fold-synonym-architecture`.
+
+actuator_lock: concept_segment
+mode: organ_direct
+call_budget: 1
+
+image:
+  source: local_fixture
+  path: research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg
+  sha256: 8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4
+
+prompt: null
+control_phrase: "robe folds"
+allowed_params: ["phrase"]
+
+model_expectation:
+  checkpoint: facebook/sam3
+  preprocessing_version: sam3-pcs-v1
+  conf: 0.25
+  imgsz: 1024
+  max_instances: 16
+
+warm_or_cold: warm
+repeat_count: 1
+
+expected_condition: positive
+
+review:
+  protocol: human_visual
+  gold_mask_path: null
+  questions:
+    - "Does this land on the same cloth as `drapery fold`, or somewhere else entirely?"
+    - "Is the extent the whole robe, or the folds within it? Those are different claims."
+
+pair_with: sam3-fold-control-organ

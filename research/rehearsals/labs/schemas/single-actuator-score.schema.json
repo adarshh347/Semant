@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:labs/single-actuator-score.schema.json",
+  "title": "Single-Actuator Lab Score",
+  "description": "The judgement of one capture, SPLIT IN TWO and kept apart by the schema itself.\n\n`measured` holds what the harness can compute without a human: availability, leakage, call counts, latency, mask well-formedness, conversion survival, invariants. `review` holds what only a human or a gold mask can settle: whether the mask is of the thing the words named.\n\nThe split is structural rather than conventional because the temptation it guards against is specific and strong: a high confidence and a clean RLE make a wrong mask look right. SF-004-R2 measured exactly that — `shoulder fabric` at 0.27–0.43 returned a well-formed mask OF THE BACKGROUND. Nothing in `measured` can therefore write `review.concept_binding`, and `verdict.semantic_correctness` stays `not_established` until a reviewer or a gold mask says otherwise.",
+  "type": "object",
+  "required": ["schema_version", "lab_id", "run_id", "mode", "expected_condition", "measured", "review", "verdict"],
+  "properties": {
+    "schema_version": { "const": "single-actuator-score.v1" },
+    "lab_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "mode": { "type": "string", "enum": ["organ_direct", "actuator_direct", "prompt_orchestrated", "replay"] },
+    "expected_condition": { "type": "string", "enum": ["positive", "negative", "adversarial", "open"] },
+
+    "measured": {
+      "type": "object",
+      "required": [
+        "availability", "invocation_count", "call_budget", "budget_respected",
+        "actuator_leakage", "lock_held", "instance_count",
+        "all_masks_well_formed", "invariants_held", "violations"
+      ],
+      "properties": {
+        "availability": {
+          "type": "string",
+          "enum": ["available", "weights_absent", "runtime_absent", "unavailable"],
+          "description": "Why it could not run, when it could not. `weights_absent` and `runtime_absent` are separated because they are fixed by different actions."
+        },
+        "planner_valid": {
+          "type": ["boolean", "null"],
+          "description": "Null when no planner ran. False when the planner named an unknown/unlocked actuator or proposed more calls than the budget."
+        },
+        "actuator_leakage": {
+          "type": "boolean",
+          "description": "Did anything other than the lock reach an instrument? Must be false for a usable run."
+        },
+        "planner_requested_unlocked": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "What the planner ASKED for and was refused. Recorded rather than filtered — how often the mind reaches past its hands is the observable."
+        },
+        "invocation_count": { "type": "integer", "minimum": 0 },
+        "call_budget": { "type": "integer", "minimum": 1 },
+        "budget_respected": { "type": "boolean" },
+        "lock_held": { "type": "boolean" },
+        "cold_or_warm": { "type": ["string", "null"], "enum": ["cold", "warm", null] },
+        "latency_ms": { "type": ["number", "null"] },
+        "load_ms": { "type": ["number", "null"] },
+        "instance_count": { "type": "integer", "minimum": 0 },
+        "truncated": { "type": ["boolean", "null"] },
+        "mask_area_px": { "type": "array", "items": { "type": "integer" } },
+        "mask_area_fraction": { "type": "array", "items": { "type": "number" } },
+        "mask_bounds": { "type": "array", "items": { "type": "object" } },
+        "max_pairwise_iou": {
+          "type": ["number", "null"],
+          "description": "Highest overlap between two returned instances. High values mean the organ returned near-duplicates, which inflates an instance count that a reader would otherwise take for coverage."
+        },
+        "all_masks_well_formed": { "type": "boolean" },
+        "conversion_survival": {
+          "type": ["object", "null"],
+          "description": "Modes B/C. Instances in, regions and descriptors out, and anything the wrapper or the epistemic guard dropped.",
+          "properties": {
+            "instances": { "type": "integer" },
+            "proposed_regions": { "type": "integer" },
+            "measured_descriptors": { "type": "integer" },
+            "interpretive_descriptors": { "type": "integer" },
+            "naming_withheld": { "type": "integer" },
+            "dropped": { "type": "integer" },
+            "survived": { "type": "boolean" }
+          }
+        },
+        "two_status_preserved": {
+          "type": ["boolean", "null"],
+          "description": "Modes B/C. True when the wrapper emitted the measured extent and the interpretive naming as SEPARATE claims — the whole point of the concept_segment contract."
+        },
+        "repeat_stability": {
+          "type": ["object", "null"],
+          "properties": {
+            "repeats": { "type": "integer" },
+            "identical_mask_hashes": { "type": ["boolean", "null"] },
+            "instance_counts": { "type": "array", "items": { "type": "integer" } },
+            "min_pairwise_iou": { "type": ["number", "null"] },
+            "phrase_stable": { "type": ["boolean", "null"] }
+          }
+        },
+        "invariants_held": { "type": "boolean" },
+        "violations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Named, not counted. A violation is a fact about this run and belongs in the report as text."
+        }
+      }
+    },
+
+    "review": {
+      "type": "object",
+      "required": ["status", "protocol", "concept_binding", "gold_mask_present"],
+      "description": "Every judgement here is null until a human or a gold mask supplies it. Null means UNKNOWN and must render as unknown; it never renders as pass.",
+      "properties": {
+        "status": { "type": "string", "enum": ["pending", "complete", "not_required"] },
+        "protocol": { "type": "string", "enum": ["human_visual", "gold_mask", "none_required"] },
+        "concept_binding": {
+          "type": ["string", "null"],
+          "enum": ["correct", "partial", "misbound", "ambiguous", "absent", null],
+          "description": "Did the mask land on what the words named? The single question confidence cannot answer."
+        },
+        "coverage": {
+          "type": ["string", "null"],
+          "enum": ["all_instances", "some_instances", "none", "not_applicable", null]
+        },
+        "boundary_quality": { "type": ["string", "null"], "enum": ["clean", "loose", "wrong", null] },
+        "false_positives": { "type": ["integer", "null"] },
+        "false_negatives": { "type": ["integer", "null"] },
+        "iou_vs_gold": { "type": ["number", "null"] },
+        "gold_mask_present": { "type": "boolean" },
+        "empty_means": {
+          "type": ["string", "null"],
+          "enum": ["true_absence", "missed_detection", "undetermined", null],
+          "description": "The question a negative control exists to ask. Undetermined is a real and common answer."
+        },
+        "reviewer": { "type": ["string", "null"] },
+        "reviewed_at": { "type": ["string", "null"] },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "verdict": {
+      "type": "object",
+      "required": ["harness", "semantic_correctness", "attribution"],
+      "properties": {
+        "harness": {
+          "type": "string",
+          "enum": ["clean", "violated"],
+          "description": "Did the lab itself behave — one call, locked actuator, nothing written, image untouched."
+        },
+        "semantic_correctness": {
+          "type": "string",
+          "enum": ["not_established", "established_by_review", "established_by_gold_mask", "refuted_by_review"],
+          "description": "NEVER derived from confidence, instance count, or a well-formed RLE. `not_established` is the honest default and the only value the harness may write by itself."
+        },
+        "attribution": {
+          "type": "string",
+          "enum": [
+            "organ_succeeded",
+            "organ_returned_empty",
+            "organ_unavailable",
+            "organ_error",
+            "wrapper_dropped_data",
+            "prompt_phrase_failed",
+            "planner_unavailable",
+            "planner_proposed_nothing",
+            "negative_control_empty_as_expected",
+            "empty_ambiguous_pending_review",
+            "harness_violation"
+          ],
+          "description": "The one sentence this lab exists to be able to say: WHICH LAYER produced this outcome."
+        },
+        "attribution_detail": { "type": "string" }
+      }
+    },
+
+    "pair": {
+      "type": ["object", "null"],
+      "description": "Filled by `compare`: the paired control this run is read against.",
+      "properties": {
+        "paired_run": { "type": ["string", "null"] },
+        "control_phrase": { "type": ["string", "null"] },
+        "orchestrated_phrase": { "type": ["string", "null"] },
+        "phrases_agree": { "type": ["boolean", "null"] }
+      }
+    }
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:labs/single-actuator-manifest.schema.json",
+  "title": "Single-Actuator Lab Manifest",
+  "description": "RESEARCH-ONLY input packet for one single-actuator lab capture. Implies NO production entity, route, or Mongo collection. The manifest is the CAPABILITY LOCK: `actuator_lock` names exactly one actuator and `call_budget` is 1, and the harness refuses anything else rather than filtering it into apparent success.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "lab_id",
+    "run_id",
+    "actuator_lock",
+    "mode",
+    "call_budget",
+    "image",
+    "expected_condition",
+    "review"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "single-actuator-manifest.v1" },
+    "lab_id": { "type": "string", "minLength": 1 },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Run directory name. `capture` refuses to overwrite a frozen run; a re-capture needs a new id."
+    },
+    "title": { "type": "string" },
+    "why": {
+      "type": "string",
+      "description": "What this capture is FOR. Prose, read by a human in review.md."
+    },
+    "actuator_lock": {
+      "type": "string",
+      "minLength": 1,
+      "description": "EXACTLY ONE actuator name, from the production capability table. Not a list: a list is a thing someone widens."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["organ_direct", "actuator_direct", "prompt_orchestrated", "replay"]
+    },
+    "call_budget": {
+      "const": 1,
+      "description": "Const 1 in v1. A later manifest version may change it EXPLICITLY; nothing may raise it at runtime."
+    },
+    "image": {
+      "type": "object",
+      "required": ["source", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["local_fixture"],
+          "description": "v1 admits local checksummed fixtures only. Nothing is fetched; a remote source would need a new enum member AND a recorded provenance, deliberately."
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repo-relative path to the fixture."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Checked BEFORE the run and again after. A mismatch aborts; it never proceeds with a note."
+        },
+        "note": { "type": "string" }
+      }
+    },
+    "prompt": {
+      "type": ["string", "null"],
+      "description": "The user's words, unchanged. Required for prompt_orchestrated; null is legal only for the direct control modes."
+    },
+    "control_phrase": {
+      "type": ["string", "null"],
+      "description": "The explicit phrase handed to the organ. Required for organ_direct and actuator_direct; in prompt_orchestrated it is the PAIRED control the extracted phrase is compared against, never a substitute for it."
+    },
+    "allowed_params": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Param keys the lab will pass through. Intersected with the production actuator's declared `param_keys`; the intersection wins, so a manifest cannot widen the actuator."
+    },
+    "model_expectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "checkpoint": { "type": ["string", "null"] },
+        "preprocessing_version": { "type": ["string", "null"] },
+        "conf": { "type": ["number", "null"] },
+        "imgsz": { "type": ["integer", "null"] },
+        "max_instances": { "type": ["integer", "null"] }
+      }
+    },
+    "warm_or_cold": {
+      "type": "string",
+      "enum": ["cold", "warm"],
+      "description": "cold unloads the model first, so the receipt measures a real cold start rather than inheriting a resident predictor."
+    },
+    "repeat_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Repeats of the SAME locked call, for stability. Each repeat is its own budgeted invocation and every one is recorded."
+    },
+    "reproducibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seed": { "type": ["integer", "null"] },
+        "deterministic_framer": {
+          "type": "boolean",
+          "description": "Arm C only. A frozen prompt→phrase mapping instead of a live planner. The trace SAYS it did this; it is never a silent substitute for an unavailable model."
+        },
+        "note": { "type": "string" }
+      }
+    },
+    "expected_condition": {
+      "type": "string",
+      "enum": ["positive", "negative", "adversarial", "open"],
+      "description": "positive: the concept is visibly present. negative: known absent, an empty result is the PASS. adversarial: expected to expose concept-binding limits, not to produce a trusted result. open: nobody knows, which is a legitimate state for a lab."
+    },
+    "review": {
+      "type": "object",
+      "required": ["protocol"],
+      "additionalProperties": false,
+      "properties": {
+        "protocol": {
+          "type": "string",
+          "enum": ["human_visual", "gold_mask", "none_required"],
+          "description": "How semantic correctness would be established. `none_required` does not mean 'assume correct' — it means the capture makes no semantic claim at all."
+        },
+        "gold_mask_path": { "type": ["string", "null"] },
+        "questions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "What the reviewer is asked, written into review.md."
+        }
+      }
+    },
+    "pair_with": {
+      "type": ["string", "null"],
+      "description": "run_id of the paired control. This is what turns two runs into an attribution: same image, control phrase vs full prompt."
+    }
+  }
+}

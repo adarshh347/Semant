@@ -1,0 +1,188 @@
+{
+  "schema_version": "single-actuator-trace.v1",
+  "lab_id": "sam3-concept-segment",
+  "run_id": "sam3-fold-orchestrated",
+  "mode": "prompt_orchestrated",
+  "actuator_lock": "concept_segment",
+  "captured_at": "2026-08-08T16:03:20+00:00",
+  "manifest": {
+    "schema_version": "single-actuator-manifest.v1",
+    "lab_id": "sam3-concept-segment",
+    "run_id": "sam3-fold-orchestrated",
+    "title": "The full prompt, one tool",
+    "why": "The wave's difficult prompt, handed to a mind that can see exactly one actuator. The prompt asks for a comparison between two sculptural traditions, an interpretation of sensuality, and speculation about hybrids; the lab has one image and one segmenter. The question is not whether the system answers the prompt \u2014 it cannot, and pretending otherwise is the failure this whole wave exists to prevent. The question is whether the prompt-facing reasoning can descend from that to ONE concrete visible phrase the one tool could actually measure, and what it names when it tries.\nRead against `sam3-fold-control-organ`, which is the same image with a phrase a human chose. Same image, same organ, same wrapper; the only difference is who picked the words.\n",
+    "actuator_lock": "concept_segment",
+    "mode": "prompt_orchestrated",
+    "call_budget": 1,
+    "image": {
+      "source": "local_fixture",
+      "path": "research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg",
+      "sha256": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+      "note": "ONE image, deliberately. The prompt spans two traditions; this lab constrains the run to a single Renaissance fixture so the result is attributable. A two-image run here would blend the organ's behaviour with a corpus question and neither would be readable.\n"
+    },
+    "prompt": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures, their common way of unfolding sensuality, where they drift apart, and what hybrid styles they could give birth to.",
+    "control_phrase": "drapery fold",
+    "allowed_params": [
+      "phrase"
+    ],
+    "model_expectation": {
+      "checkpoint": "facebook/sam3",
+      "preprocessing_version": "sam3-pcs-v1",
+      "conf": 0.25,
+      "imgsz": 1024,
+      "max_instances": 16
+    },
+    "warm_or_cold": "warm",
+    "repeat_count": 1,
+    "reproducibility": {
+      "seed": null,
+      "deterministic_framer": false,
+      "note": "A live planner, on purpose. If no model or key is available the trace records `planner_unavailable` and the run reports nothing about the organ \u2014 the control phrase is NEVER substituted, because a substituted phrase would turn an orchestration failure into an orchestration success in the record.\n"
+    },
+    "expected_condition": "open",
+    "review": {
+      "protocol": "human_visual",
+      "gold_mask_path": null,
+      "questions": [
+        "What concrete phrase did the planner extract from a prompt about two traditions?",
+        "Is that phrase something visible in THIS image, or borrowed from the prompt's vocabulary?",
+        "If it returned masks, are they of what the phrase named?",
+        "Did the planner reach for actuators it does not have? (see refused_actions)"
+      ]
+    },
+    "pair_with": "sam3-fold-control-organ"
+  },
+  "environment": {
+    "git_commit": "e3fa9e7ec7054d76c96a46e56b96c09e6544f947",
+    "git_dirty": true,
+    "platform": "Darwin 25.5.0 arm64",
+    "python": "3.12.13",
+    "device": "mps",
+    "weights_present": true,
+    "weights_id": "sam3.pt",
+    "runtime_available": true,
+    "checkpoint": "facebook/sam3",
+    "preprocessing_version": "sam3-pcs-v1",
+    "conf": 0.25,
+    "imgsz": 1024,
+    "naming_floor": 0.5,
+    "torch_version": "2.13.0",
+    "imgsz_effective": null,
+    "imgsz_note": "requested only. Ultralytics rounds imgsz up to a multiple of the model stride inside the inference call and does not write the rounded value back to predictor.args, so the effective size cannot be read from this seam. Observed in the SAM 3 runs: a requested 1024 was logged as 1036. Recorded as absent rather than filled in with the request."
+  },
+  "prompt_receipt": {
+    "original_prompt": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures, their common way of unfolding sensuality, where they drift apart, and what hybrid styles they could give birth to.",
+    "prompt_sha256": "71890ec1c9e9ae2670792949b797ad80c7c417e139df9a893f0c11810a5b3519",
+    "control_phrase": "drapery fold",
+    "planner_role": "step_planner",
+    "planner_model": "openai/gpt-oss-120b",
+    "planner_status": "ok",
+    "planner_detail": null,
+    "raw_proposal": {
+      "steps": [
+        {
+          "actuator": "concept_segment",
+          "params": {
+            "phrase": "folded drapery"
+          },
+          "note": "captures the fold-level aesthetic common to both Renaissance and Buddha sculptures"
+        }
+      ]
+    }
+  },
+  "decision_receipt": {
+    "catalogue_shown": [
+      {
+        "actuator": "concept_segment",
+        "does": "Measure every instance of a named concept, as real pixel masks.",
+        "requires": [
+          "image",
+          "phrase"
+        ],
+        "produces": [
+          "region",
+          "mark"
+        ],
+        "params_you_may_set": [
+          "phrase"
+        ]
+      }
+    ],
+    "selected_actuator": "concept_segment",
+    "selected_phrase": "folded drapery",
+    "phrase_source": "planner",
+    "refused_actions": [],
+    "dropped_params": [],
+    "planner_notes": []
+  },
+  "invocations": [
+    {
+      "call_index": 1,
+      "call_budget": 1,
+      "actuator": "concept_segment",
+      "adapter": "sam3",
+      "kind": "actuator",
+      "started_at": 1786204985.621387,
+      "ended_at": 1786205000.00899,
+      "latency_ms": 14387.6,
+      "warm": false,
+      "load_ms": 5.9,
+      "outcome": "empty",
+      "error": null
+    }
+  ],
+  "organ_observation": {
+    "status": "empty",
+    "concept": "folded drapery",
+    "instance_count": 0,
+    "truncated": null,
+    "latency_ms": 14386.5,
+    "device": "mps",
+    "model": "facebook/sam3",
+    "error": null,
+    "detail": "no instance of 'folded drapery' measured",
+    "instances": [],
+    "repeats": [],
+    "max_pairwise_iou": null
+  },
+  "actuator_observation": {
+    "status": "empty",
+    "detail": "no instance of 'folded drapery' measured",
+    "adapter": "sam3",
+    "model": "facebook/sam3",
+    "confidence": null,
+    "proposed_regions": [],
+    "descriptors": [],
+    "conversion": {
+      "instances": 0,
+      "proposed_regions": 0,
+      "measured_descriptors": 0,
+      "interpretive_descriptors": 0,
+      "naming_withheld": 0,
+      "dropped": 0,
+      "survived": true,
+      "statuses_seen": []
+    },
+    "post_sha256_before": "1fd6ccdb590bff258ca429c1d734f713955ec500b58d8a5af9012cff96ec1bf7",
+    "post_sha256_after": "1fd6ccdb590bff258ca429c1d734f713955ec500b58d8a5af9012cff96ec1bf7"
+  },
+  "invariance": {
+    "image_sha256_before": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "image_sha256_after": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "image_unchanged": true,
+    "actuators_called": [
+      "concept_segment"
+    ],
+    "lock_held": true,
+    "database_writes_attempted": [],
+    "post_mutated": false,
+    "post_sha256_before": "1fd6ccdb590bff258ca429c1d734f713955ec500b58d8a5af9012cff96ec1bf7",
+    "post_sha256_after": "1fd6ccdb590bff258ca429c1d734f713955ec500b58d8a5af9012cff96ec1bf7"
+  },
+  "artifacts": {
+    "overlay": null,
+    "contact_sheet": null,
+    "review": "review.md",
+    "observations": []
+  }
+}

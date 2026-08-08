@@ -1,0 +1,68 @@
+{
+  "schema_version": "single-actuator-score.v1",
+  "lab_id": "sam3-concept-segment",
+  "run_id": "sam3-fold-control-actuator",
+  "mode": "actuator_direct",
+  "expected_condition": "positive",
+  "measured": {
+    "availability": "available",
+    "planner_valid": null,
+    "actuator_leakage": false,
+    "planner_requested_unlocked": [],
+    "invocation_count": 1,
+    "call_budget": 1,
+    "budget_respected": true,
+    "lock_held": true,
+    "cold_or_warm": "cold",
+    "latency_ms": 13699.1,
+    "load_ms": 2.3,
+    "instance_count": 0,
+    "truncated": null,
+    "mask_area_px": [],
+    "mask_area_fraction": [],
+    "mask_bounds": [],
+    "max_pairwise_iou": null,
+    "all_masks_well_formed": true,
+    "conversion_survival": {
+      "instances": 0,
+      "proposed_regions": 0,
+      "measured_descriptors": 0,
+      "interpretive_descriptors": 0,
+      "naming_withheld": 0,
+      "dropped": 0,
+      "survived": true,
+      "statuses_seen": []
+    },
+    "two_status_preserved": null,
+    "repeat_stability": null,
+    "invariants_held": true,
+    "violations": []
+  },
+  "review": {
+    "status": "pending",
+    "protocol": "human_visual",
+    "concept_binding": null,
+    "coverage": null,
+    "boundary_quality": null,
+    "false_positives": null,
+    "false_negatives": null,
+    "iou_vs_gold": null,
+    "gold_mask_present": false,
+    "empty_means": null,
+    "reviewer": null,
+    "reviewed_at": null,
+    "notes": ""
+  },
+  "verdict": {
+    "harness": "clean",
+    "semantic_correctness": "not_established",
+    "attribution": "empty_ambiguous_pending_review",
+    "attribution_detail": "the organ measured no instance of 'drapery fold'. Whether that is true absence or a missed detection is a review question, not a measured one"
+  },
+  "pair": {
+    "paired_run": "sam3-fold-control-organ",
+    "control_phrase": "drapery fold",
+    "orchestrated_phrase": "drapery fold",
+    "phrases_agree": null
+  }
+}
