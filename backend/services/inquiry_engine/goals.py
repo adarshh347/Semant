@@ -246,11 +246,20 @@ class EvidenceGoal(Goal):
     #: in `capability.resolve_action`, and a goal that had already been flattened to a need would
     #: silently lose all three. An empty dict means the goal came from a term or an attention.
     action: Dict[str, Any] = field(default_factory=dict)
+    #: A gap the FRAMER already found, in the framer's own words.
+    #:
+    #: Lane A's `DemandKind.UNRESOLVED` means "no producer exists at all", and its `unresolved_terms`
+    #: each carry a reason. Those are findings made one layer up, and this engine transports them
+    #: rather than re-adjudicating them: re-deriving would either produce a worse reason or report
+    #: the term as an unknown instrument, which reads as a table error HERE rather than as a
+    #: considered refusal THERE. Non-empty short-circuits capability resolution to a gap.
+    declared_gap: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {**self._base_dict(), "need": self.need, "question": self.question,
                 "phrase": self.phrase, "post_id": self.post_id, "region_id": self.region_id,
                 "origin": self.origin, "action": dict(self.action),
+                "declared_gap": self.declared_gap,
                 "criteria": [c.to_dict() for c in self.criteria]}
 
 
@@ -373,6 +382,7 @@ def goal_from_dict(d: Mapping[str, Any]) -> Goal:
                             region_id=str(d.get("region_id") or ""),
                             origin=str(d.get("origin") or ""),
                             action=dict(d.get("action") or {}),
+                            declared_gap=str(d.get("declared_gap") or ""),
                             criteria=tuple(Criterion.from_dict(c) for c in d.get("criteria") or ()))
     if cls is PreparationTask:
         return PreparationTask(**common, actuator=str(d.get("actuator") or ""),
