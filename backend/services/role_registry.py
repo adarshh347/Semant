@@ -256,6 +256,27 @@ _THINKERS: List[Role] = [
         default_model="openai/gpt-oss-120b",
         provider="groq",
     ),
+    Role(
+        name="inquiry_framer",
+        kind=RoleKind.THINKER,
+        # HARNESS-001A. Note what this role does NOT do, because it is the reason it can exist at
+        # all: it never sees an image. It reads the user's words and corpus metadata — ids,
+        # titles, counts — classifies what KIND of knowing each clause asks for, and proposes acts
+        # from a closed vocabulary handed to it as data.
+        summary="Frames a prompt as an inquiry — attentions, epistemic demands, and "
+                "grammar-valid perceptual acts. Reads words, never pixels.",
+        # INTERPRETIVE, and the ceiling is load-bearing here in a way it is not for most thinkers.
+        # This role's output includes the judgement "this clause asks for a MEASUREMENT", and that
+        # judgement is itself an opinion about a sentence. Anything stronger would let a model
+        # classify `sensuality` as measurable and have the classification arrive carrying more
+        # authority than the thing it classified.
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        # Same string as `step_planner` and `argument_planner` today, and separate ON PURPOSE:
+        # framing a QUESTION and planning a CHAIN of actuators are different jobs of different
+        # difficulty, and rebinding one must not silently move the other.
+        default_model="openai/gpt-oss-120b",
+        provider="groq",
+    ),
 ]
 
 

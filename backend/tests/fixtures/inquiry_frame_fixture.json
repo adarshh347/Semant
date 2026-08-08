@@ -1,0 +1,337 @@
+{
+  "schema_version": "inquiry-frame.v1",
+  "inquiry_id": "inq_8aad242869f2",
+  "prompt": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures, their common way of unfolding sensuality, where they drift apart, and what hybrid styles they could give birth to.",
+  "mode": "explore",
+  "attentions": [
+    {
+      "term": "folding",
+      "said": "the user said “folding”",
+      "span": [
+        118,
+        125
+      ],
+      "category": "fold",
+      "action_roles": [
+        "field:fold"
+      ],
+      "attributed_to": "prompt"
+    },
+    {
+      "term": "relations between",
+      "said": "the user said “relations between”",
+      "span": [
+        43,
+        60
+      ],
+      "category": "comparison",
+      "action_roles": [
+        "connect:similarity"
+      ],
+      "attributed_to": "prompt"
+    },
+    {
+      "term": "drift apart",
+      "said": "the user said “drift apart”",
+      "span": [
+        149,
+        160
+      ],
+      "category": "distinction",
+      "action_roles": [
+        "connect:contrast"
+      ],
+      "attributed_to": "prompt"
+    },
+    {
+      "term": "give birth",
+      "said": "the user said “give birth”",
+      "span": [
+        196,
+        206
+      ],
+      "category": "speculation",
+      "action_roles": [],
+      "attributed_to": "prompt"
+    },
+    {
+      "term": "sculptures",
+      "said": "the user said “sculptures”",
+      "span": [
+        84,
+        94
+      ],
+      "category": "corpus_selector",
+      "action_roles": [],
+      "attributed_to": "prompt"
+    }
+  ],
+  "epistemic_demands": [
+    {
+      "clause": "their common way of unfolding sensuality",
+      "term": "folding",
+      "kind": "measurable",
+      "why": "names something an organ could put a number or an extent on — once one actually runs"
+    },
+    {
+      "clause": "their common way of unfolding sensuality",
+      "term": "sensuality",
+      "kind": "interpretive",
+      "why": "names a reading ABOUT a picture. A reading is not a weak measurement; it is a different species of claim."
+    },
+    {
+      "clause": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures",
+      "term": "aesthetic",
+      "kind": "interpretive",
+      "why": "names a reading ABOUT a picture. A reading is not a weak measurement; it is a different species of claim."
+    },
+    {
+      "clause": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures",
+      "term": "style",
+      "kind": "interpretive",
+      "why": "names a reading ABOUT a picture. A reading is not a weak measurement; it is a different species of claim."
+    },
+    {
+      "clause": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures",
+      "term": "renaissance",
+      "kind": "sourced",
+      "why": "names a claim from OUTSIDE the picture, which must arrive with a citation and may never be laundered into something the picture shows"
+    },
+    {
+      "clause": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures",
+      "term": "buddha",
+      "kind": "sourced",
+      "why": "names a claim from OUTSIDE the picture, which must arrive with a citation and may never be laundered into something the picture shows"
+    },
+    {
+      "clause": "and what hybrid styles they could give birth to",
+      "term": "could give birth",
+      "kind": "imagined",
+      "why": "names something that does not exist. No picture can be measured for it, and no source can cite it."
+    },
+    {
+      "clause": "and what hybrid styles they could give birth to",
+      "term": "hybrid",
+      "kind": "imagined",
+      "why": "names something that does not exist. No picture can be measured for it, and no source can cite it."
+    },
+    {
+      "clause": "their common way of unfolding sensuality",
+      "term": "way of unfolding",
+      "kind": "unresolved",
+      "why": "names a MANNER — how a form unfolds across its surface. A fold can be marked; the way of folding cannot. No act in the grammar and no organ in the sensorium is scoped to a manner."
+    },
+    {
+      "clause": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures",
+      "term": "fold-level",
+      "kind": "unresolved",
+      "why": "names a LEVEL OF ANALYSIS rather than a thing in a picture. No act is scoped to a level, so nothing can be proposed that answers 'at the level of folds'."
+    },
+    {
+      "clause": "their common way of unfolding sensuality",
+      "term": "unfolding sensuality",
+      "kind": "unresolved",
+      "why": "binds a manner to a reading. Neither half is measurable and the compound is not decomposable into acts without pretending one of them is."
+    }
+  ],
+  "proposed_actions": [
+    {
+      "id": "act_1",
+      "type": "find_parts",
+      "label": "Find parts",
+      "intent": "open the named images into material you can cite",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": false,
+      "target": "operation",
+      "createdAt": 0.0,
+      "payload": {
+        "reason": "2 images were named and nothing has been opened into parts"
+      },
+      "warnings": [],
+      "provenance": {
+        "planner": "inquiry/lexicon-v1",
+        "promptExcerpt": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures, their common way of unf…",
+        "matched": [],
+        "cue": "bootstrap"
+      }
+    },
+    {
+      "id": "act_2",
+      "type": "brush_field",
+      "label": "Brush fold",
+      "intent": "mark where this lives, in your own hand",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "image",
+      "createdAt": 0.0,
+      "payload": {
+        "field_role": "fold",
+        "label": "folding — folding structure",
+        "target_hint": "",
+        "geometry_mode": "soft_field",
+        "color": "#8A6E9E",
+        "softness": 0.8,
+        "requires_refinement": true,
+        "reason": "you said “folding”"
+      },
+      "warnings": [
+        "Needs a mark from you on the image."
+      ],
+      "provenance": {
+        "planner": "inquiry/lexicon-v1",
+        "promptExcerpt": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures, their common way of unf…",
+        "matched": [
+          "folding"
+        ],
+        "cue": "fold"
+      }
+    },
+    {
+      "id": "act_3",
+      "type": "connect_marks",
+      "label": "Connect — similarity",
+      "intent": "tie two marks together and say how they bear on each other",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "ground",
+      "createdAt": 0.0,
+      "payload": {
+        "relation_role": "similarity",
+        "label": "",
+        "source_refs": [],
+        "target_refs": [],
+        "reason": "you said “relations between”"
+      },
+      "warnings": [
+        "Needs a mark from you on the image."
+      ],
+      "provenance": {
+        "planner": "inquiry/lexicon-v1",
+        "promptExcerpt": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures, their common way of unf…",
+        "matched": [
+          "relations between",
+          "common way"
+        ],
+        "cue": "comparison"
+      }
+    },
+    {
+      "id": "act_4",
+      "type": "connect_marks",
+      "label": "Connect — contrast",
+      "intent": "tie two marks together and say how they bear on each other",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "ground",
+      "createdAt": 0.0,
+      "payload": {
+        "relation_role": "contrast",
+        "label": "",
+        "source_refs": [],
+        "target_refs": [],
+        "reason": "you said “drift apart”"
+      },
+      "warnings": [
+        "Needs a mark from you on the image."
+      ],
+      "provenance": {
+        "planner": "inquiry/lexicon-v1",
+        "promptExcerpt": "Explore the fold-level aesthetic and style relations between Renaissance and Buddha sculptures, their common way of unf…",
+        "matched": [
+          "drift apart"
+        ],
+        "cue": "distinction"
+      }
+    }
+  ],
+  "unresolved_terms": [
+    {
+      "term": "way of unfolding",
+      "why": "names a MANNER — how a form unfolds across its surface. A fold can be marked; the way of folding cannot. No act in the grammar and no organ in the sensorium is scoped to a manner."
+    },
+    {
+      "term": "fold-level",
+      "why": "names a LEVEL OF ANALYSIS rather than a thing in a picture. No act is scoped to a level, so nothing can be proposed that answers 'at the level of folds'."
+    },
+    {
+      "term": "unfolding sensuality",
+      "why": "binds a manner to a reading. Neither half is measurable and the compound is not decomposable into acts without pretending one of them is."
+    }
+  ],
+  "semantic_remainder": [
+    {
+      "term": "sensuality",
+      "why": "fold geometry, surface material and the fall of light can CONTRIBUTE to a reading of sensuality. None of them, alone or together, constitutes one. Decomposing the word into the measurements that bear on it and then calling the result 'sensuality measured' is the exact fabrication this frame exists to prevent.",
+      "contributing_measurements": [
+        "fold",
+        "material_field",
+        "light_field"
+      ]
+    },
+    {
+      "term": "aesthetic",
+      "why": "an aesthetic is a judgement. The measurements it rests on are not the judgement.",
+      "contributing_measurements": [
+        "light_field",
+        "shadow_field",
+        "fold"
+      ]
+    },
+    {
+      "term": "style",
+      "why": "a style is a family resemblance across many works. Measurements on one picture bear on it and never settle it.",
+      "contributing_measurements": [
+        "fold",
+        "rhythm",
+        "material_field"
+      ]
+    },
+    {
+      "term": "could give birth",
+      "why": "what does not exist yet cannot be measured on any picture, nor cited from any source",
+      "contributing_measurements": []
+    },
+    {
+      "term": "hybrid",
+      "why": "what does not exist yet cannot be measured on any picture, nor cited from any source",
+      "contributing_measurements": []
+    }
+  ],
+  "requested_output": "comparison",
+  "corpus_context": {
+    "post_ids": [
+      "fixture_renaissance_01",
+      "fixture_buddha_01"
+    ],
+    "titles": [
+      "Pietà, marble",
+      "Seated Buddha, Gandhara schist"
+    ],
+    "count": 2,
+    "tags": [
+      "sculpture",
+      "drapery"
+    ],
+    "note": null
+  },
+  "provenance": {
+    "producer": "inquiry/deterministic-v1",
+    "framer_kind": "deterministic",
+    "model": null,
+    "role": null,
+    "prompt_sha256": "71890ec1c9e9ae2670792949b797ad80c7c417e139df9a893f0c11810a5b3519",
+    "schema_version": "inquiry-frame.v1",
+    "grammar_version": "perceptual-action-grammar.v1",
+    "lexicon_version": "attunement-lexicon.v1",
+    "framed_at": "2026-08-08T12:00:00+00:00",
+    "model_calls": 0
+  },
+  "refusals": [],
+  "notes": [
+    "'give birth' was read as speculation and proposes no act: the question asks about something that does not exist. NOTHING is proposed: there is no act that measures what is not there."
+  ]
+}

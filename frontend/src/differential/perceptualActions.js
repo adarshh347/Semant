@@ -1,9 +1,8 @@
 // CIRCUIT-001 P2B — the Perceptual Action Grammar.
 //
-// Semant's own vocabulary for "a thing a curator might do next in the image-writing
-// circuit". It exists so that a suggestion — from a planner, a fixture, or later a model —
-// arrives as a STRUCTURED, INSPECTABLE, EDITABLE, REFUSABLE object rather than as prose or
-// as a mutation.
+// Semant's own vocabulary for "a thing a curator might do next in the image-writing circuit".
+// It exists so that a suggestion — from a planner, a fixture, or later a model — arrives as a
+// STRUCTURED, INSPECTABLE, EDITABLE, REFUSABLE object rather than as prose or as a mutation.
 //
 // The three rules that shape every line below:
 //
@@ -22,24 +21,36 @@
 //     stored on any record, they are not a classification of any image, and an unknown role
 //     is a validation error rather than a silent coercion to a known one.
 //
+// ── HARNESS-001A: WHERE THE DATA NOW LIVES ───────────────────────────────────
+//
+// The closed sets, the per-action declarations and the laws moved OUT of this file and into
+// `contracts/perceptual-action-grammar.v1.json`, because a second runtime now enforces them:
+// the backend inquiry mind reads the same JSON. A vocabulary that lives in one language is a
+// vocabulary the other language is free to paraphrase, and a paraphrased action name is a
+// hallucination that merely looks like a typo.
+//
+// BEHAVIOUR DID NOT MOVE. Normalisation, label derivation, warnings, validation and the UI
+// helpers are all still here, still exported under exactly the names they were, and every
+// caller is untouched. The contract is data; this module is the frontend's enforcement of it.
+//
+// (The import path is `../contracts/…`, not `../../../contracts/…`: the Vercel project
+// deploys by uploading `frontend/` as its source, so a bundle import from outside this tree
+// builds green locally and fails in production. `frontend/src/contracts/` is a byte-identical
+// mirror written by `scripts/contracts_sync.py`, and `contracts.parity.test.js` fails if it
+// drifts from the canonical file at the repo root.)
+//
 // This module is pure. No React, no fetch, no store, no clock it does not accept.
+
+import GRAMMAR from '../contracts/perceptual-action-grammar.v1.json';
+
+export const GRAMMAR_SCHEMA_VERSION = GRAMMAR.schema_version;
 
 // ── the closed sets ──────────────────────────────────────────────────────────
 
-export const ACTION_TYPES = [
-    'find_parts',
-    'brush_field',
-    'trace_direction',
-    'connect_marks',
-    'compose_percept',
-    'assign_ground_role',
-    'start_manuscript',
-    'challenge_percept',
-    'ask_model_reading',
-];
+export const ACTION_TYPES = GRAMMAR.closed_sets.action_types;
 
 /** What the action would touch. Drives grouping in the UI, nothing else. */
-export const TARGETS = ['image', 'ground', 'percept', 'manuscript', 'operation'];
+export const TARGETS = GRAMMAR.closed_sets.targets;
 
 /**
  * Where the action came from. `model_suggested` exists so a suggestion can never be
@@ -47,72 +58,22 @@ export const TARGETS = ['image', 'ground', 'percept', 'manuscript', 'operation']
  * distinct value from `user`, because "I typed this" and "I approved this" are different
  * provenances and Codex would later need to tell them apart.
  */
-export const SOURCES = ['user', 'system', 'model_suggested', 'fixture', 'user_confirmed'];
+export const SOURCES = GRAMMAR.closed_sets.sources;
 
-export const STATUSES = ['proposed', 'previewed', 'applied', 'dismissed', 'blocked'];
+export const STATUSES = GRAMMAR.closed_sets.statuses;
 
 // ── the role vocabularies ────────────────────────────────────────────────────
 // Deliberately overlapping with the Ground Role vocabulary in the P1 addendum §2.2: a
 // brushed light field IS an atmosphere ground once it exists. The overlap is the point —
 // the action names what will be made, in the language the made thing will use.
 
-export const FIELD_ROLES = [
-    { key: 'light_field', label: 'Light field', hint: 'Where the light lives.' },
-    { key: 'shadow_field', label: 'Shadow field', hint: 'Where it is withheld.' },
-    { key: 'atmosphere_field', label: 'Atmosphere', hint: 'A condition, not an object.' },
-    { key: 'material_field', label: 'Material', hint: 'What the surface is made of.' },
-    { key: 'pressure_zone', label: 'Pressure', hint: 'Pushes on the reading without being its subject.' },
-    { key: 'gaze_field', label: 'Gaze field', hint: 'The region a look inhabits.' },
-    { key: 'negative_space', label: 'Negative space', hint: 'What is shaped by not being there.' },
-    { key: 'threshold', label: 'Threshold', hint: 'Where something becomes something else.' },
-    { key: 'fold', label: 'Fold', hint: 'Drapery, gathering, folded structure.' },
-    { key: 'rhythm', label: 'Rhythm', hint: 'One of several repeating things; the repetition is the point.' },
-    { key: 'background_recession', label: 'Recession', hint: 'What falls away behind.' },
-    { key: 'external_limit', label: 'External limit', hint: 'Where the frame stops settling the question.' },
-];
+export const FIELD_ROLES = GRAMMAR.vocabularies.field_roles;
+export const TRACE_ROLES = GRAMMAR.vocabularies.trace_roles;
+export const RELATION_ROLES = GRAMMAR.vocabularies.relation_roles;
+export const MANUSCRIPT_MODES = GRAMMAR.vocabularies.manuscript_modes;
+export const CHALLENGE_TYPES = GRAMMAR.vocabularies.challenge_types;
 
-export const TRACE_ROLES = [
-    { key: 'gaze_address', label: 'Gaze / address', hint: 'Where a look is directed.' },
-    { key: 'gesture', label: 'Gesture', hint: 'A body\'s directed movement.' },
-    { key: 'fall_of_light', label: 'Fall of light', hint: 'The direction light travels.' },
-    { key: 'architectural_axis', label: 'Architectural axis', hint: 'A structural line through the image.' },
-    { key: 'movement', label: 'Movement', hint: 'Implied motion.' },
-    { key: 'implied_address', label: 'Implied address', hint: 'Directed at the viewer, without a gaze.' },
-    { key: 'comparison_path', label: 'Comparison path', hint: 'Read this, then that.' },
-    { key: 'force_direction', label: 'Force', hint: 'Pressure with a direction.' },
-];
-
-export const RELATION_ROLES = [
-    { key: 'similarity', label: 'Similarity' },
-    { key: 'contrast', label: 'Contrast' },
-    { key: 'kinship', label: 'Kinship' },
-    { key: 'motif_echo', label: 'Motif echo' },
-    { key: 'support', label: 'Support' },
-    { key: 'tension', label: 'Tension' },
-    { key: 'contradiction', label: 'Contradiction' },
-    { key: 'temporal_suggestion', label: 'Temporal suggestion' },
-    { key: 'address_relation', label: 'Address relation' },
-];
-
-export const MANUSCRIPT_MODES = [
-    { key: 'description', label: 'Description' },
-    { key: 'art_critique', label: 'Critique' },
-    { key: 'philosophical_note', label: 'Philosophical note' },
-    { key: 'youtube_script', label: 'Script' },
-    { key: 'research_note', label: 'Research note' },
-    { key: 'caption', label: 'Caption' },
-    { key: 'question_list', label: 'Questions' },
-];
-
-export const CHALLENGE_TYPES = [
-    { key: 'contradiction', label: 'Contradiction' },
-    { key: 'missing_ground', label: 'Missing evidence' },
-    { key: 'external_claim', label: 'External claim' },
-    { key: 'overreach', label: 'Overreach' },
-    { key: 'alternative_reading', label: 'Alternative reading' },
-];
-
-export const GEOMETRY_MODES = ['soft_field', 'polygon', 'freehand', 'vector', 'curve', 'unresolved'];
+export const GEOMETRY_MODES = GRAMMAR.closed_sets.geometry_modes;
 
 const keysOf = (list) => list.map((x) => x.key);
 export const FIELD_ROLE_KEYS = keysOf(FIELD_ROLES);
@@ -120,6 +81,18 @@ export const TRACE_ROLE_KEYS = keysOf(TRACE_ROLES);
 export const RELATION_ROLE_KEYS = keysOf(RELATION_ROLES);
 export const MANUSCRIPT_MODE_KEYS = keysOf(MANUSCRIPT_MODES);
 export const CHALLENGE_TYPE_KEYS = keysOf(CHALLENGE_TYPES);
+
+/**
+ * A named closed set, resolved to plain keys. A vocabulary resolves to its keys; a bare
+ * closed set resolves to itself. This is the one indirection the contract introduces: an
+ * action's `enums` name a set rather than repeating its members, so the members cannot
+ * disagree with the vocabulary they came from.
+ */
+function closedSet(name) {
+    const vocab = GRAMMAR.vocabularies[name];
+    if (vocab) return keysOf(vocab);
+    return GRAMMAR.closed_sets[name] || [];
+}
 
 // Falls back to the key, and to '' when there is no key. An absent role reaches here on
 // the way to being REFUSED by `validateAction`, and label derivation must not throw before
@@ -132,87 +105,19 @@ export const manuscriptModeLabel = (k) => labelIn(MANUSCRIPT_MODES, k);
 export const challengeTypeLabel = (k) => labelIn(CHALLENGE_TYPES, k);
 
 // ── the spec table ───────────────────────────────────────────────────────────
-// One row per family. `required` fails the action; `enums` fails the action; `optional` is
-// carried through untouched. `needsGeometry` means the action CANNOT complete without the
-// curator putting a mark on the image — it is not a warning, it is a fact about the act.
+// One row per family, read from the contract. `required` fails the action; `enums` fails the
+// action; `optional` is carried through untouched. `needsGeometry` means the action CANNOT
+// complete without the curator putting a mark on the image — it is not a warning, it is a
+// fact about the act.
 
-const SPEC = {
-    find_parts: {
-        target: 'operation',
-        required: [],
-        optional: ['way_of_looking', 'vocabulary', 'grain', 'source_label', 'reason'],
-        enums: {},
-        needsGeometry: false,
-        requiresConfirmation: false,   // deterministic, reversible by re-running
-    },
-    brush_field: {
-        target: 'image',
-        required: ['field_role', 'label'],
-        optional: ['target_hint', 'geometry_mode', 'color', 'softness', 'opacity', 'requires_refinement', 'reason'],
-        enums: { field_role: FIELD_ROLE_KEYS, geometry_mode: GEOMETRY_MODES },
-        needsGeometry: true,
-        requiresConfirmation: true,
-    },
-    trace_direction: {
-        target: 'image',
-        required: ['trace_role', 'label'],
-        optional: ['from_hint', 'to_hint', 'geometry_mode', 'requires_user_anchor', 'reason'],
-        enums: { trace_role: TRACE_ROLE_KEYS, geometry_mode: GEOMETRY_MODES },
-        needsGeometry: true,
-        requiresConfirmation: true,
-    },
-    connect_marks: {
-        target: 'ground',
-        required: ['relation_role'],
-        optional: ['source_refs', 'target_refs', 'label', 'reason'],
-        enums: { relation_role: RELATION_ROLE_KEYS },
-        needsGeometry: true,           // the curator picks which marks are connected
-        requiresConfirmation: true,
-    },
-    compose_percept: {
-        target: 'percept',
-        required: ['draft_text'],
-        optional: [
-            'intent', 'ground_refs', 'proposed_ground_refs', 'action_refs',
-            'suggested_ground_roles', 'external_claim_warning', 'reason',
-        ],
-        enums: {},
-        needsGeometry: false,
-        requiresConfirmation: true,
-    },
-    assign_ground_role: {
-        target: 'percept',
-        required: ['ground_id', 'role'],
-        optional: ['percept_id', 'draft_percept_ref', 'reason'],
-        enums: {},                     // roles are validated against groundRoles at the seam
-        needsGeometry: false,
-        requiresConfirmation: true,
-    },
-    start_manuscript: {
-        target: 'manuscript',
-        required: ['mode'],
-        optional: ['draft', 'cited_percept_refs', 'action_refs', 'insertion_mode', 'reason'],
-        enums: { mode: MANUSCRIPT_MODE_KEYS, insertion_mode: ['staged', 'unsaved'] },
-        needsGeometry: false,
-        requiresConfirmation: true,
-    },
-    challenge_percept: {
-        target: 'percept',
-        required: ['percept_ref', 'challenge_type'],
-        optional: ['prompt', 'reason'],
-        enums: { challenge_type: CHALLENGE_TYPE_KEYS },
-        needsGeometry: false,
-        requiresConfirmation: true,
-    },
-    ask_model_reading: {
-        target: 'operation',
-        required: ['requested_reading_type'],
-        optional: ['model_family_hint', 'packet_ref', 'reason'],
-        enums: {},
-        needsGeometry: false,
-        requiresConfirmation: true,
-    },
-};
+const SPEC = Object.fromEntries(Object.entries(GRAMMAR.actions).map(([type, row]) => [type, {
+    target: row.target,
+    required: row.required,
+    optional: row.optional,
+    enums: Object.fromEntries(Object.entries(row.enums || {}).map(([k, set]) => [k, closedSet(set)])),
+    needsGeometry: !!row.needs_geometry,
+    requiresConfirmation: !!row.requires_confirmation,
+}]));
 
 export const specFor = (type) => SPEC[type] || null;
 
@@ -265,27 +170,56 @@ export function normalizeAction(raw, { now = 0, idFn = actionId } = {}) {
     return action;
 }
 
+const LABEL_RULES = GRAMMAR.default_labels;
+const VOCAB_LABEL = {
+    field_roles: fieldRoleLabel,
+    trace_roles: traceRoleLabel,
+    relation_roles: relationRoleLabel,
+    manuscript_modes: manuscriptModeLabel,
+    challenge_types: challengeTypeLabel,
+};
+
 function defaultLabel(type, payload = {}) {
+    const rule = LABEL_RULES[type];
+    if (!rule) return type;
+    if (rule.literal) return rule.literal;
     // `lower` keeps this total: a payload missing its role still yields a string, so the
     // action can reach `validateAction` and be refused there rather than crashing here.
-    const lower = (s) => String(s || '').toLowerCase();
-    switch (type) {
-        case 'find_parts': return 'Find parts';
-        case 'brush_field': return `Brush ${lower(fieldRoleLabel(payload.field_role)) || 'a field'}`;
-        case 'trace_direction': return `Trace ${lower(traceRoleLabel(payload.trace_role)) || 'a direction'}`;
-        case 'connect_marks': return `Connect — ${lower(relationRoleLabel(payload.relation_role)) || 'a relation'}`;
-        case 'compose_percept': return 'Compose a percept';
-        case 'assign_ground_role': return 'Name what this ground does';
-        case 'start_manuscript': return `Start a ${lower(manuscriptModeLabel(payload.mode)) || 'passage'}`;
-        case 'challenge_percept': return 'Ask for a counter-reading';
-        case 'ask_model_reading': return 'Ask the model to read this';
-        default: return type;
-    }
+    const toLabel = VOCAB_LABEL[rule.vocabulary] || ((k) => String(k || ''));
+    const role = String(toLabel((payload || {})[rule.role_key]) || '').toLowerCase();
+    return `${rule.prefix || ''}${role || rule.fallback}${rule.suffix || ''}`;
 }
 
 // ── validation ───────────────────────────────────────────────────────────────
 
 const isNonEmptyString = (v) => typeof v === 'string' && v.trim().length > 0;
+
+const MSG = GRAMMAR.messages;
+/** `{type}`/`{key}`/`{value}` filled from the contract's message templates. */
+const fill = (template, vars) =>
+    String(template).replace(/\{(\w+)\}/g, (_m, k) => (k in vars ? String(vars[k]) : `{${k}}`));
+
+/** Read a dotted path out of a payload without throwing on a missing branch. */
+function atPath(obj, path) {
+    return String(path).split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+
+/** Does this law's `when` clause hold for this action? The whole interpreter, in one place. */
+function lawApplies(law, action, spec) {
+    const w = law.when || {};
+    const payload = action.payload || {};
+    if (w.action != null && action.type !== w.action) return false;
+    if (w.needs_geometry != null && !!spec.needsGeometry !== w.needs_geometry) return false;
+    if (Array.isArray(w.source_in) && !w.source_in.includes(action.source)) return false;
+    if (w.payload_path_is_true != null && atPath(payload, w.payload_path_is_true) !== true) return false;
+    if (w.payload_key_truthy != null && !payload[w.payload_key_truthy]) return false;
+    if (w.payload_key_outside_set != null) {
+        const { key, set } = w.payload_key_outside_set;
+        const value = payload[key];
+        if (value == null || closedSet(set).includes(value)) return false;
+    }
+    return true;
+}
 
 /**
  * @returns {{valid:boolean, errors:string[], warnings:string[]}}
@@ -296,60 +230,43 @@ export function validateAction(action) {
     const errors = [];
     const warnings = [];
 
-    if (!action || typeof action !== 'object') return { valid: false, errors: ['not an object'], warnings };
+    if (!action || typeof action !== 'object') return { valid: false, errors: [MSG.not_an_object], warnings };
     const spec = SPEC[action.type];
-    if (!spec) return { valid: false, errors: [`unknown action type: ${String(action.type)}`], warnings };
+    if (!spec) {
+        return { valid: false,
+                 errors: [fill(MSG.unknown_action_type, { type: String(action.type) })], warnings };
+    }
 
-    if (!isNonEmptyString(action.id)) errors.push('missing id');
-    if (!isNonEmptyString(action.label)) errors.push('missing label');
-    if (!SOURCES.includes(action.source)) errors.push(`unknown source: ${String(action.source)}`);
-    if (!STATUSES.includes(action.status)) errors.push(`unknown status: ${String(action.status)}`);
-    if (!TARGETS.includes(action.target)) errors.push(`unknown target: ${String(action.target)}`);
-    if (action.target !== spec.target) errors.push(`target ${action.target} does not match ${action.type}`);
-    if (typeof action.createdAt !== 'number') errors.push('createdAt must be a number');
+    if (!isNonEmptyString(action.id)) errors.push(MSG.missing_id);
+    if (!isNonEmptyString(action.label)) errors.push(MSG.missing_label);
+    if (!SOURCES.includes(action.source)) errors.push(fill(MSG.unknown_source, { value: String(action.source) }));
+    if (!STATUSES.includes(action.status)) errors.push(fill(MSG.unknown_status, { value: String(action.status) }));
+    if (!TARGETS.includes(action.target)) errors.push(fill(MSG.unknown_target, { value: String(action.target) }));
+    if (action.target !== spec.target) {
+        errors.push(fill(MSG.target_mismatch, { value: action.target, type: action.type }));
+    }
+    if (typeof action.createdAt !== 'number') errors.push(MSG.created_at_not_a_number);
 
     const payload = action.payload || {};
     for (const key of spec.required) {
         const v = payload[key];
         const present = Array.isArray(v) ? v.length > 0 : (typeof v === 'string' ? isNonEmptyString(v) : v != null);
-        if (!present) errors.push(`${action.type}: payload.${key} is required`);
+        if (!present) errors.push(fill(MSG.payload_required, { type: action.type, key }));
     }
     for (const [key, allowed] of Object.entries(spec.enums)) {
         if (payload[key] != null && !allowed.includes(payload[key])) {
-            errors.push(`${action.type}: payload.${key} "${payload[key]}" is not in the vocabulary`);
+            errors.push(fill(MSG.payload_not_in_vocabulary,
+                             { type: action.type, key, value: payload[key] }));
         }
     }
 
-    // ── the discipline checks. These are not schema; they are the product's rules. ──
-
-    // A model may never author a challenge (P1 addendum §3.1, P0.5 §4.1). This is the
-    // human's veto over the circuit, and it is the one rule here that is not about shape.
-    if (action.type === 'challenge_percept' && action.source === 'model_suggested') {
-        errors.push('challenge_percept may not be authored by a model');
-    }
-
-    // Nothing is sent in this gate, and an action that claims otherwise is refused rather
-    // than quietly corrected — a silently-fixed dispatch flag is how a dispatch happens.
-    if (action.type === 'ask_model_reading') {
-        if (payload.dispatch && payload.dispatch.sent === true) {
-            errors.push('ask_model_reading: dispatch.sent must be false — nothing is sent');
-        }
-        warnings.push('Proposed only — no model call is made.');
-    }
-
-    if (action.type === 'start_manuscript') {
-        if (payload.insertion_mode && !['staged', 'unsaved'].includes(payload.insertion_mode)) {
-            errors.push('start_manuscript: insertion_mode must be staged or unsaved');
-        }
-        warnings.push('Nothing is saved until you save it.');
-    }
-
-    if (action.type === 'compose_percept' && payload.external_claim_warning) {
-        warnings.push('Rests on something the frame may not settle.');
-    }
-
-    if (spec.needsGeometry) {
-        warnings.push('Needs a mark from you on the image.');
+    // ── the discipline checks. These are not schema; they are the product's rules, and they
+    // now live in the contract as data so the backend enforces the same ones by the same
+    // names — including the one that matters most: a model may never author a challenge
+    // (P1 addendum §3.1, P0.5 §4.1), the human's veto over the circuit.
+    for (const law of GRAMMAR.laws) {
+        if (!lawApplies(law, action, spec)) continue;
+        (law.kind === 'error' ? errors : warnings).push(law.message);
     }
 
     return { valid: errors.length === 0, errors, warnings: [...new Set(warnings)] };
@@ -384,7 +301,8 @@ export const actionNeedsGeometry = (action) => !!SPEC[action?.type]?.needsGeomet
  */
 export function actionCanApplyNow(action, capabilities = []) {
     if (!action || action.status === 'dismissed' || action.status === 'applied') return false;
-    if (action.type === 'ask_model_reading') return false;   // never, in this gate
+    // Never, in this gate — declared in the contract so both runtimes read one list.
+    if (GRAMMAR.never_applies.includes(action.type)) return false;
     return capabilities.includes(action.type);
 }
 
@@ -412,13 +330,7 @@ export function groupActionsByTarget(actions = []) {
     return groups.filter((g) => g.actions.length > 0);
 }
 
-export const TARGET_LABEL = {
-    image: 'Image marks',
-    ground: 'Evidence relations',
-    percept: 'Percepts',
-    manuscript: 'Manuscript',
-    operation: 'Operations & model questions',
-};
+export const TARGET_LABEL = GRAMMAR.target_labels;
 
 /**
  * A compact, honest sentence about a set of proposals.

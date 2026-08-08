@@ -1,0 +1,318 @@
+{
+  "note": "Written by frontend/src/differential/contracts.parity.test.js. Read by backend/tests/test_inquiry_contracts.py, which validates every act below against the Python enforcement of the same grammar. Regenerate: UPDATE_PARITY_FIXTURES=1 npx vitest run src/differential/contracts.parity.test.js",
+  "prompt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on the left face and lower section against the shadowed right side.",
+  "planner": "attunement/lexicon-v1",
+  "grammar_version": "perceptual-action-grammar.v1",
+  "lexicon_version": "attunement-lexicon.v1",
+  "actions": [
+    {
+      "id": "act_1",
+      "type": "find_parts",
+      "label": "Find parts",
+      "intent": "open the image into material you can cite",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": false,
+      "target": "operation",
+      "createdAt": 0,
+      "payload": {
+        "way_of_looking": "general",
+        "reason": "nothing has been found in this image yet"
+      },
+      "warnings": [],
+      "provenance": {
+        "planner": "attunement/lexicon-v1",
+        "promptExcerpt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on th…",
+        "matched": [],
+        "cue": "bootstrap"
+      }
+    },
+    {
+      "id": "act_2",
+      "type": "trace_direction",
+      "label": "Trace gaze / address",
+      "intent": "draw the direction, from and to",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "image",
+      "createdAt": 0,
+      "payload": {
+        "trace_role": "gaze_address",
+        "label": "the points toward she points toward",
+        "from_hint": "",
+        "to_hint": "",
+        "geometry_mode": "curve",
+        "requires_user_anchor": true,
+        "reason": "you said “points toward”"
+      },
+      "warnings": [
+        "Needs a mark from you on the image."
+      ],
+      "provenance": {
+        "planner": "attunement/lexicon-v1",
+        "promptExcerpt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on th…",
+        "matched": [
+          "points toward",
+          "gaze"
+        ],
+        "cue": "gaze"
+      }
+    },
+    {
+      "id": "act_3",
+      "type": "brush_field",
+      "label": "Brush gaze field",
+      "intent": "mark where this lives, in your own hand",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "image",
+      "createdAt": 0,
+      "payload": {
+        "field_role": "gaze_field",
+        "label": "points toward",
+        "target_hint": "",
+        "geometry_mode": "soft_field",
+        "color": "#7A5E8E",
+        "softness": 0.8,
+        "requires_refinement": true,
+        "reason": "you said “points toward”"
+      },
+      "warnings": [
+        "Needs a mark from you on the image."
+      ],
+      "provenance": {
+        "planner": "attunement/lexicon-v1",
+        "promptExcerpt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on th…",
+        "matched": [
+          "points toward",
+          "gaze"
+        ],
+        "cue": "gaze"
+      }
+    },
+    {
+      "id": "act_4",
+      "type": "brush_field",
+      "label": "Brush light field",
+      "intent": "mark where this lives, in your own hand",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "image",
+      "createdAt": 0,
+      "payload": {
+        "field_role": "light_field",
+        "label": "lighting (left / lower)",
+        "target_hint": "left / lower",
+        "geometry_mode": "soft_field",
+        "color": "#E8C46A",
+        "softness": 0.8,
+        "requires_refinement": true,
+        "reason": "you said “lighting”"
+      },
+      "warnings": [
+        "Needs a mark from you on the image."
+      ],
+      "provenance": {
+        "planner": "attunement/lexicon-v1",
+        "promptExcerpt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on th…",
+        "matched": [
+          "lighting"
+        ],
+        "cue": "light"
+      }
+    },
+    {
+      "id": "act_5",
+      "type": "brush_field",
+      "label": "Brush shadow field",
+      "intent": "mark where this lives, in your own hand",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "image",
+      "createdAt": 0,
+      "payload": {
+        "field_role": "shadow_field",
+        "label": "shadowed (left / right / lower)",
+        "target_hint": "left / right / lower",
+        "geometry_mode": "soft_field",
+        "color": "#4A4A6A",
+        "softness": 0.8,
+        "requires_refinement": true,
+        "reason": "you said “shadowed”"
+      },
+      "warnings": [
+        "Needs a mark from you on the image."
+      ],
+      "provenance": {
+        "planner": "attunement/lexicon-v1",
+        "promptExcerpt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on th…",
+        "matched": [
+          "shadowed"
+        ],
+        "cue": "shadow"
+      }
+    },
+    {
+      "id": "act_6",
+      "type": "brush_field",
+      "label": "Brush fold",
+      "intent": "mark where this lives, in your own hand",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "image",
+      "createdAt": 0,
+      "payload": {
+        "field_role": "fold",
+        "label": "shoulder — folding structure",
+        "target_hint": "",
+        "geometry_mode": "soft_field",
+        "color": "#8A6E9E",
+        "softness": 0.8,
+        "requires_refinement": true,
+        "reason": "you said “shoulder”"
+      },
+      "warnings": [
+        "Needs a mark from you on the image."
+      ],
+      "provenance": {
+        "planner": "attunement/lexicon-v1",
+        "promptExcerpt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on th…",
+        "matched": [
+          "shoulder",
+          "folding"
+        ],
+        "cue": "fold"
+      }
+    },
+    {
+      "id": "act_7",
+      "type": "trace_direction",
+      "label": "Trace architectural axis",
+      "intent": "draw the direction, from and to",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "image",
+      "createdAt": 0,
+      "payload": {
+        "trace_role": "architectural_axis",
+        "label": "architecture axis (left)",
+        "from_hint": "left",
+        "to_hint": "",
+        "geometry_mode": "vector",
+        "requires_user_anchor": true,
+        "reason": "you said “architecture”"
+      },
+      "warnings": [
+        "Needs a mark from you on the image."
+      ],
+      "provenance": {
+        "planner": "attunement/lexicon-v1",
+        "promptExcerpt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on th…",
+        "matched": [
+          "architecture"
+        ],
+        "cue": "architecture"
+      }
+    },
+    {
+      "id": "act_8",
+      "type": "connect_marks",
+      "label": "Connect — contrast",
+      "intent": "tie two marks together and say how they bear on each other",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "ground",
+      "createdAt": 0,
+      "payload": {
+        "relation_role": "contrast",
+        "label": "",
+        "source_refs": [],
+        "target_refs": [],
+        "reason": "you said “against”"
+      },
+      "warnings": [
+        "Needs a mark from you on the image."
+      ],
+      "provenance": {
+        "planner": "attunement/lexicon-v1",
+        "promptExcerpt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on th…",
+        "matched": [
+          "against"
+        ],
+        "cue": "tension"
+      }
+    },
+    {
+      "id": "act_9",
+      "type": "compose_percept",
+      "label": "Compose a percept",
+      "intent": "say what you notice, and cite what it rests on",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "percept",
+      "createdAt": 0,
+      "payload": {
+        "draft_text": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on the left face and lower section against the shadowed right side.",
+        "intent": "isolate",
+        "proposed_ground_refs": [],
+        "suggested_ground_roles": {
+          "gaze": "anchor",
+          "light": "atmosphere",
+          "shadow": "counterforce",
+          "fold": "rhythm",
+          "architecture": "support",
+          "tension": "pressure"
+        },
+        "reason": "your words, carried to where they become a noticing"
+      },
+      "warnings": [],
+      "provenance": {
+        "planner": "attunement/lexicon-v1",
+        "promptExcerpt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on th…",
+        "matched": [
+          "points toward",
+          "gaze",
+          "lighting",
+          "shadowed",
+          "shoulder",
+          "folding",
+          "architecture",
+          "against"
+        ],
+        "cue": "compose"
+      }
+    },
+    {
+      "id": "act_a",
+      "type": "challenge_percept",
+      "label": "Ask for a counter-reading",
+      "intent": "ask what would make this reading wrong",
+      "source": "system",
+      "status": "proposed",
+      "requiresConfirmation": true,
+      "target": "percept",
+      "createdAt": 0,
+      "payload": {
+        "percept_ref": "draft",
+        "challenge_type": "alternative_reading",
+        "prompt": "What else could account for this, and what would settle it?",
+        "reason": "a reading with several parts has several ways to be wrong"
+      },
+      "warnings": [],
+      "provenance": {
+        "planner": "attunement/lexicon-v1",
+        "promptExcerpt": "The aesthetic is in the gaze she points toward, the shoulder-level folding architecture, and the extreme lighting on th…",
+        "matched": [],
+        "cue": "challenge"
+      }
+    }
+  ]
+}
