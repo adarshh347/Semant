@@ -542,3 +542,321 @@ def sample_planner(suite: Dict[str, Any], *, client: Any = None,
     contract.write_json(os.path.join(runs_root, suite["suite_id"], "planner-samples.json"),
                         payload)
     return payload
+
+
+# ── scoring: lexical stability, and nothing about correctness ─────────────────────────────────
+#
+# THE ATTRIBUTION VOCABULARY, closed. Each member says which LAYER produced an outcome, and the
+# two that require a human are marked as such and cannot be reached by scoring code.
+
+INSTRUMENT_UNAVAILABLE = "instrument_unavailable"
+PLANNER_REACH_REFUSED = "planner_reach_refused"
+PHRASE_CONDITIONED_EMPTY = "phrase_conditioned_empty"
+WRAPPER_LOSS = "wrapper_loss"
+SEMANTIC_MISMATCH = "semantic_mismatch"              # human review only
+INSTRUMENT_CLASS_GAP = "instrument_class_gap"        # human review only
+NOT_ESTABLISHED = "not_established"
+NON_EMPTY = "returned_instances"
+
+#: Attributions the machine may never write. `instrument_class_gap` is the one this lane most
+#: wants to reach and is exactly the one it may not: promoting a pile of phrase-conditioned
+#: empties into "concept segmentation cannot resolve fold geometry" on machine scores alone would
+#: be the lane concluding its own hypothesis from the absence of evidence.
+REVIEW_ONLY = frozenset({SEMANTIC_MISMATCH, INSTRUMENT_CLASS_GAP})
+
+
+def _cell_record(suite: Dict[str, Any], cell: Dict[str, Any], runs_root: str) -> Dict[str, Any]:
+    """Read one frozen cell back as scoring input. Never recomputes anything live."""
+    run_path = contract.run_dir(cell["run_id"], runs_root)
+    if not contract.is_frozen(run_path):
+        return {**cell, "collected": False}
+    trace = contract.read_json(os.path.join(run_path, "trace.json"))
+    score = contract.read_json(os.path.join(run_path, "score.json"))
+    organ = trace["organ_observation"]
+    actuator = trace.get("actuator_observation") or None
+    return {
+        **cell,
+        "collected": True,
+        "run_path": run_path,
+        "organ_status": organ["status"],
+        "instances": organ["instance_count"],
+        "confidences": [i.get("confidence") for i in organ.get("instances") or []],
+        "mask_hashes": [i["mask_rle_sha256"] for i in organ.get("instances") or []],
+        "areas_px": [i["area_px"] for i in organ.get("instances") or []],
+        "area_fractions": [i.get("area_fraction") for i in organ.get("instances") or []],
+        "max_pairwise_iou": organ.get("max_pairwise_iou"),
+        "all_masks_well_formed": score["measured"]["all_masks_well_formed"],
+        "latency_ms": score["measured"]["latency_ms"],
+        "cold_or_warm": score["measured"]["cold_or_warm"],
+        "invocations": score["measured"]["invocation_count"],
+        "lock_held": score["measured"]["lock_held"],
+        "violations": score["measured"]["violations"],
+        "conversion": (actuator or {}).get("conversion"),
+        "descriptor_statuses": ((actuator or {}).get("conversion") or {}).get("statuses_seen"),
+        "semantic_correctness": score["verdict"]["semantic_correctness"],
+        "review_status": score["review"]["status"],
+        "image_sha256": trace["invariance"]["image_sha256_before"],
+        "model": organ.get("model"),
+        "device": organ.get("device"),
+        "database_writes": len(trace["invariance"]["database_writes_attempted"]),
+        "image_unchanged": trace["invariance"]["image_unchanged"],
+    }
+
+
+def collect_records(suite: Dict[str, Any], *, runs_root: Optional[str] = None
+                    ) -> List[Dict[str, Any]]:
+    runs_root = runs_root or contract.RUNS_ROOT
+    return [_cell_record(suite, cell, runs_root) for cell in plan_cells(suite)]
+
+
+def availability_by_fixture(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """Did the instrument demonstrably work on each fixture?
+
+    THE GATE. If the availability control returned nothing on a fixture, every other empty on
+    that fixture is uninterpretable: nothing distinguishes a phrase the organ cannot bind from an
+    organ that was never working on that picture. The card requires this and it is the difference
+    between a phrase-response curve and a list of zeroes.
+    """
+    out: Dict[str, Dict[str, Any]] = {}
+    for record in records:
+        if record["role"] != AVAILABILITY or not record.get("collected"):
+            continue
+        fixture = record["fixture_id"]
+        prior = out.get(fixture)
+        # Any arm's availability control counts; prefer a non-empty one if arms disagree, and
+        # record that they did.
+        demonstrated = record["organ_status"] == "ok"
+        if prior is None:
+            out[fixture] = {"demonstrated": demonstrated, "phrase": record["phrase"],
+                            "instances": record["instances"], "arms_disagree": False}
+        else:
+            out[fixture]["arms_disagree"] = prior["demonstrated"] != demonstrated
+            out[fixture]["demonstrated"] = prior["demonstrated"] or demonstrated
+    return out
+
+
+def attribute_cell(record: Dict[str, Any], gate: Dict[str, Dict[str, Any]]) -> Tuple[str, str]:
+    """Which layer produced this cell's outcome. Bounded, and never semantic."""
+    if not record.get("collected"):
+        return NOT_ESTABLISHED, "not collected"
+    if record["violations"]:
+        return NOT_ESTABLISHED, "; ".join(record["violations"])
+
+    status = record["organ_status"]
+    if status == "unavailable":
+        return INSTRUMENT_UNAVAILABLE, "SAM did not execute"
+    if status == "error":
+        return INSTRUMENT_UNAVAILABLE, "the organ raised"
+    if status == "ok":
+        return NON_EMPTY, (f"{record['instances']} instance(s) measured; whether they ARE "
+                           f"{record['phrase']!r} is a review question")
+
+    fixture_gate = gate.get(record["fixture_id"]) or {}
+    if record["role"] == AVAILABILITY:
+        return INSTRUMENT_UNAVAILABLE, (
+            f"the availability control itself returned nothing on {record['fixture_id']}, so "
+            f"nothing else measured on this fixture is attributable to a phrase")
+    if not fixture_gate.get("demonstrated"):
+        return NOT_ESTABLISHED, (
+            f"the availability control did not succeed on {record['fixture_id']}; this empty "
+            f"cannot be attributed to the phrase")
+    return PHRASE_CONDITIONED_EMPTY, (
+        f"the control works on {record['fixture_id']} and this frozen phrase returned no "
+        f"instance")
+
+
+def wrapper_equivalence(records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Organ-direct against production-actuator, keyed on FIXTURE HASH + PHRASE + MODEL CONTRACT.
+
+    Keyed that way rather than on the phrase alone because two cells sharing a phrase but not a
+    picture — or not a checkpoint — are not the same input, and calling their agreement
+    equivalence would be comparing two different experiments.
+    """
+    def _key(r):
+        return (r["image_sha256"], r["phrase"], r.get("model"))
+
+    organ = {_key(r): r for r in records if r["mode"] == "organ_direct" and r.get("collected")}
+    pairs, mismatches = [], []
+    for r in records:
+        if r["mode"] != "actuator_direct" or not r.get("collected"):
+            continue
+        counterpart = organ.get(_key(r))
+        if counterpart is None:
+            mismatches.append({"run_id": r["run_id"], "reason": "no organ_direct counterpart "
+                                                               "on the same image and phrase"})
+            continue
+        same_count = counterpart["instances"] == r["instances"]
+        same_masks = counterpart["mask_hashes"] == r["mask_hashes"]
+        pairs.append({
+            "fixture_id": r["fixture_id"], "phrase": r["phrase"],
+            "organ_instances": counterpart["instances"], "actuator_instances": r["instances"],
+            "identical_masks": same_masks, "equivalent": same_count and same_masks,
+            "conversion": r.get("conversion"),
+        })
+        if not (same_count and same_masks):
+            mismatches.append({
+                "fixture_id": r["fixture_id"], "phrase": r["phrase"],
+                "reason": (f"organ measured {counterpart['instances']} and the actuator surfaced "
+                           f"{r['instances']}" if not same_count
+                           else "same instance count, different masks"),
+            })
+    # An equivalence claim resting only on empty pairs is worth naming as such: comparing two
+    # nothings establishes nothing, and C1's fold actuator run was exactly that.
+    informative = [p for p in pairs if p["organ_instances"] or p["actuator_instances"]]
+    return {
+        "pairs": pairs,
+        "informative_pairs": len(informative),
+        "empty_pairs": len(pairs) - len(informative),
+        "mismatches": mismatches,
+        "equivalent": bool(pairs) and not mismatches,
+        "established_by": ("non-empty pairs" if informative else
+                           "no non-empty pair — comparing two empties establishes nothing"),
+    }
+
+
+def planner_stability(payload: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Byte-identical, lexically different but same family, or capability-divergent."""
+    if not payload:
+        return {"samples": 0, "verdict": "not_collected"}
+    samples = payload.get("samples") or []
+    phrases = [s.get("selected_phrase") for s in samples]
+    actuators = {s.get("selected_actuator") for s in samples}
+    reached = sorted({a for s in samples for a in (s.get("refused_out_of_lock") or [])})
+    distinct = sorted({p for p in phrases if p})
+
+    if not samples:
+        verdict = "not_collected"
+    elif len(actuators - {None}) > 1 or reached:
+        verdict = "capability_divergent"
+    elif len(distinct) == 1 and all(p == distinct[0] for p in phrases):
+        verdict = "byte_identical"
+    elif len(distinct) > 1:
+        verdict = "lexically_different"
+    else:
+        verdict = "no_phrase_produced"
+    return {
+        "samples": len(samples),
+        "phrases": phrases,
+        "distribution": {p: phrases.count(p) for p in distinct},
+        "distinct_phrases": distinct,
+        "selected_actuators": sorted(a for a in actuators if a),
+        "reached_beyond_lock": reached,
+        "verdict": verdict,
+        "sam_invocations": payload.get("total_sam_invocations", 0),
+        "model_contract": payload.get("declared_model_contract"),
+        "models_seen": sorted({s.get("model") for s in samples if s.get("model")}),
+    }
+
+
+def response_curve(suite: Dict[str, Any], records: List[Dict[str, Any]],
+                   gate: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    """Hit-rate per phrase and per family, across fixtures. Structure only.
+
+    A "hit" is `organ_status == ok`: instances were returned. It is NOT a claim that they are the
+    named thing — that stays with review, and `semantic_correctness` stays `not_established`
+    however high a hit-rate climbs.
+    """
+    full = [r for r in records if r["arm"] == "full_matrix" and r.get("collected")]
+    gated = [r for r in full if (gate.get(r["fixture_id"]) or {}).get("demonstrated")]
+
+    by_phrase: Dict[str, Any] = {}
+    for phrase in all_phrases(suite):
+        rows = [r for r in gated if r["phrase"] == phrase]
+        hits = [r for r in rows if r["organ_status"] == "ok"]
+        by_phrase[phrase] = {
+            "family": phrase_family(suite, phrase),
+            "role": phrase_role(suite, phrase),
+            "fixtures_tested": len(rows),
+            "fixtures_with_instances": len(hits),
+            "hit_rate": round(len(hits) / len(rows), 4) if rows else None,
+            "per_fixture": {r["fixture_id"]: {"status": r["organ_status"],
+                                              "instances": r["instances"],
+                                              "confidences": r["confidences"],
+                                              "area_fractions": r["area_fractions"]}
+                            for r in rows},
+        }
+
+    by_family: Dict[str, Any] = {}
+    for family in suite["phrase_families"]:
+        rows = [r for r in gated if r["family"] == family["family"]]
+        hits = [r for r in rows if r["organ_status"] == "ok"]
+        by_family[family["family"]] = {
+            "role": family["role"],
+            "cells": len(rows),
+            "cells_with_instances": len(hits),
+            "hit_rate": round(len(hits) / len(rows), 4) if rows else None,
+        }
+
+    by_fixture: Dict[str, Any] = {}
+    for fixture in suite["fixtures"]:
+        rows = [r for r in full if r["fixture_id"] == fixture["fixture_id"]]
+        hits = [r for r in rows if r["organ_status"] == "ok"]
+        by_fixture[fixture["fixture_id"]] = {
+            "role": fixture.get("role"),
+            "known_confounds": fixture["provenance"].get("known_confounds") or [],
+            "availability_demonstrated": (gate.get(fixture["fixture_id"]) or {}).get(
+                "demonstrated", False),
+            "phrases_tested": len(rows),
+            "phrases_with_instances": len(hits),
+            "phrases_that_hit": sorted(r["phrase"] for r in hits),
+        }
+
+    return {"by_phrase": by_phrase, "by_family": by_family, "by_fixture": by_fixture,
+            "gated_out": sorted({r["fixture_id"] for r in full} - {r["fixture_id"]
+                                                                   for r in gated})}
+
+
+def report(suite: Dict[str, Any], *, runs_root: Optional[str] = None) -> Dict[str, Any]:
+    """The whole reading. Machine-observable structure, and an explicit refusal to go further."""
+    runs_root = runs_root or contract.RUNS_ROOT
+    assert_locks_unchanged(suite, runs_root=runs_root)
+
+    records = collect_records(suite, runs_root=runs_root)
+    collected = [r for r in records if r.get("collected")]
+    gate = availability_by_fixture(records)
+    for record in records:
+        record["attribution"], record["attribution_detail"] = attribute_cell(record, gate)
+
+    planner_path = os.path.join(runs_root, suite["suite_id"], "planner-samples.json")
+    planner = (contract.read_json(planner_path) if os.path.exists(planner_path) else None)
+
+    reviewed = [r for r in collected if r["semantic_correctness"] != "not_established"]
+    invariants = {
+        "captures": len(collected),
+        "invocations": sum(r["invocations"] for r in collected),
+        "lock_held": all(r["lock_held"] for r in collected),
+        "database_writes": sum(r["database_writes"] for r in collected),
+        "source_mutations": sum(0 if r["image_unchanged"] else 1 for r in collected),
+        "violations": [v for r in collected for v in r["violations"]],
+    }
+
+    return {
+        "suite_id": suite["suite_id"],
+        "locks": compute_locks(suite),
+        "fixtures": {f["fixture_id"]: {"sha256": f["sha256"], "role": f.get("role"),
+                                       "known_confounds":
+                                           f["provenance"].get("known_confounds") or []}
+                     for f in suite["fixtures"]},
+        "availability": gate,
+        "response_curve": response_curve(suite, records, gate),
+        "wrapper_equivalence": wrapper_equivalence(records),
+        "planner_stability": planner_stability(planner),
+        "cells": records,
+        "invariants": invariants,
+        "review": {
+            "protocol": (suite.get("review") or {}).get("protocol"),
+            "cells_reviewed": len(reviewed),
+            "cells_pending": len(collected) - len(reviewed),
+            "semantic_correctness": ("not_established" if not reviewed else "partially_reviewed"),
+        },
+        # The bounded decision. `instrument_class_gap` is the conclusion this lane most wants and
+        # is exactly the one it may not reach on machine scores: a pile of phrase-conditioned
+        # empties is evidence of absence only once a human has confirmed the target was there to
+        # be found. Until then this stays `not_established` and the report offers the curve.
+        "bounded_decision": {
+            "value": NOT_ESTABLISHED if not reviewed else "see_review",
+            "may_not_be_derived_by_machine": sorted(REVIEW_ONLY),
+            "why": ("no human review artifact exists for this suite, so the lane reports the "
+                    "phrase-response curve and nothing about whether any mask is a fold"),
+        },
+    }

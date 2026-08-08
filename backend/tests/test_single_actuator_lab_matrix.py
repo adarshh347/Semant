@@ -539,3 +539,240 @@ def test_every_matrix_cell_replays_with_zero_live_calls(tmp_path, tiny_suite, sa
         assert out["live_calls"] == 0
         assert out["divergences"] == []
     assert fake.calls == spent, "replay called the organ"
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# 7. Scoring — structure only, and the refusals that keep it that way
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+def _collect(tmp_path, small, sam_fake, sam, phrase_results=None):
+    """Run a tiny matrix whose organ answer depends on the phrase, so a response CURVE exists."""
+    runs = str(tmp_path / "runs")
+    real = sam(sam_fake)
+    if phrase_results is not None:
+        def _by_phrase(image, concept, **kw):
+            sam_fake.calls += 1
+            return {"concept": concept, "instances": phrase_results.get(concept, []),
+                    "truncated": False, "latency_ms": 1.0, "device": "cpu",
+                    "model": "facebook/sam3"}
+        real.segment_concept = _by_phrase
+    matrix.run_live(small, lab.capture, planner_client=_NO_NETWORK, runs_root=runs, now="t0")
+    return runs
+
+
+def test_the_availability_gate_blocks_attribution_where_the_control_failed(tmp_path, tiny_suite,
+                                                                          sam):
+    """The card requires it: a failed availability control prevents phrase-failure attribution.
+
+    Without the gate, a fixture the organ simply does not work on contributes a column of zeroes
+    that reads exactly like a phrase-robustness finding.
+    """
+    small, _ = tiny_suite
+    fixtures = [f["fixture_id"] for f in small["fixtures"]]
+    mask = _mask(680, 544, 5, 40, 5, 40)
+    # `face` works on the first fixture only. Nothing else works anywhere.
+    hits = {"face": [{"index": 0, "mask_rle": mask, "confidence": 0.8}]}
+
+    runs = str(tmp_path / "runs")
+    real = sam(FakeSam([]))
+    working = small["fixtures"][0]["sha256"]
+
+    def _gated(image, concept, **kw):
+        # Keyed on the IMAGE, not on a call counter: the organ's behaviour really does depend on
+        # the picture, and a counter-based fake silently mis-assigns the moment plan order
+        # changes — which it did, making a wrapper cell look like a mismatch.
+        on_working_fixture = contract.sha256_bytes(bytes(image)) == working
+        instances = hits.get(concept, []) if on_working_fixture else []
+        return {"concept": concept, "instances": instances, "truncated": False,
+                "latency_ms": 1.0, "device": "cpu", "model": "facebook/sam3"}
+
+    real.segment_concept = _gated
+    matrix.run_live(small, lab.capture, planner_client=_NO_NETWORK, runs_root=runs, now="t0")
+
+    out = matrix.report(small, runs_root=runs)
+    gate = out["availability"]
+    assert gate[fixtures[0]]["demonstrated"] is True
+    assert gate[fixtures[1]]["demonstrated"] is False
+
+    by_fixture = {(c["fixture_id"], c["phrase"]): c for c in out["cells"] if c.get("collected")}
+    # On the fixture where the control worked, an empty IS a phrase-conditioned empty.
+    assert by_fixture[(fixtures[0], "creases")]["attribution"] == matrix.PHRASE_CONDITIONED_EMPTY
+    # On the fixture where it did not, the same empty is NOT attributable to the phrase.
+    ungated = by_fixture[(fixtures[1], "creases")]
+    assert ungated["attribution"] == matrix.NOT_ESTABLISHED
+    assert "availability control did not succeed" in ungated["attribution_detail"]
+    # And the gated-out fixture is excluded from the curve rather than counted as zeroes.
+    assert fixtures[1] in out["response_curve"]["gated_out"]
+
+
+def test_a_failed_availability_control_is_reported_as_instrument_not_phrase(tmp_path, tiny_suite,
+                                                                           sam):
+    small, _ = tiny_suite
+    runs = _collect(tmp_path, small, FakeSam([]), sam)
+    out = matrix.report(small, runs_root=runs)
+    controls = [c for c in out["cells"] if c["role"] == matrix.AVAILABILITY and c["collected"]]
+    assert controls
+    for control in controls:
+        assert control["attribution"] == matrix.INSTRUMENT_UNAVAILABLE
+
+
+def test_the_response_curve_counts_hits_and_claims_nothing_about_them(tmp_path, tiny_suite, sam):
+    small, _ = tiny_suite
+    mask = _mask(680, 544, 5, 60, 5, 60)
+    runs = _collect(tmp_path, small, FakeSam([]), sam, phrase_results={
+        "face": [{"index": 0, "mask_rle": mask, "confidence": 0.9}],
+        "robe folds": [{"index": 0, "mask_rle": mask, "confidence": 0.4}],
+    })
+    out = matrix.report(small, runs_root=runs)
+    curve = out["response_curve"]
+
+    assert curve["by_phrase"]["face"]["hit_rate"] == 1.0
+    assert curve["by_phrase"]["robe folds"]["hit_rate"] == 1.0
+    assert curve["by_phrase"]["creases"]["hit_rate"] == 0.0
+    assert curve["by_phrase"]["bicycle"]["hit_rate"] == 0.0
+    assert curve["by_family"]["fold_target"]["cells_with_instances"] == 2
+
+    # A perfect hit-rate is still not a correctness claim, anywhere.
+    assert out["review"]["semantic_correctness"] == "not_established"
+    assert out["bounded_decision"]["value"] == matrix.NOT_ESTABLISHED
+    for cell in out["cells"]:
+        if cell.get("collected"):
+            assert cell["semantic_correctness"] == "not_established"
+
+
+def test_scoring_code_can_never_write_a_review_only_attribution(tmp_path, tiny_suite, sam):
+    """`instrument_class_gap` is the conclusion this lane most wants and exactly the one it may
+    not reach: a pile of phrase-conditioned empties is evidence of absence only after a human
+    confirms the target was there to be found."""
+    small, _ = tiny_suite
+    mask = _mask(680, 544, 5, 60, 5, 60)
+    runs = _collect(tmp_path, small, FakeSam([]), sam, phrase_results={
+        "face": [{"index": 0, "mask_rle": mask, "confidence": 0.9}]})
+    out = matrix.report(small, runs_root=runs)
+
+    # Every fold target came back empty on every fixture, with the gate open. That is the exact
+    # shape that tempts an instrument-class conclusion.
+    folds = [c for c in out["cells"] if c["role"] == "fold_target" and c["collected"]]
+    assert folds and all(c["organ_status"] == "empty" for c in folds)
+    assert all(c["attribution"] == matrix.PHRASE_CONDITIONED_EMPTY for c in folds)
+
+    written = {c["attribution"] for c in out["cells"]}
+    assert not (written & matrix.REVIEW_ONLY), f"scoring wrote a review-only attribution: {written}"
+    assert out["bounded_decision"]["value"] == matrix.NOT_ESTABLISHED
+    assert set(out["bounded_decision"]["may_not_be_derived_by_machine"]) == matrix.REVIEW_ONLY
+
+
+def test_semantic_correctness_is_not_reachable_from_any_measured_signal(tmp_path, tiny_suite,
+                                                                       sam):
+    """Maximum confidence, large clean masks, perfect agreement across every fixture."""
+    small, _ = tiny_suite
+    big = _mask(680, 544, 2, 670, 2, 530)
+    runs = _collect(tmp_path, small, FakeSam([]), sam, phrase_results={
+        p: [{"index": 0, "mask_rle": big, "confidence": 1.0}]
+        for p in matrix.all_phrases(small)})
+    out = matrix.report(small, runs_root=runs)
+    assert out["response_curve"]["by_family"]["fold_target"]["hit_rate"] == 1.0
+    assert out["review"]["semantic_correctness"] == "not_established"
+    assert out["review"]["cells_reviewed"] == 0
+    assert out["bounded_decision"]["value"] == matrix.NOT_ESTABLISHED
+
+
+def test_wrapper_equivalence_keys_on_fixture_hash_phrase_and_model(tmp_path, tiny_suite, sam):
+    small, _ = tiny_suite
+    mask = _mask(680, 544, 5, 60, 5, 60)
+    runs = _collect(tmp_path, small, FakeSam([]), sam, phrase_results={
+        "face": [{"index": 0, "mask_rle": mask, "confidence": 0.9}]})
+    eq = matrix.report(small, runs_root=runs)["wrapper_equivalence"]
+    assert eq["equivalent"] is True
+    assert eq["mismatches"] == []
+    assert eq["informative_pairs"] >= 1, "equivalence rested only on empty pairs"
+    for pair in eq["pairs"]:
+        assert pair["identical_masks"] is True
+
+
+def test_equivalence_over_only_empty_pairs_says_it_established_nothing(tmp_path, tiny_suite,
+                                                                      sam):
+    """C1's fold actuator run was empty, so its equivalence claim rested on comparing two
+    nothings. The report now says so rather than reporting `equivalent: true`."""
+    small, _ = tiny_suite
+    runs = _collect(tmp_path, small, FakeSam([]), sam)
+    eq = matrix.report(small, runs_root=runs)["wrapper_equivalence"]
+    assert eq["informative_pairs"] == 0
+    assert "establishes nothing" in eq["established_by"]
+
+
+def test_a_wrapper_that_loses_an_instance_is_caught(tiny_suite):
+    """Constructed rather than captured: the production wrapper does not currently lose
+    anything, and a test that only ever sees agreement cannot show the check works."""
+    records = [
+        {"mode": "organ_direct", "collected": True, "image_sha256": "a" * 64, "phrase": "face",
+         "model": "facebook/sam3", "instances": 3, "mask_hashes": ["h1", "h2", "h3"],
+         "fixture_id": "f", "run_id": "o"},
+        {"mode": "actuator_direct", "collected": True, "image_sha256": "a" * 64, "phrase": "face",
+         "model": "facebook/sam3", "instances": 2, "mask_hashes": ["h1", "h2"],
+         "fixture_id": "f", "run_id": "a", "conversion": {"dropped": 1}},
+    ]
+    eq = matrix.wrapper_equivalence(records)
+    assert eq["equivalent"] is False
+    assert "organ measured 3 and the actuator surfaced 2" in eq["mismatches"][0]["reason"]
+
+
+def test_unrelated_fixtures_cannot_influence_each_others_attribution(tiny_suite):
+    """Two cells sharing a phrase but not a picture are not the same input."""
+    records = [
+        {"mode": "organ_direct", "collected": True, "image_sha256": "a" * 64, "phrase": "face",
+         "model": "facebook/sam3", "instances": 3, "mask_hashes": ["h1"], "fixture_id": "f1",
+         "run_id": "o1"},
+        {"mode": "actuator_direct", "collected": True, "image_sha256": "b" * 64, "phrase": "face",
+         "model": "facebook/sam3", "instances": 0, "mask_hashes": [], "fixture_id": "f2",
+         "run_id": "a2", "conversion": None},
+    ]
+    eq = matrix.wrapper_equivalence(records)
+    # No counterpart on the SAME image, so this is reported as unpaired rather than as a loss.
+    assert eq["pairs"] == []
+    assert "no organ_direct counterpart" in eq["mismatches"][0]["reason"]
+
+
+def test_planner_stability_distinguishes_identical_from_divergent():
+    identical = {"samples": [{"selected_phrase": "folded drapery",
+                              "selected_actuator": "concept_segment",
+                              "refused_out_of_lock": [], "model": "m"} for _ in range(5)],
+                 "total_sam_invocations": 0}
+    assert matrix.planner_stability(identical)["verdict"] == "byte_identical"
+
+    lexical = {"samples": [{"selected_phrase": p, "selected_actuator": "concept_segment",
+                            "refused_out_of_lock": [], "model": "m"}
+                           for p in ("folded drapery", "drapery folds", "folded drapery",
+                                     "robe folds", "folded drapery")],
+               "total_sam_invocations": 0}
+    out = matrix.planner_stability(lexical)
+    assert out["verdict"] == "lexically_different"
+    assert out["distribution"]["folded drapery"] == 3
+
+    divergent = {"samples": [{"selected_phrase": "folded drapery",
+                              "selected_actuator": "concept_segment",
+                              "refused_out_of_lock": ["semantic_read"], "model": "m"}],
+                 "total_sam_invocations": 0}
+    assert matrix.planner_stability(divergent)["verdict"] == "capability_divergent"
+
+    assert matrix.planner_stability(None)["verdict"] == "not_collected"
+
+
+def test_the_report_records_the_invariant_totals(tmp_path, tiny_suite, sam):
+    small, _ = tiny_suite
+    runs = _collect(tmp_path, small, FakeSam([]), sam)
+    inv = matrix.report(small, runs_root=runs)["invariants"]
+    assert inv["captures"] == inv["invocations"] == 10
+    assert inv["lock_held"] is True
+    assert inv["database_writes"] == 0
+    assert inv["source_mutations"] == 0
+    assert inv["violations"] == []
+
+
+def test_the_rendered_report_refuses_in_words_too(tmp_path, tiny_suite, sam):
+    small, _ = tiny_suite
+    runs = _collect(tmp_path, small, FakeSam([]), sam)
+    text = lab.render_matrix_report(matrix.report(small, runs_root=runs))
+    assert "not_established" in text
+    assert "is not a claim that any instance is the thing the phrase named" in text
+    assert "instrument_class_gap" in text

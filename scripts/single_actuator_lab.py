@@ -325,6 +325,86 @@ def matrix_replay(suite_id: str, *, suites_dir: Optional[str] = None,
             "divergences": divergences, "rows": rows}
 
 
+def matrix_report(suite_id: str, *, suites_dir: Optional[str] = None,
+                  runs_root: Optional[str] = None) -> Dict[str, Any]:
+    suite = matrix.check_suite(matrix.load_suite(suite_id, suites_dir=suites_dir),
+                               source=suite_id)
+    return matrix.report(suite, runs_root=runs_root)
+
+
+def render_matrix_report(out: Dict[str, Any]) -> str:
+    """The phrase-response curve as a table a person can read, and an explicit refusal."""
+    curve = out["response_curve"]
+    lines = [f"# {out['suite_id']} — phrase-response curve", ""]
+
+    fixtures = sorted(curve["by_fixture"])
+    lines.append("| phrase | family | " + " | ".join(fixtures) + " | hit-rate |")
+    lines.append("|---|---|" + "---|" * (len(fixtures) + 1))
+    for phrase, row in curve["by_phrase"].items():
+        cells = []
+        for fixture in fixtures:
+            per = row["per_fixture"].get(fixture)
+            cells.append("—" if per is None else
+                         (f"**{per['instances']}**" if per["status"] == "ok"
+                          else per["status"][:5]))
+        rate = "—" if row["hit_rate"] is None else f"{row['hit_rate']:.2f}"
+        lines.append(f"| `{phrase}` | {row['family']} | " + " | ".join(cells) + f" | {rate} |")
+    lines.append("")
+
+    lines.append("## Availability gate")
+    lines.append("")
+    for fixture, gate in sorted(out["availability"].items()):
+        mark = "yes" if gate["demonstrated"] else "**NO**"
+        lines.append(f"- `{fixture}`: instrument demonstrated {mark} "
+                     f"(`{gate['phrase']}` → {gate['instances']} instance(s))")
+    if curve["gated_out"]:
+        lines.append(f"- gated out of the curve: {', '.join(curve['gated_out'])} — every empty "
+                     f"on these is uninterpretable, not a phrase failure")
+    lines.append("")
+
+    eq = out["wrapper_equivalence"]
+    lines.append("## Wrapper equivalence (organ-direct vs production actuator)")
+    lines.append("")
+    lines.append(f"- pairs {len(eq['pairs'])}, of which informative (non-empty) "
+                 f"{eq['informative_pairs']}, empty {eq['empty_pairs']}")
+    lines.append(f"- equivalent: **{eq['equivalent']}** — established by {eq['established_by']}")
+    for m in eq["mismatches"]:
+        lines.append(f"- MISMATCH: {m}")
+    lines.append("")
+
+    ps = out["planner_stability"]
+    lines.append("## Planner stability")
+    lines.append("")
+    lines.append(f"- {ps['samples']} planning-only sample(s), SAM invocations "
+                 f"{ps.get('sam_invocations')}")
+    lines.append(f"- verdict: **{ps['verdict']}** · distribution {ps.get('distribution')}")
+    if ps.get("reached_beyond_lock"):
+        lines.append(f"- reached beyond the lock: {', '.join(ps['reached_beyond_lock'])}")
+    lines.append("")
+
+    inv = out["invariants"]
+    lines.append("## Invariants")
+    lines.append("")
+    lines.append(f"- captures {inv['captures']} · invocations {inv['invocations']} · lock held "
+                 f"{inv['lock_held']} · database writes {inv['database_writes']} · source "
+                 f"mutations {inv['source_mutations']}")
+    for v in inv["violations"]:
+        lines.append(f"- VIOLATION: {v}")
+    lines.append("")
+
+    decision = out["bounded_decision"]
+    lines.append("## Bounded decision")
+    lines.append("")
+    lines.append(f"**{decision['value']}** — {decision['why']}")
+    lines.append("")
+    lines.append(f"> These may never be derived by scoring code: "
+                 f"{', '.join(decision['may_not_be_derived_by_machine'])}. A hit-rate is a count "
+                 f"of runs that returned instances. It is not a claim that any instance is the "
+                 f"thing the phrase named, however high it climbs.")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _write_locks(suite_id: str, suite: Dict[str, Any], suites_dir: str) -> None:
     """Rewrite just the two digest lines in the suite file, in place.
 
@@ -528,7 +608,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                   f"divergences {out['divergences']}")
             return 1 if (out["live_calls"] or out["divergences"]) else 0
 
-        print("matrix: --report arrives with the scoring")
+        if args.report:
+            out = matrix_report(args.suite, suites_dir=args.suites_dir)
+            if args.json:
+                import json
+                print(json.dumps(out, indent=2))
+            else:
+                print(render_matrix_report(out))
+            return 0 if out["invariants"]["lock_held"] else 1
+
         return 2
 
     return 2
