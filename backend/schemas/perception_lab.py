@@ -791,11 +791,19 @@ class TopologyRelationSetPayload(_Base):
 
 
 class NegativeSpaceFieldPayload(_Base):
-    """A scalar field. Large, so it lives behind a `DataRef` on the measurement block."""
+    """A scalar field: what the figure is NOT, with distance attached.
+
+    The raster is large, so `field_ref` points at it while the payload keeps the metadata a reader
+    needs to know what it is looking at. The pointer is inside the payload rather than replacing
+    it, because `data_ref` at the measurement level means "the whole measurement is elsewhere" and
+    a scalar field's shape, truncation distance and statistics are not elsewhere — they are what
+    makes the pointer interpretable.
+    """
     variant: Literal["negative_space_field"]
     figure_instance_ids: List[str] = Field(min_length=1)
     max_distance_used: float = Field(ge=0.0, le=1.0)
     field_shape: List[int] = Field(min_length=2, max_length=2)
+    field_ref: Optional[DataRef] = None
     statistics: Dict[str, float] = Field(default_factory=dict)
 
     @field_validator("field_shape")

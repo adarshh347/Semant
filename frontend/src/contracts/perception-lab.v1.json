@@ -1,0 +1,949 @@
+{
+  "schema_version": "perception-lab.v1",
+  "title": "The Perception Lab contract",
+  "what_this_is": [
+    "PERCEPTUAL-ORGANS-002 Lane A. One extensible data contract for a laboratory in which a person",
+    "invokes a single perceptual organ, sees the proposed plan before it runs, inspects the raw",
+    "measurement separately from its visible projection, and records a human verdict that is not the",
+    "same thing as the machine's epistemic claim.",
+    "It is DATA, not code, because three runtimes will enforce it: the Python organ facades and",
+    "conductor (Lanes B/C/D), the React laboratory (Lane E), and the integration lane that mounts",
+    "them (Lane F). A vocabulary that lives in one language is a vocabulary the other languages are",
+    "free to paraphrase, and a paraphrased organ, operation or refusal is a fabrication that merely",
+    "looks like a typo.",
+    "Eight organ families are REGISTERED here so the shell never has to change to admit the next",
+    "pair. Two are ENABLED. The other six declare their family and their perceptual question and",
+    "nothing else — no operations, no adapters, no artifact kinds, no epistemic ceiling — because a",
+    "declared capability that does not exist is the one lie this contract is built to prevent."
+  ],
+  "not_this": [
+    "Not a second identity system. A canonical Region keeps its `id` and `geometry_rev`; lab",
+    "artifacts REFERENCE those and mint their own session-scoped ids, and the two scopes are a",
+    "declared field rather than a convention.",
+    "Not a second epistemic vocabulary. `epistemic_statuses` and the mask/box substrate ceilings are",
+    "read from `backend/services/epistemics.py` and asserted equal in the parity tests.",
+    "Not the Perceptual Action Grammar (what a curator might do next in the writing circuit), and",
+    "not the Director's actuator table (what globally scoped operation has an executor). Those two",
+    "and this one answer different questions and are deliberately NOT flattened into one enum.",
+    "Not an execution contract. Nothing here dispatches, promotes, or writes to a post."
+  ],
+
+  "closed_sets": {
+    "organ_families": [
+      "extent",
+      "topology",
+      "colour",
+      "illumination",
+      "surface_pattern",
+      "orientation_flow",
+      "depth",
+      "surface_form"
+    ],
+    "enabled_organ_families": ["extent", "topology"],
+    "session_modes": ["isolation", "chain"],
+    "planner_identities": ["direct", "rules", "model"],
+    "execution_identities": ["LIVE", "REPLAY", "FIXTURE"],
+    "run_outcomes": ["ready", "empty", "unavailable", "refused", "partial", "failed"],
+    "stage_states": [
+      "queued",
+      "started",
+      "completed",
+      "empty",
+      "refused",
+      "unavailable",
+      "skipped",
+      "failed"
+    ],
+    "lifecycle_states": ["proposed", "edited", "kept", "rejected", "promoted"],
+    "review_verdicts": ["correct", "partial", "wrong", "unclear"],
+    "epistemic_statuses": ["visible", "measured", "interpretive", "sourced", "uncertain"],
+    "epistemic_bases": ["mask", "box", "depth_artifact", "manual", "declared"],
+    "artifact_kinds": [
+      "extent_set",
+      "topology_relation_set",
+      "negative_space_field",
+      "refusal",
+      "depth_field"
+    ],
+    "payload_variants": [
+      "extent_set",
+      "topology_relation_set",
+      "negative_space_field",
+      "refusal"
+    ],
+    "identity_scopes": ["session", "canonical"],
+    "producer_kinds": ["adapter", "human", "fixture", "replay"],
+    "capability_states": ["available", "deferred", "unavailable", "unknown_until_runtime"],
+    "coordinate_systems": ["normalized_xy_topleft", "pixel_xy_topleft", "mask_rle_hw"],
+    "parameter_types": [
+      "string",
+      "integer",
+      "number",
+      "boolean",
+      "enum",
+      "string_list",
+      "point_list",
+      "box",
+      "mask_rle"
+    ],
+    "input_kinds": ["artifact", "region", "image"],
+    "label_sources": ["adapter", "prompt", "human", "canonical", "none"],
+    "refusal_codes": [
+      "missing_extent_inputs",
+      "missing_depth_artifact",
+      "unsupported_operation",
+      "invalid_parameters",
+      "organ_locked",
+      "capability_unavailable",
+      "unknown_reference",
+      "replay_cannot_recompute",
+      "source_mutated"
+    ],
+    "projection_kinds": [
+      "none",
+      "mask_fill",
+      "mask_outline",
+      "box_outline",
+      "point_markers",
+      "path_overlay",
+      "contact_band",
+      "intersection_area",
+      "endpoint_pair",
+      "relation_graph",
+      "scalar_wash",
+      "vector_field",
+      "swatch",
+      "contact_sheet",
+      "before_after",
+      "ab_overlay",
+      "difference_overlay"
+    ],
+    "projection_hint_keys": [
+      "opacity",
+      "stroke_weight",
+      "palette_role",
+      "emphasis",
+      "z_order",
+      "label_anchor",
+      "legend"
+    ],
+    "manual_tool_kinds": [
+      "mask_brush",
+      "polygon",
+      "foreground_background_points",
+      "refinement_box",
+      "region_picker",
+      "pair_picker",
+      "region_set_picker",
+      "endpoint_correct",
+      "relation_reject"
+    ],
+    "relation_kinds": [
+      "nested_within",
+      "contains",
+      "meets",
+      "overlaps",
+      "disjoint",
+      "in_front_of",
+      "coplanar"
+    ]
+  },
+
+  "set_notes": {
+    "enabled_organ_families": "A DERIVED-LOOKING SET THAT IS DECLARED ON PURPOSE. Both runtimes assert it equals the families whose definition says `enabled: true`, so enabling a seventh organ by editing one line fails until the phase that means to enable it edits both.",
+    "artifact_kinds": "`depth_field` is here so `topology.occlusion` can NAME its dependency. No enabled organ produces it — it can only be SUPPLIED. That is the difference between declaring a dependency and pretending to satisfy it.",
+    "payload_variants": "The four typed measurements v1 actually implements. `depth_field` is deliberately absent: a kind that can be referenced is not a kind that can be built.",
+    "epistemic_statuses": "Read from `backend.services.epistemics.EpistemicStatus`. Not re-decided here.",
+    "epistemic_bases": "`mask` and `box` are the substrates `epistemics.SUBSTRATE_CEILING` already rules on, and their ceilings are asserted equal to it. `depth_artifact`, `manual` and `declared` are lab-local and are ruled on below.",
+    "relation_kinds": "`nested_within`, `meets`, `in_front_of` and `coplanar` are the exact strings `nestedness_organ`, `adjacency_organ` and `occlusion_organ` already emit. Reused verbatim rather than renamed, because a relation the lab calls `containment` and the organ calls `nested_within` is two vocabularies pretending to be one.",
+    "projection_hint_keys": "A CLAMP, not a suggestion. No geometry key may appear here. A projection that could carry `mask_rle` is a projection that can replace the evidence it is supposed to depict.",
+    "refusal_codes": "Nine, and none of them means 'nothing was found'. Emptiness is an OUTCOME, not a refusal — see `absence_semantics`."
+  },
+
+  "absence_semantics": {
+    "why": "Five different nothings arrive at the same empty panel unless the contract keeps them apart. Each tells a person something different to do next.",
+    "distinctions": [
+      {
+        "case": "measured emptiness",
+        "carried_by": "run.outcome = 'empty', with an artifact whose payload records what was examined",
+        "means": "the organ ran, looked, and there was nothing of that kind",
+        "next": "look somewhere else, or ask a different question",
+        "may_not_be_confused_with": ["capability_unavailable", "missing_extent_inputs"]
+      },
+      {
+        "case": "a positive no-relation",
+        "carried_by": "a `disjoint` relation inside a topology_relation_set, outcome 'ready'",
+        "means": "the pair WAS measured and they do not touch — a finding, not an absence",
+        "next": "read the measured separation distance",
+        "may_not_be_confused_with": ["measured emptiness"]
+      },
+      {
+        "case": "capability absent",
+        "carried_by": "run.outcome = 'unavailable' + refusal code `capability_unavailable`",
+        "means": "the adapter exists in the catalogue and is not running here",
+        "next": "try elsewhere, or choose another adapter",
+        "may_not_be_confused_with": ["measured emptiness"]
+      },
+      {
+        "case": "a law said no",
+        "carried_by": "run.outcome = 'refused' + a typed refusal record",
+        "means": "the request was well formed and this laboratory will not do it",
+        "next": "satisfy the named prerequisite, or change the request",
+        "may_not_be_confused_with": ["measured emptiness", "capability absent"]
+      },
+      {
+        "case": "it broke",
+        "carried_by": "run.outcome = 'failed'",
+        "means": "something raised; no claim is made about the image at all",
+        "next": "fix it",
+        "may_not_be_confused_with": ["measured emptiness", "a law said no"]
+      }
+    ],
+    "no_fabricating_defaults": [
+      "`run.outcome` has no default. A run that did not say how it ended does not validate.",
+      "`run.execution_identity` has no default. Nothing is LIVE because nobody said otherwise.",
+      "`measurement.epistemic_status` and `.epistemic_basis` have no defaults.",
+      "`artifact.lifecycle.status` has no default; `proposed` is a value a producer must choose.",
+      "`topology_relation_set.pairs_examined` has no default, so `relations: []` cannot be read as 'measured nothing' unless something counted the pairs.",
+      "`extent_set.instances` may be empty, but `searched` must say what was looked for.",
+      "`duration_ms` is null when unmeasured and never 0. Zero is a real measurement.",
+      "Every operation parameter declares `default: null`. A parameter that was not supplied was not supplied; the runtime records the value it chose rather than inheriting one from this file."
+    ]
+  },
+
+  "epistemics": {
+    "shared_with": "backend/services/epistemics.py",
+    "basis_ceilings": {
+      "mask": "measured",
+      "box": "interpretive",
+      "depth_artifact": "measured",
+      "manual": "visible",
+      "declared": "uncertain"
+    },
+    "basis_notes": {
+      "mask": "per-pixel intersection on a shared raster. `epistemics.SUBSTRATE_CEILING['mask']`.",
+      "box": "bounding boxes systematically over-estimate. `epistemics.SUBSTRATE_CEILING['box']`. This is the WAVE2.5 ruling and the lab does not soften it: a box-basis containment of 1.000 is a reading, not a finding.",
+      "depth_artifact": "an ordering statistic over a SUPPLIED depth field. Measured — of that field. The lab never computes the field itself in this phase.",
+      "manual": "a person pointed at it. `visible` in the exact sense epistemics means: the extent is present in the picture and someone can point at it. Not `measured` — nothing computed it.",
+      "declared": "an imported region asserting its own geometry. The lab may carry the claim; it may not upgrade it."
+    },
+    "laws": [
+      "A measurement is one of `measured`, `visible`, `interpretive`, `uncertain`. It may never be `sourced`: nothing in this laboratory comes from outside the image, and `sourced` is the walled status in `epistemics.WALLED_STATUSES`.",
+      "An interpretation is one of `interpretive`, `uncertain`. Never `measured` or `visible` — a label is a reading about the image, and the geometry under it is carried as a separate block. Never `sourced` either: this laboratory has no producer that cites anything outside the picture.",
+      "An operation may not claim a status above its declared ceiling, and a run may not claim a status above the ceiling of the basis it actually used.",
+      "`extent.reuse` inherits its input's status and may not raise it."
+    ]
+  },
+
+  "organs": [
+    {
+      "family": "extent",
+      "label": "Extent",
+      "question": "Where is the figure or part, and how many instances are there?",
+      "enabled": true,
+      "availability": "available",
+      "epistemic_ceiling": "measured",
+      "produces_artifact_kinds": ["extent_set", "refusal"],
+      "consumes_artifact_kinds": ["extent_set"],
+      "render_projections": [
+        "mask_fill",
+        "mask_outline",
+        "box_outline",
+        "point_markers",
+        "contact_sheet",
+        "before_after",
+        "ab_overlay",
+        "difference_overlay"
+      ],
+      "manual_tools": [
+        "mask_brush",
+        "polygon",
+        "foreground_background_points",
+        "refinement_box",
+        "region_picker"
+      ],
+      "prompt_examples": [
+        "mask every face",
+        "find the drapery",
+        "refine the left figure around the hand",
+        "show only the two masks on the right",
+        "repeat that with the other adapter"
+      ],
+      "adapters": [
+        {"key": "yolo_sam2_auto", "label": "YOLO + SAM2 automatic", "reconciles": "backend/services/sam2_auto_service.py", "capability_state": "unknown_until_runtime"},
+        {"key": "sam3_concept", "label": "SAM 3 concept", "reconciles": "backend/services/sam3_concept_service.py", "capability_state": "unknown_until_runtime"},
+        {"key": "grounded_sam", "label": "Grounded-SAM", "reconciles": "backend/services/grounding_detector_service.py", "capability_state": "unknown_until_runtime"},
+        {"key": "sam2_refine", "label": "SAM2 point/box refinement", "reconciles": "backend/services/vision_orchestrator/refine_session.py", "capability_state": "unknown_until_runtime"},
+        {"key": "human", "label": "A person, drawing", "reconciles": "the laboratory's own manual tools", "capability_state": "available"},
+        {"key": "canonical_region", "label": "An existing Region", "reconciles": "backend/schemas/post.py::Region", "capability_state": "unknown_until_runtime"},
+        {"key": "lab_compare", "label": "Lab comparison", "reconciles": "backend/services/mask_geometry.py", "capability_state": "unknown_until_runtime"}
+      ],
+      "notes": [
+        "Mask RLE is authoritative. Polygons and box are PROJECTIONS derived from it, and a box-only extent stays interpretive.",
+        "Geometry and prompt-supplied naming carry separate epistemic statuses, exactly as CONCEPT-SEG-001 already carries `concept_segment` and `concept_naming` as two descriptors.",
+        "A duplicate-instance warning never silently deletes either instance."
+      ],
+      "operations": [
+        {
+          "key": "extent.find_all",
+          "label": "Find all instances",
+          "question": "What separable instances are in this picture?",
+          "summary": "Automatic instance proposal over the whole image.",
+          "manual": false,
+          "requires_confirmation": false,
+          "adapters": ["yolo_sam2_auto"],
+          "parameters": [
+            {"name": "max_instances", "type": "integer", "required": false, "minimum": 1, "maximum": 64, "clamp": true, "default": null, "description": "Upper bound on proposals returned. Clamped, and the clamp is recorded on the plan."},
+            {"name": "min_area", "type": "number", "required": false, "minimum": 0.0, "maximum": 1.0, "clamp": true, "default": null, "description": "Normalized area floor. Instances below it are dropped and counted, never hidden."},
+            {"name": "adapter", "type": "enum", "required": false, "enum": ["yolo_sam2_auto"], "clamp": false, "default": null, "description": "Which adapter to ask. Absent means the runtime chooses and records what it chose."}
+          ],
+          "inputs": [],
+          "produces": ["extent_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["mask", "box"],
+            "per_attribute": {"geometry": "measured", "naming": "interpretive"}
+          },
+          "refusals": ["capability_unavailable", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["mask_fill", "mask_outline", "contact_sheet"],
+          "must_not_invoke": ["topology", "depth"]
+        },
+        {
+          "key": "extent.find_named",
+          "label": "Find a named thing",
+          "question": "Where is the thing I named, and how many of it are there?",
+          "summary": "Concept-prompted instance proposal.",
+          "manual": false,
+          "requires_confirmation": false,
+          "adapters": ["sam3_concept", "grounded_sam"],
+          "parameters": [
+            {"name": "concept", "type": "string", "required": true, "max_length": 120, "clamp": false, "default": null, "description": "The phrase to look for. A phrase is not an identity: what comes back is named, not identified."},
+            {"name": "max_instances", "type": "integer", "required": false, "minimum": 1, "maximum": 64, "clamp": true, "default": null, "description": "Upper bound on proposals returned."},
+            {"name": "adapter", "type": "enum", "required": false, "enum": ["sam3_concept", "grounded_sam"], "clamp": false, "default": null, "description": "Which named-extent adapter to ask."}
+          ],
+          "inputs": [],
+          "produces": ["extent_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["mask", "box"],
+            "per_attribute": {"geometry": "measured", "naming": "interpretive"}
+          },
+          "refusals": ["capability_unavailable", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["mask_fill", "mask_outline", "contact_sheet"],
+          "must_not_invoke": ["topology", "depth"]
+        },
+        {
+          "key": "extent.refine",
+          "label": "Refine an extent",
+          "question": "Is this the boundary I meant?",
+          "summary": "Point/box refinement of one existing extent, proposing a replacement.",
+          "manual": false,
+          "requires_confirmation": false,
+          "adapters": ["sam2_refine"],
+          "parameters": [
+            {"name": "mode", "type": "enum", "required": true, "enum": ["add", "subtract", "replace"], "clamp": false, "default": null, "description": "What the supplied evidence does to the base mask."},
+            {"name": "points", "type": "point_list", "required": false, "max_items": 32, "clamp": true, "default": null, "description": "Foreground/background points in `normalized_xy_topleft`."},
+            {"name": "box", "type": "box", "required": false, "clamp": false, "default": null, "description": "A refinement box in `normalized_xy_topleft`."}
+          ],
+          "inputs": [
+            {"role": "base", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "The extent being refined. Its identity is preserved and `geometry_rev` increments."}
+          ],
+          "produces": ["extent_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["mask"],
+            "per_attribute": {"geometry": "measured", "naming": "interpretive"}
+          },
+          "refusals": ["missing_extent_inputs", "unknown_reference", "capability_unavailable", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["mask_fill", "mask_outline", "before_after", "point_markers"],
+          "must_not_invoke": ["topology", "depth"]
+        },
+        {
+          "key": "extent.draw",
+          "label": "Draw an extent",
+          "question": "Can I just show you where it is?",
+          "summary": "A person authors the extent directly.",
+          "manual": true,
+          "requires_confirmation": false,
+          "adapters": ["human"],
+          "parameters": [
+            {"name": "tool", "type": "enum", "required": true, "enum": ["mask_brush", "polygon"], "clamp": false, "default": null, "description": "Which manual form authored it. Carried into provenance so a drawn mask never reads as a segmented one."},
+            {"name": "mask_rle", "type": "mask_rle", "required": false, "clamp": false, "default": null, "description": "COCO uncompressed RLE, authoritative when present."},
+            {"name": "polygon", "type": "point_list", "required": false, "max_items": 2048, "clamp": false, "default": null, "description": "A ring in `normalized_xy_topleft`, when the person drew a polygon."}
+          ],
+          "inputs": [],
+          "produces": ["extent_set"],
+          "epistemic": {
+            "ceiling": "visible",
+            "allowed_bases": ["manual"],
+            "per_attribute": {"geometry": "visible", "naming": "interpretive"}
+          },
+          "refusals": ["invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["mask_fill", "mask_outline"],
+          "must_not_invoke": ["topology", "depth"]
+        },
+        {
+          "key": "extent.reuse",
+          "label": "Reuse an existing region",
+          "question": "Can the lab work on the extent Semant already holds?",
+          "summary": "Reference canonical geometry without copying or re-deriving it.",
+          "manual": false,
+          "requires_confirmation": false,
+          "adapters": ["canonical_region"],
+          "parameters": [],
+          "inputs": [
+            {"role": "regions", "kind": "region", "artifact_kinds": [], "min": 1, "max": 32, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["canonical"], "description": "Canonical Region ids WITH `geometry_rev`. A reference without a revision is not a reference."}
+          ],
+          "produces": ["extent_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["declared", "mask", "box"],
+            "inherits_from_input": true,
+            "per_attribute": {"geometry": "declared", "naming": "interpretive"}
+          },
+          "refusals": ["missing_extent_inputs", "unknown_reference", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["mask_fill", "mask_outline"],
+          "must_not_invoke": ["topology", "depth"]
+        },
+        {
+          "key": "extent.compare",
+          "label": "Compare two extent sets",
+          "question": "Did those two runs see the same thing?",
+          "summary": "Correspondence, overlap, duplicate and repeat-difference between two extent artifacts.",
+          "manual": false,
+          "requires_confirmation": false,
+          "adapters": ["lab_compare"],
+          "parameters": [
+            {"name": "iou_threshold", "type": "number", "required": false, "minimum": 0.0, "maximum": 1.0, "clamp": true, "default": null, "description": "Correspondence threshold. Absent means the runtime records the value it used."}
+          ],
+          "inputs": [
+            {"role": "left", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "First extent set."},
+            {"role": "right", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "Second extent set."}
+          ],
+          "produces": ["extent_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["mask"],
+            "per_attribute": {"geometry": "declared", "naming": "interpretive"}
+          },
+          "refusals": ["missing_extent_inputs", "unknown_reference", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["ab_overlay", "difference_overlay", "contact_sheet"],
+          "must_not_invoke": ["topology", "depth"],
+          "notes": [
+            "Produces an `extent_set` carrying a `comparison` block rather than a fifth payload variant: the result IS a set of extents (the union of both inputs) plus their correspondence, and inventing a variant for it would put the same geometry in two shapes."
+          ]
+        }
+      ]
+    },
+    {
+      "family": "topology",
+      "label": "Topology",
+      "question": "How are extents spatially related?",
+      "enabled": true,
+      "availability": "available",
+      "epistemic_ceiling": "measured",
+      "produces_artifact_kinds": ["topology_relation_set", "negative_space_field", "refusal"],
+      "consumes_artifact_kinds": ["extent_set", "depth_field"],
+      "render_projections": [
+        "contact_band",
+        "intersection_area",
+        "endpoint_pair",
+        "relation_graph",
+        "scalar_wash",
+        "mask_outline"
+      ],
+      "manual_tools": [
+        "pair_picker",
+        "region_set_picker",
+        "region_picker",
+        "endpoint_correct",
+        "relation_reject"
+      ],
+      "prompt_examples": [
+        "which selected shapes touch?",
+        "is the finial inside the sky, or merely in front of it?",
+        "do those two overlap?",
+        "what surrounds the left figure?"
+      ],
+      "adapters": [
+        {"key": "nestedness_organ", "label": "Nestedness", "reconciles": "backend/services/nestedness_organ.py", "capability_state": "unknown_until_runtime"},
+        {"key": "adjacency_organ", "label": "Adjacency", "reconciles": "backend/services/adjacency_organ.py", "capability_state": "unknown_until_runtime"},
+        {"key": "mask_arithmetic", "label": "Exact mask arithmetic", "reconciles": "backend/services/mask_geometry.py", "capability_state": "unknown_until_runtime"},
+        {"key": "distance_transform", "label": "Distance transform", "reconciles": "backend/services/mask_geometry.py", "capability_state": "unknown_until_runtime"},
+        {"key": "occlusion_organ", "label": "Occlusion, from a supplied depth field", "reconciles": "backend/services/occlusion_organ.py", "capability_state": "unknown_until_runtime"}
+      ],
+      "notes": [
+        "EVERY topology operation declares its Extent inputs. There is no operation here that can find its own regions, in either mode — in isolation mode because the organ is locked, and in chain mode because the Extent stage is a SEPARATE, visible step with its own artifact, adapter and timing.",
+        "A relation cites endpoint identity AND revision. It never duplicates the mask it measured.",
+        "Manual correction may reject a relation or fix its endpoints. It may not paint a relation into existence — a hand-authored relation is not a measurement and has no basis that would make it one."
+      ],
+      "operations": [
+        {
+          "key": "topology.containment",
+          "label": "Containment",
+          "question": "Is A inside B?",
+          "summary": "Directed within/contains measurement over two extents.",
+          "manual": false,
+          "requires_confirmation": false,
+          "adapters": ["nestedness_organ"],
+          "parameters": [
+            {"name": "basis", "type": "enum", "required": false, "enum": ["mask", "box"], "clamp": false, "default": null, "description": "Absent means the runtime takes the best substrate both endpoints carry and RECORDS which. It never silently upgrades a box to a mask."}
+          ],
+          "inputs": [
+            {"role": "source", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "The inner candidate."},
+            {"role": "target", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "The outer candidate."}
+          ],
+          "produces": ["topology_relation_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["mask", "box"],
+            "basis_ceilings": {"mask": "measured", "box": "interpretive"}
+          },
+          "relation_kinds": ["nested_within", "contains"],
+          "refusals": ["missing_extent_inputs", "unknown_reference", "capability_unavailable", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["endpoint_pair", "mask_outline", "relation_graph"],
+          "must_not_invoke": ["extent", "depth"]
+        },
+        {
+          "key": "topology.adjacency",
+          "label": "Adjacency",
+          "question": "Do A and B meet?",
+          "summary": "Contact measurement over two extents, reporting the contact band itself.",
+          "manual": false,
+          "requires_confirmation": false,
+          "adapters": ["adjacency_organ"],
+          "parameters": [
+            {"name": "basis", "type": "enum", "required": false, "enum": ["mask", "box"], "clamp": false, "default": null, "description": "As containment: chosen from what both endpoints carry, and recorded."},
+            {"name": "contact_tolerance_px", "type": "integer", "required": false, "minimum": 0, "maximum": 32, "clamp": true, "default": null, "description": "Dilation in pixels before contact is counted. Clamped, and the value used is recorded on the measurement."}
+          ],
+          "inputs": [
+            {"role": "source", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "First endpoint."},
+            {"role": "target", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "Second endpoint."}
+          ],
+          "produces": ["topology_relation_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["mask", "box"],
+            "basis_ceilings": {"mask": "measured", "box": "interpretive"}
+          },
+          "relation_kinds": ["meets", "disjoint"],
+          "refusals": ["missing_extent_inputs", "unknown_reference", "capability_unavailable", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["contact_band", "endpoint_pair", "relation_graph"],
+          "must_not_invoke": ["extent", "depth"]
+        },
+        {
+          "key": "topology.overlap",
+          "label": "Overlap",
+          "question": "How much of A and B is the same pixels?",
+          "summary": "Exact intersection over two masks.",
+          "manual": false,
+          "requires_confirmation": false,
+          "adapters": ["mask_arithmetic"],
+          "parameters": [],
+          "inputs": [
+            {"role": "source", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "First endpoint. Must carry a mask."},
+            {"role": "target", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "Second endpoint. Must carry a mask."}
+          ],
+          "produces": ["topology_relation_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["mask"],
+            "basis_ceilings": {"mask": "measured"}
+          },
+          "relation_kinds": ["overlaps", "disjoint"],
+          "refusals": ["missing_extent_inputs", "unknown_reference", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["intersection_area", "endpoint_pair"],
+          "must_not_invoke": ["extent", "depth"],
+          "notes": ["Box basis is NOT allowed. An intersection of two boxes is an intersection of two boxes, and calling it overlap of the shapes inside them is the founding pathology in miniature."]
+        },
+        {
+          "key": "topology.disjoint",
+          "label": "Disjoint",
+          "question": "Are A and B genuinely apart, and by how much?",
+          "summary": "Explicit no-contact relation with a measured separation.",
+          "manual": false,
+          "requires_confirmation": false,
+          "adapters": ["mask_arithmetic", "distance_transform"],
+          "parameters": [],
+          "inputs": [
+            {"role": "source", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "First endpoint."},
+            {"role": "target", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "Second endpoint."}
+          ],
+          "produces": ["topology_relation_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["mask"],
+            "basis_ceilings": {"mask": "measured"}
+          },
+          "relation_kinds": ["disjoint", "meets"],
+          "refusals": ["missing_extent_inputs", "unknown_reference", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["endpoint_pair", "relation_graph"],
+          "must_not_invoke": ["extent", "depth"],
+          "notes": ["A `disjoint` relation is a POSITIVE finding with a distance on it. It is not the same as an empty result, and `absence_semantics` keeps them apart."]
+        },
+        {
+          "key": "topology.negative_space",
+          "label": "Negative space",
+          "question": "What is the shape of what is NOT this?",
+          "summary": "Mask complement plus distance transform, as a scalar field.",
+          "manual": false,
+          "requires_confirmation": false,
+          "adapters": ["distance_transform"],
+          "parameters": [
+            {"name": "max_distance", "type": "number", "required": false, "minimum": 0.0, "maximum": 1.0, "clamp": true, "default": null, "description": "Normalized distance at which the field is truncated. Recorded on the artifact."}
+          ],
+          "inputs": [
+            {"role": "figure", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 8, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "The extents whose complement is measured."}
+          ],
+          "produces": ["negative_space_field"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["mask"],
+            "basis_ceilings": {"mask": "measured"}
+          },
+          "relation_kinds": [],
+          "refusals": ["missing_extent_inputs", "unknown_reference", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["scalar_wash"],
+          "must_not_invoke": ["extent", "depth"]
+        },
+        {
+          "key": "topology.all_pairs",
+          "label": "All pairs",
+          "question": "How does this bounded set of extents relate, all at once?",
+          "summary": "A relation graph over an explicitly bounded region set.",
+          "manual": false,
+          "requires_confirmation": true,
+          "adapters": ["nestedness_organ", "adjacency_organ", "mask_arithmetic"],
+          "parameters": [
+            {"name": "max_regions", "type": "integer", "required": false, "minimum": 2, "maximum": 12, "clamp": true, "default": null, "description": "Hard bound on the set. Pairs grow quadratically and an unbounded all-pairs is how a laboratory becomes a load test."},
+            {"name": "relations", "type": "string_list", "required": false, "max_items": 4, "clamp": true, "default": null, "description": "Which relation kinds to measure. Values are clamped to this operation's declared `relation_kinds`."}
+          ],
+          "inputs": [
+            {"role": "members", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 2, "max": 12, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "The bounded set. A person chooses it; the operation never widens it."}
+          ],
+          "produces": ["topology_relation_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["mask", "box"],
+            "basis_ceilings": {"mask": "measured", "box": "interpretive"}
+          },
+          "relation_kinds": ["nested_within", "contains", "meets", "overlaps", "disjoint"],
+          "refusals": ["missing_extent_inputs", "unknown_reference", "capability_unavailable", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["relation_graph", "endpoint_pair", "contact_band"],
+          "must_not_invoke": ["extent", "depth"]
+        },
+        {
+          "key": "topology.occlusion",
+          "label": "Occlusion",
+          "question": "Is A inside B, or merely in front of it?",
+          "summary": "Depth-ordered relation over two extents, from a SUPPLIED depth field.",
+          "manual": false,
+          "requires_confirmation": true,
+          "adapters": ["occlusion_organ"],
+          "parameters": [],
+          "inputs": [
+            {"role": "source", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "First endpoint."},
+            {"role": "target", "kind": "artifact", "artifact_kinds": ["extent_set"], "min": 1, "max": 1, "required": true, "refusal_when_missing": "missing_extent_inputs", "scope": ["session", "canonical"], "description": "Second endpoint."},
+            {"role": "depth", "kind": "artifact", "artifact_kinds": ["depth_field"], "min": 1, "max": 1, "required": false, "required_for_execution": true, "refusal_when_missing": "missing_depth_artifact", "scope": ["session", "canonical"], "description": "A PREPARED depth field. Optional to PLAN — a person may compose the request before they have one — and required to RUN. Nothing here computes it: the Depth organ is registered and disabled, so `missing_depth_artifact` is the honest end of this path and not a placeholder for a call the lab could make if it tried."}
+          ],
+          "produces": ["topology_relation_set"],
+          "epistemic": {
+            "ceiling": "measured",
+            "allowed_bases": ["depth_artifact"],
+            "basis_ceilings": {"depth_artifact": "measured"}
+          },
+          "relation_kinds": ["in_front_of", "coplanar"],
+          "refusals": ["missing_extent_inputs", "missing_depth_artifact", "unknown_reference", "capability_unavailable", "invalid_parameters", "organ_locked", "unsupported_operation"],
+          "render_projections": ["endpoint_pair", "relation_graph"],
+          "must_not_invoke": ["extent", "depth"],
+          "dependency_declaration": {
+            "organ": "depth",
+            "artifact_kind": "depth_field",
+            "satisfied_by": "supply",
+            "may_invoke": false,
+            "refusal_when_missing": "missing_depth_artifact",
+            "why": "Live automatic Depth belongs to the Depth + Surface Form phase. Declaring the dependency and refusing without it is the difference between a gated capability and a hidden one."
+          }
+        }
+      ]
+    },
+    {
+      "family": "colour",
+      "label": "Colour",
+      "question": "What colours are present, where, and in what relation?",
+      "enabled": false,
+      "availability": "deferred",
+      "epistemic_ceiling": null,
+      "produces_artifact_kinds": [],
+      "consumes_artifact_kinds": [],
+      "render_projections": [],
+      "manual_tools": [],
+      "prompt_examples": [],
+      "adapters": [],
+      "operations": [],
+      "deferred_note": "Registered so the shell need not change to admit it. Declares nothing it cannot do."
+    },
+    {
+      "family": "illumination",
+      "label": "Illumination",
+      "question": "Where does the light come from, and where is it withheld?",
+      "enabled": false,
+      "availability": "deferred",
+      "epistemic_ceiling": null,
+      "produces_artifact_kinds": [],
+      "consumes_artifact_kinds": [],
+      "render_projections": [],
+      "manual_tools": [],
+      "prompt_examples": [],
+      "adapters": [],
+      "operations": [],
+      "deferred_note": "Registered so the shell need not change to admit it. Declares nothing it cannot do."
+    },
+    {
+      "family": "surface_pattern",
+      "label": "Surface pattern / material",
+      "question": "What is this surface made of, and how is it patterned?",
+      "enabled": false,
+      "availability": "deferred",
+      "epistemic_ceiling": null,
+      "produces_artifact_kinds": [],
+      "consumes_artifact_kinds": [],
+      "render_projections": [],
+      "manual_tools": [],
+      "prompt_examples": [],
+      "adapters": [],
+      "operations": [],
+      "deferred_note": "Registered so the shell need not change to admit it. Declares nothing it cannot do."
+    },
+    {
+      "family": "orientation_flow",
+      "label": "Orientation / flow",
+      "question": "Which way does this run?",
+      "enabled": false,
+      "availability": "deferred",
+      "epistemic_ceiling": null,
+      "produces_artifact_kinds": [],
+      "consumes_artifact_kinds": [],
+      "render_projections": [],
+      "manual_tools": [],
+      "prompt_examples": [],
+      "adapters": [],
+      "operations": [],
+      "deferred_note": "Registered so the shell need not change to admit it. Declares nothing it cannot do."
+    },
+    {
+      "family": "depth",
+      "label": "Depth",
+      "question": "What is nearer, and what is further away?",
+      "enabled": false,
+      "availability": "deferred",
+      "epistemic_ceiling": null,
+      "produces_artifact_kinds": [],
+      "consumes_artifact_kinds": [],
+      "declares_artifact_kinds": ["depth_field"],
+      "render_projections": [],
+      "manual_tools": [],
+      "prompt_examples": [],
+      "adapters": [],
+      "operations": [],
+      "deferred_note": "The only deferred organ that DECLARES an artifact kind, because `topology.occlusion` must be able to name the thing it needs. `produces_artifact_kinds` stays empty: naming a dependency is not satisfying it, and nothing in this phase can mint a `depth_field`."
+    },
+    {
+      "family": "surface_form",
+      "label": "Surface form",
+      "question": "What shape is this surface, in three dimensions?",
+      "enabled": false,
+      "availability": "deferred",
+      "epistemic_ceiling": null,
+      "produces_artifact_kinds": [],
+      "consumes_artifact_kinds": [],
+      "render_projections": [],
+      "manual_tools": [],
+      "prompt_examples": [],
+      "adapters": [],
+      "operations": [],
+      "deferred_note": "Registered so the shell need not change to admit it. Declares nothing it cannot do."
+    }
+  ],
+
+  "refusals": {
+    "missing_extent_inputs": {
+      "label": "No extents supplied",
+      "means": "The operation declares Extent inputs and none resolved.",
+      "distinguished_from": "an empty measurement — nothing was measured here at all",
+      "remedy": "draw, find, or reuse extents, then ask again",
+      "raised_by": ["topology"]
+    },
+    "missing_depth_artifact": {
+      "label": "No depth field supplied",
+      "means": "Occlusion needs a prepared depth field and none was supplied.",
+      "distinguished_from": "the Depth organ being unavailable — this is a missing INPUT, not a missing capability",
+      "remedy": "supply a prepared depth artifact, or wait for the Depth phase",
+      "raised_by": ["topology"]
+    },
+    "unsupported_operation": {
+      "label": "Not an operation here",
+      "means": "The key is not in the selected organ's closed registry.",
+      "distinguished_from": "organ_locked — that key exists, in another organ",
+      "remedy": "choose a declared operation",
+      "raised_by": ["extent", "topology"]
+    },
+    "invalid_parameters": {
+      "label": "Parameters refused",
+      "means": "A required parameter is absent, or a supplied one is not of the declared type.",
+      "distinguished_from": "a clamped parameter — clamping is recorded on the plan and does not refuse",
+      "remedy": "read the operation's parameter declarations",
+      "raised_by": ["extent", "topology"]
+    },
+    "organ_locked": {
+      "label": "That is another organ",
+      "means": "In isolation mode a plan named an operation outside the selected organ.",
+      "distinguished_from": "unsupported_operation — this operation is real and belongs elsewhere",
+      "remedy": "switch to chain mode and confirm the transition, or select that organ",
+      "raised_by": ["extent", "topology"]
+    },
+    "capability_unavailable": {
+      "label": "Adapter not running here",
+      "means": "The adapter is in the catalogue and is not loadable in this deployment.",
+      "distinguished_from": "an empty measurement — nothing looked at the image",
+      "remedy": "choose another adapter, or run where the model lives",
+      "raised_by": ["extent", "topology"]
+    },
+    "unknown_reference": {
+      "label": "No such artifact or region",
+      "means": "A plan cited an id that is not in this session's declared active/selected references.",
+      "distinguished_from": "a resolved reference to an empty artifact",
+      "remedy": "select the artifact first — 'that mask' resolves through ids, never through language",
+      "raised_by": ["extent", "topology"]
+    },
+    "replay_cannot_recompute": {
+      "label": "Replay cannot call anything",
+      "means": "A REPLAY run attempted to invoke an adapter.",
+      "distinguished_from": "an adapter failing — nothing was called, because nothing may be",
+      "remedy": "run LIVE if you want a new measurement",
+      "raised_by": ["extent", "topology"]
+    },
+    "source_mutated": {
+      "label": "The source changed under the run",
+      "means": "The source image or post digest differs from the one the run started against.",
+      "distinguished_from": "a failed run — the machinery worked; the ground moved",
+      "remedy": "re-open the session against the current source",
+      "raised_by": ["extent", "topology"]
+    }
+  },
+
+  "records": {
+    "why_blocks": "The five things a lab artifact must never let collapse into each other are given their own OBJECTS, not their own prefixes. A prefix convention is broken by one careless field; a nested model is broken only by moving a field on purpose, in a diff a reviewer can see.",
+    "PerceptualArtifact": {
+      "blocks": {
+        "identity": ["artifact_id", "session_id", "run_id", "step_id", "organ_family", "artifact_kind", "operation", "identity_scope", "identity_refs", "input_refs", "derived_from"],
+        "measurement": ["payload_variant", "payload", "data_ref", "coordinate_system", "epistemic_status", "epistemic_basis", "basis_detail"],
+        "projection": ["projection_kind", "hints"],
+        "interpretation": ["label", "label_source", "epistemic_status", "notes"],
+        "lifecycle": ["status", "changed_at", "changed_by"],
+        "provenance": ["producer_kind", "producer", "adapter", "model", "revision", "source_image_digest", "started_at", "completed_at", "duration_ms", "device", "peak_memory_mb"]
+      },
+      "not_a_block": {
+        "review": "A human verdict is a SEPARATE RECORD keyed by artifact_id. Not a field here, and not even a list of ids here, because a `reviews` field on the artifact is how `correct` starts being read as a property of the measurement."
+      },
+      "separation_laws": [
+        "`identity` and `projection` share no field name. An artifact is not its colour.",
+        "`measurement` and `interpretation` each carry their OWN `epistemic_status`, and they are different values with different permitted ranges.",
+        "`projection.hints` keys are clamped to `projection_hint_keys`; no geometry may enter it.",
+        "`lifecycle.status` is a curation state and appears nowhere near an epistemic status or a review verdict."
+      ]
+    },
+    "LabSession": {
+      "fields": ["session_id", "source", "selected_organ", "mode", "active_artifact_id", "active_region_ids", "selected_artifact_ids", "prompt_turns", "run_ids", "review_ids", "created_at", "updated_at"],
+      "laws": [
+        "A follow-up phrase resolves ONLY through `active_artifact_id`, `active_region_ids` and `selected_artifact_ids`. Text may not mint an identity.",
+        "`selected_organ` is the lock in isolation mode."
+      ]
+    },
+    "LabPlan": {
+      "fields": ["plan_id", "session_id", "planner", "planner_fell_back_from", "selected_organ", "mode", "proposed_steps", "resolved_steps", "prerequisites", "refusals", "dropped_parameters", "clamped_parameters", "requires_confirmation", "created_at"],
+      "laws": [
+        "A proposed step has NO authorization field to set. Only the resolver constructs resolved steps, and a resolved step's `authorized_by` is the single literal 'resolver'.",
+        "In isolation mode every step's organ equals `selected_organ`.",
+        "A crossing step in chain mode sets `requires_confirmation`.",
+        "`planner_fell_back_from` is how a rules fallback is stopped from wearing the model's name."
+      ]
+    },
+    "LabRun": {
+      "fields": ["run_id", "session_id", "execution_identity", "outcome", "requested_plan_id", "resolved_plan_id", "artifact_ids", "stage_attempts", "refusals", "source_digest_before", "source_digest_after", "started_at", "completed_at", "duration_ms", "replay"],
+      "laws": [
+        "`outcome` and `execution_identity` have no defaults.",
+        "A REPLAY run carries a `replay` record whose `adapter_callable` is the literal false, and every stage attempt on it has `invoked: false`.",
+        "`duration_ms` is null when unmeasured. Never 0.",
+        "`source_digest_before` and `source_digest_after` differing is `source_mutated`, not a failure."
+      ]
+    },
+    "LabReview": {
+      "fields": ["review_id", "session_id", "artifact_id", "reviewer", "verdict", "notes", "corrections", "reviewed_at"],
+      "laws": [
+        "No epistemic status. No lifecycle status. A person saying `correct` has not made anything `measured`, and has not `kept` it.",
+        "`corrections` describe what the person changed; a correction is not itself a measurement."
+      ]
+    }
+  },
+
+  "frontend_consumed_fields": {
+    "why": "The list the frontend actually reads, declared here so that DELETING OR RENAMING one breaks a test in both languages rather than blanking a panel in production. Dotted paths resolve through the nested block models.",
+    "LabSession": [
+      "session_id", "selected_organ", "mode", "source.image_digest",
+      "source.natural_width", "source.natural_height", "active_artifact_id", "updated_at"
+    ],
+    "LabPlan": [
+      "plan_id", "planner", "planner_fell_back_from", "selected_organ", "mode",
+      "requires_confirmation", "proposed_steps", "resolved_steps", "refusals",
+      "dropped_parameters", "clamped_parameters"
+    ],
+    "LabRun": [
+      "run_id", "execution_identity", "outcome", "artifact_ids", "stage_attempts",
+      "refusals", "duration_ms", "replay"
+    ],
+    "PerceptualArtifact": [
+      "identity.artifact_id", "identity.organ_family", "identity.artifact_kind",
+      "identity.identity_scope", "identity.input_refs",
+      "measurement.payload_variant", "measurement.coordinate_system",
+      "measurement.epistemic_status", "measurement.epistemic_basis",
+      "projection.projection_kind", "projection.hints",
+      "interpretation.label", "interpretation.label_source", "interpretation.epistemic_status",
+      "lifecycle.status",
+      "provenance.producer_kind", "provenance.adapter", "provenance.model",
+      "provenance.revision", "provenance.duration_ms", "provenance.device"
+    ],
+    "LabReview": ["review_id", "artifact_id", "verdict", "notes", "reviewed_at"]
+  },
+
+  "laws": [
+    {"id": "organ_registry_is_closed", "statement": "An organ family not in `organ_families` does not exist, and an operation not in its organ's registry is `unsupported_operation`. No fallback table."},
+    {"id": "only_two_organs_are_enabled", "statement": "Exactly `extent` and `topology` are enabled. The other six are registered, deferred, and declare no operations, adapters, tools or epistemic ceiling."},
+    {"id": "isolation_organ_lock", "statement": "In isolation mode every planned and resolved step belongs to `selected_organ`. A prompt may not change organs."},
+    {"id": "planner_proposes_resolver_authorizes", "statement": "A proposed step has no authorization to grant. A resolved step is `authorized_by: 'resolver'` and nothing else."},
+    {"id": "topology_declares_extent_inputs", "statement": "Every topology operation declares at least one required Extent input, and topology may not invoke the extent organ."},
+    {"id": "occlusion_declares_depth", "statement": "`topology.occlusion` declares a `depth_field` input that is optional to plan and required to execute, may_invoke false, refusing `missing_depth_artifact`."},
+    {"id": "depth_is_declared_not_produced", "statement": "`depth_field` is producible by no enabled organ. It may only be supplied."},
+    {"id": "no_default_fabricates_evidence", "statement": "Outcome, execution identity, epistemic status, epistemic basis, lifecycle status and pair counts have no defaults, and every operation parameter declares `default: null`."},
+    {"id": "identity_is_not_rendering", "statement": "The identity and projection blocks share no field name, and no geometry key may enter `projection.hints`."},
+    {"id": "interpretation_is_not_review", "statement": "The artifact carries an interpretation and no review. A verdict lives in `LabReview`, keyed by artifact id."},
+    {"id": "three_axes_never_substitute", "statement": "Lifecycle status, review verdict and epistemic status are three closed sets with no shared member. `correct` is not `measured`; `kept` is not `promoted` into Semant."},
+    {"id": "measurement_is_never_sourced", "statement": "A measurement's epistemic status is one of measured/visible/interpretive/uncertain, and an interpretation's is one of interpretive/uncertain. `sourced` has no producer in this laboratory."},
+    {"id": "basis_ceiling_is_the_existing_ruling", "statement": "For every basis this contract and `epistemics.SUBSTRATE_CEILING` both name, the ceiling is the same value."},
+    {"id": "replay_cannot_recompute", "statement": "Only a LIVE run may invoke an adapter. A REPLAY run declares `adapter_callable: false` and carries its source run; a FIXTURE run reads committed data. No stage attempt on either may be `invoked`."},
+    {"id": "empty_is_not_refused_is_not_unavailable", "statement": "The five nothings in `absence_semantics` are carried by distinct outcome/refusal combinations and none may stand in for another."},
+    {"id": "references_resolve_through_ids", "statement": "A step may cite only ids declared active or selected on the session. An id from nowhere is `unknown_reference`."}
+  ],
+
+  "messages": {
+    "unsupported_operation": "{operation} is not an operation of the {organ} organ.",
+    "organ_locked": "{operation} belongs to the {operation_organ} organ; this session is locked to {organ}.",
+    "missing_extent_inputs": "{operation} needs extents to measure and none were supplied.",
+    "missing_depth_artifact": "{operation} needs a prepared depth field. This laboratory does not compute one.",
+    "capability_unavailable": "{adapter} is in the catalogue and is not running here.",
+    "invalid_parameters": "{operation} refused the supplied parameters: {detail}.",
+    "unknown_reference": "{reference} is not a selected or active reference in this session.",
+    "replay_cannot_recompute": "This run is a replay. It has no adapter to call.",
+    "source_mutated": "The source changed while the run was in flight."
+  }
+}

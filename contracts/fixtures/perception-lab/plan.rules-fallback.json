@@ -1,0 +1,36 @@
+{
+  "plan_id": "plan_rules_fallback",
+  "session_id": "labs_extent_1",
+  "planner": "rules",
+  "planner_fell_back_from": "model",
+  "selected_organ": "extent",
+  "mode": "isolation",
+  "proposed_steps": [
+    {
+      "step_id": "step_3",
+      "organ": "extent",
+      "operation": "extent.find_named",
+      "parameters": {"concept": "drapery"},
+      "input_refs": [],
+      "rationale": "deterministic phrase match on 'find the <concept>'"
+    }
+  ],
+  "resolved_steps": [
+    {
+      "step_id": "step_3",
+      "organ": "extent",
+      "operation": "extent.find_named",
+      "parameters": {"concept": "drapery"},
+      "input_refs": [],
+      "adapter": "sam3_concept",
+      "authorized_by": "resolver",
+      "prerequisites_checked": ["organ_lock", "parameters", "capability"]
+    }
+  ],
+  "prerequisites": [],
+  "refusals": [],
+  "dropped_parameters": [],
+  "clamped_parameters": [],
+  "requires_confirmation": false,
+  "created_at": "2026-08-10T09:03:00Z"
+}

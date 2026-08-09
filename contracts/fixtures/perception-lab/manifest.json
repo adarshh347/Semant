@@ -1,0 +1,54 @@
+{
+  "what_this_is": [
+    "PERCEPTUAL-ORGANS-002 Lane A. Hand-authored Perception Lab records, validated by BOTH",
+    "runtimes: `backend/tests/test_perception_lab_contracts.py` loads each one through the Pydantic",
+    "model named here, and `frontend/src/perceptionLab/contract/perceptionLab.parity.test.js` loads",
+    "the same file through the JavaScript validator and checks that every declared",
+    "`frontend_consumed_fields` path resolves.",
+    "They are the examples Lanes B-E build against. A lane whose output does not validate here has",
+    "not implemented this contract."
+  ],
+  "coverage": {
+    "run_outcomes": "all six — ready, empty, unavailable, refused, partial, failed",
+    "execution_identities": "all three — LIVE, REPLAY, FIXTURE",
+    "payload_variants": "all four — extent_set, topology_relation_set, negative_space_field, refusal",
+    "planner_identities": "all three — direct, rules (as a declared fallback from model), model",
+    "session_modes": "both — isolation and chain",
+    "review_verdicts": "correct and wrong, with corrections on the second"
+  },
+  "records": {
+    "LabSession": [
+      "session.extent-isolation.json",
+      "session.topology-chain.json"
+    ],
+    "LabPlan": [
+      "plan.direct-extent-find-all.json",
+      "plan.model-organ-locked.json",
+      "plan.rules-fallback.json",
+      "plan.chain-extent-to-topology.json"
+    ],
+    "LabRun": [
+      "run.live-ready.json",
+      "run.live-empty.json",
+      "run.live-unavailable.json",
+      "run.live-refused-missing-depth.json",
+      "run.live-partial.json",
+      "run.live-failed.json",
+      "run.fixture-topology.json",
+      "run.replay-extent.json"
+    ],
+    "PerceptualArtifact": [
+      "artifact.extent-set.json",
+      "artifact.extent-set-manual.json",
+      "artifact.extent-set-empty.json",
+      "artifact.topology-relation-set.json",
+      "artifact.topology-relation-set-box-basis.json",
+      "artifact.negative-space-field.json",
+      "artifact.refusal-missing-depth.json"
+    ],
+    "LabReview": [
+      "review.correct.json",
+      "review.wrong.json"
+    ]
+  }
+}

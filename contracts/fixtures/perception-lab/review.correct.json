@@ -1,0 +1,10 @@
+{
+  "review_id": "rev_correct",
+  "session_id": "labs_extent_1",
+  "artifact_id": "art_extent_1",
+  "reviewer": "curator",
+  "verdict": "correct",
+  "notes": "both instances are the things I meant. The unnamed one is right to be unnamed.",
+  "corrections": [],
+  "reviewed_at": "2026-08-10T09:05:30Z"
+}
