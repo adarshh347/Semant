@@ -1,0 +1,167 @@
+{
+  "schema_version": "inquiry-interaction.v1",
+  "title": "The Inquiry Interaction Contract",
+  "what_this_is": [
+    "Semant's public law for 'a moment where a person's decision changes what the inquiry does next'.",
+    "It is DATA, not code, for the same reason the Perceptual Action Grammar is: two runtimes read it.",
+    "The backend deliberation steward decides when to pause and what to ask; the inquiry workbench",
+    "renders the pause, the options and their consequences. A vocabulary that lives in one runtime is",
+    "a vocabulary the other is free to paraphrase, and a paraphrased decision kind is a policy change",
+    "that merely looks like a typo.",
+    "Behaviour — question wording, layout, ordering — stays in each runtime. Only the closed sets, the",
+    "pause classification and the laws live here."
+  ],
+  "not_this": [
+    "Not the Director's `Question` (a verified-missing execution PARAM a person can supply so a",
+    "blocked run resumes). That type is narrower on purpose and is not widened by this one.",
+    "Not the goal engine's event log (`inquiry_engine.events`). That log records what the machinery",
+    "did; this one records what was CHOSEN and by whom. They sit beside each other and reference the",
+    "same graph/run ids; neither is derivable from the other."
+  ],
+
+  "closed_sets": {
+    "interaction_modes": ["auto", "consult", "step"],
+    "session_states": [
+      "framing", "reading", "compiling", "awaiting_user", "ready", "executing",
+      "judging", "composing", "complete", "exhausted", "refused", "error"
+    ],
+    "decision_kinds": [
+      "disambiguate_claim",
+      "choose_scope",
+      "choose_operationalization",
+      "authorize_cost",
+      "review_result",
+      "steer_inquiry",
+      "review_synthesis",
+      "author_action",
+      "accept_to_ledger"
+    ],
+    "response_kinds": ["select_option", "reject_all", "skip", "redirect", "amend"],
+    "amendment_relations": ["replaces", "supplements", "disputes"],
+    "actors": ["user", "policy", "steward", "engine"],
+    "event_kinds": [
+      "session_opened",
+      "phase_advanced",
+      "candidate_offered",
+      "candidate_refused",
+      "decision_requested",
+      "decision_auto_resolved",
+      "decision_unresolved",
+      "response_received",
+      "response_refused",
+      "amendment_recorded",
+      "formatter_refused",
+      "session_closed"
+    ],
+    "refusal_codes": [
+      "candidate_unreadable",
+      "candidate_kind_unknown",
+      "formatter_added_field",
+      "formatter_added_option",
+      "formatter_dropped_option",
+      "formatter_lost_ref",
+      "formatter_emptied_question"
+    ],
+    "conflict_codes": [
+      "wrong_session",
+      "stale_revision",
+      "duplicate_response",
+      "no_decision_open",
+      "decision_mismatch",
+      "unknown_option",
+      "free_text_not_allowed",
+      "epistemic_status_attempted",
+      "gate_bypass"
+    ]
+  },
+
+  "actor_notes": {
+    "user": "the person. The goal engine's event log calls the same person `curator`; see `engine_actor_of`.",
+    "policy": "a deterministic rule chose. Auto mode means no interruption, NOT invisible agency.",
+    "steward": "the question-forming role. It words a fork; it never invents one.",
+    "engine": "the surrounding machinery moved a phase."
+  },
+
+  "engine_actor_of": {
+    "user": "curator",
+    "policy": "engine",
+    "steward": "engine",
+    "engine": "engine"
+  },
+
+  "pause_classes": {
+    "what_this_is": [
+      "Which class a decision kind falls in is the whole policy. It is data so that the frontend can",
+      "say WHY it is being asked without re-deriving the rule, and so that moving a kind between",
+      "classes is a reviewable one-line diff rather than a branch buried in a policy function."
+    ],
+    "always_pause": {
+      "kinds": ["author_action", "accept_to_ledger"],
+      "why": "authoring a public act and accepting into the shared ledger are the person's alone. No mode may pass these, including auto."
+    },
+    "material": {
+      "kinds": [
+        "disambiguate_claim", "choose_scope", "choose_operationalization",
+        "review_result", "steer_inquiry", "review_synthesis"
+      ],
+      "why": "two readings would produce substantially different investigations, or the person is being shown a result to judge. Consult mode pauses here."
+    },
+    "deferrable": {
+      "kinds": ["authorize_cost"],
+      "why": "a bounded, reversible commitment. Consult mode may pass it with a record when one declared option qualifies; step mode still stops."
+    }
+  },
+
+  "auto_choice_conditions": {
+    "what_this_is": [
+      "Every one of these must hold before a policy may choose without the person. They are ANDed,",
+      "and `reversible` is required to be DECLARED — an option that never said whether it can be",
+      "undone is not thereby reversible."
+    ],
+    "conditions": [
+      "the decision kind is not in `always_pause`",
+      "exactly one declared option carries `recommended: true`",
+      "that option declares `reversible: true` — an undeclared reversibility blocks the choice",
+      "that option is not `authorial`",
+      "that option is not `accepts_to_ledger`"
+    ],
+    "on_tie": "yield an unresolved decision with its reason recorded. NEVER choose by list order — a tie broken by position is a preference nobody stated and nobody can review."
+  },
+
+  "laws": [
+    {
+      "id": "append-only",
+      "text": "Every event, decision, record, response and amendment is appended. Nothing edits an earlier one. A history that could be rewritten after the fact cannot be used to check anything."
+    },
+    {
+      "id": "no-status-from-a-preference",
+      "text": "A user's direction changes which goals are pursued. It never changes what anything is known BY. No response or amendment may carry or imply an epistemic status, and the provenance of both refuses status keys outright."
+    },
+    {
+      "id": "amendment-is-a-successor",
+      "text": "A free-text reply creates a new user-authored object referencing the original. It never rewrites a model-authored claim, and the graph snapshot it references is left byte-identical."
+    },
+    {
+      "id": "auto-is-visible",
+      "text": "An automatic choice is a DecisionRecord carrying the alternatives it did not take and the reason it took the one it did. Auto mode means uninterrupted, not unrecorded."
+    },
+    {
+      "id": "formatter-may-only-word",
+      "text": "A model formatter may rephrase a question and its options. It may not add an option, drop an affected ref, name a capability, assert a claim or state evidence. A formatter that does is refused BY NAME onto the state, and the deterministic request is used instead."
+    },
+    {
+      "id": "one-turn-one-revision",
+      "text": "`revision` counts accepted turns, not events; a response increments it exactly once however many events that turn appends. Optimistic concurrency is checked against it."
+    },
+    {
+      "id": "only-a-response-leaves-awaiting_user",
+      "text": "A session parked at `awaiting_user` returns to the phase it paused FROM, and only an accepted response moves it. A phase advance that stepped over an open decision would answer it by walking away."
+    }
+  ],
+
+  "boundaries": [
+    "This contract declares no persistence, no route and no model binding. Those are the integration lane's.",
+    "A fixture capability receipt is not evidence and cannot be reviewed into one; `review_result` decides what to DO about a result, never what the result IS.",
+    "The semantic graph is opaque here. This contract references its objects by id and never restates their shape."
+  ]
+}
