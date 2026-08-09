@@ -311,6 +311,51 @@ _THINKERS: List[Role] = [
         default_model="openai/gpt-oss-120b",
         provider="groq",
     ),
+    # ── HARNESS-003A: the semantic-dissolution council ──
+    #
+    # THREE ROLES WHERE `semantic_compiler` WAS ONE, and binding them to the same model today is not
+    # an argument for merging them. The rehearsal failed because one call was asked to atomize,
+    # relate and operationalize in a single response: it ran out of output budget partway through,
+    # and nothing could say WHICH of the three jobs had been cut short. Separate roles have separate
+    # prompts, separate budgets and separate receipts, so an underperformance is attributable to a
+    # mind rather than to "the compiler" — and one of them can be rebound or replaced without
+    # touching the other two.
+    Role(
+        name="semantic_dissector",
+        kind=RoleKind.THINKER,
+        # Reads the SOURCE LEDGER — the person's clauses and the theorist's blocks, as text with
+        # ids. Never the images: it is one further remove from the pixels than the theorist, and a
+        # dissector that could look would emit atoms anchored to a unit that does not contain them.
+        summary="Breaks prompt clauses and reading blocks into source-anchored semantic atoms, and "
+                "says what happened to every source unit. Reads text, never pixels.",
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        default_model="openai/gpt-oss-120b",
+        provider="groq",
+    ),
+    Role(
+        name="relation_architect",
+        kind=RoleKind.THINKER,
+        # Receives ACCEPTED ATOMS and their source pointers. Not the images, not the posts, and not
+        # the theorist's unanchored prose — a pass that could see would add visual content with no
+        # source unit behind it, and the coverage ledger would still report complete.
+        summary="Builds claims and relations over accepted atoms. Sees atoms and their anchors "
+                "only; adds no visual content of its own.",
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        default_model="openai/gpt-oss-120b",
+        provider="groq",
+    ),
+    Role(
+        name="epistemic_operationalizer",
+        kind=RoleKind.THINKER,
+        # Receives the GRAPH. Names capability CLASSES and never instruments — the step from
+        # `extent` to a concrete tool belongs to the broker, where the live catalogue is, and taken
+        # here it would turn "nothing can do this" into a planning error rather than a visible gap.
+        summary="Says what observation could bear on each claim, which capability classes it would "
+                "need, and what stays interpretive whatever succeeds. Chooses no instrument.",
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        default_model="openai/gpt-oss-120b",
+        provider="groq",
+    ),
     Role(
         name="deliberation_steward",
         kind=RoleKind.THINKER,
