@@ -141,11 +141,11 @@ def test_the_ledger_holds_the_prompt_and_the_blocks_and_says_which_is_which():
         [u for u in units if u.kind is SourceUnitKind.PROMPT_CLAUSE])
 
 
-def test_a_repeated_block_is_folded_into_one_unit_and_the_fold_is_reported():
+def test_a_repeated_block_becomes_one_unit_and_the_merge_is_reported():
     reading = a_reading(a_block("rb_a", "the same words"), a_block("rb_a", "the same words"))
     units, notes = ledger.build("a prompt about something", reading, inquiry_id=INQUIRY)
     assert len([u for u in units if u.kind is SourceUnitKind.READING_BLOCK]) == 1
-    assert any("folded into one" in n for n in notes)
+    assert any("merged into one" in n for n in notes)
 
 
 def test_a_missing_reading_is_reported_rather_than_left_to_be_noticed():

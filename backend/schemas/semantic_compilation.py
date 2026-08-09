@@ -659,9 +659,9 @@ class SourceUnit(_Strict):
 class SemanticAtom(_Strict):
     """One semantic unit, anchored to the source that says it.
 
-    An atom is smaller than a claim and larger than a word. `the folds have sharp edges` and `that
-    makes the material read as hard` are two atoms: one is how something looks, the other is what
-    that does to a reader, and a pipeline that fused them could never ask whether only the first is
+    An atom is smaller than a claim and larger than a word. `this edge is abrupt` and `that makes
+    the material read as hard` are two atoms: one is how something looks, the other is what that
+    does to a reader, and a pipeline that fused them could never ask whether only the first is
     observable.
 
     `author` is FROZEN to the user for anything anchored to a prompt clause. The validator does it

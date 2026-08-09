@@ -153,7 +153,7 @@ def build(prompt: str, reading: Optional[SceneReading], *,
 
     if collisions:
         notes.append(f"{collisions} source unit(s) repeated content already in the ledger and were "
-                     f"folded into one. Two identical paragraphs are one thing that was said.")
+                     f"merged into one. Two identical paragraphs are one thing that was said.")
     if reading is None:
         notes.append("no scene reading reached the ledger, so it holds the prompt only. Every atom "
                      "will be anchored to the person's own words.")
