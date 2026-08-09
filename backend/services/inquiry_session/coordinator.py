@@ -41,7 +41,10 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from backend.schemas.inquiry import InquiryMode
 from backend.schemas.inquiry_session import (PostRef, SemanticInquirySession, SessionProvenance,
-                                             StageEvent, StageName, StageOutcome, sha256_of)
+                                             StageName, StageOutcome, sha256_of)
+from backend.schemas.inquiry_stage import (AttemptExecutionMode, StageAttempt,
+                                           StageAttemptOutcome, SubstageEvent,
+                                           duration_ms_between)
 from backend.schemas.inquiry_interaction import InteractionMode, SessionState
 from backend.services.inquiry_interaction import (DeliberationPolicy, DeliberationSteward,
                                                   InteractionConflict, machine, read_response)
@@ -49,7 +52,7 @@ from backend.services.semantic_compilation import to_image_refs
 from backend.services.semantic_compilation.base import CompilationRequest
 
 from . import candidates as candidate_bridge
-from . import corpus, ids
+from . import corpus, ids, outcomes
 
 PRODUCER = "inquiry_session/coordinator-v1"
 
@@ -102,20 +105,97 @@ class Stages:
     clock: Callable[[], str] = utc_now
 
 
+#: v1 `StageOutcome` → the v2 attempt vocabulary. Declared as a table rather than a cast, because
+#: the two enums overlap by seven values and diverge by four, and a bare `StageAttemptOutcome(v)`
+#: would work today and break silently the moment either enum grew a value the other lacked.
+_OUTCOME_OF: Dict[str, StageAttemptOutcome] = {
+    StageOutcome.STARTED.value: StageAttemptOutcome.STARTED,
+    StageOutcome.COMPLETED.value: StageAttemptOutcome.COMPLETED,
+    StageOutcome.EMPTY.value: StageAttemptOutcome.EMPTY,
+    StageOutcome.UNAVAILABLE.value: StageAttemptOutcome.UNAVAILABLE,
+    StageOutcome.REFUSED.value: StageAttemptOutcome.REFUSED,
+    StageOutcome.SKIPPED.value: StageAttemptOutcome.SKIPPED,
+    StageOutcome.ERROR.value: StageAttemptOutcome.ERROR,
+}
+
+
+def attempt_outcome(outcome: Any) -> StageAttemptOutcome:
+    if isinstance(outcome, StageAttemptOutcome):
+        return outcome
+    key = getattr(outcome, "value", outcome)
+    if key not in _OUTCOME_OF:
+        raise KeyError(f"no attempt outcome declared for stage outcome {key!r}")
+    return _OUTCOME_OF[key]
+
+
 @dataclass
 class _Ledger:
-    """The stage events for one advance, and the sequence that keeps their ids apart."""
-    session_id: str
-    events: List[StageEvent] = field(default_factory=list)
-    seq: int = 0
+    """The stage attempts for one advance, and the sequence that keeps their ids apart.
 
-    def record(self, stage: StageName, outcome: StageOutcome, *, at: str, revision: int = 0,
-               detail: str = "", inputs: Sequence[str] = (), outputs: Sequence[str] = ()) -> None:
+    `record` keeps the call shape the seven stage functions already use and grows the fields a
+    live stage stream needs. Every timestamp is handed in; nothing here reads a clock.
+    """
+    session_id: str
+    events: List[StageAttempt] = field(default_factory=list)
+    seq: int = 0
+    #: Substage progress reported from inside the stage currently running, drained onto its
+    #: terminal attempt. A list rather than a callback into the attempt itself, because the attempt
+    #: does not exist yet while the stage is producing them.
+    substages: List[SubstageEvent] = field(default_factory=list)
+
+    def observe(self, label: str, *, index: Optional[int] = None, total: Optional[int] = None,
+                at: Optional[str] = None, refs: Sequence[str] = (), detail: str = "",
+                outcome: str = "") -> None:
+        """The injected observer's landing point. Anything a stage reports about its own insides."""
+        self.substages.append(SubstageEvent(
+            substage_id=ids.stage_id(self.session_id, "substage", label,
+                                     len(self.substages) + 1),
+            label=str(label), index=index, total=total, at=at, outcome=outcome,
+            refs=[str(r) for r in refs], detail=detail))
+
+    def record(self, stage: StageName, outcome: Any, *, at: str, revision: int = 0,
+               detail: str = "", inputs: Sequence[str] = (), outputs: Sequence[str] = (),
+               started_at: Optional[str] = None, role: str = "", model: Optional[str] = None,
+               provider: Optional[str] = None,
+               execution_mode: AttemptExecutionMode = AttemptExecutionMode.NONE,
+               input_counts: Optional[Mapping[str, int]] = None,
+               output_counts: Optional[Mapping[str, int]] = None,
+               call_topology: str = "", planned_calls: Optional[int] = None,
+               actual_calls: Optional[int] = None,
+               truncation_source: Any = None,
+               receipts: Sequence[str] = (), gaps: Sequence[str] = (),
+               refusals: Sequence[str] = (),
+               provenance: Optional[Mapping[str, Any]] = None) -> StageAttempt:
         self.seq += 1
-        self.events.append(StageEvent(
-            event_id=ids.stage_id(self.session_id, stage, outcome, self.seq),
-            stage=stage, outcome=outcome, at=at, revision=revision, detail=detail,
-            input_refs=[str(i) for i in inputs], output_refs=[str(o) for o in outputs]))
+        resolved = attempt_outcome(outcome)
+        terminal = resolved is not StageAttemptOutcome.STARTED
+        completed_at = at if terminal else None
+        # A duration exists only where BOTH ends were observed. A stage that never recorded a start
+        # — a `skipped`, say — has no duration, and writing 0 there would report an instant stage
+        # where there was one that never ran.
+        duration = duration_ms_between(started_at, completed_at) if started_at else None
+        attempt = StageAttempt(
+            attempt_id=ids.stage_id(self.session_id, stage, resolved.value, self.seq),
+            stage=stage, outcome=resolved, sequence=self.seq,
+            revision=revision,
+            queued_at=at if not terminal else (started_at or at),
+            started_at=started_at, completed_at=completed_at, duration_ms=duration,
+            role=role, model=model, provider=provider, execution_mode=execution_mode,
+            input_refs=[str(i) for i in inputs], output_refs=[str(o) for o in outputs],
+            input_counts={str(k): int(v) for k, v in (input_counts or {}).items()},
+            output_counts={str(k): int(v) for k, v in (output_counts or {}).items()},
+            call_topology=str(call_topology or ""), planned_calls=planned_calls,
+            actual_calls=actual_calls,
+            substages=list(self.substages) if terminal else [],
+            truncation_source=(truncation_source if truncation_source is not None
+                               else StageAttempt.model_fields["truncation_source"].default),
+            summary=detail, receipt_refs=[str(r) for r in receipts],
+            gap_refs=[str(g) for g in gaps], refusal_refs=[str(r) for r in refusals],
+            provenance=dict(provenance or {}))
+        if terminal:
+            self.substages = []
+        self.events.append(attempt)
+        return attempt
 
 
 def new_session(*, prompt: str, refs: Sequence[PostRef], mode: str,
@@ -181,19 +261,84 @@ def _read(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
                       detail="no readable image; a scene reading needs a scene")
         return session, None
 
+    started_at = at
+    # THE DECLARED FLOOR, recorded before the call and independent of whether the stage reports
+    # anything about its own insides. 002R's rehearsal watched four images being read as one opaque
+    # wait; the count of what was selected is a fact this coordinator holds itself, so it is on the
+    # ledger whether or not a theorist ever learns to narrate.
+    ledger.observe(f"reading {len(images)} selected image(s)", index=0, total=len(images), at=at,
+                   refs=[i.post_id for i in images])
     ledger.record(StageName.THEORIST, StageOutcome.STARTED, at=at,
-                  inputs=[i.post_id for i in images])
+                  inputs=[i.post_id for i in images], role="scene_theorist",
+                  execution_mode=AttemptExecutionMode.LIVE,
+                  input_counts={"images": len(images)},
+                  provenance={"floor": "image count is the coordinator's own; substage detail is "
+                                       "the stage's to supply"})
     result = stages.theorist.read(session.prompt, images, inquiry_id=session.inquiry_id,
                                   corpus=corpus.corpus_context_for(session.posts), now=at)
     receipt = result.reading.provenance
-    outcome = StageOutcome.COMPLETED if result.available else StageOutcome.UNAVAILABLE
-    if result.available and not result.reading.text and not result.reading.blocks:
-        outcome = StageOutcome.EMPTY
-    ledger.record(StageName.THEORIST, outcome, at=at,
-                  detail=f"{receipt.call_topology.value} · {receipt.call_count} call(s)",
-                  outputs=[b.block_id for b in result.reading.blocks])
-    return session.model_copy(update={"provenance": session.provenance.model_copy(
-        update={"theorist_model": receipt.model})}), result
+    finished_at = stages.clock()
+    truncation = outcomes.detect_truncation(receipt, producer=stages.theorist)
+    outcome = outcomes.outcome_for(
+        produced=bool(result.reading.text or result.reading.blocks),
+        truncation=truncation, adequacy=outcomes.declared_adequacy(result.reading),
+        unavailable=not result.available)
+    ledger.record(StageName.THEORIST, outcome, at=finished_at, started_at=started_at,
+                  detail=f"{receipt.call_topology.value} · {receipt.call_count} call(s)"
+                         + (f" · {truncation.detail}" if truncation.truncated else ""),
+                  outputs=[b.block_id for b in result.reading.blocks],
+                  inputs=[i.post_id for i in images], role=receipt.role or "scene_theorist",
+                  model=receipt.model, provider=receipt.provider,
+                  execution_mode=AttemptExecutionMode.LIVE,
+                  input_counts={"images": len(images)},
+                  output_counts={"reading blocks": len(result.reading.blocks)},
+                  call_topology=receipt.call_topology.value, actual_calls=receipt.call_count,
+                  truncation_source=truncation.source,
+                  refusals=[r.what for r in (result.refusals or ())],
+                  provenance={"truncation": truncation.detail})
+    return session.model_copy(update={
+        # PERSISTED HERE, not left in memory for the compiler to receive as an argument. A
+        # checkpointed chain runs the compiler from the store, possibly in a later process; a
+        # reading that lived only in a local variable would have to be bought again.
+        "reading": {"reading": result.reading.model_dump(mode="json"),
+                    "refusals": [r.model_dump(mode="json") for r in (result.refusals or ())],
+                    "notes": list(result.notes or ()),
+                    "available": bool(result.available)},
+        "provenance": session.provenance.model_copy(
+            update={"theorist_model": receipt.model})}), result
+
+
+def reading_of(session: SemanticInquirySession) -> Optional[Any]:
+    """The theorist's own output, rebuilt from the session rather than received as an argument.
+
+    THE CHECKPOINT SEAM. Before HARNESS-003B the compiler was handed the live `ReadingResult` the
+    theorist had just returned, which is only possible while both run inside one call. A stepped
+    chain runs the compiler from the store — perhaps in another process, certainly after a write —
+    so the reading has to be reconstructable from persisted bytes or the step is not resumable at
+    all. Returns None when nothing was read, which is the same thing the argument used to be.
+    """
+    from backend.schemas.semantic_compilation import CompilerRefusal, SceneReading
+
+    stored = session.reading or {}
+    payload = stored.get("reading")
+    if not isinstance(payload, Mapping) or not payload:
+        return None
+    refusals = tuple(CompilerRefusal.model_validate(dict(r))
+                     for r in (stored.get("refusals") or ()) if isinstance(r, Mapping))
+    return _StoredReading(reading=SceneReading.model_validate(dict(payload)),
+                          refusals=refusals,
+                          notes=tuple(str(n) for n in (stored.get("notes") or ())),
+                          available=bool(stored.get("available")))
+
+
+@dataclass(frozen=True)
+class _StoredReading:
+    """A `ReadingResult` rebuilt from the store. Same four fields the compiler reads, and no
+    behaviour — a class rather than a tuple so a caller cannot get the order wrong."""
+    reading: Any
+    refusals: Tuple[Any, ...] = ()
+    notes: Tuple[str, ...] = ()
+    available: bool = False
 
 
 def _compile(session: SemanticInquirySession, reading: Any, stages: Stages, ledger: _Ledger,
@@ -202,7 +347,11 @@ def _compile(session: SemanticInquirySession, reading: Any, stages: Stages, ledg
         ledger.record(StageName.COMPILER, StageOutcome.SKIPPED, at=at,
                       detail="no semantic compiler was bound")
         return session
-    ledger.record(StageName.COMPILER, StageOutcome.STARTED, at=at)
+    blocks = len(((session.reading.get("reading") or {}).get("blocks")) or ())
+    started_at = at
+    ledger.record(StageName.COMPILER, StageOutcome.STARTED, at=at, role="semantic_compiler",
+                  execution_mode=AttemptExecutionMode.LIVE,
+                  input_counts={"reading blocks": blocks})
     request = CompilationRequest(
         prompt=session.prompt, inquiry_id=session.inquiry_id, inquiry_frame=dict(session.frame),
         reading=reading.reading if reading is not None else None,
@@ -212,11 +361,30 @@ def _compile(session: SemanticInquirySession, reading: Any, stages: Stages, ledg
         inherited_notes=reading.notes if reading is not None else ())
     graph = stages.compiler.compile(request)
     payload = graph.model_dump(mode="json", by_alias=True)
-    outcome = StageOutcome.COMPLETED if graph.claims else StageOutcome.EMPTY
-    if graph.provenance.compiler_kind == "unavailable":
-        outcome = StageOutcome.UNAVAILABLE
-    ledger.record(StageName.COMPILER, outcome, at=at, detail=graph.summary(),
-                  outputs=[c.claim_id for c in graph.claims])
+    finished_at = stages.clock()
+    receipt = graph.provenance.compiler
+    truncation = outcomes.detect_truncation(receipt, producer=stages.compiler)
+    outcome = outcomes.outcome_for(
+        produced=bool(graph.claims), truncation=truncation,
+        adequacy=outcomes.declared_adequacy(payload),
+        unavailable=graph.provenance.compiler_kind == "unavailable")
+    ledger.record(StageName.COMPILER, outcome, at=finished_at, started_at=started_at,
+                  detail=graph.summary() + (f" · {truncation.detail}" if truncation.truncated
+                                            else ""),
+                  outputs=[c.claim_id for c in graph.claims], role="semantic_compiler",
+                  model=receipt.model if receipt else None,
+                  provider=receipt.provider if receipt else None,
+                  execution_mode=AttemptExecutionMode.LIVE,
+                  input_counts={"reading blocks": blocks},
+                  output_counts={"claims": len(graph.claims),
+                                 "observables": len(graph.observables),
+                                 "remainder": len(graph.semantic_remainder)},
+                  call_topology=receipt.call_topology.value if receipt else "",
+                  actual_calls=receipt.call_count if receipt else None,
+                  truncation_source=truncation.source,
+                  refusals=[r.what for r in graph.refusals],
+                  provenance={"truncation": truncation.detail,
+                              "compiler_kind": graph.provenance.compiler_kind})
     return session.model_copy(update={
         "graph": payload,
         "refusals": [r.model_dump(mode="json") for r in graph.refusals],
@@ -295,28 +463,16 @@ def servable_classes(stages: Stages) -> Tuple[str, ...]:
 def begin(session: SemanticInquirySession, stages: Stages) -> SemanticInquirySession:
     """Frame, read, compile, deliberate — then stop at the first honest boundary.
 
-    Every stage is entered at most once. The function returns a session that is either waiting on a
-    person, ready for work, or finished; it never returns one that is mid-stage, because a session
-    persisted mid-stage would be resumable into a phase nothing had recorded leaving.
+    NOW A LOOP OVER `steps`, and the delegation is the HARNESS-003B change. The order, the budget
+    and every stage body are unchanged; what moved is that each stage is entered from persisted
+    state rather than from where control flow happens to be, so the same sequence can be driven one
+    checkpoint at a time by `driver.py` and watched while it runs.
+
+    Kept as a function because it is the honest synchronous form of the chain: a test that wants a
+    finished session should not have to stand up an event loop and a store to get one.
     """
-    at = stages.clock()
-    ledger = _Ledger(session.session_id)
-
-    session = _frame(session, stages, ledger, at)
-    session, reading = _read(session, stages, ledger, at)
-    session = _compile(session, reading, stages, ledger, at)
-    session = session.model_copy(update={"stages": [*session.stages, *ledger.events]})
-
-    if not session.graph.get("claims"):
-        return _finish(session, SessionState.EXHAUSTED, at,
-                       "nothing was compiled, so there is nothing to investigate and nothing to "
-                       "compose. That is a result, not a failure.", stages)
-
-    session = _open_interaction(session, stages, ledger, at)
-    session = _deliberate(session, stages, ledger, at)
-    session = session.model_copy(update={"stages": [*session.stages,
-                                                    *ledger.events[len(session.stages):]]})
-    return _continue(session, stages)
+    from . import steps
+    return steps.advance_all(session, stages)
 
 
 def resume(session: SemanticInquirySession, response: Mapping[str, Any],

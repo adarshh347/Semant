@@ -35,22 +35,16 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-SCHEMA_VERSION = "semantic-inquiry-session.v1"
+from backend.schemas.inquiry_stage import (StageAttempt, StageAttemptOutcome, StageName,
+                                           UNDERPERFORMANCE_OUTCOMES)
 
+SCHEMA_VERSION = "semantic-inquiry-session.v2"
 
-class StageName(str, Enum):
-    """The seven declared stage interfaces the coordinator may call, and nothing else.
-
-    The list is closed so that "which stages ran" is answerable from the ledger rather than from
-    reading the coordinator. A stage added without an entry here cannot record that it ran.
-    """
-    FRAMER = "framer"
-    THEORIST = "theorist"
-    COMPILER = "compiler"
-    STEWARD = "steward"
-    CAPABILITY = "capability"
-    JUDGE = "judge"
-    COMPOSER = "composer"
+#: Versions this envelope will OPEN. v1 documents are in the store and a bump that refused them
+#: would make every session written before HARNESS-003B unreadable — the stage ledger grew, and a
+#: richer ledger is not a reason to lose the sessions that recorded a thinner one. `StageAttempt`'s
+#: own before-validator does the per-entry upgrade; this is the envelope half of the same reader.
+SUPPORTED_SCHEMA_VERSIONS: Tuple[str, ...] = ("semantic-inquiry-session.v1", SCHEMA_VERSION)
 
 
 class StageOutcome(str, Enum):
@@ -146,7 +140,14 @@ class PostRef(_Strict):
 
 
 class StageEvent(_Strict):
-    """One stage, one outcome, and what it read and produced."""
+    """The v1 stage record. RETAINED, not deleted, and not written any more.
+
+    `SemanticInquirySession.stages` now holds `StageAttempt`, which reads one of these and upgrades
+    it. This class stays declared because the upgrade has to be testable against the real shape
+    rather than against a dict somebody typed out from memory in a test — a compatibility reader
+    checked only against a hand-written approximation of the old format is a reader for a format
+    that never existed.
+    """
     event_id: str
     stage: StageName
     outcome: StageOutcome
@@ -284,6 +285,20 @@ class SemanticInquirySession(_Strict):
     posts: List[PostRef] = Field(default_factory=list)
 
     frame: Dict[str, Any] = Field(default_factory=dict)
+    #: The scene theorist's own output, persisted the moment it returns.
+    #:
+    #: WHY IT IS HERE AND NOT ONLY INSIDE THE GRAPH. The compiled graph carries a copy of the
+    #: reading, so before HARNESS-003B this field would have been redundant — the reading existed
+    #: as a Python object between the theorist call and the compiler call, and both happened inside
+    #: one request. Checkpointing splits that: the theorist's outcome is persisted, the process may
+    #: end, and the compiler runs later from the store alone. A reading held only in memory would
+    #: force a re-read after every pause, which is a second charged model call for a result the
+    #: session already had.
+    #:
+    #: It is also the artifact 002R asked to SEE. `{"reading": {...}, "refusals": [...],
+    #: "notes": [...]}` — the theorist's paragraphs, visible the instant they exist rather than
+    #: only once something downstream succeeded in using them.
+    reading: Dict[str, Any] = Field(default_factory=dict)
     graph: Dict[str, Any] = Field(default_factory=dict)
     interaction: Dict[str, Any] = Field(default_factory=dict)
 
@@ -295,7 +310,18 @@ class SemanticInquirySession(_Strict):
     verdicts: List[ClaimVerdict] = Field(default_factory=list)
     synthesis: Optional[Synthesis] = None
 
-    stages: List[StageEvent] = Field(default_factory=list)
+    #: The stage ledger. `StageAttempt` upgrades a v1 `StageEvent` mapping on read, so a session
+    #: written before HARNESS-003B opens with its history intact and its unrecorded fields absent.
+    stages: List[StageAttempt] = Field(default_factory=list)
+    #: Monotonic, and NOT `revision`. `revision` is the deliberation's turn counter and moves only
+    #: when a person or a policy settles a fork; a driver checkpoints many times between two turns.
+    #: Compare-and-set on stage writes needs a counter that moves on every one of them, and reusing
+    #: `revision` would either corrupt the optimistic lock a client holds or make every checkpoint
+    #: look like a turn nobody took.
+    checkpoint: int = 0
+    #: Which driver, if any, holds this session, and what it was last seen doing. See
+    #: `inquiry_session.driver` — one active driver per session is enforced by a CAS on this block.
+    driver: Dict[str, Any] = Field(default_factory=dict)
     gaps: List[str] = Field(default_factory=list)
     refusals: List[Dict[str, Any]] = Field(default_factory=list)
     stop_reason: str = ""
@@ -305,8 +331,15 @@ class SemanticInquirySession(_Strict):
     @field_validator("schema_version")
     @classmethod
     def _pinned(cls, value: str) -> str:
-        if value != SCHEMA_VERSION:
-            raise ValueError(f"schema_version must be {SCHEMA_VERSION!r}, got {value!r}")
+        """Accepts every version this envelope can READ, and normalises none of them away.
+
+        The stored string is kept as it was written. A reader that silently restamped a v1 document
+        as v2 would make "which contract wrote this" unanswerable from the document itself, which
+        is the one question a compatibility reader exists so somebody can ask.
+        """
+        if value not in SUPPORTED_SCHEMA_VERSIONS:
+            raise ValueError(f"schema_version must be one of {list(SUPPORTED_SCHEMA_VERSIONS)}, "
+                             f"got {value!r}")
         return value
 
     @field_validator("prompt")
@@ -345,8 +378,30 @@ class SemanticInquirySession(_Strict):
 
     # ── reading ──
 
-    def stage_events(self, stage: StageName) -> List[StageEvent]:
+    def stage_events(self, stage: StageName) -> List[StageAttempt]:
         return [e for e in self.stages if e.stage is stage]
+
+    def latest_attempt(self, stage: StageName) -> Optional[StageAttempt]:
+        events = self.stage_events(stage)
+        return events[-1] if events else None
+
+    def unterminated(self) -> List[StageAttempt]:
+        """Attempts that entered external work and never recorded leaving it.
+
+        THE CRASH SIGNATURE. A `started` attempt is written before the call, so one still standing
+        after a reload means the process died while the call may have been in flight. Returned as
+        data rather than repaired here: the repair is a decision (record `interrupted` and stop),
+        and a schema that made it silently would be re-running non-idempotent calls on a reload.
+        """
+        latest: Dict[StageName, StageAttempt] = {}
+        for attempt in self.stages:
+            latest[attempt.stage] = attempt
+        return [a for a in latest.values() if a.outcome is StageAttemptOutcome.STARTED]
+
+    @property
+    def underperforming_stages(self) -> List[StageAttempt]:
+        """Stages that ran, returned something, and whose own signal says it was not enough."""
+        return [a for a in self.stages if a.outcome in UNDERPERFORMANCE_OUTCOMES]
 
     def receipt(self, receipt_id: str) -> Optional[CapabilityReceipt]:
         return next((r for r in self.capability_receipts if r.receipt_id == receipt_id), None)
@@ -381,7 +436,15 @@ class SemanticInquirySession(_Strict):
 #: Fields that change between two runs of identical inputs. A replay comparison excludes exactly
 #: these and nothing else.
 VOLATILE_FIELDS: Tuple[str, ...] = ("at", "created_at", "updated_at", "latency_ms", "requested_at",
-                                    "compiled_at", "framed_at")
+                                    "compiled_at", "framed_at",
+                                    # HARNESS-003B's three. The stage ledger now carries its own
+                                    # clocks and the elapsed time between them, and a replay
+                                    # comparison that missed one would be uniformly red for the
+                                    # only reason two runs are ALLOWED to differ. The existing
+                                    # `canonical` test caught all three the moment they existed,
+                                    # which is the argument for that test walking the whole tree
+                                    # rather than the level somebody remembered.
+                                    "queued_at", "started_at", "completed_at", "duration_ms")
 
 
 def canonical(session: SemanticInquirySession) -> Dict[str, Any]:
