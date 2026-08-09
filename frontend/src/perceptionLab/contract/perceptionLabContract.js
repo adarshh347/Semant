@@ -232,7 +232,7 @@ export function resolveParameters(opKey, params = {}) {
     for (const [name, raw] of Object.entries(params)) {
         const spec = declared[name];
         if (!spec) {
-            dropped.push({ name, reason: `${opKey} declares no parameter "${name}"` });
+            dropped.push({ name, reason: `${opKey} declares no parameter '${name}'` });
             continue;
         }
         if (raw === null || raw === undefined) {
@@ -241,18 +241,18 @@ export function resolveParameters(opKey, params = {}) {
         }
         let value = raw;
         if (!TYPE_CHECKS[spec.type](value)) {
-            return { clean: {}, dropped, clamped, refusal: invalid(op, `"${name}" is not a ${spec.type}`) };
+            return { clean: {}, dropped, clamped, refusal: invalid(op, `'${name}' is not a ${spec.type}`) };
         }
         if (spec.type === 'enum' && !(spec.enum || []).includes(value)) {
             return {
                 clean: {}, dropped, clamped,
-                refusal: invalid(op, `"${name}" must be one of ${JSON.stringify(spec.enum)}`),
+                refusal: invalid(op, `'${name}' must be one of [${(spec.enum || []).map((e) => `'${e}'`).join(', ')}]`),
             };
         }
         if (spec.type === 'string' && spec.max_length && value.length > spec.max_length) {
             return {
                 clean: {}, dropped, clamped,
-                refusal: invalid(op, `"${name}" exceeds ${spec.max_length} characters`),
+                refusal: invalid(op, `'${name}' exceeds ${spec.max_length} characters`),
             };
         }
         if ((spec.type === 'string_list' || spec.type === 'point_list')
@@ -260,7 +260,7 @@ export function resolveParameters(opKey, params = {}) {
             if (!spec.clamp) {
                 return {
                     clean: {}, dropped, clamped,
-                    refusal: invalid(op, `"${name}" exceeds ${spec.max_items} items`),
+                    refusal: invalid(op, `'${name}' exceeds ${spec.max_items} items`),
                 };
             }
             clamped.push({
@@ -281,7 +281,7 @@ export function resolveParameters(opKey, params = {}) {
                 if (!spec.clamp) {
                     return {
                         clean: {}, dropped, clamped,
-                        refusal: invalid(op, `"${name}" is outside ${bound}`),
+                        refusal: invalid(op, `'${name}' is outside ${bound}`),
                     };
                 }
                 clamped.push({ name, requested: value, applied: bounded, bound });
@@ -293,7 +293,7 @@ export function resolveParameters(opKey, params = {}) {
 
     for (const [name, spec] of Object.entries(declared)) {
         if (spec.required && !(name in clean)) {
-            return { clean: {}, dropped, clamped, refusal: invalid(op, `"${name}" is required`) };
+            return { clean: {}, dropped, clamped, refusal: invalid(op, `'${name}' is required`) };
         }
     }
     return { clean, dropped, clamped, refusal: null };
@@ -351,7 +351,7 @@ export function checkInputs(opKey, refs = [], { forExecution = false } = {}) {
     const roles = new Set((op.inputs || []).map((i) => i.role));
     const unknown = Object.keys(counts).filter((r) => !roles.has(r)).sort();
     if (unknown.length) {
-        return invalid(op, `${op.key} declares no input role ${JSON.stringify(unknown)}`);
+        return invalid(op, `${op.key} declares no input role [${unknown.map((r) => `'${r}'`).join(', ')}]`);
     }
     return null;
 }

@@ -894,7 +894,7 @@
     },
     "NegativeSpaceFieldPayload": {
       "additionalProperties": false,
-      "description": "A scalar field. Large, so it lives behind a `DataRef` on the measurement block.",
+      "description": "A scalar field: what the figure is NOT, with distance attached.\n\nThe raster is large, so `field_ref` points at it while the payload keeps the metadata a reader\nneeds to know what it is looking at. The pointer is inside the payload rather than replacing\nit, because `data_ref` at the measurement level means \"the whole measurement is elsewhere\" and\na scalar field's shape, truncation distance and statistics are not elsewhere \u2014 they are what\nmakes the pointer interpretable.",
       "properties": {
         "variant": {
           "const": "negative_space_field",
@@ -923,6 +923,17 @@
           "minItems": 2,
           "title": "Field Shape",
           "type": "array"
+        },
+        "field_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "statistics": {
           "additionalProperties": {

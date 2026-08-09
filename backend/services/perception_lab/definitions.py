@@ -380,17 +380,21 @@ def resolve_parameters(op_key: str, params: Mapping[str, Any]) -> ParameterResol
             dropped.append((name, "null is absence, and absence is not a value to record"))
             continue
         if not _TYPE_CHECKS[spec.type](value):
-            return ParameterResolution(refusal=_invalid(op, f"{name!r} is not a {spec.type}"))
+            return ParameterResolution(dropped=dropped, clamped=clamped,
+                                       refusal=_invalid(op, f"{name!r} is not a {spec.type}"))
         if spec.type == "enum" and value not in spec.enum:
             return ParameterResolution(
+                dropped=dropped, clamped=clamped,
                 refusal=_invalid(op, f"{name!r} must be one of {list(spec.enum)}"))
         if spec.type == "string" and spec.max_length and len(value) > spec.max_length:
             return ParameterResolution(
+                dropped=dropped, clamped=clamped,
                 refusal=_invalid(op, f"{name!r} exceeds {spec.max_length} characters"))
         if spec.type in ("string_list", "point_list") and spec.max_items \
                 and len(value) > spec.max_items:
             if not spec.clamp:
                 return ParameterResolution(
+                    dropped=dropped, clamped=clamped,
                     refusal=_invalid(op, f"{name!r} exceeds {spec.max_items} items"))
             clamped.append((name, len(value), spec.max_items, f"max_items={spec.max_items}"))
             value = value[:spec.max_items]
@@ -399,6 +403,7 @@ def resolve_parameters(op_key: str, params: Mapping[str, Any]) -> ParameterResol
             if bound is not None:
                 if not spec.clamp:
                     return ParameterResolution(
+                        dropped=dropped, clamped=clamped,
                         refusal=_invalid(op, f"{name!r} is outside {bound}"))
                 clamped.append((name, value, bounded, bound))
                 value = bounded
@@ -413,11 +418,24 @@ def resolve_parameters(op_key: str, params: Mapping[str, Any]) -> ParameterResol
     return ParameterResolution(clean=clean, dropped=dropped, clamped=clamped)
 
 
+def _bound_label(value: Any) -> str:
+    """Format a bound the way JavaScript would.
+
+    `"minimum": 0.0` in the contract arrives here as `0.0` and in the browser as `0`, so an
+    f-string would put `minimum=0.0` in a Python refusal and `minimum=0` in the JavaScript one —
+    the same law, said two ways, to the same person. The parity loop caught exactly that, which is
+    what the loop is for.
+    """
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
 def _apply_bounds(spec: ParameterDefinition, value: Any) -> Tuple[Any, Optional[str]]:
     if spec.minimum is not None and value < spec.minimum:
-        return (type(value)(spec.minimum), f"minimum={spec.minimum}")
+        return (type(value)(spec.minimum), f"minimum={_bound_label(spec.minimum)}")
     if spec.maximum is not None and value > spec.maximum:
-        return (type(value)(spec.maximum), f"maximum={spec.maximum}")
+        return (type(value)(spec.maximum), f"maximum={_bound_label(spec.maximum)}")
     return (value, None)
 
 

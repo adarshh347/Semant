@@ -1,0 +1,168 @@
+{
+  "generated_by": "backend/tests/test_perception_lab_contracts.py",
+  "how_to_regenerate": "UPDATE_PARITY_FIXTURES=1 python -m pytest backend/tests/test_perception_lab_contracts.py",
+  "cases": [
+    {
+      "name": "an operation of another organ, in isolation",
+      "gate": "organ_lock",
+      "operation": "topology.adjacency",
+      "selected_organ": "extent",
+      "mode": "isolation",
+      "refusal": {
+        "code": "organ_locked",
+        "organ": "extent",
+        "operation": "topology.adjacency",
+        "message": "topology.adjacency belongs to the topology organ; this session is locked to extent.",
+        "missing": [],
+        "remedy": "switch to chain mode and confirm, or select the topology organ",
+        "detail": {
+          "operation_organ": "topology"
+        }
+      }
+    },
+    {
+      "name": "the same crossing, in chain mode",
+      "gate": "organ_lock",
+      "operation": "topology.adjacency",
+      "selected_organ": "extent",
+      "mode": "chain",
+      "refusal": null
+    },
+    {
+      "name": "an operation nobody declared",
+      "gate": "organ_lock",
+      "operation": "extent.divine",
+      "selected_organ": "extent",
+      "mode": "isolation",
+      "refusal": {
+        "code": "unsupported_operation",
+        "organ": "extent",
+        "operation": "extent.divine",
+        "message": "extent.divine is not an operation of the extent organ.",
+        "missing": [],
+        "remedy": "choose a declared operation of this organ",
+        "detail": {}
+      }
+    },
+    {
+      "name": "topology with no extents",
+      "gate": "inputs",
+      "operation": "topology.containment",
+      "refs": [],
+      "for_execution": true,
+      "refusal": {
+        "code": "missing_extent_inputs",
+        "organ": "topology",
+        "operation": "topology.containment",
+        "message": "topology.containment needs extents to measure and none were supplied.",
+        "missing": [
+          "source"
+        ],
+        "remedy": "The inner candidate.",
+        "detail": {
+          "role": "source",
+          "artifact_kinds": [
+            "extent_set"
+          ],
+          "min": 1,
+          "max": 1
+        }
+      }
+    },
+    {
+      "name": "occlusion planned without a depth field",
+      "gate": "inputs",
+      "operation": "topology.occlusion",
+      "refs": [
+        {
+          "role": "source",
+          "scope": "session",
+          "artifact_id": "art_a",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        {
+          "role": "target",
+          "scope": "session",
+          "artifact_id": "art_b",
+          "region_id": null,
+          "geometry_rev": null
+        }
+      ],
+      "for_execution": false,
+      "refusal": null
+    },
+    {
+      "name": "occlusion RUN without a depth field",
+      "gate": "inputs",
+      "operation": "topology.occlusion",
+      "refs": [
+        {
+          "role": "source",
+          "scope": "session",
+          "artifact_id": "art_a",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        {
+          "role": "target",
+          "scope": "session",
+          "artifact_id": "art_b",
+          "region_id": null,
+          "geometry_rev": null
+        }
+      ],
+      "for_execution": true,
+      "refusal": {
+        "code": "missing_depth_artifact",
+        "organ": "topology",
+        "operation": "topology.occlusion",
+        "message": "topology.occlusion needs a prepared depth field. This laboratory does not compute one.",
+        "missing": [
+          "depth"
+        ],
+        "remedy": "A PREPARED depth field. Optional to PLAN \u2014 a person may compose the request before they have one \u2014 and required to RUN. Nothing here computes it: the Depth organ is registered and disabled, so `missing_depth_artifact` is the honest end of this path and not a placeholder for a call the lab could make if it tried.",
+        "detail": {
+          "role": "depth",
+          "artifact_kinds": [
+            "depth_field"
+          ],
+          "min": 1,
+          "max": 1
+        }
+      }
+    },
+    {
+      "name": "an adapter that is not running here",
+      "gate": "capability",
+      "operation": "extent.find_named",
+      "adapter": "sam3_concept",
+      "states": {
+        "sam3_concept": "unavailable"
+      },
+      "refusal": {
+        "code": "capability_unavailable",
+        "organ": "extent",
+        "operation": "extent.find_named",
+        "message": "sam3_concept is in the catalogue and is not running here.",
+        "missing": [
+          "sam3_concept"
+        ],
+        "remedy": "choose another adapter, or run where the model lives",
+        "detail": {
+          "adapters": [
+            "sam3_concept"
+          ]
+        }
+      }
+    },
+    {
+      "name": "an adapter nobody has looked at yet is not a refusal",
+      "gate": "capability",
+      "operation": "extent.find_all",
+      "adapter": null,
+      "states": {},
+      "refusal": null
+    }
+  ]
+}
