@@ -1,0 +1,110 @@
+{
+  "schema_version": "inquiry-stage-attempt.v1",
+  "title": "The Inquiry Stage Attempt Contract",
+  "what_this_is": [
+    "One entry in the ledger of what an inquiry's machinery actually did: which stage, when it was",
+    "queued, when it entered external work, when it stopped, how long that took, what it read, what",
+    "it produced, and — the part this contract exists for — WHICH KIND of not-producing happened.",
+    "It is DATA because two runtimes read it: the coordinator writes attempts, and the workbench",
+    "renders a live stage stream from them. A vocabulary in one runtime is a vocabulary the other",
+    "paraphrases, and a paraphrased outcome is a product claim nobody reviewed."
+  ],
+  "not_this": [
+    "Not the deliberation event log (`inquiry-interaction.v1`). That records what was CHOSEN and by",
+    "whom; this records what the machinery DID. Collapsing them would put 'the compiler returned",
+    "nothing' in the same list as 'the person chose option two'.",
+    "Not a capability receipt. A receipt says what an instrument produced; an attempt says that a",
+    "stage was entered and how it ended. A stage may complete while producing nothing."
+  ],
+
+  "closed_sets": {
+    "outcomes": [
+      "queued",
+      "started",
+      "completed",
+      "thin",
+      "truncated",
+      "empty",
+      "refused",
+      "unavailable",
+      "skipped",
+      "error",
+      "interrupted"
+    ],
+    "terminal_outcomes": [
+      "completed", "thin", "truncated", "empty", "refused", "unavailable", "skipped", "error",
+      "interrupted"
+    ],
+    "underperformance_outcomes": ["thin", "truncated", "empty"],
+    "execution_modes": ["fixture", "live", "none"],
+    "truncation_sources": ["field", "producer_attribute", "receipt_note", "none", "unknown"]
+  },
+
+  "outcome_notes": {
+    "queued": "the driver intends to enter this stage. Written before anything external is touched.",
+    "started": "external work has been entered. Persisted BEFORE the call, so a process that dies mid-call leaves this behind.",
+    "completed": "it ran and produced what it was asked for.",
+    "thin": "it parsed and its own declared coverage/adequacy check failed. NOT completed — a parse is not an adequacy.",
+    "truncated": "the producer stopped on its output budget. Whatever came back is a PREFIX, and a short result here is not evidence that there was little to find.",
+    "empty": "it ran to completion and produced nothing. Look somewhere else.",
+    "refused": "a law said no. Stop asking this of the machine.",
+    "unavailable": "the instrument exists and is not running. Try again.",
+    "skipped": "the budget or the branch excluded it. Nothing is wrong.",
+    "error": "it raised. Distinct from unavailable, which is a reachability fact rather than a failure.",
+    "interrupted": "a `started` attempt whose process did not return. The call MAY have happened. It is never silently retried."
+  },
+
+  "laws": [
+    {
+      "id": "unknown-duration-is-null",
+      "text": "`duration_ms` is null unless both `started_at` and `completed_at` exist. Zero is a real measurement — a stage that began and ended within one tick of a controlled clock genuinely took 0ms — so zero may never stand in for 'we do not know'. A UI that renders an unknown duration as 0ms reports a fast stage where there was an unmeasured one."
+    },
+    {
+      "id": "started-before-work",
+      "text": "The `started` attempt is persisted BEFORE the external call is entered. If it were written afterwards, a process that died mid-call would leave no trace of a call that may have been made and charged for."
+    },
+    {
+      "id": "interrupted-is-not-retried",
+      "text": "A `started` attempt with no terminal successor is reopened as `interrupted` and the session stops. Model and capability calls are not idempotent; a driver that re-ran one would double a charge and could produce a second, different result for the same recorded intent."
+    },
+    {
+      "id": "a-parse-is-not-an-adequacy",
+      "text": "A stage that returned valid, parseable output and failed its own declared coverage or adequacy check is `thin`, not `completed`. This is the single most flattering failure available to the chain: a truncated model response that happens to close its JSON is indistinguishable from an honest short answer unless the producer's own signal is read."
+    },
+    {
+      "id": "counts-are-carried-not-inferred",
+      "text": "`input_counts` and `output_counts` record what the stage itself reported. Nothing derives a count from prose, from a length, or from a downstream artifact. An absent count is absent, not zero."
+    },
+    {
+      "id": "no-model-prose",
+      "text": "`summary` is a UI-safe sentence about the ATTEMPT. Model output is referenced through `output_refs` and `receipt_refs` and never copied here — a ledger that inlined prose would become a second place the reading is quoted, and the second copy is the one a reader would trust."
+    },
+    {
+      "id": "clocks-are-handed-in",
+      "text": "Every timestamp comes from an injected clock. A ledger that read a wall clock could not be replayed, and its duration test would have to exclude the field it exists to check."
+    }
+  ],
+
+  "substage_notes": [
+    "A stage may report progress WITHIN itself — image 2 of 4, then a cross-image synthesis. Those",
+    "are substage events on the attempt, supplied by the stage through an injected observer.",
+    "The coordinator never imports a stage's internals to discover them; a stage that reports",
+    "nothing still has its declared floor recorded — the count of inputs selected and the call",
+    "topology it declared — because those are facts the coordinator holds itself."
+  ],
+
+  "truncation_source_notes": {
+    "what_this_is": [
+      "Which route established that a producer stopped on its output budget. It is recorded because",
+      "the routes are not equally trustworthy and a reader is entitled to know which one answered.",
+      "`unknown` is NOT `none`: the first says nothing could be consulted, the second says something",
+      "was consulted and said no. A UI that showed them alike would report an unchecked stage as a",
+      "verified-untruncated one."
+    ],
+    "field": "the producer's receipt declares it in a typed field. The only route that cannot be mistaken.",
+    "producer_attribute": "the producer object declares it as an attribute the coordinator reads directly.",
+    "receipt_note": "an exact, anchored `finish_reason: <value>` note the producer emits itself. Machine-written, not model prose.",
+    "none": "a route was available and reported no truncation.",
+    "unknown": "no route was available. Nothing is claimed either way."
+  }
+}
