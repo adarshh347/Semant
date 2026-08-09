@@ -36,6 +36,10 @@ MIRROR_DIR = REPO_ROOT / "frontend" / "src" / "contracts"
 MIRRORED = (
     "perceptual-action-grammar.v1.json",
     "attunement-lexicon.v1.json",
+    # PERCEPTUAL-ORGANS-002 Lane A. `frontend/src/perceptionLab/contract/` imports it; the Lab UI
+    # reads organ availability, operation parameters, refusal codes and the closed status
+    # vocabularies straight out of it rather than retyping them beside the components.
+    "perception-lab.v1.json",
 )
 
 MIRROR_README = """\

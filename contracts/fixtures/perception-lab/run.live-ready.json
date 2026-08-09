@@ -1,0 +1,30 @@
+{
+  "run_id": "run_live_ready",
+  "session_id": "labs_extent_1",
+  "execution_identity": "LIVE",
+  "outcome": "ready",
+  "requested_plan_id": "plan_direct_1",
+  "resolved_plan_id": "plan_direct_1",
+  "artifact_ids": ["art_extent_1"],
+  "stage_attempts": [
+    {
+      "attempt_id": "att_1",
+      "step_id": "step_1",
+      "operation": "extent.find_all",
+      "state": "completed",
+      "adapter": "yolo_sam2_auto",
+      "invoked": true,
+      "started_at": "2026-08-10T09:00:12Z",
+      "completed_at": "2026-08-10T09:00:14Z",
+      "duration_ms": 1840,
+      "detail": "3 instances proposed, 1 dropped below min_area"
+    }
+  ],
+  "refusals": [],
+  "source_digest_before": "sha256:9f1c0a5b7d2e4438",
+  "source_digest_after": "sha256:9f1c0a5b7d2e4438",
+  "started_at": "2026-08-10T09:00:12Z",
+  "completed_at": "2026-08-10T09:00:14Z",
+  "duration_ms": 1902,
+  "replay": null
+}

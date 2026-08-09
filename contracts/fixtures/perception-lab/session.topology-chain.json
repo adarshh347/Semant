@@ -1,0 +1,27 @@
+{
+  "session_id": "labs_topology_1",
+  "source": {
+    "origin": "upload",
+    "post_id": null,
+    "image_digest": "sha256:41b7e0d9c3a58612",
+    "natural_width": 2048,
+    "natural_height": 1365
+  },
+  "selected_organ": "topology",
+  "mode": "chain",
+  "active_artifact_id": "art_topology_1",
+  "active_region_ids": [],
+  "selected_artifact_ids": ["art_extent_1", "art_extent_manual"],
+  "prompt_turns": [
+    {
+      "turn_id": "turn_1",
+      "text": "find the two shapes, then tell me whether they meet",
+      "at": "2026-08-10T10:00:05Z",
+      "plan_id": "plan_chain_1"
+    }
+  ],
+  "run_ids": ["run_live_partial", "run_fixture_topology"],
+  "review_ids": ["rev_wrong"],
+  "created_at": "2026-08-10T10:00:00Z",
+  "updated_at": "2026-08-10T10:04:00Z"
+}

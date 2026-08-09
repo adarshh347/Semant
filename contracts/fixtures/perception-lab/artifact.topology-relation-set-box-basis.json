@@ -1,0 +1,88 @@
+{
+  "identity": {
+    "artifact_id": "art_topology_box",
+    "session_id": "labs_topology_1",
+    "run_id": "run_fixture_topology",
+    "step_id": "step_b",
+    "organ_family": "topology",
+    "artifact_kind": "topology_relation_set",
+    "operation": "topology.containment",
+    "identity_scope": "session",
+    "identity_refs": [],
+    "input_refs": [
+      {"role": "source", "scope": "session", "artifact_id": "art_extent_1", "region_id": null, "geometry_rev": null},
+      {"role": "target", "scope": "session", "artifact_id": "art_extent_1", "region_id": null, "geometry_rev": null}
+    ],
+    "derived_from": ["art_extent_1"]
+  },
+  "measurement": {
+    "payload_variant": "topology_relation_set",
+    "payload": {
+      "variant": "topology_relation_set",
+      "pairs_examined": 1,
+      "relations": [
+        {
+          "relation_id": "rel_box_1",
+          "kind": "nested_within",
+          "source": {
+            "artifact_id": "art_extent_1",
+            "instance_id": "inst_1",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_extent_1",
+            "instance_id": "inst_2",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": true,
+          "basis": "box",
+          "epistemic_status": "interpretive",
+          "measurements": {
+            "containment": 0.999,
+            "scale_ratio": 0.41,
+            "nesting_index": 0.589
+          },
+          "stale": false
+        }
+      ],
+      "bounded_to": null
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "interpretive",
+    "epistemic_basis": "box",
+    "basis_detail": "bounding boxes — no shared mask raster. This is the finial-in-the-sky shape of error: 0.999 containment on a box basis is a reading, not a finding, and the WAVE2.5 ruling keeps it interpretive no matter how confident the number looks."
+  },
+  "projection": {
+    "projection_kind": "endpoint_pair",
+    "hints": {"palette_role": "interpretive", "emphasis": "muted", "legend": "box basis"}
+  },
+  "interpretation": {
+    "label": "the finial reads as inside the sky",
+    "label_source": "adapter",
+    "epistemic_status": "uncertain",
+    "notes": "and it is not. Depth ordering answers this; containment on boxes cannot."
+  },
+  "lifecycle": {
+    "status": "rejected",
+    "changed_at": "2026-08-10T10:02:30Z",
+    "changed_by": "curator"
+  },
+  "provenance": {
+    "producer_kind": "fixture",
+    "producer": "perception_lab_fixture",
+    "adapter": "nestedness_organ",
+    "model": null,
+    "revision": "wave2.5",
+    "source_image_digest": "sha256:41b7e0d9c3a58612",
+    "started_at": "2026-08-10T10:02:00Z",
+    "completed_at": "2026-08-10T10:02:00Z",
+    "duration_ms": 0,
+    "device": "cpu",
+    "peak_memory_mb": null
+  }
+}

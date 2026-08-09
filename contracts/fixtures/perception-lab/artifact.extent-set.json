@@ -1,0 +1,85 @@
+{
+  "identity": {
+    "artifact_id": "art_extent_1",
+    "session_id": "labs_extent_1",
+    "run_id": "run_live_ready",
+    "step_id": "step_1",
+    "organ_family": "extent",
+    "artifact_kind": "extent_set",
+    "operation": "extent.find_all",
+    "identity_scope": "session",
+    "identity_refs": [],
+    "input_refs": [],
+    "derived_from": []
+  },
+  "measurement": {
+    "payload_variant": "extent_set",
+    "payload": {
+      "variant": "extent_set",
+      "searched": "every separable instance",
+      "instances": [
+        {
+          "instance_id": "inst_1",
+          "mask_rle": {"size": [1200, 1600], "counts": [0, 240, 1420, 260, 1400, 280]},
+          "box": {"x": 0.31, "y": 0.12, "w": 0.24, "h": 0.41},
+          "area": 0.058,
+          "confidence": 0.91,
+          "naming": {
+            "text": "finial",
+            "source": "adapter",
+            "epistemic_status": "interpretive",
+            "confidence": 0.62
+          },
+          "region_id": null,
+          "geometry_rev": null
+        },
+        {
+          "instance_id": "inst_2",
+          "mask_rle": {"size": [1200, 1600], "counts": [0, 900, 700, 940, 660, 980]},
+          "box": {"x": 0.05, "y": 0.44, "w": 0.38, "h": 0.5},
+          "area": 0.142,
+          "confidence": 0.77,
+          "naming": null,
+          "region_id": null,
+          "geometry_rev": null
+        }
+      ],
+      "dropped_below_min_area": 1,
+      "duplicates": [],
+      "comparison": null
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "measured",
+    "epistemic_basis": "mask",
+    "basis_detail": "per-pixel RLE on the source raster"
+  },
+  "projection": {
+    "projection_kind": "mask_fill",
+    "hints": {"opacity": 0.35, "palette_role": "figure", "z_order": 2}
+  },
+  "interpretation": {
+    "label": "finial and drapery",
+    "label_source": "adapter",
+    "epistemic_status": "interpretive",
+    "notes": "the second instance came back unnamed and stays unnamed. A measured mask with no reading is a better record than a guessed one."
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "changed_at": "2026-08-10T09:00:14Z",
+    "changed_by": "perception_lab"
+  },
+  "provenance": {
+    "producer_kind": "adapter",
+    "producer": "extent_facade",
+    "adapter": "yolo_sam2_auto",
+    "model": "sam2_hiera_large",
+    "revision": "2024-07-29",
+    "source_image_digest": "sha256:9f1c0a5b7d2e4438",
+    "started_at": "2026-08-10T09:00:12Z",
+    "completed_at": "2026-08-10T09:00:14Z",
+    "duration_ms": 1840,
+    "device": "mps",
+    "peak_memory_mb": 2104.5
+  }
+}

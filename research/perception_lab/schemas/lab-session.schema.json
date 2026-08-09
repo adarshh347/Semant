@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:perception-lab/lab-session.schema.json",
+  "$defs": {
+    "LabSource": {
+      "additionalProperties": false,
+      "description": "What is being looked at, and the digest that proves it did not move underneath the run.",
+      "properties": {
+        "origin": {
+          "enum": [
+            "upload",
+            "post",
+            "fixture"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "post_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Post Id"
+        },
+        "image_digest": {
+          "minLength": 8,
+          "title": "Image Digest",
+          "type": "string"
+        },
+        "natural_width": {
+          "exclusiveMinimum": 0,
+          "title": "Natural Width",
+          "type": "integer"
+        },
+        "natural_height": {
+          "exclusiveMinimum": 0,
+          "title": "Natural Height",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "origin",
+        "image_digest",
+        "natural_width",
+        "natural_height"
+      ],
+      "title": "LabSource",
+      "type": "object"
+    },
+    "OrganFamily": {
+      "description": "The eight perceptual questions. Six are registered and disabled.",
+      "enum": [
+        "extent",
+        "topology",
+        "colour",
+        "illumination",
+        "surface_pattern",
+        "orientation_flow",
+        "depth",
+        "surface_form"
+      ],
+      "title": "OrganFamily",
+      "type": "string"
+    },
+    "PromptTurn": {
+      "additionalProperties": false,
+      "description": "What the person said, and which plan it became. Never what the machine 'understood'.",
+      "properties": {
+        "turn_id": {
+          "minLength": 1,
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "at": {
+          "title": "At",
+          "type": "string"
+        },
+        "plan_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan Id"
+        }
+      },
+      "required": [
+        "turn_id",
+        "text",
+        "at"
+      ],
+      "title": "PromptTurn",
+      "type": "object"
+    },
+    "SessionMode": {
+      "enum": [
+        "isolation",
+        "chain"
+      ],
+      "title": "SessionMode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One sitting at the laboratory.\n\nTHE FOLLOW-UP LAW LIVES HERE. \"that mask\" is resolvable only through `active_artifact_id`,\n`active_region_ids` and `selected_artifact_ids`. There is deliberately no field in which a\nplanner could record what it thinks the person meant, because a remembered intention is\nindistinguishable from an invented identity the moment it is wrong.",
+  "properties": {
+    "session_id": {
+      "minLength": 1,
+      "title": "Session Id",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/LabSource"
+    },
+    "selected_organ": {
+      "$ref": "#/$defs/OrganFamily"
+    },
+    "mode": {
+      "$ref": "#/$defs/SessionMode"
+    },
+    "active_artifact_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Active Artifact Id"
+    },
+    "active_region_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Active Region Ids",
+      "type": "array"
+    },
+    "selected_artifact_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Selected Artifact Ids",
+      "type": "array"
+    },
+    "prompt_turns": {
+      "items": {
+        "$ref": "#/$defs/PromptTurn"
+      },
+      "title": "Prompt Turns",
+      "type": "array"
+    },
+    "run_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Run Ids",
+      "type": "array"
+    },
+    "review_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Review Ids",
+      "type": "array"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "session_id",
+    "source",
+    "selected_organ",
+    "mode",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "LabSession",
+  "type": "object"
+}

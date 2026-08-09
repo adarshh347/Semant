@@ -1,0 +1,77 @@
+{
+  "identity": {
+    "artifact_id": "art_extent_manual",
+    "session_id": "labs_extent_1",
+    "run_id": "run_live_ready",
+    "step_id": "step_manual",
+    "organ_family": "extent",
+    "artifact_kind": "extent_set",
+    "operation": "extent.draw",
+    "identity_scope": "canonical",
+    "identity_refs": [
+      {"region_id": "reg_finial_7", "geometry_rev": 3, "scope": "canonical"}
+    ],
+    "input_refs": [],
+    "derived_from": ["art_extent_1"]
+  },
+  "measurement": {
+    "payload_variant": "extent_set",
+    "payload": {
+      "variant": "extent_set",
+      "searched": "the boundary the person drew by hand",
+      "instances": [
+        {
+          "instance_id": "inst_manual_1",
+          "mask_rle": {"size": [1200, 1600], "counts": [0, 310, 1290, 330, 1270, 350]},
+          "box": {"x": 0.33, "y": 0.14, "w": 0.21, "h": 0.38},
+          "area": 0.049,
+          "confidence": null,
+          "naming": {
+            "text": "the finial itself, not its shadow",
+            "source": "human",
+            "epistemic_status": "interpretive",
+            "confidence": null
+          },
+          "region_id": "reg_finial_7",
+          "geometry_rev": 4
+        }
+      ],
+      "dropped_below_min_area": null,
+      "duplicates": [],
+      "comparison": null
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "visible",
+    "epistemic_basis": "manual",
+    "basis_detail": "a person drew it with the mask brush. `visible`, not `measured` — nothing computed it."
+  },
+  "projection": {
+    "projection_kind": "mask_outline",
+    "hints": {"stroke_weight": 2, "palette_role": "human", "emphasis": "selected"}
+  },
+  "interpretation": {
+    "label": "finial",
+    "label_source": "human",
+    "epistemic_status": "interpretive",
+    "notes": null
+  },
+  "lifecycle": {
+    "status": "edited",
+    "changed_at": "2026-08-10T09:01:30Z",
+    "changed_by": "curator"
+  },
+  "provenance": {
+    "producer_kind": "human",
+    "producer": "curator",
+    "adapter": null,
+    "model": null,
+    "revision": null,
+    "source_image_digest": "sha256:9f1c0a5b7d2e4438",
+    "started_at": "2026-08-10T09:01:12Z",
+    "completed_at": "2026-08-10T09:01:30Z",
+    "duration_ms": null,
+    "device": null,
+    "peak_memory_mb": null
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "plan_id": "plan_chain_1",
+  "session_id": "labs_topology_1",
+  "planner": "model",
+  "planner_fell_back_from": null,
+  "selected_organ": "topology",
+  "mode": "chain",
+  "proposed_steps": [
+    {
+      "step_id": "step_a",
+      "organ": "extent",
+      "operation": "extent.find_all",
+      "parameters": {"max_instances": 8},
+      "input_refs": [],
+      "rationale": "the chain prepares extents; the person inspects them before the relation runs"
+    },
+    {
+      "step_id": "step_b",
+      "organ": "topology",
+      "operation": "topology.adjacency",
+      "parameters": {"contact_tolerance_px": 2},
+      "input_refs": [
+        {"role": "source", "scope": "session", "artifact_id": "art_extent_1"},
+        {"role": "target", "scope": "session", "artifact_id": "art_extent_manual"}
+      ],
+      "rationale": "'whether they meet' is an adjacency measurement over the prepared extents"
+    }
+  ],
+  "resolved_steps": [
+    {
+      "step_id": "step_a",
+      "organ": "extent",
+      "operation": "extent.find_all",
+      "parameters": {"max_instances": 8},
+      "input_refs": [],
+      "adapter": "yolo_sam2_auto",
+      "authorized_by": "resolver",
+      "prerequisites_checked": ["organ_lock", "parameters", "capability"]
+    },
+    {
+      "step_id": "step_b",
+      "organ": "topology",
+      "operation": "topology.adjacency",
+      "parameters": {"contact_tolerance_px": 2},
+      "input_refs": [
+        {"role": "source", "scope": "session", "artifact_id": "art_extent_1"},
+        {"role": "target", "scope": "session", "artifact_id": "art_extent_manual"}
+      ],
+      "adapter": "adjacency_organ",
+      "authorized_by": "resolver",
+      "prerequisites_checked": ["organ_lock", "parameters", "inputs", "capability"]
+    }
+  ],
+  "prerequisites": [
+    "step_b consumes the extents step_a proposes; the person confirms them between the stages"
+  ],
+  "refusals": [],
+  "dropped_parameters": [],
+  "clamped_parameters": [],
+  "requires_confirmation": true,
+  "created_at": "2026-08-10T10:00:06Z"
+}

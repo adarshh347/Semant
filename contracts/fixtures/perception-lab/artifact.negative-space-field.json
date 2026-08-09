@@ -1,0 +1,66 @@
+{
+  "identity": {
+    "artifact_id": "art_negative_1",
+    "session_id": "labs_topology_1",
+    "run_id": "run_live_partial",
+    "step_id": "step_negative_ok",
+    "organ_family": "topology",
+    "artifact_kind": "negative_space_field",
+    "operation": "topology.negative_space",
+    "identity_scope": "session",
+    "identity_refs": [],
+    "input_refs": [
+      {"role": "figure", "scope": "session", "artifact_id": "art_extent_1", "region_id": null, "geometry_rev": null}
+    ],
+    "derived_from": ["art_extent_1"]
+  },
+  "measurement": {
+    "payload_variant": "negative_space_field",
+    "payload": {
+      "variant": "negative_space_field",
+      "figure_instance_ids": ["inst_1", "inst_2"],
+      "max_distance_used": 0.25,
+      "field_shape": [300, 400],
+      "field_ref": {
+        "uri": "labstore://perception-lab/fields/art_negative_1.f32",
+        "digest": "sha256:c50e1f7a9b3d2864",
+        "media_type": "application/octet-stream",
+        "bytes": 480000
+      },
+      "statistics": {"min": 0.0, "max": 0.243, "mean": 0.081}
+    },
+    "data_ref": null,
+    "coordinate_system": "mask_rle_hw",
+    "epistemic_status": "measured",
+    "epistemic_basis": "mask",
+    "basis_detail": "mask complement, then a distance transform truncated at max_distance_used"
+  },
+  "projection": {
+    "projection_kind": "scalar_wash",
+    "hints": {"opacity": 0.5, "palette_role": "ground", "legend": "distance from the figure, not the figure"}
+  },
+  "interpretation": {
+    "label": null,
+    "label_source": "none",
+    "epistemic_status": "uncertain",
+    "notes": null
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "changed_at": "2026-08-10T10:01:40Z",
+    "changed_by": "perception_lab"
+  },
+  "provenance": {
+    "producer_kind": "adapter",
+    "producer": "topology_facade",
+    "adapter": "distance_transform",
+    "model": null,
+    "revision": null,
+    "source_image_digest": "sha256:41b7e0d9c3a58612",
+    "started_at": "2026-08-10T10:01:38Z",
+    "completed_at": "2026-08-10T10:01:40Z",
+    "duration_ms": 1970,
+    "device": "cpu",
+    "peak_memory_mb": 210.0
+  }
+}
