@@ -47,6 +47,16 @@ from .base import refusal, sha256_of
 #: bounded because a provider is free to return a page of HTML.
 PROVIDER_DETAIL_CHARS = 300
 
+#: How many times the SDK may re-send an identical request the provider refused for capacity. This
+#: is the SDK's default, named here so it is a decision rather than an inheritance.
+TRANSPORT_RETRIES = 2
+
+TRANSPORT_RETRY_NOTE = (
+    f"`call_count` counts requests this module made. The provider SDK may re-send an identical "
+    f"request up to {TRANSPORT_RETRIES} more times when it is refused for capacity; those are "
+    f"transport retries of the same bytes, not second attempts at the prompt, and they are not "
+    f"counted here.")
+
 
 def _provider_detail(exc: BaseException) -> str:
     """The provider's own words, trimmed.
@@ -122,11 +132,25 @@ class ModelPass:
             from groq import Groq
 
             from backend.config import settings
-            # `max_retries=0`, and this is not a tuning knob. The SDK's default is 2, so "exactly
-            # one call and no silent retry" was true at THIS layer and false underneath it: a rate
-            # limit became three requests, the receipt said one, and the duration said nothing
-            # about why. A guarantee that stops at the module boundary is not a guarantee.
-            self._client = (Groq(api_key=settings.GROQ_API_KEY, max_retries=0)
+            # TWO KINDS OF RETRY, and this lane forbids only one of them.
+            #
+            # A SEMANTIC retry re-asks a model that answered badly, and it is what `no silent
+            # retry` is about: it hides a marginal prompt behind a good average, because the pass
+            # that needed three attempts and the pass that worked first time produce identical
+            # output. Nothing in this module does that.
+            #
+            # A TRANSPORT retry re-sends an IDENTICAL request the provider refused for capacity.
+            # It hides nothing about the prompt — the request never reached a model — and the SDK
+            # does it with backoff, which is the correct response to a 429.
+            #
+            # This was set to 0 for one run on the theory that a guarantee stopping at the module
+            # boundary is not a guarantee. The live run said otherwise: nine batches fired in two
+            # seconds, every one was rate limited, and the whole dissection came back empty with
+            # eighteen `pass_unavailable` refusals. The rule had been applied to the wrong thing.
+            #
+            # So the SDK's default stands, and the receipt SAYS so rather than implying one call
+            # per `call_count` — see `TRANSPORT_RETRY_NOTE`.
+            self._client = (Groq(api_key=settings.GROQ_API_KEY, max_retries=TRANSPORT_RETRIES)
                             if settings.GROQ_API_KEY else None)
         except Exception:
             self._client = None
@@ -213,7 +237,8 @@ class ModelPass:
 
         return PassResult(payload, self._receipt(
             pass_id, outcome, prompt_hash=[prompt_hash], raw=[raw], finish=[finish], usage=usage,
-            duration_ms=round(duration, 3), inputs=inputs, notes=notes), tuple(refusals))
+            duration_ms=round(duration, 3), inputs=inputs,
+            notes=[*notes, TRANSPORT_RETRY_NOTE]), tuple(refusals))
 
     # ── the receipt ──
 
