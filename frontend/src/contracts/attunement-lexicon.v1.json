@@ -51,7 +51,8 @@
     },
     {
       "key": "shadow",
-      "cues": ["shadowed", "shadow", "darkness", "dark side", "unlit", "obscur", "gloom"],
+      "cues": ["shadowed", "shadow", "darkness", "dark side", "obscur", "gloom"],
+      "word_cues": ["unlit"],
       "proposes": ["field:shadow_field"]
     },
     {
@@ -159,7 +160,7 @@
 
   "labels": {
     "fold": { "template": "{cue} — folding structure{side}" },
-    "gaze_address": { "template": "the {cue} she points toward", "collapse": ["the the ", "the "] },
+    "gaze_address": { "template": "{cue} — where the look is directed{side}" },
     "architectural_axis": { "template": "{cue} axis{side}" },
     "default": { "template": "{cue}{side}" }
   },

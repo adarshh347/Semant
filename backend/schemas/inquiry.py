@@ -260,10 +260,14 @@ class InquiryFrame(_Strict):
                     f"has not seen the image and may not author geometry, a region or a "
                     f"confidence.")
 
-        demanded = {(d.term or d.clause).lower(): d.kind for d in self.epistemic_demands}
+        # A SET of kinds per term, not the last one seen. Keyed by a dict, a frame recording
+        # `sensuality` as both measurable and interpretive would pass whenever the interpretive
+        # demand happened to come second — the guard would be decided by list order.
+        demanded: Dict[str, set] = {}
+        for demand in self.epistemic_demands:
+            demanded.setdefault((demand.term or demand.clause).lower(), set()).add(demand.kind)
         for remainder in self.semantic_remainder:
-            kind = demanded.get(remainder.term.lower())
-            if kind is DemandKind.MEASURABLE:
+            if DemandKind.MEASURABLE in demanded.get(remainder.term.lower(), set()):
                 raise ValueError(
                     f"'{remainder.term}' is recorded as a semantic remainder AND as a measurable "
                     f"demand. A remainder is what measurement does not reach; the two cannot both "

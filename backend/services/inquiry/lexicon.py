@@ -242,6 +242,12 @@ def _every_cue() -> List[str]:
         for entry in block:
             cues.extend(entry["cues"])
             cues.extend(entry.get("word_cues", ()))
+    # SIDES belongs here even though it proposes no act. A side word is something the lexicon
+    # DOES understand — it becomes `target_hint` on a brushed field — so reporting "lower" or
+    # "right" as a term nothing can operationalise would be false twice over: the lexicon read
+    # it, and the frame would be claiming ignorance of a word it used.
+    for side in SIDES:
+        cues.extend(side["cues"])
     cues.extend(CORPUS_TERMS)
     for entry in HUMAN_ONLY_REQUESTS:
         cues.extend(entry["cues"])

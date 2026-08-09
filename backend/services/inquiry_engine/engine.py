@@ -98,12 +98,17 @@ class _Ids:
 
 # ── deriving the hierarchy from a frame ──────────────────────────────────────
 
-def _demand_mode(text: str) -> Tuple[str, str, bool]:
+def _demand_mode(demand: Demand) -> Tuple[str, str, bool]:
     """(mode, clause, confident) for one `epistemic_demands` entry.
 
-    Three ways a mode is decided, in order of how much the frame actually said:
+    Four ways a mode is decided, in order of how much the frame actually said:
 
-      1. an explicit `"<mode>: <clause>"` prefix — Lane A said it outright;
+      0. LANE A DECLARED IT. `DemandKind` is read, never re-derived. This is the branch that
+         matters, and it is a correctness fix rather than an optimisation: against Lane A's real
+         output, re-deriving found `fold` inside `unfolding` and turned "way of unfolding" — which
+         Lane A marks `unresolved`, "no organ in the sensorium is scoped to a manner" — into a
+         MEASURED criterion this engine could report having produced.
+      1. an explicit `"<mode>: <clause>"` prefix, which the committed fixtures use;
       2. the clause routes to a declared need, whose `demands` says what kind of knowing it is;
       3. nothing matched — and the fallback is `interpretive`, NOT `measured`.
 
@@ -113,7 +118,9 @@ def _demand_mode(text: str) -> Tuple[str, str, bool]:
     be able to claim it produced it. `confident=False` is carried so the run can say which clauses
     fell through rather than presenting the guess as a reading.
     """
-    raw = str(text or "").strip()
+    raw = demand.text.strip()
+    if demand.mode:
+        return demand.mode, demand.clause or raw, True
     for mode in CLAUSE_MODES:
         if raw.lower().startswith(f"{mode}:"):
             return mode, raw.split(":", 1)[1].strip() or raw, True
@@ -151,17 +158,33 @@ def derive(frame: AcceptedFrame, *, ids: _Ids, post_id: str = "", region_id: str
     """
     notes: List[str] = []
     criteria: List[Criterion] = []
-    for text in frame.epistemic_demands:
-        mode, clause, confident = _demand_mode(text)
-        criteria.append(Criterion(id=ids.next("cr"), clause=clause, demands=mode,
-                                  detail=("" if confident else
-                                          "the frame did not say what kind of knowing this asks "
-                                          "for and no declared need matched it")))
+    #: Demands Lane A marked `unresolved` — its own finding that no producer exists. Transported to
+    #: the evidence-goal pass below as a declared gap rather than becoming a clause: a criterion
+    #: would imply something could settle it, and re-deriving the reason would present Lane A's
+    #: finding as this engine's conclusion.
+    declared_gaps: List[Demand] = [d for d in frame.epistemic_demands if d.declares_gap]
+
+    #: Each criterion beside the TERM it came from. Lane A's `clause` is the whole sentence the
+    #: demand was read out of and its `term` is the word — the sentence is what a reader should see
+    #: on the criterion, and the word is what routes to a need. Keeping only one of them made the
+    #: goal pass below try to route "their common way of unfolding sensuality" as a term.
+    criteria_terms: List[Tuple[Criterion, str]] = []
+
+    for demand in frame.epistemic_demands:
+        if demand.declares_gap:
+            continue
+        mode, clause, confident = _demand_mode(demand)
+        criterion = Criterion(id=ids.next("cr"), clause=clause, demands=mode,
+                              detail=("" if confident else
+                                      "the frame did not say what kind of knowing this asks "
+                                      "for and no declared need matched it"))
+        criteria.append(criterion)
+        criteria_terms.append((criterion, demand.text))
         if not confident:
             notes.append(
-                f"epistemic demand {text!r} matched no declared need and carried no explicit mode; "
-                f"it is carried as {CLAUSE_INTERPRETIVE!r} so this engine cannot report having "
-                f"produced it")
+                f"epistemic demand {demand.text!r} matched no declared need and carried no "
+                f"explicit mode; it is carried as {CLAUSE_INTERPRETIVE!r} so this engine cannot "
+                f"report having produced it")
 
     inquiry = InquiryGoal(
         id=ids.next("iq"), title=frame.prompt[:80], prompt=frame.prompt, mode=frame.mode,
@@ -172,27 +195,36 @@ def derive(frame: AcceptedFrame, *, ids: _Ids, post_id: str = "", region_id: str
     goals: List[EvidenceGoal] = []
 
     def _add(*, need_key: str, phrase: str, question: str, origin: str,
-             clause: str, action: Optional[ProposedAction] = None) -> None:
+             clause: str, action: Optional[ProposedAction] = None,
+             declared_gap: str = "") -> None:
         # ONE GOAL PER DECLARED NEED. An attention, a proposed act and an epistemic demand that all
         # point at containment are one question asked three ways, and three goals would report the
         # same gap three times — which reads as three findings.
-        key = need_key or f"{origin}:{phrase.lower()}"
+        #
+        # A framer-declared gap keys on the PHRASE rather than the origin, because Lane A names the
+        # same term in both `epistemic_demands` (kind `unresolved`) and `unresolved_terms`, and two
+        # goals carrying one finding would double it in the report.
+        key = f"gap:{phrase.lower()}" if declared_gap else (need_key or
+                                                            f"{origin}:{phrase.lower()}")
         if key in seen:
             return
         seen.add(key)
         gid = ids.next("eg")
         crit = ((_criterion_for(need_key, cid=ids.next("cr"), clause=clause),)
-                if need_key in cap.NEEDS else ())
+                if need_key in cap.NEEDS and not declared_gap else ())
         goals.append(EvidenceGoal(
             id=gid, parent_goal_id=inquiry.id, title=question[:80], need=need_key,
             question=question, phrase=phrase, post_id=post_id, region_id=region_id,
             origin=origin, criteria=crit, status=STATUS_PROPOSED,
             action=action.to_dict() if action is not None else {},
-            detail=(cap.NEEDS[need_key].summary if need_key in cap.NEEDS else
-                    f"nothing declared serves {phrase!r}")))
+            declared_gap=declared_gap,
+            detail=(declared_gap or cap.NEEDS[need_key].summary if need_key in cap.NEEDS
+                    else declared_gap or f"nothing declared serves {phrase!r}")))
 
     for action in frame.proposed_actions:
-        words = action.phrase or action.role or ""
+        # THE CONCEPT, not the caption. `action.phrase` falls back to a grammar `label` — a UI
+        # string — and this goal's words become an open-vocabulary segmentation query downstream.
+        words = action.concept or ""
         # The act is CARRIED, not flattened to the need. Three public acts have rules of their own
         # in `capability.resolve_action` and a goal reduced to a need would lose all three.
         need_key = cap.need_for_term(words) or cap.need_for_action(action.type) or ""
@@ -201,15 +233,32 @@ def derive(frame: AcceptedFrame, *, ids: _Ids, post_id: str = "", region_id: str
              origin=ORIGIN_ACTION, action=action,
              clause=f"the act {action.type!r} is served")
 
+    # LANE A'S OWN GAPS, transported first so a term it already adjudicated is not re-derived below.
+    for demand in declared_gaps:
+        _add(need_key="", phrase=demand.text,
+             question=f"what evidence would settle {demand.text!r}?",
+             origin=ORIGIN_DEMAND, clause=demand.clause or demand.text,
+             declared_gap=demand.why or
+             "the framer found no producer for this at all — not a weak measurement, the absence "
+             "of an instrument")
+
     for term in frame.unresolved_terms:
-        need_key = cap.need_for_term(term) or ""
-        _add(need_key=need_key, phrase=term,
-             question=f"what evidence would settle {term!r}?",
-             origin=ORIGIN_TERM, clause=term)
+        # THE FRAMER'S DECLARATION WINS over a near-miss in this engine's term table. Lane A saw the
+        # whole clause and refused it; our table matching a neighbouring instrument is precisely the
+        # "confident gap against the wrong organ" `need_for_term` warns about — and it reads as a
+        # considered finding. A term carrying no reason (the committed fixtures) still routes.
+        if term.why:
+            _add(need_key="", phrase=term.text,
+                 question=f"what evidence would settle {term.text!r}?",
+                 origin=ORIGIN_TERM, clause=term.text, declared_gap=term.why)
+            continue
+        _add(need_key=cap.need_for_term(term.text) or "", phrase=term.text,
+             question=f"what evidence would settle {term.text!r}?",
+             origin=ORIGIN_TERM, clause=term.text)
 
     for attention in frame.attentions:
         need_key = cap.need_for_term(attention) or ""
-        if not need_key:
+        if not need_key:  # noqa: SIM102 — the note below is the point
             # An attention that matches no need is NOT a gap — the curator looked at something and
             # this engine has no question for it yet. Recorded as a note; inventing an evidence goal
             # would manufacture a refusal against a word nobody asked a question about.
@@ -223,11 +272,11 @@ def derive(frame: AcceptedFrame, *, ids: _Ids, post_id: str = "", region_id: str
     # EVERY demand that routes to a declared need becomes a goal, not only the measurable ones. An
     # interpretive or imagined clause with no goal behind it would sit on the inquiry unexamined and
     # unreported, which is the quietest possible way to drop the hardest half of a prompt.
-    for crit in criteria:
-        need_key = cap.need_for_term(crit.clause) or ""
+    for crit, term in criteria_terms:
+        need_key = cap.need_for_term(term) or cap.need_for_term(crit.clause) or ""
         if need_key:
-            _add(need_key=need_key, phrase=crit.clause,
-                 question=f"what settles {crit.clause!r}?",
+            _add(need_key=need_key, phrase=term or crit.clause,
+                 question=f"what settles {(term or crit.clause)!r}?",
                  origin=ORIGIN_DEMAND, clause=crit.clause)
 
     return inquiry, tuple(goals), tuple(notes)
@@ -310,9 +359,17 @@ def run_inquiry(frame_mapping: Mapping[str, Any], *,
                              payload={"kind": goal.kind, "need": goal.need,
                                       "phrase": goal.phrase})
 
+        # THE FRAMER'S OWN GAP, transported. Lane A already found that no producer exists for this;
+        # asking the capability table again would replace a considered refusal with an unknown-
+        # instrument error, and the run would report our table's silence as the sensorium's.
+        if goal.declared_gap:
+            resolution = cap.Resolution(
+                kind=cap.CAPABILITY_GAP, need=goal.need or goal.phrase,
+                unmet=(goal.declared_gap,),
+                why=f"the framer found no producer for {goal.phrase!r}: {goal.declared_gap}")
         # An act goes through `resolve_action` — which owns the three rules a need lookup would
         # erase; a term or an attention goes straight to `resolve_need`.
-        if goal.action:
+        elif goal.action:
             resolution = cap.resolve_action(
                 ProposedAction.from_dict(goal.action), phrase=goal.phrase,
                 locus=bool(goal.post_id and goal.region_id), evidence_returned=0,

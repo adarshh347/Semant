@@ -51,14 +51,49 @@ REQUIRED_KEYS: Tuple[str, ...] = (
 #: another lane's naming choice.
 _TEXT_KEYS: Tuple[str, ...] = ("text", "phrase", "term", "value", "name", "label", "clause")
 
+#: Lane A's `DemandKind` → this engine's clause mode. RECONCILED AGAINST THE MERGED TREE, and the
+#: first row is the one that matters:
+#:
+#:   `measurable` is not `measured`, and Lane A says so on purpose — nothing has run, so the frame
+#:   states a CAPACITY where this engine states a CLAIM. The demand asks for measured evidence; the
+#:   criterion demanding it is what the evaluator later checks against what an organ actually
+#:   returned. Mapping the two is the whole job of this table.
+#:
+#:   `unresolved` has no counterpart here at all, and that absence is Lane A's own finding: "no
+#:   producer exists" is a capability gap declared UPSTREAM. It is transported, not re-adjudicated —
+#:   see `Demand.declares_gap`.
+DEMAND_KIND_TO_CLAUSE: Dict[str, str] = {
+    "measurable": "measured",
+    "interpretive": "interpretive",
+    "sourced": "sourced",
+    "imagined": "imagined",
+}
+
+#: The `DemandKind` that is a gap rather than a clause.
+DEMAND_KIND_UNRESOLVED = "unresolved"
+
 
 class FrameRefused(Exception):
     """A mapping that cannot be read as an inquiry frame. Raised rather than partially accepted:
     a half-read frame would produce a run whose gaps are artefacts of the intake."""
 
 
+def _plain(value: Any) -> Any:
+    """An enum member down to its value; anything else unchanged.
+
+    `InquiryFrame.model_dump()` — the plain call, which is what Lane A hands over and what the
+    directive says to pass unaltered — leaves `mode` as an `InquiryMode` member, not a string.
+    `InquiryMode` subclasses `str`, so `str(member)` is `'InquiryMode.EXPLORE'` and NOT `'explore'`:
+    the coercion looks like it worked and produces a mode nothing downstream can match. Only
+    `model_dump(mode="json")` flattens it, and requiring that of the caller would put the seam's
+    representation problem in the caller's hands.
+    """
+    return getattr(value, "value", value)
+
+
 def _text_of(entry: Any) -> str:
     """The words in an entry, whatever shape Lane A wrapped them in."""
+    entry = _plain(entry)
     if isinstance(entry, str):
         return entry.strip()
     if isinstance(entry, Mapping):
@@ -77,6 +112,94 @@ def _texts(raw: Any) -> Tuple[str, ...]:
 
 
 @dataclass(frozen=True)
+class Demand:
+    """One `epistemic_demands` entry, with the KIND Lane A declared rather than one guessed here.
+
+    The first version of this intake flattened a demand to its words and re-derived the kind by
+    matching the term against this engine's own need table. Against Lane A's real output that was
+    not merely lossy, it was WRONG IN THE DANGEROUS DIRECTION: Lane A marks "way of unfolding" as
+    `unresolved` ("names a MANNER … no act in the grammar and no organ in the sensorium is scoped to
+    a manner"), and substring matching found `fold` inside `unfolding` and produced a MEASURED
+    criterion. A clause the framer explicitly refused to operationalise became one this engine would
+    report having produced.
+
+    So the kind is READ. `why` is Lane A's own reason and is carried verbatim, because when the
+    demand is a gap it is Lane A's finding that is being transported and a paraphrase would make it
+    look like this engine's conclusion.
+    """
+    text: str
+    kind: str = ""
+    clause: str = ""
+    why: str = ""
+
+    @property
+    def declares_gap(self) -> bool:
+        """Lane A said no producer exists. Not a weak measurement — the absence of an instrument."""
+        return self.kind == DEMAND_KIND_UNRESOLVED
+
+    @property
+    def mode(self) -> str:
+        """The clause mode, or empty when Lane A declared none and the caller must decide."""
+        return DEMAND_KIND_TO_CLAUSE.get(self.kind, "")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"text": self.text, "kind": self.kind, "clause": self.clause, "why": self.why}
+
+    @classmethod
+    def from_dict(cls, d: Mapping[str, Any]) -> "Demand":
+        return cls(text=str(d.get("text") or ""), kind=str(d.get("kind") or ""),
+                   clause=str(d.get("clause") or ""), why=str(d.get("why") or ""))
+
+
+def _demand_of(entry: Any) -> Demand:
+    """One demand, with its kind read through `_plain`.
+
+    `_plain` is not optional here, and it is the SAME defect it was written for one field over.
+    `model_dump()` — the plain call the directive says to pass unaltered — leaves `kind` as a
+    `DemandKind` member, and `DemandKind` subclasses `str`, so `str(member)` is
+    `'DemandKind.INTERPRETIVE'` rather than `'interpretive'`. The coercion looks like it worked and
+    yields a kind matching nothing in `DEMAND_KIND_TO_CLAUSE`, so every demand would fall silently
+    through to the re-derived guess this type exists to replace.
+    """
+    if isinstance(entry, str):
+        return Demand(text=entry.strip())
+    if isinstance(entry, Mapping):
+        return Demand(text=_text_of(entry), kind=str(_plain(entry.get("kind")) or "").strip(),
+                      clause=str(_plain(entry.get("clause")) or "").strip(),
+                      why=str(_plain(entry.get("why")) or "").strip())
+    return Demand(text="")
+
+
+@dataclass(frozen=True)
+class Term:
+    """One `unresolved_terms` entry: the word, and Lane A's reason nothing can operationalise it.
+
+    `why` is the load-bearing half. Lane A has already done the work of saying WHY "fold-level"
+    cannot be acted on ("names a LEVEL OF ANALYSIS rather than a thing in a picture"); an intake
+    that kept only the word would make this engine re-derive a worse version of that reason, or
+    report the term as an unknown instrument — which reads as a table error here rather than as a
+    finding there.
+    """
+    text: str
+    why: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"text": self.text, "why": self.why}
+
+    @classmethod
+    def from_dict(cls, d: Mapping[str, Any]) -> "Term":
+        return cls(text=str(d.get("text") or ""), why=str(d.get("why") or ""))
+
+
+def _term_of(entry: Any) -> Term:
+    if isinstance(entry, str):
+        return Term(text=entry.strip())
+    if isinstance(entry, Mapping):
+        return Term(text=_text_of(entry), why=str(_plain(entry.get("why")) or "").strip())
+    return Term(text="")
+
+
+@dataclass(frozen=True)
 class ProposedAction:
     """One grammar-valid act Lane A proposed, normalised to (type, role, phrase) + the original.
 
@@ -90,6 +213,22 @@ class ProposedAction:
     source: str = ""
     raw: Dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def concept(self) -> str:
+        """The words to hand an OPEN-VOCABULARY FINDER, which are not always the words to show.
+
+        `phrase` takes an act's `label` when nothing more specific is there, and a grammar label is
+        a UI string: Lane A's fold act is labelled "Brush fold". Handed to `concept_segment` that
+        becomes the segmentation query — the model is asked to find "Brush fold" in a photograph,
+        the proposed regions come back named `cseg_Brush_fold_0`, and nothing anywhere fails. The
+        run just quietly asks the wrong question.
+
+        The ROLE is the curator's concept (`field_role: "fold"`, from the attention term they
+        actually used), so it wins here and only here. `phrase` is unchanged for every other
+        consumer — a display string is the right thing to display.
+        """
+        return self.role or self.phrase
+
     def to_dict(self) -> Dict[str, Any]:
         return {"type": self.type, "role": self.role, "phrase": self.phrase,
                 "target": self.target, "source": self.source, "raw": dict(self.raw)}
@@ -101,17 +240,44 @@ class ProposedAction:
                    source=str(d.get("source") or ""), raw=dict(d.get("raw") or {}))
 
 
+#: Where a Perceptual Action Grammar act keeps its role and its words. The grammar declares its
+#: `enums` per PAYLOAD key (`payload.field_role`, `payload.relation_role`), so the payload is the
+#: real home of both; the top level is tried first only so a caller that flattens an act by hand
+#: keeps working.
+_ROLE_KEYS: Tuple[str, ...] = ("role", "field_role", "trace_role", "relation_role", "mode",
+                               "challenge_type", "requested_reading_type")
+_PHRASE_KEYS: Tuple[str, ...] = ("phrase", "text", "query", "label", "draft_text")
+
+
+def _first_of(sources: Tuple[Mapping[str, Any], ...], keys: Tuple[str, ...]) -> str:
+    for source in sources:
+        for key in keys:
+            value = source.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    return ""
+
+
 def _action_of(entry: Any) -> ProposedAction:
+    """One act, normalised to (type, role, phrase) + the original.
+
+    IT LOOKS IN THE PAYLOAD, and that is the whole A→B reconciliation. Reading only the top level
+    made every real `brush_field` arrive with an empty role and an empty phrase, and
+    `derive_goals` names a goal from `action.phrase or action.role`: the acts survived the seam
+    and the words inside them did not, so a goal derived from "brush the fold" was
+    indistinguishable from one derived from an act that said nothing at all.
+    """
     if isinstance(entry, str):
         return ProposedAction(type=entry.strip(), raw={"type": entry.strip()})
     if isinstance(entry, Mapping):
         raw = {str(k): v for k, v in entry.items()}
+        payload = entry.get("payload")
+        sources: Tuple[Mapping[str, Any], ...] = (
+            (entry, payload) if isinstance(payload, Mapping) else (entry,))
         return ProposedAction(
             type=str(entry.get("type") or entry.get("action") or "").strip(),
-            role=str(entry.get("role") or entry.get("field_role") or
-                     entry.get("relation_role") or "").strip(),
-            phrase=str(entry.get("phrase") or entry.get("text") or
-                       entry.get("query") or "").strip(),
+            role=_first_of(sources, _ROLE_KEYS),
+            phrase=_first_of(sources, _PHRASE_KEYS),
             target=str(entry.get("target") or "").strip(),
             source=str(entry.get("source") or "").strip(),
             raw=raw)
@@ -130,9 +296,9 @@ class AcceptedFrame:
     prompt: str
     mode: str
     attentions: Tuple[str, ...] = ()
-    epistemic_demands: Tuple[str, ...] = ()
+    epistemic_demands: Tuple[Demand, ...] = ()
     proposed_actions: Tuple[ProposedAction, ...] = ()
-    unresolved_terms: Tuple[str, ...] = ()
+    unresolved_terms: Tuple[Term, ...] = ()
     semantic_remainder: Tuple[str, ...] = ()
     provenance: Dict[str, Any] = field(default_factory=dict)
     raw: Dict[str, Any] = field(default_factory=dict)
@@ -148,9 +314,9 @@ class AcceptedFrame:
             "prompt": self.prompt,
             "mode": self.mode,
             "attentions": list(self.attentions),
-            "epistemic_demands": list(self.epistemic_demands),
+            "epistemic_demands": [d.to_dict() for d in self.epistemic_demands],
             "proposed_actions": [a.to_dict() for a in self.proposed_actions],
-            "unresolved_terms": list(self.unresolved_terms),
+            "unresolved_terms": [t.to_dict() for t in self.unresolved_terms],
             "semantic_remainder": list(self.semantic_remainder),
             "provenance": dict(self.provenance),
             "raw": dict(self.raw),
@@ -164,10 +330,11 @@ class AcceptedFrame:
             prompt=str(d.get("prompt") or ""),
             mode=str(d.get("mode") or ""),
             attentions=tuple(str(a) for a in d.get("attentions") or ()),
-            epistemic_demands=tuple(str(a) for a in d.get("epistemic_demands") or ()),
+            epistemic_demands=tuple(Demand.from_dict(a)
+                                    for a in d.get("epistemic_demands") or ()),
             proposed_actions=tuple(ProposedAction.from_dict(a)
                                    for a in d.get("proposed_actions") or ()),
-            unresolved_terms=tuple(str(a) for a in d.get("unresolved_terms") or ()),
+            unresolved_terms=tuple(Term.from_dict(a) for a in d.get("unresolved_terms") or ()),
             semantic_remainder=tuple(str(a) for a in d.get("semantic_remainder") or ()),
             provenance=dict(d.get("provenance") or {}),
             raw=dict(d.get("raw") or {}),
@@ -214,6 +381,14 @@ def accept(mapping: Mapping[str, Any]) -> AcceptedFrame:
             adjustments.append(f"{key}: read the words out of {len(raw)} structured entr(ies)")
         return texts
 
+    def _typed(key: str, build):
+        raw = mapping.get(key)
+        if not isinstance(raw, (list, tuple)):
+            return ()
+        if any(not isinstance(e, str) for e in raw):
+            adjustments.append(f"{key}: read the words out of {len(raw)} structured entr(ies)")
+        return tuple(v for v in (build(e) for e in raw) if v.text)
+
     actions_raw = mapping.get("proposed_actions")
     actions = tuple(_action_of(a) for a in actions_raw) if isinstance(actions_raw, (list, tuple)) \
         else ()
@@ -222,20 +397,32 @@ def accept(mapping: Mapping[str, Any]) -> AcceptedFrame:
         adjustments.append(
             f"proposed_actions: {len(unnamed)} entr(ies) carried no readable action type and will "
             f"be refused by name rather than dropped")
+    roled = [a for a in actions if a.role and not isinstance(a.raw.get("role"), str)]
+    if roled:
+        adjustments.append(
+            f"proposed_actions: read the role out of `payload` for {len(roled)} act(s) — the "
+            f"grammar's own wire shape nests it there")
+
+    demands = _typed("epistemic_demands", _demand_of)
+    declared = [d for d in demands if d.kind]
+    if declared:
+        adjustments.append(
+            f"epistemic_demands: {len(declared)} of {len(demands)} carried a declared kind, which "
+            f"is READ rather than re-derived from the term")
 
     return AcceptedFrame(
         inquiry_id=str(mapping.get("inquiry_id") or ""),
         prompt=prompt,                       # VERBATIM. Never rewritten, expanded or clarified.
-        mode=str(mapping.get("mode") or "explore"),
+        mode=str(_plain(mapping.get("mode")) or "explore"),
         attentions=_list("attentions"),
-        epistemic_demands=_list("epistemic_demands"),
+        epistemic_demands=demands,
         proposed_actions=actions,
-        unresolved_terms=_list("unresolved_terms"),
+        unresolved_terms=_typed("unresolved_terms", _term_of),
         semantic_remainder=_list("semantic_remainder"),
         provenance=dict(mapping.get("provenance") or {}),
         raw={str(k): v for k, v in mapping.items()},
         adjustments=tuple(adjustments))
 
 
-__all__ = ["SCHEMA_VERSION", "REQUIRED_KEYS", "FrameRefused", "ProposedAction",
-           "AcceptedFrame", "accept"]
+__all__ = ["SCHEMA_VERSION", "REQUIRED_KEYS", "DEMAND_KIND_TO_CLAUSE", "DEMAND_KIND_UNRESOLVED",
+           "FrameRefused", "ProposedAction", "Demand", "Term", "AcceptedFrame", "accept"]

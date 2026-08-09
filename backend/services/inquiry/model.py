@@ -215,6 +215,10 @@ class ModelInquiryFramer:
             return self._fall_back(prompt, corpus_context, mode, now,
                                    f"the inquiry framer failed: {type(exc).__name__}")
 
+        # Cleared on the success path too. `last_notes` is documented as an observable of the
+        # LAST framing, and one fallback followed by one success would otherwise keep reporting
+        # the stale fallback reason forever.
+        self.last_notes = (f"framer: {self.name}",)
         return _assemble(prompt, corpus, payload, mode=mode, now=now, model=self.model)
 
     def _fall_back(self, prompt: str, corpus_context: Optional[Mapping[str, Any]],
@@ -386,8 +390,12 @@ def _assemble(prompt: str, corpus: Any, payload: Any, *, mode: InquiryMode,
                                  why=_text(r.get("why"), "the framer gave no reason"))
                   for r in _rows(payload, "unresolved_terms") if _text(r.get("term"))]
 
-    measurable_terms = {(d.term or "").lower() for d in demands
-                        if d.kind is DemandKind.MEASURABLE and d.term}
+    # Keyed EXACTLY as `InquiryFrame`'s own validator keys it — `term or clause`. Keying only on
+    # `term` here let a measurable demand with an empty term slip past this refusal and then die
+    # inside the `InquiryFrame(...)` construction below, where a model's contradiction would
+    # surface as a ValidationError somebody reads as a bug in the schema.
+    measurable_terms = {(d.term or d.clause).lower() for d in demands
+                        if d.kind is DemandKind.MEASURABLE}
     remainder: List[SemanticRemainder] = []
     for row in _rows(payload, "semantic_remainder"):
         term = _text(row.get("term"))
