@@ -34,12 +34,18 @@ list, and the Pydantic model on the other side remains the single definition.
 | `state` | **enumerated** | `framing · reading · compiling · awaiting_user · ready · executing · judging · composing · complete · exhausted · refused · error` |
 | `mode` | **enumerated** | `auto · consult · step` |
 | `graph` | object | below |
+| `posts[]` | array | **what was actually read** — `post_id`, `title`, `image_ref`, `fingerprint`, `readable`, `note`. `readable: false` renders as "could not be read", never as a post that was read |
+| `frame` | object \| null | the framer's output, rendered raw. It never sees pixels |
 | `decision_requests[]` | array | below |
 | `decision_records[]` | array | below |
 | `capability_receipts[]` | array | below |
 | `evidence[]` | array | below |
 | `synthesis` | object \| null | null renders as "no answer yet", not as an empty answer |
 | `stages[]` | array | **the machinery ledger** — below. Sent since HARNESS-002D; read since 003C |
+| `verdicts[]` | array | the judge's conclusions — below |
+| `gaps[]` | string[] | what nothing could serve |
+| `why_paused` | object \| null | rendered raw when present |
+| `provenance` | object | session-level producer and schema identity |
 | `trace[]` | array | below |
 | `stop_reason` | string | rendered in plain language when a session ends short |
 | `error` | string | rendered in the session header when present |
@@ -67,6 +73,7 @@ older than the server must not declare a session finished because it did not kno
 | field | shape | notes |
 |---|---|---|
 | `text` | string | **required** |
+| `blocks[]` | array | `block_id`, `kind`, `text`, `image_refs[]`. Sent since HARNESS-002D and read since 003C — these are what the dissector consumes, so a ledger showing claims without them starts the chain half-way |
 | `status` | string | **capped at `interpretive`.** A reading that arrives claiming `measured` is rendered as interpretive AND the original is shown beside it. Do not send a status stronger than `interpretive · imagined · uncertain · unresolved` — it will be reported as a defect, visibly |
 | `source`, `model` | string | shown in the collapsed model receipt |
 | `provenance` | object | |
@@ -105,6 +112,35 @@ A claim's `measured`/`visible` status does not by itself produce a support row �
 | `residual_interpretation` | string | what stays interpretive even if every measurement succeeds |
 | `availability` | **enumerated** | `available · unavailable · capability_gap` — three different rows with three different treatments |
 | `gap_reason` | string | appended to the availability sentence |
+
+## Dissolution (HARNESS-003A, rendered forward)
+
+Rendered where present and silent where absent. Lane A is building these in parallel; a surface
+that showed "0 atoms" as a defect would report an unmerged lane as a failure of the run.
+
+| field | shape | notes |
+|---|---|---|
+| `graph.source_units[]` | array | `source_unit_id`, `source_type` (**enumerated**: `prompt_clause · reading_block`), `source_ref`, `exact_quote`, `image_refs[]` |
+| `graph.semantic_atoms[]` | array | `atom_id`, `source_unit_ids[]`, `text`, `unit_kind` (**enumerated**, nine forms), `subject`/`predicate`/`object`, `image_scope[]`, `epistemic_ceiling` (**enumerated**), `author` (**enumerated** — `user` renders "your direction"), `provenance` |
+| `graph.coverage[]` | array | `source_unit_id`, `disposition` (**enumerated**: `represented_by · duplicate_of · semantic_remainder · refused`), `refs[]`, `reason` |
+
+**Every source unit needs exactly one disposition.** A unit with none is rendered as **lost**, not
+as a remainder, and the coverage row is flagged — a remainder is a decision, and a unit nobody
+accounted for is a unit the compiler dropped. The two must not read alike.
+
+## Verdicts (`verdicts[]`)
+
+| field | shape | notes |
+|---|---|---|
+| `verdict_id` | string | |
+| `claim_ref` | string | |
+| `outcome` | **enumerated** | `supported_by_evidence · partially_supported · interpretive_only · unresolved · contradicted · not_investigated` |
+| `why` | string | |
+| `evidence_refs[]`, `receipt_refs[]` | string[] | |
+
+`interpretive_only` and `not_investigated` never render alike: one says the claim was examined and
+nothing measured bears on it, the other says nobody asked. A reader deciding how much to trust an
+answer needs both.
 
 ## Decisions
 

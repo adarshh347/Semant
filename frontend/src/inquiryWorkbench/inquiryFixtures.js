@@ -53,8 +53,64 @@ const READING = {
     status: 'interpretive',
     source: 'scene_theorist',
     model: 'vlm/scene-theorist',
+    blocks: [
+        {
+            block_id: 'rdb_1', kind: 'observation',
+            text: 'The front reads as a single long horizontal: a screen of columns held between '
+                + 'two solid ends, with no centre marked on the outside.',
+            image_refs: ['post_altes_front'],
+        },
+        {
+            block_id: 'rdb_2', kind: 'observation',
+            text: 'Behind it the plan turns: the rotunda is a centre that the façade never announces.',
+            image_refs: ['post_altes_front', 'post_altes_rotunda'],
+        },
+        {
+            block_id: 'rdb_3', kind: 'association',
+            text: 'The comparison that suggests itself is with a temple front, but the temple '
+                + 'front has a centre and this one refuses to name it.',
+            image_refs: ['post_altes_front'],
+        },
+    ],
     provenance: { role: 'scene_theorist', called_at: '2026-08-09T09:14:02Z' },
 };
+
+const POSTS = [
+    {
+        post_id: 'post_altes_front', title: 'Altes Museum, Lustgarten front',
+        image_ref: 'imgref_altes_front',
+        fingerprint: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+        readable: true, note: '',
+    },
+    {
+        post_id: 'post_altes_rotunda', title: 'Rotunda, interior',
+        image_ref: 'imgref_altes_rotunda',
+        fingerprint: 'b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1',
+        readable: true, note: '',
+    },
+];
+
+const FRAME = {
+    frame_id: 'frm_1',
+    attentions: ['centre', 'threshold', 'approach'],
+    epistemic_demands: ['a comparison across two images', 'movement, which no still image holds'],
+    unresolved_terms: ['dispersed civic ground'],
+    proposed_actions: [],
+};
+
+const VERDICTS = [
+    {
+        verdict_id: 'vd_colonnade', claim_ref: 'clm_colonnade', outcome: 'interpretive_only',
+        why: 'The one request that bore on it ran against a simulation, so nothing measured '
+            + 'reaches this claim.',
+        evidence_refs: [], receipt_refs: ['capr_locate_1'],
+    },
+    {
+        verdict_id: 'vd_temple', claim_ref: 'clm_temple_front', outcome: 'not_investigated',
+        why: 'No observable was requested for it. Nobody asked.',
+        evidence_refs: [], receipt_refs: [],
+    },
+];
 
 const CLAIMS = [
     {
@@ -306,12 +362,19 @@ function baseSession(overrides = {}) {
             refusals: [],
             provenance: { compiler: 'semantic_compiler' },
         },
+        posts: clone(POSTS),
+        frame: clone(FRAME),
         decision_requests: [],
         decision_records: [],
         capability_receipts: [],
         evidence: [],
+        verdicts: [],
         synthesis: null,
+        stages: [],
         trace: clone(TRACE),
+        gaps: [],
+        stop_reason: '',
+        provenance: { producer: 'inquiry_session', schema_version: 'inquiry-session.v1' },
         error: '',
         ...overrides,
     };
@@ -440,6 +503,7 @@ export function completedFixture() {
         ...s,
         state: 'complete',
         revision: 7,
+        verdicts: clone(VERDICTS),
         synthesis: clone(SYNTHESIS),
         trace: [
             ...s.trace,
@@ -1106,6 +1170,87 @@ export function unknownStageFixture() {
             },
         ],
     });
+}
+
+/**
+ * 15. The whole chain, dissolved — the shape HARNESS-003A is building toward.
+ *
+ * Every source unit has exactly one disposition except `su_5`, which deliberately has none: a unit
+ * the compiler LOST is not a remainder, and the ledger has to be able to tell those apart.
+ */
+export function dissolvedFixture() {
+    const s = completedFixture();
+    return {
+        ...s,
+        graph: {
+            ...s.graph,
+            source_units: [
+                {
+                    source_unit_id: 'su_1', source_type: 'prompt_clause',
+                    source_ref: 'prompt#0:62',
+                    exact_quote: 'How does this building turn a dispersed civic ground into a centralized interior',
+                    image_refs: [],
+                },
+                {
+                    source_unit_id: 'su_2', source_type: 'prompt_clause',
+                    source_ref: 'prompt#62:110',
+                    exact_quote: 'what does the threshold between them actually do',
+                    image_refs: [],
+                },
+                {
+                    source_unit_id: 'su_3', source_type: 'reading_block', source_ref: 'rdb_1',
+                    exact_quote: 'a screen of columns held between two solid ends',
+                    image_refs: ['post_altes_front'],
+                },
+                {
+                    source_unit_id: 'su_4', source_type: 'reading_block', source_ref: 'rdb_3',
+                    exact_quote: 'The comparison that suggests itself is with a temple front',
+                    image_refs: ['post_altes_front'],
+                },
+                {
+                    source_unit_id: 'su_5', source_type: 'reading_block', source_ref: 'rdb_2',
+                    exact_quote: 'the rotunda is a centre that the façade never announces',
+                    image_refs: ['post_altes_front', 'post_altes_rotunda'],
+                },
+            ],
+            semantic_atoms: [
+                {
+                    atom_id: 'atm_1', source_unit_ids: ['su_3'],
+                    text: 'a colonnade spans the front',
+                    unit_kind: 'entity', subject: 'colonnade', predicate: 'spans',
+                    object: 'front elevation',
+                    image_scope: ['post_altes_front'], epistemic_ceiling: 'interpretive',
+                    author: 'model',
+                    provenance: { role: 'semantic_dissector', model: 'openai/gpt-oss-120b' },
+                },
+                {
+                    atom_id: 'atm_2', source_unit_ids: ['su_1', 'su_2'],
+                    text: 'the threshold converts the approach',
+                    unit_kind: 'causal_hypothesis', subject: 'threshold', predicate: 'converts',
+                    object: 'approach',
+                    image_scope: ['post_altes_front'], epistemic_ceiling: 'interpretive',
+                    author: 'user',
+                    provenance: { role: 'semantic_dissector' },
+                },
+                {
+                    atom_id: 'atm_3', source_unit_ids: ['su_4'],
+                    text: 'the front quotes a temple portico',
+                    unit_kind: 'historical_or_sourced', subject: '', predicate: '', object: '',
+                    image_scope: ['post_altes_front'], epistemic_ceiling: 'sourced',
+                    author: 'model', provenance: { role: 'semantic_dissector' },
+                },
+            ],
+            coverage: [
+                { source_unit_id: 'su_1', disposition: 'represented_by', refs: ['atm_2'], reason: '' },
+                { source_unit_id: 'su_2', disposition: 'represented_by', refs: ['atm_2'], reason: '' },
+                { source_unit_id: 'su_3', disposition: 'represented_by', refs: ['atm_1'], reason: '' },
+                {
+                    source_unit_id: 'su_4', disposition: 'semantic_remainder', refs: [],
+                    reason: 'A claim about sources. No measurement of these pixels can settle it.',
+                },
+            ],
+        },
+    };
 }
 
 export default consultFixture;

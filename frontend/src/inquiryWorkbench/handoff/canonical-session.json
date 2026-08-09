@@ -29,6 +29,33 @@
       "status": "interpretive",
       "source": "scene_theorist",
       "model": "vlm/scene-theorist",
+      "blocks": [
+        {
+          "block_id": "rdb_1",
+          "kind": "observation",
+          "text": "The front reads as a single long horizontal: a screen of columns held between two solid ends, with no centre marked on the outside.",
+          "image_refs": [
+            "post_altes_front"
+          ]
+        },
+        {
+          "block_id": "rdb_2",
+          "kind": "observation",
+          "text": "Behind it the plan turns: the rotunda is a centre that the façade never announces.",
+          "image_refs": [
+            "post_altes_front",
+            "post_altes_rotunda"
+          ]
+        },
+        {
+          "block_id": "rdb_3",
+          "kind": "association",
+          "text": "The comparison that suggests itself is with a temple front, but the temple front has a centre and this one refuses to name it.",
+          "image_refs": [
+            "post_altes_front"
+          ]
+        }
+      ],
       "provenance": {
         "role": "scene_theorist",
         "called_at": "2026-08-09T09:14:02Z"
@@ -262,6 +289,40 @@
       "compiler": "semantic_compiler"
     }
   },
+  "posts": [
+    {
+      "post_id": "post_altes_front",
+      "title": "Altes Museum, Lustgarten front",
+      "image_ref": "imgref_altes_front",
+      "fingerprint": "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+      "readable": true,
+      "note": ""
+    },
+    {
+      "post_id": "post_altes_rotunda",
+      "title": "Rotunda, interior",
+      "image_ref": "imgref_altes_rotunda",
+      "fingerprint": "b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1",
+      "readable": true,
+      "note": ""
+    }
+  ],
+  "frame": {
+    "frame_id": "frm_1",
+    "attentions": [
+      "centre",
+      "threshold",
+      "approach"
+    ],
+    "epistemic_demands": [
+      "a comparison across two images",
+      "movement, which no still image holds"
+    ],
+    "unresolved_terms": [
+      "dispersed civic ground"
+    ],
+    "proposed_actions": []
+  },
   "decision_requests": [
     {
       "decision_id": "dec_extent_grain",
@@ -346,6 +407,26 @@
     }
   ],
   "evidence": [],
+  "verdicts": [
+    {
+      "verdict_id": "vd_colonnade",
+      "claim_ref": "clm_colonnade",
+      "outcome": "interpretive_only",
+      "why": "The one request that bore on it ran against a simulation, so nothing measured reaches this claim.",
+      "evidence_refs": [],
+      "receipt_refs": [
+        "capr_locate_1"
+      ]
+    },
+    {
+      "verdict_id": "vd_temple",
+      "claim_ref": "clm_temple_front",
+      "outcome": "not_investigated",
+      "why": "No observable was requested for it. Nobody asked.",
+      "evidence_refs": [],
+      "receipt_refs": []
+    }
+  ],
   "synthesis": {
     "synthesis_id": "syn_1",
     "note": "Written from the claim graph, not from the reading paragraph.",
@@ -388,6 +469,7 @@
       }
     ]
   },
+  "stages": [],
   "trace": [
     {
       "event_id": "evt_1",
@@ -473,5 +555,11 @@
       "revision": 7
     }
   ],
+  "gaps": [],
+  "stop_reason": "",
+  "provenance": {
+    "producer": "inquiry_session",
+    "schema_version": "inquiry-session.v1"
+  },
   "error": ""
 }

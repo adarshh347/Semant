@@ -10,6 +10,7 @@ import EvidencePanel from './EvidencePanel.jsx';
 import SynthesisView from './SynthesisView.jsx';
 import TraceView from './TraceView.jsx';
 import StageActivity from './StageActivity.jsx';
+import ArtifactLedger from './ArtifactLedger.jsx';
 import { createInquiryClient } from './inquiryClient.js';
 import {
     openDecision, outcomeCounts, STATE_LABEL, MODE_COPY,
@@ -206,6 +207,7 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
             <DecisionStream records={session.decision_records} />
             <CapabilityActivity receipts={session.capability_receipts} />
             <NextActions session={session} onRestart={reset} />
+            <ArtifactLedger session={session} />
             <EvidencePanel session={session} />
             <SynthesisView session={session} />
             <TraceView trace={session.trace} />

@@ -249,7 +249,22 @@ export function normalizeReading(raw) {
         capped_from: overreach ? declared : null,
         source: str(v.source),
         model: str(v.model),
+        // The blocks the theorist emitted. `graph_view` has sent these since HARNESS-002D and
+        // nothing read them; they are the objects the dissector consumes, so a ledger that
+        // showed claims without them would start the chain in the middle.
+        blocks: arr(v.blocks).map(normalizeReadingBlock),
         provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
+    };
+}
+
+export function normalizeReadingBlock(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        block_id: str(v.block_id || v.id),
+        kind: str(v.kind),
+        text: str(v.text),
+        image_refs: arr(v.image_refs).map(String),
+        raw: v,
     };
 }
 
@@ -347,6 +362,83 @@ export function normalizeRefusal(raw) {
     };
 }
 
+// ── the dissolution objects (HARNESS-003A, rendered forward) ─────────────────
+//
+// Lane A is building these in parallel. This surface renders them where they appear and says
+// nothing when they do not, which is the board's instruction for a lane that must not wait on
+// another lane's merge — and the reason the ledger can show the whole chain the moment the
+// compiler starts emitting it.
+
+export const SOURCE_TYPES = ['prompt_clause', 'reading_block'];
+
+export const ATOM_KINDS = [
+    'entity', 'visual_quality', 'relation', 'comparison', 'interpretation',
+    'historical_or_sourced', 'causal_hypothesis', 'generative_proposal', 'unknown',
+];
+
+export const DISPOSITIONS = ['represented_by', 'duplicate_of', 'semantic_remainder', 'refused'];
+
+export const DISPOSITION_COPY = {
+    represented_by: 'became one or more atoms',
+    duplicate_of: 'says the same thing as another source unit',
+    semantic_remainder: 'was not dissolved, and the reason is recorded',
+    refused: 'was refused, and the reason is recorded',
+};
+
+export function normalizeSourceUnit(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        source_unit_id: str(v.source_unit_id || v.id),
+        source_type: enumField(v.source_type, SOURCE_TYPES),
+        source_ref: str(v.source_ref),
+        exact_quote: str(v.exact_quote),
+        image_refs: arr(v.image_refs).map(String),
+        raw: v,
+    };
+}
+
+export function normalizeAtom(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        atom_id: str(v.atom_id || v.id),
+        source_unit_ids: arr(v.source_unit_ids).map(String),
+        text: str(v.text),
+        unit_kind: enumField(v.unit_kind, ATOM_KINDS),
+        subject: str(v.subject),
+        predicate: str(v.predicate),
+        object: str(v.object),
+        image_scope: arr(v.image_scope).map(String),
+        epistemic_ceiling: enumField(v.epistemic_ceiling, CLAIM_STATUSES),
+        author: enumField(v.author, DECIDER_KINDS),
+        provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
+        raw: v,
+    };
+}
+
+export function normalizeCoverage(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        source_unit_id: str(v.source_unit_id),
+        disposition: enumField(v.disposition, DISPOSITIONS),
+        refs: arr(v.refs).map(String),
+        reason: str(v.reason),
+        raw: v,
+    };
+}
+
+/**
+ * Source units with no coverage disposition at all.
+ *
+ * The dissolution contract says every source unit gets exactly one. A unit with none is not a
+ * remainder — a remainder is a decision — it is a unit the compiler lost, and the difference is
+ * the whole point of having a coverage ledger. Computed here so no render site can mistake the
+ * two, and reported as its own row rather than folded into the remainder count.
+ */
+export function uncoveredSourceUnits(graph) {
+    const covered = new Set((graph?.coverage || []).map((c) => c.source_unit_id));
+    return (graph?.source_units || []).filter((u) => !covered.has(u.source_unit_id));
+}
+
 export function normalizeGraph(raw) {
     const v = raw && typeof raw === 'object' ? raw : {};
     return {
@@ -363,6 +455,10 @@ export function normalizeGraph(raw) {
         observables: arr(v.observables).map(normalizeObservable),
         semantic_remainder: arr(v.semantic_remainder).map(normalizeRemainder),
         refusals: arr(v.refusals).map(normalizeRefusal),
+        // HARNESS-003A's dissolution objects, rendered where present and silent where not.
+        source_units: arr(v.source_units).map(normalizeSourceUnit),
+        semantic_atoms: arr(v.semantic_atoms).map(normalizeAtom),
+        coverage: arr(v.coverage).map(normalizeCoverage),
         provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
     };
 }
@@ -512,6 +608,50 @@ export function normalizeEvidence(raw) {
     };
     ev.simulated = ev.execution_mode.value === 'fixture';
     return ev;
+}
+
+// ── verdicts ─────────────────────────────────────────────────────────────────
+
+export const VERDICT_KINDS = [
+    'supported_by_evidence', 'partially_supported', 'interpretive_only',
+    'unresolved', 'contradicted', 'not_investigated',
+];
+
+/**
+ * The two that assert evidence carried a claim. A fixture receipt may never produce one — the
+ * backend validator refuses it — and this surface never derives one either.
+ */
+export const SUPPORTED_VERDICTS = ['supported_by_evidence', 'partially_supported'];
+
+export const VERDICT_COPY = {
+    supported_by_evidence: 'Something measured bears this out.',
+    partially_supported: 'Something measured bears part of this out.',
+    interpretive_only: 'It was looked at, and nothing measured bears on it.',
+    unresolved: 'Nothing settled it either way.',
+    contradicted: 'Something measured cuts against it.',
+    not_investigated: 'Nobody asked.',
+};
+
+/**
+ * The judge's conclusion about one claim.
+ *
+ * `interpretive_only` and `not_investigated` are the two that carry Phase 1 and they are NOT the
+ * same: one says the claim was examined and nothing measured bears on it, the other says nobody
+ * asked. A reader deciding how much to trust an answer needs both, and a surface that rendered
+ * them identically would erase the difference between a phase with no instruments and a phase
+ * whose instruments found nothing.
+ */
+export function normalizeVerdict(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        verdict_id: str(v.verdict_id || v.id),
+        claim_ref: str(v.claim_ref),
+        outcome: enumField(v.outcome, VERDICT_KINDS),
+        why: str(v.why),
+        evidence_refs: arr(v.evidence_refs).map(String),
+        receipt_refs: arr(v.receipt_refs).map(String),
+        raw: v,
+    };
 }
 
 // ── synthesis ────────────────────────────────────────────────────────────────
@@ -759,8 +899,38 @@ export function normalizeSession(raw) {
         // The machinery ledger. Read at last — see the block above.
         stages: arr(v.stages).map(normalizeStage),
         trace: arr(v.trace).map(normalizeTraceEvent),
+        // Six more the backend has always sent and this client discarded. `posts` is what was
+        // actually read (with the fingerprint that proves it did not move), `frame` is the
+        // framer's output, `verdicts` is the judge's, and `gaps` names what nothing could serve.
+        posts: arr(v.posts).map(normalizePostRef),
+        frame: v.frame && typeof v.frame === 'object' ? v.frame : null,
+        verdicts: arr(v.verdicts).map(normalizeVerdict),
+        gaps: arr(v.gaps).map(String),
+        why_paused: v.why_paused && typeof v.why_paused === 'object' ? v.why_paused : null,
+        provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
         stop_reason: str(v.stop_reason),
         error: str(v.error),
+        raw: v,
+    };
+}
+
+/**
+ * One selected post, and the fingerprint that proves it did not move.
+ *
+ * `readable: false` is a real state the backend can send — a post whose image could not be
+ * fetched — and it must not render as a post that was read. The whole point of Phase 1's
+ * invariance claim is that source posts are unchanged, so the fingerprint is shown rather than
+ * summarised into a checkmark.
+ */
+export function normalizePostRef(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        post_id: str(v.post_id),
+        title: str(v.title),
+        image_ref: str(v.image_ref),
+        fingerprint: str(v.fingerprint),
+        readable: v.readable === false ? false : boolOrNull(v.readable),
+        note: str(v.note),
     };
 }
 
