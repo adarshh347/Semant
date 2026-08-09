@@ -560,3 +560,343 @@
 
 .iw-submit[disabled] { opacity: .45; cursor: not-allowed; }
 .iw-revision { margin-top: .375rem; }
+
+/* ── the session shell ─────────────────────────────────────────────────── */
+
+.iw-shell--session {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 60rem;
+}
+
+.iw-h3 {
+    margin: 0;
+    font-size: .9375rem;
+    font-weight: 600;
+}
+
+.iw-session-head { gap: .875rem; }
+.iw-session-status { display: flex; align-items: center; gap: .625rem; flex-wrap: wrap; }
+
+.iw-state {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+}
+
+.iw-state--awaiting_user { color: var(--accent-deep); }
+.iw-state--complete { color: var(--ink); }
+.iw-state--refused, .iw-state--error, .iw-state--exhausted { color: var(--ink-muted); }
+.iw-state--unknown { color: var(--accent); text-transform: none; }
+
+/* A live marker, not a progress bar: the inquiry does not know how many transitions it will take,
+   so any bar would be inventing a denominator. */
+.iw-pulse {
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: iw-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes iw-pulse {
+    0%, 100% { opacity: .3; }
+    50% { opacity: 1; }
+}
+
+.iw-mode-chip {
+    font-size: .6875rem;
+    padding: .0625rem .375rem;
+    border: 1px solid var(--line-strong);
+    border-radius: .1875rem;
+    color: var(--ink-muted);
+}
+
+.iw-session-prompt {
+    margin: 0;
+    font-size: 1.125rem;
+    line-height: 1.45;
+    max-width: 46rem;
+}
+
+.iw-session-images {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: .625rem;
+    flex-wrap: wrap;
+}
+
+.iw-session-images li {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    width: 7rem;
+}
+
+.iw-session-images img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: .25rem;
+    background: var(--surface-2);
+}
+
+/* ── capability activity ───────────────────────────────────────────────── */
+
+.iw-receipt-rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .625rem;
+}
+
+.iw-receipt {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    padding: .625rem .75rem;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--line);
+    border-radius: .375rem;
+    background: var(--bg);
+}
+
+/* Six outcomes, six treatments. Two that shared one would be two facts about the world wearing
+   one appearance — and `empty` (a finding about the images), `unavailable` (a fact about the
+   deployment) and `capability_gap` (a fact about what Semant is) are the three most easily
+   collapsed into a single "nothing came back". */
+.iw-receipt--live { border-left-color: var(--ink); }
+.iw-receipt--simulated { border-left-style: dashed; border-left-color: var(--accent); }
+.iw-receipt--empty { border-left-color: var(--ink-muted); }
+.iw-receipt--unavailable { border-left-style: dotted; border-left-color: var(--ink-subtle); }
+.iw-receipt--refused { border-left-style: double; border-left-width: 4px; border-left-color: var(--ink-muted); }
+.iw-receipt--capability_gap { border-left-color: var(--accent); border-left-width: 4px; }
+.iw-receipt--unknown { border-left-color: var(--accent); border-left-style: dashed; }
+
+.iw-receipt-head { display: flex; align-items: center; gap: .625rem; flex-wrap: wrap; }
+.iw-capability-name { font-weight: 600; font-size: .875rem; font-family: var(--font-mono, ui-monospace, monospace); }
+
+.iw-outcome {
+    font-size: .6875rem;
+    letter-spacing: .04em;
+    padding: .0625rem .375rem;
+    border-radius: .1875rem;
+    border: 1px solid var(--line-strong);
+}
+
+.iw-outcome--live { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.iw-outcome--simulated {
+    border-style: dashed;
+    border-color: var(--accent);
+    color: var(--accent-deep);
+    font-weight: 600;
+}
+.iw-outcome--empty { border-color: var(--ink-muted); color: var(--ink-muted); }
+.iw-outcome--unavailable { border-style: dotted; color: var(--ink-subtle); }
+.iw-outcome--refused { border-style: double; border-width: 3px; color: var(--ink-muted); }
+.iw-outcome--capability_gap {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-deep);
+    font-weight: 600;
+}
+.iw-outcome--unknown { border-color: var(--accent); color: var(--accent); }
+
+.iw-receipt-copy { margin: 0; font-size: .875rem; line-height: 1.45; }
+.iw-receipt-meta { display: flex; gap: .75rem; flex-wrap: wrap; font-size: .6875rem; color: var(--ink-subtle); }
+
+.iw-payload-block {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    padding: .5rem;
+    border: 1px dashed var(--line-strong);
+    border-radius: .25rem;
+    background: var(--surface-2);
+}
+
+/* THE label. Filled, uppercase, and sitting on the payload itself — a tooltip or a corner badge
+   would be exactly the treatment that lets a reader scroll past it to the geometry. */
+.iw-simulated {
+    margin: 0;
+    align-self: flex-start;
+    padding: .125rem .5rem;
+    font-size: .6875rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    border-radius: .1875rem;
+    background: var(--accent);
+    color: var(--accent-ink);
+    line-height: 1.4;
+}
+
+.iw-simulated--payload {
+    align-self: stretch;
+    letter-spacing: .02em;
+    font-weight: 600;
+    text-transform: none;
+}
+
+.iw-payload {
+    margin: 0;
+    padding: .5rem;
+    overflow-x: auto;
+    font-size: .75rem;
+    line-height: 1.5;
+    background: var(--bg);
+    border-radius: .25rem;
+}
+
+.iw-empty-note { line-height: 1.45; }
+
+/* ── evidence ──────────────────────────────────────────────────────────── */
+
+.iw-evidence-list, .iw-not-evidence-list, .iw-remainder-list, .iw-next-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .625rem;
+}
+
+.iw-evidence-item {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    padding: .625rem .75rem;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--ink);
+    border-radius: .375rem;
+    background: var(--bg);
+}
+
+.iw-evidence-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.iw-evidence-summary { margin: 0; font-size: .9375rem; line-height: 1.45; }
+.iw-serves { display: block; }
+
+.iw-verdict {
+    font-size: .6875rem;
+    padding: .0625rem .375rem;
+    border-radius: .1875rem;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-muted);
+}
+
+.iw-verdict--supports { border-color: var(--ink); color: var(--ink); }
+.iw-verdict--complicates { border-style: dashed; }
+.iw-verdict--refutes { border-style: double; border-width: 3px; }
+.iw-verdict--inconclusive { border-style: dotted; }
+.iw-verdict--none, .iw-verdict--unknown { border-color: var(--accent); color: var(--accent); }
+
+/* The disqualified list is DIM but never hidden: an empty evidence list because everything was
+   simulated looks identical to one where nothing was requested, and those are opposite facts. */
+.iw-not-evidence {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    padding-top: .625rem;
+    border-top: 1px dashed var(--line-strong);
+}
+
+.iw-not-evidence-list li { font-size: .875rem; line-height: 1.5; }
+
+/* ── synthesis and remainder ───────────────────────────────────────────── */
+
+.iw-section {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    padding-bottom: .75rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.iw-section:last-of-type { border-bottom: 0; padding-bottom: 0; }
+.iw-section-head { display: flex; align-items: center; gap: .625rem; flex-wrap: wrap; }
+.iw-section-text { margin: 0; line-height: 1.6; max-width: 46rem; }
+
+.iw-section-refs {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    border-left: 2px solid var(--line);
+    font-size: .8125rem;
+}
+
+.iw-ref-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .25rem; }
+.iw-ref-list--refusals li { color: var(--ink-muted); }
+
+/* The remainder is a PEER of the answer, not a footer. What measurement did not settle is the
+   part a fluent paragraph most naturally absorbs. */
+.iw-remainder { border-left: 3px solid var(--accent); }
+.iw-remainder-item {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    padding: .5rem .75rem;
+    background: var(--bg);
+    border-radius: .375rem;
+}
+
+.iw-remainder-text { margin: 0; font-size: .9375rem; line-height: 1.5; }
+.iw-not-accepted { line-height: 1.5; padding-top: .5rem; border-top: 1px dashed var(--line); }
+
+/* ── next actions and trace ────────────────────────────────────────────── */
+
+.iw-next-list li { font-size: .875rem; line-height: 1.55; }
+
+.iw-trace-head { display: flex; align-items: baseline; gap: .75rem; }
+.iw-trace-head .iw-h2 { margin: 0; }
+
+.iw-trace-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.iw-trace-event {
+    display: flex;
+    flex-direction: column;
+    gap: .125rem;
+    padding-left: .75rem;
+    border-left: 2px solid var(--line);
+    font-size: .8125rem;
+}
+
+.iw-trace-event--user { border-left-color: var(--accent); }
+.iw-trace-event--system { border-left-color: var(--ink-muted); }
+.iw-trace-event--model { border-left-style: dotted; border-left-color: var(--ink-muted); }
+.iw-trace-event--unknown { border-left-color: var(--accent); border-left-style: dashed; }
+
+.iw-trace-line { display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; }
+.iw-actor { font-size: .6875rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.iw-actor--user { color: var(--accent-deep); }
+.iw-actor--model { color: var(--ink-muted); }
+.iw-actor--system { color: var(--ink-muted); }
+.iw-actor--unknown { color: var(--accent); text-transform: none; }
+.iw-trace-actor-name { font-family: var(--font-mono, ui-monospace, monospace); font-size: .75rem; }
+.iw-trace-at, .iw-trace-rev { font-size: .6875rem; color: var(--ink-subtle); }
+.iw-trace-transition { margin: 0; }
+
+.iw-again { align-self: flex-start; }
+
+/* Reduced motion: the live marker is the only animation on this surface, and it becomes a static
+   dot rather than disappearing — the fact that something is still working is information. */
+@media (prefers-reduced-motion: reduce) {
+    .iw-pulse { animation: none; opacity: 1; }
+    .iw-option, .iw-receipt, .iw-claim { transition: none; }
+}

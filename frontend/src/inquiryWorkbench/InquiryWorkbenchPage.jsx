@@ -1,0 +1,312 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import InquiryEntry from './InquiryEntry.jsx';
+import ProvisionalReading from './ProvisionalReading.jsx';
+import ClaimBlocks from './ClaimBlocks.jsx';
+import ObservablePlan from './ObservablePlan.jsx';
+import DecisionStream from './DecisionStream.jsx';
+import DecisionCard from './DecisionCard.jsx';
+import CapabilityActivity from './CapabilityActivity.jsx';
+import EvidencePanel from './EvidencePanel.jsx';
+import SynthesisView from './SynthesisView.jsx';
+import TraceView from './TraceView.jsx';
+import { createInquiryClient } from './inquiryClient.js';
+import {
+    openDecision, outcomeCounts, STATE_LABEL, MODE_COPY,
+    IS_AWAITING_USER, IS_TERMINAL_STATE,
+} from './inquiryContract.js';
+import { API_URL } from '../config/api';
+import './inquiryWorkbench.css';
+
+/**
+ * INQUIRY WORKBENCH — the surface. Prompt and images in, a claim graph you can argue with in the
+ * middle, an answer and its remainder out.
+ *
+ * ## One session, every panel a pure function of it
+ *
+ * Same discipline `/agent` settled on: state is a single normalised session and no panel holds a
+ * second copy of the inquiry's truth. The client is injectable so the whole surface can be driven
+ * by `createMockInquiryClient` in tests and by Lane D's routes in the browser, with no branch
+ * inside any component — and that is also the Lane D swap point. When the routes land, nothing
+ * here changes.
+ *
+ * ## A columnar workbench, not a node canvas
+ *
+ * The brief permits a small relation visual and prefers a readable column, and the reason holds up
+ * under the content: what a person does here is READ a claim, decide whether they believe it, and
+ * see what would have to be observed to settle it. That is reading work. A force-directed graph of
+ * twelve nodes would be a picture of the data structure rather than of the argument, and the
+ * relations that matter are already on each claim as a short list.
+ *
+ * ## Not routed until Lane D
+ *
+ * Nothing in this lane registers `/inquiry` in the router. Route registration is Lane D's, per the
+ * board's additive-only rule, and this page is reachable only by importing it until then.
+ */
+export default function InquiryWorkbenchPage({ client = null, posts: injectedPosts = null }) {
+    const inquiryClient = useRef(client || createInquiryClient()).current;
+
+    const [posts, setPosts] = useState(injectedPosts || []);
+    const [session, setSession] = useState(null);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
+    const [conflict, setConflict] = useState(null);
+    const [unavailable, setUnavailable] = useState('');
+    const unwatch = useRef(null);
+
+    // The corpus. A gallery that will not load is soft — but it is not silent either: with no
+    // images there is nothing to inquire into, so the entry says so rather than offering an empty
+    // grid that looks like a corpus with nothing in it.
+    useEffect(() => {
+        if (injectedPosts) return undefined;
+        let live = true;
+        (async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/posts?page=1&limit=24`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (live) setPosts(Array.isArray(data?.posts) ? data.posts : []);
+            } catch { /* the entry reports an empty corpus */ }
+        })();
+        return () => { live = false; };
+    }, [injectedPosts]);
+
+    useEffect(() => () => { unwatch.current?.(); }, []);
+
+    const listen = useCallback((sessionId) => {
+        unwatch.current?.();
+        unwatch.current = inquiryClient.watch(sessionId, {
+            onSession: setSession,
+            onError: (e) => setError(e?.message || 'Lost the session.'),
+        });
+    }, [inquiryClient]);
+
+    const start = useCallback(async (input) => {
+        setBusy(true);
+        setError('');
+        setUnavailable('');
+        try {
+            const first = await inquiryClient.start(input);
+            if (!first?.session_id) throw new Error('The inquiry did not come back with an id.');
+            setSession(first);
+            listen(first.session_id);
+        } catch (e) {
+            // THE PRODUCTION UNAVAILABLE STATE, and the one place it would be tempting to fall
+            // back to a fixture. A 404 or a dead connection on the start route means the inquiry
+            // API is not deployed; the entry says exactly that and shows nothing in its place.
+            // Substituting a fixture here would turn an outage into a working demonstration —
+            // structurally the same lie as calling a simulated receipt evidence, one layer up.
+            const status = e?.status;
+            if (!status || status === 404 || status >= 500) {
+                setUnavailable(status
+                    ? `POST /api/v1/inquiries — ${status}. ${e.message}`
+                    : `POST /api/v1/inquiries — ${e?.message || 'no response'}`);
+            } else {
+                setError(e?.message || 'Could not start the inquiry.');
+            }
+        } finally {
+            setBusy(false);
+        }
+    }, [inquiryClient, listen]);
+
+    const respond = useCallback(async (response) => {
+        if (!session?.session_id) return;
+        setBusy(true);
+        setError('');
+        setConflict(null);
+        try {
+            const next = await inquiryClient.respond(session.session_id, response);
+            setSession(next);
+            // The SAME session, resumed — so pick the watch back up rather than starting anything.
+            listen(session.session_id);
+        } catch (e) {
+            if (e?.conflict) {
+                // The person's input is NOT discarded: `DecisionCard` holds its own selection and
+                // its response id, so refreshing the session under it leaves the choice intact and
+                // the resubmit carries the same response id the first attempt did.
+                let refreshed = false;
+                if (e.session) {
+                    setSession(e.session);
+                    refreshed = true;
+                } else {
+                    try { setSession(await inquiryClient.get(session.session_id)); refreshed = true; }
+                    catch { /* the message still explains it */ }
+                }
+                setConflict({ message: e.message || '', refreshed });
+            } else {
+                setError(e?.message || 'The decision did not go through.');
+            }
+        } finally {
+            setBusy(false);
+        }
+    }, [inquiryClient, session, listen]);
+
+    const reset = () => {
+        unwatch.current?.();
+        unwatch.current = null;
+        setSession(null);
+        setError('');
+        setConflict(null);
+    };
+
+    if (!session) {
+        return (
+            <main className="iw-shell">
+                <InquiryEntry
+                    posts={posts}
+                    busy={busy}
+                    error={error}
+                    unavailable={unavailable}
+                    onStart={start}
+                />
+            </main>
+        );
+    }
+
+    const decision = openDecision(session);
+    const awaiting = IS_AWAITING_USER(session.state.value);
+    const working = !awaiting && !IS_TERMINAL_STATE(session.state.value);
+
+    return (
+        <main className="iw-shell iw-shell--session">
+            <SessionHeader session={session} working={working} />
+
+            {/* The open decision comes first when the inquiry is waiting on it — but everything
+                that led here stays below, unhidden. A modal would frame the question as an
+                interruption to the inquiry; it IS the inquiry, paused at the point where it
+                stopped being able to proceed on its own. */}
+            {awaiting && decision ? (
+                <DecisionCard
+                    decision={decision}
+                    revision={session.revision}
+                    busy={busy}
+                    error={error}
+                    conflict={conflict}
+                    onRespond={respond}
+                />
+            ) : null}
+
+            {error && !awaiting ? <p className="iw-error" role="alert">{error}</p> : null}
+
+            <ProvisionalReading reading={session.graph.reading} />
+            <ClaimBlocks
+                session={session}
+                highlightRefs={decision ? decision.affected_refs : []}
+            />
+            <ObservablePlan
+                session={session}
+                highlightRefs={decision ? decision.affected_refs : []}
+            />
+            <DecisionStream records={session.decision_records} />
+            <CapabilityActivity receipts={session.capability_receipts} />
+            <NextActions session={session} onRestart={reset} />
+            <EvidencePanel session={session} />
+            <SynthesisView session={session} />
+            <TraceView trace={session.trace} />
+
+            <button type="button" className="iw-expand iw-again" onClick={reset}>
+                Ask something else
+            </button>
+        </main>
+    );
+}
+
+/** The question, the pictures and the mode — immutable, and above everything they produced. */
+export function SessionHeader({ session, working = false }) {
+    const state = session.state.known ? session.state.value : 'unknown';
+    const mode = session.mode.known ? session.mode.value : '';
+
+    return (
+        <header className="iw-panel iw-session-head" aria-label="Question and images">
+            <div className="iw-session-status">
+                <span className={`iw-state iw-state--${state}`} role="status" data-state={state}>
+                    {working ? <span className="iw-pulse" aria-hidden="true" /> : null}
+                    {state === 'unknown'
+                        ? <>a state this client does not recognise
+                            (<span className="iw-badge-raw">{session.state.value}</span>)</>
+                        : (STATE_LABEL[state] || state)}
+                </span>
+                {mode ? (
+                    <span className="iw-mode-chip" data-mode={mode} title={MODE_COPY[mode].hint}>
+                        {MODE_COPY[mode].title} mode
+                    </span>
+                ) : null}
+                {session.revision !== null
+                    ? <span className="iw-quiet">revision {session.revision}</span> : null}
+            </div>
+
+            {/* Byte-identical, and not editable here. The compiler's source spans index into this
+                exact string. */}
+            <p className="iw-session-prompt">{session.graph.prompt}</p>
+
+            {session.graph.image_refs.length ? (
+                <ul className="iw-session-images">
+                    {session.graph.image_refs.map((img) => (
+                        <li key={img.post_id} data-post-id={img.post_id}>
+                            {img.image_url
+                                ? <img src={img.image_url} alt="" loading="lazy" />
+                                : <span className="iw-thumb-blank" aria-hidden="true" />}
+                            <span className="iw-thumb-title">{img.title || img.post_id}</span>
+                        </li>
+                    ))}
+                </ul>
+            ) : null}
+
+            {session.error ? <p className="iw-error" role="alert">{session.error}</p> : null}
+        </header>
+    );
+}
+
+/**
+ * What a person can do about an outcome, said specifically.
+ *
+ * "Something went wrong, try again" is the wrong answer to all four of these, and to two of them
+ * it is actively misleading. A capability gap will not resolve on a retry — nothing exists to
+ * run — and re-issuing on an empty is how a phrase-conditioned empty becomes a sampling artifact
+ * rather than the observation it is. So each outcome gets its own sentence, and none of them
+ * suggests running the same thing again in the hope of a different answer.
+ */
+export function NextActions({ session, onRestart }) {
+    const counts = outcomeCounts(session);
+    const has = (k) => (counts[k] || 0) > 0;
+    if (!has('empty') && !has('unavailable') && !has('refused') && !has('capability_gap')) {
+        return null;
+    }
+
+    return (
+        <section className="iw-panel iw-next" aria-label="What you can do about this">
+            <h2 className="iw-h2">What you can do about this</h2>
+            <ul className="iw-next-list">
+                {has('empty') ? (
+                    <li data-next="empty">
+                        <b>An instrument returned nothing.</b> That is recorded as a result. Asking
+                        the same thing again would turn the observation into a sampling artifact;
+                        a differently-scoped question is a new inquiry, and it starts a new record.
+                    </li>
+                ) : null}
+                {has('unavailable') ? (
+                    <li data-next="unavailable">
+                        <b>A capability was unavailable.</b> Nothing was attempted, so nothing was
+                        learned about the images. The claims it would have served are still open
+                        and are listed in the remainder.
+                    </li>
+                ) : null}
+                {has('refused') ? (
+                    <li data-next="refused">
+                        <b>A request was refused.</b> The reason is on the receipt. A refusal is a
+                        decision with grounds, not a failure to display.
+                    </li>
+                ) : null}
+                {has('capability_gap') ? (
+                    <li data-next="capability_gap">
+                        <b>Semant cannot make one of these observable at all.</b> Retrying will not
+                        change that — there is nothing to run. The claim stays in the remainder
+                        until such a capability exists.
+                    </li>
+                ) : null}
+            </ul>
+            <button type="button" className="iw-expand" onClick={onRestart}>
+                Start a different inquiry
+            </button>
+        </section>
+    );
+}
