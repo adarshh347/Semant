@@ -1,6 +1,14 @@
 """
 HARNESS-002D — the stage order, the budget, and nothing else.
 
+## Who records that a stage started
+
+NOT these functions, since HARNESS-003B. `steps.start` writes the `started` attempt and persists it
+BEFORE the stage is entered, which is the whole point of the checkpoint: a stage body that recorded
+its own start would do so inside the same call it is about to block in, and a process that died
+there would leave nothing behind. Each body below therefore records exactly ONE attempt — its
+ending — and `steps.run` carries the driver's `started_at` onto it so the duration is real.
+
 THIS MODULE CONTAINS NO INTELLIGENCE. No prompt, no claim taxonomy, no capability algorithm, no
 pause policy, no UI formatting. Every one of those belongs to a merged lane and a copy here would
 be a second opinion that drifts. What it owns is the ORDER stages run in, the budget each is
@@ -102,6 +110,17 @@ class Stages:
     capability: Any = None
     judge: Any = None
     composer: Any = None
+    #: An injected substage observer, offered to any stage that DECLARES it wants one.
+    #:
+    #: The declaration is `wants_substage_observer = True` on the stage object — an explicit opt-in
+    #: rather than signature introspection. Guessing whether a callee accepts a keyword by reading
+    #: its parameters is a check whose evidence is the shape of a function rather than a statement
+    #: of intent, and it fails silently in exactly the case that matters: a stage that grew a
+    #: `**kwargs` would start receiving an observer nobody meant it to have.
+    #:
+    #: Left None here. Lane D binds a richer one; until then the coordinator records the floor it
+    #: holds itself — how many inputs were selected, and the topology the stage declared.
+    observer: Optional[Callable[..., None]] = None
     clock: Callable[[], str] = utc_now
 
 
@@ -226,7 +245,6 @@ def _frame(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
         ledger.record(StageName.FRAMER, StageOutcome.SKIPPED, at=at,
                       detail="no framer was bound")
         return session
-    ledger.record(StageName.FRAMER, StageOutcome.STARTED, at=at)
     context = corpus.corpus_context_for(session.posts)
     # THE CLOCK IS HANDED IN, and it is what makes a replay comparable at all. `mint_inquiry_id`
     # hashes the prompt and the moment, and every id Lane A produces downstream is derived from
@@ -268,14 +286,7 @@ def _read(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
     # ledger whether or not a theorist ever learns to narrate.
     ledger.observe(f"reading {len(images)} selected image(s)", index=0, total=len(images), at=at,
                    refs=[i.post_id for i in images])
-    ledger.record(StageName.THEORIST, StageOutcome.STARTED, at=at,
-                  inputs=[i.post_id for i in images], role="scene_theorist",
-                  execution_mode=AttemptExecutionMode.LIVE,
-                  input_counts={"images": len(images)},
-                  provenance={"floor": "image count is the coordinator's own; substage detail is "
-                                       "the stage's to supply"})
-    result = stages.theorist.read(session.prompt, images, inquiry_id=session.inquiry_id,
-                                  corpus=corpus.corpus_context_for(session.posts), now=at)
+    result = _read_with_observer(stages, session, images, at, ledger)
     receipt = result.reading.provenance
     finished_at = stages.clock()
     truncation = outcomes.detect_truncation(receipt, producer=stages.theorist)
@@ -341,6 +352,28 @@ class _StoredReading:
     available: bool = False
 
 
+def _wants_observer(stage: Any) -> bool:
+    """Whether this stage has DECLARED that it reports its own insides."""
+    return bool(getattr(stage, "wants_substage_observer", False))
+
+
+def _read_with_observer(stages: Stages, session: SemanticInquirySession, images: Any, at: str,
+                        ledger: "_Ledger") -> Any:
+    """Call the theorist, handing it an observer only if it said it wants one.
+
+    The coordinator learns nothing about what a scene theorist is made of by doing this — it hands
+    over a callable and receives whatever the stage chooses to report. A runner that had to import
+    the semantic compiler to discover its per-image progress could not be reused for the next stage,
+    and would break every time that lane refactored.
+    """
+    call = dict(inquiry_id=session.inquiry_id,
+                corpus=corpus.corpus_context_for(session.posts), now=at)
+    if _wants_observer(stages.theorist):
+        sink = stages.observer or ledger.observe
+        call["on_substage"] = sink
+    return stages.theorist.read(session.prompt, images, **call)
+
+
 def _compile(session: SemanticInquirySession, reading: Any, stages: Stages, ledger: _Ledger,
              at: str) -> SemanticInquirySession:
     if stages.compiler is None:
@@ -349,9 +382,6 @@ def _compile(session: SemanticInquirySession, reading: Any, stages: Stages, ledg
         return session
     blocks = len(((session.reading.get("reading") or {}).get("blocks")) or ())
     started_at = at
-    ledger.record(StageName.COMPILER, StageOutcome.STARTED, at=at, role="semantic_compiler",
-                  execution_mode=AttemptExecutionMode.LIVE,
-                  input_counts={"reading blocks": blocks})
     request = CompilationRequest(
         prompt=session.prompt, inquiry_id=session.inquiry_id, inquiry_frame=dict(session.frame),
         reading=reading.reading if reading is not None else None,
@@ -430,8 +460,6 @@ def _deliberate(session: SemanticInquirySession, stages: Stages, ledger: _Ledger
                       detail="the compiler declared no fork; nothing needed deciding")
         return session
 
-    ledger.record(StageName.STEWARD, StageOutcome.STARTED, at=at,
-                  inputs=[f["candidate_id"] for f in forks])
     state = machine.offer(state, forks, steward=steward_for(session, stages), at=at)
     paused = state.state is SessionState.AWAITING_USER
     ledger.record(StageName.STEWARD,
@@ -568,8 +596,6 @@ def _execute(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
                              "commissioned. Nothing was chosen on anybody's behalf.")
         return session
 
-    ledger.record(StageName.CAPABILITY, StageOutcome.STARTED, at=at,
-                  inputs=[str(observable.get("observable_id") or "")])
     receipt = stages.capability.invoke(
         session_id=session.session_id, observable=observable, alternative=alternative,
         images=corpus.image_refs_for(session.posts), at=at)
@@ -593,7 +619,6 @@ def _judge(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
         ledger.record(StageName.JUDGE, StageOutcome.SKIPPED, at=at,
                       detail="no evidence judge is bound to this deployment")
         return session
-    ledger.record(StageName.JUDGE, StageOutcome.STARTED, at=at)
     verdicts = stages.judge(session)
     outcome = StageOutcome.COMPLETED if verdicts else StageOutcome.EMPTY
     counts = {}
@@ -608,8 +633,6 @@ def _judge(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
 def _compose(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
              at: str) -> SemanticInquirySession:
     """One synthesis per completed branch. The composer refuses rather than inventing a reference."""
-    ledger.record(StageName.COMPOSER, StageOutcome.STARTED, at=at,
-                  inputs=[v.verdict_id for v in session.verdicts])
     synthesis = stages.composer.compose(session, at=at)
     if synthesis is None or not synthesis.sections:
         ledger.record(StageName.COMPOSER, StageOutcome.EMPTY, at=at,

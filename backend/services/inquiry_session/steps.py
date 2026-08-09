@@ -107,7 +107,22 @@ def status_of(session: SemanticInquirySession, stage: StageName) -> str:
 
 
 def interrupted_stages(session: SemanticInquirySession) -> Tuple[str, ...]:
-    """Stages whose last attempt entered external work and never recorded leaving it."""
+    """Stages this session cannot honestly continue past.
+
+    BOTH signatures, and the second is the one a test found missing. A `started` attempt with no
+    terminal successor is a process that died mid-call. An `interrupted` attempt is that same fact
+    after `reopen` has named it — and the chain must stop at both, because naming an ambiguity does
+    not resolve it. Counting only the first meant a reopened session walked straight on to the
+    compiler, feeding it a reading that may or may not exist and reporting whatever came out as an
+    ordinary result.
+    """
+    return tuple(name.value for name, attempt in latest_by_stage(session).items()
+                 if attempt.outcome in (StageAttemptOutcome.STARTED,
+                                        StageAttemptOutcome.INTERRUPTED))
+
+
+def dangling_stages(session: SemanticInquirySession) -> Tuple[str, ...]:
+    """Only the unnamed ones — what `reopen` still has to write down."""
     return tuple(name.value for name, attempt in latest_by_stage(session).items()
                  if attempt.outcome is StageAttemptOutcome.STARTED)
 
@@ -119,12 +134,12 @@ def plan(session: SemanticInquirySession) -> Plan:
     that crashed mid-theorist and then had its state written as `exhausted` would otherwise read as
     a finished inquiry rather than an abandoned one.
     """
-    dangling = interrupted_stages(session)
-    if dangling:
-        return Plan(stage=None, interrupted=dangling,
-                    reason=(f"{', '.join(sorted(dangling))} entered external work and never "
-                            f"recorded leaving it. The call may have happened, so nothing is "
-                            f"retried on its own."))
+    stuck = interrupted_stages(session)
+    if stuck:
+        return Plan(stage=None, interrupted=stuck,
+                    reason=(f"{', '.join(sorted(stuck))} entered external work and never recorded "
+                            f"leaving it. The call may have happened, so nothing is retried on its "
+                            f"own and nothing downstream is run on a result that may not exist."))
 
     state = _state_of(session)
     if state in HALTED_STATES:
@@ -150,7 +165,7 @@ def reopen(session: SemanticInquirySession, *, at: str) -> SemanticInquirySessio
     a reader can see how long the process was inside the call before it went — which is usually the
     only evidence available about whether the call completed.
     """
-    dangling = interrupted_stages(session)
+    dangling = dangling_stages(session)
     if not dangling:
         return session
     ledger = coordinator._Ledger(session.session_id, seq=len(session.stages))
@@ -365,8 +380,8 @@ def exhausted_reason(session: SemanticInquirySession) -> str:
 
 
 __all__ = ["STEP_ORDER", "EXTERNAL_STAGES", "HALTED_STATES", "Plan", "StepResult", "DriverHalted",
-           "plan", "status_of", "latest_by_stage", "interrupted_stages", "reopen", "start", "run",
-           "exhausted_reason"]
+           "plan", "status_of", "latest_by_stage", "interrupted_stages", "dangling_stages",
+           "reopen", "start", "run", "exhausted_reason"]
 
 
 # ── closing ──────────────────────────────────────────────────────────────────
