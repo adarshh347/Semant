@@ -51,6 +51,11 @@ REFUSAL_ADDED_OPTION = "formatter_added_option"
 REFUSAL_DROPPED_OPTION = "formatter_dropped_option"
 REFUSAL_LOST_REF = "formatter_lost_ref"
 REFUSAL_EMPTIED_QUESTION = "formatter_emptied_question"
+#: A formatter that raised or returned something that is not a mapping at all. Its own code rather
+#: than borrowing `formatter_emptied_question`: a model that timed out and a model that returned an
+#: empty question are different failures, and the refusal rate is only informative if the codes say
+#: which one happened.
+REFUSAL_FORMATTER_FAILED = "formatter_failed"
 
 #: The only keys a formatter may return. Closed, because "may only reword" has to be a shape and
 #: not an instruction — an instruction is something a model can be talked out of.
@@ -241,7 +246,19 @@ def _check(returned: Mapping[str, Any], draft: DecisionRequest, *,
                          f"could set them could talk the system out of asking."),
                     detail=[f"allowed={list(FORMATTER_OPTION_FIELDS)}"]))
                 return {}, refusals
-            by_id[str(entry.get("option_id") or "")] = dict(entry)
+            option_id = str(entry.get("option_id") or "")
+            if option_id in by_id:
+                # Caught explicitly, because the mapping built below would COLLAPSE a repeat and
+                # the id-set comparison would then pass: a formatter returning one option twice
+                # and dropping another would look, to a set, exactly like a formatter that
+                # returned both.
+                refusals.append(InteractionRefusal(
+                    code=REFUSAL_ADDED_OPTION, what=option_id, at=at,
+                    why=(f"formatter {formatter!r} returned option {option_id!r} twice. Two "
+                         f"wordings for one id means the second silently wins, and which one the "
+                         f"person is shown would be decided by list order.")))
+                return {}, refusals
+            by_id[option_id] = dict(entry)
 
         drafted = {o.option_id for o in draft.options}
         if set(by_id) != drafted:
@@ -310,12 +327,12 @@ class DeliberationSteward:
             # deterministic request stands and the failure is on the session rather than in a log
             # nobody reads — a wording step is never allowed to take a session down.
             return FormattedRequest(request=draft, refusals=(InteractionRefusal(
-                code=REFUSAL_EMPTIED_QUESTION, what=name, at=at,
+                code=REFUSAL_FORMATTER_FAILED, what=name, at=at,
                 why=f"formatter {name!r} raised {type(exc).__name__}: {exc}"),))
 
         if not isinstance(returned, Mapping):
             return FormattedRequest(request=draft, refusals=(InteractionRefusal(
-                code=REFUSAL_ADDED_FIELD, what=type(returned).__name__, at=at,
+                code=REFUSAL_FORMATTER_FAILED, what=type(returned).__name__, at=at,
                 why=f"formatter {name!r} returned {type(returned).__name__}, not a mapping"),))
 
         accepted, refusals = _check(returned, draft, formatter=name, at=at)
@@ -353,4 +370,4 @@ class DeliberationSteward:
 __all__ = ["DeliberationSteward", "RequestFormatter", "DeterministicFormatter", "FormattedRequest",
            "FORMATTER_FIELDS", "FORMATTER_OPTION_FIELDS", "WHY_NOW", "DETERMINISTIC",
            "REFUSAL_ADDED_FIELD", "REFUSAL_ADDED_OPTION", "REFUSAL_DROPPED_OPTION",
-           "REFUSAL_LOST_REF", "REFUSAL_EMPTIED_QUESTION"]
+           "REFUSAL_LOST_REF", "REFUSAL_EMPTIED_QUESTION", "REFUSAL_FORMATTER_FAILED"]

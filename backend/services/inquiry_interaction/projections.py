@@ -152,7 +152,12 @@ def changed_refs(state: InquiryInteractionState) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for record in state.records:
         request = state.request(record.decision_id)
-        if request is None or record.outcome in (mach.OUTCOME_UNRESOLVED, mach.OUTCOME_DEFERRED):
+        # Three outcomes settle a fork without taking any road out of it. `rejected` belongs with
+        # the other two and is the one easiest to miss, because unlike them it IS an answer — the
+        # person replied, and what they said was "none of these". An arrow here would assert a
+        # downstream consequence for a decision whose whole content is that none was chosen.
+        if request is None or record.outcome in (mach.OUTCOME_UNRESOLVED, mach.OUTCOME_DEFERRED,
+                                                 mach.OUTCOME_REJECTED):
             continue
         chosen = request.option(record.chosen_option_id) if record.chosen_option_id else None
         refs = list(chosen.affects_refs) if chosen and chosen.affects_refs \

@@ -443,7 +443,9 @@ def test_this_lane_does_not_edit_another_lanes_files():
                           cwd=root, capture_output=True, text=True)
     if diff.returncode != 0:                    # no git, or a detached checkout — say so, skip
         pytest.skip(f"git diff unavailable: {diff.stderr.strip()[:120]}")
-    touched = [f for f in diff.stdout.split() if f]
+    # `splitlines`, not `split`: a path containing a space would become two paths, and
+    # each half would look like a file outside the lane.
+    touched = [f for f in diff.stdout.splitlines() if f.strip()]
     if not touched:
         pytest.skip("no diff against origin/main — nothing to check ownership of")
     allowed = ("contracts/inquiry-interaction.v1.json",

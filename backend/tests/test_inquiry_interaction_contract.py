@@ -78,6 +78,37 @@ def test_the_contract_names_the_actor_the_goal_engines_log_uses(contract):
                                      ev.ACTOR_CURATOR}
 
 
+def test_every_code_a_caller_can_receive_is_declared_somewhere(contract):
+    """`response_malformed` is raised by the same base type as the nine conflicts and is
+    deliberately not one of them — a body that is not a response at all is a parse failure that
+    sits before them, and a client told 'conflict' for a schema error would retry forever. It is
+    declared as its own thing rather than left undeclared, because an undeclared code that can
+    reach a caller is one the integration lane maps by guessing."""
+    from backend.services.inquiry_interaction import conflicts as cf
+    from backend.services.inquiry_interaction import steward as stw
+
+    parse = set(contract["closed_sets"]["parse_codes"])
+    assert cf.ResponseMalformed.code in parse
+    assert cf.ResponseMalformed.code not in set(contract["closed_sets"]["conflict_codes"])
+
+    refusals = set(contract["closed_sets"]["refusal_codes"])
+    in_code = {stw.REFUSAL_ADDED_FIELD, stw.REFUSAL_ADDED_OPTION, stw.REFUSAL_DROPPED_OPTION,
+               stw.REFUSAL_LOST_REF, stw.REFUSAL_EMPTIED_QUESTION, stw.REFUSAL_FORMATTER_FAILED}
+    assert in_code <= refusals, f"undeclared: {sorted(in_code - refusals)}"
+
+
+def test_awaiting_user_without_a_recorded_pause_origin_is_refused():
+    """`paused_from` is what an answered session RESUMES INTO. Waiting with no origin resumes to a
+    default phase; a stale origin while not waiting is read by the NEXT pause. Neither raises
+    anywhere else — they just put the session somewhere nobody chose."""
+    with pytest.raises(ValidationError, match="resume into a default phase"):
+        sc.InquiryInteractionState(session_id="inqs_1", state=sc.SessionState.AWAITING_USER,
+                                   open_decision_id="dec_1")
+    with pytest.raises(ValidationError, match="outliving its pause"):
+        sc.InquiryInteractionState(session_id="inqs_1", state=sc.SessionState.READY,
+                                   paused_from=sc.SessionState.COMPILING)
+
+
 def test_the_contract_states_the_tie_rule_rather_than_leaving_it_to_the_code(contract):
     """The one rule most likely to be quietly relaxed by whoever next needs auto mode to be
     smoother. It is in the contract so that relaxing it is a visible diff."""
@@ -201,7 +232,8 @@ def test_awaiting_user_with_nothing_open_is_refused():
     """A session that says it is waiting and names nothing to answer cannot be answered, and would
     sit there looking live. `run_store.is_answerable` holds the same rule one layer down."""
     with pytest.raises(ValidationError, match="cannot be answered"):
-        sc.InquiryInteractionState(session_id="inqs_1", state=sc.SessionState.AWAITING_USER)
+        sc.InquiryInteractionState(session_id="inqs_1", state=sc.SessionState.AWAITING_USER,
+                                   paused_from=sc.SessionState.COMPILING)
 
 
 def test_an_open_decision_while_not_waiting_is_refused():

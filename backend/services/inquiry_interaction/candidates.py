@@ -23,6 +23,7 @@ paraphrase against. A record that carried only the paraphrase would make the ste
 """
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
@@ -170,7 +171,16 @@ def read(data: Any) -> DecisionCandidate:
             f"candidate {candidate_id!r} repeats an option id: {sorted(seen)}",
             code=REFUSAL_CANDIDATE_UNREADABLE, what=candidate_id)
 
-    allow_free_text = data.get("allow_free_text")
+    allow_free_text = True if data.get("allow_free_text") is None \
+        else bool(data.get("allow_free_text"))
+    if not options and not allow_free_text:
+        raise CandidateUnreadable(
+            f"candidate {candidate_id!r} offers no options and takes no free text. There is "
+            f"nothing a person could say that a request formed from it would accept — and a "
+            f"request refusing to be built is how this arrives if it is not caught here: as a "
+            f"validation error mid-drain that takes every later candidate in the batch with it.",
+            code=REFUSAL_CANDIDATE_UNREADABLE, what=candidate_id)
+
     return DecisionCandidate(
         candidate_id=candidate_id,
         kind=kind,
@@ -178,12 +188,15 @@ def read(data: Any) -> DecisionCandidate:
         why_now=_text(data.get("why_now")),
         options=options,
         affected_refs=tuple(str(r) for r in (data.get("affected_refs") or ())),
-        allow_free_text=True if allow_free_text is None else bool(allow_free_text),
+        allow_free_text=allow_free_text,
         blocking=True if data.get("blocking") is None else bool(data.get("blocking")),
         summaries={str(k): str(v) for k, v in (data.get("summaries") or {}).items()},
         provenance=dict(data.get("provenance") or {}),
-        # Verbatim, deep enough to survive the round trip a record makes it take.
-        raw=dict(data))
+        # DEEP. `dict(data)` shares every nested list and mapping with the caller's own object, so
+        # a producer that reused and mutated its candidate would retroactively change what this
+        # lane recorded it as having said — and `raw` exists precisely to be the thing a
+        # paraphrase can be checked against.
+        raw=copy.deepcopy(dict(data)))
 
 
 def read_all(items: Sequence[Any]) -> Tuple[Tuple[DecisionCandidate, ...],

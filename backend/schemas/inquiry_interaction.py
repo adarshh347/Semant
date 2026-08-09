@@ -544,6 +544,18 @@ class InquiryInteractionState(_Strict):
             raise ValueError(f"an open decision {self.open_decision_id!r} while the state is "
                              f"{self.state.value!r}; a decision nobody is waiting on would be "
                              f"answerable after the session had already moved past it")
+        # `paused_from` is the same invariant from the other side, and it is enforced rather than
+        # documented because it is what an answered session RESUMES INTO. A session waiting with no
+        # recorded origin would resume to the default phase; one carrying a stale origin while not
+        # waiting would send the next pause's answer back to the wrong place. Neither raises
+        # anywhere else — they simply put the session somewhere nobody chose.
+        if self.state is SessionState.AWAITING_USER and self.paused_from is None:
+            raise ValueError("state is awaiting_user with no `paused_from`; an answered session "
+                             "would resume into a default phase rather than the one it stopped in")
+        if self.state is not SessionState.AWAITING_USER and self.paused_from is not None:
+            raise ValueError(f"`paused_from` is {self.paused_from.value!r} while the state is "
+                             f"{self.state.value!r}; a pause origin outliving its pause would be "
+                             f"read by the next one")
         return self
 
     # ── reading ──

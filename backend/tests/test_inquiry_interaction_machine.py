@@ -384,14 +384,35 @@ def test_a_formatter_cannot_assert_a_claim_a_capability_or_a_status():
         assert formed.request.blocking is True
 
 
+def test_a_formatter_cannot_return_one_option_twice():
+    """A set comparison COLLAPSES a repeat, so a formatter returning one option twice and dropping
+    another would look, to a set, exactly like a formatter that returned both. Caught explicitly
+    for that reason — the id-set check alone would have passed it."""
+    st = steward(formatter=_Formatter(lambda d: {"options": [
+        {"option_id": d.options[0].option_id, "label": "first wording"},
+        {"option_id": d.options[0].option_id, "label": "second wording"}]}))
+    formed = st.form(read_candidate(fx.survey_scope_candidate()), session_id="inqs_1",
+                     revision=1, at=STAMP)
+    assert [r.code for r in formed.refusals] == [stw.REFUSAL_ADDED_OPTION]
+    assert "twice" in formed.refusals[0].why
+    assert formed.request.options[0].label == "Eastern wells only"
+
+
 def test_a_formatter_that_raises_does_not_take_the_session_down():
     def boom(_draft):
         raise RuntimeError("the model timed out")
 
     formed = steward(formatter=_Formatter(boom)).form(
         read_candidate(fx.survey_scope_candidate()), session_id="inqs_1", revision=1, at=STAMP)
-    assert formed.refusals and "RuntimeError" in formed.refusals[0].why
+    assert [r.code for r in formed.refusals] == [stw.REFUSAL_FORMATTER_FAILED]
+    assert "RuntimeError" in formed.refusals[0].why
     assert formed.request.question.startswith("Compare the eastern wells")
+
+    # A model that timed out and a model that returned an empty question are different failures,
+    # and the refusal rate is only informative if the codes say which one happened.
+    emptied = steward(formatter=_Formatter({"question": "   "})).form(
+        read_candidate(fx.survey_scope_candidate()), session_id="inqs_1", revision=1, at=STAMP)
+    assert [r.code for r in emptied.refusals] == [stw.REFUSAL_EMPTIED_QUESTION]
 
 
 def test_a_formatter_refusal_lands_on_the_session_where_a_reader_will_find_it():

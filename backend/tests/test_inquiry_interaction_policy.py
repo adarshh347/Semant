@@ -218,6 +218,47 @@ def test_an_option_without_a_consequence_is_refused():
         cand.read(raw)
 
 
+def test_a_candidate_offering_nothing_and_taking_no_text_is_refused_at_the_door():
+    """`DecisionRequest` refuses to be built from this, so catching it here is the difference
+    between one refused candidate and a validation error mid-drain that takes every later
+    candidate in the batch down with it."""
+    raw = dict(fx.survey_scope_candidate(), options=[], allow_free_text=False)
+    with pytest.raises(cand.CandidateUnreadable, match="nothing a person could say"):
+        cand.read(raw)
+
+
+def test_a_candidate_with_no_options_but_free_text_is_still_a_question():
+    """The negative control: what makes the refusal above about the PAIR rather than about having
+    no options, which is legitimate — 'what should I do instead?' is a real fork."""
+    raw = dict(fx.survey_scope_candidate(), options=[], allow_free_text=True)
+    assert cand.read(raw).options == ()
+
+
+def test_read_refuses_everything_the_request_type_would_have_refused():
+    """The claim that makes the drain loop safe: `read` is the validation boundary, and a candidate
+    it accepts can always be formed into a request. Checked against the request type's own rules
+    rather than by listing them again — a rule added there and not here would reopen exactly the
+    crash the fix closed."""
+    for raw in (dict(fx.survey_scope_candidate(), options=[], allow_free_text=False),
+                dict(fx.survey_scope_candidate(), question=""),
+                dict(fx.survey_scope_candidate(),
+                     options=[fx.survey_scope_candidate()["options"][0]] * 2)):
+        with pytest.raises(cand.CandidateUnreadable):
+            cand.read(raw)
+
+
+def test_the_preserved_mapping_does_not_move_when_the_producer_reuses_its_own_object():
+    """`raw` is what a paraphrase is checked against. A shallow copy shares every nested list with
+    the caller, so a producer that reused and mutated its candidate would retroactively change what
+    this lane recorded it as having said."""
+    raw = fx.survey_scope_candidate()
+    read = cand.read(raw)
+    raw["options"][0]["consequence"] = "something else entirely"
+    raw["affected_refs"].append("clm_invented")
+    assert read.raw["options"][0]["consequence"].startswith("reads the four eastern wells")
+    assert "clm_invented" not in read.raw["affected_refs"]
+
+
 def test_the_original_mapping_is_preserved_verbatim_on_the_candidate():
     """This lane paraphrases; `raw` is what the paraphrase can be checked against. Without it the
     steward would be unfalsifiable."""

@@ -167,18 +167,36 @@ def test_a_users_answer_shows_which_graph_objects_it_changed():
     assert by_user[0]["option_id"] == "opt_eastern"
 
 
-def test_an_unresolved_or_deferred_fork_draws_no_causal_arrow():
-    """Nothing was chosen, so nothing downstream changed. An arrow here would assert a consequence
-    that did not happen."""
+def test_no_settled_fork_that_took_no_road_out_of_itself_draws_a_causal_arrow():
+    """Three outcomes settle a fork without choosing anything, and `rejected` is the one easiest to
+    miss because unlike the other two it IS an answer: the person replied, and what they said was
+    "none of these". An arrow would assert a downstream consequence for a decision whose whole
+    content is that none was chosen."""
     auto, _ = opened(InteractionMode.AUTO)
     unresolved = next(d for d in pj.decisions(auto) if d["outcome"] == "unresolved")
     assert not [c for c in pj.changed_refs(auto)
                 if c["decision_id"] == unresolved["decision_id"]]
 
+    deferred, st = opened()
+    deferred = m.respond(deferred, answer(deferred, kind="skip", option_id=""), steward=st,
+                         at=LATER)
+    assert deferred.deferred
+    assert not [c for c in pj.changed_refs(deferred) if c["decision_id"] in deferred.deferred]
+
+    rejected, st2 = opened()
+    decision = rejected.open_decision_id
+    rejected = m.respond(rejected, answer(rejected, kind="reject_all", option_id=""), steward=st2,
+                         at=LATER)
+    assert rejected.record_for(decision).outcome == m.OUTCOME_REJECTED
+    assert not [c for c in pj.changed_refs(rejected) if c["decision_id"] == decision]
+
+
+def test_a_chosen_option_still_draws_its_arrow():
+    """The negative control for the three above. If `changed_refs` returned nothing at all, the
+    absence of an arrow would say nothing about rejections in particular."""
     state, st = opened()
-    state = m.respond(state, answer(state, kind="skip", option_id=""), steward=st, at=LATER)
-    assert state.deferred
-    assert not [c for c in pj.changed_refs(state) if c["decision_id"] in state.deferred]
+    state = m.respond(state, answer(state), steward=st, at=LATER)
+    assert [c["ref"] for c in pj.changed_refs(state) if c["by"] == "user"] == ["obs_series"]
 
 
 # ── the trace and the whole view ─────────────────────────────────────────────

@@ -60,8 +60,10 @@
       "formatter_added_option",
       "formatter_dropped_option",
       "formatter_lost_ref",
-      "formatter_emptied_question"
+      "formatter_emptied_question",
+      "formatter_failed"
     ],
+    "parse_codes": ["response_malformed"],
     "conflict_codes": [
       "wrong_session",
       "stale_revision",
@@ -72,6 +74,16 @@
       "free_text_not_allowed",
       "epistemic_status_attempted",
       "gate_bypass"
+    ]
+  },
+
+  "parse_code_notes": {
+    "what_this_is": [
+      "`response_malformed` is raised by the same base type as the nine conflicts and is deliberately",
+      "NOT one of them. The nine are the ordinary weather of a resumable session — a stale tab, a",
+      "retried POST — and are recoverable or not on their own terms. A body that is not a response at",
+      "all is a parse failure that sits before them, and a client told 'conflict' for a schema error",
+      "would retry forever. Declared here so a code that can reach a caller is never undeclared."
     ]
   },
 
