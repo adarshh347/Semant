@@ -70,6 +70,10 @@ const StudioPage = React.lazy(() => import('./studio/StudioPage.jsx'));
 // of a showcase. Publishing is a file drop + commit (see writing/README.md).
 const WritingPage = React.lazy(() => import('./writing/WritingPage.jsx'));
 const WritingArticlePage = React.lazy(() => import('./writing/WritingArticlePage.jsx'));
+// /method — how Semant is built. One static article on the same reading surface
+// as /writing, and backend-free for the same reason: it documents the project's
+// discipline, so it must read correctly when every service behind it is down.
+const MethodPage = React.lazy(() => import('./method/MethodPage.jsx'));
 // ATLAS C1 — the multi-image writing canvas: a corpus on one pan/zoom surface, wearing its
 // committed percepts. The multi-image general case of the Chiasm.
 const AtlasPage = React.lazy(() => import('./atlas/AtlasPage.jsx'));
@@ -199,6 +203,8 @@ const router = createBrowserRouter([
       // The writing showcase — static, no backend.
       { path: "writing", element: <WritingPage /> },
       { path: "writing/:slug", element: <WritingArticlePage /> },
+      // How Semant is built — static, no backend.
+      { path: "method", element: <MethodPage /> },
       // Catch-all — a branded 404 inside the app shell (keeps the nav + chrome).
       { path: "*", element: <NotFoundPage /> },
     ],
