@@ -52,6 +52,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import itertools
+import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
@@ -67,6 +69,18 @@ from .coordinator import Stages
 #: Small rather than unbounded — a provider that is slow for one inquiry is slow for all of them,
 #: and an unbounded pool converts that into unbounded memory.
 _POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="inquiry-stage")
+
+#: Unique per driver INSTANCE, and the uniqueness is load-bearing. The first version of this module
+#: defaulted `driver_id` to `f"drv_{session_id}"` — derived from the thing being excluded, so two
+#: drivers for one session computed the SAME id, `claim` read `lease == driver_id` as "I already
+#: hold this", and both entered the stage. A lease whose default defeats the lease.
+#: `getpid` distinguishes processes; the counter distinguishes drivers within one.
+_SEQ = itertools.count(1)
+
+
+def new_driver_id() -> str:
+    return f"drv_{os.getpid()}_{next(_SEQ)}"
+
 
 #: session_id → the running driver task. A convenience for scheduling and for tests that want to
 #: await settlement. NEVER consulted to decide what has already happened; the store is.
@@ -99,9 +113,21 @@ async def claim(session_id: str, driver_id: str, *, at: str,
     A COMPARE-AND-SET on the document, not a lock in this process. An in-process registry would be
     correct in one worker and silently wrong in two, and the second worker is the one that would
     make a second model call for a stage the first was already inside.
+
+    NO AUTOMATIC TAKEOVER, and the reason is that it cannot be done honestly. A held lease with a
+    dangling `started` attempt is what a process killed inside a call leaves behind — and it is
+    ALSO exactly what a live driver currently inside that call looks like. From persisted state
+    alone the two are indistinguishable, so any rule that reclaims one reclaims the other, and
+    guessing wrong means two model calls for one stage. A heartbeat would only move the guess to a
+    threshold: a provider slower than the timeout is a driver declared dead while it is working.
+
+    So this refuses, and `reclaim` exists for the case where somebody can assert what this function
+    cannot infer. A stuck lease is a visible, inspectable session; a stolen one is a second charge
+    and a second answer.
     """
     session = await store.load(session_id, collection=collection)
-    if _lease_of(session) and _lease_of(session) != driver_id:
+    held = _lease_of(session)
+    if held and held != driver_id:
         return None
     claimed = session.model_copy(update={
         "driver": {"lease_id": driver_id, "claimed_at": at, "state": "running"}})
@@ -111,6 +137,35 @@ async def claim(session_id: str, driver_id: str, *, at: str,
         # Somebody checkpointed between the read and the write. They hold it.
         return None
     return claimed
+
+
+async def reclaim(session_id: str, driver_id: str, *, at: str,
+                  collection=None) -> Optional[SemanticInquirySession]:
+    """Take a lease its holder is ASSERTED to have lost, name the interruption, and stop.
+
+    EXPLICIT AND NEVER AUTOMATIC. `claim` refuses a held lease because it cannot tell a dead driver
+    from a working one; this function is how a caller who CAN tell — an operator, or a startup sweep
+    that knows which process ids died with it — says so. The assertion is the caller's, and it is
+    recorded on the session as theirs.
+
+    It reopens and returns. It does not resume the chain: `plan` refuses to continue past an
+    interrupted stage, so the recovered session is inspectable and stopped, which is the honest end
+    for a call nobody can say landed or not.
+    """
+    session = await store.load(session_id, collection=collection)
+    reopened = steps.reopen(session, at=at)
+    taken = reopened.model_copy(update={
+        "checkpoint": session.checkpoint + 1,
+        "driver": {"lease_id": "", "state": "idle", "reclaimed_at": at,
+                   "reclaimed_from": _lease_of(session), "reclaimed_by": driver_id,
+                   "assertion": "the caller asserts the previous holder is gone; nothing was "
+                                "inferred from the document, which cannot tell a dead driver from "
+                                "a working one"}})
+    try:
+        await store.save(taken, expected_checkpoint=session.checkpoint, collection=collection)
+    except store.SessionWriteFailed:
+        return None
+    return taken
 
 
 async def release(session: SemanticInquirySession, driver_id: str, *, at: str,
@@ -156,7 +211,7 @@ async def drive(session_id: str, stages: Stages, *, driver_id: str = "",
     would leave a session that looked as though the stage had never been tried — and the next
     driver would try it again, buying the same reading twice.
     """
-    driver_id = driver_id or f"drv_{session_id}"
+    driver_id = driver_id or new_driver_id()
     at = stages.clock()
     session = await claim(session_id, driver_id, at=at, collection=collection)
     if session is None:
@@ -270,5 +325,5 @@ def running(session_id: str) -> bool:
     return task is not None and not task.done()
 
 
-__all__ = ["DriverBusy", "DriverReport", "claim", "release", "checkpoint", "drive", "schedule",
-           "settled", "running"]
+__all__ = ["DriverBusy", "DriverReport", "new_driver_id", "claim", "reclaim", "release",
+           "checkpoint", "drive", "schedule", "settled", "running"]
