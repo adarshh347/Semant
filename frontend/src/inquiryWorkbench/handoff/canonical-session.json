@@ -1,0 +1,477 @@
+{
+  "schema_version": "inquiry-session.v1",
+  "session_id": "inqs_fixture_1",
+  "inquiry_id": "inq_fixture_1",
+  "revision": 7,
+  "state": "complete",
+  "mode": "consult",
+  "graph": {
+    "schema_version": "semantic-inquiry-graph.v1",
+    "graph_id": "sig_fixture_1",
+    "inquiry_id": "inq_fixture_1",
+    "prompt": "How does this building turn a dispersed civic ground into a centralized interior, and what does the threshold between them actually do?",
+    "image_refs": [
+      {
+        "post_id": "post_altes_front",
+        "title": "Altes Museum, Lustgarten front",
+        "image_ref": "imgref_altes_front",
+        "image_url": "/fixtures/altes-front.jpg"
+      },
+      {
+        "post_id": "post_altes_rotunda",
+        "title": "Rotunda, interior",
+        "image_ref": "imgref_altes_rotunda",
+        "image_url": "/fixtures/altes-rotunda.jpg"
+      }
+    ],
+    "reading": {
+      "text": "The front reads as a single long horizontal: a screen of columns held between two solid ends, with no centre marked on the outside. Behind it the plan turns: the rotunda is a centre that the façade never announces. The stair between them is doing the work of converting a lateral, dispersed approach into a vertical, gathered one — you arrive along the building and leave the stair facing its middle. The comparison that suggests itself is with a temple front, but the temple front has a centre and this one refuses to name it.",
+      "status": "interpretive",
+      "source": "scene_theorist",
+      "model": "vlm/scene-theorist",
+      "provenance": {
+        "role": "scene_theorist",
+        "called_at": "2026-08-09T09:14:02Z"
+      }
+    },
+    "claims": [
+      {
+        "claim_id": "clm_colonnade",
+        "text": "A colonnade spans the full width of the front without marking a centre.",
+        "claim_kind": "entity",
+        "status": "proposed",
+        "subject": "colonnade",
+        "predicate": "spans",
+        "object": "front elevation",
+        "source_span": {
+          "origin": "reading",
+          "text": "a screen of columns held between two solid ends",
+          "start": 46,
+          "end": 92
+        },
+        "image_scope": [
+          "post_altes_front"
+        ],
+        "epistemic_demand": "Someone must be able to point at the extent in the picture.",
+        "confidence": 0.71,
+        "author": "model"
+      },
+      {
+        "claim_id": "clm_centre_shift",
+        "text": "The interior centre is not announced by the exterior.",
+        "claim_kind": "spatial_relation",
+        "status": "interpretive",
+        "subject": "rotunda centre",
+        "predicate": "is_not_announced_by",
+        "object": "front elevation",
+        "source_span": {
+          "origin": "reading",
+          "text": "the rotunda is a centre that the façade never announces",
+          "start": 150,
+          "end": 204
+        },
+        "image_scope": [
+          "post_altes_front",
+          "post_altes_rotunda"
+        ],
+        "epistemic_demand": "Needs a comparison of two images, not one measurement.",
+        "confidence": 0.58,
+        "author": "model"
+      },
+      {
+        "claim_id": "clm_threshold_converts",
+        "text": "The stair converts lateral approach into axial arrival.",
+        "claim_kind": "causal_hypothesis",
+        "status": "proposed",
+        "subject": "stair",
+        "predicate": "converts",
+        "object": "approach direction",
+        "source_span": {
+          "origin": "prompt",
+          "text": "what does the threshold between them actually do",
+          "start": 62,
+          "end": 110
+        },
+        "image_scope": [
+          "post_altes_front"
+        ],
+        "epistemic_demand": "Movement, which no still image measures on its own.",
+        "confidence": null,
+        "author": "model"
+      },
+      {
+        "claim_id": "clm_temple_front",
+        "text": "The front quotes a temple portico while withholding its centre.",
+        "claim_kind": "historical_or_sourced",
+        "status": "unresolved",
+        "subject": "front elevation",
+        "predicate": "quotes",
+        "object": "temple portico",
+        "source_span": {
+          "origin": "reading",
+          "text": "The comparison that suggests itself is with a temple front",
+          "start": 300,
+          "end": 358
+        },
+        "image_scope": [
+          "post_altes_front"
+        ],
+        "epistemic_demand": "A source outside the image. Nothing in the pixels settles it.",
+        "confidence": null,
+        "author": "model"
+      }
+    ],
+    "claim_edges": [
+      {
+        "edge_id": "edg_1",
+        "from_claim": "clm_colonnade",
+        "to_claim": "clm_centre_shift",
+        "relation": "supports",
+        "note": "An unmarked centre outside is the premise of the shift."
+      },
+      {
+        "edge_id": "edg_2",
+        "from_claim": "clm_centre_shift",
+        "to_claim": "clm_threshold_converts",
+        "relation": "motivates",
+        "note": ""
+      },
+      {
+        "edge_id": "edg_3",
+        "from_claim": "clm_temple_front",
+        "to_claim": "clm_colonnade",
+        "relation": "complicates",
+        "note": "A portico reading would put a centre back on the front."
+      }
+    ],
+    "observables": [
+      {
+        "observable_id": "obs_extent",
+        "claim_ref": "clm_colonnade",
+        "observable_kind": "dominant_extent",
+        "target": "the run of columns across the front",
+        "image_scope": [
+          "post_altes_front"
+        ],
+        "ground_forms": [
+          "region",
+          "mask"
+        ],
+        "capability_classes": [
+          "locate_phrase"
+        ],
+        "alternatives": [
+          {
+            "alternative_id": "alt_whole_colonnade",
+            "label": "Locate the colonnade as one extent",
+            "capability_class": "locate_phrase",
+            "consequence": "One region for the whole screen. Answers \"how wide\", not \"how many\".",
+            "available": true
+          },
+          {
+            "alternative_id": "alt_per_column",
+            "label": "Locate each column separately",
+            "capability_class": "locate_phrase",
+            "consequence": "Column-by-column extents, so rhythm and spacing become countable — and a miscount becomes possible in a way the single extent avoids.",
+            "available": true
+          }
+        ],
+        "success_condition": "A region a person can look at and agree covers the columns.",
+        "ambiguity_condition": "A region that also takes in the wall behind.",
+        "refusal_condition": "No phrase-locating capability available.",
+        "residual_interpretation": "That the extent IS a colonnade, and that an unmarked centre means anything, stays interpretive however exact the region is.",
+        "availability": "available",
+        "gap_reason": ""
+      },
+      {
+        "observable_id": "obs_centre_compare",
+        "claim_ref": "clm_centre_shift",
+        "observable_kind": "cross_image_comparison",
+        "target": "centre of mass of the front against centre of the rotunda",
+        "image_scope": [
+          "post_altes_front",
+          "post_altes_rotunda"
+        ],
+        "ground_forms": [
+          "point",
+          "region"
+        ],
+        "capability_classes": [
+          "locate_phrase",
+          "geometry.centrality"
+        ],
+        "alternatives": [
+          {
+            "alternative_id": "alt_centrality",
+            "label": "Compute centrality on both images",
+            "capability_class": "geometry.centrality",
+            "consequence": "Would give two comparable centres.",
+            "available": false
+          }
+        ],
+        "success_condition": "Two located centres that can be compared.",
+        "ambiguity_condition": "",
+        "refusal_condition": "No geometry family is registered.",
+        "residual_interpretation": "Whether a geometric centre is an ARCHITECTURAL centre.",
+        "availability": "capability_gap",
+        "gap_reason": "No geometry capability family exists yet. Centrality is named in the plan for a later phase and is not implemented."
+      },
+      {
+        "observable_id": "obs_movement",
+        "claim_ref": "clm_threshold_converts",
+        "observable_kind": "movement_trace",
+        "target": "the path from the colonnade to the rotunda",
+        "image_scope": [
+          "post_altes_front"
+        ],
+        "ground_forms": [
+          "trajectory"
+        ],
+        "capability_classes": [
+          "situated.exploration"
+        ],
+        "alternatives": [],
+        "success_condition": "A traversal that records direction changes.",
+        "ambiguity_condition": "",
+        "refusal_condition": "Situated missions are not dispatched in this phase.",
+        "residual_interpretation": "What the conversion MEANS to a person walking it.",
+        "availability": "unavailable",
+        "gap_reason": "Situated exploration exists but is deliberately not dispatched in Phase 1."
+      }
+    ],
+    "semantic_remainder": [
+      {
+        "remainder_id": "rem_temple",
+        "text": "Whether the front quotes a temple portico.",
+        "why_unresolved": "A claim about sources. No measurement of these pixels can settle it.",
+        "claim_refs": [
+          "clm_temple_front"
+        ]
+      },
+      {
+        "remainder_id": "rem_movement",
+        "text": "What the stair does to a body moving through it.",
+        "why_unresolved": "Needs movement. Two still images do not contain it.",
+        "claim_refs": [
+          "clm_threshold_converts"
+        ]
+      }
+    ],
+    "refusals": [],
+    "provenance": {
+      "compiler": "semantic_compiler"
+    }
+  },
+  "decision_requests": [
+    {
+      "decision_id": "dec_extent_grain",
+      "session_id": "inqs_fixture_1",
+      "kind": "choose_operationalization",
+      "question": "Locate the colonnade as one extent, or column by column?",
+      "why_now": "The two answer different questions and cost differently. One extent answers how wide the screen is; column-by-column makes rhythm countable and makes a miscount possible.",
+      "affected_refs": [
+        "clm_colonnade",
+        "obs_extent"
+      ],
+      "options": [
+        {
+          "option_id": "opt_whole",
+          "label": "One extent for the whole colonnade",
+          "consequence": "Rhythm claims stay uninvestigated and move to the remainder.",
+          "recommended": true
+        },
+        {
+          "option_id": "opt_per_column",
+          "label": "Column by column",
+          "consequence": "Rhythm becomes investigable. More requests, and a miscount is possible.",
+          "recommended": false
+        }
+      ],
+      "allow_free_text": true,
+      "blocking": true,
+      "answered": true,
+      "provenance": {
+        "steward": "deliberation_steward",
+        "mode": "consult"
+      }
+    }
+  ],
+  "decision_records": [
+    {
+      "record_id": "rec_1",
+      "decision_id": "dec_extent_grain",
+      "decider": "user",
+      "action": "select",
+      "question": "Locate the colonnade as one extent, or column by column?",
+      "selected_option_id": "opt_whole",
+      "selected_label": "One extent for the whole colonnade",
+      "free_text": "",
+      "rationale": "Chosen by you.",
+      "affected_refs": [
+        "clm_colonnade",
+        "obs_extent"
+      ],
+      "at": "2026-08-09T09:16:40Z",
+      "revision": 4
+    }
+  ],
+  "capability_receipts": [
+    {
+      "receipt_id": "capr_locate_1",
+      "request_ref": "obs_extent",
+      "capability": "locate_phrase",
+      "execution_mode": "fixture",
+      "status": "simulated",
+      "usable_as_evidence": false,
+      "attempted": true,
+      "payload": {
+        "regions": [
+          {
+            "kind": "box",
+            "x": 0.06,
+            "y": 0.44,
+            "w": 0.88,
+            "h": 0.21
+          }
+        ],
+        "phrase": "colonnade",
+        "note": "Geometry produced by the simulation adapter. Nothing was measured from the image."
+      },
+      "detail": "Simulation adapter — flow verification only.",
+      "latency_ms": 12,
+      "provenance": {
+        "adapter": "simulation",
+        "capability_class": "locate_phrase"
+      }
+    }
+  ],
+  "evidence": [],
+  "synthesis": {
+    "synthesis_id": "syn_1",
+    "note": "Written from the claim graph, not from the reading paragraph.",
+    "sections": [
+      {
+        "section_id": "sec_front",
+        "heading": "The front",
+        "text": "The front is a single horizontal screen of columns with no centre marked on it. That is a reading of the picture, not a measurement of it: the request that would have located the extent ran against a simulation, so nothing here rests on a measured region.",
+        "claim_refs": [
+          "clm_colonnade"
+        ],
+        "evidence_refs": [],
+        "refusal_refs": [],
+        "status": "interpretive",
+        "user_authored": false
+      },
+      {
+        "section_id": "sec_shift",
+        "heading": "The turn inward",
+        "text": "The interior centre is not announced outside. Comparing the two centres would have needed a geometry capability that does not exist, so this stays a reading of two pictures placed side by side.",
+        "claim_refs": [
+          "clm_centre_shift"
+        ],
+        "evidence_refs": [],
+        "refusal_refs": [],
+        "status": "interpretive",
+        "user_authored": false
+      },
+      {
+        "section_id": "sec_grain",
+        "heading": "On the grain you chose",
+        "text": "You asked for one extent rather than column-by-column, so nothing here counts columns or speaks about rhythm.",
+        "claim_refs": [
+          "clm_colonnade"
+        ],
+        "evidence_refs": [],
+        "refusal_refs": [],
+        "status": "unresolved",
+        "user_authored": true
+      }
+    ]
+  },
+  "trace": [
+    {
+      "event_id": "evt_1",
+      "at": "2026-08-09T09:14:00Z",
+      "actor": "inquiry_framer",
+      "actor_kind": "system",
+      "transition": "framing → reading",
+      "reason": "Prompt and corpus metadata read; no pixels seen.",
+      "refs": [],
+      "revision": 1
+    },
+    {
+      "event_id": "evt_2",
+      "at": "2026-08-09T09:14:06Z",
+      "actor": "scene_theorist",
+      "actor_kind": "model",
+      "transition": "reading → compiling",
+      "reason": "Provisional reading returned. Interpretive.",
+      "refs": [],
+      "revision": 2
+    },
+    {
+      "event_id": "evt_3",
+      "at": "2026-08-09T09:14:11Z",
+      "actor": "semantic_compiler",
+      "actor_kind": "model",
+      "transition": "compiling → awaiting_user",
+      "reason": "Four claims, three observables. One fork is material.",
+      "refs": [
+        "clm_colonnade",
+        "obs_extent"
+      ],
+      "revision": 3
+    },
+    {
+      "event_id": "evt_4",
+      "at": "2026-08-09T09:16:40Z",
+      "actor": "you",
+      "actor_kind": "user",
+      "transition": "awaiting_user → ready",
+      "reason": "Chose one extent for the whole colonnade.",
+      "refs": [
+        "dec_extent_grain",
+        "obs_extent"
+      ],
+      "revision": 4
+    },
+    {
+      "event_id": "evt_5",
+      "at": "2026-08-09T09:16:41Z",
+      "actor": "capability_broker",
+      "actor_kind": "system",
+      "transition": "ready → executing",
+      "reason": "One request to locate_phrase, through the simulation adapter.",
+      "refs": [
+        "obs_extent",
+        "capr_locate_1"
+      ],
+      "revision": 5
+    },
+    {
+      "event_id": "evt_6",
+      "at": "2026-08-09T09:16:44Z",
+      "actor": "evidence_judge",
+      "actor_kind": "system",
+      "transition": "judging → composing",
+      "reason": "The one receipt is a fixture. No evidence object was created from it.",
+      "refs": [
+        "capr_locate_1"
+      ],
+      "revision": 6
+    },
+    {
+      "event_id": "evt_7",
+      "at": "2026-08-09T09:16:46Z",
+      "actor": "synthesis_composer",
+      "actor_kind": "model",
+      "transition": "composing → complete",
+      "reason": "Three sections, two remainder entries.",
+      "refs": [
+        "syn_1"
+      ],
+      "revision": 7
+    }
+  ],
+  "error": ""
+}
