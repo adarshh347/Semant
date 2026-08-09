@@ -12,6 +12,7 @@ clock so a duration is a comparison rather than a measurement of how busy the te
 from __future__ import annotations
 
 import asyncio
+import os
 import threading
 import time
 
@@ -562,3 +563,119 @@ def test_the_coordinator_never_imports_a_compiler_internal_to_find_progress():
                  if m.startswith("backend.services.semantic_compilation.")
                  and m.rsplit(".", 1)[-1] in ("theorist", "compiler")}
     assert not internals, f"the coordinator reaches into a stage's implementation: {internals}"
+
+
+# ── 10. the lease excludes drivers that did not name themselves ─────────────
+
+def test_two_drivers_that_named_no_id_still_exclude_each_other(wired):
+    """THE DEFECT THIS TEST EXISTS FOR. The first version defaulted `driver_id` to
+    `f"drv_{session_id}"` — derived from the thing being excluded — so two drivers for one session
+    computed the SAME id, `claim` read `lease == driver_id` as "I already hold this", and both
+    entered the stage. A lease whose default defeats the lease.
+
+    The earlier lease test passed distinct ids explicitly and could never have caught it.
+    """
+    client, _, _ = wired
+    session_id = _post(client).json()["session_id"]
+    _settle(client, session_id)
+
+    async def _race():
+        first = await driver.claim(session_id, driver.new_driver_id(),
+                                   at="2026-01-01T00:00:00+00:00")
+        second = await driver.claim(session_id, driver.new_driver_id(),
+                                    at="2026-01-01T00:00:01+00:00")
+        return first, second
+
+    first, second = client.portal.call(_race)
+    assert first is not None
+    assert second is None, "two unnamed drivers both took the lease"
+
+
+def test_driver_ids_are_unique_per_instance_and_not_derived_from_the_session():
+    ids = {driver.new_driver_id() for _ in range(50)}
+    assert len(ids) == 50
+    assert all(str(os.getpid()) in i for i in ids), (
+        "a driver id must distinguish processes, or two workers collide")
+
+
+def test_a_held_lease_is_never_taken_automatically_even_with_a_call_in_flight(wired):
+    """The rule that cannot be softened. A held lease with a dangling `started` attempt is what a
+    killed process leaves behind — and ALSO exactly what a live driver inside that call looks like.
+    From the document alone they are indistinguishable, so any rule reclaiming one reclaims the
+    other, and guessing wrong means two model calls for one stage."""
+    client, sessions, state = wired
+    gate, entered = threading.Event(), threading.Event()
+    state["gate"], state["entered"] = gate, entered
+    session_id = _post(client).json()["session_id"]
+    assert entered.wait(timeout=5)
+
+    stored = SemanticInquirySession.model_validate(sessions.docs[session_id]["session"])
+    assert steps.dangling_stages(stored) == ("theorist",), "the fixture must have a call in flight"
+    assert stored.driver.get("lease_id"), "and the lease must be held"
+
+    async def _try():
+        return await driver.claim(session_id, driver.new_driver_id(),
+                                  at="2026-01-01T02:00:00+00:00")
+
+    assert client.portal.call(_try) is None, "a lease was taken off a driver still inside its call"
+    gate.set()
+    _settle(client, session_id)
+
+
+def test_reclaim_is_explicit_records_whose_assertion_it_was_and_stops(wired):
+    """`claim` refuses what it cannot infer; `reclaim` is how a caller who CAN tell says so. It
+    reopens and stops — a recovered session is inspectable and halted, which is the honest end for
+    a call nobody can say landed."""
+    client, sessions, state = wired
+    gate, entered = threading.Event(), threading.Event()
+    state["gate"], state["entered"] = gate, entered
+    session_id = _post(client).json()["session_id"]
+    assert entered.wait(timeout=5)
+
+    async def _reclaim():
+        return await driver.reclaim(session_id, "drv_operator",
+                                    at="2026-01-01T02:00:00+00:00")
+
+    taken = client.portal.call(_reclaim)
+    assert taken is not None
+    assert taken.driver["reclaimed_by"] == "drv_operator"
+    assert "the caller asserts" in taken.driver["assertion"]
+    theorist = [a for a in taken.stages if a.stage is StageName.THEORIST]
+    assert theorist[-1].outcome is StageAttemptOutcome.INTERRUPTED
+    assert steps.plan(taken).stage is None, "a reclaim must halt, never resume"
+
+    # AND THE CAS PROTECTS THE DOCUMENT FROM THE DRIVER THAT WAS NOT ACTUALLY DEAD. The caller's
+    # assertion was wrong here — the theorist is released below and returns normally — so its
+    # checkpoint arrives against a `checkpoint` the reclaim already moved, and is refused. The
+    # session keeps the reclaimed state rather than having the live driver silently write over it.
+    # That is the honest outcome of a mistaken assertion: one visible halted session, not two
+    # writers taking turns.
+    gate.set()
+    for _ in range(200):
+        if not driver.running(session_id):
+            break
+        time.sleep(0.005)
+    stored = SemanticInquirySession.model_validate(sessions.docs[session_id]["session"])
+    latest = [a for a in stored.stages if a.stage is StageName.THEORIST][-1]
+    assert latest.outcome is StageAttemptOutcome.INTERRUPTED, (
+        "the superseded driver wrote over a reclaimed session")
+    assert steps.plan(stored).stage is None
+
+
+def test_a_live_lease_with_nothing_in_flight_is_not_stolen(wired):
+    """The same rule where there is not even an ambiguity to point at: a driver between two stages
+    holds its lease and keeps it."""
+    client, sessions, _ = wired
+    session_id = _post(client).json()["session_id"]
+    _settle(client, session_id)
+
+    doc = sessions.docs[session_id]
+    doc["session"]["driver"] = {"lease_id": "drv_alive_1", "state": "running"}
+    live = SemanticInquirySession.model_validate(doc["session"])
+    assert steps.dangling_stages(live) == ()
+
+    async def _steal():
+        return await driver.claim(session_id, driver.new_driver_id(),
+                                  at="2026-01-01T02:00:00+00:00")
+
+    assert client.portal.call(_steal) is None
