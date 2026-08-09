@@ -94,6 +94,7 @@
       "remainder_claimed_measurable",
       "sourced_claim_asked_of_an_organ",
       "unparseable_model_output",
+      "compiler_unavailable",
       "reading_unavailable"
     ],
     "call_topologies": [

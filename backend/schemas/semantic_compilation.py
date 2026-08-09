@@ -187,6 +187,7 @@ class CompilerRefusalKind(str, Enum):
     REMAINDER_CLAIMED_MEASURABLE = "remainder_claimed_measurable"
     SOURCED_CLAIM_ASKED_OF_AN_ORGAN = "sourced_claim_asked_of_an_organ"
     UNPARSEABLE_MODEL_OUTPUT = "unparseable_model_output"
+    COMPILER_UNAVAILABLE = "compiler_unavailable"
     READING_UNAVAILABLE = "reading_unavailable"
 
 
