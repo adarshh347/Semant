@@ -815,15 +815,25 @@ class ModelSemanticCompiler:
                 model=self.model,
                 response_format={"type": "json_object"})
             raw = completion.choices[0].message.content or ""
+            finish = str(getattr(completion.choices[0], "finish_reason", "") or "")
             payload = json.loads(raw)
         except Exception as exc:
             return self._unavailable(request, prompt_hash,
                                      f"the semantic compiler failed: {type(exc).__name__}")
         self.last_notes = (f"compiler: {self.name}",)
+        notes = [f"finish_reason: {finish or 'not reported'}"]
+        if finish == "length":
+            # A TRUNCATED GRAPH THAT STILL PARSES. The failure worth naming: a model that ran out
+            # of budget and happened to close its JSON returns a thin decomposition that looks
+            # exactly like an honest one. `finish_reason` is the only thing that tells them apart,
+            # so it travels on the receipt whatever it says.
+            notes.append("the compiler ran out of output budget. Whatever is in this graph is a "
+                         "PREFIX of what it was writing, and a short graph here is not evidence "
+                         "that the prompt decomposes into few claims.")
         receipt = ModelReceipt(role=ROLE, model=self.model, provider="groq",
                                prompt_sha256=prompt_hash, requested_at=request.now,
                                raw_response_sha256=[sha256_of(raw)], call_count=self.calls,
-                               call_topology=CallTopology.TEXT_ONLY)
+                               call_topology=CallTopology.TEXT_ONLY, notes=notes)
         return _compile_payload(request, payload, receipt)
 
     def _unavailable(self, request: CompilationRequest, prompt_hash: str,

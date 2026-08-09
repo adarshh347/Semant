@@ -312,6 +312,8 @@ class ModelSceneTheorist:
         # unclosed <think> block that eats the whole token budget before any JSON appears.
         self._reasoning_effort = reasoning_effort
         self.calls: int = 0
+        self.truncated_calls: int = 0
+        self.last_finish_reason: str = ""
         self.last_notes: Tuple[str, ...] = ()
 
     @property
@@ -346,7 +348,14 @@ class ModelSceneTheorist:
         if self._reasoning_effort:
             kwargs["reasoning_effort"] = self._reasoning_effort
         completion = self._get_client().chat.completions.create(**kwargs)
-        return completion.choices[0].message.content or ""
+        choice = completion.choices[0]
+        self.last_finish_reason = str(getattr(choice, "finish_reason", "") or "")
+        if self.last_finish_reason == "length":
+            # Recorded, never silently accepted. A reading cut off mid-sentence that still parses
+            # is a SHORT reading, and a short reading is indistinguishable from a picture with
+            # little in it unless something says which happened.
+            self.truncated_calls += 1
+        return choice.message.content or ""
 
     def read(self, prompt: str, images: Sequence[ImageRef], *, inquiry_id: str,
              corpus: Optional[Mapping[str, Any]] = None,
@@ -409,7 +418,8 @@ class ModelSceneTheorist:
             role=ROLE, model=self.model, provider="groq", prompt_sha256=prompt_hash,
             image_refs=[i.post_id for i in images], requested_at=now,
             raw_response_sha256=[sha256_of(raw)], call_count=self.calls,
-            call_topology=CallTopology.SINGLE_JOINT_CALL, notes=list(notes) + [_NO_BYTES_NOTE])
+            call_topology=CallTopology.SINGLE_JOINT_CALL,
+            notes=list(notes) + self._truncation_notes() + [_NO_BYTES_NOTE])
         result = build_reading(inquiry_id, payload, images, receipt)
         return ReadingResult(result.reading, result.refusals, tuple(notes) + result.notes)
 
@@ -496,11 +506,20 @@ class ModelSceneTheorist:
                 f"{'one' if isinstance(synthesis, Mapping) and synthesis else 'no'} cross-image "
                 f"synthesis. The images were never in one request together, and the comparison was "
                 f"made from the readings rather than from a second look.",
-                _NO_BYTES_NOTE])
+                *self._truncation_notes(), _NO_BYTES_NOTE])
         result = build_reading(inquiry_id, {"reading": "\n\n".join(sections),
                                             "blocks": merged_blocks}, images, receipt)
         return ReadingResult(result.reading, tuple(refusals) + result.refusals,
                              tuple(notes) + result.notes)
+
+    def _truncation_notes(self) -> List[str]:
+        """A reading cut off by the token budget is a SHORT reading, and a short reading is
+        indistinguishable from a picture with little in it unless the receipt says which."""
+        if not self.truncated_calls:
+            return []
+        return [f"{self.truncated_calls} call(s) stopped on the output budget rather than "
+                f"finishing. What came back is a PREFIX; a thin reading here is not evidence that "
+                f"there was little to see."]
 
     def _failed(self, inquiry_id: str, images: List[ImageRef], prompt_hash: str,
                 now: Optional[str], exc: BaseException, topology: CallTopology,

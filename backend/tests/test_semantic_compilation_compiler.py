@@ -95,6 +95,8 @@ class FakeClient:
     def completions(self):
         return self
 
+    finish_reason = "stop"
+
     def create(self, **kwargs):
         self.requests.append(kwargs)
         payload = self._responses.pop(0) if self._responses else {}
@@ -102,7 +104,12 @@ class FakeClient:
             raise payload
         text = payload if isinstance(payload, str) else json.dumps(payload)
         return type("C", (), {"choices": [type("M", (), {
-            "message": type("X", (), {"content": text})()})()]})()
+            "message": type("X", (), {"content": text})(),
+            "finish_reason": self.finish_reason})()]})()
+
+
+class TruncatingClient(FakeClient):
+    finish_reason = "length"
 
 
 # ── what the compiler is shown ───────────────────────────────────────────────
@@ -517,6 +524,25 @@ def test_a_live_call_is_one_call_and_records_its_receipt():
 
 
 # ── provenance and replay ────────────────────────────────────────────────────
+
+def test_a_graph_truncated_by_the_output_budget_says_it_is_a_prefix():
+    """The failure worth naming: a compiler that ran out of budget and happened to close its JSON
+    returns a thin decomposition that looks exactly like an honest one. `finish_reason` is the only
+    thing that separates them, so it travels on the receipt whatever it says."""
+    graph = ModelSemanticCompiler(client=TruncatingClient({"claims": [claim_row()]})).compile(
+        request())
+    notes = " ".join(graph.provenance.compiler.notes)
+    assert "finish_reason: length" in notes
+    assert "is a PREFIX of what it was writing" in notes
+    assert graph.claims                      # what did arrive is kept
+
+
+def test_a_graph_that_finished_normally_records_that_too():
+    graph = ModelSemanticCompiler(client=FakeClient({"claims": [claim_row()]})).compile(request())
+    notes = " ".join(graph.provenance.compiler.notes)
+    assert "finish_reason: stop" in notes
+    assert "PREFIX" not in notes
+
 
 def test_the_reading_s_receipt_travels_onto_the_graph_beside_the_compiler_s():
     graph = compile_payload({"claims": [claim_row()]})

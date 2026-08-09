@@ -54,6 +54,8 @@ class FakeClient:
     def completions(self):
         return self
 
+    finish_reason = "stop"
+
     def create(self, **kwargs):
         self.requests.append(kwargs)
         payload = self._responses.pop(0) if self._responses else {}
@@ -61,7 +63,13 @@ class FakeClient:
             raise payload
         text = payload if isinstance(payload, str) else json.dumps(payload)
         return type("C", (), {"choices": [type("M", (), {
-            "message": type("X", (), {"content": text})()})()]})()
+            "message": type("X", (), {"content": text})(),
+            "finish_reason": self.finish_reason})()]})()
+
+
+class TruncatingClient(FakeClient):
+    """A client whose calls stop on the output budget but still return parseable JSON."""
+    finish_reason = "length"
 
 
 # ── the role ─────────────────────────────────────────────────────────────────
@@ -386,6 +394,26 @@ def test_unparseable_json_from_a_live_call_is_a_refusal_and_not_a_retry():
     assert theorist.calls == 1
     assert not result.available
     assert result.refusals[0].kind is CompilerRefusalKind.READING_UNAVAILABLE
+
+
+def test_a_reading_cut_off_by_the_output_budget_says_so_on_its_receipt():
+    """A reading that stopped on the budget and still parsed is a SHORT reading, and a short
+    reading is indistinguishable from a picture with little in it unless something says which.
+    Found by the live rehearsal, not by reading the adapter."""
+    theorist = ModelSceneTheorist(client=TruncatingClient(CLEAN_PAYLOAD))
+    result = theorist.read(PROMPT, IMAGES[:1], inquiry_id=INQUIRY)
+    assert theorist.truncated_calls == 1
+    assert theorist.last_finish_reason == "length"
+    notes = " ".join(result.reading.provenance.notes)
+    assert "stopped on the output budget" in notes
+    assert "not evidence that there was little to see" in notes
+
+
+def test_a_reading_that_finished_normally_carries_no_truncation_note():
+    theorist = ModelSceneTheorist(client=FakeClient(CLEAN_PAYLOAD))
+    result = theorist.read(PROMPT, IMAGES[:1], inquiry_id=INQUIRY)
+    assert theorist.truncated_calls == 0
+    assert "output budget" not in " ".join(result.reading.provenance.notes)
 
 
 @pytest.mark.parametrize("payload", [CLEAN_PAYLOAD, {"blocks": []}, "junk"])
