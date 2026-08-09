@@ -1,0 +1,315 @@
+{
+  "schema_version": "semantic-inquiry-graph.v1",
+  "title": "The Semantic Inquiry Graph",
+  "what_this_is": [
+    "The vocabulary of HARNESS-002's semantic compilation: how a rich visual question and an abundant",
+    "provisional reading become atomic typed claims, the relations between them, and the observables that",
+    "would have to be produced for any of them to gain support.",
+    "It is DATA rather than code because the enums are the load-bearing part. A claim kind or a capability",
+    "class invented at a call site is indistinguishable from one somebody decided, and the compiler is a",
+    "model — the closed sets are exactly what it is not allowed to extend on its own."
+  ],
+  "not_this": [
+    "Not the Perceptual Action Grammar (what act may be PROPOSED to a curator).",
+    "Not the Director's actuator vocabulary (what globally scoped operation has an EXECUTOR).",
+    "Not the agent organ vocabulary (what a body can perceive FROM ITS LOCUS).",
+    "A capability CLASS is a fourth thing again: what KIND of instrument a claim would need. It names no",
+    "implementation on purpose, so that the broker — not the compiler — chooses one, and so that a class",
+    "with no instrument today is a visible gap rather than an unfilled tool name."
+  ],
+
+  "closed_sets": {
+    "claim_kinds": [
+      "entity",
+      "attribute",
+      "spatial_relation",
+      "topology",
+      "pattern_or_sequence",
+      "field",
+      "hierarchy",
+      "comparison",
+      "historical_or_sourced",
+      "causal_hypothesis",
+      "interpretation",
+      "generative_rule",
+      "unknown"
+    ],
+    "claim_edge_kinds": [
+      "supports",
+      "complicates",
+      "challenges",
+      "composes_from",
+      "generalizes"
+    ],
+    "epistemic_demands": [
+      "measurable",
+      "interpretive",
+      "sourced",
+      "imagined",
+      "unresolved"
+    ],
+    "claim_statuses": ["interpretive", "sourced", "uncertain"],
+    "forbidden_initial_statuses": ["visible", "measured"],
+    "image_scopes": ["one_image", "image_pair", "corpus", "not_an_image_question"],
+    "source_types": ["prompt", "inquiry_frame", "scene_reading", "compiler_inference"],
+    "capability_classes": [
+      "extent",
+      "geometry",
+      "topology",
+      "pattern",
+      "scalar_field",
+      "vector_field",
+      "depth",
+      "colour",
+      "semantic_reading",
+      "external_source"
+    ],
+    "ground_forms": ["region", "frame", "field", "path", "relation"],
+    "reading_block_kinds": [
+      "part",
+      "organization",
+      "comparison",
+      "historical_association",
+      "tension",
+      "hypothesis"
+    ],
+    "decision_kinds": [
+      "choose_operationalization",
+      "choose_image_scope",
+      "resolve_ambiguous_term",
+      "confirm_author_exclusive_act"
+    ],
+    "refusal_kinds": [
+      "unknown_claim_kind",
+      "unknown_capability_class",
+      "unknown_ground_form",
+      "unknown_edge_kind",
+      "unknown_demand_kind",
+      "unknown_reading_block_kind",
+      "unknown_source_type",
+      "unknown_decision_kind",
+      "unknown_claim_status",
+      "geometry_in_a_reading",
+      "measured_status_claimed",
+      "image_scope_corrected",
+      "dangling_reference",
+      "inference_without_parent",
+      "unanchored_claim",
+      "remainder_claimed_measurable",
+      "sourced_claim_asked_of_an_organ",
+      "unparseable_model_output",
+      "compiler_unavailable",
+      "reading_unavailable"
+    ],
+    "call_topologies": [
+      "single_joint_call",
+      "per_image_then_synthesis",
+      "text_only",
+      "replay",
+      "unavailable"
+    ]
+  },
+
+  "claim_kinds": {
+    "entity": "A thing the reading says is present. The only kind a segmenter can even be asked about.",
+    "attribute": "A property OF something — its scale, its density, its finish.",
+    "spatial_relation": "Two things and where they stand to each other.",
+    "topology": "Connectedness, enclosure, containment, holes — relations that survive deformation.",
+    "pattern_or_sequence": "A repetition or an ordering; the recurrence is the claim, not any one member.",
+    "field": "A continuous quantity spread over the picture rather than located in one thing.",
+    "hierarchy": "A part/whole or dominance ordering across several things.",
+    "comparison": "A statement that holds ACROSS images. Needs more than one image by construction.",
+    "historical_or_sourced": "A claim whose warrant is outside the picture. Never settled by looking.",
+    "causal_hypothesis": "A because. The consequences may be observable; the link itself is not.",
+    "interpretation": "A reading ABOUT the picture. Not a weak measurement — a different kind of claim.",
+    "generative_rule": "A rule for making something that does not exist. Imagined by construction.",
+    "unknown": "The compiler could not type it. LEGAL and VISIBLE — see the law of the same name."
+  },
+
+  "capability_classes": {
+    "extent": {
+      "asks_for": "where a named thing is, as an extent on the image",
+      "typical_grounds": ["region"]
+    },
+    "geometry": {
+      "asks_for": "a computed relation between extents — containment, adjacency, centrality, alignment",
+      "typical_grounds": ["relation", "region"]
+    },
+    "topology": {
+      "asks_for": "connectedness, enclosure, holes; relations that survive deformation",
+      "typical_grounds": ["relation", "region"]
+    },
+    "pattern": {
+      "asks_for": "recurrence, spacing, rhythm, ordering across the frame",
+      "typical_grounds": ["field", "path"]
+    },
+    "scalar_field": {
+      "asks_for": "a continuous per-pixel quantity — density, pressure, luminance",
+      "typical_grounds": ["field"]
+    },
+    "vector_field": {
+      "asks_for": "a continuous per-pixel direction — flow, orientation, surface normal",
+      "typical_grounds": ["field", "path"]
+    },
+    "depth": {
+      "asks_for": "how far back something sits",
+      "typical_grounds": ["field", "region"]
+    },
+    "colour": {
+      "asks_for": "chromatic quantity — temperature, saturation, distribution",
+      "typical_grounds": ["field", "region"]
+    },
+    "semantic_reading": {
+      "asks_for": "a sentence about the picture, produced by a thinker",
+      "typical_grounds": ["frame"],
+      "never_settles": "a measurable demand. A reading is not evidence in the picture."
+    },
+    "external_source": {
+      "asks_for": "a citation from outside the picture",
+      "typical_grounds": ["frame"],
+      "never_settles": "a measurable demand. Nothing measured in the frame can stand in for a source."
+    }
+  },
+
+  "ground_forms": {
+    "region": "an extent on one image",
+    "frame": "the whole image, as the thing being spoken about",
+    "field": "a continuous quantity over an image",
+    "path": "an ordered traversal — a direction, a sequence, a trajectory",
+    "relation": "a named link between two grounds"
+  },
+
+  "demand_constraints": {
+    "historical_or_sourced": {
+      "forbidden_demands": ["measurable"],
+      "why": "its warrant lies outside the picture. `epistemics.py` walls `sourced` for this reason; the same wall is applied one level up, on the claim, before any instrument is chosen."
+    },
+    "interpretation": {
+      "forbidden_demands": ["measurable"],
+      "why": "an interpretation does not become measurable because measurements contribute to it. That promotion is the single failure HARNESS-001A's semantic remainder exists to prevent."
+    },
+    "causal_hypothesis": {
+      "forbidden_demands": ["measurable"],
+      "why": "the CONSEQUENCES of a because may be observable and should be emitted as observables on separate claims. The link itself is not something an instrument returns."
+    },
+    "generative_rule": {
+      "required_demands": ["imagined", "unresolved"],
+      "why": "a rule for making what does not exist has nothing to measure and nothing to cite. HARNESS-001B declined to give `imagined` an EpistemicStatus for exactly this reason."
+    },
+    "comparison": {
+      "forbidden_image_scopes": ["one_image"],
+      "why": "a comparison across images is not available from one image. Typed from one, it would be a corpus tendency asserted from a single observation."
+    }
+  },
+
+  "id_prefixes": {
+    "graph": "sig_",
+    "claim": "clm_",
+    "claim_edge": "cle_",
+    "observable": "obs_",
+    "alternative": "alt_",
+    "decision_candidate": "dec_",
+    "refusal": "cref_",
+    "reading_block": "rb_"
+  },
+
+  "id_rule": [
+    "Every id is sha256 over the inquiry id, the object's kind, and the object's STABLE CONTENT,",
+    "truncated to 12 hex characters and prefixed. Nothing is minted from a clock or a counter.",
+    "Replaying a frozen model output must produce the same graph byte for byte, and an id derived",
+    "from list position would silently renumber the moment a model reordered its own output."
+  ],
+
+  "forbidden_geometry_keys": [
+    "mask", "mask_rle", "masks", "bbox", "bboxes", "box", "boxes", "polygon", "polygons",
+    "point", "points", "coordinates", "coords", "x0", "y0", "x1", "y1", "cx", "cy",
+    "centroid", "area_px", "extent_px", "width_px", "height_px", "pixels", "geometry",
+    "region_id", "region_ids", "mark_id", "mark_ids", "mask_ref", "region_ref",
+    "confidence", "score", "scores", "iou", "epistemic_status", "measurement", "measurements"
+  ],
+
+  "forbidden_geometry_why": [
+    "A scene theorist reads pixels and is still a thinker: it may say a thing is there and may not say",
+    "WHERE, in numbers. The moment a reading can carry a box, its output is a measurement nobody measured",
+    "and every downstream consumer that checks provenance will find a legitimate-looking one.",
+    "Checked on keys, not values, and refused rather than stripped — a stripped key is a model trying to",
+    "author geometry, silently."
+  ],
+
+  "laws": [
+    {
+      "id": "no-geometry-in-a-reading",
+      "kind": "error",
+      "message": "a scene reading or a compiled claim may not carry a geometry, region, mark or confidence key",
+      "why": "the strongest thing a thinker may produce is `interpretive`. Geometry is what an organ produces."
+    },
+    {
+      "id": "nothing-starts-measured",
+      "kind": "error",
+      "message": "a claim may not start as `visible` or `measured`",
+      "why": "nothing has run. A compiler that could mint a measured claim would make the whole evidence layer decorative."
+    },
+    {
+      "id": "every-claim-is-anchored",
+      "kind": "error",
+      "message": "a claim carries at least one source pointer, or declares source_type `compiler_inference`",
+      "why": "an unanchored claim is one nobody said and nothing produced. It reads exactly like the others."
+    },
+    {
+      "id": "inference-names-its-parents",
+      "kind": "error",
+      "message": "a `compiler_inference` claim names the claims it was inferred from",
+      "why": "an inference with no parents is an assertion wearing an inference's clothes."
+    },
+    {
+      "id": "remainder-is-not-measurable",
+      "kind": "error",
+      "message": "a term recorded as semantic remainder may not also carry a `measurable` demand",
+      "why": "HARNESS-001A's rule, applied to the graph. A remainder is what measurement does not reach."
+    },
+    {
+      "id": "a-source-is-not-asked-of-an-organ",
+      "kind": "error",
+      "message": "an observable serving a `historical_or_sourced` claim must request `external_source`",
+      "why": "a historical generalization routed to an image capability becomes an image measurement of a claim the image cannot settle."
+    },
+    {
+      "id": "a-comparison-needs-more-than-one-image",
+      "kind": "error",
+      "message": "a `comparison` claim may not be scoped to `one_image`",
+      "why": "one observation typed as a corpus tendency is the cheapest way to manufacture a finding."
+    },
+    {
+      "id": "unknown-is-legal-and-visible",
+      "kind": "allow",
+      "message": "`unknown` is a claim kind, and an unoperationalizable claim is retained",
+      "why": "dropping what could not be typed makes the graph look more complete than the reading was."
+    },
+    {
+      "id": "invention-becomes-a-refusal",
+      "kind": "error",
+      "message": "a claim kind, capability class, ground form or edge kind outside the closed sets is refused BY NAME",
+      "why": "how often a model invents a capability is the observable that says whether to trust it. Silently dropped, it is unobservable."
+    },
+    {
+      "id": "silence-is-an-empty-graph",
+      "kind": "allow",
+      "message": "an unavailable or unparseable model produces an empty graph carrying a refusal, never a canned result",
+      "why": "a plausible default is indistinguishable from a real reading and would be believed."
+    },
+    {
+      "id": "the-prompt-is-preserved",
+      "kind": "error",
+      "message": "the graph carries the user's prompt byte for byte",
+      "why": "every refusal downstream is only checkable against what was actually asked."
+    }
+  ],
+
+  "no_topic_branch": [
+    "No production module reading this contract may name a topic. There is no fold branch, no sculpture",
+    "branch, no architecture branch, and no botany branch. Subjects, predicates, targets and descriptions",
+    "are open strings; the closed sets above are shapes, not subjects.",
+    "`test_semantic_compilation_generality.py` scans the production sources for the fixtures' topic nouns",
+    "and fails by name if one appears."
+  ]
+}

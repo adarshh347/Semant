@@ -1,0 +1,622 @@
+{
+  "name": "unrelated-domain",
+  "topic": "how two plants divide as they grow, and a growth rule for a third",
+  "why_this_fixture": [
+    "The generality proof. It shares no noun, no cue and no capability with its twin, and it",
+    "traverses the same schema through the same production code. If a topic branch ever appears in",
+    "`backend/services/semantic_compilation/`, one of these two fixtures stops working — and",
+    "`test_semantic_compilation_generality.py` scans the production sources for both fixtures'",
+    "topic nouns so the failure arrives by name rather than as a mysterious diff."
+  ],
+  "topic_nouns": [
+    "phyllotaxis",
+    "shoot",
+    "specimen",
+    "internode",
+    "meristem",
+    "branching"
+  ],
+  "prompt": "Across these two specimens, how does the branching divide, where does the interval break down, and what growth rule would produce a third?",
+  "images": [
+    {
+      "post_id": "img_x",
+      "title": "A young specimen, whole"
+    },
+    {
+      "post_id": "img_y",
+      "title": "A second specimen of the same age"
+    }
+  ],
+  "theorist_payload": {
+    "reading": "Both specimens send up one dominant axis and divide off it, but they divide differently. In the first, side shoots leave the axis in opposed pairs, so that each division doubles the count and the whole plant reads as symmetrical about its own stem. In the second, shoots leave singly and rotate around the axis, so no two neighbours face the same way and the plant reads as a spiral rather than a mirror. In both, the interval between divisions is regular for most of the length and then shortens sharply near the growing tip, where the divisions crowd together and the pattern is hard to read at all.",
+    "blocks": [
+      {
+        "kind": "part",
+        "text": "one dominant axis rises from the base",
+        "images": [
+          "img_x",
+          "img_y"
+        ]
+      },
+      {
+        "kind": "part",
+        "text": "side shoots leave the axis in opposed pairs",
+        "images": [
+          "img_x"
+        ]
+      },
+      {
+        "kind": "organization",
+        "text": "the interval between divisions is regular along most of the axis",
+        "images": [
+          "img_x",
+          "img_y"
+        ]
+      },
+      {
+        "kind": "part",
+        "text": "shoots leave the axis singly and rotate around it",
+        "images": [
+          "img_y"
+        ]
+      },
+      {
+        "kind": "comparison",
+        "text": "one specimen divides in pairs, the other divides singly and rotates",
+        "images": [
+          "img_x",
+          "img_y"
+        ]
+      },
+      {
+        "kind": "historical_association",
+        "text": "the rotating single arrangement is described under a standard name in the classical literature on phyllotaxis",
+        "images": [
+          "img_y"
+        ]
+      },
+      {
+        "kind": "tension",
+        "text": "the regular interval shortens sharply near the tip and the arrangement becomes unreadable there",
+        "images": [
+          "img_x",
+          "img_y"
+        ]
+      },
+      {
+        "kind": "hypothesis",
+        "text": "a third could divide in pairs near the base and rotate singly further up",
+        "images": [
+          "img_x",
+          "img_y"
+        ]
+      }
+    ]
+  },
+  "compiler_payload": {
+    "claims": [
+      {
+        "ref": "c1",
+        "text": "one dominant axis rises from the base in both specimens",
+        "kind": "entity",
+        "subject": "the dominant axis",
+        "image_scope": "corpus",
+        "demand": "measurable",
+        "status": "interpretive",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:one dominant axis rises from the base",
+            "text": "one dominant axis rises from the base",
+            "images": [
+              "img_x",
+              "img_y"
+            ]
+          }
+        ]
+      },
+      {
+        "ref": "c2",
+        "text": "side shoots leave the axis in opposed pairs in the first specimen",
+        "kind": "spatial_relation",
+        "subject": "the side shoots",
+        "predicate": "leave",
+        "object": "the axis",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:side shoots leave the axis in opposed pairs",
+            "text": "side shoots leave the axis in opposed pairs",
+            "images": [
+              "img_x"
+            ]
+          }
+        ]
+      },
+      {
+        "ref": "c3",
+        "text": "the interval between divisions is regular along most of the axis",
+        "kind": "pattern_or_sequence",
+        "subject": "the interval",
+        "image_scope": "corpus",
+        "demand": "measurable",
+        "status": "interpretive",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:the interval between divisions is regular along most of the axis",
+            "text": "the interval between divisions is regular along most of the axis"
+          },
+          {
+            "type": "prompt",
+            "source_id": "prompt",
+            "text": "where does the interval break down"
+          }
+        ]
+      },
+      {
+        "ref": "c4",
+        "text": "the two specimens divide by different rules",
+        "kind": "comparison",
+        "subject": "the two arrangements",
+        "image_scope": "image_pair",
+        "demand": "measurable",
+        "status": "interpretive",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:one specimen divides in pairs, the other divides singly and rotates",
+            "text": "one specimen divides in pairs, the other divides singly and rotates",
+            "images": [
+              "img_x",
+              "img_y"
+            ]
+          }
+        ]
+      },
+      {
+        "ref": "c5",
+        "text": "the regular interval breaks down near the growing tip",
+        "kind": "pattern_or_sequence",
+        "subject": "the breakdown",
+        "image_scope": "corpus",
+        "demand": "measurable",
+        "status": "uncertain",
+        "inferred_from": [
+          "c3"
+        ],
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:the regular interval shortens sharply near the tip and the arrangement becomes unreadable there",
+            "text": "the regular interval shortens sharply near the tip and the arrangement becomes unreadable there"
+          }
+        ]
+      },
+      {
+        "ref": "c6",
+        "text": "the second specimen reads as a spiral rather than a mirror",
+        "kind": "interpretation",
+        "subject": "spiral character",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "interpretive",
+        "inferred_from": [
+          "c4"
+        ],
+        "sources": [
+          {
+            "type": "compiler_inference",
+            "source_id": "compiler",
+            "text": "a reading assembled from the difference in how the shoots leave"
+          }
+        ]
+      },
+      {
+        "ref": "c7",
+        "text": "the rotating single arrangement has a standard name in the literature on phyllotaxis",
+        "kind": "historical_or_sourced",
+        "subject": "the standard name",
+        "image_scope": "not_an_image_question",
+        "demand": "sourced",
+        "status": "sourced",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:the rotating single arrangement is described under a standard name in the classical literature on phyllotaxis",
+            "text": "the rotating single arrangement is described under a standard name in the classical literature on phyllotaxis"
+          }
+        ]
+      },
+      {
+        "ref": "c8",
+        "text": "the interval shortens near the tip because the newest divisions have not yet extended",
+        "kind": "causal_hypothesis",
+        "image_scope": "corpus",
+        "demand": "interpretive",
+        "status": "uncertain",
+        "inferred_from": [
+          "c5"
+        ],
+        "sources": [
+          {
+            "type": "compiler_inference",
+            "source_id": "compiler",
+            "text": "a because offered for the shortening, not observed"
+          }
+        ]
+      },
+      {
+        "ref": "c9",
+        "text": "a growth rule producing a third would divide in pairs low and rotate singly higher",
+        "kind": "generative_rule",
+        "image_scope": "not_an_image_question",
+        "demand": "imagined",
+        "status": "interpretive",
+        "inferred_from": [
+          "c4"
+        ],
+        "sources": [
+          {
+            "type": "prompt",
+            "source_id": "prompt",
+            "text": "what growth rule would produce a third"
+          }
+        ]
+      },
+      {
+        "ref": "c10",
+        "text": "what counts as the branching dividing, rather than merely bending, is not settled",
+        "kind": "unknown",
+        "image_scope": "not_an_image_question",
+        "demand": "unresolved",
+        "status": "uncertain",
+        "sources": [
+          {
+            "type": "prompt",
+            "source_id": "prompt",
+            "text": "how does the branching divide"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "kind": "composes_from",
+        "from": "c4",
+        "to": "c2",
+        "why": "the comparison is built from one specimen's rule"
+      },
+      {
+        "kind": "complicates",
+        "from": "c5",
+        "to": "c3",
+        "why": "the regularity holds until it does not"
+      },
+      {
+        "kind": "supports",
+        "from": "c4",
+        "to": "c6",
+        "why": "the difference in how shoots leave is what the reading rests on"
+      },
+      {
+        "kind": "challenges",
+        "from": "c8",
+        "to": "c5",
+        "why": "if the shortening is developmental, it is not a break in the rule"
+      },
+      {
+        "kind": "generalizes",
+        "from": "c7",
+        "to": "c4",
+        "why": "the named arrangement is the class one of these belongs to"
+      },
+      {
+        "kind": "composes_from",
+        "from": "c9",
+        "to": "c4",
+        "why": "the rule is assembled out of the contrast"
+      }
+    ],
+    "observables": [
+      {
+        "ref": "o1",
+        "claim": "c1",
+        "kind": "the extent of the dominant axis",
+        "targets": [
+          "the dominant axis"
+        ],
+        "image_scope": "corpus",
+        "capability_classes": [
+          "extent"
+        ],
+        "ground_forms": [
+          "region",
+          "path"
+        ],
+        "success_when": "one extent is returned running the length of the specimen",
+        "ambiguous_when": "two extents of similar length come back and neither dominates",
+        "refused_when": "no instrument can be handed the phrase",
+        "remains_interpretive": "whether dominance is a matter of length at all"
+      },
+      {
+        "ref": "o2",
+        "claim": "c2",
+        "kind": "the angle at which each side element leaves the axis",
+        "targets": [
+          "the side elements",
+          "the dominant axis"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "geometry",
+          "vector_field"
+        ],
+        "ground_forms": [
+          "relation",
+          "field"
+        ],
+        "success_when": "an angle is recovered for each element and the angles fall into two opposed groups",
+        "ambiguous_when": "the angles are continuous rather than grouped",
+        "refused_when": "the elements cannot be separated from the axis",
+        "remains_interpretive": "whether opposed pairs and a tight spiral are different rules or one rule at two rates",
+        "alternatives": [
+          {
+            "label": "measure each element's departure angle",
+            "consequence": "an angle per element; precise, and it needs every element separated first",
+            "capability_classes": [
+              "geometry"
+            ],
+            "ground_forms": [
+              "relation"
+            ],
+            "recommended": true
+          },
+          {
+            "label": "recover an orientation field over the whole specimen",
+            "consequence": "no element separation needed, and the answer is a tendency rather than a set of angles",
+            "capability_classes": [
+              "vector_field"
+            ],
+            "ground_forms": [
+              "field"
+            ]
+          }
+        ]
+      },
+      {
+        "ref": "o3",
+        "claim": "c3",
+        "kind": "the spacing between successive divisions along the axis",
+        "targets": [
+          "the divisions"
+        ],
+        "image_scope": "corpus",
+        "capability_classes": [
+          "pattern"
+        ],
+        "ground_forms": [
+          "path",
+          "field"
+        ],
+        "success_when": "spacings are recovered and are near-constant over most of the run",
+        "ambiguous_when": "the divisions cannot be ordered along the axis",
+        "refused_when": "fewer than three divisions are found",
+        "remains_interpretive": "what counts as regular"
+      },
+      {
+        "ref": "o4",
+        "claim": "c4",
+        "kind": "the departure pattern in each image, compared",
+        "targets": [
+          "the side elements"
+        ],
+        "image_scope": "image_pair",
+        "capability_classes": [
+          "pattern",
+          "geometry"
+        ],
+        "ground_forms": [
+          "field",
+          "relation"
+        ],
+        "success_when": "both images return a pattern and the two patterns differ in kind",
+        "ambiguous_when": "one image returns a pattern and the other returns nothing",
+        "refused_when": "only one image is available",
+        "remains_interpretive": "whether a difference in kind is a difference in rule"
+      },
+      {
+        "ref": "o5",
+        "claim": "c7",
+        "kind": "a documented name for the arrangement",
+        "targets": [
+          "the arrangement named"
+        ],
+        "image_scope": "not_an_image_question",
+        "capability_classes": [
+          "external_source"
+        ],
+        "ground_forms": [
+          "frame"
+        ],
+        "success_when": "a citation is returned that names the arrangement",
+        "refused_when": "no source is reachable",
+        "remains_interpretive": "whether this specimen belongs to the class the source describes"
+      },
+      {
+        "ref": "o6",
+        "claim": "c6",
+        "kind": "a reading of the specimen's character",
+        "targets": [
+          "spiral character"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "semantic_reading"
+        ],
+        "ground_forms": [
+          "frame"
+        ],
+        "success_when": "a reading is produced and is labelled as a reading",
+        "remains_interpretive": "all of it. A reading about a picture is never evidence in it."
+      }
+    ],
+    "decisions": [
+      {
+        "kind": "choose_operationalization",
+        "question": "Measure a departure angle for each element, or recover an orientation field over the whole specimen?",
+        "why_now": "the first needs every element separated before anything can be measured; the second needs none of that and answers a tendency rather than the per-element question the claim actually makes",
+        "affects": [
+          "c2",
+          "o2"
+        ],
+        "blocking": false,
+        "options": [
+          {
+            "label": "measure each element's departure angle",
+            "consequence": "per-element angles, if the elements can be separated at all",
+            "recommended": true
+          },
+          {
+            "label": "recover an orientation field over the whole specimen",
+            "consequence": "a tendency, available even where elements overlap, and not the claim as stated"
+          }
+        ]
+      }
+    ],
+    "semantic_remainder": [
+      {
+        "term": "spiral character",
+        "why": "departure angles and spacings both bear on it and neither settles it; nothing returns a number for whether a plant reads as a spiral",
+        "contributing_capability_classes": [
+          "geometry",
+          "pattern",
+          "vector_field"
+        ],
+        "claims": [
+          "c6"
+        ]
+      },
+      {
+        "term": "dividing rather than bending",
+        "why": "the prompt's distinction is about what to count as an event, and no instrument is scoped to a definition",
+        "contributing_capability_classes": [],
+        "claims": [
+          "c10"
+        ]
+      }
+    ]
+  },
+  "inquiry_id": "inq_a4ae4a09fd5c",
+  "corpus": {
+    "post_ids": [
+      "img_x",
+      "img_y"
+    ],
+    "titles": [
+      "A young specimen, whole",
+      "A second specimen of the same age"
+    ]
+  },
+  "inquiry_frame": {
+    "schema_version": "inquiry-frame.v1",
+    "inquiry_id": "inq_a4ae4a09fd5c",
+    "prompt": "Across these two specimens, how does the branching divide, where does the interval break down, and what growth rule would produce a third?",
+    "mode": "explore",
+    "attentions": [],
+    "epistemic_demands": [],
+    "proposed_actions": [
+      {
+        "id": "act_1",
+        "type": "find_parts",
+        "label": "Find parts",
+        "intent": "open the named images into material you can cite",
+        "source": "system",
+        "status": "proposed",
+        "requiresConfirmation": false,
+        "target": "operation",
+        "createdAt": 0.0,
+        "payload": {
+          "reason": "2 images were named and nothing has been opened into parts"
+        },
+        "warnings": [],
+        "provenance": {
+          "planner": "inquiry/lexicon-v1",
+          "promptExcerpt": "Across these two specimens, how does the branching divide, where does the interval break down, and what growth rule wou…",
+          "matched": [],
+          "cue": "bootstrap"
+        }
+      }
+    ],
+    "unresolved_terms": [
+      {
+        "term": "across",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "specimens",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "branching",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "divide",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "interval",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "break",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "growth",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "produce",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "third",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      }
+    ],
+    "semantic_remainder": [],
+    "requested_output": null,
+    "corpus_context": {
+      "post_ids": [
+        "img_x",
+        "img_y"
+      ],
+      "titles": [
+        "A young specimen, whole",
+        "A second specimen of the same age"
+      ],
+      "count": 2,
+      "tags": [],
+      "note": null
+    },
+    "provenance": {
+      "producer": "inquiry/deterministic-v1",
+      "framer_kind": "deterministic",
+      "model": null,
+      "role": null,
+      "prompt_sha256": "3442ffdd967aff1a3b6b06995cd06cbbcac6004d6d1ab70b4e9d57ee644c7e54",
+      "schema_version": "inquiry-frame.v1",
+      "grammar_version": "perceptual-action-grammar.v1",
+      "lexicon_version": "attunement-lexicon.v1",
+      "framed_at": "2026-08-09T12:25:19.851731+00:00",
+      "model_calls": 0
+    },
+    "refusals": [],
+    "notes": []
+  }
+}
