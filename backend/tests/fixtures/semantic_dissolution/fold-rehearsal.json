@@ -300,57 +300,7 @@
           "image_scope": "one_image"
         }
       ],
-      "coverage": [
-        {
-          "source_unit_id": "$UNIT:1",
-          "disposition": "represented_by",
-          "refs": [
-            "a1",
-            "a2"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:2",
-          "disposition": "represented_by",
-          "refs": [
-            "a3",
-            "a4",
-            "a5",
-            "a6",
-            "a7"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:3",
-          "disposition": "represented_by",
-          "refs": [
-            "a8",
-            "a9"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:4",
-          "disposition": "represented_by",
-          "refs": [
-            "a10"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:5",
-          "disposition": "represented_by",
-          "refs": [
-            "a11",
-            "a12"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:6",
-          "disposition": "represented_by",
-          "refs": [
-            "a13"
-          ]
-        }
-      ]
+      "coverage": []
     },
     {
       "atoms": [
@@ -430,43 +380,7 @@
           "image_scope": "corpus"
         }
       ],
-      "coverage": [
-        {
-          "source_unit_id": "$UNIT:7",
-          "disposition": "represented_by",
-          "refs": [
-            "a14"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:8",
-          "disposition": "represented_by",
-          "refs": [
-            "a15"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:9",
-          "disposition": "represented_by",
-          "refs": [
-            "a16"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:10",
-          "disposition": "represented_by",
-          "refs": [
-            "a17"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:11",
-          "disposition": "represented_by",
-          "refs": [
-            "a18"
-          ]
-        }
-      ]
+      "coverage": []
     }
   ],
   "architect_payload": {

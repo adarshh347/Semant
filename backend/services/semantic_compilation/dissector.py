@@ -73,12 +73,13 @@ SYSTEM_PROMPT = (
     "two atoms, and only one of them could ever be observed.\n"
     "3. ANCHOR EVERY ATOM. Name the `source_unit_id`s it came from and quote the words, verbatim, "
     "from those units. An atom you cannot anchor does not belong in the output.\n"
-    "4. ACCOUNT FOR EVERY UNIT. Each unit you were given gets exactly one disposition:\n"
-    "   `represented_by` — name the atoms that carry it;\n"
+    "4. ACCOUNT FOR WHAT YOU DID NOT DISSOLVE. A unit you emitted at least one atom for is "
+    "accounted for by those atoms and needs no entry. For every OTHER unit — one you produced no "
+    "atom for — give exactly one disposition:\n"
     "   `duplicate_of` — name the one other source unit that already says it;\n"
     "   `semantic_remainder` — it says something real that no atom captures; give the reason;\n"
     "   `refused` — you did not dissolve it; give the reason.\n"
-    "   Leaving a unit out is not an option and is not the same as remainder.\n"
+    "   Leaving such a unit out is not an option and is not the same as remainder.\n"
     "5. KEEP OPEN WORDS. `subject`, `predicate` and `object` are free text in the source's own "
     "vocabulary. Do not translate them into a controlled term.\n\n"
     "Hard rules:\n"
@@ -104,7 +105,8 @@ def build_prompt(units: Sequence[SourceUnit], *, prompt: str, batch: Sequence[So
     return (
         f"THE PERSON'S WHOLE QUESTION, for context only. You may not anchor an atom to this:\n"
         f"{prompt}\n\n"
-        f"THE SOURCE UNITS TO DISSOLVE — every one of these needs a disposition:\n"
+        f"THE SOURCE UNITS TO DISSOLVE — emit atoms for these; any you emit no atom for "
+        f"needs a disposition:\n"
         f"{json.dumps(ledger_mod.digest_for_prompt(batch), indent=2, ensure_ascii=False)}\n\n"
         f"THE VOCABULARY — use only these:\n{json.dumps(vocabulary, indent=2)}\n\n"
         f"Return JSON of exactly this shape. `ref` values are yours to invent and are used only to "
@@ -114,9 +116,10 @@ def build_prompt(units: Sequence[SourceUnit], *, prompt: str, batch: Sequence[So
         f'"quotes": ["<the words, verbatim from that unit>"], '
         f'"subject": "", "predicate": "", "object": "", '
         f'"image_scope": "<image scope>", "note": ""}}], '
-        f'"coverage": [{{"source_unit_id": "<an id from above>", '
-        f'"disposition": "<disposition>", "refs": ["a1"], "reason": ""}}]}}\n'
-        f"Every source unit above must appear exactly once in `coverage`."
+        f'"coverage": [{{"source_unit_id": "<an id you emitted NO atom for>", '
+        f'"disposition": "<duplicate_of | semantic_remainder | refused>", '
+        f'"refs": ["<a source unit id, for duplicate_of only>"], "reason": ""}}]}}\n'
+        f"Emit atoms first. Every unit you produced no atom for must appear in `coverage`."
     )
 
 
@@ -229,6 +232,52 @@ class _Dissection:
 
     # ── coverage ──
 
+    def derive_representation(self, units: Sequence[SourceUnit], seen: Set[str]) -> None:
+        """A unit with at least one atom anchored to it IS represented. Derived, never restated.
+
+        THE LIVE RUN FORCED THIS, and it is a better rule than the one it replaces. Asking the model
+        to list `represented_by` for every unit made it spend its completion budget restating ids it
+        had already written on each atom — five of six batches ran out mid-`coverage`, so 121 real
+        atoms arrived with zero dispositions and the audit reported the whole ledger uncovered.
+
+        It is also stronger. Whether a unit has an atom is a FACT about the output, not an opinion
+        about it, and a derived disposition cannot disagree with the anchors the way a restated one
+        can. What still needs the model's judgement is the other case — a unit it produced no atom
+        for is duplicate, remainder or refused, and only it can say which.
+
+        A model that volunteers a `represented_by` anyway is harmless and ignored; one that calls a
+        unit remainder while also emitting an atom for it is CONTRADICTING itself, and the atoms win
+        with the contradiction recorded.
+        """
+        by_unit: Dict[str, List[str]] = {}
+        for atom in self.atoms:
+            for anchor in atom.source_unit_ids:
+                by_unit.setdefault(anchor, []).append(atom.atom_id)
+
+        for unit in units:
+            refs = by_unit.get(unit.source_unit_id)
+            if not refs:
+                continue
+            existing = next((c for c in self.coverage
+                             if c.source_unit_id == unit.source_unit_id), None)
+            if existing is not None:
+                if existing.disposition is not DispositionKind.REPRESENTED_BY:
+                    self.refuse(CompilerRefusalKind.SOURCE_UNIT_DOUBLE_COVERED,
+                                unit.source_unit_id,
+                                f"the dissector called this unit {existing.disposition.value!r} and "
+                                f"also emitted {len(refs)} atom(s) anchored to it. The atoms are a "
+                                f"fact about the output and the disposition is an opinion about it, "
+                                f"so the atoms win and the contradiction is recorded.")
+                    self.coverage.remove(existing)
+                else:
+                    continue
+            self.coverage.append(CoverageDisposition(
+                coverage_id=ids.coverage_id(self.inquiry_id, unit.source_unit_id),
+                source_unit_id=unit.source_unit_id,
+                disposition=DispositionKind.REPRESENTED_BY, refs=refs,
+                reason="derived from the atoms anchored to this unit, not restated by the model"))
+            seen.add(unit.source_unit_id)
+
     def disposition(self, index: int, row: Mapping[str, Any], batch: Set[str],
                     seen: Set[str]) -> None:
         where = f"coverage {index}"
@@ -319,6 +368,7 @@ class SemanticDissector(ModelPass):
                 if isinstance(row, Mapping):
                     comp.disposition(index, row, batch_ids, seen)
 
+        comp.derive_representation(units, seen)
         self._report_overflow(comp)
         outcome, detail = self._outcome(units, comp, receipts, seen)
         receipt = merge_receipts(self.pass_name, receipts, inquiry_id=inquiry_id, outcome=outcome,

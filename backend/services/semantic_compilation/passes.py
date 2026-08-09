@@ -42,6 +42,23 @@ from . import contracts, ids
 from .base import refusal, sha256_of
 
 
+#: How much of a provider's error message travels onto the receipt. Enough to tell a rate limit
+#: from a context overflow — which is the whole difference between "wait" and "send less" — and
+#: bounded because a provider is free to return a page of HTML.
+PROVIDER_DETAIL_CHARS = 300
+
+
+def _provider_detail(exc: BaseException) -> str:
+    """The provider's own words, trimmed.
+
+    `type(exc).__name__` alone was what the first live run recorded, and `APIStatusError` does not
+    say whether the request was too large or the account was rate limited. Those need opposite
+    fixes, so the message is kept.
+    """
+    text = " ".join(str(exc).split())
+    return text[:PROVIDER_DETAIL_CHARS] or "(no message)"
+
+
 @dataclass(frozen=True)
 class PassBudget:
     """What one pass is allowed. Declared per pass rather than shared, because the three jobs are
@@ -129,7 +146,7 @@ class ModelPass:
         if not self.is_available():
             return PassResult(None, self._receipt(
                 pass_id, PassOutcome.UNAVAILABLE, prompt_hash=[prompt_hash], inputs=inputs,
-                detail=f"{self.role} is unavailable (no client or API key)"),
+                calls=0, detail=f"{self.role} is unavailable (no client or API key)"),
                 (refusal(inquiry_id, CompilerRefusalKind.PASS_UNAVAILABLE, self.role,
                          f"{self.role} could not be reached, so nothing was attempted. Nothing "
                          f"rule-based was substituted: a fallback here would have to invent the "
@@ -153,11 +170,11 @@ class ModelPass:
             return PassResult(None, self._receipt(
                 pass_id, PassOutcome.ERROR, prompt_hash=[prompt_hash], inputs=inputs,
                 duration_ms=round(duration, 3),
-                detail=f"{self.role} failed: {type(exc).__name__}"),
+                detail=f"{self.role} failed: {type(exc).__name__}: {_provider_detail(exc)}"),
                 (refusal(inquiry_id, CompilerRefusalKind.PASS_UNAVAILABLE, self.role,
-                         f"{self.role} raised {type(exc).__name__}. One call was made and no retry "
-                         f"was attempted; a retry loop would hide a marginal prompt behind a good "
-                         f"average."),))
+                         f"{self.role} raised {type(exc).__name__}: {_provider_detail(exc)}. One "
+                         f"call was made and no retry was attempted; a retry loop would hide a "
+                         f"marginal prompt behind a good average."),))
 
         duration = (time.perf_counter() - started) * 1000
         notes: List[str] = []
@@ -198,7 +215,7 @@ class ModelPass:
     def _receipt(self, pass_id: str, outcome: PassOutcome, *, prompt_hash: Sequence[str] = (),
                  raw: Sequence[str] = (), finish: Sequence[str] = (), usage: Any = None,
                  duration_ms: Optional[float] = None, inputs: int = 0, outputs: int = 0,
-                 detail: str = "", notes: Sequence[str] = ()) -> PassReceipt:
+                 detail: str = "", notes: Sequence[str] = (), calls: int = 1) -> PassReceipt:
         return PassReceipt(
             pass_id=pass_id, pass_name=self.pass_name, outcome=outcome,
             model=self.model, provider=self.provider, call_count=self.calls,

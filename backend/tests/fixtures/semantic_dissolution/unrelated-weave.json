@@ -228,53 +228,7 @@
           "image_scope": "one_image"
         }
       ],
-      "coverage": [
-        {
-          "source_unit_id": "$UNIT:1",
-          "disposition": "represented_by",
-          "refs": [
-            "b1"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:2",
-          "disposition": "represented_by",
-          "refs": [
-            "b2",
-            "b3"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:3",
-          "disposition": "represented_by",
-          "refs": [
-            "b4",
-            "b5"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:4",
-          "disposition": "represented_by",
-          "refs": [
-            "b6",
-            "b7"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:5",
-          "disposition": "represented_by",
-          "refs": [
-            "b8"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:6",
-          "disposition": "represented_by",
-          "refs": [
-            "b9"
-          ]
-        }
-      ]
+      "coverage": []
     },
     {
       "atoms": [
@@ -369,50 +323,7 @@
           "image_scope": "one_image"
         }
       ],
-      "coverage": [
-        {
-          "source_unit_id": "$UNIT:7",
-          "disposition": "represented_by",
-          "refs": [
-            "b10"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:8",
-          "disposition": "represented_by",
-          "refs": [
-            "b11"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:9",
-          "disposition": "represented_by",
-          "refs": [
-            "b12"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:10",
-          "disposition": "represented_by",
-          "refs": [
-            "b13"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:11",
-          "disposition": "represented_by",
-          "refs": [
-            "b14"
-          ]
-        },
-        {
-          "source_unit_id": "$UNIT:12",
-          "disposition": "represented_by",
-          "refs": [
-            "b15"
-          ]
-        }
-      ]
+      "coverage": []
     }
   ],
   "architect_payload": {

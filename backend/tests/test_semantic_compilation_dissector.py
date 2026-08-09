@@ -399,3 +399,61 @@ def test_the_prompt_is_shown_whole_as_context_and_cannot_be_anchored_to():
     assert PROMPT in body
     assert "You may not anchor an atom to this" in body
     assert units[1].source_unit_id not in body, "a unit outside the batch carries no id"
+
+
+# ── representation is derived from the anchors, not restated ─────────────────
+
+def test_a_unit_with_an_atom_is_represented_without_the_model_saying_so():
+    """FOUND BY THE LIVE RUN. Asking the model to restate `represented_by` for every unit made it
+    spend its completion budget on ids it had already written on each atom: five of six batches ran
+    out mid-`coverage`, so 121 real atoms arrived with zero dispositions and the audit reported the
+    whole ledger uncovered.
+
+    Deriving it is also STRONGER. Whether a unit has an atom is a fact about the output; a restated
+    disposition is an opinion about it, and only the opinion can disagree with the anchors.
+    """
+    units = a_ledger()
+    payload = {"atoms": [atom_row("a1", "x", units[0]), atom_row("a2", "y", units[1])],
+               "coverage": []}
+    _, atoms, coverage, refusals, receipt = dissolve([payload], units)
+    assert receipt.outcome is PassOutcome.COMPLETED
+    assert {c.source_unit_id for c in coverage} == {u.source_unit_id for u in units}
+    assert all(c.disposition is DispositionKind.REPRESENTED_BY for c in coverage)
+    assert all("derived from the atoms" in c.reason for c in coverage)
+    assert refusals == []
+
+
+def test_the_model_still_says_what_happened_to_a_unit_it_produced_no_atom_for():
+    """The half that cannot be derived. A unit with no atom is duplicate, remainder or refused, and
+    only the dissector can say which."""
+    units = a_ledger()
+    payload = {"atoms": [atom_row("a1", "x", units[0])],
+               "coverage": [cover(units[1], [], "semantic_remainder", "nothing captured it")]}
+    _, _, coverage, _, receipt = dissolve([payload], units)
+    assert receipt.outcome is PassOutcome.COMPLETED
+    kinds = {c.source_unit_id: c.disposition for c in coverage}
+    assert kinds[units[0].source_unit_id] is DispositionKind.REPRESENTED_BY
+    assert kinds[units[1].source_unit_id] is DispositionKind.SEMANTIC_REMAINDER
+
+
+def test_atoms_beat_a_contradicting_disposition_and_the_contradiction_is_recorded():
+    """A unit called remainder that also has an atom is the dissector disagreeing with itself. The
+    atoms are a fact about the output and the disposition is an opinion about it."""
+    units = a_ledger()
+    payload = {"atoms": [atom_row("a1", "x", units[0]), atom_row("a2", "y", units[1])],
+               "coverage": [cover(units[0], [], "semantic_remainder", "nothing captured it")]}
+    _, _, coverage, refusals, _ = dissolve([payload], units)
+    first = next(c for c in coverage if c.source_unit_id == units[0].source_unit_id)
+    assert first.disposition is DispositionKind.REPRESENTED_BY
+    assert any(r.kind.value == "source_unit_double_covered" and "the atoms win" in r.why
+               for r in refusals)
+
+
+def test_the_prompt_asks_only_for_the_dispositions_that_cannot_be_derived():
+    units = a_ledger()
+    body = D.build_prompt(units, prompt=PROMPT, batch=units)
+    assert "any you emit no atom for" in body
+    assert "represented_by" not in body.split("Return JSON")[1], \
+        "the model is no longer asked to restate what the anchors already say"
+    assert "needs no entry" in D.SYSTEM_PROMPT
+    assert "represented_by" not in D.SYSTEM_PROMPT
