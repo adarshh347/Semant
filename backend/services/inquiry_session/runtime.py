@@ -28,6 +28,25 @@ def _enabled(name: str, default: str = "1") -> bool:
     return str(os.getenv(name, default)).strip().lower() not in ("0", "false", "no", "off", "")
 
 
+#: Which semantic compiler a deployment binds. `council` is the v2 dissolution pipeline; `legacy`
+#: is the v1 one-call compiler, kept runnable so a stored v1 session can be reproduced rather than
+#: only parsed.
+COMPILER_COUNCIL = "council"
+COMPILER_LEGACY = "legacy"
+
+
+def _variant() -> str:
+    raw = str(os.getenv("SEMANT_INQUIRY_COMPILER", COMPILER_COUNCIL)).strip().lower()
+    return raw if raw in (COMPILER_COUNCIL, COMPILER_LEGACY) else COMPILER_COUNCIL
+
+
+def _compiler_for(variant: str):
+    from backend.services.semantic_compilation.compiler import ModelSemanticCompiler
+
+    from .dissolution_binding import DissolutionCompiler
+    return ModelSemanticCompiler() if variant == COMPILER_LEGACY else DissolutionCompiler()
+
+
 def build_stages(*, capability=None, judge=None, composer=None) -> Stages:
     """The production binding.
 
@@ -39,6 +58,8 @@ def build_stages(*, capability=None, judge=None, composer=None) -> Stages:
     from backend.services.semantic_compilation.compiler import ModelSemanticCompiler
     from backend.services.semantic_compilation.theorist import ModelSceneTheorist
 
+    from .dissolution_binding import DissolutionCompiler
+
     from .capability import LockedFixtureCapability
     from .composer import DeterministicComposer, ModelSynthesisComposer
     from .judge import judge as judge_claims
@@ -47,7 +68,14 @@ def build_stages(*, capability=None, judge=None, composer=None) -> Stages:
     return Stages(
         framer=get_framer("deterministic"),
         theorist=ModelSceneTheorist() if live else None,
-        compiler=ModelSemanticCompiler() if live else None,
+        # THE COUNCIL, by default. 003A replaced the one-call compiler 002R failed on, and until
+        # this line it was merged and unreachable from `/inquiry`.
+        #
+        # `SEMANT_INQUIRY_COMPILER=legacy` still binds the v1 one-call compiler. Not a fallback and
+        # never automatic — nothing selects it on an error — but a way to reproduce a stored v1
+        # session's shape on purpose, which is the difference between a version being readable and
+        # a version being runnable.
+        compiler=(_compiler_for(_variant()) if live else None),
         # The optional question-reformatter. Left unbound: Lane B's `DeterministicFormatter` is
         # fully capable, and a model that rewords a question is the one model call in this chain
         # whose only effect is on what a person reads. Binding it is a deliberate later act.
@@ -66,4 +94,4 @@ def build_stages(*, capability=None, judge=None, composer=None) -> Stages:
     )
 
 
-__all__ = ["build_stages"]
+__all__ = ["build_stages", "COMPILER_COUNCIL", "COMPILER_LEGACY"]
