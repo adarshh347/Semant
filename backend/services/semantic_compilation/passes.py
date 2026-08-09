@@ -122,7 +122,12 @@ class ModelPass:
             from groq import Groq
 
             from backend.config import settings
-            self._client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
+            # `max_retries=0`, and this is not a tuning knob. The SDK's default is 2, so "exactly
+            # one call and no silent retry" was true at THIS layer and false underneath it: a rate
+            # limit became three requests, the receipt said one, and the duration said nothing
+            # about why. A guarantee that stops at the module boundary is not a guarantee.
+            self._client = (Groq(api_key=settings.GROQ_API_KEY, max_retries=0)
+                            if settings.GROQ_API_KEY else None)
         except Exception:
             self._client = None
         return self._client
@@ -218,7 +223,11 @@ class ModelPass:
                  detail: str = "", notes: Sequence[str] = (), calls: int = 1) -> PassReceipt:
         return PassReceipt(
             pass_id=pass_id, pass_name=self.pass_name, outcome=outcome,
-            model=self.model, provider=self.provider, call_count=self.calls,
+            model=self.model, provider=self.provider,
+            # ONE, not `self.calls`. The counter is cumulative across a batched pass, so putting it
+            # on every batch receipt made `merge_receipts` sum 1+2+…+n — six calls reported as
+            # twenty-one. The triangular number was the giveaway in the live run.
+            call_count=calls,
             finish_reasons=[f for f in finish if f],
             prompt_sha256=list(prompt_hash),
             raw_response_sha256=[sha256_of(r) for r in raw],
@@ -302,6 +311,18 @@ def merge_receipts(pass_name: DissolutionPass, receipts: Sequence[PassReceipt], 
         duration_ms=round(sum(durations), 3) if durations else None,
         inputs=sum(r.inputs for r in receipts), outputs=outputs, detail=detail,
         notes=[*(n for r in receipts for n in r.notes), *notes])
+
+
+def bounded(items: Sequence[Any], limit: int) -> Tuple[List[Any], List[Any]]:
+    """The first `limit` items, and the rest — for a pass that cannot be batched.
+
+    NO SILENT CAP. The caller reports the remainder, because a pass that quietly used half its
+    input and called itself complete is the shape this lane exists to make impossible. Used where
+    batching is not available: relations are what the architect is FOR, and a batch boundary is a
+    relation it was structurally unable to see.
+    """
+    step = max(1, int(limit))
+    return list(items[:step]), list(items[step:])
 
 
 def batched(items: Sequence[Any], size: int) -> List[List[Any]]:

@@ -457,3 +457,23 @@ def test_the_prompt_asks_only_for_the_dispositions_that_cannot_be_derived():
         "the model is no longer asked to restate what the anchors already say"
     assert "needs no entry" in D.SYSTEM_PROMPT
     assert "represented_by" not in D.SYSTEM_PROMPT
+
+
+def test_a_batched_pass_reports_one_call_per_batch_and_not_a_triangular_number():
+    """FOUND LIVE, then found again: the first fix for this did not apply and the commit claiming
+    it was wrong. The counter on `ModelPass` is cumulative, so putting it on every batch receipt
+    made `merge_receipts` sum 1+2+…+n. Six calls were reported as twenty-one.
+
+    A call count is not decoration — it is what a reader uses to judge cost and to tell a retry
+    from a batch — so it gets a test rather than a careful edit.
+    """
+    reading_blocks = [a_block(f"rb_{i}", f"block number {i} of prose") for i in range(14)]
+    units = a_ledger(PROMPT, *reading_blocks)
+    batches = _batches(units, D.DEFAULT_BUDGET.batch_size)
+    pass_ = D.FrozenSemanticDissector([full_payload(b) for b in batches])
+    _, _, _, receipt = pass_.dissolve(units, prompt=PROMPT, inquiry_id=INQUIRY)
+
+    assert len(batches) > 2, "the test needs enough batches for the triangular number to differ"
+    assert pass_.calls == len(batches)
+    assert receipt.call_count == len(batches), \
+        f"{receipt.call_count} reported for {len(batches)} batches — the counter is cumulative again"

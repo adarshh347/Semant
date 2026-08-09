@@ -47,10 +47,15 @@ from .passes import ModelPass, PassBudget, PassResult, batched, merge_receipts
 ROLE = "semantic_dissector"
 PRODUCER = "semantic_compilation/dissector-v1"
 
-#: Small on purpose. The rehearsal's compiler asked for everything at once and was cut off; a batch
-#: this size cannot exhaust the budget, so a truncation here means something is genuinely wrong
-#: rather than that the input was large.
-DEFAULT_BUDGET = PassBudget(max_completion_tokens=4096, batch_size=6)
+#: THREE, not six, and the budget raised to match — both sized from the live run rather than
+#: guessed. Six rich reading blocks produce more atoms than 4096 tokens can hold, so five of six
+#: batches truncated mid-output and the dissection arrived as a prefix.
+#:
+#: The BATCH is what bounds the work; the budget is sized to the batch. Raising the budget alone
+#: would be the thing the directive forbids — a bigger call is still one call that can overflow —
+#: and shrinking the batch alone would leave the same ratio. A batch of three units cannot produce
+#: more atoms than this budget holds, so a truncation here now means something is genuinely wrong.
+DEFAULT_BUDGET = PassBudget(max_completion_tokens=8192, batch_size=3)
 
 #: A unit that produces more atoms than this is being paraphrased word by word rather than
 #: dissolved. The overflow is REPORTED, never trimmed into looking correct.

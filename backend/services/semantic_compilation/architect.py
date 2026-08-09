@@ -46,7 +46,7 @@ from backend.schemas.semantic_compilation import (AtomKind, ClaimEdge, ClaimEdge
 
 from . import contracts, ids
 from .base import refusal
-from .passes import ModelPass, PassBudget, PassResult, merge_receipts
+from .passes import ModelPass, PassBudget, PassResult, bounded, merge_receipts
 
 ROLE = "relation_architect"
 PRODUCER = "semantic_compilation/architect-v1"
@@ -54,6 +54,16 @@ PRODUCER = "semantic_compilation/architect-v1"
 DEFAULT_BUDGET = PassBudget(max_completion_tokens=6144, batch_size=0)
 
 MAX_CLAIMS = 80
+
+#: How many atoms may go into one architect request. The live run sent 88 and the provider answered
+#: `413 Request too large for model` — a fact worth having rather than guessing at, which is why the
+#: provider's message now travels onto the receipt.
+#:
+#: NOT BATCHED, and the cap is the price of that: relations are what this pass is FOR, and a batch
+#: boundary is a relation it was structurally unable to see. So it gets one call over as many atoms
+#: as fit, and the remainder is REPORTED — a pass that quietly used half its input and called itself
+#: complete is the shape this lane exists to make impossible.
+MAX_ATOMS_PER_CALL = 60
 
 SYSTEM_PROMPT = (
     "You are a relation architect inside a visual close-reading tool. You are given SEMANTIC "
@@ -422,7 +432,14 @@ class RelationArchitect(ModelPass):
                  ) -> Tuple[List[ClaimNode], List[ClaimEdge], List[CompilerRefusal], List[str],
                             PassReceipt]:
         by_unit = {u.source_unit_id: u for u in units}
+        atoms, overflow = bounded(atoms, MAX_ATOMS_PER_CALL)
         comp = _Assembly(inquiry_id, atoms, by_unit)
+        if overflow:
+            comp.notes.append(
+                f"{len(overflow)} atom(s) beyond the first {MAX_ATOMS_PER_CALL} were not sent to "
+                f"the architect: one request over all of them is refused by the provider as too "
+                f"large. They remain in the graph, unbuilt-from, and are counted in the orphan "
+                f"total rather than dropped.")
         if not atoms:
             receipt = merge_receipts(self.pass_name, [], inquiry_id=inquiry_id,
                                      outcome=PassOutcome.EMPTY, attempt=attempt,
