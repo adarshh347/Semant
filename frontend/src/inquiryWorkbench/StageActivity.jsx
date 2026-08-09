@@ -32,18 +32,20 @@ import {
 const TICK_MS = 1000;
 
 export default function StageActivity({ stages = [], working = false, now = null, open = null }) {
-    // Visible by default WHILE WORKING, and collapsed once the session ends — the machinery stops
-    // being the thing you are watching and becomes reference material, but it never disappears.
+    // Visible by default while working, and ALSO when a stage underperformed — the machinery is
+    // reference material after an ordinary run and it is the first thing you want after a bad one.
+    // Otherwise it collapses; it never disappears.
     //
     // `override` is null until the person touches the toggle, and only then does their choice win.
     // Initialising a `useState` from `working` would have frozen the panel at whatever the session
     // was doing on the first render, which is exactly wrong for a panel about a session that
     // changes state under it.
     const [override, setOverride] = useState(null);
-    const expanded = override ?? (open === null ? working : open);
     const [tick, setTick] = useState(() => (now === null ? Date.now() : now));
 
     const anyRunning = stages.some((s) => s.running);
+    const anyFailed = stages.some((s) => s.underperformed);
+    const expanded = override ?? (open === null ? (working || anyFailed) : open);
 
     useEffect(() => {
         // The clock runs only while something is actually running, and only when the caller did
