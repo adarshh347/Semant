@@ -35,6 +35,10 @@ PREFIXES = {
     "decision_candidate": "dec_",
     "refusal": "cref_",
     "reading_block": "rb_",
+    "source_unit": "su_",
+    "semantic_atom": "atm_",
+    "coverage": "cov_",
+    "pass_receipt": "pas_",
 }
 
 #: Twelve hex characters. The same width HARNESS-001A chose for `inq_`, for the same reason: long
@@ -107,5 +111,46 @@ def block_id(inquiry_id: str, kind: Any, text: str) -> str:
     return _mint("reading_block", [inquiry_id, getattr(kind, "value", kind), text])
 
 
+# ── v2: the ledger ───────────────────────────────────────────────────────────
+
+def source_unit_id(inquiry_id: str, kind: Any, source_ref: str, text: str) -> str:
+    """Keyed on the source's IDENTITY and its text — never on its position in the ledger.
+
+    A theorist that emits its blocks in a different order emits the same blocks, and a prompt whose
+    clauses are re-split identically is the same prompt. An ordinal in this key would renumber a
+    whole ledger over a reordering that changed nothing, and every atom anchor with it.
+    """
+    return _mint("source_unit", [inquiry_id, getattr(kind, "value", kind), source_ref, text])
+
+
+def atom_id(inquiry_id: str, unit_kind: Any, text: str, source_unit_ids: Sequence[str] = ()) -> str:
+    """Keyed on the kind, the text, and the SET of units it is anchored to.
+
+    The anchors are sorted into the key for the same reason an observable's targets are: two atoms
+    differing only in the order the dissector listed their sources are one atom. The kind is in the
+    key because the same sentence read as a `visual_quality` and as an `interpretation` is two
+    different readings of it, and collapsing them would discard whichever arrived second.
+    """
+    return _mint("semantic_atom", [inquiry_id, getattr(unit_kind, "value", unit_kind), text,
+                                   "|".join(sorted(normalise(s) for s in source_unit_ids))])
+
+
+def coverage_id(inquiry_id: str, source_unit_id_: str) -> str:
+    """Keyed on the UNIT ALONE, deliberately.
+
+    Exactly one disposition per unit is the ledger's central law, and an id that also hashed the
+    disposition would let two contradictory entries coexist with different ids — the violation
+    would still be caught, but one law would be enforced in two places and only one of them by
+    construction.
+    """
+    return _mint("coverage", [inquiry_id, source_unit_id_])
+
+
+def pass_id(inquiry_id: str, pass_name: Any, attempt: int = 1) -> str:
+    """Keyed on the attempt, so the repair pass and the pass it repairs are two receipts."""
+    return _mint("pass_receipt", [inquiry_id, getattr(pass_name, "value", pass_name), attempt])
+
+
 __all__ = ["PREFIXES", "WIDTH", "normalise", "graph_id", "claim_id", "edge_id", "observable_id",
-           "alternative_id", "decision_id", "refusal_id", "block_id"]
+           "alternative_id", "decision_id", "refusal_id", "block_id",
+           "source_unit_id", "atom_id", "coverage_id", "pass_id"]

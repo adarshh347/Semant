@@ -20,12 +20,37 @@ from typing import Any, Dict, List, Mapping, Sequence, Tuple
 
 from backend.services.inquiry.contracts import ContractError, load
 
-GRAPH_FILE = "semantic-inquiry-graph.v1.json"
-GRAPH_SCHEMA_VERSION = "semantic-inquiry-graph.v1"
+#: The version this code READS AND WRITES. v1 stays on disk and stays loadable — `graph_contract_v1`
+#: exists so the migration test can compare the two vocabularies rather than trust that v2 is a
+#: superset, and so a stored v1 graph can still be explained by the contract it was written under.
+GRAPH_FILE_V1 = "semantic-inquiry-graph.v1.json"
+GRAPH_SCHEMA_VERSION_V1 = "semantic-inquiry-graph.v1"
+GRAPH_FILE = "semantic-inquiry-graph.v2.json"
+GRAPH_SCHEMA_VERSION = "semantic-inquiry-graph.v2"
 
 
 def graph_contract() -> Dict[str, Any]:
     return load(GRAPH_FILE, GRAPH_SCHEMA_VERSION)
+
+
+def graph_contract_v1() -> Dict[str, Any]:
+    """The superseded contract, still on disk and still readable.
+
+    Kept rather than deleted because a stored v1 graph is explained by v1's vocabulary, and because
+    "v2 is a superset" is a claim a test should check against the file rather than a promise.
+    """
+    return load(GRAPH_FILE_V1, GRAPH_SCHEMA_VERSION_V1)
+
+
+def atom_kind_to_claim_kind() -> Dict[str, str]:
+    """The one place the atom vocabulary and the claim vocabulary meet, as data.
+
+    A DEFAULT the relation architect may override with a reason — never a rewrite applied behind it.
+    Read from the contract so the mapping is reviewable beside both enums instead of buried in a
+    dict literal halfway down a pass.
+    """
+    raw = graph_contract().get("atom_kind_to_claim_kind") or {}
+    return {str(k): str(v) for k, v in raw.items() if k != "why"}
 
 
 def closed_set(name: str) -> Tuple[str, ...]:
@@ -90,6 +115,7 @@ def unknown_values(values: Sequence[Any], set_name: str) -> List[str]:
     return [str(v) for v in values if str(v) not in declared]
 
 
-__all__ = ["GRAPH_FILE", "GRAPH_SCHEMA_VERSION", "ContractError", "graph_contract", "closed_set",
-           "laws", "capability_class_info", "id_prefixes", "forbidden_geometry_keys",
+__all__ = ["GRAPH_FILE", "GRAPH_SCHEMA_VERSION", "GRAPH_FILE_V1", "GRAPH_SCHEMA_VERSION_V1",
+           "ContractError", "graph_contract", "graph_contract_v1", "atom_kind_to_claim_kind",
+           "closed_set", "laws", "capability_class_info", "id_prefixes", "forbidden_geometry_keys",
            "geometry_keys_in", "unknown_values"]

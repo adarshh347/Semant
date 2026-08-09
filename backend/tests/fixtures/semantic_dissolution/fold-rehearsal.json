@@ -1,0 +1,840 @@
+{
+  "name": "fold-rehearsal",
+  "topic": "the person's own HARNESS-002R prompt: how carved drapery differs across four sculptures",
+  "why_this_fixture": [
+    "This is the prompt the 002R rehearsal actually failed on, frozen as MODEL OUTPUT rather than",
+    "as production logic. It is here because the person's own note already performed the",
+    "intelligence the pipeline is supposed to perform — separating a quality from the effect it",
+    "produces, tracing each to what was said, and keeping what measurement will not reach — and a",
+    "fixture that did less would not test the repair.",
+    "NOTHING HERE IS ASSERTED TRUE. Every atom is a frozen model's proposal about what a source unit",
+    "says. The fixture proves the SHAPE survives the pipeline, not that any reading is correct."
+  ],
+  "required_distinctions": {
+    "user_hypothesis": "the person's own causal claim, which must stay attributed to them",
+    "visual_quality": "how an edge or a surface appears, separate from the thing that has it",
+    "relation_or_effect": "what a quality does to a viewer — never merged into the quality",
+    "cross_image_comparison": "a statement holding across sculptures, never scoped to one",
+    "possible_observation": "something an instrument could be asked for",
+    "semantic_remainder": "what stays a reading whatever succeeds"
+  },
+  "topic_nouns": [
+    "statue",
+    "buddha",
+    "drapery",
+    "sculpture",
+    "veil",
+    "chisel"
+  ],
+  "prompt": "even folding through the statues can have different styles the way they affect the perception and make us view the statue. the the buddha statue it feels so metallic somehow very blunt, very sharp edges of the folds, whereas in the woman whose face is covered with the the created fold, that is a damn different art, the artist has carved the fold in such a manner that it creates the effect of transparency--a bit similar is of the dead bed man the folds on his chest are somewhat looking similar but yeah share slight bluntness with buddha--folds in the modern woman sculptures have their own style",
+  "images": [
+    {
+      "post_id": "img_seated",
+      "title": "A seated figure, frontal"
+    },
+    {
+      "post_id": "img_veiled",
+      "title": "A standing figure, face covered"
+    },
+    {
+      "post_id": "img_recumbent",
+      "title": "A recumbent figure, seen from the side"
+    },
+    {
+      "post_id": "img_modern",
+      "title": "A modern figure, three-quarter view"
+    }
+  ],
+  "theorist_payload": {
+    "reading": "Four carved figures, each resolving cloth differently, and the difference is legible in the edges rather than in the subject.",
+    "blocks": [
+      {
+        "kind": "part",
+        "text": "the seated figure's drapery breaks into facets that meet at abrupt edges",
+        "images": [
+          "img_seated"
+        ]
+      },
+      {
+        "kind": "part",
+        "text": "the standing figure's face is covered by a carved veil whose weave is cut through",
+        "images": [
+          "img_veiled"
+        ]
+      },
+      {
+        "kind": "organization",
+        "text": "on the recumbent figure the cloth gathers across the chest in long parallel troughs",
+        "images": [
+          "img_recumbent"
+        ]
+      },
+      {
+        "kind": "comparison",
+        "text": "the seated and recumbent figures share an abruptness at the edge that the veiled figure does not",
+        "images": [
+          "img_seated",
+          "img_recumbent",
+          "img_veiled"
+        ]
+      },
+      {
+        "kind": "tension",
+        "text": "the veil reads as thin cloth while remaining continuous stone, and the two readings do not resolve",
+        "images": [
+          "img_veiled"
+        ]
+      },
+      {
+        "kind": "historical_association",
+        "text": "carving cloth to read as translucent is associated with a nineteenth-century workshop practice",
+        "images": [
+          "img_veiled"
+        ]
+      },
+      {
+        "kind": "hypothesis",
+        "text": "the modern figure's cloth may be resolving into fewer, larger planes than any of the other three",
+        "images": [
+          "img_modern"
+        ]
+      }
+    ]
+  },
+  "dissector_payloads": [
+    {
+      "atoms": [
+        {
+          "ref": "a1",
+          "text": "carved cloth can be handled in different styles across figures",
+          "unit_kind": "comparison",
+          "source_unit_ids": [
+            "$UNIT:1"
+          ],
+          "quotes": [
+            "can have different styles"
+          ],
+          "subject": "carved cloth",
+          "predicate": "varies in",
+          "object": "handling",
+          "image_scope": "corpus"
+        },
+        {
+          "ref": "a2",
+          "text": "the handling of carved cloth changes how a viewer sees the figure",
+          "unit_kind": "causal_hypothesis",
+          "source_unit_ids": [
+            "$UNIT:1"
+          ],
+          "quotes": [
+            "the way they affect the perception and make us view the statue"
+          ],
+          "subject": "handling of carved cloth",
+          "predicate": "affects",
+          "object": "how the figure is seen",
+          "image_scope": "corpus"
+        },
+        {
+          "ref": "a3",
+          "text": "the seated figure's cloth appears metallic",
+          "unit_kind": "visual_quality",
+          "source_unit_ids": [
+            "$UNIT:2"
+          ],
+          "quotes": [
+            "it feels so metallic somehow"
+          ],
+          "subject": "the seated figure's cloth",
+          "predicate": "appears",
+          "object": "metallic",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a4",
+          "text": "the seated figure's cloth reads as blunt",
+          "unit_kind": "visual_quality",
+          "source_unit_ids": [
+            "$UNIT:2"
+          ],
+          "quotes": [
+            "very blunt"
+          ],
+          "subject": "the seated figure's cloth",
+          "predicate": "reads as",
+          "object": "blunt",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a5",
+          "text": "the edges of the seated figure's cloth are sharp",
+          "unit_kind": "visual_quality",
+          "source_unit_ids": [
+            "$UNIT:2"
+          ],
+          "quotes": [
+            "very sharp edges of the folds"
+          ],
+          "subject": "the edges of the cloth",
+          "predicate": "are",
+          "object": "sharp",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a6",
+          "text": "the veiled figure's cloth is handled by a different art from the seated figure's",
+          "unit_kind": "comparison",
+          "source_unit_ids": [
+            "$UNIT:2"
+          ],
+          "quotes": [
+            "that is a damn different art"
+          ],
+          "subject": "the veiled figure's cloth",
+          "predicate": "differs from",
+          "object": "the seated figure's cloth",
+          "image_scope": "image_pair"
+        },
+        {
+          "ref": "a7",
+          "text": "the carving of the veil produces an effect of transparency",
+          "unit_kind": "causal_hypothesis",
+          "source_unit_ids": [
+            "$UNIT:2"
+          ],
+          "quotes": [
+            "carved the fold in such a manner that it creates the effect of transparency"
+          ],
+          "subject": "the carving of the veil",
+          "predicate": "creates",
+          "object": "an effect of transparency",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a8",
+          "text": "the recumbent figure's chest cloth resembles the veiled figure's",
+          "unit_kind": "comparison",
+          "source_unit_ids": [
+            "$UNIT:3"
+          ],
+          "quotes": [
+            "the folds on his chest are somewhat looking similar"
+          ],
+          "subject": "the recumbent figure's chest cloth",
+          "predicate": "resembles",
+          "object": "the veiled figure's cloth",
+          "image_scope": "image_pair"
+        },
+        {
+          "ref": "a9",
+          "text": "the recumbent figure's cloth also shares some bluntness with the seated figure's",
+          "unit_kind": "comparison",
+          "source_unit_ids": [
+            "$UNIT:3"
+          ],
+          "quotes": [
+            "share slight bluntness with buddha"
+          ],
+          "subject": "the recumbent figure's cloth",
+          "predicate": "shares",
+          "object": "bluntness with the seated figure's",
+          "image_scope": "image_pair"
+        },
+        {
+          "ref": "a10",
+          "text": "the modern figures handle cloth in a style of their own",
+          "unit_kind": "comparison",
+          "source_unit_ids": [
+            "$UNIT:4"
+          ],
+          "quotes": [
+            "have their own style"
+          ],
+          "subject": "the modern figures' cloth",
+          "predicate": "has",
+          "object": "its own style",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a11",
+          "text": "the seated figure's drapery breaks into facets",
+          "unit_kind": "entity",
+          "source_unit_ids": [
+            "$UNIT:5"
+          ],
+          "quotes": [
+            "breaks into facets"
+          ],
+          "subject": "the seated figure's drapery",
+          "predicate": "breaks into",
+          "object": "facets",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a12",
+          "text": "the facets of the seated figure's drapery meet at abrupt edges",
+          "unit_kind": "visual_quality",
+          "source_unit_ids": [
+            "$UNIT:5"
+          ],
+          "quotes": [
+            "meet at abrupt edges"
+          ],
+          "subject": "the facets",
+          "predicate": "meet at",
+          "object": "abrupt edges",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a13",
+          "text": "a carved veil covers the standing figure's face and its weave is cut through",
+          "unit_kind": "entity",
+          "source_unit_ids": [
+            "$UNIT:6"
+          ],
+          "quotes": [
+            "a carved veil whose weave is cut through"
+          ],
+          "subject": "a carved veil",
+          "predicate": "covers",
+          "object": "the standing figure's face",
+          "image_scope": "one_image"
+        }
+      ],
+      "coverage": []
+    },
+    {
+      "atoms": [
+        {
+          "ref": "a14",
+          "text": "the recumbent figure's cloth gathers in long parallel troughs across the chest",
+          "unit_kind": "relation",
+          "source_unit_ids": [
+            "$UNIT:7"
+          ],
+          "quotes": [
+            "gathers across the chest in long parallel troughs"
+          ],
+          "subject": "the recumbent figure's cloth",
+          "predicate": "gathers across",
+          "object": "the chest",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a15",
+          "text": "the seated and recumbent figures share an edge abruptness the veiled figure lacks",
+          "unit_kind": "comparison",
+          "source_unit_ids": [
+            "$UNIT:8"
+          ],
+          "quotes": [
+            "share an abruptness at the edge that the veiled figure does not"
+          ],
+          "subject": "the seated and recumbent figures",
+          "predicate": "share",
+          "object": "an abruptness at the edge",
+          "image_scope": "corpus"
+        },
+        {
+          "ref": "a16",
+          "text": "the veil reads as thin cloth while remaining continuous stone",
+          "unit_kind": "interpretation",
+          "source_unit_ids": [
+            "$UNIT:9"
+          ],
+          "quotes": [
+            "reads as thin cloth while remaining continuous stone"
+          ],
+          "subject": "the veil",
+          "predicate": "reads as",
+          "object": "thin cloth and continuous stone at once",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a17",
+          "text": "carving cloth to read as translucent is associated with a nineteenth-century workshop practice",
+          "unit_kind": "historical_or_sourced",
+          "source_unit_ids": [
+            "$UNIT:10"
+          ],
+          "quotes": [
+            "associated with a nineteenth-century workshop practice"
+          ],
+          "subject": "carving cloth to read as translucent",
+          "predicate": "is associated with",
+          "object": "a nineteenth-century workshop practice",
+          "image_scope": "not_an_image_question"
+        },
+        {
+          "ref": "a18",
+          "text": "the modern figure's cloth may resolve into fewer and larger planes than the others",
+          "unit_kind": "generative_proposal",
+          "source_unit_ids": [
+            "$UNIT:11"
+          ],
+          "quotes": [
+            "may be resolving into fewer, larger planes"
+          ],
+          "subject": "the modern figure's cloth",
+          "predicate": "may resolve into",
+          "object": "fewer, larger planes",
+          "image_scope": "corpus"
+        }
+      ],
+      "coverage": []
+    }
+  ],
+  "architect_payload": {
+    "claims": [
+      {
+        "ref": "c1",
+        "text": "the edges where the seated figure's drapery facets meet are abrupt",
+        "kind": "attribute",
+        "atom_ids": [
+          "$ATOM:a5",
+          "$ATOM:a12"
+        ],
+        "subject": "the edges of the seated figure's drapery",
+        "predicate": "are",
+        "object": "abrupt",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      },
+      {
+        "ref": "c2",
+        "text": "the seated figure's cloth reads as blunt and metallic",
+        "kind": "interpretation",
+        "atom_ids": [
+          "$ATOM:a3",
+          "$ATOM:a4"
+        ],
+        "subject": "the seated figure's cloth",
+        "predicate": "reads as",
+        "object": "blunt and metallic",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "interpretive"
+      },
+      {
+        "ref": "c3",
+        "text": "the abruptness of the edges is what makes the cloth read as hard",
+        "kind": "causal_hypothesis",
+        "atom_ids": [
+          "$ATOM:a2"
+        ],
+        "subject": "edge abruptness",
+        "predicate": "produces",
+        "object": "an impression of hardness",
+        "image_scope": "corpus",
+        "demand": "interpretive",
+        "status": "uncertain",
+        "note": "the person's own hypothesis; the architect did not propose it"
+      },
+      {
+        "ref": "c4",
+        "text": "a carved veil covers the standing figure's face",
+        "kind": "entity",
+        "atom_ids": [
+          "$ATOM:a13"
+        ],
+        "subject": "a carved veil",
+        "predicate": "covers",
+        "object": "the face",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      },
+      {
+        "ref": "c5",
+        "text": "the veil's carving produces an effect of transparency",
+        "kind": "causal_hypothesis",
+        "atom_ids": [
+          "$ATOM:a7"
+        ],
+        "subject": "the veil's carving",
+        "predicate": "produces",
+        "object": "an effect of transparency",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "uncertain"
+      },
+      {
+        "ref": "c6",
+        "text": "the veil reads as thin cloth while remaining continuous stone",
+        "kind": "interpretation",
+        "atom_ids": [
+          "$ATOM:a16"
+        ],
+        "subject": "the veil",
+        "predicate": "reads as",
+        "object": "cloth and stone at once",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "interpretive"
+      },
+      {
+        "ref": "c7",
+        "text": "the seated and recumbent figures share an edge treatment the veiled figure does not",
+        "kind": "comparison",
+        "atom_ids": [
+          "$ATOM:a15",
+          "$ATOM:a9"
+        ],
+        "subject": "the seated and recumbent figures",
+        "predicate": "share",
+        "object": "an edge treatment",
+        "image_scope": "corpus",
+        "demand": "measurable",
+        "status": "uncertain"
+      },
+      {
+        "ref": "c8",
+        "text": "the recumbent figure's chest cloth resembles the veiled figure's handling",
+        "kind": "comparison",
+        "atom_ids": [
+          "$ATOM:a8"
+        ],
+        "subject": "the recumbent figure's chest cloth",
+        "predicate": "resembles",
+        "object": "the veiled figure's handling",
+        "image_scope": "image_pair",
+        "demand": "interpretive",
+        "status": "uncertain"
+      },
+      {
+        "ref": "c9",
+        "text": "the recumbent figure's cloth gathers in long parallel troughs across the chest",
+        "kind": "spatial_relation",
+        "atom_ids": [
+          "$ATOM:a14"
+        ],
+        "subject": "the cloth",
+        "predicate": "gathers across",
+        "object": "the chest",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      },
+      {
+        "ref": "c10",
+        "text": "the four figures handle carved cloth in different styles",
+        "kind": "comparison",
+        "atom_ids": [
+          "$ATOM:a1",
+          "$ATOM:a6",
+          "$ATOM:a10"
+        ],
+        "subject": "the four figures",
+        "predicate": "differ in",
+        "object": "the handling of carved cloth",
+        "image_scope": "corpus",
+        "demand": "interpretive",
+        "status": "interpretive"
+      },
+      {
+        "ref": "c11",
+        "text": "carving cloth to read as translucent is associated with a nineteenth-century workshop practice",
+        "kind": "historical_or_sourced",
+        "atom_ids": [
+          "$ATOM:a17"
+        ],
+        "subject": "translucent carving",
+        "predicate": "is associated with",
+        "object": "a workshop practice",
+        "image_scope": "not_an_image_question",
+        "demand": "sourced",
+        "status": "sourced"
+      },
+      {
+        "ref": "c12",
+        "text": "a fourth figure in this family would resolve its cloth into fewer, larger planes",
+        "kind": "generative_rule",
+        "atom_ids": [
+          "$ATOM:a18"
+        ],
+        "subject": "a further figure",
+        "predicate": "would resolve",
+        "object": "cloth into fewer planes",
+        "image_scope": "corpus",
+        "demand": "imagined",
+        "status": "interpretive"
+      },
+      {
+        "ref": "c13",
+        "text": "the seated figure's drapery breaks into facets",
+        "kind": "entity",
+        "atom_ids": [
+          "$ATOM:a11"
+        ],
+        "subject": "the drapery",
+        "predicate": "breaks into",
+        "object": "facets",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      }
+    ],
+    "edges": [
+      {
+        "kind": "supports",
+        "from": "c1",
+        "to": "c2",
+        "why": "the abrupt edge is what the impression of bluntness is read from"
+      },
+      {
+        "kind": "supports",
+        "from": "c1",
+        "to": "c3",
+        "why": "the hypothesis names edge abruptness as the cause"
+      },
+      {
+        "kind": "complicates",
+        "from": "c6",
+        "to": "c5",
+        "why": "the veil reading as stone at the same time qualifies the transparency effect"
+      },
+      {
+        "kind": "composes_from",
+        "from": "c7",
+        "to": "c1",
+        "why": "the shared treatment is the same abruptness, seen across two figures"
+      },
+      {
+        "kind": "challenges",
+        "from": "c8",
+        "to": "c7",
+        "why": "the recumbent figure is grouped with the veiled one here and with the seated one there"
+      },
+      {
+        "kind": "generalizes",
+        "from": "c10",
+        "to": "c7",
+        "why": "the corpus-wide difference generalises the pairwise one"
+      },
+      {
+        "kind": "composes_from",
+        "from": "c13",
+        "to": "c1",
+        "why": "the edges are the edges of these facets"
+      }
+    ]
+  },
+  "operationalizer_payload": {
+    "observables": [
+      {
+        "ref": "o1",
+        "claim": "$CLAIM:c1",
+        "kind": "edge_profile_across_a_named_boundary",
+        "targets": [
+          "the edges where the drapery facets meet"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "geometry"
+        ],
+        "ground_forms": [
+          "path",
+          "region"
+        ],
+        "success_when": "a profile is returned along each named boundary",
+        "ambiguous_when": "the boundary cannot be separated from the surface either side of it",
+        "refused_when": "no boundary can be located at all",
+        "remains_interpretive": "whether an abrupt profile is what makes a viewer call the surface blunt",
+        "alternatives": [
+          {
+            "label": "measure the sharpness of every facet boundary and summarise",
+            "consequence": "several paths, more cost, and the variation within one figure becomes visible",
+            "capability_classes": [
+              "geometry"
+            ],
+            "ground_forms": [
+              "path"
+            ],
+            "recommended": false
+          },
+          {
+            "label": "measure one representative boundary",
+            "consequence": "one path, quickly, with the variation assumed away",
+            "capability_classes": [
+              "geometry"
+            ],
+            "ground_forms": [
+              "path"
+            ],
+            "recommended": true
+          }
+        ]
+      },
+      {
+        "ref": "o2",
+        "claim": "$CLAIM:c4",
+        "kind": "extent_of_a_named_thing",
+        "targets": [
+          "the carved veil"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "extent"
+        ],
+        "ground_forms": [
+          "region"
+        ],
+        "success_when": "one region covering the veil is returned",
+        "ambiguous_when": "the veil cannot be separated from the face beneath it",
+        "refused_when": "nothing matching the phrase is located",
+        "remains_interpretive": "",
+        "alternatives": []
+      },
+      {
+        "ref": "o3",
+        "claim": "$CLAIM:c9",
+        "kind": "orientation_field_over_a_region",
+        "targets": [
+          "the cloth across the chest"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "vector_field"
+        ],
+        "ground_forms": [
+          "field"
+        ],
+        "success_when": "a direction is returned per location across the region",
+        "ambiguous_when": "the troughs are too shallow to give a stable direction",
+        "refused_when": "the region cannot be established",
+        "remains_interpretive": "",
+        "alternatives": []
+      },
+      {
+        "ref": "o4",
+        "claim": "$CLAIM:c7",
+        "kind": "comparison_of_edge_profiles_across_images",
+        "targets": [
+          "the edge treatment of each figure"
+        ],
+        "image_scope": "corpus",
+        "capability_classes": [
+          "geometry",
+          "pattern"
+        ],
+        "ground_forms": [
+          "path"
+        ],
+        "success_when": "each figure yields a comparable profile",
+        "ambiguous_when": "the figures are lit differently enough that the profiles are not comparable",
+        "refused_when": "one figure yields no boundary",
+        "remains_interpretive": "whether two comparable profiles amount to a shared treatment",
+        "alternatives": []
+      },
+      {
+        "ref": "o5",
+        "claim": "$CLAIM:c11",
+        "kind": "citation_for_a_workshop_practice",
+        "targets": [
+          "the association with a nineteenth-century practice"
+        ],
+        "image_scope": "not_an_image_question",
+        "capability_classes": [
+          "external_source"
+        ],
+        "ground_forms": [
+          "frame"
+        ],
+        "success_when": "a citation is returned",
+        "ambiguous_when": "the sources disagree",
+        "refused_when": "nothing is found",
+        "remains_interpretive": "",
+        "alternatives": []
+      },
+      {
+        "ref": "o6",
+        "claim": "$CLAIM:c13",
+        "kind": "extent_of_a_named_thing",
+        "targets": [
+          "the drapery facets"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "extent"
+        ],
+        "ground_forms": [
+          "region"
+        ],
+        "success_when": "one region per facet is returned",
+        "ambiguous_when": "the facets are not separable",
+        "refused_when": "nothing matching the phrase is located",
+        "remains_interpretive": "",
+        "alternatives": []
+      }
+    ],
+    "decisions": [
+      {
+        "kind": "choose_operationalization",
+        "question": "Measure every facet boundary, or one representative boundary?",
+        "why_now": "measuring all of them makes the variation within a single figure visible and costs more; measuring one assumes the variation away, which is part of what the comparison is about",
+        "affects": [
+          "$CLAIM:c1",
+          "o1"
+        ],
+        "blocking": false,
+        "options": [
+          {
+            "label": "measure the sharpness of every facet boundary and summarise",
+            "consequence": "several paths, more cost, and the variation within one figure becomes visible",
+            "recommended": false
+          },
+          {
+            "label": "measure one representative boundary",
+            "consequence": "one path, quickly, with the variation assumed away",
+            "recommended": true
+          }
+        ]
+      }
+    ],
+    "semantic_remainder": [
+      {
+        "term": "reading a surface as metallic",
+        "why": "no instrument returns the impression a material makes; an edge profile contributes to it and does not settle it",
+        "contributing_capability_classes": [
+          "geometry",
+          "colour"
+        ],
+        "claims": [
+          "$CLAIM:c2"
+        ]
+      },
+      {
+        "term": "the effect of transparency",
+        "why": "transparency here is something the carving produces in a viewer, not a property of the stone that could be measured",
+        "contributing_capability_classes": [
+          "geometry"
+        ],
+        "claims": [
+          "$CLAIM:c5",
+          "$CLAIM:c6"
+        ]
+      },
+      {
+        "term": "whether two figures belong to one manner",
+        "why": "comparable measurements may support the grouping and cannot establish that it is the right grouping",
+        "contributing_capability_classes": [
+          "geometry",
+          "pattern"
+        ],
+        "claims": [
+          "$CLAIM:c7",
+          "$CLAIM:c8",
+          "$CLAIM:c10"
+        ]
+      },
+      {
+        "term": "what a further figure in this family would have to do",
+        "why": "a rule for making something that does not exist has nothing to measure and nothing to cite",
+        "contributing_capability_classes": [],
+        "claims": [
+          "$CLAIM:c12"
+        ]
+      }
+    ]
+  }
+}

@@ -419,6 +419,10 @@ class ModelSceneTheorist:
             image_refs=[i.post_id for i in images], requested_at=now,
             raw_response_sha256=[sha256_of(raw)], call_count=self.calls,
             call_topology=CallTopology.SINGLE_JOINT_CALL,
+            # TYPED, for 003B's field route. The note stays too: removing it would break the
+            # fallback for anything still reading notes, and a field plus a note cannot disagree
+            # because both are written from the same variable.
+            finish_reason=self.last_finish_reason or None,
             notes=list(notes) + self._truncation_notes() + [_NO_BYTES_NOTE])
         result = build_reading(inquiry_id, payload, images, receipt)
         return ReadingResult(result.reading, result.refusals, tuple(notes) + result.notes)
@@ -501,6 +505,10 @@ class ModelSceneTheorist:
             image_refs=[i.post_id for i in images], requested_at=now,
             raw_response_sha256=hashes, call_count=self.calls,
             call_topology=CallTopology.PER_IMAGE_THEN_SYNTHESIS,
+            # The sweep's LAST reason. `truncated_calls` is the honest count across the sweep and
+            # is what 003B's producer-attribute route reads; a single field over many calls would
+            # report the last one as if it spoke for all of them, so both travel.
+            finish_reason=self.last_finish_reason or None,
             notes=list(notes) + [
                 f"{len(payloads)} per-image reading(s) plus "
                 f"{'one' if isinstance(synthesis, Mapping) and synthesis else 'no'} cross-image "

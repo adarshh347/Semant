@@ -56,6 +56,7 @@ from backend.schemas.semantic_compilation import (CallTopology, CapabilityClass,
                                                   GroundForm, ImageScope, ModelReceipt,
                                                   NON_MEASURING_CLASSES, ObservableSpec,
                                                   OperationalAlternative,
+                                                  SCHEMA_VERSION_V1,
                                                   SemanticInquiryGraph, SemanticRemainderItem,
                                                   SourcePointer, SourceType,
                                                   _FORBIDDEN_DEMANDS, _REQUIRED_DEMANDS)
@@ -131,7 +132,7 @@ def _frame_digest(frame: Mapping[str, Any]) -> Dict[str, Any]:
     """The frame, compacted to what a compiler can use, with its own provenance kept separate.
 
     Deliberately NOT merged into the reading. "The user said 'sensuality'" and "a VLM thought the
-    drapery looked soft" are different warrants, and a compiler handed one undifferentiated context
+    surface looked soft" are different warrants, and a compiler handed one undifferentiated context
     would anchor claims to whichever it happened to read last.
     """
     def _rows(key: str) -> List[Any]:
@@ -757,6 +758,11 @@ def _assemble(request: CompilationRequest, comp: _Compilation, receipt: ModelRec
               remainder: Sequence[SemanticRemainderItem] = ()) -> SemanticInquiryGraph:
     frame = dict(request.inquiry_frame or {})
     return SemanticInquiryGraph(
+        # THIS PATH STILL WRITES v1, and stamping it is the honest thing rather than a compatibility
+        # shim. A graph's version describes what it CONTAINS: the one-call compiler produces no
+        # source units, no atoms and no coverage, so a v2 stamp on its output would advertise a
+        # ledger that is not there. v2 is written by the dissolution pipeline, which has one.
+        schema_version=SCHEMA_VERSION_V1,
         graph_id=ids.graph_id(request.inquiry_id, request.prompt),
         inquiry_id=request.inquiry_id,
         prompt=request.prompt,                    # VERBATIM. Never rewritten or clarified.
@@ -770,7 +776,7 @@ def _assemble(request: CompilationRequest, comp: _Compilation, receipt: ModelRec
         semantic_remainder=list(remainder),
         refusals=comp.refusals,
         provenance=GraphProvenance(
-            producer=PRODUCER, compiler_kind=compiler_kind,
+            producer=PRODUCER, compiler_kind=compiler_kind, contract_version=SCHEMA_VERSION_V1,
             inquiry_frame_schema_version=str(frame.get("schema_version") or ""),
             theorist=request.reading.provenance if request.reading else None,
             compiler=receipt, prompt_sha256=sha256_of(request.prompt),
@@ -871,7 +877,8 @@ class ModelSemanticCompiler:
         receipt = ModelReceipt(role=ROLE, model=self.model, provider="groq",
                                prompt_sha256=prompt_hash, requested_at=request.now,
                                raw_response_sha256=[sha256_of(raw)], call_count=self.calls,
-                               call_topology=CallTopology.TEXT_ONLY, notes=notes)
+                               call_topology=CallTopology.TEXT_ONLY,
+                               finish_reason=finish or None, notes=notes)
         return _compile_payload(request, payload, receipt)
 
     def _unavailable(self, request: CompilationRequest, prompt_hash: str,

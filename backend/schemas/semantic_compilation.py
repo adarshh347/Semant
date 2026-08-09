@@ -36,7 +36,16 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from backend.schemas.inquiry import DemandKind
 
-SCHEMA_VERSION = "semantic-inquiry-graph.v1"
+#: The version this code WRITES. v1 is still read — see `READABLE_SCHEMA_VERSIONS`.
+SCHEMA_VERSION_V1 = "semantic-inquiry-graph.v1"
+SCHEMA_VERSION_V2 = "semantic-inquiry-graph.v2"
+SCHEMA_VERSION = SCHEMA_VERSION_V2
+
+#: Every version this code can VALIDATE. v1 graphs are stored in the runs collection and frozen in
+#: fixtures; a validator that refused them would make the migration a data loss rather than a
+#: version bump. A v1 graph simply carries no source units, no atoms and no coverage — which is what
+#: it never had, rather than an absence somebody has to interpret.
+READABLE_SCHEMA_VERSIONS: Tuple[str, ...] = (SCHEMA_VERSION_V1, SCHEMA_VERSION_V2)
 
 
 # ── the closed sets ──────────────────────────────────────────────────────────
@@ -194,6 +203,110 @@ class CompilerRefusalKind(str, Enum):
     COMPILER_UNAVAILABLE = "compiler_unavailable"
     READING_UNAVAILABLE = "reading_unavailable"
 
+    # ── v2: the dissolution refusals ──
+    UNKNOWN_ATOM_KIND = "unknown_atom_kind"
+    UNKNOWN_DISPOSITION = "unknown_disposition"
+    UNANCHORED_ATOM = "unanchored_atom"
+    ATOM_SOURCE_NOT_IN_LEDGER = "atom_source_not_in_ledger"
+    SOURCE_UNIT_UNCOVERED = "source_unit_uncovered"
+    SOURCE_UNIT_DOUBLE_COVERED = "source_unit_double_covered"
+    USER_STATEMENT_REATTRIBUTED = "user_statement_reattributed"
+    ATOM_INVENTED_VISUAL_CONTENT = "atom_invented_visual_content"
+    DUPLICATE_POINTS_AT_ITSELF = "duplicate_points_at_itself"
+    PASS_UNAVAILABLE = "pass_unavailable"
+    REPAIR_BUDGET_SPENT = "repair_budget_spent"
+
+
+class SourceUnitKind(str, Enum):
+    """Where a piece of source prose came from. Two, and the difference is a WARRANT.
+
+    A prompt clause is something the person is answerable for. A reading block is something a vision
+    model proposed. Merging them would let the dissector attribute the person's own hypothesis to a
+    machine — the one error nothing downstream can detect, because a model observation is exactly
+    what the rest of the graph is made of.
+    """
+    PROMPT_CLAUSE = "prompt_clause"
+    READING_BLOCK = "reading_block"
+
+
+class AtomKind(str, Enum):
+    """What a source unit SAYS. Nine, and deliberately not `ClaimKind`.
+
+    A claim kind types what the graph asserts and carries the demand table with it. An atom kind
+    types what somebody said, before anything has decided whether it is investigable. They meet in
+    exactly one place — the contract's `atom_kind_to_claim_kind` default — so a change to either
+    vocabulary is a change a reader can see rather than a coincidence of two enums drifting.
+
+    `VISUAL_QUALITY` is the distinction the rehearsal turned on and `ClaimKind` has no word for: how
+    a thing APPEARS is not a property of the thing, and flattening the two loses the whole question
+    of whether appearance can be measured.
+    """
+    ENTITY = "entity"
+    VISUAL_QUALITY = "visual_quality"
+    RELATION = "relation"
+    COMPARISON = "comparison"
+    INTERPRETATION = "interpretation"
+    HISTORICAL_OR_SOURCED = "historical_or_sourced"
+    CAUSAL_HYPOTHESIS = "causal_hypothesis"
+    GENERATIVE_PROPOSAL = "generative_proposal"
+    UNKNOWN = "unknown"
+
+
+class AtomAuthor(str, Enum):
+    """Who said it. `USER` is frozen onto any atom anchored to a prompt clause."""
+    USER = "user"
+    SCENE_THEORIST = "scene_theorist"
+    SEMANTIC_DISSECTOR = "semantic_dissector"
+
+
+class DispositionKind(str, Enum):
+    """What happened to one source unit. Exactly one per unit, and the four are not degrees.
+
+    `SEMANTIC_REMAINDER` is content nothing MEASURES; `REFUSED` is content nothing PROCESSED. A
+    ledger that used one word for both would report a dissector failure as an epistemic limit, which
+    is the most flattering possible mistake and therefore the one to make impossible.
+    """
+    REPRESENTED_BY = "represented_by"
+    DUPLICATE_OF = "duplicate_of"
+    SEMANTIC_REMAINDER = "semantic_remainder"
+    REFUSED = "refused"
+
+
+class DissolutionPass(str, Enum):
+    """The six steps a v2 compilation runs, named so a receipt can be attributed to one."""
+    SOURCE_LEDGER = "source_ledger"
+    SEMANTIC_DISSECTOR = "semantic_dissector"
+    RELATION_ARCHITECT = "relation_architect"
+    EPISTEMIC_OPERATIONALIZER = "epistemic_operationalizer"
+    COVERAGE_AUDIT = "coverage_audit"
+    TARGETED_REPAIR = "targeted_repair"
+
+
+class PassOutcome(str, Enum):
+    """How a pass ended. Eight, and `COMPLETED` is the only one that means what it looks like.
+
+    HARNESS-002R's central failure in one enum: a parsed response is not a successful one. A
+    truncated prefix that happens to close its JSON, a graph whose references dangle, and a ledger
+    with an uncovered paragraph all parse. Each gets its own word.
+    """
+    COMPLETED = "completed"
+    THIN = "thin"
+    TRUNCATED = "truncated"
+    COVERAGE_FAILED = "coverage_failed"
+    EMPTY = "empty"
+    REFUSED = "refused"
+    UNAVAILABLE = "unavailable"
+    ERROR = "error"
+
+
+#: Outcomes that mean the pass did not deliver what it was for. `THIN` is in here: coverage without
+#: relations is the exact shape the rehearsal produced, and calling it a success is what made the
+#: rehearsal's result unreadable.
+UNDERPERFORMING_OUTCOMES: Tuple[PassOutcome, ...] = (
+    PassOutcome.THIN, PassOutcome.TRUNCATED, PassOutcome.COVERAGE_FAILED, PassOutcome.EMPTY,
+    PassOutcome.REFUSED, PassOutcome.UNAVAILABLE, PassOutcome.ERROR,
+)
+
 
 class CallTopology(str, Enum):
     """How the reading was actually obtained. Recorded because it changes what the reading IS:
@@ -264,6 +377,24 @@ class ModelReceipt(_Strict):
     refusal: Optional[str] = None
     call_count: int = 0
     call_topology: CallTopology = CallTopology.UNAVAILABLE
+    #: Why the provider stopped generating — `stop`, `length`, or whatever it said. TYPED, because
+    #: HARNESS-003B asked for it by name: its `outcomes.py` consults `receipt.finish_reason` FIRST
+    #: and falls back to reading a `finish_reason: ` note only because no such field existed.
+    #:
+    #: A note is prose that happens to be machine-written; a field cannot be reworded by somebody
+    #: improving a sentence. The difference decides whether a truncated reading is reported as a
+    #: short one, which is the exact failure 002R's rehearsal produced — so the better route should
+    #: not depend on nobody touching a string.
+    #:
+    #: `None` means nothing was asked, and it is NOT `""`: an unavailable call reports no finish
+    #: reason because there was no call, and a route that read the empty string as "stopped
+    #: normally" would report an unchecked stage as a verified one.
+    #:
+    #: A LIST would be wrong here. A `ModelReceipt` covers one logical call — the theorist's sweep
+    #: counts its own truncated calls in `truncated_calls`, which is the producer-attribute route
+    #: 003B reads for exactly that case. The per-pass, many-call receipt is `PassReceipt`, and it
+    #: carries `finish_reasons` plural.
+    finish_reason: Optional[str] = None
     notes: List[str] = Field(default_factory=list)
 
 
@@ -320,6 +451,10 @@ class ClaimNode(_Strict):
     epistemic_demand: DemandKind = DemandKind.INTERPRETIVE
     status: ClaimStatus = ClaimStatus.INTERPRETIVE
     inferred_from: List[str] = Field(default_factory=list)
+    #: v2. The atoms this claim was built from. Empty on a v1 graph and on a claim the architect
+    #: declared as its own inference — `inferred_from` carries the parents in that case, and the two
+    #: fields answer different questions: which ATOMS say this, and which CLAIMS it follows from.
+    atom_refs: List[str] = Field(default_factory=list)
     note: str = ""
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True,
@@ -505,6 +640,184 @@ class CompilerRefusal(_Strict):
     detail: List[str] = Field(default_factory=list)
 
 
+# ── v2: the source ledger ────────────────────────────────────────────────────
+
+class SourceUnit(_Strict):
+    """One addressable piece of source prose, and the exact words it consists of.
+
+    THE SPAN IS COMPUTED, NEVER TAKEN. A prompt clause carries the character offsets it occupies in
+    the verbatim prompt, found by the splitter in the prompt itself. No model is asked for an offset
+    — an invented one renders in a UI as a highlight over words the person did not write. A quote
+    that does not resolve keeps `span=None` and says so in `note`.
+    """
+    source_unit_id: str
+    kind: SourceUnitKind
+    #: `prompt` for a clause; the reading block's own id for a block. Never an index: a theorist that
+    #: emits its blocks in a different order emits the same blocks.
+    source_ref: str
+    exact_quote: str = Field(..., description="the words, byte for byte from the source")
+    span: Optional[Tuple[int, int]] = None
+    image_refs: List[str] = Field(default_factory=list)
+    block_kind: str = Field(default="", description="for a reading block: the theorist's own kind")
+    ordinal: int = Field(default=0, description="reading order, for display only — never an id")
+    note: str = ""
+
+    @field_validator("exact_quote")
+    @classmethod
+    def _a_unit_has_words(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("a source unit with no text is a pointer at nothing")
+        return value
+
+    @property
+    def is_user_authored(self) -> bool:
+        return self.kind is SourceUnitKind.PROMPT_CLAUSE
+
+
+class SemanticAtom(_Strict):
+    """One semantic unit, anchored to the source that says it.
+
+    An atom is smaller than a claim and larger than a word. `this edge is abrupt` and `that makes
+    the material read as hard` are two atoms: one is how something looks, the other is what that
+    does to a reader, and a pipeline that fused them could never ask whether only the first is
+    observable.
+
+    `author` is FROZEN to the user for anything anchored to a prompt clause. The validator does it
+    rather than the dissector, because an adapter can be edited and a validator has to be argued
+    with — and this is the one attribution error nothing downstream could detect.
+    """
+    atom_id: str
+    text: str
+    unit_kind: AtomKind
+    source_unit_ids: List[str] = Field(default_factory=list)
+    quotes: List[str] = Field(default_factory=list, description="verbatim from those units")
+    #: Open strings, always. The closed sets are shapes; the subjects are the world.
+    subject: str = ""
+    predicate: str = ""
+    object_: str = Field(default="", alias="object")
+    image_scope: ImageScope = ImageScope.CORPUS
+    image_refs: List[str] = Field(default_factory=list)
+    author: AtomAuthor = AtomAuthor.SEMANTIC_DISSECTOR
+    #: The strongest thing this atom could ever be. Never above `interpretive` — a dissector reads
+    #: prose about pixels and is two removes from the pixels.
+    epistemic_ceiling: str = "interpretive"
+    note: str = ""
+    provenance: Dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    @field_validator("text")
+    @classmethod
+    def _an_atom_says_something(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("an atom with no text is not a unit of anything")
+        return value
+
+    @field_validator("epistemic_ceiling")
+    @classmethod
+    def _nothing_above_interpretive(cls, value: str) -> str:
+        if value in FORBIDDEN_INITIAL_STATUSES:
+            raise ValueError(
+                f"an atom may not declare a {value!r} ceiling. Nothing has run, and a dissector "
+                f"reads prose about pixels — it is two removes from the pixels.")
+        return value
+
+    @model_validator(mode="after")
+    def _an_atom_is_anchored(self) -> "SemanticAtom":
+        if not self.source_unit_ids:
+            raise ValueError(
+                f"atom {self.atom_id} names no source unit. An unanchored atom is prose the "
+                f"dissector wrote, and it reads exactly like one it found.")
+        return self
+
+
+class CoverageDisposition(_Strict):
+    """What happened to exactly one source unit.
+
+    The whole point of the ledger. Zero dispositions for a unit means a paragraph vanished and
+    nothing says so; two means the graph tells two stories about the same words and a reader cannot
+    tell which one is the record.
+    """
+    coverage_id: str
+    source_unit_id: str
+    disposition: DispositionKind
+    refs: List[str] = Field(default_factory=list,
+                            description="atom ids for represented_by; a source unit id for duplicate_of")
+    reason: str = ""
+
+    @model_validator(mode="after")
+    def _a_disposition_carries_what_it_claims(self) -> "CoverageDisposition":
+        if self.disposition is DispositionKind.REPRESENTED_BY and not self.refs:
+            raise ValueError(
+                f"coverage {self.coverage_id} says the unit is represented and names no atom. "
+                f"'Represented by nothing' is the uncovered case wearing the covered case's name.")
+        if self.disposition is DispositionKind.DUPLICATE_OF:
+            if len(self.refs) != 1:
+                raise ValueError(
+                    f"coverage {self.coverage_id} is a duplicate of {len(self.refs)} units. A "
+                    f"duplicate names exactly one original.")
+            if self.refs[0] == self.source_unit_id:
+                raise ValueError(
+                    f"coverage {self.coverage_id} says a source unit duplicates itself, which "
+                    f"removes it from the ledger while looking like an entry in it.")
+        if self.disposition in (DispositionKind.SEMANTIC_REMAINDER, DispositionKind.REFUSED) \
+                and not self.reason.strip():
+            raise ValueError(
+                f"coverage {self.coverage_id} is {self.disposition.value!r} with no reason. The "
+                f"reason is the only thing separating an epistemic limit from a pass that failed.")
+        return self
+
+
+class PassReceipt(_Strict):
+    """What one pass of the council did, whether or not it produced anything.
+
+    Separate from `ModelReceipt` because a pass is not always a model call: the source ledger and
+    the coverage audit are deterministic, and giving them a model receipt with an empty model field
+    would make two very different kinds of step look alike in the one list a reader scans.
+    """
+    pass_id: str
+    pass_name: DissolutionPass
+    outcome: PassOutcome
+    model: Optional[str] = None
+    provider: Optional[str] = None
+    call_count: int = 0
+    #: `stop`, `length`, or whatever the provider said. Empty when nothing was called.
+    finish_reasons: List[str] = Field(default_factory=list)
+    prompt_sha256: List[str] = Field(default_factory=list)
+    raw_response_sha256: List[str] = Field(default_factory=list)
+    #: Present when the provider reports it. `None` rather than 0 — a call whose usage was not
+    #: reported did not use zero tokens.
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    duration_ms: Optional[float] = None
+    inputs: int = Field(default=0, description="how many objects went in")
+    outputs: int = Field(default=0, description="how many came out")
+    detail: str = ""
+    notes: List[str] = Field(default_factory=list)
+
+    @property
+    def truncated(self) -> bool:
+        return "length" in self.finish_reasons
+
+    @property
+    def underperformed(self) -> bool:
+        return self.outcome in UNDERPERFORMING_OUTCOMES
+
+    @model_validator(mode="after")
+    def _a_length_stop_is_truncated(self) -> "PassReceipt":
+        """A pass that reported a length stop may not call itself completed.
+
+        The rehearsal's exact failure, made unrepresentable: the compiler ran out of budget, closed
+        its JSON, parsed cleanly and reported success. `finish_reason` was already on the receipt;
+        nothing stopped the outcome from disagreeing with it.
+        """
+        if "length" in self.finish_reasons and self.outcome is PassOutcome.COMPLETED:
+            raise ValueError(
+                f"pass {self.pass_name.value!r} reported a length stop and calls itself "
+                f"`completed`. Whatever it produced is a PREFIX; the outcome is `truncated`.")
+        return self
+
+
 class GraphProvenance(_Strict):
     """Who compiled this, from which contracts, with which receipts."""
     producer: str
@@ -531,6 +844,13 @@ class SemanticInquiryGraph(_Strict):
     #: elsewhere is reachable, and the frame is the other half of the provenance.
     inquiry_frame: Dict[str, Any] = Field(default_factory=dict)
     reading: Optional[SceneReading] = None
+
+    #: v2. Empty on every v1 graph, and empty is the truth there rather than a missing field.
+    source_units: List[SourceUnit] = Field(default_factory=list)
+    semantic_atoms: List[SemanticAtom] = Field(default_factory=list)
+    coverage: List[CoverageDisposition] = Field(default_factory=list)
+    passes: List[PassReceipt] = Field(default_factory=list)
+
     claims: List[ClaimNode] = Field(default_factory=list)
     claim_edges: List[ClaimEdge] = Field(default_factory=list)
     observables: List[ObservableSpec] = Field(default_factory=list)
@@ -543,9 +863,26 @@ class SemanticInquiryGraph(_Strict):
     @field_validator("schema_version")
     @classmethod
     def _pinned(cls, value: str) -> str:
-        if value != SCHEMA_VERSION:
-            raise ValueError(f"schema_version must be {SCHEMA_VERSION!r}, got {value!r}")
+        """One of the versions this code reads — not only the one it writes.
+
+        A stored v1 session and a frozen v1 fixture must both still validate. Pinning to the current
+        version alone would turn a version bump into a data loss, and the graph is the object the
+        whole run ledger is built around.
+        """
+        if value not in READABLE_SCHEMA_VERSIONS:
+            raise ValueError(f"schema_version must be one of {list(READABLE_SCHEMA_VERSIONS)}, "
+                             f"got {value!r}")
         return value
+
+    @property
+    def is_dissolved(self) -> bool:
+        """Whether this graph carries a source ledger at all.
+
+        `False` for every v1 graph, and that is a fact about the graph rather than a defect: v1 had
+        no ledger to carry. A reader branches on this instead of on the version string, so a v3 that
+        keeps the ledger does not break it.
+        """
+        return bool(self.source_units)
 
     @field_validator("prompt")
     @classmethod
@@ -554,6 +891,92 @@ class SemanticInquiryGraph(_Strict):
             raise ValueError("the graph carries no prompt. Every refusal downstream is only "
                              "checkable against what was actually asked.")
         return value
+
+    @model_validator(mode="after")
+    def _the_ledger_accounts_for_everything(self) -> "SemanticInquiryGraph":
+        """The v2 laws. Skipped entirely on a v1 graph, which has no ledger to check.
+
+        Not "skipped for compatibility" — a v1 graph genuinely made no coverage claim, and inventing
+        one to validate against would be the migration asserting something the data never said.
+        """
+        if not self.source_units:
+            if self.semantic_atoms or self.coverage:
+                raise ValueError(
+                    "this graph carries atoms or coverage and no source units. Every atom is "
+                    "anchored to a unit, so a ledger-less graph with atoms in it is one whose "
+                    "anchors point outside itself.")
+            return self
+
+        unit_ids = {u.source_unit_id for u in self.source_units}
+        if len(unit_ids) != len(self.source_units):
+            raise ValueError("two source units share an id. Unit ids are derived from source "
+                             "identity plus text, so a collision means one unit was listed twice.")
+
+        atom_ids = {a.atom_id for a in self.semantic_atoms}
+        if len(atom_ids) != len(self.semantic_atoms):
+            raise ValueError("two atoms share an id.")
+
+        for atom in self.semantic_atoms:
+            for ref in atom.source_unit_ids:
+                if ref not in unit_ids:
+                    raise ValueError(
+                        f"atom {atom.atom_id} is anchored to {ref!r}, which is not a source unit in "
+                        f"this graph. The anchor is the only thing separating what the dissector "
+                        f"found from what it wrote.")
+
+        # EXACTLY ONE DISPOSITION PER UNIT — the law the whole ledger exists for.
+        seen: Dict[str, int] = {}
+        for entry in self.coverage:
+            if entry.source_unit_id not in unit_ids:
+                raise ValueError(
+                    f"coverage {entry.coverage_id} disposes of {entry.source_unit_id!r}, which is "
+                    f"not a source unit in this graph.")
+            seen[entry.source_unit_id] = seen.get(entry.source_unit_id, 0) + 1
+        uncovered = sorted(unit_ids - set(seen))
+        doubled = sorted(k for k, n in seen.items() if n > 1)
+        if uncovered:
+            raise ValueError(
+                f"{len(uncovered)} source unit(s) have no coverage disposition: {uncovered[:5]}. A "
+                f"unit with no disposition is a paragraph that vanished with nothing saying so.")
+        if doubled:
+            raise ValueError(
+                f"{len(doubled)} source unit(s) have more than one disposition: {doubled[:5]}. Two "
+                f"dispositions tell two stories about the same words and a reader cannot tell which "
+                f"one is the record.")
+
+        for entry in self.coverage:
+            if entry.disposition is DispositionKind.REPRESENTED_BY:
+                for ref in entry.refs:
+                    if ref not in atom_ids:
+                        raise ValueError(
+                            f"coverage {entry.coverage_id} says its unit is represented by "
+                            f"{ref!r}, which is not an atom in this graph.")
+            elif entry.disposition is DispositionKind.DUPLICATE_OF:
+                if entry.refs[0] not in unit_ids:
+                    raise ValueError(
+                        f"coverage {entry.coverage_id} says its unit duplicates {entry.refs[0]!r}, "
+                        f"which is not a source unit in this graph.")
+
+        for claim in self.claims:
+            for ref in claim.atom_refs:
+                if ref not in atom_ids:
+                    raise ValueError(
+                        f"claim {claim.claim_id} is built from atom {ref!r}, which is not in this "
+                        f"graph. A claim standing on an atom that was refused is one whose warrant "
+                        f"was removed while the claim stayed.")
+
+        # A USER STATEMENT STAYS THE USER'S. Enforced on the graph as well as on the atom, because
+        # the atom cannot see which KIND of unit it was anchored to.
+        by_unit = {u.source_unit_id: u for u in self.source_units}
+        for atom in self.semantic_atoms:
+            anchors = [by_unit[r] for r in atom.source_unit_ids if r in by_unit]
+            if anchors and all(a.is_user_authored for a in anchors) \
+                    and atom.author is not AtomAuthor.USER:
+                raise ValueError(
+                    f"atom {atom.atom_id} is anchored only to the person's own words and is "
+                    f"attributed to {atom.author.value!r}. A user's hypothesis rewritten as a model "
+                    f"observation is the one attribution error nothing downstream can detect.")
+        return self
 
     @model_validator(mode="after")
     def _references_resolve_and_nothing_is_promoted(self) -> "SemanticInquiryGraph":
@@ -695,11 +1118,15 @@ def _without_timestamp(receipt: Any) -> Any:
 
 
 __all__ = [
-    "SCHEMA_VERSION", "VOLATILE_FIELDS", "FORBIDDEN_INITIAL_STATUSES", "NON_MEASURING_CLASSES",
+    "SCHEMA_VERSION", "SCHEMA_VERSION_V1", "SCHEMA_VERSION_V2", "READABLE_SCHEMA_VERSIONS",
+    "VOLATILE_FIELDS", "FORBIDDEN_INITIAL_STATUSES", "NON_MEASURING_CLASSES",
+    "UNDERPERFORMING_OUTCOMES",
     "ClaimKind", "ClaimEdgeKind", "ClaimStatus", "ImageScope", "SourceType", "CapabilityClass",
     "GroundForm", "ReadingBlockKind", "DecisionKind", "CompilerRefusalKind", "CallTopology",
+    "SourceUnitKind", "AtomKind", "AtomAuthor", "DispositionKind", "DissolutionPass", "PassOutcome",
     "ImageRef", "SourcePointer", "ReadingBlock", "ModelReceipt", "SceneReading", "ClaimNode",
     "ClaimEdge", "OperationalAlternative", "ObservableSpec", "DecisionCandidate",
     "SemanticRemainderItem", "CompilerRefusal", "GraphProvenance", "SemanticInquiryGraph",
+    "SourceUnit", "SemanticAtom", "CoverageDisposition", "PassReceipt",
     "canonical",
 ]
