@@ -171,6 +171,24 @@ def test_an_answer_records_who_chose_and_what_the_choice_changes():
     assert "speaks about the wells the claim names" in record.reason
 
 
+def test_one_turn_appends_exactly_one_response_event():
+    """The response and its record travel in ONE event. Two events of the same kind for a single
+    turn read as two answers in the trace, which is the one place a reader counts what the person
+    actually did — and a trace that double-counts answers would be wrong about the only thing it
+    exists to show."""
+    st = steward()
+    state = m.offer(compiled(), [fx.survey_scope_candidate()], steward=st, at=STAMP)
+    state = m.respond(state, answer(state, kind="amend", option_id="", free_text="a note",
+                                    amendment_target="clm_nitrate"), steward=st, at=LATER)
+    turn = [e for e in state.events if e.revision == state.revision]
+    kinds = [e.kind for e in turn]
+    assert kinds.count(EventKind.RESPONSE_RECEIVED) == 1
+    received = next(e for e in turn if e.kind is EventKind.RESPONSE_RECEIVED)
+    assert set(received.payload) == {"response", "record"}
+    # the record cites the amendment the same turn produced
+    assert received.payload["record"]["amendment_ids"] == [state.amendments[-1].amendment_id]
+
+
 def test_answering_the_first_fork_lets_the_queue_drain_to_the_next_pause():
     st = steward()
     state = m.offer(compiled(), fx.survey_batch(), steward=st, at=STAMP)

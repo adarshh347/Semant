@@ -383,40 +383,19 @@ def respond(state: InquiryInteractionState, response: DecisionResponse, *,
     revision = state.revision + 1
     outcome, chosen, reason = _reason_for(response, request)
 
-    event = _event(state, kind=EventKind.RESPONSE_RECEIVED, actor=Actor.USER, at=at,
-                   revision=revision, decision=request.decision_id, refs=request.affected_refs,
-                   reason=reason, parent=request.parent_event_id,
-                   payload={"response": response.model_dump(mode="json")})
-    resumed = state.paused_from or SessionState.READY
-    state = _appended(
-        state, event,
-        responses=[*[r.model_dump(mode="json") for r in state.responses],
-                   response.model_dump(mode="json")],
-        open_decision_id="", paused_from=None,
-        state=(resumed.value if isinstance(resumed, SessionState) else str(resumed)),
-        pending=list(state.pending[1:]),
-        deferred=([*state.deferred, request.decision_id]
-                  if outcome == OUTCOME_DEFERRED else list(state.deferred)))
-
+    # The amendment is built first because the record cites it, and ONE event carries the response
+    # and its record together. Two events of the same kind for a single turn would read as two
+    # answers in the trace, which is the one place a reader counts what the person did.
     made: List[UserAmendment] = []
     if response.kind in (ResponseKind.REDIRECT, ResponseKind.AMEND):
         target = (response.amendment_target if response.kind is ResponseKind.AMEND
                   else request.decision_id)
-        amendment = UserAmendment(
+        made.append(UserAmendment(
             amendment_id=amendment_id(state.session_id, revision, target, response.free_text),
             session_id=state.session_id, decision_id=request.decision_id, target_ref=target,
             text=response.free_text, relation=response.amendment_relation, actor=Actor.USER, at=at,
             provenance={"response_id": response.response_id,
-                        "graph_hash": state.graph.graph_hash})
-        made.append(amendment)
-        event = _event(state, kind=EventKind.AMENDMENT_RECORDED, actor=Actor.USER, at=at,
-                       revision=revision, decision=request.decision_id, refs=[target],
-                       reason=(f"a user-authored object now stands beside {target!r}; the original "
-                               f"is unchanged and neither is thereby measured"),
-                       payload={"amendment": amendment.model_dump(mode="json")})
-        state = _appended(state, event,
-                          amendments=[*[a.model_dump(mode="json") for a in state.amendments],
-                                      amendment.model_dump(mode="json")])
+                        "graph_hash": state.graph.graph_hash}))
 
     record = DecisionRecord(
         record_id=record_id(state.session_id, revision, request.decision_id, outcome),
@@ -427,13 +406,36 @@ def respond(state: InquiryInteractionState, response: DecisionResponse, *,
         amendment_ids=[a.amendment_id for a in made], revision=revision, at=at,
         candidate=dict(request.candidate),
         provenance={"response_kind": response.kind.value})
+
+    event = _event(state, kind=EventKind.RESPONSE_RECEIVED, actor=Actor.USER, at=at,
+                   revision=revision, decision=request.decision_id, refs=request.affected_refs,
+                   reason=reason, parent=request.parent_event_id,
+                   payload={"response": response.model_dump(mode="json"),
+                            "record": record.model_dump(mode="json")})
+    resumed = state.paused_from or SessionState.READY
     state = _appended(
-        state,
-        _event(state, kind=EventKind.RESPONSE_RECEIVED, actor=Actor.USER, at=at, revision=revision,
-               decision=request.decision_id, refs=request.affected_refs, reason=reason,
-               payload={"record": record.model_dump(mode="json")}),
+        state, event,
+        responses=[*[r.model_dump(mode="json") for r in state.responses],
+                   response.model_dump(mode="json")],
         records=[*[r.model_dump(mode="json") for r in state.records],
-                 record.model_dump(mode="json")])
+                 record.model_dump(mode="json")],
+        open_decision_id="", paused_from=None,
+        state=(resumed.value if isinstance(resumed, SessionState) else str(resumed)),
+        pending=list(state.pending[1:]),
+        deferred=([*state.deferred, request.decision_id]
+                  if outcome == OUTCOME_DEFERRED else list(state.deferred)))
+
+    for amendment in made:
+        state = _appended(
+            state,
+            _event(state, kind=EventKind.AMENDMENT_RECORDED, actor=Actor.USER, at=at,
+                   revision=revision, decision=request.decision_id, refs=[amendment.target_ref],
+                   reason=(f"a user-authored object now stands beside "
+                           f"{amendment.target_ref!r}; the original is unchanged and neither is "
+                           f"thereby measured"),
+                   payload={"amendment": amendment.model_dump(mode="json")}),
+            amendments=[*[a.model_dump(mode="json") for a in state.amendments],
+                        amendment.model_dump(mode="json")])
 
     return _drain(state, steward=steward, at=at, revision=revision)
 
