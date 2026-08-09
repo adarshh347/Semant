@@ -276,7 +276,7 @@ async def answer_inquiry(session_id: str, body: DecisionBody) -> Dict[str, Any]:
             "submitted": submitted, "session": _view(session)})
 
     try:
-        advanced = coordinator.resume(session, payload, stages)
+        advanced = coordinator.apply_response(session, payload, stages)
     except InteractionConflict as exc:
         _raise_conflict(exc, session, submitted)
         raise  # unreachable; `_raise_conflict` always raises. Kept so the type is honest.

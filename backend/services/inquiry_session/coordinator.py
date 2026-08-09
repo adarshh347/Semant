@@ -503,26 +503,39 @@ def begin(session: SemanticInquirySession, stages: Stages) -> SemanticInquirySes
     return steps.advance_all(session, stages)
 
 
-def resume(session: SemanticInquirySession, response: Mapping[str, Any],
-           stages: Stages) -> SemanticInquirySession:
-    """Apply a person's answer to the OPEN decision and carry on from where it stopped.
+def apply_response(session: SemanticInquirySession, response: Mapping[str, Any],
+                   stages: Stages) -> SemanticInquirySession:
+    """Record a person's answer against the OPEN decision. Runs no stage.
 
     Raises the typed `InteractionConflict` Lane B produces. Nothing is caught here: the route maps
     each of the nine to its status code, and a coordinator that swallowed one would have to invent
     a reply for a person whose answer was never applied.
+
+    THIS IS WHAT THE ROUTE CALLS. Continuing the chain in the request would put the capability,
+    judge and composer stages — one of which may be a model call — back on the request thread,
+    which is the blocking architecture HARNESS-003B removed from the create route. The stages after
+    a fork are `pending` in the ledger, so the driver picks them up exactly as it picks up the
+    first ones, and the person's answer comes back the moment it is RECORDED rather than when the
+    work it unblocked has finished.
     """
     at = stages.clock()
     state = machine.from_dict(session.interaction)
     state = machine.respond(state, read_response(response),
                             steward=steward_for(session, stages), at=at)
-    # APPLY AND STOP. Continuing the chain here would put the capability, judge and composer stages
-    # — one of which may be a model call — back on the request thread, which is the same blocking
-    # architecture this wave removed from the create route, one route over. The stages after a fork
-    # are `pending` in the ledger, so the driver picks them up exactly as it picks up the first
-    # ones, and the person's answer comes back the moment it is recorded rather than when the
-    # answer to it has been written.
     return session.model_copy(update={"interaction": machine.to_dict(state),
                                       "revision": state.revision})
+
+
+def resume(session: SemanticInquirySession, response: Mapping[str, Any],
+           stages: Stages) -> SemanticInquirySession:
+    """Apply a person's answer and carry the chain on from there, synchronously.
+
+    The counterpart of `begin`, and kept for the same reason: this is the honest synchronous form,
+    and a test that wants a finished session should not have to stand up an event loop, a store and
+    a driver to get one. Production drives the stages off the request — see `apply_response`.
+    """
+    from . import steps
+    return steps.advance_all(apply_response(session, response, stages), stages)
 
 
 # ── the selection a settled fork made ────────────────────────────────────────
@@ -670,6 +683,7 @@ def _finish(session: SemanticInquirySession, to: SessionState, at: str, why: str
 
 
 __all__ = ["PRODUCER", "Stages", "utc_now", "has_interaction", "new_session", "servable_classes",
-           "steward_for",
-           "selection_for", "begin", "resume", "InteractionConflict", "read_response",
+           "steward_for", "reading_of",
+           "selection_for", "begin", "resume", "apply_response", "InteractionConflict",
+           "read_response",
            "SessionState", "machine"]
