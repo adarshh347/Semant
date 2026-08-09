@@ -58,6 +58,18 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def has_interaction(session: SemanticInquirySession) -> bool:
+    """Whether Lane B's state machine was ever opened on this session.
+
+    NOT `bool(session.interaction)`. A session that compiled nothing never opens one, and `_finish`
+    writes a two-key STUB — `{"state": "exhausted", "revision": 0}` — so the envelope still reports
+    a state rather than an empty mapping a reader would have to interpret. That stub is truthy and
+    it is not a state machine. The live rehearsal is where the difference surfaced, as a pydantic
+    error about a missing `session_id` several frames away from the thing that wrote it.
+    """
+    return bool(session.interaction.get("session_id"))
+
+
 def _as_datetime(stamp: str) -> Optional[datetime]:
     """The stage clock's string, as the datetime the framer takes. `None` on anything unparseable —
     the framer then reads its own clock, which is the pre-existing behaviour rather than a crash."""
@@ -339,7 +351,7 @@ def selection_for(session: SemanticInquirySession) -> Tuple[Optional[Dict[str, A
     Returns `(None, None)` when nothing was chosen — an unresolved, rejected or deferred fork. That
     is not a failure to find a selection; it is the absence of one, and nothing should run.
     """
-    if not session.interaction:
+    if not has_interaction(session):
         return None, None
     state = machine.from_dict(session.interaction)
     observables = {str(o.get("observable_id") or ""): o
@@ -519,7 +531,7 @@ def _apply(session: SemanticInquirySession, state: Any,
 def _finish(session: SemanticInquirySession, to: SessionState, at: str, why: str,
             stages: Stages) -> SemanticInquirySession:
     """Close the session, or record that it never opened one to close."""
-    if not session.interaction:
+    if not has_interaction(session):
         return session.model_copy(update={"stop_reason": why,
                                           "interaction": {"state": to.value, "revision": 0}})
     state = machine.from_dict(session.interaction)
@@ -532,6 +544,7 @@ def _finish(session: SemanticInquirySession, to: SessionState, at: str, why: str
                                       "revision": state.revision, "stop_reason": why})
 
 
-__all__ = ["PRODUCER", "Stages", "utc_now", "new_session", "servable_classes", "steward_for",
+__all__ = ["PRODUCER", "Stages", "utc_now", "has_interaction", "new_session", "servable_classes",
+           "steward_for",
            "selection_for", "begin", "resume", "InteractionConflict", "read_response",
            "SessionState", "machine"]

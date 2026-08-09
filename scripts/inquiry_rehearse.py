@@ -127,7 +127,9 @@ def show(session, request, args) -> None:
             print(f"        {mark} {option.label}  "
                   f"[reversible={option.reversible}]  {option.consequence[:60]}", file=out)
 
-    for record in coordinator.machine.from_dict(session.interaction).records:
+    records = (coordinator.machine.from_dict(session.interaction).records
+               if coordinator.has_interaction(session) else [])
+    for record in records:
         print(f"\ndecided   {record.outcome} by {record.actor.value}: {record.reason}", file=out)
 
     for receipt in session.capability_receipts:

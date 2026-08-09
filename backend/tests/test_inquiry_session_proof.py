@@ -323,3 +323,50 @@ def test_the_rehearsal_script_is_offline_and_opens_no_database():
     imported = {n.module or "" for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
     assert not [m for m in imported if m.startswith("backend.database")]
     assert "post_collection" not in source
+
+
+# ── what the live rehearsal found ────────────────────────────────────────────
+
+def test_a_session_that_compiled_nothing_is_still_a_readable_session():
+    """FOUND BY THE LIVE RUN, not by the fixtures.
+
+    When nothing compiles, no Lane B state machine is ever opened and `_finish` writes a two-key
+    STUB — `{"state": "exhausted", "revision": 0}` — so the envelope still reports a state rather
+    than an empty mapping a reader would have to interpret. Three places tested that stub with
+    `if session.interaction:`, which is TRUE for it, and then handed it to `machine.from_dict`.
+    The failure arrived as a pydantic error about a missing `session_id`, several frames from the
+    thing that wrote it, on the one path the frozen fixtures can never take: they always compile.
+    """
+    empty = F.stages_for(F.FIXTURES[0], capability=LockedFixtureCapability(), judge=J.judge,
+                         composer=DeterministicComposer(), clock=F.frozen_clock(AT))
+    empty = coordinator.Stages(framer=empty.framer, theorist=None, compiler=None,
+                               capability=empty.capability, judge=empty.judge,
+                               composer=empty.composer, clock=empty.clock)
+    session = coordinator.new_session(prompt="a question nothing will compile",
+                                      refs=F.post_refs(F.FIXTURES[0]), mode="consult",
+                                      session_id="inqs_barren", now=AT)
+    session = coordinator.begin(session, empty)
+
+    assert session.state == "exhausted"
+    assert not coordinator.has_interaction(session)
+    assert session.stop_reason
+
+    # Every reader of a session must survive it.
+    body = view.session_view(session, servable_classes=coordinator.servable_classes(empty))
+    assert body["state"] == "exhausted"
+    assert body["decision_requests"] == [] and body["trace"] == []
+    assert coordinator.selection_for(session) == (None, None)
+    assert DeterministicComposer().compose(session, at=AT) is None
+    assert store.new_session_doc(session, now=AT)["status"] == "stopped"
+    assert canonical(session) == canonical(session)
+
+
+def test_the_stub_a_barren_session_carries_is_truthy_and_is_not_a_state_machine():
+    """The negative control for the guard above: if the stub were falsy, `has_interaction` would be
+    testing nothing and the bug would come back the moment somebody simplified it."""
+    empty_stages = coordinator.Stages(framer=None, clock=F.frozen_clock(AT))
+    session = coordinator.new_session(prompt="q", refs=F.post_refs(F.FIXTURES[0]),
+                                      mode="auto", session_id="inqs_barren2", now=AT)
+    session = coordinator.begin(session, empty_stages)
+    assert bool(session.interaction) is True
+    assert coordinator.has_interaction(session) is False

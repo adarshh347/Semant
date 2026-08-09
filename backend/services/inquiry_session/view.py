@@ -332,7 +332,7 @@ def session_view(session: SemanticInquirySession, *,
                  servable_classes: Sequence[str] = ()) -> Dict[str, Any]:
     """One session, as the workbench reads it. The single response body of every route here."""
     interaction = session.interaction
-    state = machine.from_dict(interaction) if interaction.get("session_id") else None
+    state = machine.from_dict(interaction) if interaction.get("session_id") else None   # a `_finish` stub is truthy and is not a state machine
 
     requests: List[Dict[str, Any]] = []
     records: List[Dict[str, Any]] = []

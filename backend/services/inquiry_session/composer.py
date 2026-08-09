@@ -108,7 +108,11 @@ def request_for(session: SemanticInquirySession) -> CompositionRequest:
     graph = session.graph if isinstance(session.graph, dict) else {}
     decisions: List[Mapping[str, Any]] = []
     amendments: List[Mapping[str, Any]] = []
-    if session.interaction:
+    # `session_id`, not truthiness. A session that never opened a Lane B state carries a two-key
+    # STUB — `{"state": …, "revision": 0}` — written by `_finish` so a session that compiled nothing
+    # still reports a state. It is truthy and it is not a state machine, and the live rehearsal is
+    # where that difference surfaced.
+    if session.interaction.get("session_id"):
         state = machine.from_dict(session.interaction)
         decisions = [d for d in projections.decisions(state) if d["settled"]]
         amendments = projections.amendments(state)
