@@ -877,7 +877,8 @@ class ModelSemanticCompiler:
         receipt = ModelReceipt(role=ROLE, model=self.model, provider="groq",
                                prompt_sha256=prompt_hash, requested_at=request.now,
                                raw_response_sha256=[sha256_of(raw)], call_count=self.calls,
-                               call_topology=CallTopology.TEXT_ONLY, notes=notes)
+                               call_topology=CallTopology.TEXT_ONLY,
+                               finish_reason=finish or None, notes=notes)
         return _compile_payload(request, payload, receipt)
 
     def _unavailable(self, request: CompilationRequest, prompt_hash: str,

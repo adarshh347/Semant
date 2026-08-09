@@ -377,6 +377,24 @@ class ModelReceipt(_Strict):
     refusal: Optional[str] = None
     call_count: int = 0
     call_topology: CallTopology = CallTopology.UNAVAILABLE
+    #: Why the provider stopped generating — `stop`, `length`, or whatever it said. TYPED, because
+    #: HARNESS-003B asked for it by name: its `outcomes.py` consults `receipt.finish_reason` FIRST
+    #: and falls back to reading a `finish_reason: ` note only because no such field existed.
+    #:
+    #: A note is prose that happens to be machine-written; a field cannot be reworded by somebody
+    #: improving a sentence. The difference decides whether a truncated reading is reported as a
+    #: short one, which is the exact failure 002R's rehearsal produced — so the better route should
+    #: not depend on nobody touching a string.
+    #:
+    #: `None` means nothing was asked, and it is NOT `""`: an unavailable call reports no finish
+    #: reason because there was no call, and a route that read the empty string as "stopped
+    #: normally" would report an unchecked stage as a verified one.
+    #:
+    #: A LIST would be wrong here. A `ModelReceipt` covers one logical call — the theorist's sweep
+    #: counts its own truncated calls in `truncated_calls`, which is the producer-attribute route
+    #: 003B reads for exactly that case. The per-pass, many-call receipt is `PassReceipt`, and it
+    #: carries `finish_reasons` plural.
+    finish_reason: Optional[str] = None
     notes: List[str] = Field(default_factory=list)
 
 
