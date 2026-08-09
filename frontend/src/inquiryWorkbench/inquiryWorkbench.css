@@ -1,0 +1,208 @@
+/* INQUIRY WORKBENCH — the semantic inquiry surface.
+ *
+ * Editorial tokens only (--bg / --surface / --ink / --line / --accent …), already redefined under
+ * the app's dark scheme, so this surface follows light and dark without a palette of its own. No
+ * hard-coded hex below for that reason.
+ *
+ * Its own stylesheet and its own `iw-` prefix. Nothing here leaks into `/agent` or
+ * `/differential`, and nothing there is depended on.
+ *
+ * ## Why the epistemic treatments are not colour alone
+ *
+ * The same rule `curator/StatusPair.jsx` settled on: a claim about knowing is carried as an
+ * OUTLINE, a fact about the world's record as a FILL, and the two never share a shape. A reader
+ * with no colour vision must still be able to tell a simulated receipt from a live one, so every
+ * distinction below is carried on at least two channels — border style plus weight, or fill plus
+ * a literal word in the DOM. The word is always there; the colour is the redundancy, never the
+ * signal. */
+
+.iw-shell {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3rem);
+    color: var(--ink);
+}
+
+.iw-quiet { color: var(--ink-subtle); font-size: .875rem; margin: 0; line-height: 1.5; }
+.iw-error {
+    margin: 0;
+    padding: .625rem .875rem;
+    border: 1px solid var(--line-strong);
+    border-left: 3px solid var(--accent);
+    border-radius: .25rem;
+    background: var(--surface-2);
+    font-size: .875rem;
+}
+
+.iw-h2 {
+    font-size: .8125rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+    margin: 0 0 .75rem;
+    font-weight: 600;
+}
+
+/* ── entry ─────────────────────────────────────────────────────────────── */
+
+.iw-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    max-width: 46rem;
+    margin: 0 auto;
+}
+
+.iw-entry-head { display: flex; flex-direction: column; gap: .5rem; }
+
+.iw-title {
+    font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+
+.iw-sub { margin: 0; color: var(--ink-muted); max-width: 38rem; line-height: 1.55; }
+
+.iw-field {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .625rem;
+}
+
+.iw-legend {
+    padding: 0;
+    font-size: .75rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+}
+
+.iw-corpus {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+    gap: .75rem;
+}
+
+.iw-thumb {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    padding: .25rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: .375rem;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    transition: border-color .12s ease, box-shadow .12s ease;
+}
+
+.iw-thumb img,
+.iw-thumb-blank {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: .25rem;
+    background: var(--surface-2);
+    display: block;
+}
+
+.iw-thumb-title {
+    font-size: .75rem;
+    color: var(--ink-muted);
+    padding: 0 .125rem .125rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Selection is a border WEIGHT change as well as a colour one — `aria-pressed` carries it to
+   assistive tech, and the ring carries it to anyone who cannot see the hue. */
+.iw-thumb.is-on {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.iw-thumb:focus-visible,
+.iw-mode:focus-visible,
+.iw-start:focus-visible,
+.iw-option:focus-visible,
+.iw-submit:focus-visible,
+.iw-expand:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.iw-prompt {
+    width: 100%;
+    padding: .75rem;
+    font: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: .375rem;
+    resize: vertical;
+}
+
+.iw-mode-list { display: grid; gap: .5rem; }
+
+.iw-mode {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    padding: .75rem .875rem;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--line);
+    border-radius: .375rem;
+    cursor: pointer;
+    color: inherit;
+}
+
+.iw-mode.is-on { border-color: var(--line-strong); border-left-color: var(--accent); }
+.iw-mode-name { font-weight: 600; font-size: .9375rem; }
+.iw-mode-hint { color: var(--ink-muted); font-size: .8125rem; line-height: 1.45; }
+
+.iw-start {
+    align-self: flex-start;
+    padding: .625rem 1.25rem;
+    font: inherit;
+    font-weight: 600;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: .375rem;
+    cursor: pointer;
+}
+
+.iw-start[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* The production unavailable state. Deliberately heavy: it is the thing standing where a
+   convincing fake would otherwise be. */
+.iw-unavailable {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    margin: 0;
+    padding: .875rem 1rem;
+    border: 1px solid var(--line-strong);
+    border-left: 3px solid var(--accent);
+    border-radius: .375rem;
+    background: var(--surface-2);
+}
+
+.iw-unavailable-head { font-size: .9375rem; }
+.iw-unavailable-detail { font-size: .875rem; color: var(--ink-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+    .iw-thumb, .iw-mode, .iw-start { transition: none; }
+}
