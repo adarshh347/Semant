@@ -97,6 +97,34 @@ The theorist and compiler are then unbound. The session records `skipped` for bo
 nothing, and stops with an honest empty. This is worth seeing once — it is what an outage looks
 like, and it is deliberately not a working demonstration.
 
+### The deterministic browser rehearsal (use this one first)
+
+The live compiler does not reliably produce a fork. On a long reading it runs out of output budget,
+returns a prefix with no observables, and a graph with no observables has no fork in it — so live
+mode may take you straight from question to answer with no pause at all. That is reported honestly
+by the chain and it is a real Phase 1 finding, but it is not something you can rehearse the *human
+turn* against.
+
+So run this instead when what you want to judge is the pause:
+
+```bash
+# instead of uvicorn, in terminal 1
+venv/bin/python scripts/inquiry_rehearsal_server.py --port 8000
+# or the other domain
+venv/bin/python scripts/inquiry_rehearsal_server.py --port 8000 --fixture unrelated-domain
+
+# terminal 2 — point the frontend at it
+cd frontend && VITE_API_URL=http://127.0.0.1:8000 npm run dev
+```
+
+Everything is the real thing — the routes, the session, the state machine, the capability adapter,
+the judge, the composer, the persistence — except the two MODEL stages, which are frozen payloads.
+It needs no API key and no `GROQ_API_KEY`, and it lists your real corpus so you pick real images.
+
+Every session it produces says what it is: `call_topology: "replay"` and `call_count: 0` on both
+receipts, visible under **Show model receipt**. A screenshot taken here cannot be mistaken for a
+live reading by anyone who looks.
+
 ### The API, if you would rather drive it directly
 
 ```bash
