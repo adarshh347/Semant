@@ -457,9 +457,11 @@ export default function ArtifactLedger({ session }) {
                     label="Verdicts"
                     count={session.verdicts.length}
                     schema="ClaimVerdict"
-                    note="What the judge concluded about each claim. `interpretive_only` and
-                          `not_investigated` are different answers: one was examined, the other
-                          was never asked."
+                    note={<>
+                        What the judge concluded about each claim. <code>interpretive_only</code>
+                        {' '}and <code>not_investigated</code> are different answers: one was
+                        examined, the other was never asked.
+                    </>}
                 >
                     <ul className="iw-led-items">
                         {session.verdicts.map((v) => (

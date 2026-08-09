@@ -52,10 +52,14 @@ export default function DiagnosisCard({ session }) {
 
     return (
         <section className="iw-panel iw-diagnosis" aria-label="What went wrong" data-diagnosis="open">
+            {/* The stage labels are gerund phrases — "Breaking the reading into claims" — so
+                "at the … stage" produced "at the breaking the reading into claims stage". Found by
+                reading the rendered page rather than the source. */}
             <h2 className="iw-diagnosis-head">
                 {worst
-                    ? <>This run stopped short at the {STAGE_LABEL[worst.stage.value]
-                        ? STAGE_LABEL[worst.stage.value].toLowerCase() : worst.stage.value} stage.</>
+                    ? <>This run stopped short while {STAGE_LABEL[worst.stage.value]
+                        ? STAGE_LABEL[worst.stage.value].toLowerCase()
+                        : `running the ${worst.stage.value} stage`}.</>
                     : <>This run ended without completing.</>}
             </h2>
 

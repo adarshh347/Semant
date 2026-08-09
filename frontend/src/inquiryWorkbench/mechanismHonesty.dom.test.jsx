@@ -223,7 +223,7 @@ describe('TestElapsedIsNotDuration', () => {
 
     it('an unmeasured duration is an em dash, never zero', async () => {
         await startInquiry([truncatedCompilerFixture()]);
-        expect($('[data-stage="steward"] .iw-stage-duration').textContent).toBe('—');
+        expect($('[data-stage="steward"] .iw-stage-duration').lastChild.textContent).toBe('—');
         expect(text()).not.toContain('0 ms');
     });
 });

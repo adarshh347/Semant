@@ -146,8 +146,11 @@ describe('a duration nobody measured', () => {
     it('renders as an em dash, never as 0 ms', async () => {
         await mount(truncatedCompilerFixture());
         const skipped = $('[data-stage="steward"] .iw-stage-duration');
-        expect(skipped.textContent).toBe('—');
+        // The visible text is the em dash; `.iw-sr` carries the name a screen reader needs,
+        // because a bare `—` reads aloud as "dash" and says nothing.
         expect(skipped.dataset.duration).toBe('null');
+        expect(skipped.querySelector('.iw-sr').textContent).toBe('duration not reported');
+        expect(skipped.lastChild.textContent).toBe('—');
         expect(text()).not.toContain('0 ms');
     });
 
@@ -222,7 +225,7 @@ describe('reading two servers at once', () => {
         expect(framer.duration_ms).toBeNull();
         expect(framer.model).toBe('');
         expect($('[data-stage="framer"]').textContent).toContain('Reading your question');
-        expect($('[data-stage="framer"] .iw-stage-duration').textContent).toBe('—');
+        expect($('[data-stage="framer"] .iw-stage-duration').lastChild.textContent).toBe('—');
     });
 
     it('renders an unrecognised stage and outcome as themselves', async () => {

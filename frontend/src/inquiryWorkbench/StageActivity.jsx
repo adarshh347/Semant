@@ -129,8 +129,14 @@ export function StageRow({ stage: s, at }) {
                 ) : null}
 
                 {/* The stage's own number, only when it gave one. */}
+                {/* The em dash needs a name. A screen reader on a bare `—` hears "dash" and
+                    learns nothing; the visible label would be noise beside seven rows of numbers,
+                    so it is there for assistive tech and not for the eye. */}
                 {!s.running ? (
                     <span className="iw-stage-duration" data-duration={String(s.duration_ms)}>
+                        <span className="iw-sr">
+                            {s.duration_ms === null ? 'duration not reported' : 'took'}
+                        </span>
                         {formatDuration(s.duration_ms)}
                     </span>
                 ) : null}

@@ -133,7 +133,19 @@
     gap: .625rem;
 }
 
-.ic-cell { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+/* A grid row stretches its cells, but the TILE inside was sized by its own content — so a tile
+   with a provenance line pushed its Preview/Open row lower than its neighbours' and every row of
+   the grid came out ragged. Found by looking at it. */
+.ic-cell {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    min-width: 0;
+    height: 100%;
+}
+
+.ic-tile { flex: 1 1 auto; }
+.ic-tile-actions { margin-top: auto; }
 
 .ic-tile {
     width: 100%;

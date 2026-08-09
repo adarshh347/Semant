@@ -69,8 +69,10 @@ describe('the diagnosis card', () => {
         }];
         await diagnose(raw);
         expect($('[data-failed-stage]').dataset.failedStage).toBe('compiler');
+        // The stage labels are gerund phrases, so "at the … stage" read "at the breaking the
+        // reading into claims stage". Found in the browser, not in the source.
         expect($('.iw-diagnosis-head').textContent)
-            .toBe('This run stopped short at the breaking the reading into claims stage.');
+            .toBe('This run stopped short while breaking the reading into claims.');
     });
 
     it('never phrases it as "nothing new was found"', async () => {
