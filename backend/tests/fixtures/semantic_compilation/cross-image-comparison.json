@@ -1,0 +1,809 @@
+{
+  "name": "cross-image-comparison",
+  "topic": "two built interiors compared, with a hybrid proposed",
+  "why_this_fixture": [
+    "The HARNESS-002 rehearsal shape: several images, a comparison across them, a claim whose warrant",
+    "lies outside the pictures, a because, and a request for something that does not exist yet.",
+    "It exists to prove that all seven distinctions the directive names survive one compilation:",
+    "a segmentable entity candidate, a spatial/hierarchy relation, an interpretive abstraction, a",
+    "sourced historical generalization, a causal hypothesis, a generative rule, and a semantic",
+    "remainder that measurement will not exhaust.",
+    "NOTHING in it is architecture-specific to the code. Its twin, `unrelated-domain.json`, runs the",
+    "same production path over a subject with no vocabulary in common."
+  ],
+  "topic_nouns": [
+    "rotunda",
+    "dome",
+    "oculus",
+    "coffering",
+    "drum",
+    "colonnade"
+  ],
+  "prompt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and what a hybrid of the two would demand of its structure.",
+  "images": [
+    {
+      "post_id": "img_a",
+      "title": "A domed interior, seen from the floor"
+    },
+    {
+      "post_id": "img_b",
+      "title": "A long hall, seen along its axis"
+    }
+  ],
+  "theorist_payload": {
+    "reading": "The first interior is closed overhead by one continuous curved surface that gathers everything beneath it toward a single opening at the crown. The second is closed by a repeated element: a series of transverse arches that divide the ceiling into bays and carry the eye along the room rather than up into it. In the first, a ring of engaged columns stands against the drum below the springing, and the coffering above diminishes in scale as it rises. In the second, nothing diminishes; the bays are equal and the rhythm is flat. The two rooms are doing the same work — closing a large volume — by opposite means, and the difference is legible in the ceiling alone.",
+    "blocks": [
+      {
+        "kind": "part",
+        "text": "a single unbroken dome closes the space overhead",
+        "images": [
+          "img_a"
+        ]
+      },
+      {
+        "kind": "part",
+        "text": "a ring of engaged columns stands against the drum",
+        "images": [
+          "img_a"
+        ]
+      },
+      {
+        "kind": "organization",
+        "text": "the coffering diminishes in scale as it rises toward the oculus",
+        "images": [
+          "img_a"
+        ]
+      },
+      {
+        "kind": "part",
+        "text": "a series of transverse arches divides the ceiling into equal bays",
+        "images": [
+          "img_b"
+        ]
+      },
+      {
+        "kind": "comparison",
+        "text": "one interior is closed by a single surface, the other by a repeated one",
+        "images": [
+          "img_a",
+          "img_b"
+        ]
+      },
+      {
+        "kind": "historical_association",
+        "text": "coffering that diminishes toward a crown follows a convention with a long documented history",
+        "images": [
+          "img_a"
+        ]
+      },
+      {
+        "kind": "tension",
+        "text": "the ring of columns reads as carrying the dome while standing forward of the wall that actually does",
+        "images": [
+          "img_a"
+        ]
+      },
+      {
+        "kind": "hypothesis",
+        "text": "a room could keep the single closing surface and take its rhythm from the bays",
+        "images": [
+          "img_a",
+          "img_b"
+        ]
+      }
+    ]
+  },
+  "compiler_payload": {
+    "claims": [
+      {
+        "ref": "c1",
+        "text": "a single unbroken dome closes the first interior overhead",
+        "kind": "entity",
+        "subject": "the dome",
+        "predicate": "closes",
+        "object": "the interior",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:a single unbroken dome closes the space overhead",
+            "text": "a single unbroken dome closes the space overhead",
+            "images": [
+              "img_a"
+            ]
+          }
+        ]
+      },
+      {
+        "ref": "c2",
+        "text": "a ring of engaged columns stands against the drum",
+        "kind": "entity",
+        "subject": "the ring of columns",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:a ring of engaged columns stands against the drum",
+            "text": "a ring of engaged columns stands against the drum",
+            "images": [
+              "img_a"
+            ]
+          }
+        ]
+      },
+      {
+        "ref": "c3",
+        "text": "the ring of columns stands within the dome's footprint",
+        "kind": "spatial_relation",
+        "subject": "the ring of columns",
+        "predicate": "stands within",
+        "object": "the dome's footprint",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "uncertain",
+        "inferred_from": [
+          "c1",
+          "c2"
+        ],
+        "sources": [
+          {
+            "type": "compiler_inference",
+            "source_id": "compiler",
+            "text": "both parts are reported in the same interior"
+          }
+        ]
+      },
+      {
+        "ref": "c4",
+        "text": "the coffering diminishes in scale as it rises toward the crown",
+        "kind": "hierarchy",
+        "subject": "the coffering",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:the coffering diminishes in scale as it rises toward the oculus",
+            "text": "the coffering diminishes in scale as it rises toward the oculus",
+            "images": [
+              "img_a"
+            ]
+          }
+        ]
+      },
+      {
+        "ref": "c5",
+        "text": "the second interior is closed by a repeated element rather than a single one",
+        "kind": "comparison",
+        "subject": "the two ceilings",
+        "image_scope": "image_pair",
+        "demand": "measurable",
+        "status": "interpretive",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:one interior is closed by a single surface, the other by a repeated one",
+            "text": "one interior is closed by a single surface, the other by a repeated one",
+            "images": [
+              "img_a",
+              "img_b"
+            ]
+          },
+          {
+            "type": "prompt",
+            "source_id": "prompt",
+            "text": "where their handling of the ceiling parts company"
+          }
+        ]
+      },
+      {
+        "ref": "c6",
+        "text": "the first interior reads as more composed than the second",
+        "kind": "interpretation",
+        "subject": "composure",
+        "image_scope": "image_pair",
+        "demand": "interpretive",
+        "status": "interpretive",
+        "inferred_from": [
+          "c4",
+          "c5"
+        ],
+        "sources": [
+          {
+            "type": "compiler_inference",
+            "source_id": "compiler",
+            "text": "a reading assembled from the diminishing coffering and the contrast of means"
+          }
+        ]
+      },
+      {
+        "ref": "c7",
+        "text": "coffering that diminishes toward a crown follows a documented convention",
+        "kind": "historical_or_sourced",
+        "subject": "the convention",
+        "image_scope": "not_an_image_question",
+        "demand": "sourced",
+        "status": "sourced",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:coffering that diminishes toward a crown follows a convention with a long documented history",
+            "text": "coffering that diminishes toward a crown follows a convention with a long documented history"
+          }
+        ]
+      },
+      {
+        "ref": "c8",
+        "text": "the coffering diminishes because the shell must lose thickness toward the crown",
+        "kind": "causal_hypothesis",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "uncertain",
+        "inferred_from": [
+          "c4"
+        ],
+        "sources": [
+          {
+            "type": "compiler_inference",
+            "source_id": "compiler",
+            "text": "a because offered for the diminishing, not observed"
+          }
+        ]
+      },
+      {
+        "ref": "c9",
+        "text": "the ring of columns reads as carrying the dome while standing forward of the wall that does",
+        "kind": "spatial_relation",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "uncertain",
+        "sources": [
+          {
+            "type": "scene_reading",
+            "source_id": "$BLOCK:the ring of columns reads as carrying the dome while standing forward of the wall that actually does",
+            "text": "the ring of columns reads as carrying the dome while standing forward of the wall that actually does",
+            "images": [
+              "img_a"
+            ]
+          }
+        ]
+      },
+      {
+        "ref": "c10",
+        "text": "a hybrid would keep the single closing surface and take its interval from the bays",
+        "kind": "generative_rule",
+        "image_scope": "not_an_image_question",
+        "demand": "imagined",
+        "status": "interpretive",
+        "inferred_from": [
+          "c5"
+        ],
+        "sources": [
+          {
+            "type": "prompt",
+            "source_id": "prompt",
+            "text": "what a hybrid of the two would demand of its structure"
+          }
+        ]
+      },
+      {
+        "ref": "c11",
+        "text": "what the prompt means by a structure's demand is not settled",
+        "kind": "unknown",
+        "image_scope": "not_an_image_question",
+        "demand": "unresolved",
+        "status": "uncertain",
+        "sources": [
+          {
+            "type": "prompt",
+            "source_id": "prompt",
+            "text": "would demand of its structure"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "kind": "composes_from",
+        "from": "c3",
+        "to": "c1",
+        "why": "the relation is built from the two parts"
+      },
+      {
+        "kind": "composes_from",
+        "from": "c3",
+        "to": "c2",
+        "why": "the relation is built from the two parts"
+      },
+      {
+        "kind": "supports",
+        "from": "c4",
+        "to": "c6",
+        "why": "an ordered diminution is part of what reads as composed"
+      },
+      {
+        "kind": "supports",
+        "from": "c5",
+        "to": "c6",
+        "why": "the contrast of means is what the reading rests on"
+      },
+      {
+        "kind": "challenges",
+        "from": "c9",
+        "to": "c3",
+        "why": "if the ring stands forward, its containment is not what it appears"
+      },
+      {
+        "kind": "complicates",
+        "from": "c8",
+        "to": "c4",
+        "why": "a structural cause would make the diminution less a choice"
+      },
+      {
+        "kind": "generalizes",
+        "from": "c7",
+        "to": "c4",
+        "why": "the convention is the class this instance belongs to"
+      },
+      {
+        "kind": "composes_from",
+        "from": "c10",
+        "to": "c5",
+        "why": "the hybrid is assembled out of the contrast"
+      }
+    ],
+    "observables": [
+      {
+        "ref": "o1",
+        "claim": "c1",
+        "kind": "the extent of the closing surface",
+        "targets": [
+          "the closing surface overhead"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "extent"
+        ],
+        "ground_forms": [
+          "region"
+        ],
+        "success_when": "one extent is returned covering the ceiling",
+        "ambiguous_when": "several disconnected extents come back and none dominates",
+        "refused_when": "no instrument can be handed the phrase",
+        "remains_interpretive": "whether one continuous surface is the right way to describe what is overhead",
+        "alternatives": [
+          {
+            "label": "measure the extent of the ceiling as one thing",
+            "consequence": "a single region; the fastest route, and it assumes the answer to whether it is one thing",
+            "capability_classes": [
+              "extent"
+            ],
+            "ground_forms": [
+              "region"
+            ],
+            "recommended": true
+          },
+          {
+            "label": "measure each visible ceiling element and count them",
+            "consequence": "several regions; answers whether it is one thing, and costs more and may fragment a genuinely continuous surface",
+            "capability_classes": [
+              "extent",
+              "pattern"
+            ],
+            "ground_forms": [
+              "region",
+              "field"
+            ]
+          }
+        ]
+      },
+      {
+        "ref": "o2",
+        "claim": "c3",
+        "kind": "whether one extent lies within another",
+        "targets": [
+          "the ring of columns",
+          "the closing surface overhead"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "geometry",
+          "topology"
+        ],
+        "ground_forms": [
+          "relation"
+        ],
+        "success_when": "a containment relation is computed between two returned extents",
+        "ambiguous_when": "the two extents overlap without either containing the other",
+        "refused_when": "either extent is missing",
+        "remains_interpretive": "whether standing within a footprint is standing within the thing"
+      },
+      {
+        "ref": "o3",
+        "claim": "c4",
+        "kind": "an ordering of element size along an axis",
+        "targets": [
+          "the repeated ceiling elements"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "pattern"
+        ],
+        "ground_forms": [
+          "field",
+          "path"
+        ],
+        "success_when": "sizes are recovered and are monotonic along the axis",
+        "ambiguous_when": "the ordering holds for part of the run and not the rest",
+        "refused_when": "the elements cannot be told apart from each other",
+        "remains_interpretive": "whether a diminution is read as ordering or as perspective"
+      },
+      {
+        "ref": "o4",
+        "claim": "c5",
+        "kind": "the count and spacing of ceiling elements in each image",
+        "targets": [
+          "the ceiling elements"
+        ],
+        "image_scope": "image_pair",
+        "capability_classes": [
+          "pattern",
+          "extent"
+        ],
+        "ground_forms": [
+          "field",
+          "region"
+        ],
+        "success_when": "both images return a count and the counts differ in kind, not only in number",
+        "ambiguous_when": "one image returns nothing and the other returns many",
+        "refused_when": "only one image is available",
+        "remains_interpretive": "whether one and many are the right terms for the difference"
+      },
+      {
+        "ref": "o5",
+        "claim": "c7",
+        "kind": "a documented account of the convention",
+        "targets": [
+          "the convention named"
+        ],
+        "image_scope": "not_an_image_question",
+        "capability_classes": [
+          "external_source"
+        ],
+        "ground_forms": [
+          "frame"
+        ],
+        "success_when": "a citation is returned that names the convention",
+        "refused_when": "no source is reachable",
+        "remains_interpretive": "whether this instance belongs to the class the source describes"
+      },
+      {
+        "ref": "o6",
+        "claim": "c6",
+        "kind": "a reading of how the two interiors compare",
+        "targets": [
+          "composure"
+        ],
+        "image_scope": "image_pair",
+        "capability_classes": [
+          "semantic_reading"
+        ],
+        "ground_forms": [
+          "frame"
+        ],
+        "success_when": "a reading is produced and is labelled as a reading",
+        "remains_interpretive": "all of it. A reading about a picture is never evidence in it."
+      }
+    ],
+    "decisions": [
+      {
+        "kind": "choose_operationalization",
+        "question": "Measure the ceiling as one extent, or measure each element and count them?",
+        "why_now": "the first assumes the ceiling is one thing, which is exactly what the comparison is about; the second answers that and costs more",
+        "affects": [
+          "c1",
+          "o1"
+        ],
+        "blocking": false,
+        "options": [
+          {
+            "label": "measure the extent of the ceiling as one thing",
+            "consequence": "one region, quickly, with the question begged",
+            "recommended": true
+          },
+          {
+            "label": "measure each visible ceiling element and count them",
+            "consequence": "several regions, more cost, and the comparison's own premise tested"
+          }
+        ]
+      }
+    ],
+    "semantic_remainder": [
+      {
+        "term": "composure",
+        "why": "an ordered diminution and a contrast of means both bear on it and neither settles it; nothing returns a number for how composed a room reads",
+        "contributing_capability_classes": [
+          "pattern",
+          "extent",
+          "geometry"
+        ],
+        "claims": [
+          "c6"
+        ]
+      },
+      {
+        "term": "a structure's demand",
+        "why": "the prompt's phrase names an obligation rather than a thing in a picture, and no instrument is scoped to an obligation",
+        "contributing_capability_classes": [],
+        "claims": [
+          "c11"
+        ]
+      }
+    ]
+  },
+  "inquiry_id": "inq_c3356cfeeb73",
+  "corpus": {
+    "post_ids": [
+      "img_a",
+      "img_b"
+    ],
+    "titles": [
+      "A domed interior, seen from the floor",
+      "A long hall, seen along its axis"
+    ]
+  },
+  "inquiry_frame": {
+    "schema_version": "inquiry-frame.v1",
+    "inquiry_id": "inq_c3356cfeeb73",
+    "prompt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and what a hybrid of the two would demand of its structure.",
+    "mode": "explore",
+    "attentions": [
+      {
+        "term": "structure",
+        "said": "the user said “structure”",
+        "span": [
+          162,
+          171
+        ],
+        "category": "architecture",
+        "action_roles": [
+          "trace:architectural_axis"
+        ],
+        "attributed_to": "prompt"
+      },
+      {
+        "term": "compare",
+        "said": "the user said “compare”",
+        "span": [
+          0,
+          7
+        ],
+        "category": "comparison",
+        "action_roles": [
+          "connect:motif_echo"
+        ],
+        "attributed_to": "prompt"
+      },
+      {
+        "term": "compare",
+        "said": "the user said “compare”",
+        "span": [
+          0,
+          7
+        ],
+        "category": "comparison",
+        "action_roles": [
+          "connect:similarity"
+        ],
+        "attributed_to": "prompt"
+      },
+      {
+        "term": "hybrid",
+        "said": "the user said “hybrid”",
+        "span": [
+          124,
+          130
+        ],
+        "category": "speculation",
+        "action_roles": [],
+        "attributed_to": "prompt"
+      }
+    ],
+    "epistemic_demands": [
+      {
+        "clause": "and what a hybrid of the two would demand of its structure",
+        "term": "hybrid",
+        "kind": "imagined",
+        "why": "names something that does not exist. No picture can be measured for it, and no source can cite it."
+      }
+    ],
+    "proposed_actions": [
+      {
+        "id": "act_1",
+        "type": "find_parts",
+        "label": "Find parts",
+        "intent": "open the named images into material you can cite",
+        "source": "system",
+        "status": "proposed",
+        "requiresConfirmation": false,
+        "target": "operation",
+        "createdAt": 0.0,
+        "payload": {
+          "reason": "2 images were named and nothing has been opened into parts"
+        },
+        "warnings": [],
+        "provenance": {
+          "planner": "inquiry/lexicon-v1",
+          "promptExcerpt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and wh…",
+          "matched": [],
+          "cue": "bootstrap"
+        }
+      },
+      {
+        "id": "act_2",
+        "type": "trace_direction",
+        "label": "Trace architectural axis",
+        "intent": "draw the direction, from and to",
+        "source": "system",
+        "status": "proposed",
+        "requiresConfirmation": true,
+        "target": "image",
+        "createdAt": 0.0,
+        "payload": {
+          "trace_role": "architectural_axis",
+          "label": "structure axis",
+          "from_hint": "",
+          "to_hint": "",
+          "geometry_mode": "vector",
+          "requires_user_anchor": true,
+          "reason": "you said “structure”"
+        },
+        "warnings": [
+          "Needs a mark from you on the image."
+        ],
+        "provenance": {
+          "planner": "inquiry/lexicon-v1",
+          "promptExcerpt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and wh…",
+          "matched": [
+            "structure"
+          ],
+          "cue": "architecture"
+        }
+      },
+      {
+        "id": "act_3",
+        "type": "connect_marks",
+        "label": "Connect — motif echo",
+        "intent": "tie two marks together and say how they bear on each other",
+        "source": "system",
+        "status": "proposed",
+        "requiresConfirmation": true,
+        "target": "ground",
+        "createdAt": 0.0,
+        "payload": {
+          "relation_role": "motif_echo",
+          "label": "",
+          "source_refs": [],
+          "target_refs": [],
+          "reason": "you said “compare”"
+        },
+        "warnings": [
+          "Needs a mark from you on the image."
+        ],
+        "provenance": {
+          "planner": "inquiry/lexicon-v1",
+          "promptExcerpt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and wh…",
+          "matched": [
+            "compare"
+          ],
+          "cue": "comparison"
+        }
+      },
+      {
+        "id": "act_4",
+        "type": "connect_marks",
+        "label": "Connect — similarity",
+        "intent": "tie two marks together and say how they bear on each other",
+        "source": "system",
+        "status": "proposed",
+        "requiresConfirmation": true,
+        "target": "ground",
+        "createdAt": 0.0,
+        "payload": {
+          "relation_role": "similarity",
+          "label": "",
+          "source_refs": [],
+          "target_refs": [],
+          "reason": "you said “compare”"
+        },
+        "warnings": [
+          "Needs a mark from you on the image."
+        ],
+        "provenance": {
+          "planner": "inquiry/lexicon-v1",
+          "promptExcerpt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and wh…",
+          "matched": [
+            "compare"
+          ],
+          "cue": "comparison"
+        }
+      }
+    ],
+    "unresolved_terms": [
+      {
+        "term": "interiors",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "organise",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "themselves",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "overhead",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "ceiling",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "parts",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "company",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "demand",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      }
+    ],
+    "semantic_remainder": [
+      {
+        "term": "hybrid",
+        "why": "what does not exist yet cannot be measured on any picture, nor cited from any source",
+        "contributing_measurements": []
+      }
+    ],
+    "requested_output": "comparison",
+    "corpus_context": {
+      "post_ids": [
+        "img_a",
+        "img_b"
+      ],
+      "titles": [
+        "A domed interior, seen from the floor",
+        "A long hall, seen along its axis"
+      ],
+      "count": 2,
+      "tags": [],
+      "note": null
+    },
+    "provenance": {
+      "producer": "inquiry/deterministic-v1",
+      "framer_kind": "deterministic",
+      "model": null,
+      "role": null,
+      "prompt_sha256": "d9c65f8222e1c3703e8bb04cce5c67ec748f1fd29cd87a03894a4602f576ffed",
+      "schema_version": "inquiry-frame.v1",
+      "grammar_version": "perceptual-action-grammar.v1",
+      "lexicon_version": "attunement-lexicon.v1",
+      "framed_at": "2026-08-09T12:25:19.850779+00:00",
+      "model_calls": 0
+    },
+    "refusals": [],
+    "notes": [
+      "'hybrid' was read as speculation and proposes no act: the question asks about something that does not exist. NOTHING is proposed: there is no act that measures what is not there."
+    ]
+  }
+}
