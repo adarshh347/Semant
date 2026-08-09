@@ -1,0 +1,105 @@
+{
+  "schema_version": "single-actuator-score.v1",
+  "lab_id": "sam3-fold-phrase-matrix",
+  "run_id": "sam3-fold-phrase-matrix/pieta/organ_direct__garment",
+  "mode": "organ_direct",
+  "expected_condition": "open",
+  "measured": {
+    "availability": "available",
+    "planner_valid": null,
+    "actuator_leakage": false,
+    "planner_requested_unlocked": [],
+    "invocation_count": 1,
+    "call_budget": 1,
+    "budget_respected": true,
+    "lock_held": true,
+    "cold_or_warm": "warm",
+    "latency_ms": 5813.9,
+    "load_ms": 0.0,
+    "instance_count": 6,
+    "truncated": false,
+    "mask_area_px": [
+      12475,
+      3614,
+      4086,
+      2089,
+      4335,
+      884
+    ],
+    "mask_area_fraction": [
+      0.033724,
+      0.00977,
+      0.011046,
+      0.005647,
+      0.011719,
+      0.00239
+    ],
+    "mask_bounds": [
+      {
+        "x": 0.341912,
+        "y": 0.582353,
+        "w": 0.286765,
+        "h": 0.236765
+      },
+      {
+        "x": 0.4375,
+        "y": 0.582353,
+        "w": 0.170956,
+        "h": 0.088235
+      },
+      {
+        "x": 0.4375,
+        "y": 0.558824,
+        "w": 0.181985,
+        "h": 0.202941
+      },
+      {
+        "x": 0.386029,
+        "y": 0.626471,
+        "w": 0.152574,
+        "h": 0.082353
+      },
+      {
+        "x": 0.386029,
+        "y": 0.589706,
+        "w": 0.189338,
+        "h": 0.119118
+      },
+      {
+        "x": 0.450368,
+        "y": 0.657353,
+        "w": 0.090074,
+        "h": 0.051471
+      }
+    ],
+    "max_pairwise_iou": 0.884023,
+    "all_masks_well_formed": true,
+    "conversion_survival": null,
+    "two_status_preserved": null,
+    "repeat_stability": null,
+    "invariants_held": true,
+    "violations": []
+  },
+  "review": {
+    "status": "pending",
+    "protocol": "human_visual",
+    "concept_binding": null,
+    "coverage": null,
+    "boundary_quality": null,
+    "false_positives": null,
+    "false_negatives": null,
+    "iou_vs_gold": null,
+    "gold_mask_present": false,
+    "empty_means": null,
+    "reviewer": null,
+    "reviewed_at": null,
+    "notes": ""
+  },
+  "verdict": {
+    "harness": "clean",
+    "semantic_correctness": "not_established",
+    "attribution": "organ_succeeded",
+    "attribution_detail": "the organ measured 6 instance(s) of 'garment'. Whether those instances ARE that concept is not established here"
+  },
+  "pair": null
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": "single-actuator-manifest.v1",
+  "lab_id": "sam3-fold-phrase-matrix",
+  "run_id": "sam3-fold-phrase-matrix/pieta/organ_direct__drapery-fold",
+  "title": "pieta \u00b7 'drapery fold' \u00b7 organ_direct",
+  "why": "Matrix cell from the pre-registered suite 'sam3-fold-phrase-matrix': family 'replication_control' (role 'replication_control') against fixture 'pieta'. The phrase was frozen before any live call in this lane and may not be changed now.",
+  "actuator_lock": "concept_segment",
+  "mode": "organ_direct",
+  "call_budget": 1,
+  "image": {
+    "source": "local_fixture",
+    "path": "research/rehearsals/fixtures/002F-pieta-single-object/pieta-in-situ.jpg",
+    "sha256": "8882d66ff3f9f4c16e13406039ed1412d21fcbad43fc6bb917120ad1f8c0cfe4",
+    "note": "Marble group in a dark, heavily textured apse. Deep drapery over the knees; a cross above; two faces."
+  },
+  "prompt": null,
+  "control_phrase": "drapery fold",
+  "allowed_params": [
+    "phrase"
+  ],
+  "model_expectation": {
+    "checkpoint": "facebook/sam3",
+    "preprocessing_version": "sam3-pcs-v1",
+    "conf": 0.25,
+    "imgsz": 1024,
+    "max_instances": 16
+  },
+  "warm_or_cold": "warm",
+  "repeat_count": 1,
+  "expected_condition": "open",
+  "review": {
+    "protocol": "human_visual",
+    "gold_mask_path": null,
+    "questions": [
+      "For each non-empty fold-target mask: is it LOCAL FOLD GEOMETRY, or the garment as a whole?",
+      "Where the object_scope family succeeded and fold_target failed on the same fixture, does the overlay show folds that were there to be found?",
+      "Does `face` land on faces on every fixture \u2014 i.e. is the availability gate honest?",
+      "On the Angel of Grief versus the Piet\u00e0: does the untreated image behave differently from the texture-blended one for the SAME phrase?"
+    ]
+  },
+  "pair_with": null
+}

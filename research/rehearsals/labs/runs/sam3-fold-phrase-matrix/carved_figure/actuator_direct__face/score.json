@@ -1,0 +1,90 @@
+{
+  "schema_version": "single-actuator-score.v1",
+  "lab_id": "sam3-fold-phrase-matrix",
+  "run_id": "sam3-fold-phrase-matrix/carved_figure/actuator_direct__face",
+  "mode": "actuator_direct",
+  "expected_condition": "positive",
+  "measured": {
+    "availability": "available",
+    "planner_valid": null,
+    "actuator_leakage": false,
+    "planner_requested_unlocked": [],
+    "invocation_count": 1,
+    "call_budget": 1,
+    "budget_respected": true,
+    "lock_held": true,
+    "cold_or_warm": "warm",
+    "latency_ms": 5820.1,
+    "load_ms": 0.0,
+    "instance_count": 2,
+    "truncated": false,
+    "mask_area_px": [
+      10189,
+      29402
+    ],
+    "mask_area_fraction": [
+      0.033199,
+      0.095801
+    ],
+    "mask_bounds": [
+      {
+        "x": 0.165929,
+        "y": 0.200295,
+        "w": 0.338496,
+        "h": 0.172312
+      },
+      {
+        "x": 0.0,
+        "y": 0.002946,
+        "w": 0.559735,
+        "h": 0.369661
+      }
+    ],
+    "max_pairwise_iou": 0.345214,
+    "all_masks_well_formed": true,
+    "conversion_survival": {
+      "instances": 2,
+      "proposed_regions": 2,
+      "measured_descriptors": 2,
+      "interpretive_descriptors": 1,
+      "naming_withheld": 1,
+      "dropped": 0,
+      "survived": true,
+      "statuses_seen": [
+        "interpretive",
+        "measured"
+      ]
+    },
+    "two_status_preserved": true,
+    "repeat_stability": null,
+    "invariants_held": true,
+    "violations": []
+  },
+  "review": {
+    "status": "pending",
+    "protocol": "human_visual",
+    "concept_binding": null,
+    "coverage": null,
+    "boundary_quality": null,
+    "false_positives": null,
+    "false_negatives": null,
+    "iou_vs_gold": null,
+    "gold_mask_present": false,
+    "empty_means": null,
+    "reviewer": null,
+    "reviewed_at": null,
+    "notes": ""
+  },
+  "verdict": {
+    "harness": "clean",
+    "semantic_correctness": "not_established",
+    "attribution": "organ_succeeded",
+    "attribution_detail": "the organ measured 2 instance(s) of 'face'. Whether those instances ARE that concept is not established here"
+  },
+  "pair": {
+    "paired_run": "sam3-fold-phrase-matrix/carved_figure/organ_direct__face",
+    "control_phrase": "face",
+    "orchestrated_phrase": "face",
+    "phrases_agree": null
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "schema_version": "single-actuator-score.v1",
+  "lab_id": "sam3-fold-phrase-matrix",
+  "run_id": "sam3-fold-phrase-matrix/pieta/actuator_direct__face",
+  "mode": "actuator_direct",
+  "expected_condition": "positive",
+  "measured": {
+    "availability": "available",
+    "planner_valid": null,
+    "actuator_leakage": false,
+    "planner_requested_unlocked": [],
+    "invocation_count": 1,
+    "call_budget": 1,
+    "budget_respected": true,
+    "lock_held": true,
+    "cold_or_warm": "warm",
+    "latency_ms": 6216.5,
+    "load_ms": 0.0,
+    "instance_count": 3,
+    "truncated": false,
+    "mask_area_px": [
+      338,
+      172,
+      302
+    ],
+    "mask_area_fraction": [
+      0.000914,
+      0.000465,
+      0.000816
+    ],
+    "mask_bounds": [
+      {
+        "x": 0.488971,
+        "y": 0.548529,
+        "w": 0.036765,
+        "h": 0.035294
+      },
+      {
+        "x": 0.400735,
+        "y": 0.6,
+        "w": 0.03125,
+        "h": 0.019118
+      },
+      {
+        "x": 0.380515,
+        "y": 0.595588,
+        "w": 0.051471,
+        "h": 0.023529
+      }
+    ],
+    "max_pairwise_iou": 0.538961,
+    "all_masks_well_formed": true,
+    "conversion_survival": {
+      "instances": 3,
+      "proposed_regions": 3,
+      "measured_descriptors": 3,
+      "interpretive_descriptors": 1,
+      "naming_withheld": 2,
+      "dropped": 0,
+      "survived": true,
+      "statuses_seen": [
+        "interpretive",
+        "measured"
+      ]
+    },
+    "two_status_preserved": true,
+    "repeat_stability": null,
+    "invariants_held": true,
+    "violations": []
+  },
+  "review": {
+    "status": "pending",
+    "protocol": "human_visual",
+    "concept_binding": null,
+    "coverage": null,
+    "boundary_quality": null,
+    "false_positives": null,
+    "false_negatives": null,
+    "iou_vs_gold": null,
+    "gold_mask_present": false,
+    "empty_means": null,
+    "reviewer": null,
+    "reviewed_at": null,
+    "notes": ""
+  },
+  "verdict": {
+    "harness": "clean",
+    "semantic_correctness": "not_established",
+    "attribution": "organ_succeeded",
+    "attribution_detail": "the organ measured 3 instance(s) of 'face'. Whether those instances ARE that concept is not established here"
+  },
+  "pair": {
+    "paired_run": "sam3-fold-phrase-matrix/pieta/organ_direct__face",
+    "control_phrase": "face",
+    "orchestrated_phrase": "face",
+    "phrases_agree": null
+  }
+}

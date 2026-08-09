@@ -1,0 +1,153 @@
+{
+  "schema_version": "single-actuator-trace.v1",
+  "lab_id": "sam3-fold-phrase-matrix",
+  "run_id": "sam3-fold-phrase-matrix/veiled_funerary/organ_direct__drapery-folds",
+  "mode": "organ_direct",
+  "actuator_lock": "concept_segment",
+  "captured_at": "2026-08-08T17:14:06+00:00",
+  "manifest": {
+    "schema_version": "single-actuator-manifest.v1",
+    "lab_id": "sam3-fold-phrase-matrix",
+    "run_id": "sam3-fold-phrase-matrix/veiled_funerary/organ_direct__drapery-folds",
+    "title": "veiled_funerary \u00b7 'drapery folds' \u00b7 organ_direct",
+    "why": "Matrix cell from the pre-registered suite 'sam3-fold-phrase-matrix': family 'fold_target' (role 'fold_target') against fixture 'veiled_funerary'. The phrase was frozen before any live call in this lane and may not be changed now.",
+    "actuator_lock": "concept_segment",
+    "mode": "organ_direct",
+    "call_budget": 1,
+    "image": {
+      "source": "local_fixture",
+      "path": "research/rehearsals/fixtures/004-gesture-and-address/neighbour-veiled-funerary.jpg",
+      "sha256": "570b295451587ab2fa1495e792ed071510798f1790f6fc2bbfc6e85da832dd19",
+      "note": "Close-up of a veiled stone head. Cloth is present as a veil over the hair and shoulders, but this is a tight crop \u2014 fold geometry is scarce by framing, not necessarily by instrument."
+    },
+    "prompt": null,
+    "control_phrase": "drapery folds",
+    "allowed_params": [
+      "phrase"
+    ],
+    "model_expectation": {
+      "checkpoint": "facebook/sam3",
+      "preprocessing_version": "sam3-pcs-v1",
+      "conf": 0.25,
+      "imgsz": 1024,
+      "max_instances": 16
+    },
+    "warm_or_cold": "warm",
+    "repeat_count": 1,
+    "expected_condition": "open",
+    "review": {
+      "protocol": "human_visual",
+      "gold_mask_path": null,
+      "questions": [
+        "For each non-empty fold-target mask: is it LOCAL FOLD GEOMETRY, or the garment as a whole?",
+        "Where the object_scope family succeeded and fold_target failed on the same fixture, does the overlay show folds that were there to be found?",
+        "Does `face` land on faces on every fixture \u2014 i.e. is the availability gate honest?",
+        "On the Angel of Grief versus the Piet\u00e0: does the untreated image behave differently from the texture-blended one for the SAME phrase?"
+      ]
+    },
+    "pair_with": null
+  },
+  "environment": {
+    "git_commit": "42bc42d39ba04c2fe8184aec3246936a06424739",
+    "git_dirty": true,
+    "platform": "Darwin 25.5.0 arm64",
+    "python": "3.12.13",
+    "device": "mps",
+    "weights_present": true,
+    "weights_id": "sam3.pt",
+    "runtime_available": true,
+    "checkpoint": "facebook/sam3",
+    "preprocessing_version": "sam3-pcs-v1",
+    "conf": 0.25,
+    "imgsz": 1024,
+    "naming_floor": 0.5,
+    "torch_version": "2.13.0",
+    "imgsz_effective": null,
+    "imgsz_note": "requested only. Ultralytics rounds imgsz up to a multiple of the model stride inside the inference call and does not write the rounded value back to predictor.args, so the effective size cannot be read from this seam. Observed in the SAM 3 runs: a requested 1024 was logged as 1036. Recorded as absent rather than filled in with the request."
+  },
+  "prompt_receipt": {
+    "original_prompt": null,
+    "prompt_sha256": null,
+    "control_phrase": "drapery folds",
+    "planner_role": null,
+    "planner_model": null,
+    "planner_status": "not_applicable",
+    "planner_detail": null,
+    "raw_proposal": null
+  },
+  "decision_receipt": {
+    "catalogue_shown": [
+      {
+        "actuator": "concept_segment",
+        "does": "Measure every instance of a named concept, as real pixel masks.",
+        "requires": [
+          "image",
+          "phrase"
+        ],
+        "produces": [
+          "region",
+          "mark"
+        ],
+        "params_you_may_set": [
+          "phrase"
+        ]
+      }
+    ],
+    "selected_actuator": "concept_segment",
+    "selected_phrase": "drapery folds",
+    "phrase_source": "control",
+    "refused_actions": [],
+    "dropped_params": [],
+    "planner_notes": []
+  },
+  "invocations": [
+    {
+      "call_index": 1,
+      "call_budget": 1,
+      "actuator": "concept_segment",
+      "adapter": "sam3",
+      "kind": "organ",
+      "started_at": 1786209240.67671,
+      "ended_at": 1786209246.100857,
+      "latency_ms": 5424.1,
+      "warm": true,
+      "load_ms": 0.0,
+      "outcome": "empty",
+      "error": null
+    }
+  ],
+  "organ_observation": {
+    "status": "empty",
+    "concept": "drapery folds",
+    "instance_count": 0,
+    "truncated": false,
+    "latency_ms": 5424.0,
+    "device": "mps",
+    "model": "facebook/sam3",
+    "error": null,
+    "detail": null,
+    "instances": [],
+    "repeats": [],
+    "max_pairwise_iou": null
+  },
+  "actuator_observation": null,
+  "invariance": {
+    "image_sha256_before": "570b295451587ab2fa1495e792ed071510798f1790f6fc2bbfc6e85da832dd19",
+    "image_sha256_after": "570b295451587ab2fa1495e792ed071510798f1790f6fc2bbfc6e85da832dd19",
+    "image_unchanged": true,
+    "actuators_called": [
+      "concept_segment"
+    ],
+    "lock_held": true,
+    "database_writes_attempted": [],
+    "post_mutated": false,
+    "post_sha256_before": null,
+    "post_sha256_after": null
+  },
+  "artifacts": {
+    "overlay": null,
+    "contact_sheet": null,
+    "review": "review.md",
+    "observations": []
+  }
+}

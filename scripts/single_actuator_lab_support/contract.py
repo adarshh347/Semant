@@ -165,7 +165,27 @@ def resolve_image(manifest: Dict[str, Any]) -> Tuple[str, bytes, str]:
 
 # ── environment receipt ───────────────────────────────────────────────────────────────────────
 
+#: Resolved ONCE per process. Two reasons, and the second is the better one.
+#:
+#: Cost: `git status --porcelain` ran per capture, so a 56-cell matrix paid it 56 times — around a
+#: second and a half each on this tree, which was most of a matrix run and most of the focused
+#: test suite.
+#:
+#: Correctness: the commit cannot change mid-run, and re-measuring `dirty` after the lab has begun
+#: writing its own run directories reports the LAB's output as a dirty working tree. What a reader
+#: wants from that flag is whether the code under test was clean when the run started, so taking
+#: it once, at process start, is the more truthful measurement as well as the cheaper one.
+_GIT_RECEIPT: Optional[Tuple[Optional[str], Optional[bool]]] = None
+
+
 def git_commit() -> Tuple[Optional[str], Optional[bool]]:
+    global _GIT_RECEIPT
+    if _GIT_RECEIPT is None:
+        _GIT_RECEIPT = _git_commit_uncached()
+    return _GIT_RECEIPT
+
+
+def _git_commit_uncached() -> Tuple[Optional[str], Optional[bool]]:
     try:
         head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO_ROOT,
                               capture_output=True, text=True, timeout=10)

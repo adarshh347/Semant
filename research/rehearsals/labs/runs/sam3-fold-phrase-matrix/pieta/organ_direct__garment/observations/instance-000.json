@@ -1,0 +1,18 @@
+{
+  "index": 0,
+  "confidence": 0.6691,
+  "mask_rle_sha256": "ba26aedb23711272cacb628a24e25d26e31200a355f2acf5ade25cfebee82413",
+  "area_px": 12475,
+  "area_fraction": 0.033724,
+  "bounds": {
+    "x": 0.341912,
+    "y": 0.582353,
+    "w": 0.286765,
+    "h": 0.236765
+  },
+  "mask_size": [
+    680,
+    544
+  ],
+  "well_formed": true
+}

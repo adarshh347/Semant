@@ -1,0 +1,10 @@
+# Overlays and contact sheets are NOT committed for this suite: 29 files, 11 MB, and every one
+# of them is a pure function of two things that ARE committed — the checked-in fixture and the
+# frozen `observations/masks.json`. Rebuild them all with zero live calls:
+#
+#     python scripts/single_actuator_lab.py matrix --suite sam3-fold-phrase-matrix --render
+#
+# Declared here rather than silently absent. A matrix with no overlays in it looks like a matrix
+# that never made any, and the images are the apparatus for the half of the score no machine may
+# fill in — so their absence has to come with the command that restores them.
+*.png

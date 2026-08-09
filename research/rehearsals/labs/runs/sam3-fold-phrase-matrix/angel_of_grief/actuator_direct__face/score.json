@@ -1,0 +1,114 @@
+{
+  "schema_version": "single-actuator-score.v1",
+  "lab_id": "sam3-fold-phrase-matrix",
+  "run_id": "sam3-fold-phrase-matrix/angel_of_grief/actuator_direct__face",
+  "mode": "actuator_direct",
+  "expected_condition": "positive",
+  "measured": {
+    "availability": "available",
+    "planner_valid": null,
+    "actuator_leakage": false,
+    "planner_requested_unlocked": [],
+    "invocation_count": 1,
+    "call_budget": 1,
+    "budget_respected": true,
+    "lock_held": true,
+    "cold_or_warm": "warm",
+    "latency_ms": 6123.1,
+    "load_ms": 0.0,
+    "instance_count": 5,
+    "truncated": false,
+    "mask_area_px": [
+      2477,
+      929,
+      620,
+      1278,
+      323
+    ],
+    "mask_area_fraction": [
+      0.007142,
+      0.002679,
+      0.001788,
+      0.003685,
+      0.000931
+    ],
+    "mask_bounds": [
+      {
+        "x": 0.619608,
+        "y": 0.405882,
+        "w": 0.109804,
+        "h": 0.092647
+      },
+      {
+        "x": 0.660784,
+        "y": 0.405882,
+        "w": 0.068627,
+        "h": 0.064706
+      },
+      {
+        "x": 0.335294,
+        "y": 0.261765,
+        "w": 0.054902,
+        "h": 0.039706
+      },
+      {
+        "x": 0.668627,
+        "y": 0.410294,
+        "w": 0.060784,
+        "h": 0.088235
+      },
+      {
+        "x": 0.429412,
+        "y": 0.277941,
+        "w": 0.033333,
+        "h": 0.039706
+      }
+    ],
+    "max_pairwise_iou": 0.60276,
+    "all_masks_well_formed": true,
+    "conversion_survival": {
+      "instances": 5,
+      "proposed_regions": 5,
+      "measured_descriptors": 5,
+      "interpretive_descriptors": 1,
+      "naming_withheld": 4,
+      "dropped": 0,
+      "survived": true,
+      "statuses_seen": [
+        "interpretive",
+        "measured"
+      ]
+    },
+    "two_status_preserved": true,
+    "repeat_stability": null,
+    "invariants_held": true,
+    "violations": []
+  },
+  "review": {
+    "status": "pending",
+    "protocol": "human_visual",
+    "concept_binding": null,
+    "coverage": null,
+    "boundary_quality": null,
+    "false_positives": null,
+    "false_negatives": null,
+    "iou_vs_gold": null,
+    "gold_mask_present": false,
+    "empty_means": null,
+    "reviewer": null,
+    "reviewed_at": null,
+    "notes": ""
+  },
+  "verdict": {
+    "harness": "clean",
+    "semantic_correctness": "not_established",
+    "attribution": "organ_succeeded",
+    "attribution_detail": "the organ measured 5 instance(s) of 'face'. Whether those instances ARE that concept is not established here"
+  },
+  "pair": {
+    "paired_run": "sam3-fold-phrase-matrix/angel_of_grief/organ_direct__face",
+    "control_phrase": "face",
+    "orchestrated_phrase": "face",
+    "phrases_agree": null
+  }
+}

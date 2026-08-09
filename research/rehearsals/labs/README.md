@@ -114,6 +114,55 @@ and the ML stack from `requirements-ml.txt`. Without either, a capture still run
 **says so in the trace**. It is never a silent stand-in for an unavailable model: that
 substitution would turn an orchestration failure into an orchestration success in the record.
 
+## Suites: the pre-registered matrix (HARNESS-001C2)
+
+A single capture answers "what did this phrase do on this picture". A **suite** answers "what
+does this *family* of phrasings do across a *set* of pictures" — and it answers that honestly
+only if the phrases were written down first.
+
+```bash
+python scripts/single_actuator_lab.py matrix --suite sam3-fold-phrase-matrix --plan
+python scripts/single_actuator_lab.py matrix --suite sam3-fold-phrase-matrix --live
+python scripts/single_actuator_lab.py matrix --suite sam3-fold-phrase-matrix --replay
+python scripts/single_actuator_lab.py matrix --suite sam3-fold-phrase-matrix --report
+```
+
+`--plan --freeze` writes the content digests into the suite's `lock` block. Legal only **before**
+collection begins; afterwards the harness refuses.
+
+**Why the freeze.** An open-vocabulary organ can be made to look capable by trying phrases until
+one lands and reporting the survivor. That number reads as a hit-rate and is the outcome of a
+search — and nothing in a trace tells the two apart afterwards, because a phrase tried third and
+a phrase tried thirtieth leave identical records. So `lock.phrases_sha256` is declared in the
+suite, frozen into `runs/<suite>/collection.json` at the first live capture, and re-checked at
+every later `--live` and `--report`. Editing a phrase mid-collection moves the digest and the run
+stops. The digest covers **roles** as well as strings: moving `bicycle` out of `negative_control`
+would leave the phrase set identical while inverting what a hit means. Fixture ids are locked to
+their content hashes for the same reason.
+
+**The availability gate.** Each suite declares an `availability_control` family. If it returns
+nothing on a fixture, every other empty on that fixture is *uninterpretable* — nothing separates
+a phrase the organ cannot bind from an organ that was never working on that picture. Gated
+fixtures drop out of the curve and their empties attribute to `not_established`, never to the
+phrase. Without it, a fixture the instrument simply fails on contributes a column of zeroes that
+reads exactly like a robustness finding.
+
+**Bounded attribution.** `instrument_unavailable`, `planner_reach_refused`,
+`phrase_conditioned_empty`, `wrapper_loss`, `semantic_mismatch`, `instrument_class_gap`,
+`not_established`. The last two are **review-only** and scoring code can never write them.
+`instrument_class_gap` is the conclusion such a lane most wants and exactly the one it may not
+reach on machine scores: a pile of phrase-conditioned empties is evidence of absence only once a
+human has confirmed the target was there to be found.
+
+**No retries.** An empty is a result and is recorded as one. Re-issuing on empty would turn the
+most important observation a matrix can make — that a frozen phrase returns nothing — into a
+sampling artifact, invisibly. Frozen cells are skipped on a resumed run rather than re-spent.
+
+**Planner samples spend no attempts.** `planning_only: true` is declared in advance and honoured
+structurally: the sampler calls `firewall.authorize` and never `firewall.invoke`, so
+`sam_invocations: 0` is measured rather than promised, and a planning-only receipt carries
+`kind: planning_only` with no organ observation so nothing can mistake it for an organ empty.
+
 ## Adding an instrument
 
 1. A manifest naming the new `actuator_lock` (it must exist in the production capability table).

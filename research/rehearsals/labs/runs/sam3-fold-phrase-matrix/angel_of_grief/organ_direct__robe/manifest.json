@@ -1,0 +1,42 @@
+{
+  "schema_version": "single-actuator-manifest.v1",
+  "lab_id": "sam3-fold-phrase-matrix",
+  "run_id": "sam3-fold-phrase-matrix/angel_of_grief/organ_direct__robe",
+  "title": "angel_of_grief \u00b7 'robe' \u00b7 organ_direct",
+  "why": "Matrix cell from the pre-registered suite 'sam3-fold-phrase-matrix': family 'object_scope' (role 'object_scope') against fixture 'angel_of_grief'. The phrase was frozen before any live call in this lane and may not be changed now.",
+  "actuator_lock": "concept_segment",
+  "mode": "organ_direct",
+  "call_budget": 1,
+  "image": {
+    "source": "local_fixture",
+    "path": "research/rehearsals/fixtures/006-narrative-overreach/angel-of-grief-rotunda.jpg",
+    "sha256": "c5055621ef8782c18898b650941abb4cadca8dc22942c3f1c5021156f1fc3ab5",
+    "note": "THE CONTROL FOR THE PIET\u00c0'S CONFOUND. The same notes that record the Piet\u00e0's blended grain/texture layer describe this as \"an untreated daylight snapshot of a monument in situ, with no post-processing layer\". It carries heavy classical drapery across the torso and trailing leg \u2014 as legible a fold as the corpus holds \u2014 in good light. If a fold phrase works here and not on the Piet\u00e0, the C1 finding "
+  },
+  "prompt": null,
+  "control_phrase": "robe",
+  "allowed_params": [
+    "phrase"
+  ],
+  "model_expectation": {
+    "checkpoint": "facebook/sam3",
+    "preprocessing_version": "sam3-pcs-v1",
+    "conf": 0.25,
+    "imgsz": 1024,
+    "max_instances": 16
+  },
+  "warm_or_cold": "warm",
+  "repeat_count": 1,
+  "expected_condition": "open",
+  "review": {
+    "protocol": "human_visual",
+    "gold_mask_path": null,
+    "questions": [
+      "For each non-empty fold-target mask: is it LOCAL FOLD GEOMETRY, or the garment as a whole?",
+      "Where the object_scope family succeeded and fold_target failed on the same fixture, does the overlay show folds that were there to be found?",
+      "Does `face` land on faces on every fixture \u2014 i.e. is the availability gate honest?",
+      "On the Angel of Grief versus the Piet\u00e0: does the untreated image behave differently from the texture-blended one for the SAME phrase?"
+    ]
+  },
+  "pair_with": null
+}
