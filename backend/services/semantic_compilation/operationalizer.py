@@ -48,7 +48,10 @@ from .passes import ModelPass, PassBudget, PassResult, merge_receipts
 ROLE = "epistemic_operationalizer"
 PRODUCER = "semantic_compilation/operationalizer-v1"
 
-DEFAULT_BUDGET = PassBudget(max_completion_tokens=6144, batch_size=0)
+#: 4096, for the reason the dissector's comment gives at length: a provider counts
+#: `max_completion_tokens` against the per-minute allowance whether or not the model uses them, and
+#: this account's is 8000. A budget nearer that ceiling is a request that cannot be sent.
+DEFAULT_BUDGET = PassBudget(max_completion_tokens=4096, batch_size=0)
 
 MAX_OBSERVABLES_PER_CLAIM = 4
 

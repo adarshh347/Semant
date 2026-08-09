@@ -51,19 +51,23 @@ from .passes import ModelPass, PassBudget, PassResult, bounded, merge_receipts
 ROLE = "relation_architect"
 PRODUCER = "semantic_compilation/architect-v1"
 
-DEFAULT_BUDGET = PassBudget(max_completion_tokens=6144, batch_size=0)
+#: 4096, for the reason the dissector's comment gives at length: a provider counts
+#: `max_completion_tokens` against the per-minute allowance whether or not the model uses them, and
+#: this account's is 8000. A budget nearer that ceiling is a request that cannot be sent.
+DEFAULT_BUDGET = PassBudget(max_completion_tokens=4096, batch_size=0)
 
 MAX_CLAIMS = 80
 
 #: How many atoms may go into one architect request. The live run sent 88 and the provider answered
-#: `413 Request too large for model` — a fact worth having rather than guessing at, which is why the
+#: `413 Request too large for model`, and forty is what fits under an 8000-token allowance
+#: alongside the completion budget — a fact worth having rather than guessing at, which is why the
 #: provider's message now travels onto the receipt.
 #:
 #: NOT BATCHED, and the cap is the price of that: relations are what this pass is FOR, and a batch
 #: boundary is a relation it was structurally unable to see. So it gets one call over as many atoms
 #: as fit, and the remainder is REPORTED — a pass that quietly used half its input and called itself
 #: complete is the shape this lane exists to make impossible.
-MAX_ATOMS_PER_CALL = 60
+MAX_ATOMS_PER_CALL = 40
 
 SYSTEM_PROMPT = (
     "You are a relation architect inside a visual close-reading tool. You are given SEMANTIC "

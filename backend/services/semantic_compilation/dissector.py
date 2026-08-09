@@ -47,15 +47,23 @@ from .passes import ModelPass, PassBudget, PassResult, batched, merge_receipts
 ROLE = "semantic_dissector"
 PRODUCER = "semantic_compilation/dissector-v1"
 
-#: THREE, not six, and the budget raised to match — both sized from the live run rather than
-#: guessed. Six rich reading blocks produce more atoms than 4096 tokens can hold, so five of six
-#: batches truncated mid-output and the dissection arrived as a prefix.
+#: THREE units per call, and the budget left at 4096. Both numbers were learned the hard way.
 #:
-#: The BATCH is what bounds the work; the budget is sized to the batch. Raising the budget alone
-#: would be the thing the directive forbids — a bigger call is still one call that can overflow —
-#: and shrinking the batch alone would leave the same ratio. A batch of three units cannot produce
-#: more atoms than this budget holds, so a truncation here now means something is genuinely wrong.
-DEFAULT_BUDGET = PassBudget(max_completion_tokens=8192, batch_size=3)
+#: THE BATCH IS THE ONLY REAL LEVER, and the directive said so before the live run proved it. Six
+#: rich reading blocks produce more atoms than 4096 tokens hold, so five of six batches truncated.
+#: The obvious response — raise the budget to 8192 — made every call fail outright:
+#:
+#:     413: Request too large … tokens per minute (TPM): Limit 8000, Requested 9768
+#:
+#: A provider counts `max_completion_tokens` against the per-minute allowance whether or not the
+#: model uses them, so a budget approaching that ceiling is a request that cannot be sent at all.
+#: The budget is bounded from ABOVE by the account, not chosen from below by the pass — which is
+#: exactly why "do not merely raise token limits" is the rule and shrinking the batch is the fix.
+#:
+#: Three units at 4096 leaves room for the prompt inside the same allowance, and a batch that small
+#: has less to say than the budget holds — so a truncation here now means something is wrong rather
+#: than that the input was large.
+DEFAULT_BUDGET = PassBudget(max_completion_tokens=4096, batch_size=3)
 
 #: A unit that produces more atoms than this is being paraphrased word by word rather than
 #: dissolved. The overflow is REPORTED, never trimmed into looking correct.
