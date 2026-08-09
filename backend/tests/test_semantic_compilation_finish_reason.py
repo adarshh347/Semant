@@ -143,3 +143,80 @@ def test_the_receipt_for_one_call_carries_a_reason_and_the_pass_receipt_carries_
     many = PassReceipt(pass_id="pas_1", pass_name=DissolutionPass.SEMANTIC_DISSECTOR,
                        outcome=PassOutcome.TRUNCATED, finish_reasons=["stop", "length"])
     assert many.truncated is True
+
+
+# ── 003B's second request: a coverage signal it can read ─────────────────────
+
+def test_lane_b_reads_a_v2_graphs_coverage_ledger_with_no_edit_on_its_side():
+    """003B's other tree contradiction: "No coverage or adequacy signal exists on the graph yet …
+    `declared_adequacy` reads both shapes it will plausibly take — a flag and a per-source-unit
+    ledger — and returns undeclared until one arrives."
+
+    The v2 ledger is the second shape. This asserts the seam rather than assuming it: a rename of
+    `coverage`, or a disposition value outside the four, would break the reader silently otherwise.
+    """
+    from backend.tests.fixtures import semantic_dissolution_fixtures as F
+    graph = F.dissolve_fixture("fold-rehearsal")
+    # THE DUMPED FORM, because that is what production passes: the session stores the graph as a
+    # mapping (`inquiry_session` holds `graph: Dict[str, Any]`), and the reader walks mappings.
+    adequacy = outcomes.declared_adequacy(graph.model_dump(mode="json", by_alias=True))
+    assert adequacy.declared is True
+    assert adequacy.complete is True
+    assert adequacy.uncovered == 0
+    assert "coverage ledger disposes of" in adequacy.detail
+
+
+def test_an_incomplete_ledger_reads_as_incomplete_on_lane_bs_side_too():
+    """The negative control. A reader that said `complete` for everything would be worse than one
+    that said `undeclared`."""
+    from backend.schemas.semantic_compilation import (CoverageDisposition, DispositionKind,
+                                                      GraphProvenance, SemanticInquiryGraph,
+                                                      SourceUnit, SourceUnitKind)
+    from backend.services.semantic_compilation import ids as I
+    unit = SourceUnit(source_unit_id=I.source_unit_id("inq_1", SourceUnitKind.PROMPT_CLAUSE,
+                                                      "prompt", "a clause of real content"),
+                      kind=SourceUnitKind.PROMPT_CLAUSE, source_ref="prompt",
+                      exact_quote="a clause of real content")
+    graph = SemanticInquiryGraph(
+        graph_id="sig_1", inquiry_id="inq_1", prompt="a clause of real content",
+        source_units=[unit],
+        coverage=[CoverageDisposition(coverage_id=I.coverage_id("inq_1", unit.source_unit_id),
+                                      source_unit_id=unit.source_unit_id,
+                                      disposition=DispositionKind.REFUSED,
+                                      reason="nothing dissolved it")],
+        provenance=GraphProvenance(producer="test", compiler_kind="council"))
+    adequacy = outcomes.declared_adequacy(graph.model_dump(mode="json", by_alias=True))
+    assert adequacy.declared is True and adequacy.complete is False and adequacy.uncovered == 1
+
+
+def test_the_reader_under_reports_on_a_TYPED_graph_and_production_never_passes_one():
+    """A fragility at the seam, pinned rather than left to be discovered.
+
+    003B's reader tests `isinstance(entry, Mapping)`, and a `CoverageDisposition` is a pydantic
+    model. Handed the TYPED graph it counts nothing and reports `complete` — for a ledger that is
+    entirely refusals. Production never hands it one (the session stores the dumped mapping), so
+    this is not a live defect; it is one edit away from becoming one, and the assertion below is
+    what would fail if somebody passed the object instead of its dump.
+
+    Recorded for Lane D rather than fixed here: `outcomes.py` is 003B's file.
+    """
+    from backend.schemas.semantic_compilation import (CoverageDisposition, DispositionKind,
+                                                      GraphProvenance, SemanticInquiryGraph,
+                                                      SourceUnit, SourceUnitKind)
+    from backend.services.semantic_compilation import ids as I
+    unit = SourceUnit(source_unit_id=I.source_unit_id("inq_1", SourceUnitKind.PROMPT_CLAUSE,
+                                                      "prompt", "a clause of real content"),
+                      kind=SourceUnitKind.PROMPT_CLAUSE, source_ref="prompt",
+                      exact_quote="a clause of real content")
+    graph = SemanticInquiryGraph(
+        graph_id="sig_1", inquiry_id="inq_1", prompt="a clause of real content",
+        source_units=[unit],
+        coverage=[CoverageDisposition(coverage_id=I.coverage_id("inq_1", unit.source_unit_id),
+                                      source_unit_id=unit.source_unit_id,
+                                      disposition=DispositionKind.REFUSED,
+                                      reason="nothing dissolved it")],
+        provenance=GraphProvenance(producer="test", compiler_kind="council"))
+    typed = outcomes.declared_adequacy(graph)
+    dumped = outcomes.declared_adequacy(graph.model_dump(mode="json", by_alias=True))
+    assert dumped.uncovered == 1
+    assert typed.uncovered == 0, "if this starts failing, 003B fixed it and this note can go"
