@@ -1,0 +1,44 @@
+/* frontend/src/method/method.css */
+/* /method borrows the /writing reading surface. This file holds ONLY the two
+   things that surface does not already give it: the eyebrow-over-title header,
+   and the rehearsal loop's behaviour on a narrow screen. Everything else —
+   measure, display face, hairlines, drop cap, light/dark — comes from
+   writing.css and the shared tokens. */
+
+.method-head {
+  max-width: 68ch;
+  margin: 0 auto;
+}
+
+.method-head .eyebrow {
+  display: block;
+  margin-bottom: 1.1rem;
+}
+
+/* The article's own `#` heading is the page title. Give it the hairline the
+   /writing reader gets from `.writing-article-head`, which this page has no
+   equivalent of (there is no blurb or date to separate). */
+.method-page .writing-article-title {
+  margin: 0 0 clamp(1.75rem, 4vw, 2.5rem);
+  padding-bottom: clamp(1.75rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+/* The rehearsal loop. Its meaning is carried by the line breaks — one step per
+   line — so it stays pre-formatted rather than becoming a list. */
+.method-loop {
+  font-size: 0.95rem;
+  line-height: 1.9;
+}
+
+@media (max-width: 640px) {
+  /* On a phone the longest step (~42 characters) is wider than the column.
+     `.writing-body pre` would scroll it inside its own box, which is safe but
+     hides steps. Wrapping instead keeps every step of the loop on screen —
+     the loop is the point of the passage, so none of it should be off-frame. */
+  .method-loop {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    font-size: 0.88rem;
+  }
+}
