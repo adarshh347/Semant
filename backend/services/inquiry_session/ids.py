@@ -31,6 +31,7 @@ PREFIXES = {
     "section": "sec_",
     "synthesis": "syn_",
     "evidence": "evd_",
+    "remainder": "rem_",
 }
 
 WIDTH = 12
@@ -91,5 +92,12 @@ def evidence_id(session: str, claim_ref: str, source_ref: str) -> str:
     return _mint("evidence", [session, claim_ref, source_ref])
 
 
+def remainder_id(inquiry_id: str, term: str) -> str:
+    """Lane A's remainder items carry no id of their own; the client needs a stable key and a
+    synthesis needs something to reference. Keyed on the INQUIRY rather than the session, because
+    the remainder belongs to the graph and two runs of the same graph should agree about it."""
+    return _mint("remainder", [inquiry_id, term])
+
+
 __all__ = ["PREFIXES", "WIDTH", "normalise", "session_id", "stage_id", "receipt_id", "verdict_id",
-           "section_id", "synthesis_id", "evidence_id"]
+           "section_id", "synthesis_id", "evidence_id", "remainder_id"]

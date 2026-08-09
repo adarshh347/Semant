@@ -22,8 +22,10 @@ the wire shape.
     capability.py   the locked fixture adapter — one attempt, never evidence
     judge.py        a verdict per claim, and a receipt that cannot produce a supported one
     composer.py     a claim-bound answer, refused if a reference does not resolve
+    candidates.py   Lane A's forks, read as Lane B's, with reversibility declared narrowly
     coordinator.py  the stage order and the budget
-    wire.py         the projection the workbench reads
+    runtime.py      which implementation this deployment binds behind each seam
+    view.py         the projection the workbench reads
 
 PHASE 1 IS SIMULATED AT EXACTLY ONE POINT, and it is named: `capability.py` returns a receipt with
 `execution_mode=fixture`, `status=simulated`, `usable_as_evidence=false`. Nothing else in the chain
@@ -34,6 +36,7 @@ from __future__ import annotations
 
 from backend.schemas.inquiry_session import (SCHEMA_VERSION, SemanticInquirySession, canonical)
 
-from . import ids, store
+from . import candidates, coordinator, corpus, ids, runtime, store, view
 
-__all__ = ["SCHEMA_VERSION", "SemanticInquirySession", "canonical", "ids", "store"]
+__all__ = ["SCHEMA_VERSION", "SemanticInquirySession", "canonical", "candidates", "coordinator",
+           "corpus", "ids", "runtime", "store", "view"]

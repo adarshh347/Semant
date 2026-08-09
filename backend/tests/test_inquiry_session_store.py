@@ -18,78 +18,14 @@ from backend.schemas.inquiry_session import (SCHEMA_VERSION, CapabilityReceipt, 
                                              canonical)
 from backend.services import run_store
 from backend.services.inquiry_session import ids, store
+from backend.tests.fixtures import inquiry_session_fixtures as F
 
 PROMPT = "How do these two interiors organise themselves, and what could follow from both?"
 
 
-# ── a fake collection that resolves dotted paths, because the real one does ──
-
-def _dig(doc, path):
-    cur = doc
-    for part in str(path).split("."):
-        if not isinstance(cur, dict):
-            return None
-        cur = cur.get(part)
-    return cur
-
-
-class _Cursor:
-    def __init__(self, docs):
-        self._docs = docs
-
-    def sort(self, *_a, **_k):
-        return self
-
-    def limit(self, n):
-        self._docs = self._docs[:n]
-        return self
-
-    def __aiter__(self):
-        async def gen():
-            for d in self._docs:
-                yield d
-        return gen()
-
-
-class _Result:
-    def __init__(self, matched):
-        self.matched_count = matched
-        self.modified_count = matched
-
-
-class FakeCollection:
-    """Flat AND dotted key matching. A fake that only did flat keys would pass the compare-and-set
-    test by matching nothing and then matching everything, which is the opposite of the guarantee."""
-
-    def __init__(self):
-        self.docs = {}
-        self.writes = 0
-
-    def _match(self, doc, query):
-        return all(_dig(doc, k) == v for k, v in (query or {}).items())
-
-    async def insert_one(self, doc):
-        self.docs[doc["_id"]] = copy.deepcopy(doc)
-        self.writes += 1
-        return type("R", (), {"inserted_id": doc["_id"]})()
-
-    async def find_one(self, query, projection=None):
-        for d in self.docs.values():
-            if self._match(d, query):
-                return copy.deepcopy(d)
-        return None
-
-    def find(self, query=None, projection=None):
-        return _Cursor([copy.deepcopy(d) for d in self.docs.values()
-                        if self._match(d, query or {})])
-
-    async def update_one(self, query, update, upsert=False):
-        for d in self.docs.values():
-            if self._match(d, query):
-                d.update(update.get("$set", {}))
-                self.writes += 1
-                return _Result(1)
-        return _Result(0)
+# The fake collection lives in the shared fixtures: the ROUTE tests need the same dotted-path
+# matching, and two copies of a fake is two places for its matching rule to drift from Mongo's.
+FakeCollection = F.FakeCollection
 
 
 def a_session(**kw) -> SemanticInquirySession:
