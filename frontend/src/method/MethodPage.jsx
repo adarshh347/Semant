@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { SectionEyebrow } from '../components/brand/SectionEyebrow';
 import article from './content/semant-is-built-by-rehearsal.md?raw';
 import '../writing/writing.css';
+import './method.css';
 
 /**
  * /method — how Semant is built.
