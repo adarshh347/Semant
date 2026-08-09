@@ -9,11 +9,21 @@ import UploadForm from './UploadForm';
 
 export default function UploadDialog() {
   const [open, setOpen] = useState(false);
+  // HARNESS-003C. `semant:open-upload` may now carry a correlation id, and the dialog's only job
+  // with it is to hand it to the form so the creation broadcast can be matched to the surface that
+  // asked for it. Without this the round trip cannot close: `/inquiry` opens the shared dialog,
+  // the form creates the post, and the resulting `semant:posts-created` carries no id — so the
+  // inquiry cannot tell it apart from an upload the person started in the Archive, and correctly
+  // ignores it. Callers that dispatch the bare event are unaffected; the id is simply empty.
+  const [requestId, setRequestId] = useState('');
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   useEffect(() => {
-    const onOpen = () => setOpen(true);
+    const onOpen = (event) => {
+      setRequestId(String(event?.detail?.requestId || ''));
+      setOpen(true);
+    };
     window.addEventListener('semant:open-upload', onOpen);
     return () => window.removeEventListener('semant:open-upload', onOpen);
   }, []);
@@ -26,6 +36,7 @@ export default function UploadDialog() {
         size="md"
       >
         <UploadForm
+          requestId={requestId}
           onUploadSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['posts'] });
             window.dispatchEvent(new CustomEvent('semant:posts-changed'));
@@ -34,6 +45,7 @@ export default function UploadDialog() {
               title: 'Image added',
               description: 'It’s in the archive.',
             });
+            setRequestId('');
             setOpen(false);
           }}
         />

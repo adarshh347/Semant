@@ -31,6 +31,7 @@ const TOOLS_LINKS = [
   ['/anatomy', 'Anatomy'],
   ['/motive', 'Motive'],
   ['/writing', 'Writing'],
+  ['/method', 'Method'],
 ];
 
 function Navbar() {

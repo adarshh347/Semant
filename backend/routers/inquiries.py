@@ -35,11 +35,12 @@ import json
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.schemas.inquiry_interaction import InteractionMode
-from backend.services.inquiry_session import (coordinator, corpus, runtime, store, view)
+from backend.services.inquiry_session import (coordinator, corpus, driver, runtime, steps, store,
+                                              view)
 from backend.services.inquiry_interaction import InteractionConflict, WrongSession
 from backend.services.movement_kernel import PostsMutated
 
@@ -50,6 +51,16 @@ router = APIRouter()
 #: indistinguishable from a broken one.
 _STREAM_TICK_SECONDS = 0.75
 _STREAM_KEEPALIVE_TICKS = 20
+
+#: States a session may sit in while work is still happening. The stream stays OPEN through all of
+#: them: a stage stream that closed on the first state it did not recognise would end the moment the
+#: theorist started, which is precisely the window it exists to show.
+_WORKING_STATES = ("framing", "reading", "compiling", "ready", "executing", "judging", "composing")
+
+#: Where the stream stops. `awaiting_user` is not terminal — it is a session working correctly and
+#: waiting for a person — but it is a boundary the client must act on, so the stream hands control
+#: back rather than holding a socket open across a human's coffee break.
+_STREAM_STOPS_AT = ("complete", "exhausted", "refused", "error", "awaiting_user")
 
 #: The four conflicts a client can recover from by re-reading and, in three cases, resubmitting.
 #: Everything else Lane B raises is a request that should not have been formed that way.
@@ -117,6 +128,25 @@ class DecisionBody(BaseModel):
         }
 
 
+def _busy(session_id: str, session) -> bool:
+    """Whether a stage is in flight for this session right now.
+
+    NARROW ON PURPOSE. "Stages remain to be run" is not busy — most of a paused session's chain is
+    pending by definition, and refusing an answer for that reason would report every duplicate,
+    stale and unknown-option response as `session_busy` and collapse four of the nine typed
+    conflicts into one.
+
+    Busy is the LEASE (held, and readable by another worker) or an attempt that entered external
+    work and has not recorded leaving it. Both are persisted facts; `driver.running` is a local
+    optimisation that cannot see another process and is checked last.
+    """
+    if steps.dangling_stages(session):
+        return True
+    if str((session.driver or {}).get("lease_id") or ""):
+        return True
+    return driver.running(session_id)
+
+
 def _stages():
     """The bound stage order. A function rather than a module constant so a test can monkeypatch
     one seam without the import order deciding what a route uses."""
@@ -179,12 +209,16 @@ async def start_inquiry(request: StartInquiry) -> Dict[str, Any]:
                     "posts": [r.model_dump(mode="json") for r in refs]})
 
     session = coordinator.new_session(prompt=prompt, refs=refs, mode=mode)
+    await corpus.assert_unchanged(session.posts)
     await store.create(session)
 
-    stages = _stages()
-    advanced = coordinator.begin(session, stages)
-    await _persist(advanced, expected_revision=None)
-    return _view(advanced)
+    # SCHEDULED, NOT AWAITED. The whole architecture of this route is this line and the one after
+    # it: the session is durable before any model runs, a driver is started, and the response goes
+    # back. 002R watched `Starting…` for the length of a four-image reading because the frontend
+    # could not subscribe to the stream until this handler returned — which made its progress state
+    # structurally incapable of showing progress, however it was written.
+    driver.schedule(session.session_id, _stages())
+    return JSONResponse(status_code=202, content=_view(session))
 
 
 # ── read ─────────────────────────────────────────────────────────────────────
@@ -229,13 +263,27 @@ async def answer_inquiry(session_id: str, body: DecisionBody) -> Dict[str, Any]:
             f"looking at is the one outcome worse than refusing them.",
             expected=session_id, actual=body.session_id), session, submitted)
 
+    if _busy(session_id, session):
+        # A RESPONSE CANNOT RACE A RUNNING STAGE. The answer is not lost and not applied: the
+        # client is told the session is still working, with the same 409 shape it already handles
+        # for a stale revision. Applying it would write an interaction state on top of a session a
+        # driver is about to checkpoint, and one of the two writes would silently win.
+        raise HTTPException(status_code=409, detail={
+            "error": "session_busy", "recoverable": True,
+            "detail": "this inquiry is still working through a stage. Your answer was not applied "
+                      "and nothing was lost — re-read the session and send it again once a "
+                      "decision is open.",
+            "submitted": submitted, "session": _view(session)})
+
     try:
-        advanced = coordinator.resume(session, payload, stages)
+        advanced = coordinator.apply_response(session, payload, stages)
     except InteractionConflict as exc:
         _raise_conflict(exc, session, submitted)
         raise  # unreachable; `_raise_conflict` always raises. Kept so the type is honest.
 
     await _persist(advanced, expected_revision=session.revision)
+    # The remaining stages run off the request for the same reason the first ones do.
+    driver.schedule(session_id, stages)
     return _view(advanced)
 
 
@@ -262,7 +310,7 @@ async def stream_inquiry(session_id: str) -> StreamingResponse:
                 last, quiet = payload, 0
                 yield f"data: {payload}\n\n"
                 state = json.loads(payload).get("state")
-                if state in ("complete", "exhausted", "refused", "error", "awaiting_user"):
+                if state in _STREAM_STOPS_AT:
                     return
             else:
                 quiet += 1

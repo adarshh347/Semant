@@ -45,10 +45,13 @@ function readFields() {
 describe('the consumed-field inventory', () => {
     it('names every field the normalisers read', () => {
         const doc = inventory();
-        // `foo` or `foo[]` — the document marks arrays with brackets, which is a notation rather
-        // than a different field.
-        const missing = readFields()
-            .filter((f) => !doc.includes(`\`${f}\``) && !doc.includes(`\`${f}[]\``));
+        // `foo`, `foo[]`, `graph.foo` or `graph.foo[]` — brackets mark an array and a dotted
+        // prefix says where the field sits. Both are notation; neither is a different field, and a
+        // guard that could not read them would be worked around rather than satisfied.
+        const named = (f) => new RegExp(
+            `\`(?:[A-Za-z_.]+\\.)?${f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\[\\])?\``)
+            .test(doc);
+        const missing = readFields().filter((f) => !named(f));
         expect(missing).toEqual([]);
     });
 

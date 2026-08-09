@@ -1,15 +1,34 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { INTERACTION_MODES, DEFAULT_MODE, MODE_COPY, canStartInquiry } from './inquiryContract';
+import CorpusPicker from '../inquiryCorpus/CorpusPicker.jsx';
+import UploadAndInclude from '../inquiryCorpus/UploadAndInclude.jsx';
+import { createCorpusClient } from '../inquiryCorpus/corpusClient.js';
+
+/**
+ * The picker, wired to the app's shared TanStack cache.
+ *
+ * A separate component because `useQueryClient()` is a hook and throws without a provider, so it
+ * cannot be called conditionally in `InquiryEntry` — but a component that calls it can be rendered
+ * conditionally, which is what lets a test drive the picker with an injected client and the
+ * browser get the real cache-sharing one.
+ */
+function ConnectedCorpusPicker(props) {
+    const queryClient = useQueryClient();
+    const client = useMemo(() => createCorpusClient({ queryClient }), [queryClient]);
+    return <CorpusPicker client={client} {...props} />;
+}
 
 /**
  * INQUIRY WORKBENCH — the entry: images, a question, and how much you want to be asked.
  *
- * The corpus source is the same one `/agent` uses (`GET /api/v1/posts`), and the selection gate
- * is the same shape: `canStartInquiry` is the ONLY thing this form consults, so no future field
- * can quietly become mandatory without that function being where it happened. Nothing here asks
- * whether a post carries regions, percepts or annotations — the plan's Phase-1 exit says "select
- * existing images and enter any prompt", and a filter would reintroduce a precondition the design
- * removed.
+ * The corpus is the WHOLE archive, paged, through the same TanStack keys the Gallery uses — the
+ * 002R rehearsal could choose from the twenty-four newest images and nothing else, which meant an
+ * inquiry could not be asked of most of the corpus. The selection gate is unchanged:
+ * `canStartInquiry` is the ONLY thing this form consults, so no future field can quietly become
+ * mandatory without that function being where it happened. Nothing here asks whether a post
+ * carries regions, percepts or annotations — the plan's Phase-1 exit says "select existing images
+ * and enter any prompt", and a filter would reintroduce a precondition the design removed.
  *
  * ## The mode is the one field that is not obvious
  *
@@ -21,30 +40,57 @@ import { INTERACTION_MODES, DEFAULT_MODE, MODE_COPY, canStartInquiry } from './i
  * went and did things quietly.
  */
 export default function InquiryEntry({
-    posts = [],
+    corpusClient = null,
     busy = false,
     error = '',
     unavailable = '',
     onStart,
     initialPrompt = '',
     initialMode = DEFAULT_MODE,
+    openUpload = null,
 }) {
+    // POSTS, not ids. An id-only selection cannot render a tray for an image whose page is no
+    // longer loaded, and after HARNESS-003C the corpus is paged — so a person who picked on page
+    // one and paged to four would watch their own choices turn back into hex strings.
     const [selected, setSelected] = useState([]);
+    const [uploaded, setUploaded] = useState([]);
     const [prompt, setPrompt] = useState(initialPrompt);
     const [mode, setMode] = useState(initialMode);
 
+    const imageIds = useMemo(() => selected.map((p) => p.id), [selected]);
+
     const ready = useMemo(
-        () => canStartInquiry({ imageIds: selected, prompt }),
-        [selected, prompt],
+        () => canStartInquiry({ imageIds, prompt }),
+        [imageIds, prompt],
     );
 
-    const toggle = (id) => setSelected((prev) =>
-        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    const select = useCallback((post) => setSelected((prev) =>
+        (prev.some((p) => p.id === post.id) ? prev : [...prev, post])), []);
+
+    const deselect = useCallback((id) => setSelected((prev) =>
+        prev.filter((p) => p.id !== id)), []);
+
+    /**
+     * A freshly uploaded image joins the selection AND the grid.
+     *
+     * The grid too, not only the tray: a new post lands at the top of page 1 in the API's
+     * `_id`-descending order, so waiting for a refetch would leave the person's own upload
+     * invisible in the very list they are choosing from. `injected` puts it in front, and the
+     * picker's own de-duplication removes the copy when the page it belongs to eventually loads.
+     */
+    const include = useCallback((posts) => {
+        setUploaded((prev) => [...posts, ...prev.filter(
+            (p) => !posts.some((q) => q.id === p.id))]);
+        setSelected((prev) => {
+            const have = new Set(prev.map((p) => p.id));
+            return [...prev, ...posts.filter((p) => !have.has(p.id))];
+        });
+    }, []);
 
     const submit = (e) => {
         e.preventDefault();
         if (!ready || busy) return;
-        onStart?.({ imageIds: selected, prompt: prompt.trim(), mode });
+        onStart?.({ imageIds, prompt: prompt.trim(), mode, posts: selected });
     };
 
     return (
@@ -75,30 +121,22 @@ export default function InquiryEntry({
 
             <fieldset className="iw-field">
                 <legend className="iw-legend">Images</legend>
-                {posts.length === 0 ? (
-                    <p className="iw-quiet">No images loaded.</p>
+                <UploadAndInclude onUploaded={include} openUpload={openUpload} />
+                {corpusClient ? (
+                    <CorpusPicker
+                        client={corpusClient}
+                        selected={selected}
+                        onSelect={select}
+                        onDeselect={deselect}
+                        injected={uploaded}
+                    />
                 ) : (
-                    <ul className="iw-corpus" role="group" aria-label="Choose images">
-                        {posts.map((p) => {
-                            const on = selected.includes(p.id);
-                            return (
-                                <li key={p.id}>
-                                    <button
-                                        type="button"
-                                        className={`iw-thumb${on ? ' is-on' : ''}`}
-                                        aria-pressed={on}
-                                        data-post-id={p.id}
-                                        onClick={() => toggle(p.id)}
-                                    >
-                                        {p.photo_url
-                                            ? <img src={p.photo_url} alt="" loading="lazy" />
-                                            : <span className="iw-thumb-blank" aria-hidden="true" />}
-                                        <span className="iw-thumb-title">{p.title || p.id}</span>
-                                    </button>
-                                </li>
-                            );
-                        })}
-                    </ul>
+                    <ConnectedCorpusPicker
+                        selected={selected}
+                        onSelect={select}
+                        onDeselect={deselect}
+                        injected={uploaded}
+                    />
                 )}
             </fieldset>
 

@@ -160,6 +160,7 @@ async def load(session_id: str, *, collection=None) -> SemanticInquirySession:
 
 
 async def save(session: SemanticInquirySession, *, expected_revision: Optional[int] = None,
+               expected_checkpoint: Optional[int] = None,
                now: Optional[str] = None, collection=None) -> Dict[str, Any]:
     """Write the session back.
 
@@ -168,12 +169,21 @@ async def save(session: SemanticInquirySession, *, expected_revision: Optional[i
     and the second would silently erase the first person's answer from an append-only history. The
     filter is the only place that race can be caught, because by the time either write is built,
     both look perfectly well formed.
+
+    `expected_checkpoint` is the SAME mechanism for the stage driver, on a different counter, and
+    the two are separate because they count different things. `revision` is the deliberation's turn
+    counter and moves only when a fork is settled; a driver checkpoints many times between two
+    turns. Sharing one counter would mean either corrupting the optimistic lock a client is holding
+    across a pause, or making every stage checkpoint look like a turn nobody took — and a client
+    that re-read after each would keep finding its answer stale for reasons it could not see.
     """
     stamp = now or utc_now()
     breaks: List[str] = []
     query: Dict[str, Any] = {"_id": session.session_id, "kind": KIND}
     if expected_revision is not None:
         query["session.revision"] = expected_revision
+    if expected_checkpoint is not None:
+        query["session.checkpoint"] = expected_checkpoint
     result = await _collection(collection).update_one(query, {"$set": {
         "status": run_status_for(session.state),
         "session": payload_of(session, breaks),
@@ -186,8 +196,8 @@ async def save(session: SemanticInquirySession, *, expected_revision: Optional[i
     if not getattr(result, "matched_count", 0):
         raise SessionWriteFailed(
             f"session {session.session_id} did not accept a write at revision "
-            f"{expected_revision!r}. Either it does not exist or something else advanced it first; "
-            f"nothing was written and no answer was recorded.")
+            f"{expected_revision!r} / checkpoint {expected_checkpoint!r}. Either it does not exist "
+            f"or something else advanced it first; nothing was written and no answer was recorded.")
     return {"matched": True, "encoding_repairs": breaks}
 
 

@@ -320,10 +320,44 @@ def stage_view(session: SemanticInquirySession) -> List[Dict[str, Any]]:
     history of the machinery. Merging them would put "the compiler returned nothing" in the same
     list as "the person chose option two".
     """
-    return [{"event_id": e.event_id, "stage": e.stage.value, "outcome": e.outcome.value,
-             "at": e.at, "revision": e.revision, "detail": e.detail,
-             "input_refs": list(e.input_refs), "output_refs": list(e.output_refs)}
-            for e in session.stages]
+    return [attempt_view(e) for e in session.stages]
+
+
+def attempt_view(e: Any) -> Dict[str, Any]:
+    """One stage attempt, as the workbench reads it.
+
+    `event_id` is kept beside `attempt_id` and `detail` beside `summary`: the frontend contract
+    predates HARNESS-003B and Lane C is being written in parallel against the old names. Dropping
+    them here to be tidy would break a lane that cannot see this change yet, so both spellings are
+    served and Lane D retires one.
+
+    `duration_ms` is passed through UNTOUCHED, including when it is null. A projection that
+    substituted 0 for an unmeasured stage would put the whole null-duration law back in the one
+    place the person actually looks.
+    """
+    return {
+        "attempt_id": e.attempt_id, "event_id": e.attempt_id,
+        "stage": e.stage.value, "outcome": e.outcome.value, "sequence": e.sequence,
+        "revision": e.revision,
+        "queued_at": e.queued_at, "started_at": e.started_at, "completed_at": e.completed_at,
+        "at": e.completed_at or e.started_at or e.queued_at,
+        "duration_ms": e.duration_ms,
+        "role": e.role, "model": e.model, "provider": e.provider,
+        "execution_mode": e.execution_mode.value,
+        "summary": e.summary, "detail": e.summary,
+        "input_refs": list(e.input_refs), "output_refs": list(e.output_refs),
+        "input_counts": dict(e.input_counts), "output_counts": dict(e.output_counts),
+        "counts_line": e.counts_line(),
+        "call_topology": e.call_topology, "planned_calls": e.planned_calls,
+        "actual_calls": e.actual_calls,
+        "calls": [c.model_dump(mode="json") for c in e.calls],
+        "substages": [s.model_dump(mode="json") for s in e.substages],
+        "truncation_source": e.truncation_source.value,
+        "terminal": e.terminal, "underperformed": e.underperformed,
+        "receipt_refs": list(e.receipt_refs), "gap_refs": list(e.gap_refs),
+        "refusal_refs": list(e.refusal_refs),
+        "provenance": dict(e.provenance),
+    }
 
 
 # ── the session ──────────────────────────────────────────────────────────────

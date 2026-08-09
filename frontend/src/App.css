@@ -158,6 +158,25 @@ hr {
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
+/* HARNESS-003C — the upload error, which used to be an `alert()`.
+ *
+ * A modal alert is not an error state: it blocks the page, cannot be styled, cannot be read by
+ * anything that inspects the DOM, and vanishes on acknowledgement leaving the form looking exactly
+ * as it did before. This is the same failure treatment the rest of the app uses — accented left
+ * edge, no colour-only signal — so a failed upload reads as a failure without a second glance. */
+.upload-error {
+  width: 100%;
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-primary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 .upload-form-container form,
 .tag-filter {
   display: flex;

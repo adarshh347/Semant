@@ -9,12 +9,15 @@ import CapabilityActivity from './CapabilityActivity.jsx';
 import EvidencePanel from './EvidencePanel.jsx';
 import SynthesisView from './SynthesisView.jsx';
 import TraceView from './TraceView.jsx';
+import StageActivity from './StageActivity.jsx';
+import ArtifactLedger from './ArtifactLedger.jsx';
+import DiagnosisCard from './DiagnosisCard.jsx';
+import SessionExport from './SessionExport.jsx';
 import { createInquiryClient } from './inquiryClient.js';
 import {
     openDecision, outcomeCounts, STATE_LABEL, MODE_COPY,
     IS_AWAITING_USER, IS_TERMINAL_STATE,
 } from './inquiryContract.js';
-import { API_URL } from '../config/api';
 import './inquiryWorkbench.css';
 
 /**
@@ -42,10 +45,9 @@ import './inquiryWorkbench.css';
  * Nothing in this lane registers `/inquiry` in the router. Route registration is Lane D's, per the
  * board's additive-only rule, and this page is reachable only by importing it until then.
  */
-export default function InquiryWorkbenchPage({ client = null, posts: injectedPosts = null }) {
+export default function InquiryWorkbenchPage({ client = null, corpusClient = null }) {
     const inquiryClient = useRef(client || createInquiryClient()).current;
 
-    const [posts, setPosts] = useState(injectedPosts || []);
     const [session, setSession] = useState(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
@@ -53,22 +55,10 @@ export default function InquiryWorkbenchPage({ client = null, posts: injectedPos
     const [unavailable, setUnavailable] = useState('');
     const unwatch = useRef(null);
 
-    // The corpus. A gallery that will not load is soft — but it is not silent either: with no
-    // images there is nothing to inquire into, so the entry says so rather than offering an empty
-    // grid that looks like a corpus with nothing in it.
-    useEffect(() => {
-        if (injectedPosts) return undefined;
-        let live = true;
-        (async () => {
-            try {
-                const res = await fetch(`${API_URL}/api/v1/posts?page=1&limit=24`);
-                if (!res.ok) return;
-                const data = await res.json();
-                if (live) setPosts(Array.isArray(data?.posts) ? data.posts : []);
-            } catch { /* the entry reports an empty corpus */ }
-        })();
-        return () => { live = false; };
-    }, [injectedPosts]);
+    // THE CORPUS IS NO LONGER FETCHED HERE. It used to be one call — page 1, limit 24 — and that
+    // single line was the whole reason the 002R rehearsal could not ask a question of most of the
+    // archive. Paging, caching and selection now belong to `CorpusPicker`, which reaches the same
+    // TanStack keys the Gallery uses rather than holding a second copy of the archive.
 
     useEffect(() => () => { unwatch.current?.(); }, []);
 
@@ -152,7 +142,7 @@ export default function InquiryWorkbenchPage({ client = null, posts: injectedPos
         return (
             <main className="iw-shell">
                 <InquiryEntry
-                    posts={posts}
+                    corpusClient={corpusClient}
                     busy={busy}
                     error={error}
                     unavailable={unavailable}
@@ -169,6 +159,11 @@ export default function InquiryWorkbenchPage({ client = null, posts: injectedPos
     return (
         <main className="iw-shell iw-shell--session">
             <SessionHeader session={session} working={working} />
+
+            {/* THE MACHINERY, above the reasoning and visible by default while it runs. The 002R
+                rehearsal watched `Starting…` with no idea which of seven stages was taking it,
+                while the backend recorded every transition. */}
+            <StageActivity stages={session.stages} working={working} />
 
             {/* The open decision comes first when the inquiry is waiting on it — but everything
                 that led here stays below, unhidden. A modal would frame the question as an
@@ -202,6 +197,11 @@ export default function InquiryWorkbenchPage({ client = null, posts: injectedPos
 
             {error && !awaiting ? <p className="iw-error" role="alert">{error}</p> : null}
 
+            {/* BEFORE THE PROSE. A collapsed diagnosis under a fluent paragraph is a diagnosis
+                nobody reads, and the 002R rehearsal ended EXHAUSTED with a perceptive VLM
+                paragraph on screen and no way to see that nothing had been compiled from it. */}
+            <DiagnosisCard session={session} />
+
             <ProvisionalReading reading={session.graph.reading} />
             <ClaimBlocks
                 session={session}
@@ -214,9 +214,11 @@ export default function InquiryWorkbenchPage({ client = null, posts: injectedPos
             <DecisionStream records={session.decision_records} />
             <CapabilityActivity receipts={session.capability_receipts} />
             <NextActions session={session} onRestart={reset} />
+            <ArtifactLedger session={session} />
             <EvidencePanel session={session} />
             <SynthesisView session={session} />
             <TraceView trace={session.trace} />
+            <SessionExport session={session} />
 
             <button type="button" className="iw-expand iw-again" onClick={reset}>
                 Ask something else
