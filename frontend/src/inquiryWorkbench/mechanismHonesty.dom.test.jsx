@@ -258,3 +258,130 @@ describe('the assembled mechanism page', () => {
         }
     });
 });
+
+// ── 8. reconciled with `inquiry-stage-attempt.v1` (Lane B, merged mid-lane) ──
+
+describe('TestTruncationSourceIsNotCollapsed', () => {
+    const withSource = (source) => {
+        const raw = truncatedCompilerFixture();
+        raw.stages = raw.stages.map((s) => (s.stage === 'compiler'
+            ? { ...s, truncation_source: source } : s));
+        return raw;
+    };
+
+    it('`unknown` and `none` do not render alike', async () => {
+        // Lane B's contract says it outright: "`unknown` is NOT `none`: the first says nothing
+        // could be consulted, the second says something was consulted and said no. A UI that
+        // showed them alike would report an unchecked stage as a verified-untruncated one."
+        await startInquiry([withSource('unknown')]);
+        const unknown = $('[data-truncation-source="unknown"]');
+        expect(unknown).toBeTruthy();
+        expect($('[data-truncation="unknown"]').textContent)
+            .toMatch(/nothing could be consulted — this stage is unchecked, not verified/);
+
+        await act(async () => { root.unmount(); });
+        root = createRoot(container);
+        await startInquiry([withSource('none')]);
+        // `none` is a real answer and needs no badge; what it must never do is share `unknown`'s.
+        expect($('[data-truncation-source="unknown"]')).toBeNull();
+        expect($('[data-truncation="none"]').textContent)
+            .toMatch(/something was consulted and said it was not truncated/);
+    });
+
+    it('an unrecognised route is named as one rather than trusted', async () => {
+        await startInquiry([withSource('vibes')]);
+        expect($('[data-truncation-source="vibes"]').className).toContain('unrecognised');
+        expect($('[data-truncation="vibes"]').textContent).toMatch(/an unrecognised route/);
+    });
+});
+
+describe('TestDeclaredUnderperformanceWins', () => {
+    it('honours the backend\'s `underperformed`, rather than second-guessing it', async () => {
+        // Lane B computes this from checks the client cannot see — a producer's own coverage
+        // result among them. A `completed` stage the backend calls underperforming still opens
+        // the diagnosis.
+        const raw = stagedCompleteFixture();
+        raw.stages = raw.stages.map((s) => (s.stage === 'compiler'
+            ? { ...s, underperformed: true } : s));
+        await startInquiry([raw]);
+        expect($('[data-diagnosis="open"] [data-failed-stage="compiler"]')).toBeTruthy();
+    });
+
+    it('a declared `false` is honoured too, on an outcome that would otherwise derive true', async () => {
+        const raw = truncatedCompilerFixture();
+        raw.state = 'complete';
+        raw.stages = raw.stages.map((s) => (s.stage === 'compiler'
+            ? { ...s, underperformed: false } : s));
+        await startInquiry([raw]);
+        expect($('[data-diagnosis="open"]')).toBeNull();
+    });
+});
+
+describe('TestExecutionFailureIsNotThinking', () => {
+    it('separates a stage that RAISED from one that came back thin', async () => {
+        // `error`/`interrupted` is the machinery breaking; `thin`/`truncated`/`empty` is the
+        // thinking coming back with too little. Merging them sends a reader to raise an output
+        // budget when the process had been killed.
+        const raw = barrenFixture();
+        raw.stages = raw.stages.map((s) => (s.stage === 'compiler'
+            ? { ...s, outcome: 'error', underperformed: false } : s));
+        await startInquiry([raw]);
+        expect($('[data-failure-kind="execution"]')).toBeTruthy();
+        expect($('[data-failure-kind="semantic"]')).toBeNull();
+
+        await act(async () => { root.unmount(); });
+        root = createRoot(container);
+        await startInquiry([truncatedCompilerFixture()]);
+        expect($('[data-failure-kind="semantic"]')).toBeTruthy();
+        expect($('[data-failure-kind="execution"]')).toBeNull();
+    });
+});
+
+describe('TestNamedCountsSurvive', () => {
+    it('renders the backend\'s own counts line rather than bare numbers', async () => {
+        const raw = truncatedCompilerFixture();
+        raw.stages = raw.stages.map((s) => (s.stage === 'theorist'
+            ? { ...s, counts_line: '2 images in → 8 reading blocks out',
+                input_counts: { images: 2 }, output_counts: { 'reading blocks': 8 } }
+            : s));
+        await startInquiry([raw]);
+        expect($('[data-stage="theorist"] [data-counts-line="true"]').textContent)
+            .toBe('2 images in → 8 reading blocks out');
+    });
+
+    it('renders substages as the stage reported them, not as a guess', async () => {
+        const raw = truncatedCompilerFixture();
+        raw.stages = raw.stages.map((s) => (s.stage === 'theorist'
+            ? {
+                ...s,
+                image_index: null, image_total: null, substage: '',
+                substages: [
+                    { substage_id: 'sub_1', label: 'reading 2 selected image(s)', index: 0,
+                      total: 2, duration_ms: 8400, outcome: 'completed' },
+                ],
+            }
+            : s));
+        await startInquiry([raw]);
+        const sub = $('[data-substage-id="sub_1"]');
+        expect(sub.textContent).toContain('reading 2 selected image(s)');
+        expect(sub.textContent).toContain('1 of 2');
+        // and the forward-guess fallback does not render beside it — one fact twice
+        expect($('[data-image-progress="true"]')).toBeNull();
+    });
+});
+
+describe('TestExecutionModeNoneIsNotUnknown', () => {
+    it('renders `none` as its own mode', async () => {
+        // Every framer and steward attempt on a real session carries it. Before the contract
+        // merged this list was two values, so all of them read as unrecognised.
+        const raw = truncatedCompilerFixture();
+        raw.stages = raw.stages.map((s) => (s.stage === 'framer'
+            ? { ...s, execution_mode: 'none' } : s));
+        await startInquiry([raw]);
+        const mode = $('[data-execution-mode="none"]');
+        expect(mode).toBeTruthy();
+        expect(mode.className).toContain('iw-exec--none');
+        expect(mode.className).not.toContain('iw-exec--unknown');
+        expect(mode.getAttribute('title')).toMatch(/no external work was entered/);
+    });
+});

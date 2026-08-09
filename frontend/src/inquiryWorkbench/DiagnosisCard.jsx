@@ -1,7 +1,7 @@
 import React from 'react';
 import {
-    STAGE_LABEL, STAGE_OUTCOME_COPY, STAGE_NAMES, underperformingStages, formatDuration,
-    downstreamOf, barrenAfter, earliestFailure,
+    STAGE_LABEL, STAGE_OUTCOME_COPY, STAGE_NAMES, TRUNCATION_SOURCE_COPY,
+    underperformingStages, formatDuration, downstreamOf, barrenAfter, earliestFailure,
 } from './inquiryContract';
 
 /**
@@ -31,11 +31,15 @@ export default function DiagnosisCard({ session }) {
     if (!session) return null;
 
     const stages = session.stages || [];
-    const failed = underperformingStages(session);
+    // Two categories, kept apart. `thin`/`truncated`/`empty` is the THINKING coming back with too
+    // little; `error`/`interrupted` is the MACHINERY breaking. A diagnosis that merged them would
+    // send a reader to raise an output budget when the process had been killed.
+    const thin = underperformingStages(session);
+    const broke = stages.filter((s) => s.failed);
     const stateBad = ['exhausted', 'refused', 'error'].includes(session.state.value);
-    if (!failed.length && !stateBad) return null;
+    if (!thin.length && !broke.length && !stateBad) return null;
 
-    const worst = earliestFailure(failed);
+    const worst = earliestFailure([...thin, ...broke]);
 
     const never = worst ? downstreamOf(worst.stage.value, stages) : [];
     const barren = worst ? barrenAfter(worst.stage.value, stages) : [];
@@ -65,7 +69,11 @@ export default function DiagnosisCard({ session }) {
 
             {worst ? (
                 <>
-                    <p className="iw-diagnosis-what" data-failed-stage={worst.stage.value}>
+                    <p
+                        className="iw-diagnosis-what"
+                        data-failed-stage={worst.stage.value}
+                        data-failure-kind={worst.failed ? 'execution' : 'semantic'}
+                    >
                         <b>{worst.outcome.value}</b> —{' '}
                         {STAGE_OUTCOME_COPY[worst.outcome.value] || 'the stage reported an outcome '
                             + 'this client does not recognise.'}
@@ -89,6 +97,16 @@ export default function DiagnosisCard({ session }) {
                                     ? 'not recorded' : `${worst.output_count} objects`}
                             </dd>
                         </div>
+                        {worst.truncation_source.value ? (
+                            <div>
+                                <dt>truncation checked by</dt>
+                                <dd data-truncation={worst.truncation_source.value}>
+                                    {worst.truncation_source.known
+                                        ? TRUNCATION_SOURCE_COPY[worst.truncation_source.value]
+                                        : `an unrecognised route (${worst.truncation_source.value})`}
+                                </dd>
+                            </div>
+                        ) : null}
                         {worst.finish_reason ? (
                             <div>
                                 <dt>finish reason</dt>
@@ -119,7 +137,12 @@ export default function DiagnosisCard({ session }) {
                         </div>
                     </dl>
 
-                    {worst.summary ? (
+                    {worst.counts_line ? (
+                        <p className="iw-diagnosis-summary" data-counts-line="true">
+                            {worst.counts_line}
+                        </p>
+                    ) : null}
+                    {worst.summary && worst.summary !== worst.counts_line ? (
                         <p className="iw-diagnosis-summary">{worst.summary}</p>
                     ) : null}
                 </>

@@ -1356,3 +1356,45 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
+
+/* ── reconciled with inquiry-stage-attempt.v1 ──────────────────────────── */
+
+.iw-exec--none { border-style: dotted; color: var(--ink-subtle); }
+
+.iw-stage-counts {
+    margin: 0;
+    font-size: .8125rem;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.iw-substages {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 .75rem;
+    border-left: 2px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: .125rem;
+    font-size: .75rem;
+}
+
+.iw-substages li { display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; }
+.iw-substage-label { color: var(--ink-muted); }
+.iw-substage-of { font-variant-numeric: tabular-nums; color: var(--ink-subtle); }
+
+/* `unknown` is NOT `none`, and it is not `field` either: one says nothing could be consulted, the
+   others say something was and answered. Three treatments, because a UI that showed them alike
+   would report an unchecked stage as a verified-untruncated one. */
+.iw-truncation {
+    padding: .0625rem .3125rem;
+    border-radius: .1875rem;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-muted);
+}
+
+.iw-truncation--field { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.iw-truncation--producer_attribute { border-style: dashed; color: var(--ink); }
+.iw-truncation--receipt_note { border-style: dotted; color: var(--ink-muted); }
+.iw-truncation--unknown { border-style: dashed; border-color: var(--accent); color: var(--accent-deep); }
+.iw-truncation--unrecognised { border-color: var(--accent); color: var(--accent); }

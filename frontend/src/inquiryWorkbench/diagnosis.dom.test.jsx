@@ -80,7 +80,10 @@ describe('the diagnosis card', () => {
         // description of a compiler that stopped mid-output, and it points at the wrong repair.
         await diagnose(truncatedCompilerFixture());
         expect(text()).not.toMatch(/nothing new was found|no new findings|found nothing new/i);
-        expect(text()).toMatch(/ran out of room, not out of things to say/i);
+        // Lane B's own note, now that `inquiry-stage-attempt.v1` has merged: a truncated result
+        // is a PREFIX, and its shortness is not evidence about the images.
+        expect(text()).toMatch(/not evidence that there was little to find/i);
+        expect(text()).toMatch(/ran out of output budget, not out of things to say/i);
     });
 });
 

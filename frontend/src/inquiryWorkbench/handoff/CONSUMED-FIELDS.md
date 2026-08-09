@@ -272,7 +272,15 @@ richer forward one. Neither is required to be complete.
 |---|---|---|
 | `attempt_id` / `event_id` | string | either spelling |
 | `stage` | **enumerated** | `framer · theorist · compiler · steward · capability · judge · composer` |
-| `outcome` | **enumerated** | the union of both servers: `queued · started · completed · thin · truncated · empty · unavailable · refused · skipped · error · interrupted`. `skipped` is today's and absent from Lane B's list; `queued`/`thin`/`truncated`/`interrupted` are the reverse. **`thin` and `truncated` never wear `completed`'s treatment** — that is what this phase is for |
+| `outcome` | **enumerated** | `queued · started · completed · thin · truncated · empty · unavailable · refused · skipped · error · interrupted`, per `inquiry-stage-attempt.v1`. **`thin` and `truncated` never wear `completed`'s treatment** — that is what this phase is for |
+| `underperformed` | boolean | **the declaration wins.** Lane B computes it from checks this client cannot see; it is derived here only when absent, and then from the contract's own three (`thin`, `truncated`, `empty`) |
+| `terminal` | boolean | |
+| `truncation_source` | **enumerated** | `field · producer_attribute · receipt_note · none · unknown`. **`unknown` is not `none`** — the first says nothing could be consulted, the second that something was and answered. They get different treatments; showing them alike reports an unchecked stage as a verified-untruncated one |
+| `counts_line` | string | **the backend's own sentence** — "2 images in → 8 reading blocks out". Preferred over anything assembled here: the nouns are what make the numbers readable, and this surface guessing them would be inventing the units |
+| `input_counts`, `output_counts` | object | `{"images": 2}` — named counts, rendered as given |
+| `substages[]` | array | `substage_id`, `label`, `index`, `total`, `outcome`, `started_at`, `completed_at`, `duration_ms`, `detail`, `refs[]` |
+| `gap_refs[]`, `refusal_refs[]`, `receipt_refs[]` | string[] | |
+| `summary` | string | |
 | `sequence`, `revision` | number \| null | |
 | `at` | ISO \| null | today's single timestamp; still places the event in time |
 | `queued_at`, `started_at`, `completed_at` | ISO \| null | Lane B's three |
@@ -282,7 +290,7 @@ richer forward one. Neither is required to be complete.
 | `actor.role` / `role` | string | |
 | `actor.model` / `model` | string | |
 | `actor.provider` / `provider` | string | |
-| `actor.execution_mode` / `execution_mode` | **enumerated** | `fixture · live` |
+| `actor.execution_mode` / `execution_mode` | **enumerated** | `fixture · live · none`. **`none` is not a weaker `live`** — it is a stage that entered no external work at all, which is what every framer and steward attempt on a real session is |
 | `call_topology` | string | e.g. `per_image_then_synthesis`, rendered with underscores as spaces |
 | `planned_calls`, `actual_calls` | number \| null | **"4 image readings plus one synthesis planned" renders only from `planned_calls`.** A count this surface derived from the image list would be a guess wearing your authority |
 | `calls[]` | array | `call_id`, `label`, `started_at`, `duration_ms`, `finish_reason`, `outcome` |

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
-    STAGE_LABEL, STAGE_OUTCOME_COPY, formatDuration, stageElapsedMs,
+    STAGE_LABEL, STAGE_OUTCOME_COPY, EXECUTION_MODE_COPY, TRUNCATION_SOURCE_COPY,
+    formatDuration, stageElapsedMs,
 } from './inquiryContract';
 
 /**
@@ -151,8 +152,36 @@ export function StageRow({ stage: s, at }) {
             {s.detail ? <p className="iw-quiet iw-stage-detail">{s.detail}</p> : null}
             {s.summary ? <p className="iw-quiet iw-stage-summary">{s.summary}</p> : null}
 
-            {/* Multi-image progress, from the stage's own counters. */}
-            {s.image_total !== null ? (
+            {/* THE BACKEND'S OWN SENTENCE about its own work — "2 images in → 8 reading blocks
+                out". Preferred over anything assembled here, because the nouns are the half that
+                makes the numbers readable and this surface guessing them would be inventing the
+                units. */}
+            {s.counts_line ? (
+                <p className="iw-stage-counts" data-counts-line="true">{s.counts_line}</p>
+            ) : null}
+
+            {/* Substages, as the stage reported them. */}
+            {s.substages.length ? (
+                <ul className="iw-substages" data-substages={s.substages.length}>
+                    {s.substages.map((sub, i) => (
+                        <li key={sub.substage_id || i} data-substage-id={sub.substage_id}>
+                            <span className="iw-substage-label">{sub.label}</span>
+                            {sub.total !== null ? (
+                                <span className="iw-substage-of">
+                                    {sub.index === null ? '?' : sub.index + 1} of {sub.total}
+                                </span>
+                            ) : null}
+                            {sub.outcome.value
+                                ? <span className="iw-quiet">{sub.outcome.value}</span> : null}
+                            <span className="iw-quiet">{formatDuration(sub.duration_ms)}</span>
+                        </li>
+                    ))}
+                </ul>
+            ) : null}
+
+            {/* The forward-guess fallback, for a producer that reports progress without the
+                array. Never rendered beside the array — that would be one fact twice. */}
+            {!s.substages.length && s.image_total !== null ? (
                 <p className="iw-stage-images" data-image-progress="true">
                     image {s.image_index === null ? '?' : s.image_index + 1} of {s.image_total}
                     {s.substage ? <> — {s.substage}</> : null}
@@ -168,6 +197,7 @@ export function StageRow({ stage: s, at }) {
                         className={`iw-exec iw-exec--${s.execution_mode.known
                             ? s.execution_mode.value : 'unknown'}`}
                         data-execution-mode={s.execution_mode.value}
+                        title={EXECUTION_MODE_COPY[s.execution_mode.value] || ''}
                     >
                         {s.execution_mode.value}
                     </span>
@@ -205,6 +235,20 @@ export function StageRow({ stage: s, at }) {
                 {s.finish_reason ? (
                     <span className="iw-stage-finish" data-finish-reason={s.finish_reason}>
                         finish: {s.finish_reason}
+                    </span>
+                ) : null}
+
+                {/* `unknown` is NOT `none`. The first says nothing could be consulted; the second
+                    says something was consulted and said no. Rendering them alike would report an
+                    UNCHECKED stage as a verified-untruncated one — the contract says so in as
+                    many words, and it is the easiest of these to collapse by accident. */}
+                {s.truncation_source.value && s.truncation_source.value !== 'none' ? (
+                    <span
+                        className={`iw-truncation iw-truncation--${s.truncation_source.known
+                            ? s.truncation_source.value : 'unrecognised'}`}
+                        data-truncation-source={s.truncation_source.value}
+                    >
+                        truncation: {s.truncation_source.value.replace(/_/g, ' ')}
                     </span>
                 ) : null}
             </div>

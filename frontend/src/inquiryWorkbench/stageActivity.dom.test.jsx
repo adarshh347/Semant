@@ -183,7 +183,9 @@ describe('a stage that produced less than it should have', () => {
         const compiler = $('[data-stage="compiler"]');
         expect(compiler.dataset.outcome).toBe('truncated');
         expect(compiler.textContent)
-            .toMatch(/ran out of room, not out of things to say/i);
+            .toMatch(/what came back is a PREFIX/i);
+        expect(compiler.textContent)
+            .toMatch(/not evidence that there was little to find/i);
         expect(underperformingStages(session).map((s) => s.stage.value)).toEqual(['compiler']);
         expect(currentStage(session)).toBeNull();
     });
@@ -207,7 +209,8 @@ describe('a stage that produced less than it should have', () => {
         const session = await mount(barrenFixture(), { working: false, open: true });
         expect($('[data-stage="compiler"]').dataset.outcome).toBe('empty');
         expect($('[data-stage="steward"]').dataset.outcome).toBe('skipped');
-        expect($('[data-stage="compiler"]').textContent).toMatch(/Ran and produced nothing/);
+        expect($('[data-stage="compiler"]').textContent)
+            .toMatch(/Ran to completion and produced nothing/);
         expect($('[data-stage="steward"]').textContent).toMatch(/budget or the branch excluded it/);
         // and only the empty one counts as underperformance
         expect(underperformingStages(session).map((s) => s.stage.value)).toEqual(['compiler']);

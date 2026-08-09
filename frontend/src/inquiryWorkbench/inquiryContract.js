@@ -139,7 +139,18 @@ export const OUTCOME_COPY = {
     capability_gap: 'Nothing in Semant can currently make this observable.',
 };
 
-export const EXECUTION_MODES = ['fixture', 'live'];
+/**
+ * `none` is Lane B's third, and it is not a weaker `live`: it is a stage that entered no external
+ * work at all. Guessed as two here before `inquiry-stage-attempt.v1` merged, which made every
+ * framer and steward attempt on a real session read as an unrecognised mode.
+ */
+export const EXECUTION_MODES = ['fixture', 'live', 'none'];
+
+export const EXECUTION_MODE_COPY = {
+    fixture: 'a stand-in produced this; nothing was measured',
+    live: 'a real producer was called',
+    none: 'no external work was entered — this stage is deterministic',
+};
 
 // ── decisions ────────────────────────────────────────────────────────────────
 
@@ -730,29 +741,57 @@ export const STAGE_OUTCOMES = [
 export const RUNNING_OUTCOMES = ['queued', 'started'];
 
 /**
- * Ended, and produced less than the stage is for.
+ * Ended having produced less than the stage is FOR — Lane B's declared
+ * `underperformance_outcomes`, exactly.
  *
- * `thin` and `truncated` are the two this whole phase exists for. A parsed JSON response with four
- * claims and no observables is not a completed compilation, and `finish_reason: length` is not a
- * shorter answer — it is an answer that stopped mid-sentence. Both used to arrive as `completed`.
+ * This list was five here, and the two extra were a category error the contract corrects.
+ * `error` and `interrupted` are execution failures: the stage raised, or the process died. `thin`,
+ * `truncated` and `empty` are stages that RAN and came back with too little, which is a claim
+ * about the thinking rather than about the machinery. The horizontal-phase skill separates
+ * `semantic_underperformance` from `execution_failure` for the same reason, and a diagnosis that
+ * merged them would send a reader to raise an output budget when the process had been killed.
+ *
+ * Both still open the diagnosis card. It names which kind.
  */
-export const UNDERPERFORMING_OUTCOMES = ['thin', 'truncated', 'empty', 'error', 'interrupted'];
+export const UNDERPERFORMING_OUTCOMES = ['thin', 'truncated', 'empty'];
+
+/** The machinery broke, as opposed to the thinking coming back thin. */
+export const FAILED_OUTCOMES = ['error', 'interrupted'];
 
 /** Ended without usable output for reasons that are nobody's underperformance. */
 export const BARREN_OUTCOMES = ['empty', 'unavailable', 'refused', 'skipped'];
 
+/** Lane B's `outcome_notes`, in this surface's voice. Same distinctions, same order. */
 export const STAGE_OUTCOME_COPY = {
-    queued: 'Waiting to start.',
+    queued: 'Waiting to start. Nothing external has been touched.',
     started: 'Running now.',
     completed: 'Finished, and produced what the stage is for.',
-    thin: 'Finished, but produced far less than the stage is for.',
-    truncated: 'Stopped mid-output — it ran out of room, not out of things to say.',
-    empty: 'Ran and produced nothing.',
-    unavailable: 'Was not available, so nothing was attempted.',
-    refused: 'Declined, with a reason.',
-    skipped: 'Not run — the budget or the branch excluded it.',
-    error: 'Failed.',
+    thin: 'It parsed, and its own adequacy check failed. A parse is not an adequacy.',
+    truncated: 'Stopped on its output budget — what came back is a PREFIX, and a short result '
+        + 'here is not evidence that there was little to find.',
+    empty: 'Ran to completion and produced nothing. Look somewhere else.',
+    unavailable: 'The instrument exists and is not running. Try again.',
+    refused: 'A law said no. Stop asking this of the machine.',
+    skipped: 'The budget or the branch excluded it. Nothing is wrong.',
+    error: 'It raised.',
     interrupted: 'The process stopped mid-call. What became of that call is not known.',
+};
+
+/**
+ * WHICH ROUTE established that a producer stopped on its budget.
+ *
+ * Lane B's contract is explicit that `unknown` is NOT `none`: the first says nothing could be
+ * consulted, the second says something was consulted and said no. "A UI that showed them alike
+ * would report an unchecked stage as a verified-untruncated one" — so they are two rows here.
+ */
+export const TRUNCATION_SOURCES = ['field', 'producer_attribute', 'receipt_note', 'none', 'unknown'];
+
+export const TRUNCATION_SOURCE_COPY = {
+    field: 'the receipt declared it in a typed field',
+    producer_attribute: 'the producer object declared it',
+    receipt_note: 'read out of a receipt note',
+    none: 'something was consulted and said it was not truncated',
+    unknown: 'nothing could be consulted — this stage is unchecked, not verified',
 };
 
 export function normalizeStageCall(raw) {
@@ -795,11 +834,24 @@ export function normalizeStage(raw) {
 
         input_refs: arr(v.input_refs).map(String),
         output_refs: arr(v.output_refs).map(String),
-        // Counts are read where declared and DERIVED from the refs otherwise — never invented for
+        gap_refs: arr(v.gap_refs).map(String),
+        refusal_refs: arr(v.refusal_refs).map(String),
+        receipt_refs: arr(v.receipt_refs).map(String),
+
+        // COUNTS ARE NAMED, not numbers. Lane B sends `{"images": 2}` → `{"reading blocks": 8}`
+        // and a pre-formatted `counts_line`, because "31 → 2" is unreadable without the nouns and
+        // this surface guessing them would be inventing the units. `counts_line` is preferred
+        // where sent — it is the backend's own sentence about its own work.
+        counts_line: str(v.counts_line),
+        input_counts: countMap(v.input_counts),
+        output_counts: countMap(v.output_counts),
+        // The scalar form, for a server that sends one, derived from refs otherwise, and null for
         // a stage that reported neither.
         input_count: numOrNull(v.input_count)
+            ?? countTotal(v.input_counts)
             ?? (Array.isArray(v.input_refs) ? v.input_refs.length : null),
         output_count: numOrNull(v.output_count)
+            ?? countTotal(v.output_counts)
             ?? (Array.isArray(v.output_refs) ? v.output_refs.length : null),
 
         role: str(actor.role || v.role),
@@ -812,21 +864,63 @@ export function normalizeStage(raw) {
         actual_calls: numOrNull(v.actual_calls),
         calls: arr(v.calls).map(normalizeStageCall),
 
-        // Multi-image progress, when a stage reports it. `image_index` is 0-based on the wire and
-        // stays that way here; the renderer adds the one.
+        // Multi-image progress. `substages[]` is Lane B's real shape; the three scalars below
+        // were this lane's forward guess and remain as a fallback for a producer that reports
+        // progress without the array.
+        substages: arr(v.substages).map(normalizeSubstage),
         image_index: numOrNull(v.image_index),
         image_total: numOrNull(v.image_total),
         substage: str(v.substage),
 
+        truncation_source: enumField(v.truncation_source, TRUNCATION_SOURCES),
         finish_reason: str(v.finish_reason),
-        summary: str(v.refusal_summary || v.error_summary || v.gap_summary),
+        summary: str(v.summary || v.refusal_summary || v.error_summary || v.gap_summary),
         provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
         raw: v,
     };
     stage.running = RUNNING_OUTCOMES.includes(stage.outcome.value);
-    stage.underperformed = UNDERPERFORMING_OUTCOMES.includes(stage.outcome.value);
     stage.barren = BARREN_OUTCOMES.includes(stage.outcome.value);
+    stage.failed = FAILED_OUTCOMES.includes(stage.outcome.value);
+    // THE DECLARATION WINS. Lane B computes `underperformed` from checks this client cannot see —
+    // a producer's own coverage result, for one — so deriving it here where the backend has
+    // already answered would be the client second-guessing the runtime that knows. Derived only
+    // when absent, and then from the same three outcomes the contract declares.
+    stage.underperformed = typeof v.underperformed === 'boolean'
+        ? v.underperformed
+        : UNDERPERFORMING_OUTCOMES.includes(stage.outcome.value);
+    stage.terminal = typeof v.terminal === 'boolean' ? v.terminal : null;
     return stage;
+}
+
+/** `{"images": 2}` → `[['images', 2]]`, dropping anything that is not a number. */
+function countMap(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return [];
+    return Object.entries(raw)
+        .filter(([, n]) => typeof n === 'number' && Number.isFinite(n))
+        .map(([label, n]) => ({ label, count: n }));
+}
+
+function countTotal(raw) {
+    const entries = countMap(raw);
+    if (!entries.length) return null;
+    return entries.reduce((sum, e) => sum + e.count, 0);
+}
+
+/** One unit of a multi-part stage — an image being read, a synthesis pass. */
+export function normalizeSubstage(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        substage_id: str(v.substage_id || v.id),
+        label: str(v.label),
+        index: numOrNull(v.index),
+        total: numOrNull(v.total),
+        outcome: enumField(v.outcome, STAGE_OUTCOMES),
+        started_at: ISO(v.started_at),
+        completed_at: ISO(v.completed_at),
+        duration_ms: numOrNull(v.duration_ms),
+        detail: str(v.detail),
+        refs: arr(v.refs).map(String),
+    };
 }
 
 /**
@@ -878,16 +972,21 @@ export function underperformingStages(session) {
 }
 
 /**
- * The EARLIEST stage that underperformed.
+ * The earliest of the stages it is GIVEN, by declared order.
  *
- * Everything after a failure is a consequence of it, and naming a consequence as the cause sends a
- * reader to the wrong place — "the composer produced two sections" is true and useless when the
- * compiler that fed it stopped mid-output.
+ * It does not filter. It filtered by `underperformed` until the caller began handing it two
+ * categories — semantic underperformance and execution failure — at which point re-filtering
+ * silently dropped every errored stage on the floor and the diagnosis card fell back to "this run
+ * ended without completing" for a compiler that had raised.
+ *
+ * Why the earliest: everything after a failure is a consequence of it, and naming a consequence as
+ * the cause sends a reader to the wrong place — "the composer produced two sections" is true and
+ * useless when the compiler that fed it stopped mid-output.
  */
 export function earliestFailure(stages) {
-    const failed = (stages || []).filter((s) => s.underperformed);
-    if (!failed.length) return null;
-    return failed.reduce((a, b) =>
+    const named = (stages || []).filter(Boolean);
+    if (!named.length) return null;
+    return named.reduce((a, b) =>
         (STAGE_NAMES.indexOf(a.stage.value) <= STAGE_NAMES.indexOf(b.stage.value) ? a : b));
 }
 
