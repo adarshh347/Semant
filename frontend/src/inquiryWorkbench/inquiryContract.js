@@ -555,6 +555,188 @@ export function normalizeTraceEvent(raw) {
     };
 }
 
+// ── the stage ledger ─────────────────────────────────────────────────────────
+//
+// HARNESS-003C. The backend has sent `session.stages` since HARNESS-002D and this client dropped
+// it on the floor — the 002R rehearsal's fourth tree cause, and the reason a person watched
+// `Starting…` for a long time with no way to know which of seven stages was taking it.
+//
+// The vocabulary below is the UNION of what the tree sends today and what Lane B's contract
+// declares next, because this lane must render against both. `skipped` is in the current backend
+// enum and absent from Lane B's list; `queued`, `thin`, `truncated` and `interrupted` are the
+// reverse. Dropping either set would make one of the two servers unreadable — and an outcome in
+// neither still renders as itself.
+
+export const STAGE_NAMES = [
+    'framer', 'theorist', 'compiler', 'steward', 'capability', 'judge', 'composer',
+];
+
+export const STAGE_LABEL = {
+    framer: 'Reading your question',
+    theorist: 'Looking at the images',
+    compiler: 'Breaking the reading into claims',
+    steward: 'Deciding what to ask you',
+    capability: 'Running a capability',
+    judge: 'Judging what came back',
+    composer: 'Writing the answer',
+};
+
+export const STAGE_OUTCOMES = [
+    'queued', 'started', 'completed',
+    'thin', 'truncated', 'empty', 'unavailable', 'refused', 'skipped', 'error', 'interrupted',
+];
+
+/** Still going. Only these may show an elapsed time. */
+export const RUNNING_OUTCOMES = ['queued', 'started'];
+
+/**
+ * Ended, and produced less than the stage is for.
+ *
+ * `thin` and `truncated` are the two this whole phase exists for. A parsed JSON response with four
+ * claims and no observables is not a completed compilation, and `finish_reason: length` is not a
+ * shorter answer — it is an answer that stopped mid-sentence. Both used to arrive as `completed`.
+ */
+export const UNDERPERFORMING_OUTCOMES = ['thin', 'truncated', 'empty', 'error', 'interrupted'];
+
+/** Ended without usable output for reasons that are nobody's underperformance. */
+export const BARREN_OUTCOMES = ['empty', 'unavailable', 'refused', 'skipped'];
+
+export const STAGE_OUTCOME_COPY = {
+    queued: 'Waiting to start.',
+    started: 'Running now.',
+    completed: 'Finished, and produced what the stage is for.',
+    thin: 'Finished, but produced far less than the stage is for.',
+    truncated: 'Stopped mid-output — it ran out of room, not out of things to say.',
+    empty: 'Ran and produced nothing.',
+    unavailable: 'Was not available, so nothing was attempted.',
+    refused: 'Declined, with a reason.',
+    skipped: 'Not run — the budget or the branch excluded it.',
+    error: 'Failed.',
+    interrupted: 'The process stopped mid-call. What became of that call is not known.',
+};
+
+export function normalizeStageCall(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        call_id: str(v.call_id || v.id),
+        label: str(v.label),
+        started_at: ISO(v.started_at),
+        duration_ms: numOrNull(v.duration_ms),
+        finish_reason: str(v.finish_reason),
+        outcome: enumField(v.outcome, STAGE_OUTCOMES),
+    };
+}
+
+/**
+ * One stage attempt, reading today's shape and Lane B's forward one at once.
+ *
+ * Every timing field is nullable and stays null. "Never report unknown duration as zero" is
+ * enforced here rather than at each render site, because a `0 ms` beside a stage that took eleven
+ * seconds is not a cosmetic defect — it is the surface asserting a measurement nobody made.
+ */
+export function normalizeStage(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    const actor = v.actor && typeof v.actor === 'object' ? v.actor : {};
+    const stage = {
+        event_id: str(v.attempt_id || v.event_id || v.id),
+        stage: enumField(v.stage, STAGE_NAMES),
+        outcome: enumField(v.outcome, STAGE_OUTCOMES),
+        sequence: numOrNull(v.sequence),
+        revision: numOrNull(v.revision),
+        detail: str(v.detail),
+
+        // `at` is today's single timestamp; the three below are Lane B's. A server that sends only
+        // `at` still places the event in time.
+        at: ISO(v.at),
+        queued_at: ISO(v.queued_at),
+        started_at: ISO(v.started_at),
+        completed_at: ISO(v.completed_at),
+        duration_ms: numOrNull(v.duration_ms),
+
+        input_refs: arr(v.input_refs).map(String),
+        output_refs: arr(v.output_refs).map(String),
+        // Counts are read where declared and DERIVED from the refs otherwise — never invented for
+        // a stage that reported neither.
+        input_count: numOrNull(v.input_count)
+            ?? (Array.isArray(v.input_refs) ? v.input_refs.length : null),
+        output_count: numOrNull(v.output_count)
+            ?? (Array.isArray(v.output_refs) ? v.output_refs.length : null),
+
+        role: str(actor.role || v.role),
+        model: str(actor.model || v.model),
+        provider: str(actor.provider || v.provider),
+        execution_mode: enumField(actor.execution_mode || v.execution_mode, EXECUTION_MODES),
+
+        call_topology: str(v.call_topology),
+        planned_calls: numOrNull(v.planned_calls),
+        actual_calls: numOrNull(v.actual_calls),
+        calls: arr(v.calls).map(normalizeStageCall),
+
+        // Multi-image progress, when a stage reports it. `image_index` is 0-based on the wire and
+        // stays that way here; the renderer adds the one.
+        image_index: numOrNull(v.image_index),
+        image_total: numOrNull(v.image_total),
+        substage: str(v.substage),
+
+        finish_reason: str(v.finish_reason),
+        summary: str(v.refusal_summary || v.error_summary || v.gap_summary),
+        provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
+        raw: v,
+    };
+    stage.running = RUNNING_OUTCOMES.includes(stage.outcome.value);
+    stage.underperformed = UNDERPERFORMING_OUTCOMES.includes(stage.outcome.value);
+    stage.barren = BARREN_OUTCOMES.includes(stage.outcome.value);
+    return stage;
+}
+
+/**
+ * How long a running stage has been running, from ITS clock and the caller's `now`.
+ *
+ * Client-side, and deliberately: the directive asks for elapsed time on the current stage, and no
+ * server pushes a tick per second. Returns null rather than 0 when the stage never said when it
+ * started — a clock counting up from an unknown origin is a fabricated measurement, and the one a
+ * reader would most readily believe.
+ */
+export function stageElapsedMs(stage, now) {
+    if (!stage || !stage.running) return null;
+    const from = stage.started_at || stage.queued_at || stage.at;
+    if (!from) return null;
+    const started = Date.parse(from);
+    const at = typeof now === 'number' ? now : Date.parse(now);
+    if (!Number.isFinite(started) || !Number.isFinite(at)) return null;
+    return Math.max(0, at - started);
+}
+
+/** `840 ms`, `1.4s`, `2m 05s` — or an em dash. Never `0 ms` for an unknown. */
+export function formatDuration(ms) {
+    if (ms === null || ms === undefined || !Number.isFinite(ms)) return '—';
+    if (ms < 1000) return `${Math.round(ms)} ms`;
+    const s = ms / 1000;
+    if (s < 60) return `${s.toFixed(1)}s`;
+    const m = Math.floor(s / 60);
+    return `${m}m ${String(Math.floor(s - m * 60)).padStart(2, '0')}s`;
+}
+
+/** The stage a person is waiting on, or null. The LAST running one — stages run in order. */
+export function currentStage(session) {
+    const stages = session?.stages || [];
+    for (let i = stages.length - 1; i >= 0; i -= 1) {
+        if (stages[i].running) return stages[i];
+    }
+    return null;
+}
+
+/**
+ * Stages that ended having produced less than they should have.
+ *
+ * Deliberately NOT the same question as "did the session end badly". A session can be `complete`
+ * with a truncated compiler underneath it, and that combination — a finished-looking answer built
+ * on a stage that stopped mid-sentence — is the exact thing the 002R rehearsal could not see.
+ */
+export function underperformingStages(session) {
+    return (session?.stages || []).filter((s) => s.underperformed);
+}
+
 // ── the session ──────────────────────────────────────────────────────────────
 
 export function normalizeSession(raw) {
@@ -574,7 +756,10 @@ export function normalizeSession(raw) {
         capability_receipts: arr(v.capability_receipts).map(normalizeReceipt),
         evidence: arr(v.evidence).map(normalizeEvidence),
         synthesis: normalizeSynthesis(v.synthesis),
+        // The machinery ledger. Read at last — see the block above.
+        stages: arr(v.stages).map(normalizeStage),
         trace: arr(v.trace).map(normalizeTraceEvent),
+        stop_reason: str(v.stop_reason),
         error: str(v.error),
     };
 }

@@ -9,6 +9,7 @@ import CapabilityActivity from './CapabilityActivity.jsx';
 import EvidencePanel from './EvidencePanel.jsx';
 import SynthesisView from './SynthesisView.jsx';
 import TraceView from './TraceView.jsx';
+import StageActivity from './StageActivity.jsx';
 import { createInquiryClient } from './inquiryClient.js';
 import {
     openDecision, outcomeCounts, STATE_LABEL, MODE_COPY,
@@ -155,6 +156,11 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
     return (
         <main className="iw-shell iw-shell--session">
             <SessionHeader session={session} working={working} />
+
+            {/* THE MACHINERY, above the reasoning and visible by default while it runs. The 002R
+                rehearsal watched `Starting…` with no idea which of seven stages was taking it,
+                while the backend recorded every transition. */}
+            <StageActivity stages={session.stages} working={working} />
 
             {/* The open decision comes first when the inquiry is waiting on it — but everything
                 that led here stays below, unhidden. A modal would frame the question as an

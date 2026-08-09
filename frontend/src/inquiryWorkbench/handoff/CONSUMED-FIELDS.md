@@ -39,7 +39,9 @@ list, and the Pydantic model on the other side remains the single definition.
 | `capability_receipts[]` | array | below |
 | `evidence[]` | array | below |
 | `synthesis` | object \| null | null renders as "no answer yet", not as an empty answer |
+| `stages[]` | array | **the machinery ledger** — below. Sent since HARNESS-002D; read since 003C |
 | `trace[]` | array | below |
+| `stop_reason` | string | rendered in plain language when a session ends short |
 | `error` | string | rendered in the session header when present |
 
 An unrecognised `state` keeps the client polling. It is the only conservative reading: a client
@@ -222,6 +224,41 @@ trust the answer.
 
 `evidence_refs` pointing at disqualified objects produce **no** support row; the section then says
 "no measurement supports this section" rather than showing the object.
+
+## Stage attempts (`stages[]`) — HARNESS-003C
+
+The backend has sent this list since HARNESS-002D and the client dropped it, which is the 002R
+rehearsal's fourth tree cause. It is read now, in **both** shapes: today's `StageEvent`
+(`event_id`/`stage`/`outcome`/`at`/`revision`/`detail`/`input_refs`/`output_refs`) and Lane B's
+richer forward one. Neither is required to be complete.
+
+| field | shape | notes |
+|---|---|---|
+| `attempt_id` / `event_id` | string | either spelling |
+| `stage` | **enumerated** | `framer · theorist · compiler · steward · capability · judge · composer` |
+| `outcome` | **enumerated** | the union of both servers: `queued · started · completed · thin · truncated · empty · unavailable · refused · skipped · error · interrupted`. `skipped` is today's and absent from Lane B's list; `queued`/`thin`/`truncated`/`interrupted` are the reverse. **`thin` and `truncated` never wear `completed`'s treatment** — that is what this phase is for |
+| `sequence`, `revision` | number \| null | |
+| `at` | ISO \| null | today's single timestamp; still places the event in time |
+| `queued_at`, `started_at`, `completed_at` | ISO \| null | Lane B's three |
+| `duration_ms` | number \| null | **never rendered as 0 when absent.** An em dash. Elapsed time is a DIFFERENT word on screen and a different field underneath — it is this client counting from `started_at`, and a stage that never said when it started shows neither |
+| `input_refs[]`, `output_refs[]` | string[] | |
+| `input_count`, `output_count` | number \| null | read where declared, **derived from the refs otherwise**, and null for a stage that reported neither |
+| `actor.role` / `role` | string | |
+| `actor.model` / `model` | string | |
+| `actor.provider` / `provider` | string | |
+| `actor.execution_mode` / `execution_mode` | **enumerated** | `fixture · live` |
+| `call_topology` | string | e.g. `per_image_then_synthesis`, rendered with underscores as spaces |
+| `planned_calls`, `actual_calls` | number \| null | **"4 image readings plus one synthesis planned" renders only from `planned_calls`.** A count this surface derived from the image list would be a guess wearing your authority |
+| `calls[]` | array | `call_id`, `label`, `started_at`, `duration_ms`, `finish_reason`, `outcome` |
+| `image_index`, `image_total` | number \| null | 0-based index on the wire; the renderer adds the one |
+| `substage` | string | e.g. `cross-image synthesis` |
+| `finish_reason` | string | rendered beside the stage, not buried in a receipt. `length` is the single most consequential value the live runs produced |
+| `refusal_summary` / `error_summary` / `gap_summary` | string | first non-empty is shown |
+| `provenance` | object | |
+
+No progress percentage and no estimated completion is rendered from any of this, and none should
+be sent: the inquiry does not know how long a model call takes, so a bar would be inventing a
+denominator and an ETA a rate.
 
 ## Trace (`trace[]`)
 

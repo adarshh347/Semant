@@ -940,3 +940,132 @@
    of its own card. */
 .iw-corpus > li, .iw-thumb { min-width: 0; }
 .iw-thumb-title { max-width: 100%; }
+
+/* ── stage activity ────────────────────────────────────────────────────── */
+
+.iw-stages-head { display: flex; align-items: baseline; gap: .75rem; }
+.iw-stages-head .iw-h2 { margin: 0; }
+
+.iw-stage-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.iw-stage {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    padding: .5rem .75rem;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--line);
+    border-radius: .375rem;
+    background: var(--bg);
+}
+
+/* Eleven outcomes, and the four in the middle are the point. `thin` and `truncated` are what this
+   phase exists to make visible — a parsed response with four claims and no observables is not a
+   completed compilation — so neither may wear `completed`'s treatment. */
+.iw-stage--completed { border-left-color: var(--ink); }
+.iw-stage--started { border-left-color: var(--accent); }
+.iw-stage--queued { border-left-style: dotted; border-left-color: var(--ink-subtle); }
+.iw-stage--thin { border-left-style: double; border-left-width: 4px; border-left-color: var(--accent); }
+.iw-stage--truncated { border-left-style: dashed; border-left-color: var(--accent); border-left-width: 4px; }
+.iw-stage--empty { border-left-color: var(--ink-muted); }
+.iw-stage--unavailable { border-left-style: dotted; border-left-color: var(--ink-subtle); border-left-width: 4px; }
+.iw-stage--refused { border-left-style: double; border-left-color: var(--ink-muted); }
+.iw-stage--skipped { border-left-style: dashed; border-left-color: var(--line-strong); }
+.iw-stage--error { border-left-color: var(--accent-deep); border-left-width: 5px; }
+.iw-stage--interrupted { border-left-style: dashed; border-left-color: var(--accent-deep); border-left-width: 5px; }
+.iw-stage--unknown { border-left-style: dashed; border-left-color: var(--accent); }
+
+.iw-stage-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.iw-stage-name { font-weight: 600; font-size: .875rem; }
+
+.iw-stage-outcome {
+    font-size: .6875rem;
+    letter-spacing: .04em;
+    padding: .0625rem .375rem;
+    border-radius: .1875rem;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-muted);
+}
+
+.iw-stage-outcome--completed { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.iw-stage-outcome--started { border-color: var(--accent); color: var(--accent-deep); font-weight: 600; }
+.iw-stage-outcome--queued { border-style: dotted; color: var(--ink-subtle); }
+.iw-stage-outcome--thin { border-style: double; border-width: 3px; color: var(--accent-deep); font-weight: 600; }
+.iw-stage-outcome--truncated { border-style: dashed; border-color: var(--accent); color: var(--accent-deep); font-weight: 600; }
+.iw-stage-outcome--empty { border-color: var(--ink-muted); }
+.iw-stage-outcome--unavailable { border-style: dotted; border-width: 2px; border-color: var(--ink-muted); color: var(--ink-muted); }
+.iw-stage-outcome--refused { border-style: double; border-width: 3px; }
+.iw-stage-outcome--skipped { border-style: dashed; color: var(--ink-subtle); }
+.iw-stage-outcome--error { background: var(--accent-soft); border-color: var(--accent-deep); color: var(--accent-deep); font-weight: 600; }
+.iw-stage-outcome--interrupted { background: var(--surface-2); border-style: dashed; border-color: var(--accent-deep); color: var(--accent-deep); font-weight: 600; }
+.iw-stage-outcome--unknown { border-color: var(--accent); color: var(--accent); }
+
+/* Elapsed and duration are different words because they are different measurements: one is this
+   client counting, the other is what the stage reported when it stopped. */
+.iw-stage-elapsed { font-size: .6875rem; color: var(--accent-deep); font-variant-numeric: tabular-nums; }
+.iw-stage-duration { font-size: .6875rem; color: var(--ink-subtle); font-variant-numeric: tabular-nums; margin-left: auto; }
+
+.iw-stage-copy { margin: 0; font-size: .8125rem; line-height: 1.45; }
+.iw-stage-detail, .iw-stage-summary, .iw-stage-refs { line-height: 1.45; }
+
+.iw-stage-images {
+    margin: 0;
+    font-size: .75rem;
+    color: var(--accent-deep);
+    font-variant-numeric: tabular-nums;
+}
+
+.iw-stage-meta {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    font-size: .625rem;
+    color: var(--ink-subtle);
+    align-items: center;
+}
+
+.iw-stage-role, .iw-stage-model, .iw-stage-topology, .iw-stage-calls, .iw-stage-io {
+    padding: .0625rem .3125rem;
+    border-radius: .1875rem;
+    background: var(--surface-2);
+}
+
+.iw-stage-model { font-family: var(--font-mono, ui-monospace, monospace); }
+
+.iw-exec {
+    padding: .0625rem .3125rem;
+    border-radius: .1875rem;
+    border: 1px solid var(--line-strong);
+}
+
+.iw-exec--fixture { border-style: dashed; border-color: var(--accent); color: var(--accent-deep); }
+.iw-exec--live { border-color: var(--ink); color: var(--ink); }
+.iw-exec--unknown { border-color: var(--accent); color: var(--accent); }
+
+/* `finish: length` is the single most consequential field the live runs produced. */
+.iw-stage-finish {
+    padding: .0625rem .3125rem;
+    border-radius: .1875rem;
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+    font-weight: 600;
+}
+
+.iw-stage-calls-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .125rem;
+    font-size: .6875rem;
+}
+
+.iw-stage-calls-list li { display: flex; gap: .5rem; }
