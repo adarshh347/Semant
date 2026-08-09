@@ -1,0 +1,1804 @@
+{
+  "amendments": [],
+  "capability_receipts": [
+    {
+      "attempted": true,
+      "capability": "locate_phrase",
+      "detail": "SIMULATED — not evidence. Produced by a stand-in with no access to any image. Every coordinate below is derived from a hash of this request's text; nothing was measured, nothing was seen, and this receipt cannot support any claim.",
+      "execution_mode": "fixture",
+      "latency_ms": 0.0,
+      "payload": {
+        "notice": "SIMULATED — not evidence. Produced by a stand-in with no access to any image. Every coordinate below is derived from a hash of this request's text; nothing was measured, nothing was seen, and this receipt cannot support any claim.",
+        "proposals": [
+          {
+            "confidence": null,
+            "ground_form": "region",
+            "image_refs": [
+              "img_a",
+              "img_b"
+            ],
+            "phrase": "the closing surface overhead",
+            "proposal_id": "prop_0",
+            "region": {
+              "derived_from": "sha256 of this request's text — not from any image",
+              "h": 0.3511,
+              "kind": "normalised_box",
+              "measured": false,
+              "w": 0.3485,
+              "x": 0.5515,
+              "y": 0.3969
+            },
+            "simulated": true
+          }
+        ],
+        "what_a_real_instrument_would_do": "A real phrase-localization instrument would read the target phrase against the pixels and return the extents it found, with a confidence per proposal and an explicit empty when it found none. Phase 2 replaces this adapter with one; the shape below is what the rest of the chain is already written against."
+      },
+      "provenance": {
+        "adapter": "locked_fixture",
+        "attempts_allowed": 1,
+        "chosen_alternative": "alt_6febf633dff8",
+        "chosen_label": "measure the extent of the ceiling as one thing",
+        "no_actuator_or_organ_was_called": true,
+        "no_image_was_read": true,
+        "notice": "SIMULATED — not evidence. Produced by a stand-in with no access to any image. Every coordinate below is derived from a hash of this request's text; nothing was measured, nothing was seen, and this receipt cannot support any claim.",
+        "observable_ref": "obs_60002803d1bd",
+        "producer": "inquiry_session/capability-v1",
+        "requested_at": "2026-08-09T00:00:00+00:00",
+        "servable_classes": [
+          "extent",
+          "geometry"
+        ]
+      },
+      "receipt_id": "capr_0e424bbf6f96",
+      "request_ref": "obs_60002803d1bd",
+      "status": "simulated",
+      "usable_as_evidence": false
+    }
+  ],
+  "changed_refs": [
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "by": "user",
+      "decision_id": "dec_f1fceb1b67b3",
+      "option_id": "alt_001cc98570b0",
+      "outcome": "answered",
+      "ref": "clm_d5925d97e917"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "by": "user",
+      "decision_id": "dec_f1fceb1b67b3",
+      "option_id": "alt_001cc98570b0",
+      "outcome": "answered",
+      "ref": "obs_60002803d1bd"
+    }
+  ],
+  "decision_records": [
+    {
+      "action": "select_option",
+      "affected_refs": [
+        "clm_d5925d97e917",
+        "obs_60002803d1bd"
+      ],
+      "at": "2026-08-09T00:00:00+00:00",
+      "decider": "user",
+      "decision_id": "dec_f1fceb1b67b3",
+      "free_text": "",
+      "outcome": "answered",
+      "question": "Measure the ceiling as one extent, or measure each element and count them?",
+      "rationale": "the person chose 'alt_001cc98570b0': one region, quickly, with the question begged",
+      "record_id": "rec_dec_f1fceb1b67b3",
+      "revision": 3,
+      "selected_label": "measure the extent of the ceiling as one thing",
+      "selected_option_id": "alt_001cc98570b0"
+    }
+  ],
+  "decision_requests": [
+    {
+      "affected_refs": [
+        "clm_d5925d97e917",
+        "obs_60002803d1bd"
+      ],
+      "allow_free_text": true,
+      "answered": true,
+      "blocking": false,
+      "decision_id": "dec_f1fceb1b67b3",
+      "formatter": "deterministic",
+      "kind": "choose_operationalization",
+      "options": [
+        {
+          "accepts_to_ledger": false,
+          "authorial": false,
+          "consequence": "one region, quickly, with the question begged",
+          "detail": "",
+          "label": "measure the extent of the ceiling as one thing",
+          "option_id": "alt_001cc98570b0",
+          "recommended": true,
+          "reversible": true
+        },
+        {
+          "accepts_to_ledger": false,
+          "authorial": false,
+          "consequence": "several regions, more cost, and the comparison's own premise tested",
+          "detail": "",
+          "label": "measure each visible ceiling element and count them",
+          "option_id": "alt_3eee5420f36b",
+          "recommended": false,
+          "reversible": null
+        }
+      ],
+      "provenance": {
+        "candidate_id": "dec_da67f25e7b50",
+        "compiler_kind": "choose_operationalization",
+        "kind_translated": false,
+        "mode": "consult",
+        "producer": "inquiry_session/candidates-v1",
+        "reversible_declared_by": "inquiry_session/candidates-v1",
+        "reversible_why": "declared reversible by the Phase 1 integration, not by the compiler: the whole downstream consequence of this choice is one locked fixture capability producing a simulated receipt. Nothing is written, nothing is accepted, and no post changes."
+      },
+      "question": "Measure the ceiling as one extent, or measure each element and count them?",
+      "session_id": "inqs_sample000001",
+      "why_now": "the first assumes the ceiling is one thing, which is exactly what the comparison is about; the second answers that and costs more"
+    }
+  ],
+  "error": "",
+  "evidence": [],
+  "frame": {
+    "attentions": [
+      {
+        "action_roles": [
+          "trace:architectural_axis"
+        ],
+        "attributed_to": "prompt",
+        "category": "architecture",
+        "said": "the user said “structure”",
+        "span": [
+          162,
+          171
+        ],
+        "term": "structure"
+      },
+      {
+        "action_roles": [
+          "connect:motif_echo"
+        ],
+        "attributed_to": "prompt",
+        "category": "comparison",
+        "said": "the user said “compare”",
+        "span": [
+          0,
+          7
+        ],
+        "term": "compare"
+      },
+      {
+        "action_roles": [
+          "connect:similarity"
+        ],
+        "attributed_to": "prompt",
+        "category": "comparison",
+        "said": "the user said “compare”",
+        "span": [
+          0,
+          7
+        ],
+        "term": "compare"
+      },
+      {
+        "action_roles": [],
+        "attributed_to": "prompt",
+        "category": "speculation",
+        "said": "the user said “hybrid”",
+        "span": [
+          124,
+          130
+        ],
+        "term": "hybrid"
+      }
+    ],
+    "corpus_context": {
+      "count": 2,
+      "note": null,
+      "post_ids": [
+        "img_a",
+        "img_b"
+      ],
+      "tags": [],
+      "titles": [
+        "A domed interior, seen from the floor",
+        "A long hall, seen along its axis"
+      ]
+    },
+    "epistemic_demands": [
+      {
+        "clause": "and what a hybrid of the two would demand of its structure",
+        "kind": "imagined",
+        "term": "hybrid",
+        "why": "names something that does not exist. No picture can be measured for it, and no source can cite it."
+      }
+    ],
+    "inquiry_id": "inq_892ace7770d0",
+    "mode": "explore",
+    "notes": [
+      "'hybrid' was read as speculation and proposes no act: the question asks about something that does not exist. NOTHING is proposed: there is no act that measures what is not there."
+    ],
+    "prompt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and what a hybrid of the two would demand of its structure.",
+    "proposed_actions": [
+      {
+        "createdAt": 0.0,
+        "id": "act_1",
+        "intent": "open the named images into material you can cite",
+        "label": "Find parts",
+        "payload": {
+          "reason": "2 images were named and nothing has been opened into parts"
+        },
+        "provenance": {
+          "cue": "bootstrap",
+          "matched": [],
+          "planner": "inquiry/lexicon-v1",
+          "promptExcerpt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and wh…"
+        },
+        "requiresConfirmation": false,
+        "source": "system",
+        "status": "proposed",
+        "target": "operation",
+        "type": "find_parts",
+        "warnings": []
+      },
+      {
+        "createdAt": 0.0,
+        "id": "act_2",
+        "intent": "draw the direction, from and to",
+        "label": "Trace architectural axis",
+        "payload": {
+          "from_hint": "",
+          "geometry_mode": "vector",
+          "label": "structure axis",
+          "reason": "you said “structure”",
+          "requires_user_anchor": true,
+          "to_hint": "",
+          "trace_role": "architectural_axis"
+        },
+        "provenance": {
+          "cue": "architecture",
+          "matched": [
+            "structure"
+          ],
+          "planner": "inquiry/lexicon-v1",
+          "promptExcerpt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and wh…"
+        },
+        "requiresConfirmation": true,
+        "source": "system",
+        "status": "proposed",
+        "target": "image",
+        "type": "trace_direction",
+        "warnings": [
+          "Needs a mark from you on the image."
+        ]
+      },
+      {
+        "createdAt": 0.0,
+        "id": "act_3",
+        "intent": "tie two marks together and say how they bear on each other",
+        "label": "Connect — motif echo",
+        "payload": {
+          "label": "",
+          "reason": "you said “compare”",
+          "relation_role": "motif_echo",
+          "source_refs": [],
+          "target_refs": []
+        },
+        "provenance": {
+          "cue": "comparison",
+          "matched": [
+            "compare"
+          ],
+          "planner": "inquiry/lexicon-v1",
+          "promptExcerpt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and wh…"
+        },
+        "requiresConfirmation": true,
+        "source": "system",
+        "status": "proposed",
+        "target": "ground",
+        "type": "connect_marks",
+        "warnings": [
+          "Needs a mark from you on the image."
+        ]
+      },
+      {
+        "createdAt": 0.0,
+        "id": "act_4",
+        "intent": "tie two marks together and say how they bear on each other",
+        "label": "Connect — similarity",
+        "payload": {
+          "label": "",
+          "reason": "you said “compare”",
+          "relation_role": "similarity",
+          "source_refs": [],
+          "target_refs": []
+        },
+        "provenance": {
+          "cue": "comparison",
+          "matched": [
+            "compare"
+          ],
+          "planner": "inquiry/lexicon-v1",
+          "promptExcerpt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and wh…"
+        },
+        "requiresConfirmation": true,
+        "source": "system",
+        "status": "proposed",
+        "target": "ground",
+        "type": "connect_marks",
+        "warnings": [
+          "Needs a mark from you on the image."
+        ]
+      }
+    ],
+    "provenance": {
+      "framed_at": "2026-08-09T00:00:00+00:00",
+      "framer_kind": "deterministic",
+      "grammar_version": "perceptual-action-grammar.v1",
+      "lexicon_version": "attunement-lexicon.v1",
+      "model": null,
+      "model_calls": 0,
+      "producer": "inquiry/deterministic-v1",
+      "prompt_sha256": "d9c65f8222e1c3703e8bb04cce5c67ec748f1fd29cd87a03894a4602f576ffed",
+      "role": null,
+      "schema_version": "inquiry-frame.v1"
+    },
+    "refusals": [],
+    "requested_output": "comparison",
+    "schema_version": "inquiry-frame.v1",
+    "semantic_remainder": [
+      {
+        "contributing_measurements": [],
+        "term": "hybrid",
+        "why": "what does not exist yet cannot be measured on any picture, nor cited from any source"
+      }
+    ],
+    "unresolved_terms": [
+      {
+        "term": "interiors",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "organise",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "themselves",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "overhead",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "ceiling",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "parts",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "company",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      },
+      {
+        "term": "demand",
+        "why": "no cue in the shared lexicon and no act in the Perceptual Action Grammar operationalises this word. It is carried unread rather than dropped."
+      }
+    ]
+  },
+  "gaps": [],
+  "graph": {
+    "claim_edges": [
+      {
+        "edge_id": "cle_088a2ee01d44",
+        "from_claim": "clm_e4394662434a",
+        "kind": "composes_from",
+        "note": "the relation is built from the two parts",
+        "relation": "composes_from",
+        "to_claim": "clm_d5925d97e917"
+      },
+      {
+        "edge_id": "cle_219dd6dc8bbb",
+        "from_claim": "clm_e4394662434a",
+        "kind": "composes_from",
+        "note": "the relation is built from the two parts",
+        "relation": "composes_from",
+        "to_claim": "clm_4197e51719a7"
+      },
+      {
+        "edge_id": "cle_c9ffe657939d",
+        "from_claim": "clm_9250959030f4",
+        "kind": "supports",
+        "note": "an ordered diminution is part of what reads as composed",
+        "relation": "supports",
+        "to_claim": "clm_8da611c48960"
+      },
+      {
+        "edge_id": "cle_e62b5ac7f153",
+        "from_claim": "clm_21176ef2d90f",
+        "kind": "supports",
+        "note": "the contrast of means is what the reading rests on",
+        "relation": "supports",
+        "to_claim": "clm_8da611c48960"
+      },
+      {
+        "edge_id": "cle_2a6faeb638ba",
+        "from_claim": "clm_eafd28c12900",
+        "kind": "challenges",
+        "note": "if the ring stands forward, its containment is not what it appears",
+        "relation": "challenges",
+        "to_claim": "clm_e4394662434a"
+      },
+      {
+        "edge_id": "cle_47826118f021",
+        "from_claim": "clm_308e5a70c091",
+        "kind": "complicates",
+        "note": "a structural cause would make the diminution less a choice",
+        "relation": "complicates",
+        "to_claim": "clm_9250959030f4"
+      },
+      {
+        "edge_id": "cle_e3a88e01a436",
+        "from_claim": "clm_c6e20fd1d9a4",
+        "kind": "generalizes",
+        "note": "the convention is the class this instance belongs to",
+        "relation": "generalizes",
+        "to_claim": "clm_9250959030f4"
+      },
+      {
+        "edge_id": "cle_7627d35f451f",
+        "from_claim": "clm_436a8e329425",
+        "kind": "composes_from",
+        "note": "the hybrid is assembled out of the contrast",
+        "relation": "composes_from",
+        "to_claim": "clm_21176ef2d90f"
+      }
+    ],
+    "claims": [
+      {
+        "author": "model",
+        "claim_id": "clm_d5925d97e917",
+        "claim_kind": "entity",
+        "confidence": null,
+        "epistemic_demand": "measurable",
+        "image_scope": [
+          "one_image"
+        ],
+        "inferred_from": [],
+        "kind": "entity",
+        "note": "",
+        "object": "the interior",
+        "predicate": "closes",
+        "source_span": {
+          "end": null,
+          "origin": "scene_reading",
+          "source_id": "rb_a1d551c043d8",
+          "start": null,
+          "text": "a single unbroken dome closes the space overhead"
+        },
+        "source_spans": [
+          {
+            "end": null,
+            "origin": "scene_reading",
+            "source_id": "rb_a1d551c043d8",
+            "start": null,
+            "text": "a single unbroken dome closes the space overhead"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "the dome",
+        "text": "a single unbroken dome closes the first interior overhead",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_4197e51719a7",
+        "claim_kind": "entity",
+        "confidence": null,
+        "epistemic_demand": "measurable",
+        "image_scope": [
+          "one_image"
+        ],
+        "inferred_from": [],
+        "kind": "entity",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": null,
+          "origin": "scene_reading",
+          "source_id": "rb_dc4eca72c27e",
+          "start": null,
+          "text": "a ring of engaged columns stands against the drum"
+        },
+        "source_spans": [
+          {
+            "end": null,
+            "origin": "scene_reading",
+            "source_id": "rb_dc4eca72c27e",
+            "start": null,
+            "text": "a ring of engaged columns stands against the drum"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "the ring of columns",
+        "text": "a ring of engaged columns stands against the drum",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_e4394662434a",
+        "claim_kind": "spatial_relation",
+        "confidence": null,
+        "epistemic_demand": "measurable",
+        "image_scope": [
+          "one_image"
+        ],
+        "inferred_from": [
+          "clm_d5925d97e917",
+          "clm_4197e51719a7"
+        ],
+        "kind": "spatial_relation",
+        "note": "",
+        "object": "the dome's footprint",
+        "predicate": "stands within",
+        "source_span": {
+          "end": null,
+          "origin": "compiler_inference",
+          "source_id": "compiler",
+          "start": null,
+          "text": "both parts are reported in the same interior"
+        },
+        "source_spans": [
+          {
+            "end": null,
+            "origin": "compiler_inference",
+            "source_id": "compiler",
+            "start": null,
+            "text": "both parts are reported in the same interior"
+          }
+        ],
+        "status": "uncertain",
+        "subject": "the ring of columns",
+        "text": "the ring of columns stands within the dome's footprint",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_9250959030f4",
+        "claim_kind": "hierarchy",
+        "confidence": null,
+        "epistemic_demand": "measurable",
+        "image_scope": [
+          "one_image"
+        ],
+        "inferred_from": [],
+        "kind": "hierarchy",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": null,
+          "origin": "scene_reading",
+          "source_id": "rb_48ebfe28f7dd",
+          "start": null,
+          "text": "the coffering diminishes in scale as it rises toward the oculus"
+        },
+        "source_spans": [
+          {
+            "end": null,
+            "origin": "scene_reading",
+            "source_id": "rb_48ebfe28f7dd",
+            "start": null,
+            "text": "the coffering diminishes in scale as it rises toward the oculus"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "the coffering",
+        "text": "the coffering diminishes in scale as it rises toward the crown",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_21176ef2d90f",
+        "claim_kind": "comparison",
+        "confidence": null,
+        "epistemic_demand": "measurable",
+        "image_scope": [
+          "image_pair"
+        ],
+        "inferred_from": [],
+        "kind": "comparison",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": null,
+          "origin": "scene_reading",
+          "source_id": "rb_5e7a1dfc7fdd",
+          "start": null,
+          "text": "one interior is closed by a single surface, the other by a repeated one"
+        },
+        "source_spans": [
+          {
+            "end": null,
+            "origin": "scene_reading",
+            "source_id": "rb_5e7a1dfc7fdd",
+            "start": null,
+            "text": "one interior is closed by a single surface, the other by a repeated one"
+          },
+          {
+            "end": 111,
+            "origin": "prompt",
+            "source_id": "prompt",
+            "start": 62,
+            "text": "where their handling of the ceiling parts company"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "the two ceilings",
+        "text": "the second interior is closed by a repeated element rather than a single one",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_8da611c48960",
+        "claim_kind": "interpretation",
+        "confidence": null,
+        "epistemic_demand": "interpretive",
+        "image_scope": [
+          "image_pair"
+        ],
+        "inferred_from": [
+          "clm_9250959030f4",
+          "clm_21176ef2d90f"
+        ],
+        "kind": "interpretation",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": null,
+          "origin": "compiler_inference",
+          "source_id": "compiler",
+          "start": null,
+          "text": "a reading assembled from the diminishing coffering and the contrast of means"
+        },
+        "source_spans": [
+          {
+            "end": null,
+            "origin": "compiler_inference",
+            "source_id": "compiler",
+            "start": null,
+            "text": "a reading assembled from the diminishing coffering and the contrast of means"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "composure",
+        "text": "the first interior reads as more composed than the second",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_c6e20fd1d9a4",
+        "claim_kind": "historical_or_sourced",
+        "confidence": null,
+        "epistemic_demand": "sourced",
+        "image_scope": [
+          "not_an_image_question"
+        ],
+        "inferred_from": [],
+        "kind": "historical_or_sourced",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": null,
+          "origin": "scene_reading",
+          "source_id": "rb_f82490222968",
+          "start": null,
+          "text": "coffering that diminishes toward a crown follows a convention with a long documented history"
+        },
+        "source_spans": [
+          {
+            "end": null,
+            "origin": "scene_reading",
+            "source_id": "rb_f82490222968",
+            "start": null,
+            "text": "coffering that diminishes toward a crown follows a convention with a long documented history"
+          }
+        ],
+        "status": "sourced",
+        "subject": "the convention",
+        "text": "coffering that diminishes toward a crown follows a documented convention",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_308e5a70c091",
+        "claim_kind": "causal_hypothesis",
+        "confidence": null,
+        "epistemic_demand": "interpretive",
+        "image_scope": [
+          "one_image"
+        ],
+        "inferred_from": [
+          "clm_9250959030f4"
+        ],
+        "kind": "causal_hypothesis",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": null,
+          "origin": "compiler_inference",
+          "source_id": "compiler",
+          "start": null,
+          "text": "a because offered for the diminishing, not observed"
+        },
+        "source_spans": [
+          {
+            "end": null,
+            "origin": "compiler_inference",
+            "source_id": "compiler",
+            "start": null,
+            "text": "a because offered for the diminishing, not observed"
+          }
+        ],
+        "status": "uncertain",
+        "subject": "",
+        "text": "the coffering diminishes because the shell must lose thickness toward the crown",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_eafd28c12900",
+        "claim_kind": "spatial_relation",
+        "confidence": null,
+        "epistemic_demand": "measurable",
+        "image_scope": [
+          "one_image"
+        ],
+        "inferred_from": [],
+        "kind": "spatial_relation",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": null,
+          "origin": "scene_reading",
+          "source_id": "rb_fb4ccd9acba1",
+          "start": null,
+          "text": "the ring of columns reads as carrying the dome while standing forward of the wall that actually does"
+        },
+        "source_spans": [
+          {
+            "end": null,
+            "origin": "scene_reading",
+            "source_id": "rb_fb4ccd9acba1",
+            "start": null,
+            "text": "the ring of columns reads as carrying the dome while standing forward of the wall that actually does"
+          }
+        ],
+        "status": "uncertain",
+        "subject": "",
+        "text": "the ring of columns reads as carrying the dome while standing forward of the wall that does",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_436a8e329425",
+        "claim_kind": "generative_rule",
+        "confidence": null,
+        "epistemic_demand": "imagined",
+        "image_scope": [
+          "not_an_image_question"
+        ],
+        "inferred_from": [
+          "clm_21176ef2d90f"
+        ],
+        "kind": "generative_rule",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": 171,
+          "origin": "prompt",
+          "source_id": "prompt",
+          "start": 117,
+          "text": "what a hybrid of the two would demand of its structure"
+        },
+        "source_spans": [
+          {
+            "end": 171,
+            "origin": "prompt",
+            "source_id": "prompt",
+            "start": 117,
+            "text": "what a hybrid of the two would demand of its structure"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "",
+        "text": "a hybrid would keep the single closing surface and take its interval from the bays",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_54fc30c9e5ff",
+        "claim_kind": "unknown",
+        "confidence": null,
+        "epistemic_demand": "unresolved",
+        "image_scope": [
+          "not_an_image_question"
+        ],
+        "inferred_from": [],
+        "kind": "unknown",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": 171,
+          "origin": "prompt",
+          "source_id": "prompt",
+          "start": 142,
+          "text": "would demand of its structure"
+        },
+        "source_spans": [
+          {
+            "end": 171,
+            "origin": "prompt",
+            "source_id": "prompt",
+            "start": 142,
+            "text": "would demand of its structure"
+          }
+        ],
+        "status": "uncertain",
+        "subject": "",
+        "text": "what the prompt means by a structure's demand is not settled",
+        "vocabulary": ""
+      }
+    ],
+    "graph_id": "sig_84ea9e178b38",
+    "image_refs": [
+      {
+        "image_ref": "https://fixture.invalid/img_a.jpg",
+        "image_url": "https://fixture.invalid/img_a.jpg",
+        "note": "",
+        "post_id": "img_a",
+        "title": "A domed interior, seen from the floor"
+      },
+      {
+        "image_ref": "https://fixture.invalid/img_b.jpg",
+        "image_url": "https://fixture.invalid/img_b.jpg",
+        "note": "",
+        "post_id": "img_b",
+        "title": "A long hall, seen along its axis"
+      }
+    ],
+    "inquiry_id": "inq_892ace7770d0",
+    "notes": [],
+    "observables": [
+      {
+        "alternatives": [
+          {
+            "alternative_id": "alt_6febf633dff8",
+            "available": true,
+            "capability_class": "extent",
+            "capability_classes": [
+              "extent"
+            ],
+            "consequence": "a single region; the fastest route, and it assumes the answer to whether it is one thing",
+            "label": "measure the extent of the ceiling as one thing",
+            "recommended": true
+          },
+          {
+            "alternative_id": "alt_8551bdf4705b",
+            "available": false,
+            "capability_class": "extent",
+            "capability_classes": [
+              "extent",
+              "pattern"
+            ],
+            "consequence": "several regions; answers whether it is one thing, and costs more and may fragment a genuinely continuous surface",
+            "label": "measure each visible ceiling element and count them",
+            "recommended": false
+          }
+        ],
+        "ambiguity_condition": "several disconnected extents come back and none dominates",
+        "availability": "available",
+        "capability_classes": [
+          "extent"
+        ],
+        "claim_ref": "clm_d5925d97e917",
+        "gap_reason": "",
+        "ground_forms": [
+          "region"
+        ],
+        "image_scope": [
+          "one_image"
+        ],
+        "note": "",
+        "observable_id": "obs_60002803d1bd",
+        "observable_kind": "the extent of the closing surface",
+        "refusal_condition": "no instrument can be handed the phrase",
+        "residual_interpretation": "whether one continuous surface is the right way to describe what is overhead",
+        "success_condition": "one extent is returned covering the ceiling",
+        "target": "the closing surface overhead",
+        "targets": [
+          "the closing surface overhead"
+        ]
+      },
+      {
+        "alternatives": [],
+        "ambiguity_condition": "the two extents overlap without either containing the other",
+        "availability": "capability_gap",
+        "capability_classes": [
+          "geometry",
+          "topology"
+        ],
+        "claim_ref": "clm_e4394662434a",
+        "gap_reason": "nothing bound here can produce: topology",
+        "ground_forms": [
+          "relation"
+        ],
+        "image_scope": [
+          "one_image"
+        ],
+        "note": "",
+        "observable_id": "obs_81356b023502",
+        "observable_kind": "whether one extent lies within another",
+        "refusal_condition": "either extent is missing",
+        "residual_interpretation": "whether standing within a footprint is standing within the thing",
+        "success_condition": "a containment relation is computed between two returned extents",
+        "target": "the ring of columns, the closing surface overhead",
+        "targets": [
+          "the ring of columns",
+          "the closing surface overhead"
+        ]
+      },
+      {
+        "alternatives": [],
+        "ambiguity_condition": "the ordering holds for part of the run and not the rest",
+        "availability": "capability_gap",
+        "capability_classes": [
+          "pattern"
+        ],
+        "claim_ref": "clm_9250959030f4",
+        "gap_reason": "nothing bound here can produce: pattern",
+        "ground_forms": [
+          "field",
+          "path"
+        ],
+        "image_scope": [
+          "one_image"
+        ],
+        "note": "",
+        "observable_id": "obs_7ac0109e5b10",
+        "observable_kind": "an ordering of element size along an axis",
+        "refusal_condition": "the elements cannot be told apart from each other",
+        "residual_interpretation": "whether a diminution is read as ordering or as perspective",
+        "success_condition": "sizes are recovered and are monotonic along the axis",
+        "target": "the repeated ceiling elements",
+        "targets": [
+          "the repeated ceiling elements"
+        ]
+      },
+      {
+        "alternatives": [],
+        "ambiguity_condition": "one image returns nothing and the other returns many",
+        "availability": "capability_gap",
+        "capability_classes": [
+          "pattern",
+          "extent"
+        ],
+        "claim_ref": "clm_21176ef2d90f",
+        "gap_reason": "nothing bound here can produce: pattern",
+        "ground_forms": [
+          "field",
+          "region"
+        ],
+        "image_scope": [
+          "image_pair"
+        ],
+        "note": "",
+        "observable_id": "obs_1576113cf01a",
+        "observable_kind": "the count and spacing of ceiling elements in each image",
+        "refusal_condition": "only one image is available",
+        "residual_interpretation": "whether one and many are the right terms for the difference",
+        "success_condition": "both images return a count and the counts differ in kind, not only in number",
+        "target": "the ceiling elements",
+        "targets": [
+          "the ceiling elements"
+        ]
+      },
+      {
+        "alternatives": [],
+        "ambiguity_condition": "",
+        "availability": "capability_gap",
+        "capability_classes": [
+          "external_source"
+        ],
+        "claim_ref": "clm_c6e20fd1d9a4",
+        "gap_reason": "nothing bound here can produce: external_source",
+        "ground_forms": [
+          "frame"
+        ],
+        "image_scope": [
+          "not_an_image_question"
+        ],
+        "note": "",
+        "observable_id": "obs_22ad1b0bb502",
+        "observable_kind": "a documented account of the convention",
+        "refusal_condition": "no source is reachable",
+        "residual_interpretation": "whether this instance belongs to the class the source describes",
+        "success_condition": "a citation is returned that names the convention",
+        "target": "the convention named",
+        "targets": [
+          "the convention named"
+        ]
+      },
+      {
+        "alternatives": [],
+        "ambiguity_condition": "",
+        "availability": "capability_gap",
+        "capability_classes": [
+          "semantic_reading"
+        ],
+        "claim_ref": "clm_8da611c48960",
+        "gap_reason": "nothing bound here can produce: semantic_reading",
+        "ground_forms": [
+          "frame"
+        ],
+        "image_scope": [
+          "image_pair"
+        ],
+        "note": "",
+        "observable_id": "obs_42b046479f5d",
+        "observable_kind": "a reading of how the two interiors compare",
+        "refusal_condition": "",
+        "residual_interpretation": "all of it. A reading about a picture is never evidence in it.",
+        "success_condition": "a reading is produced and is labelled as a reading",
+        "target": "composure",
+        "targets": [
+          "composure"
+        ]
+      }
+    ],
+    "prompt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and what a hybrid of the two would demand of its structure.",
+    "provenance": {
+      "compiled_at": "2026-08-09T00:00:00+00:00",
+      "compiler": {
+        "call_count": 0,
+        "call_topology": "replay",
+        "image_refs": [],
+        "image_sha256": {},
+        "model": null,
+        "notes": [
+          "replayed from a frozen model output; no network call was made"
+        ],
+        "parsed": true,
+        "prompt_sha256": "930bff2ea7783d93d17642f899861169cda5b21398d1544ab170933350323396",
+        "provider": null,
+        "raw_response_sha256": [
+          "d09a0b40231d5a8df8808a2cc3ffcedced674bbafcedadaf9b229bb4d47c1b1a"
+        ],
+        "refusal": null,
+        "requested_at": "2026-08-09T00:00:00+00:00",
+        "role": "semantic_compiler"
+      },
+      "compiler_kind": "replay",
+      "contract_version": "semantic-inquiry-graph.v1",
+      "inquiry_frame_schema_version": "inquiry-frame.v1",
+      "notes": [],
+      "producer": "semantic_compilation/compiler-v1",
+      "prompt_sha256": "d9c65f8222e1c3703e8bb04cce5c67ec748f1fd29cd87a03894a4602f576ffed",
+      "theorist": {
+        "call_count": 0,
+        "call_topology": "replay",
+        "image_refs": [
+          "img_a",
+          "img_b"
+        ],
+        "image_sha256": {},
+        "model": null,
+        "notes": [
+          "replayed from a frozen model output; no network call was made"
+        ],
+        "parsed": true,
+        "prompt_sha256": "6c7dde217dd1831193eb3b88452bb5ff7798be6ce6eb9dfbfb51c2c0cc56ce13",
+        "provider": null,
+        "raw_response_sha256": [
+          "c5e322a41b7c6dceceb6648234bf06ea6e2d0e0fd4737986502e68560ff6f2e7"
+        ],
+        "refusal": null,
+        "requested_at": "2026-08-09T00:00:00+00:00",
+        "role": "scene_theorist"
+      }
+    },
+    "reading": {
+      "blocks": [
+        {
+          "block_id": "rb_a1d551c043d8",
+          "image_refs": [
+            "img_a"
+          ],
+          "kind": "part",
+          "text": "a single unbroken dome closes the space overhead"
+        },
+        {
+          "block_id": "rb_dc4eca72c27e",
+          "image_refs": [
+            "img_a"
+          ],
+          "kind": "part",
+          "text": "a ring of engaged columns stands against the drum"
+        },
+        {
+          "block_id": "rb_48ebfe28f7dd",
+          "image_refs": [
+            "img_a"
+          ],
+          "kind": "organization",
+          "text": "the coffering diminishes in scale as it rises toward the oculus"
+        },
+        {
+          "block_id": "rb_57541b7c8b54",
+          "image_refs": [
+            "img_b"
+          ],
+          "kind": "part",
+          "text": "a series of transverse arches divides the ceiling into equal bays"
+        },
+        {
+          "block_id": "rb_5e7a1dfc7fdd",
+          "image_refs": [
+            "img_a",
+            "img_b"
+          ],
+          "kind": "comparison",
+          "text": "one interior is closed by a single surface, the other by a repeated one"
+        },
+        {
+          "block_id": "rb_f82490222968",
+          "image_refs": [
+            "img_a"
+          ],
+          "kind": "historical_association",
+          "text": "coffering that diminishes toward a crown follows a convention with a long documented history"
+        },
+        {
+          "block_id": "rb_fb4ccd9acba1",
+          "image_refs": [
+            "img_a"
+          ],
+          "kind": "tension",
+          "text": "the ring of columns reads as carrying the dome while standing forward of the wall that actually does"
+        },
+        {
+          "block_id": "rb_9b483344a11b",
+          "image_refs": [
+            "img_a",
+            "img_b"
+          ],
+          "kind": "hypothesis",
+          "text": "a room could keep the single closing surface and take its rhythm from the bays"
+        }
+      ],
+      "model": "",
+      "provenance": {
+        "call_count": 0,
+        "call_topology": "replay",
+        "image_refs": [
+          "img_a",
+          "img_b"
+        ],
+        "image_sha256": {},
+        "model": null,
+        "notes": [
+          "replayed from a frozen model output; no network call was made"
+        ],
+        "parsed": true,
+        "prompt_sha256": "6c7dde217dd1831193eb3b88452bb5ff7798be6ce6eb9dfbfb51c2c0cc56ce13",
+        "provider": null,
+        "raw_response_sha256": [
+          "c5e322a41b7c6dceceb6648234bf06ea6e2d0e0fd4737986502e68560ff6f2e7"
+        ],
+        "refusal": null,
+        "requested_at": "2026-08-09T00:00:00+00:00",
+        "role": "scene_theorist"
+      },
+      "source": "scene_theorist",
+      "status": "interpretive",
+      "text": "The first interior is closed overhead by one continuous curved surface that gathers everything beneath it toward a single opening at the crown. The second is closed by a repeated element: a series of transverse arches that divide the ceiling into bays and carry the eye along the room rather than up into it. In the first, a ring of engaged columns stands against the drum below the springing, and the coffering above diminishes in scale as it rises. In the second, nothing diminishes; the bays are equal and the rhythm is flat. The two rooms are doing the same work — closing a large volume — by opposite means, and the difference is legible in the ceiling alone."
+    },
+    "refusals": [],
+    "schema_version": "semantic-inquiry-graph.v1",
+    "semantic_remainder": [
+      {
+        "claim_refs": [
+          "clm_8da611c48960"
+        ],
+        "contributing_capability_classes": [
+          "pattern",
+          "extent",
+          "geometry"
+        ],
+        "remainder_id": "rem_e6fdd569f415",
+        "text": "composure",
+        "why_unresolved": "an ordered diminution and a contrast of means both bear on it and neither settles it; nothing returns a number for how composed a room reads"
+      },
+      {
+        "claim_refs": [
+          "clm_54fc30c9e5ff"
+        ],
+        "contributing_capability_classes": [],
+        "remainder_id": "rem_e6563b050c73",
+        "text": "a structure's demand",
+        "why_unresolved": "the prompt's phrase names an obligation rather than a thing in a picture, and no instrument is scoped to an obligation"
+      }
+    ]
+  },
+  "inquiry_id": "inq_892ace7770d0",
+  "mode": "consult",
+  "posts": [
+    {
+      "fingerprint": "fp_img_a",
+      "image_ref": "https://fixture.invalid/img_a.jpg",
+      "note": "",
+      "post_id": "img_a",
+      "readable": true,
+      "title": "A domed interior, seen from the floor"
+    },
+    {
+      "fingerprint": "fp_img_b",
+      "image_ref": "https://fixture.invalid/img_b.jpg",
+      "note": "",
+      "post_id": "img_b",
+      "readable": true,
+      "title": "A long hall, seen along its axis"
+    }
+  ],
+  "prompt": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and what a hybrid of the two would demand of its structure.",
+  "provenance": {
+    "compiler_model": null,
+    "composer_model": null,
+    "created_at": "2026-08-09T00:00:00+00:00",
+    "frame_hash": "51329579cc62d45b78b078b2cf947b88f5ed340f07cb2a5cefdc0c920886c197",
+    "frame_producer": "inquiry/deterministic-v1",
+    "graph_hash": "sig_7352030e6a68cd5e",
+    "mode": "consult",
+    "notes": [],
+    "producer": "inquiry_session/coordinator-v1",
+    "prompt_sha256": "d9c65f8222e1c3703e8bb04cce5c67ec748f1fd29cd87a03894a4602f576ffed",
+    "theorist_model": null,
+    "updated_at": "2026-08-09T00:00:00+00:00"
+  },
+  "refusals": [],
+  "revision": 8,
+  "schema_version": "semantic-inquiry-session.v1",
+  "session_id": "inqs_sample000001",
+  "stages": [
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "",
+      "event_id": "stg_ba9e6003fb46",
+      "input_refs": [],
+      "outcome": "started",
+      "output_refs": [],
+      "revision": 0,
+      "stage": "framer"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "4 attentions · demands 1 imagined · 4 proposed acts, none run · 8 terms nothing can serve · 1 meaning measurement will not exhaust",
+      "event_id": "stg_58aa41b65e82",
+      "input_refs": [],
+      "outcome": "completed",
+      "output_refs": [
+        "inq_892ace7770d0"
+      ],
+      "revision": 0,
+      "stage": "framer"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "",
+      "event_id": "stg_cadd8c9f44d6",
+      "input_refs": [
+        "img_a",
+        "img_b"
+      ],
+      "outcome": "started",
+      "output_refs": [],
+      "revision": 0,
+      "stage": "theorist"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "replay · 0 call(s)",
+      "event_id": "stg_f06a45b6c64f",
+      "input_refs": [],
+      "outcome": "completed",
+      "output_refs": [
+        "rb_a1d551c043d8",
+        "rb_dc4eca72c27e",
+        "rb_48ebfe28f7dd",
+        "rb_57541b7c8b54",
+        "rb_5e7a1dfc7fdd",
+        "rb_f82490222968",
+        "rb_fb4ccd9acba1",
+        "rb_9b483344a11b"
+      ],
+      "revision": 0,
+      "stage": "theorist"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "",
+      "event_id": "stg_85b3d576d13d",
+      "input_refs": [],
+      "outcome": "started",
+      "output_refs": [],
+      "revision": 0,
+      "stage": "compiler"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "11 claims · 1 causal_hypothesis · 1 comparison · 2 entity · 1 generative_rule · 1 hierarchy · 1 historical_or_sourced · 1 interpretation · 2 spatial_relation · 1 unknown · 6 observables requested, none run · 1 decision candidate · 2 meanings measurement will not exhaust",
+      "event_id": "stg_dd2685af4510",
+      "input_refs": [],
+      "outcome": "completed",
+      "output_refs": [
+        "clm_d5925d97e917",
+        "clm_4197e51719a7",
+        "clm_e4394662434a",
+        "clm_9250959030f4",
+        "clm_21176ef2d90f",
+        "clm_8da611c48960",
+        "clm_c6e20fd1d9a4",
+        "clm_308e5a70c091",
+        "clm_eafd28c12900",
+        "clm_436a8e329425",
+        "clm_54fc30c9e5ff"
+      ],
+      "revision": 0,
+      "stage": "compiler"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "",
+      "event_id": "stg_e2dbf9739272",
+      "input_refs": [
+        "dec_da67f25e7b50"
+      ],
+      "outcome": "started",
+      "output_refs": [],
+      "revision": 0,
+      "stage": "steward"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "a person is being asked",
+      "event_id": "stg_865f851f01c4",
+      "input_refs": [],
+      "outcome": "empty",
+      "output_refs": [
+        "dec_f1fceb1b67b3"
+      ],
+      "revision": 2,
+      "stage": "steward"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "",
+      "event_id": "stg_10052bc31e52",
+      "input_refs": [
+        "obs_60002803d1bd"
+      ],
+      "outcome": "started",
+      "output_refs": [],
+      "revision": 0,
+      "stage": "capability"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "locate_phrase · fixture · simulated",
+      "event_id": "stg_03454cb75a34",
+      "input_refs": [],
+      "outcome": "completed",
+      "output_refs": [
+        "capr_0e424bbf6f96"
+      ],
+      "revision": 0,
+      "stage": "capability"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "",
+      "event_id": "stg_814b1cd338ea",
+      "input_refs": [],
+      "outcome": "started",
+      "output_refs": [],
+      "revision": 0,
+      "stage": "judge"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "interpretive_only 3 · not_investigated 7 · unresolved 1",
+      "event_id": "stg_bde3a39d8564",
+      "input_refs": [],
+      "outcome": "completed",
+      "output_refs": [
+        "vrd_11fc8f440169",
+        "vrd_07a102ef3f12",
+        "vrd_1d48d3a5a8da",
+        "vrd_4076bd7d8856",
+        "vrd_533583cf0ed4",
+        "vrd_37328af539df",
+        "vrd_7330696e7793",
+        "vrd_0766a86d9473",
+        "vrd_25e3420a15ce",
+        "vrd_09a8d07f2430",
+        "vrd_9dea46bbfe8b"
+      ],
+      "revision": 0,
+      "stage": "judge"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "",
+      "event_id": "stg_f33174272e3e",
+      "input_refs": [
+        "vrd_11fc8f440169",
+        "vrd_07a102ef3f12",
+        "vrd_1d48d3a5a8da",
+        "vrd_4076bd7d8856",
+        "vrd_533583cf0ed4",
+        "vrd_37328af539df",
+        "vrd_7330696e7793",
+        "vrd_0766a86d9473",
+        "vrd_25e3420a15ce",
+        "vrd_09a8d07f2430",
+        "vrd_9dea46bbfe8b"
+      ],
+      "outcome": "started",
+      "output_refs": [],
+      "revision": 0,
+      "stage": "composer"
+    },
+    {
+      "at": "2026-08-09T00:00:00+00:00",
+      "detail": "6 section(s)",
+      "event_id": "stg_c2d125b69813",
+      "input_refs": [],
+      "outcome": "completed",
+      "output_refs": [
+        "sec_d8909b81ffcf",
+        "sec_381d171ff90f",
+        "sec_c37062d70a06",
+        "sec_86b31614461b",
+        "sec_cb95f3b47e39",
+        "sec_d5063589c942"
+      ],
+      "revision": 0,
+      "stage": "composer"
+    }
+  ],
+  "state": "complete",
+  "stop_reason": "the chain closed: every claim carries a verdict and every sentence of the answer names what it rests on.",
+  "synthesis": {
+    "note": "Phase 1: one capability was invoked and it was a declared SIMULATION. Nothing in this answer was measured from any image. Every statement below is a reading of the question and the pictures, or a record of what would have to be observed for it to become more than that.",
+    "provenance": {
+      "composed_at": "2026-08-09T00:00:00+00:00",
+      "composer": "deterministic",
+      "measured_anything": false,
+      "model": null,
+      "producer": "inquiry_session/composer-v1",
+      "prompt_sha256": "d9c65f8222e1c3703e8bb04cce5c67ec748f1fd29cd87a03894a4602f576ffed",
+      "simulated_capability": true
+    },
+    "remainder_refs": [
+      "rem_e6fdd569f415",
+      "rem_e6563b050c73"
+    ],
+    "sections": [
+      {
+        "claim_refs": [
+          "clm_8da611c48960",
+          "clm_308e5a70c091"
+        ],
+        "decision_refs": [],
+        "evidence_refs": [],
+        "heading": "What can be said, as a reading",
+        "refusal_refs": [],
+        "section_id": "sec_d8909b81ffcf",
+        "status": "interpretive",
+        "text": "These are readings of the pictures rather than measurements of them, and they are not the weaker for it — nothing measurable would settle them. · the first interior reads as more composed than the second · the coffering diminishes because the shell must lose thickness toward the crown",
+        "user_authored": false
+      },
+      {
+        "claim_refs": [
+          "clm_c6e20fd1d9a4"
+        ],
+        "decision_refs": [],
+        "evidence_refs": [],
+        "heading": "What is attributed to something outside the pictures",
+        "refusal_refs": [],
+        "section_id": "sec_381d171ff90f",
+        "status": "sourced",
+        "text": "Nothing in this session consulted a source, so each of these stands as an attribution awaiting one, not as an established fact. · coffering that diminishes toward a crown follows a documented convention",
+        "user_authored": false
+      },
+      {
+        "claim_refs": [
+          "clm_436a8e329425"
+        ],
+        "decision_refs": [],
+        "evidence_refs": [],
+        "heading": "What is proposed rather than found",
+        "refusal_refs": [],
+        "section_id": "sec_c37062d70a06",
+        "status": "imagined",
+        "text": "Put forward by the compilation as something that could follow. Nothing tested any of it, and nothing in the pictures asserts it. · a hybrid would keep the single closing surface and take its interval from the bays",
+        "user_authored": false
+      },
+      {
+        "claim_refs": [
+          "clm_d5925d97e917",
+          "clm_4197e51719a7",
+          "clm_e4394662434a",
+          "clm_9250959030f4",
+          "clm_21176ef2d90f",
+          "clm_c6e20fd1d9a4",
+          "clm_eafd28c12900",
+          "clm_54fc30c9e5ff"
+        ],
+        "decision_refs": [],
+        "evidence_refs": [],
+        "heading": "What nothing here settled",
+        "refusal_refs": [],
+        "section_id": "sec_86b31614461b",
+        "status": "unresolved",
+        "text": "One operational route was selected and invoked, and what came back was a declared simulation — it proves the route ran and nothing else. Each of the following is open, and none of it is reported as absent: · a single unbroken dome closes the first interior overhead · a ring of engaged columns stands against the drum · the ring of columns stands within the dome's footprint · the coffering diminishes in scale as it rises toward the crown · the second interior is closed by a repeated element rather than a single one · coffering that diminishes toward a crown follows a documented convention · the ring of columns reads as carrying the dome while standing forward of the wall that does · what the prompt means by a structure's demand is not settled",
+        "user_authored": false
+      },
+      {
+        "claim_refs": [],
+        "decision_refs": [
+          "dec_f1fceb1b67b3"
+        ],
+        "evidence_refs": [],
+        "heading": "What your decision changed",
+        "refusal_refs": [],
+        "section_id": "sec_cb95f3b47e39",
+        "status": "unresolved",
+        "text": "A choice was made about how this inquiry proceeded. It changed which investigation was commissioned; it is not itself a finding about the pictures. · Measure the ceiling as one extent, or measure each element and count them? — you: the person chose 'alt_001cc98570b0': one region, quickly, with the question begged",
+        "user_authored": false
+      },
+      {
+        "claim_refs": [],
+        "decision_refs": [],
+        "evidence_refs": [],
+        "heading": "What measurement would not exhaust",
+        "refusal_refs": [
+          "rem_e6fdd569f415",
+          "rem_e6563b050c73"
+        ],
+        "section_id": "sec_d5063589c942",
+        "status": "interpretive",
+        "text": "What would still not be settled even if every requested measurement succeeded. · composure — an ordered diminution and a contrast of means both bear on it and neither settles it; nothing returns a number for how composed a room reads · a structure's demand — the prompt's phrase names an obligation rather than a thing in a picture, and no instrument is scoped to an obligation",
+        "user_authored": false
+      }
+    ],
+    "synthesis_id": "syn_c4ebdc99991f"
+  },
+  "trace": [
+    {
+      "actor": "engine",
+      "actor_kind": "engine",
+      "at": "2026-08-09T00:00:00+00:00",
+      "event_id": "session_opened#0",
+      "reason": "session opened in consult mode",
+      "refs": [],
+      "revision": 0,
+      "transition": "session_opened"
+    },
+    {
+      "actor": "engine",
+      "actor_kind": "engine",
+      "at": "2026-08-09T00:00:00+00:00",
+      "event_id": "phase_advanced#1",
+      "reason": "the graph is compiled; forks may now be offered",
+      "refs": [],
+      "revision": 1,
+      "transition": "phase_advanced"
+    },
+    {
+      "actor": "engine",
+      "actor_kind": "engine",
+      "at": "2026-08-09T00:00:00+00:00",
+      "event_id": "candidate_offered#2",
+      "reason": "1 candidate(s) offered",
+      "refs": [],
+      "revision": 2,
+      "transition": "candidate_offered"
+    },
+    {
+      "actor": "steward",
+      "actor_kind": "steward",
+      "at": "2026-08-09T00:00:00+00:00",
+      "event_id": "decision_requested#3",
+      "reason": "consult mode pauses at a material fork: two readings of choose_operationalization would produce substantially different investigations, and the person's answer changes which one happens",
+      "refs": [
+        "clm_d5925d97e917",
+        "obs_60002803d1bd",
+        "dec_f1fceb1b67b3"
+      ],
+      "revision": 2,
+      "transition": "decision_requested"
+    },
+    {
+      "actor": "user",
+      "actor_kind": "user",
+      "at": "2026-08-09T00:00:00+00:00",
+      "event_id": "response_received#4",
+      "reason": "the person chose 'alt_001cc98570b0': one region, quickly, with the question begged",
+      "refs": [
+        "clm_d5925d97e917",
+        "obs_60002803d1bd",
+        "dec_f1fceb1b67b3"
+      ],
+      "revision": 3,
+      "transition": "response_received"
+    },
+    {
+      "actor": "engine",
+      "actor_kind": "engine",
+      "at": "2026-08-09T00:00:00+00:00",
+      "event_id": "phase_advanced#5",
+      "reason": "every fork is settled; work may be commissioned",
+      "refs": [],
+      "revision": 4,
+      "transition": "phase_advanced"
+    },
+    {
+      "actor": "engine",
+      "actor_kind": "engine",
+      "at": "2026-08-09T00:00:00+00:00",
+      "event_id": "phase_advanced#6",
+      "reason": "commissioning at most one capability request",
+      "refs": [],
+      "revision": 5,
+      "transition": "phase_advanced"
+    },
+    {
+      "actor": "engine",
+      "actor_kind": "engine",
+      "at": "2026-08-09T00:00:00+00:00",
+      "event_id": "phase_advanced#7",
+      "reason": "deciding what each claim now rests on",
+      "refs": [],
+      "revision": 6,
+      "transition": "phase_advanced"
+    },
+    {
+      "actor": "engine",
+      "actor_kind": "engine",
+      "at": "2026-08-09T00:00:00+00:00",
+      "event_id": "phase_advanced#8",
+      "reason": "binding an answer to the claims it rests on",
+      "refs": [],
+      "revision": 7,
+      "transition": "phase_advanced"
+    },
+    {
+      "actor": "engine",
+      "actor_kind": "engine",
+      "at": "2026-08-09T00:00:00+00:00",
+      "event_id": "session_closed#9",
+      "reason": "the chain closed: every claim carries a verdict and every sentence of the answer names what it rests on.",
+      "refs": [],
+      "revision": 8,
+      "transition": "session_closed"
+    }
+  ],
+  "verdicts": [
+    {
+      "claim_ref": "clm_d5925d97e917",
+      "evidence_refs": [],
+      "outcome": "unresolved",
+      "receipt_refs": [
+        "capr_0e424bbf6f96"
+      ],
+      "verdict_id": "vrd_11fc8f440169",
+      "why": "an operational route was selected and invoked, and what came back does not bear on the claim — the receipt is a declared simulation, which proves the route ran and nothing else"
+    },
+    {
+      "claim_ref": "clm_4197e51719a7",
+      "evidence_refs": [],
+      "outcome": "not_investigated",
+      "receipt_refs": [],
+      "verdict_id": "vrd_07a102ef3f12",
+      "why": "the compiler declared no observable for this claim; there was nothing to ask"
+    },
+    {
+      "claim_ref": "clm_e4394662434a",
+      "evidence_refs": [],
+      "outcome": "not_investigated",
+      "receipt_refs": [],
+      "verdict_id": "vrd_1d48d3a5a8da",
+      "why": "1 observable(s) were declared for this claim and none was invoked. Phase 1 spends its one capability attempt on the fork a person settled."
+    },
+    {
+      "claim_ref": "clm_9250959030f4",
+      "evidence_refs": [],
+      "outcome": "not_investigated",
+      "receipt_refs": [],
+      "verdict_id": "vrd_4076bd7d8856",
+      "why": "1 observable(s) were declared for this claim and none was invoked. Phase 1 spends its one capability attempt on the fork a person settled."
+    },
+    {
+      "claim_ref": "clm_21176ef2d90f",
+      "evidence_refs": [],
+      "outcome": "not_investigated",
+      "receipt_refs": [],
+      "verdict_id": "vrd_533583cf0ed4",
+      "why": "1 observable(s) were declared for this claim and none was invoked. Phase 1 spends its one capability attempt on the fork a person settled."
+    },
+    {
+      "claim_ref": "clm_8da611c48960",
+      "evidence_refs": [],
+      "outcome": "interpretive_only",
+      "receipt_refs": [],
+      "verdict_id": "vrd_37328af539df",
+      "why": "this claim asks to be interpretive, not measured. No instrument settles it, and it is not the weaker for that — it is a different kind of claim."
+    },
+    {
+      "claim_ref": "clm_c6e20fd1d9a4",
+      "evidence_refs": [],
+      "outcome": "not_investigated",
+      "receipt_refs": [],
+      "verdict_id": "vrd_7330696e7793",
+      "why": "1 observable(s) were declared for this claim and none was invoked. Phase 1 spends its one capability attempt on the fork a person settled."
+    },
+    {
+      "claim_ref": "clm_308e5a70c091",
+      "evidence_refs": [],
+      "outcome": "interpretive_only",
+      "receipt_refs": [],
+      "verdict_id": "vrd_0766a86d9473",
+      "why": "this claim asks to be interpretive, not measured. No instrument settles it, and it is not the weaker for that — it is a different kind of claim."
+    },
+    {
+      "claim_ref": "clm_eafd28c12900",
+      "evidence_refs": [],
+      "outcome": "not_investigated",
+      "receipt_refs": [],
+      "verdict_id": "vrd_25e3420a15ce",
+      "why": "the compiler declared no observable for this claim; there was nothing to ask"
+    },
+    {
+      "claim_ref": "clm_436a8e329425",
+      "evidence_refs": [],
+      "outcome": "interpretive_only",
+      "receipt_refs": [],
+      "verdict_id": "vrd_09a8d07f2430",
+      "why": "this claim asks to be imagined, not measured. No instrument settles it, and it is not the weaker for that — it is a different kind of claim."
+    },
+    {
+      "claim_ref": "clm_54fc30c9e5ff",
+      "evidence_refs": [],
+      "outcome": "not_investigated",
+      "receipt_refs": [],
+      "verdict_id": "vrd_9dea46bbfe8b",
+      "why": "the compiler declared no observable for this claim; there was nothing to ask"
+    }
+  ],
+  "why_paused": {}
+}

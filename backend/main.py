@@ -8,6 +8,7 @@ from backend.routers import society
 from backend.routers import scene
 from backend.routers import constellation
 from backend.routers import relations
+from backend.routers import inquiries
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
@@ -166,6 +167,12 @@ app.include_router(constellation.router, prefix="/api/v1/constellation", tags=["
 # many a person has accepted. 2,755 derived against 14 durable against 0 committed — reported apart,
 # because one total would erase the finding. Read-only; the commit surface is the curator's.
 app.include_router(relations.router, prefix="/api/v1/relations", tags=["Relations"], dependencies=[Depends(require_api_key)])
+
+# HARNESS-002D — the semantic inquiry: a question and some pictures, read into claims a person can
+# argue with, paused at the fork where their judgement changes the work, and answered with every
+# sentence bound to what it rests on. Writes exactly one document — the session's own history — and
+# accepts nothing into the perceptual ledger. Phase 1's one capability is a declared SIMULATION.
+app.include_router(inquiries.router, prefix="/api/v1/inquiries", tags=["Semantic Inquiry"], dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
 @app.get("/health")

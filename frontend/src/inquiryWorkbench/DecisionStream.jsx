@@ -13,13 +13,21 @@ import React from 'react';
  * was decided, when it is the mode in which the most was decided without asking.
  */
 
+// The backend's four actors, plus this surface's two older coarser words. `policy` and `steward`
+// are deliberately not one sentence: the thing that CHOSE without asking is not the thing that
+// worded the question, and a reader asking "who decided this?" is asking exactly that difference.
 const DECIDER_COPY = {
     user: 'You chose',
+    policy: 'Semant chose, without asking',
+    steward: 'The steward settled',
+    engine: 'The engine recorded',
     system: 'Semant chose, without asking',
     model: 'A model chose',
 };
 
 const ACTION_COPY = {
+    select_option: 'selected',
+    reject_all: 'rejected every option',
     select: 'selected',
     reject: 'rejected',
     skip: 'skipped',
