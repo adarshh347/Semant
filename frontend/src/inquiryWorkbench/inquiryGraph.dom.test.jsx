@@ -16,8 +16,8 @@ import DecisionStream from './DecisionStream.jsx';
 import DecisionCard from './DecisionCard.jsx';
 import { normalizeSession, openDecision } from './inquiryContract.js';
 import {
-    consultFixture, respondedFixture, completedFixture, autoFixture,
-    measuredEvidenceFixture, unknownFutureFixture, otherDomainFixture,
+    consultFixture, respondedFixture, completedFixture, autoFixture, measuredEvidenceFixture,
+    simulatedEvidenceFixture, unknownFutureFixture, otherDomainFixture,
 } from './inquiryFixtures.js';
 
 let container;
@@ -123,6 +123,19 @@ describe('claim blocks', () => {
             .toMatch(/nothing has been measured/i);
         // the session HAS a receipt for this claim's observable — it just is not evidence
         expect(s.capability_receipts[0].request_ref).toBe('obs_extent');
+    });
+
+    it('an evidence object minted from a FIXTURE gives a claim no support at all', async () => {
+        // Every field on this object looks right and it says `measured`. Only `execution_mode`
+        // says otherwise, and that is the field that decides.
+        const s = normalizeSession(simulatedEvidenceFixture());
+        await render(<ClaimBlocks session={s} />);
+        await click($('[data-claim-id="clm_colonnade"] .iw-expand'));
+        const block = $('[data-claim-id="clm_colonnade"]');
+        expect(block.querySelector('.iw-claim-support')).toBeNull();
+        expect(block.querySelector('.iw-claim-nosupport')).toBeTruthy();
+        expect(block.querySelector('[data-status="measured"]')).toBeNull();
+        expect(container.querySelector('.iw-badge--measured')).toBeNull();
     });
 
     it('a measured badge appears only when a backend EVIDENCE object supplies it', async () => {

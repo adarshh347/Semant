@@ -12,8 +12,8 @@ import TraceView from './TraceView.jsx';
 import { NextActions, SessionHeader } from './InquiryWorkbenchPage.jsx';
 import { normalizeSession } from './inquiryContract.js';
 import {
-    completedFixture, outcomesFixture, measuredEvidenceFixture, unknownFutureFixture,
-    respondedFixture, autoFixture, FIXTURE_PROMPT,
+    completedFixture, outcomesFixture, measuredEvidenceFixture, simulatedEvidenceFixture,
+    unknownFutureFixture, respondedFixture, autoFixture, FIXTURE_PROMPT,
 } from './inquiryFixtures.js';
 
 let container;
@@ -148,6 +148,19 @@ describe('evidence', () => {
         expect(not.textContent).toMatch(/Returned, but not evidence/i);
         expect(not.querySelector('.iw-simulated').textContent).toBe('SIMULATED — not evidence');
         expect(not.textContent).toMatch(/supports no claim/i);
+    });
+
+    it('a fixture-minted evidence object is listed under "not evidence", not filtered away', async () => {
+        const s = normalizeSession(simulatedEvidenceFixture());
+        await render(<EvidencePanel session={s} />);
+        expect($('.iw-evidence-item')).toBeNull();
+        expect($('[data-evidence-count="0"]')).toBeTruthy();
+        const disqualified = $('[data-not-evidence="true"] [data-evidence-id="evd_simulated"]');
+        expect(disqualified).toBeTruthy();
+        expect(disqualified.textContent).toMatch(/produced by a fixture/i);
+        // its `measured` status reaches no badge anywhere on the panel
+        expect($('.iw-badge--measured')).toBeNull();
+        expect($('[data-verdict="supports"]')).toBeNull();
     });
 
     it('a live usable object IS listed as evidence, with its verdict', async () => {

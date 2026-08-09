@@ -16,7 +16,8 @@ import {
 } from './inquiryContract.js';
 import {
     consultFixture, respondedFixture, completedFixture, autoFixture, outcomesFixture,
-    measuredEvidenceFixture, unknownFutureFixture, otherDomainFixture, FIXTURE_PROMPT,
+    measuredEvidenceFixture, simulatedEvidenceFixture, unknownFutureFixture, otherDomainFixture,
+    FIXTURE_PROMPT,
 } from './inquiryFixtures.js';
 
 // ── the lifecycle ────────────────────────────────────────────────────────────
@@ -134,6 +135,19 @@ describe('what may be shown as evidence', () => {
         // and the claim it was requested for gains no support from the receipt
         expect(supportingEvidence(s, 'clm_colonnade')).toEqual([]);
         expect(evidenceForClaim(s, 'clm_colonnade')).toEqual([]);
+    });
+
+    it('an EVIDENCE-shaped object minted from a fixture is still not evidence', () => {
+        // The shape a careless backend actually produces: the same envelope a live object gets,
+        // carrying `measured`, with only `execution_mode` telling the truth.
+        const s = normalizeSession(simulatedEvidenceFixture());
+        expect(s.evidence).toHaveLength(1);
+        expect(s.evidence[0].epistemic_status.value).toBe('measured');
+        expect(isEvidenceGrade(s.evidence[0])).toBe(false);
+        expect(supportingEvidence(s, 'clm_colonnade')).toEqual([]);
+        expect(hasMeasuredEvidence(s)).toBe(false);
+        // it is not dropped, though — it is still attached to the claim, just not as support
+        expect(evidenceForClaim(s, 'clm_colonnade')).toHaveLength(1);
     });
 
     it('derives the outcome from the execution mode, not from the status word', () => {

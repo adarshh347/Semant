@@ -614,6 +614,44 @@ export function measuredEvidenceFixture() {
 }
 
 /**
+ * 6b. The dangerous shape: an EVIDENCE-shaped object minted from a fixture receipt.
+ *
+ * This is the one a careless backend actually produces — the simulation returned a region, the
+ * judge wrapped it in the same envelope a live one would get, and it arrives carrying `measured`.
+ * Every field looks right. Only `execution_mode` says otherwise.
+ *
+ * A mutation probe is why this fixture exists. Deleting the evidence-grade filter from
+ * `supportingEvidence` left the whole suite green, because no fixture had a DISQUALIFIED evidence
+ * object attached to a claim — the Phase-1 sessions have no evidence objects at all, so the
+ * filter had nothing to filter and its removal changed nothing anyone could see.
+ */
+export function simulatedEvidenceFixture() {
+    const s = completedFixture();
+    return {
+        ...s,
+        evidence: [
+            {
+                evidence_id: 'evd_simulated',
+                claim_refs: ['clm_colonnade'],
+                observable_ref: 'obs_extent',
+                receipt_ref: 'capr_locate_1',
+                kind: 'region_extent',
+                epistemic_status: 'measured',
+                summary: 'One region covering 21% of the frame across the lower-middle band.',
+                usable_as_evidence: false,
+                execution_mode: 'fixture',
+                verdict: {
+                    verdict_id: 'vd_sim',
+                    outcome: 'supports',
+                    note: 'Produced by the simulation adapter.',
+                },
+                provenance: { adapter: 'simulation' },
+            },
+        ],
+    };
+}
+
+/**
  * 7. A session from a future server: an unrecognised claim kind, status, session state and
  * receipt status, all at once.
  *
@@ -662,8 +700,45 @@ export function unknownFutureFixture() {
     };
 }
 
-/** 8. The conflict case: the session as the server actually has it, one revision ahead. */
+/**
+ * 8a. STALE: the session moved while you were deciding, but your decision is still open.
+ *
+ * Revision 6 rather than 3, with an extra automatic record appended — so an `expected_revision: 3`
+ * write is correctly rejected, and yet the person's choice may still apply and must not be thrown
+ * away.
+ */
 export function conflictSessionFixture() {
+    return baseSession({
+        state: 'awaiting_user',
+        revision: 6,
+        decision_requests: [clone(DECISION_REQUEST)],
+        decision_records: [
+            {
+                record_id: 'rec_auto_scope',
+                decision_id: 'dec_auto_scope',
+                decider: 'system',
+                action: 'select',
+                question: 'Read both images, or only the one the claim names?',
+                selected_option_id: 'opt_both',
+                selected_label: 'Both images',
+                free_text: '',
+                rationale: 'Reversible and non-authorial, so auto-taken and recorded here.',
+                affected_refs: ['clm_centre_shift'],
+                at: '2026-08-09T09:16:38Z',
+                revision: 6,
+            },
+        ],
+    });
+}
+
+/**
+ * 8b. DUPLICATE: the decision was answered somewhere else entirely.
+ *
+ * A different conflict with a different right answer. Nothing should invite a resubmit here — the
+ * decision is closed — so the page must be able to explain a conflict with no open card to attach
+ * it to.
+ */
+export function duplicateSessionFixture() {
     return {
         ...respondedFixture(),
         revision: 6,

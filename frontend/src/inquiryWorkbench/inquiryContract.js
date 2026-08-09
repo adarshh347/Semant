@@ -434,13 +434,18 @@ export function normalizeReceipt(raw) {
  * absent is not the same as unrecognised. An absent mode leaves the question to
  * `usable_as_evidence`; a mode we have never seen answers it no, because vouching for a mode we
  * do not understand is exactly the coercion-to-a-successful-default the contract forbids.
+ *
+ * THERE IS NO SEPARATE `execution_mode === 'fixture'` CHECK HERE, and there was one until a
+ * mutation probe showed it could never fire: both normalisers already fold fixture mode into
+ * `simulated`, so the extra line read as a second guard while being unreachable. Two guards where
+ * one can never run is worse than one guard, because the redundancy is what makes the remaining
+ * check look optional to whoever edits it next.
  */
 export function isEvidenceGrade(obj) {
     if (!obj) return false;
     if (obj.simulated) return false;
     const mode = obj.execution_mode;
     if (mode && mode.value && !mode.known) return false;
-    if (mode && mode.value === 'fixture') return false;
     return obj.usable_as_evidence === true;
 }
 

@@ -185,6 +185,21 @@ export default function InquiryWorkbenchPage({ client = null, posts: injectedPos
                 />
             ) : null}
 
+            {/* A conflict can arrive with no card left to attach it to: the decision was answered
+                somewhere else, so the refreshed session has closed it. That is a DUPLICATE rather
+                than a stale write, and it needs the opposite advice — nothing here invites a
+                resubmit, because the decision is no longer open. Dropping the message on the floor
+                because its card had gone would leave the person's submit looking like it silently
+                did nothing. */}
+            {conflict && !(awaiting && decision) ? (
+                <p className="iw-conflict" role="alert" data-conflict="answered">
+                    <b>This decision was answered somewhere else.</b> {conflict.message}
+                    {' '}
+                    The session below is the current one, and it already carries the answer. Your
+                    submission was not applied a second time.
+                </p>
+            ) : null}
+
             {error && !awaiting ? <p className="iw-error" role="alert">{error}</p> : null}
 
             <ProvisionalReading reading={session.graph.reading} />
