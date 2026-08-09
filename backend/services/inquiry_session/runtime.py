@@ -39,6 +39,9 @@ def build_stages(*, capability=None, judge=None, composer=None) -> Stages:
     from backend.services.semantic_compilation.compiler import ModelSemanticCompiler
     from backend.services.semantic_compilation.theorist import ModelSceneTheorist
 
+    from .capability import LockedFixtureCapability
+    from .judge import judge as judge_claims
+
     live = _enabled("SEMANT_INQUIRY_LIVE_MODELS")
     return Stages(
         framer=get_framer("deterministic"),
@@ -48,8 +51,11 @@ def build_stages(*, capability=None, judge=None, composer=None) -> Stages:
         # fully capable, and a model that rewords a question is the one model call in this chain
         # whose only effect is on what a person reads. Binding it is a deliberate later act.
         formatter=None,
-        capability=capability,
-        judge=judge,
+        # A NEW adapter per call, deliberately. Its one-attempt counter is per-instance and is not
+        # the firewall — the session's existing receipt is — but a shared instance would spend a
+        # global budget on whichever inquiry happened to be first.
+        capability=capability if capability is not None else LockedFixtureCapability(),
+        judge=judge if judge is not None else judge_claims,
         composer=composer,
     )
 

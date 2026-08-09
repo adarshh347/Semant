@@ -14,6 +14,8 @@ from fastapi.testclient import TestClient
 
 from backend.routers import inquiries as R
 from backend.services.inquiry_session import corpus, store
+from backend.services.inquiry_session.capability import LockedFixtureCapability
+from backend.services.inquiry_session.judge import judge
 from backend.tests.fixtures import inquiry_session_fixtures as F
 
 FIXTURE = "cross-image-comparison"
@@ -37,10 +39,10 @@ def wired(monkeypatch):
     _real_resolve = corpus.resolve
     monkeypatch.setattr(corpus, "resolve", _resolve)
 
-    stages = {"mode": "fixture"}
-
+    # The production bindings for everything except the two model stages, which are frozen. A
+    # fresh capability adapter per call, exactly as `runtime.build_stages` does it.
     def _stages():
-        return F.stages_for(FIXTURE, **{k: v for k, v in stages.items() if k != "mode"})
+        return F.stages_for(FIXTURE, capability=LockedFixtureCapability(), judge=judge)
 
     monkeypatch.setattr(R, "_stages", _stages)
 
@@ -223,13 +225,9 @@ def test_a_free_text_answer_is_kept_verbatim_on_the_record(wired):
 
 # ── auto mode ────────────────────────────────────────────────────────────────
 
-def test_auto_mode_does_not_interrupt_and_still_records_the_fork_it_reached(wired):
-    """Auto mode means no interruption, not no decisions.
-
-    With NO capability adapter bound — which is this commit's state — every option is undeclared,
-    so the honest outcome is `unresolved` with the policy's reason attached, not a silent choice.
-    The `auto_resolved` case arrives with the adapter, and has its own test there.
-    """
+def test_auto_mode_does_not_interrupt_and_shows_every_choice_it_made(wired):
+    """Auto mode means no interruption, not invisible agency: the record is in the same list, in
+    the same chronology, with the same detail as one a person made."""
     client, _, _ = wired
     session = _start(client, mode="auto").json()
 
@@ -238,8 +236,9 @@ def test_auto_mode_does_not_interrupt_and_still_records_the_fork_it_reached(wire
     records = session["decision_records"]
     assert records, "an uninterrupted session with no decisions in it is invisible agency"
     assert records[0]["decider"] == "policy"
-    assert records[0]["outcome"] == "unresolved"
-    assert records[0]["rationale"], "nobody chose, and nothing says why"
+    assert records[0]["outcome"] == "auto_resolved"
+    assert records[0]["rationale"], "something was chosen and nothing says why"
+    assert len(session["capability_receipts"]) == 1
 
 
 # ── the conflicts ────────────────────────────────────────────────────────────
@@ -402,3 +401,18 @@ def test_no_evidence_object_exists_anywhere_in_phase_one(wired):
     session = _start(client).json()
     after = _answer(client, session).json()
     assert after["evidence"] == []
+
+
+def test_the_answer_commissions_exactly_one_simulated_receipt_on_the_wire(wired):
+    """The whole vertical, through HTTP: create → awaiting user → answer → one fixture receipt."""
+    client, _, _ = wired
+    session = _start(client).json()
+    assert session["capability_receipts"] == []
+
+    after = _answer(client, session).json()
+    receipts = after["capability_receipts"]
+    assert len(receipts) == 1
+    assert receipts[0]["execution_mode"] == "fixture"
+    assert receipts[0]["status"] == "simulated"
+    assert receipts[0]["usable_as_evidence"] is False
+    assert after["verdicts"] and all(v["evidence_refs"] == [] for v in after["verdicts"])

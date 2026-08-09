@@ -309,12 +309,145 @@ def resume(session: SemanticInquirySession, response: Mapping[str, Any],
     return _continue(session, stages)
 
 
+# ── the selection a settled fork made ────────────────────────────────────────
+
+def selection_for(session: SemanticInquirySession) -> Tuple[Optional[Dict[str, Any]],
+                                                            Optional[Dict[str, Any]]]:
+    """(observable, alternative) — the operational route a settled decision actually chose.
+
+    Found through the DECISION's `affected_refs`, which name the observable the fork was about, and
+    then matched to one of that observable's alternatives BY LABEL. The label is the link because
+    ids cannot be: Lane A mints `alternative_id` from `(inquiry, OWNER, label)` and the owner is the
+    decision in one place and the observable in the other, so the same choice has two ids by
+    construction and only the observable's copy carries capability classes.
+
+    Returns `(None, None)` when nothing was chosen — an unresolved, rejected or deferred fork. That
+    is not a failure to find a selection; it is the absence of one, and nothing should run.
+    """
+    if not session.interaction:
+        return None, None
+    state = machine.from_dict(session.interaction)
+    observables = {str(o.get("observable_id") or ""): o
+                   for o in (session.graph.get("observables") or ())
+                   if isinstance(o, Mapping)}
+
+    for record in state.records:
+        if not record.chosen_option_id:
+            continue
+        request = state.request(record.decision_id)
+        if request is None:
+            continue
+        option = request.option(record.chosen_option_id)
+        if option is None:
+            continue
+        wanted = ids.normalise(option.label)
+        for ref in request.affected_refs:
+            observable = observables.get(str(ref))
+            if observable is None:
+                continue
+            for alternative in observable.get("alternatives") or ():
+                if not isinstance(alternative, Mapping):
+                    continue
+                label = " ".join(str(alternative.get("label") or "").split()).strip().lower()
+                if ids.normalise(label) == wanted:
+                    return dict(observable), dict(alternative)
+            # The fork named this observable and no alternative matched the chosen label. The
+            # observable is still the thing that was chosen ABOUT, so it is returned without one.
+            return dict(observable), None
+    return None, None
+
+
+# ── the remaining stages ─────────────────────────────────────────────────────
+
+def _execute(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
+             at: str) -> SemanticInquirySession:
+    """Zero or one capability invocation, depending on what was decided. Never two.
+
+    THE FIREWALL IS THE SESSION, not the adapter's counter. A fresh adapter is built per request,
+    so an instance counter resets across a pause; the receipt already on the session does not. This
+    check is the one that survives a restart, a redeploy and a second process.
+    """
+    if stages.capability is None:
+        ledger.record(StageName.CAPABILITY, StageOutcome.SKIPPED, at=at,
+                      detail="no capability adapter is bound to this deployment")
+        return session
+    if session.capability_receipts:
+        ledger.record(StageName.CAPABILITY, StageOutcome.SKIPPED, at=at,
+                      detail=f"this session has already spent its one attempt on receipt "
+                             f"{session.capability_receipts[0].receipt_id}",
+                      inputs=[r.receipt_id for r in session.capability_receipts])
+        return session
+
+    observable, alternative = selection_for(session)
+    if observable is None:
+        ledger.record(StageName.CAPABILITY, StageOutcome.SKIPPED, at=at,
+                      detail="no fork was settled on an operational route, so nothing was "
+                             "commissioned. Nothing was chosen on anybody's behalf.")
+        return session
+
+    ledger.record(StageName.CAPABILITY, StageOutcome.STARTED, at=at,
+                  inputs=[str(observable.get("observable_id") or "")])
+    receipt = stages.capability.invoke(
+        session_id=session.session_id, observable=observable, alternative=alternative,
+        images=corpus.image_refs_for(session.posts), at=at)
+    outcome = {"simulated": StageOutcome.COMPLETED, "live": StageOutcome.COMPLETED,
+               "empty": StageOutcome.EMPTY, "refused": StageOutcome.REFUSED,
+               "unavailable": StageOutcome.UNAVAILABLE,
+               "capability_gap": StageOutcome.EMPTY}.get(receipt.status.value, StageOutcome.EMPTY)
+    ledger.record(StageName.CAPABILITY, outcome, at=at,
+                  detail=f"{receipt.capability} · {receipt.execution_mode.value} · "
+                         f"{receipt.status.value}",
+                  outputs=[receipt.receipt_id])
+    return session.model_copy(update={
+        "capability_receipts": [*session.capability_receipts, receipt],
+        "selected_observable_ref": str(observable.get("observable_id") or ""),
+    })
+
+
+def _judge(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
+           at: str) -> SemanticInquirySession:
+    if stages.judge is None:
+        ledger.record(StageName.JUDGE, StageOutcome.SKIPPED, at=at,
+                      detail="no evidence judge is bound to this deployment")
+        return session
+    ledger.record(StageName.JUDGE, StageOutcome.STARTED, at=at)
+    verdicts = stages.judge(session)
+    outcome = StageOutcome.COMPLETED if verdicts else StageOutcome.EMPTY
+    counts = {}
+    for v in verdicts:
+        counts[v.outcome.value] = counts.get(v.outcome.value, 0) + 1
+    ledger.record(StageName.JUDGE, outcome, at=at,
+                  detail=" · ".join(f"{k} {n}" for k, n in sorted(counts.items())) or "no claims",
+                  outputs=[v.verdict_id for v in verdicts])
+    return session.model_copy(update={"verdicts": list(verdicts)})
+
+
+def _compose(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
+             at: str) -> SemanticInquirySession:
+    """One synthesis per completed branch. The composer refuses rather than inventing a reference."""
+    ledger.record(StageName.COMPOSER, StageOutcome.STARTED, at=at,
+                  inputs=[v.verdict_id for v in session.verdicts])
+    synthesis = stages.composer.compose(session, at=at)
+    if synthesis is None or not synthesis.sections:
+        ledger.record(StageName.COMPOSER, StageOutcome.EMPTY, at=at,
+                      detail="the composer wrote nothing it could bind to a claim")
+        return session
+    ledger.record(StageName.COMPOSER, StageOutcome.COMPLETED, at=at,
+                  detail=f"{len(synthesis.sections)} section(s)",
+                  outputs=[s.section_id for s in synthesis.sections])
+    return session.model_copy(update={
+        "synthesis": synthesis,
+        "provenance": session.provenance.model_copy(update={
+            "composer_model": str((synthesis.provenance or {}).get("model") or "") or None}),
+    })
+
+
 def _continue(session: SemanticInquirySession, stages: Stages) -> SemanticInquirySession:
     """From wherever the session now is, to the next boundary.
 
-    Phase 1's remaining stages — capability, judge, composer — are added by later commits. Until
-    one is bound it is SKIPPED and says so, and the session stops at `ready` rather than pretending
-    to have finished.
+    Each remaining stage is entered at most once per advance and is SKIPPED with a reason when
+    nothing is bound — a deployment missing a composer stops at an honest `exhausted` rather than
+    silently producing no answer.
     """
     at = stages.clock()
     state = machine.from_dict(session.interaction)
@@ -327,22 +460,45 @@ def _continue(session: SemanticInquirySession, stages: Stages) -> SemanticInquir
     ledger = _Ledger(session.session_id, seq=len(session.stages))
     state = machine.advance(state, SessionState.READY, at=at,
                             reason="every fork is settled; work may be commissioned")
-    session = session.model_copy(update={"interaction": machine.to_dict(state),
-                                         "revision": state.revision})
 
-    for stage, bound in ((StageName.CAPABILITY, stages.capability),
-                         (StageName.JUDGE, stages.judge),
-                         (StageName.COMPOSER, stages.composer)):
-        if bound is None:
-            ledger.record(stage, StageOutcome.SKIPPED, at=at,
-                          detail=f"no {stage.value} was bound to this deployment")
-    session = session.model_copy(update={"stages": [*session.stages, *ledger.events]})
+    state = machine.advance(state, SessionState.EXECUTING, at=at,
+                            reason="commissioning at most one capability request")
+    session = _apply(session, state, ledger)
+    session = _execute(session, stages, ledger, at)
+
+    state = machine.advance(machine.from_dict(session.interaction), SessionState.JUDGING, at=at,
+                            reason="deciding what each claim now rests on")
+    session = _apply(session, state, ledger)
+    session = _judge(session, stages, ledger, at)
 
     if stages.composer is None:
+        ledger.record(StageName.COMPOSER, StageOutcome.SKIPPED, at=at,
+                      detail="no synthesis composer is bound to this deployment")
+        session = session.model_copy(update={"stages": [*session.stages, *ledger.events]})
         return _finish(session, SessionState.EXHAUSTED, at,
-                       "the chain reached `ready` and no composer is bound, so no answer was "
+                       "every claim has a verdict and no composer is bound, so no answer was "
                        "written. Nothing was invented in its place.", stages)
-    return session
+
+    state = machine.advance(machine.from_dict(session.interaction), SessionState.COMPOSING, at=at,
+                            reason="binding an answer to the claims it rests on")
+    session = _apply(session, state, ledger)
+    session = _compose(session, stages, ledger, at)
+    session = session.model_copy(update={"stages": [*session.stages, *ledger.events]})
+    return _finish(session, SessionState.COMPLETE, at,
+                   "the chain closed: every claim carries a verdict and every sentence of the "
+                   "answer names what it rests on.", stages)
+
+
+def _apply(session: SemanticInquirySession, state: Any,
+           ledger: _Ledger) -> SemanticInquirySession:
+    """Carry a Lane B transition onto the envelope. Kept apart so no stage writes the state itself.
+
+    The ledger's sequence follows the session's stage count so two advances in one request cannot
+    mint the same event id.
+    """
+    ledger.seq = max(ledger.seq, len(session.stages) + len(ledger.events))
+    return session.model_copy(update={"interaction": machine.to_dict(state),
+                                      "revision": state.revision})
 
 
 def _finish(session: SemanticInquirySession, to: SessionState, at: str, why: str,
@@ -361,5 +517,6 @@ def _finish(session: SemanticInquirySession, to: SessionState, at: str, why: str
                                       "revision": state.revision, "stop_reason": why})
 
 
-__all__ = ["PRODUCER", "Stages", "utc_now", "new_session", "servable_classes", "steward_for", "begin", "resume",
-           "InteractionConflict", "read_response", "SessionState", "machine"]
+__all__ = ["PRODUCER", "Stages", "utc_now", "new_session", "servable_classes", "steward_for",
+           "selection_for", "begin", "resume", "InteractionConflict", "read_response",
+           "SessionState", "machine"]
