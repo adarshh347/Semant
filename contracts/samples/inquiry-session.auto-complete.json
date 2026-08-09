@@ -1271,7 +1271,7 @@
     "created_at": "2026-08-09T00:00:00+00:00",
     "frame_hash": "51329579cc62d45b78b078b2cf947b88f5ed340f07cb2a5cefdc0c920886c197",
     "frame_producer": "inquiry/deterministic-v1",
-    "graph_hash": "sig_bb4a66c63a4ab600",
+    "graph_hash": "sig_34a98dae79f036e8",
     "mode": "auto",
     "notes": [],
     "producer": "inquiry_session/coordinator-v1",

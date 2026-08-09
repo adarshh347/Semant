@@ -433,6 +433,10 @@ class ClaimNode(_Strict):
     epistemic_demand: DemandKind = DemandKind.INTERPRETIVE
     status: ClaimStatus = ClaimStatus.INTERPRETIVE
     inferred_from: List[str] = Field(default_factory=list)
+    #: v2. The atoms this claim was built from. Empty on a v1 graph and on a claim the architect
+    #: declared as its own inference — `inferred_from` carries the parents in that case, and the two
+    #: fields answer different questions: which ATOMS say this, and which CLAIMS it follows from.
+    atom_refs: List[str] = Field(default_factory=list)
     note: str = ""
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True,
@@ -934,6 +938,14 @@ class SemanticInquiryGraph(_Strict):
                     raise ValueError(
                         f"coverage {entry.coverage_id} says its unit duplicates {entry.refs[0]!r}, "
                         f"which is not a source unit in this graph.")
+
+        for claim in self.claims:
+            for ref in claim.atom_refs:
+                if ref not in atom_ids:
+                    raise ValueError(
+                        f"claim {claim.claim_id} is built from atom {ref!r}, which is not in this "
+                        f"graph. A claim standing on an atom that was refused is one whose warrant "
+                        f"was removed while the claim stayed.")
 
         # A USER STATEMENT STAYS THE USER'S. Enforced on the graph as well as on the atom, because
         # the atom cannot see which KIND of unit it was anchored to.
