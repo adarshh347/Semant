@@ -15,11 +15,18 @@ The modules:
 
     contracts.py   loads `contracts/semantic-inquiry-graph.v1.json` and scans for geometry keys
     ids.py         content-derived ids, so a replay is a comparison rather than an act of faith
+    base.py        the two seams — `SceneTheorist` and `SemanticCompiler` — and what crosses them
+    theorist.py    the VLM that reads the pictures, replayed or live, authoring no geometry
 """
 from __future__ import annotations
 
 from backend.schemas.semantic_compilation import SCHEMA_VERSION, SemanticInquiryGraph
 
 from . import contracts, ids
+from .base import (CompilationRequest, ReadingResult, SceneTheorist, SemanticCompiler,
+                   to_image_refs)
+from .theorist import FrozenSceneTheorist, ModelSceneTheorist
 
-__all__ = ["SCHEMA_VERSION", "SemanticInquiryGraph", "contracts", "ids"]
+__all__ = ["SCHEMA_VERSION", "SemanticInquiryGraph", "contracts", "ids",
+           "CompilationRequest", "ReadingResult", "SceneTheorist", "SemanticCompiler",
+           "to_image_refs", "FrozenSceneTheorist", "ModelSceneTheorist"]

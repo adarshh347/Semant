@@ -178,6 +178,7 @@ class CompilerRefusalKind(str, Enum):
     UNKNOWN_GROUND_FORM = "unknown_ground_form"
     UNKNOWN_EDGE_KIND = "unknown_edge_kind"
     UNKNOWN_DEMAND_KIND = "unknown_demand_kind"
+    UNKNOWN_READING_BLOCK_KIND = "unknown_reading_block_kind"
     GEOMETRY_IN_A_READING = "geometry_in_a_reading"
     MEASURED_STATUS_CLAIMED = "measured_status_claimed"
     DANGLING_REFERENCE = "dangling_reference"

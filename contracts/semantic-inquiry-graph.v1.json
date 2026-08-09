@@ -85,6 +85,7 @@
       "unknown_ground_form",
       "unknown_edge_kind",
       "unknown_demand_kind",
+      "unknown_reading_block_kind",
       "geometry_in_a_reading",
       "measured_status_claimed",
       "dangling_reference",
