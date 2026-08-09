@@ -41,6 +41,7 @@ export default function CorpusPicker({
     onDeselect,
     tag = null,
     autoLoad = true,
+    injected = [],
 }) {
     const [posts, setPosts] = useState([]);
     const [pagesLoaded, setPagesLoaded] = useState(0);
@@ -85,7 +86,11 @@ export default function CorpusPicker({
         if (autoLoad && pagesLoaded === 0 && status === 'idle') loadNext();
     }, [autoLoad, pagesLoaded, status, loadNext]);
 
-    const shown = useMemo(() => filterPosts(posts, query), [posts, query]);
+    // `injected` is what this session uploaded. It goes in FRONT of the loaded pages and is
+    // de-duplicated by the same merge the pages use, so when the page a new post belongs to
+    // eventually loads it does not appear twice.
+    const all = useMemo(() => mergePosts(injected, posts), [injected, posts]);
+    const shown = useMemo(() => filterPosts(all, query), [all, query]);
     const complete = status === 'done';
 
     const toggle = (post) => {
@@ -116,7 +121,7 @@ export default function CorpusPicker({
             {query.trim() ? (
                 <p className="ic-scope" role="status" data-scope-note="true">
                     {searchScopeNote({
-                        loadedCount: posts.length, pagesLoaded, totalPages, done: complete,
+                        loadedCount: all.length, pagesLoaded, totalPages, done: complete,
                     })}
                 </p>
             ) : null}
@@ -222,8 +227,8 @@ export default function CorpusPicker({
 
                 {complete ? (
                     <span className="ic-status ic-status--done" data-corpus="complete">
-                        That is the whole archive — {posts.length} image
-                        {posts.length === 1 ? '' : 's'}.
+                        That is the whole archive — {all.length} image
+                        {all.length === 1 ? '' : 's'}.
                     </span>
                 ) : (
                     <button

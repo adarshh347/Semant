@@ -1,7 +1,8 @@
-import React, { useCallback, useImperativeHandle, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { INTERACTION_MODES, DEFAULT_MODE, MODE_COPY, canStartInquiry } from './inquiryContract';
 import CorpusPicker from '../inquiryCorpus/CorpusPicker.jsx';
+import UploadAndInclude from '../inquiryCorpus/UploadAndInclude.jsx';
 import { createCorpusClient } from '../inquiryCorpus/corpusClient.js';
 
 /**
@@ -40,19 +41,19 @@ function ConnectedCorpusPicker(props) {
  */
 export default function InquiryEntry({
     corpusClient = null,
-    selectionRef = null,
     busy = false,
     error = '',
     unavailable = '',
     onStart,
     initialPrompt = '',
     initialMode = DEFAULT_MODE,
-    aside = null,
+    openUpload = null,
 }) {
     // POSTS, not ids. An id-only selection cannot render a tray for an image whose page is no
     // longer loaded, and after HARNESS-003C the corpus is paged — so a person who picked on page
     // one and paged to four would watch their own choices turn back into hex strings.
     const [selected, setSelected] = useState([]);
+    const [uploaded, setUploaded] = useState([]);
     const [prompt, setPrompt] = useState(initialPrompt);
     const [mode, setMode] = useState(initialMode);
 
@@ -69,14 +70,22 @@ export default function InquiryEntry({
     const deselect = useCallback((id) => setSelected((prev) =>
         prev.filter((p) => p.id !== id)), []);
 
-    // An upload joins the selection immediately, and never at the cost of what was already chosen.
-    useImperativeHandle(selectionRef, () => ({
-        add: (posts) => setSelected((prev) => {
+    /**
+     * A freshly uploaded image joins the selection AND the grid.
+     *
+     * The grid too, not only the tray: a new post lands at the top of page 1 in the API's
+     * `_id`-descending order, so waiting for a refetch would leave the person's own upload
+     * invisible in the very list they are choosing from. `injected` puts it in front, and the
+     * picker's own de-duplication removes the copy when the page it belongs to eventually loads.
+     */
+    const include = useCallback((posts) => {
+        setUploaded((prev) => [...posts, ...prev.filter(
+            (p) => !posts.some((q) => q.id === p.id))]);
+        setSelected((prev) => {
             const have = new Set(prev.map((p) => p.id));
-            return [...prev, ...posts.filter((p) => p && p.id && !have.has(p.id))];
-        }),
-        ids: () => selected.map((p) => p.id),
-    }), [selected]);
+            return [...prev, ...posts.filter((p) => !have.has(p.id))];
+        });
+    }, []);
 
     const submit = (e) => {
         e.preventDefault();
@@ -112,22 +121,21 @@ export default function InquiryEntry({
 
             <fieldset className="iw-field">
                 <legend className="iw-legend">Images</legend>
-                {/* The upload-and-include control mounts here in the browser. It is a slot rather
-                    than a built-in so this form keeps no dependency on the shell's upload dialog,
-                    which lives outside this lane's write set. */}
-                {aside}
+                <UploadAndInclude onUploaded={include} openUpload={openUpload} />
                 {corpusClient ? (
                     <CorpusPicker
                         client={corpusClient}
                         selected={selected}
                         onSelect={select}
                         onDeselect={deselect}
+                        injected={uploaded}
                     />
                 ) : (
                     <ConnectedCorpusPicker
                         selected={selected}
                         onSelect={select}
                         onDeselect={deselect}
+                        injected={uploaded}
                     />
                 )}
             </fieldset>

@@ -50,7 +50,6 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
     const [conflict, setConflict] = useState(null);
     const [unavailable, setUnavailable] = useState('');
     const unwatch = useRef(null);
-    const selectionRef = useRef(null);
 
     // THE CORPUS IS NO LONGER FETCHED HERE. It used to be one call — page 1, limit 24 — and that
     // single line was the whole reason the 002R rehearsal could not ask a question of most of the
@@ -140,7 +139,6 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
             <main className="iw-shell">
                 <InquiryEntry
                     corpusClient={corpusClient}
-                    selectionRef={selectionRef}
                     busy={busy}
                     error={error}
                     unavailable={unavailable}
