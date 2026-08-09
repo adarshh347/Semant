@@ -1219,3 +1219,126 @@
 }
 
 .iw-absence-note { line-height: 1.5; }
+
+/* ── the diagnosis ─────────────────────────────────────────────────────── */
+
+/* Heavy, accented and above the prose. A run that stopped short must not be able to look like one
+   that finished, and a diagnosis under a fluent paragraph is a diagnosis nobody reads. */
+.iw-diagnosis {
+    border: 2px solid var(--accent);
+    border-left-width: 5px;
+    background: var(--surface);
+}
+
+.iw-diagnosis-head {
+    margin: 0;
+    font-size: 1.125rem;
+    line-height: 1.3;
+    color: var(--accent-deep);
+}
+
+.iw-diagnosis-what { margin: 0; font-size: .9375rem; line-height: 1.5; }
+
+.iw-diagnosis-io {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: .5rem;
+    padding: .625rem .75rem;
+    background: var(--surface-2);
+    border-radius: .375rem;
+}
+
+.iw-diagnosis-io > div { display: flex; flex-direction: column; gap: .125rem; }
+
+.iw-diagnosis-io dt {
+    font-size: .625rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+}
+
+.iw-diagnosis-io dd { margin: 0; font-size: .875rem; font-variant-numeric: tabular-nums; }
+
+.iw-diagnosis-summary { margin: 0; font-size: .9375rem; line-height: 1.5; }
+.iw-diagnosis-downstream { display: flex; flex-direction: column; gap: .25rem; font-size: .875rem; }
+.iw-diagnosis-downstream p { margin: 0; line-height: 1.5; }
+
+.iw-diagnosis-reading-only {
+    margin: 0;
+    padding: .625rem .75rem;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+    font-size: .875rem;
+    line-height: 1.55;
+}
+
+.iw-diagnosis-stop { margin: 0; font-size: .875rem; line-height: 1.5; }
+.iw-diagnosis-topology { line-height: 1.45; }
+
+/* ── export ────────────────────────────────────────────────────────────── */
+
+.iw-export-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+
+.iw-export-btn {
+    padding: .375rem .875rem;
+    font: inherit;
+    font-size: .8125rem;
+    font-weight: 600;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: .25rem;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.iw-export-btn:hover { transform: none; box-shadow: none; background: var(--accent-deep); }
+
+.iw-export-ids { margin: 0; display: grid; gap: .25rem; font-size: .8125rem; }
+.iw-export-ids > div { display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; }
+.iw-export-ids dt { color: var(--ink-subtle); min-width: 5rem; }
+.iw-export-ids dd { margin: 0; display: flex; gap: .5rem; align-items: baseline; min-width: 0; overflow-wrap: anywhere; }
+
+.iw-copy {
+    padding: .0625rem .375rem;
+    font: inherit;
+    font-size: .6875rem;
+    font-weight: 400;
+    color: var(--ink-muted);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: .1875rem;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.iw-copy:hover { transform: none; box-shadow: none; border-color: var(--line-strong); color: var(--ink); }
+
+.iw-quarantine {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    padding: .625rem .75rem;
+    border: 1px dashed var(--accent);
+    border-radius: .375rem;
+    background: var(--surface-2);
+}
+
+.iw-quarantine-text {
+    margin: 0;
+    padding: .5rem;
+    max-height: 18rem;
+    overflow: auto;
+    font-size: .6875rem;
+    line-height: 1.5;
+    background: var(--bg);
+    border-radius: .25rem;
+    white-space: pre-wrap;
+}
+
+.iw-export-btn:focus-visible, .iw-copy:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}

@@ -11,6 +11,8 @@ import SynthesisView from './SynthesisView.jsx';
 import TraceView from './TraceView.jsx';
 import StageActivity from './StageActivity.jsx';
 import ArtifactLedger from './ArtifactLedger.jsx';
+import DiagnosisCard from './DiagnosisCard.jsx';
+import SessionExport from './SessionExport.jsx';
 import { createInquiryClient } from './inquiryClient.js';
 import {
     openDecision, outcomeCounts, STATE_LABEL, MODE_COPY,
@@ -195,6 +197,11 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
 
             {error && !awaiting ? <p className="iw-error" role="alert">{error}</p> : null}
 
+            {/* BEFORE THE PROSE. A collapsed diagnosis under a fluent paragraph is a diagnosis
+                nobody reads, and the 002R rehearsal ended EXHAUSTED with a perceptive VLM
+                paragraph on screen and no way to see that nothing had been compiled from it. */}
+            <DiagnosisCard session={session} />
+
             <ProvisionalReading reading={session.graph.reading} />
             <ClaimBlocks
                 session={session}
@@ -211,6 +218,7 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
             <EvidencePanel session={session} />
             <SynthesisView session={session} />
             <TraceView trace={session.trace} />
+            <SessionExport session={session} />
 
             <button type="button" className="iw-expand iw-again" onClick={reset}>
                 Ask something else

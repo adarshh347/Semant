@@ -877,6 +877,41 @@ export function underperformingStages(session) {
     return (session?.stages || []).filter((s) => s.underperformed);
 }
 
+/**
+ * The EARLIEST stage that underperformed.
+ *
+ * Everything after a failure is a consequence of it, and naming a consequence as the cause sends a
+ * reader to the wrong place — "the composer produced two sections" is true and useless when the
+ * compiler that fed it stopped mid-output.
+ */
+export function earliestFailure(stages) {
+    const failed = (stages || []).filter((s) => s.underperformed);
+    if (!failed.length) return null;
+    return failed.reduce((a, b) =>
+        (STAGE_NAMES.indexOf(a.stage.value) <= STAGE_NAMES.indexOf(b.stage.value) ? a : b));
+}
+
+/** Stages that never ran at all after a given one — by DECLARED order, not by guesswork. */
+export function downstreamOf(stageName, stages) {
+    const idx = STAGE_NAMES.indexOf(stageName);
+    if (idx < 0) return [];
+    const reached = new Set((stages || []).map((s) => s.stage.value));
+    return STAGE_NAMES.slice(idx + 1).filter((n) => !reached.has(n));
+}
+
+/**
+ * Stages that DID run after a given one and produced nothing.
+ *
+ * Not the same fact as never running, and a reader deciding what to fix needs to know which: a
+ * stage that ran and came back empty is a different repair from one the coordinator skipped.
+ */
+export function barrenAfter(stageName, stages) {
+    const idx = STAGE_NAMES.indexOf(stageName);
+    if (idx < 0) return [];
+    return (stages || []).filter(
+        (s) => STAGE_NAMES.indexOf(s.stage.value) > idx && s.barren);
+}
+
 // ── the session ──────────────────────────────────────────────────────────────
 
 export function normalizeSession(raw) {
