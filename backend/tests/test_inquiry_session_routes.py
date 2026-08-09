@@ -94,6 +94,18 @@ def _open_decision(session):
     return next((d for d in session["decision_requests"] if not d["answered"]), None)
 
 
+def _answered(client, session, **kw):
+    """Answer, then let the driver finish the stages the answer unblocked.
+
+    The POST returns when the answer is RECORDED, not when the work it unblocked is done — the same
+    architecture the create route has. A test wanting the composed answer settles first, exactly as
+    a client would.
+    """
+    res = _answer(client, session, **kw)
+    assert res.status_code == 200, res.text
+    return _settled(client, res)
+
+
 def _answer(client, session, *, option_index=0, response_id="r1", **over):
     decision = _open_decision(session)
     body = {"decision_id": decision["decision_id"], "response_id": response_id,
@@ -233,7 +245,7 @@ def test_the_pre_answer_trace_is_a_byte_identical_prefix_of_the_one_after(wired)
     client, _, _ = wired
     session = _settled(client, _start(client))
     before = copy.deepcopy(session["trace"])
-    after = _answer(client, session).json()["trace"]
+    after = _answered(client, session)["trace"]
 
     assert len(after) >= len(before)
     assert after[:len(before)] == before
@@ -243,7 +255,7 @@ def test_the_stage_ledger_is_also_append_only(wired):
     client, _, _ = wired
     session = _settled(client, _start(client))
     before = copy.deepcopy(session["stages"])
-    after = _answer(client, session).json()["stages"]
+    after = _answered(client, session)["stages"]
     assert after[:len(before)] == before
 
 
@@ -253,7 +265,7 @@ def test_a_settled_record_names_who_chose_and_what_they_chose(wired):
     decision = _open_decision(session)
     chosen = decision["options"][0]
 
-    record = _answer(client, session).json()["decision_records"][0]
+    record = _answered(client, session)["decision_records"][0]
     assert record["decider"] == "user"
     assert record["action"] == "select_option"
     assert record["selected_option_id"] == chosen["option_id"]
@@ -306,7 +318,7 @@ def test_a_stale_revision_is_a_409_that_keeps_the_persons_words(wired):
 def test_a_retried_post_is_a_duplicate_and_says_nothing_was_lost(wired):
     client, _, _ = wired
     session = _settled(client, _start(client))
-    answered = _answer(client, session, response_id="same").json()
+    answered = _answered(client, session, response_id="same")
 
     again = client.post(f"/api/v1/inquiries/{session['session_id']}/decisions",
                         json={"decision_id": _open_decision(session)["decision_id"],
@@ -358,7 +370,7 @@ def test_the_four_recoverable_conflicts_have_four_distinct_bodies(wired):
     bodies.append(stale.json()["detail"])
 
     session = _settled(client, _start(client))
-    _answer(client, session, response_id="dup")
+    _answered(client, session, response_id="dup")
     dup = client.post(f"/api/v1/inquiries/{session['session_id']}/decisions",
                       json={"decision_id": _open_decision(session)["decision_id"],
                             "response_id": "dup", "action": "select",
@@ -446,7 +458,7 @@ def test_a_mutated_post_stops_the_write_rather_than_being_recorded(wired):
 def test_no_evidence_object_exists_anywhere_in_phase_one(wired):
     client, _, _ = wired
     session = _settled(client, _start(client))
-    after = _answer(client, session).json()
+    after = _answered(client, session)
     assert after["evidence"] == []
 
 
@@ -456,7 +468,7 @@ def test_the_answer_commissions_exactly_one_simulated_receipt_on_the_wire(wired)
     session = _settled(client, _start(client))
     assert session["capability_receipts"] == []
 
-    after = _answer(client, session).json()
+    after = _answered(client, session)
     receipts = after["capability_receipts"]
     assert len(receipts) == 1
     assert receipts[0]["execution_mode"] == "fixture"
@@ -470,7 +482,7 @@ def test_the_answer_arrives_on_the_wire_with_every_section_bound(wired):
     and whose every reference resolves against the same body."""
     client, _, _ = wired
     session = _settled(client, _start(client))
-    after = _answer(client, session).json()
+    after = _answered(client, session)
 
     assert after["state"] == "complete"
     synthesis = after["synthesis"]

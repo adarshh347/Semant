@@ -128,6 +128,25 @@ class DecisionBody(BaseModel):
         }
 
 
+def _busy(session_id: str, session) -> bool:
+    """Whether a stage is in flight for this session right now.
+
+    NARROW ON PURPOSE. "Stages remain to be run" is not busy — most of a paused session's chain is
+    pending by definition, and refusing an answer for that reason would report every duplicate,
+    stale and unknown-option response as `session_busy` and collapse four of the nine typed
+    conflicts into one.
+
+    Busy is the LEASE (held, and readable by another worker) or an attempt that entered external
+    work and has not recorded leaving it. Both are persisted facts; `driver.running` is a local
+    optimisation that cannot see another process and is checked last.
+    """
+    if steps.dangling_stages(session):
+        return True
+    if str((session.driver or {}).get("lease_id") or ""):
+        return True
+    return driver.running(session_id)
+
+
 def _stages():
     """The bound stage order. A function rather than a module constant so a test can monkeypatch
     one seam without the import order deciding what a route uses."""
@@ -244,7 +263,7 @@ async def answer_inquiry(session_id: str, body: DecisionBody) -> Dict[str, Any]:
             f"looking at is the one outcome worse than refusing them.",
             expected=session_id, actual=body.session_id), session, submitted)
 
-    if driver.running(session_id) or steps.plan(session).stage is not None:
+    if _busy(session_id, session):
         # A RESPONSE CANNOT RACE A RUNNING STAGE. The answer is not lost and not applied: the
         # client is told the session is still working, with the same 409 shape it already handles
         # for a stale revision. Applying it would write an interaction state on top of a session a

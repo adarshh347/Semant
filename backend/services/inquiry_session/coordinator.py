@@ -515,9 +515,14 @@ def resume(session: SemanticInquirySession, response: Mapping[str, Any],
     state = machine.from_dict(session.interaction)
     state = machine.respond(state, read_response(response),
                             steward=steward_for(session, stages), at=at)
-    session = session.model_copy(update={"interaction": machine.to_dict(state),
-                                         "revision": state.revision})
-    return _continue(session, stages)
+    # APPLY AND STOP. Continuing the chain here would put the capability, judge and composer stages
+    # — one of which may be a model call — back on the request thread, which is the same blocking
+    # architecture this wave removed from the create route, one route over. The stages after a fork
+    # are `pending` in the ledger, so the driver picks them up exactly as it picks up the first
+    # ones, and the person's answer comes back the moment it is recorded rather than when the
+    # answer to it has been written.
+    return session.model_copy(update={"interaction": machine.to_dict(state),
+                                      "revision": state.revision})
 
 
 # ── the selection a settled fork made ────────────────────────────────────────
@@ -646,65 +651,6 @@ def _compose(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
         "provenance": session.provenance.model_copy(update={
             "composer_model": str((synthesis.provenance or {}).get("model") or "") or None}),
     })
-
-
-def _continue(session: SemanticInquirySession, stages: Stages) -> SemanticInquirySession:
-    """From wherever the session now is, to the next boundary.
-
-    Each remaining stage is entered at most once per advance and is SKIPPED with a reason when
-    nothing is bound — a deployment missing a composer stops at an honest `exhausted` rather than
-    silently producing no answer.
-    """
-    at = stages.clock()
-    state = machine.from_dict(session.interaction)
-    if state.state is SessionState.AWAITING_USER:
-        return session
-    if state.state in (SessionState.COMPLETE, SessionState.EXHAUSTED, SessionState.REFUSED,
-                       SessionState.ERROR):
-        return session
-
-    ledger = _Ledger(session.session_id, seq=len(session.stages))
-    state = machine.advance(state, SessionState.READY, at=at,
-                            reason="every fork is settled; work may be commissioned")
-
-    state = machine.advance(state, SessionState.EXECUTING, at=at,
-                            reason="commissioning at most one capability request")
-    session = _apply(session, state, ledger)
-    session = _execute(session, stages, ledger, at)
-
-    state = machine.advance(machine.from_dict(session.interaction), SessionState.JUDGING, at=at,
-                            reason="deciding what each claim now rests on")
-    session = _apply(session, state, ledger)
-    session = _judge(session, stages, ledger, at)
-
-    if stages.composer is None:
-        ledger.record(StageName.COMPOSER, StageOutcome.SKIPPED, at=at,
-                      detail="no synthesis composer is bound to this deployment")
-        session = session.model_copy(update={"stages": [*session.stages, *ledger.events]})
-        return _finish(session, SessionState.EXHAUSTED, at,
-                       "every claim has a verdict and no composer is bound, so no answer was "
-                       "written. Nothing was invented in its place.", stages)
-
-    state = machine.advance(machine.from_dict(session.interaction), SessionState.COMPOSING, at=at,
-                            reason="binding an answer to the claims it rests on")
-    session = _apply(session, state, ledger)
-    session = _compose(session, stages, ledger, at)
-    session = session.model_copy(update={"stages": [*session.stages, *ledger.events]})
-    return _finish(session, SessionState.COMPLETE, at,
-                   "the chain closed: every claim carries a verdict and every sentence of the "
-                   "answer names what it rests on.", stages)
-
-
-def _apply(session: SemanticInquirySession, state: Any,
-           ledger: _Ledger) -> SemanticInquirySession:
-    """Carry a Lane B transition onto the envelope. Kept apart so no stage writes the state itself.
-
-    The ledger's sequence follows the session's stage count so two advances in one request cannot
-    mint the same event id.
-    """
-    ledger.seq = max(ledger.seq, len(session.stages) + len(ledger.events))
-    return session.model_copy(update={"interaction": machine.to_dict(state),
-                                      "revision": state.revision})
 
 
 def _finish(session: SemanticInquirySession, to: SessionState, at: str, why: str,
