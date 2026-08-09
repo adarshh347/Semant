@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 
 import InquiryWorkbenchPage from './InquiryWorkbenchPage.jsx';
 import { createMockInquiryClient, InquiryRequestError } from './inquiryClient.js';
+import { createMockCorpusClient } from '../inquiryCorpus/corpusClient.js';
 import {
     consultFixture, respondedFixture, completedFixture, autoFixture, outcomesFixture,
     conflictSessionFixture, duplicateSessionFixture, unknownFutureFixture, otherDomainFixture,
@@ -58,15 +59,25 @@ const settle = async () => { await act(async () => { await Promise.resolve(); })
 const stripComments = (src) =>
     src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-const POSTS = FIXTURE_CORPUS.map((c) => ({
-    id: c.post_id, photo_url: c.image_url, title: c.title, region_annotations: [],
-}));
+/** The fixture corpus as the posts API actually shapes it — one page, complete. */
+const CORPUS_PAGES = [{
+    posts: FIXTURE_CORPUS.map((c) => ({
+        id: c.post_id,
+        photo_url: c.image_url,
+        text_blocks: [{ content: c.title }],
+        region_annotations: [],
+    })),
+    total_pages: 1,
+    current_page: 1,
+}];
+
+const corpus = () => createMockCorpusClient({ pages: CORPUS_PAGES });
 
 /** Mount the page and drive the real entry form to a started session. */
 async function startInquiry(clientOpts, { prompt = 'why is this centred?' } = {}) {
     const client = createMockInquiryClient(clientOpts);
     await act(async () => {
-        root.render(<InquiryWorkbenchPage client={client} posts={POSTS} />);
+        root.render(<InquiryWorkbenchPage client={client} corpusClient={corpus()} />);
     });
 
     const box = $('.iw-prompt');
@@ -75,7 +86,7 @@ async function startInquiry(clientOpts, { prompt = 'why is this centred?' } = {}
             .set.call(box, prompt);
         box.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    await click($('.iw-thumb'));
+    await click($('.ic-tile'));
     await click($('.iw-start'));
     await settle();
     return client;
@@ -290,7 +301,7 @@ describe('a 409 conflict', () => {
             throw new InquiryRequestError('the server fell over', { status: 500 });
         };
         await act(async () => {
-            root.render(<InquiryWorkbenchPage client={client} posts={POSTS} />);
+            root.render(<InquiryWorkbenchPage client={client} corpusClient={corpus()} />);
         });
         const box = $('.iw-prompt');
         await act(async () => {
@@ -298,7 +309,7 @@ describe('a 409 conflict', () => {
                 .set.call(box, 'q');
             box.dispatchEvent(new Event('input', { bubbles: true }));
         });
-        await click($('.iw-thumb'));
+        await click($('.ic-tile'));
         await click($('.iw-start'));
         await settle();
 
@@ -322,7 +333,7 @@ describe('an absent API', () => {
             throw new InquiryRequestError('Not Found', { status: 404 });
         };
         await act(async () => {
-            root.render(<InquiryWorkbenchPage client={client} posts={POSTS} />);
+            root.render(<InquiryWorkbenchPage client={client} corpusClient={corpus()} />);
         });
         const box = $('.iw-prompt');
         await act(async () => {
@@ -330,7 +341,7 @@ describe('an absent API', () => {
                 .set.call(box, 'q');
             box.dispatchEvent(new Event('input', { bubbles: true }));
         });
-        await click($('.iw-thumb'));
+        await click($('.ic-tile'));
         await click($('.iw-start'));
         await settle();
 
@@ -349,7 +360,7 @@ describe('an absent API', () => {
         const client = createMockInquiryClient({ script: [consultFixture()] });
         client.start = async () => { throw new Error('Failed to fetch'); };
         await act(async () => {
-            root.render(<InquiryWorkbenchPage client={client} posts={POSTS} />);
+            root.render(<InquiryWorkbenchPage client={client} corpusClient={corpus()} />);
         });
         const box = $('.iw-prompt');
         await act(async () => {
@@ -357,7 +368,7 @@ describe('an absent API', () => {
                 .set.call(box, 'q');
             box.dispatchEvent(new Event('input', { bubbles: true }));
         });
-        await click($('.iw-thumb'));
+        await click($('.ic-tile'));
         await click($('.iw-start'));
         await settle();
         expect($('[data-unavailable="api"]').textContent).toMatch(/Failed to fetch/);
@@ -499,8 +510,16 @@ describe('the stylesheet keeps the distinctions it claims', () => {
 // ── 6. lane boundaries ──────────────────────────────────────────────────────
 
 describe('this lane stays in its lane', () => {
-    it('imports nothing from another surface except the shared api config', () => {
-        const allowed = /^(react|react-dom|node:|\.\/|\.\.\/config\/api)/;
+    it('imports nothing from another surface except its declared reuse', () => {
+        // Widened once, by HARNESS-003C, and each addition is a board-declared dependency rather
+        // than a convenience:
+        //   · `@tanstack/react-query` — the app's ONE cache. The picker reaching it is the whole
+        //     mechanism by which `/inquiry` and the Gallery cannot disagree about what page 3 is;
+        //   · `../inquiryCorpus/` — this lane's own second module, named in the board's Lane C
+        //     ownership as "new inquiry-specific picker modules under `frontend/src/`".
+        // Everything else this surface needs, it still owns.
+        const allowed =
+            /^(react|react-dom|node:|@tanstack\/react-query|\.\/|\.\.\/config\/api|\.\.\/inquiryCorpus\/)/;
         const offenders = [];
         for (const f of fs.readdirSync(HERE)) {
             if (!/\.(js|jsx)$/.test(f) || f.includes('.test.')) continue;

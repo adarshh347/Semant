@@ -14,7 +14,6 @@ import {
     openDecision, outcomeCounts, STATE_LABEL, MODE_COPY,
     IS_AWAITING_USER, IS_TERMINAL_STATE,
 } from './inquiryContract.js';
-import { API_URL } from '../config/api';
 import './inquiryWorkbench.css';
 
 /**
@@ -42,33 +41,21 @@ import './inquiryWorkbench.css';
  * Nothing in this lane registers `/inquiry` in the router. Route registration is Lane D's, per the
  * board's additive-only rule, and this page is reachable only by importing it until then.
  */
-export default function InquiryWorkbenchPage({ client = null, posts: injectedPosts = null }) {
+export default function InquiryWorkbenchPage({ client = null, corpusClient = null }) {
     const inquiryClient = useRef(client || createInquiryClient()).current;
 
-    const [posts, setPosts] = useState(injectedPosts || []);
     const [session, setSession] = useState(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [conflict, setConflict] = useState(null);
     const [unavailable, setUnavailable] = useState('');
     const unwatch = useRef(null);
+    const selectionRef = useRef(null);
 
-    // The corpus. A gallery that will not load is soft — but it is not silent either: with no
-    // images there is nothing to inquire into, so the entry says so rather than offering an empty
-    // grid that looks like a corpus with nothing in it.
-    useEffect(() => {
-        if (injectedPosts) return undefined;
-        let live = true;
-        (async () => {
-            try {
-                const res = await fetch(`${API_URL}/api/v1/posts?page=1&limit=24`);
-                if (!res.ok) return;
-                const data = await res.json();
-                if (live) setPosts(Array.isArray(data?.posts) ? data.posts : []);
-            } catch { /* the entry reports an empty corpus */ }
-        })();
-        return () => { live = false; };
-    }, [injectedPosts]);
+    // THE CORPUS IS NO LONGER FETCHED HERE. It used to be one call — page 1, limit 24 — and that
+    // single line was the whole reason the 002R rehearsal could not ask a question of most of the
+    // archive. Paging, caching and selection now belong to `CorpusPicker`, which reaches the same
+    // TanStack keys the Gallery uses rather than holding a second copy of the archive.
 
     useEffect(() => () => { unwatch.current?.(); }, []);
 
@@ -152,7 +139,8 @@ export default function InquiryWorkbenchPage({ client = null, posts: injectedPos
         return (
             <main className="iw-shell">
                 <InquiryEntry
-                    posts={posts}
+                    corpusClient={corpusClient}
+                    selectionRef={selectionRef}
                     busy={busy}
                     error={error}
                     unavailable={unavailable}

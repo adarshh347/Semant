@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import InquiryEntry from './InquiryEntry.jsx';
 import { DEFAULT_MODE } from './inquiryContract.js';
+import { createMockCorpusClient } from '../inquiryCorpus/corpusClient.js';
 
 let container;
 let root;
@@ -26,14 +27,23 @@ afterEach(async () => {
     vi.restoreAllMocks();
 });
 
-const text = () => container.textContent || '';
 const $ = (sel) => container.querySelector(sel);
 const $$ = (sel) => [...container.querySelectorAll(sel)];
 
-const POSTS = [
-    { id: 'post_altes_front', photo_url: '/x.jpg', title: 'Lustgarten front', region_annotations: [] },
-    { id: 'post_altes_rotunda', photo_url: '/y.jpg', title: 'Rotunda', region_annotations: [{}] },
-];
+// One page of two, one of them annotated — the picker must not treat them differently.
+const PAGES = [{
+    posts: [
+        {
+            id: 'post_altes_front', photo_url: '/x.jpg', region_annotations: [],
+            text_blocks: [{ content: 'Lustgarten front' }],
+        },
+        {
+            id: 'post_altes_rotunda', photo_url: '/y.jpg', region_annotations: [{}],
+            text_blocks: [{ content: 'Rotunda' }],
+        },
+    ],
+    total_pages: 1,
+}];
 
 async function type(el, value) {
     const proto = el.tagName === 'TEXTAREA'
@@ -45,16 +55,18 @@ async function type(el, value) {
 }
 
 async function mount(props = {}) {
+    const client = createMockCorpusClient({ pages: PAGES });
     await act(async () => {
-        root.render(<InquiryEntry posts={POSTS} onStart={() => {}} {...props} />);
+        root.render(<InquiryEntry corpusClient={client} onStart={() => {}} {...props} />);
     });
+    return client;
 }
 
 describe('the entry asks for images and a question, and nothing else', () => {
     it('cannot start without both', async () => {
         await mount();
         expect($('.iw-start').disabled).toBe(true);
-        await act(async () => { $('.iw-thumb').click(); });
+        await act(async () => { $('.ic-tile').click(); });
         expect($('.iw-start').disabled).toBe(true);          // still no question
         await type($('.iw-prompt'), 'how does it gather?');
         expect($('.iw-start').disabled).toBe(false);
@@ -62,45 +74,50 @@ describe('the entry asks for images and a question, and nothing else', () => {
 
     it('a whitespace-only prompt is not a question', async () => {
         await mount();
-        await act(async () => { $('.iw-thumb').click(); });
+        await act(async () => { $('.ic-tile').click(); });
         await type($('.iw-prompt'), '   ');
         expect($('.iw-start').disabled).toBe(true);
     });
 
     it('offers every image identically — no annotation gate, no filter, nothing disabled', async () => {
         await mount();
-        // One post carries a region and one carries none. Nothing on this form distinguishes them:
-        // the plan's Phase-1 exit is "select existing images and enter any prompt", and a filter
-        // here would reintroduce the precondition the design removed.
-        expect($$('.iw-thumb').length).toBe(2);
-        expect($$('.iw-thumb[disabled]').length).toBe(0);
-        expect(text()).not.toMatch(/annotat|marks|regions/i);
+        // One post carries a region and one carries none. Neither is excluded, ordered differently
+        // or disabled: the plan's Phase-1 exit is "select existing images and enter any prompt",
+        // and a gate here would reintroduce the precondition the design removed. The mark COUNT is
+        // shown as provenance now — knowing what you are about to read is not a precondition for
+        // reading it — so the assertion is about selectability rather than about the word.
+        expect($$('.ic-tile').length).toBe(2);
+        expect($$('.ic-tile[disabled]').length).toBe(0);
+        expect($$('.ic-tile').every((t) => t.getAttribute('aria-pressed') === 'false')).toBe(true);
     });
 
     it('passes the selection, the trimmed prompt and the mode through', async () => {
         const onStart = vi.fn();
         await mount({ onStart });
-        await act(async () => { $$('.iw-thumb')[0].click(); });
-        await act(async () => { $$('.iw-thumb')[1].click(); });
+        await act(async () => { $$('.ic-tile')[0].click(); });
+        await act(async () => { $$('.ic-tile')[1].click(); });
         await type($('.iw-prompt'), '  what does the threshold do?  ');
         await act(async () => { $('[data-mode="step"]').click(); });
         await act(async () => { $('.iw-start').click(); });
 
-        expect(onStart).toHaveBeenCalledWith({
+        expect(onStart).toHaveBeenCalledWith(expect.objectContaining({
             imageIds: ['post_altes_front', 'post_altes_rotunda'],
             prompt: 'what does the threshold do?',
             mode: 'step',
-        });
+        }));
+        // the posts travel with the ids, so the session header can name what was read
+        expect(onStart.mock.calls[0][0].posts.map((p) => p.id))
+            .toEqual(['post_altes_front', 'post_altes_rotunda']);
     });
 
     it('toggles a selection off again', async () => {
         const onStart = vi.fn();
         await mount({ onStart });
-        await act(async () => { $$('.iw-thumb')[0].click(); });
-        await act(async () => { $$('.iw-thumb')[0].click(); });
+        await act(async () => { $$('.ic-tile')[0].click(); });
+        await act(async () => { $$('.ic-tile')[0].click(); });
         await type($('.iw-prompt'), 'q');
         expect($('.iw-start').disabled).toBe(true);
-        expect($$('.iw-thumb')[0].getAttribute('aria-pressed')).toBe('false');
+        expect($$('.ic-tile')[0].getAttribute('aria-pressed')).toBe('false');
     });
 });
 
@@ -158,12 +175,13 @@ describe('the form is reachable from a keyboard', () => {
         expect($('form').getAttribute('aria-label')).toBe('Start an inquiry');
         expect($('.iw-prompt').getAttribute('aria-label')).toBe('Prompt');
         expect($('[role="radiogroup"]').getAttribute('aria-label')).toBe('Interaction mode');
-        expect($('.iw-corpus').getAttribute('aria-label')).toBe('Choose images');
+        expect($('.ic-grid').getAttribute('aria-label')).toBe('Archive images');
+        expect($('.ic-search-label').getAttribute('for')).toBe('ic-search');
     });
 
     it('uses real buttons, so tab order and Enter come for free', async () => {
         await mount();
-        for (const el of [...$$('.iw-thumb'), ...$$('.iw-mode'), $('.iw-start')]) {
+        for (const el of [...$$('.ic-tile'), ...$$('.iw-mode'), $('.iw-start')]) {
             expect(el.tagName).toBe('BUTTON');
             expect(el.getAttribute('tabindex')).toBeNull();
         }
