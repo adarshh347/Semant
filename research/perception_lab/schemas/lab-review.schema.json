@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:perception-lab/lab-review.schema.json",
+  "$defs": {
+    "ReviewCorrection": {
+      "additionalProperties": false,
+      "description": "What the person changed. A correction is a record of an edit, not a measurement of one.",
+      "properties": {
+        "field": {
+          "minLength": 1,
+          "title": "Field",
+          "type": "string"
+        },
+        "was": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Was"
+        },
+        "now": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Now"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "field"
+      ],
+      "title": "ReviewCorrection",
+      "type": "object"
+    },
+    "ReviewVerdict": {
+      "description": "What a PERSON thought. `correct` is not `measured` and never becomes it.",
+      "enum": [
+        "correct",
+        "partial",
+        "wrong",
+        "unclear"
+      ],
+      "title": "ReviewVerdict",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A person's judgement of an artifact.\n\nDeliberately carries NO epistemic status and NO lifecycle status. Saying `correct` does not\nmake a box-basis containment `measured`, and it does not make the artifact `kept`. Those are\nthree different decisions by three different deciders, and this record makes only one of them.",
+  "properties": {
+    "review_id": {
+      "minLength": 1,
+      "title": "Review Id",
+      "type": "string"
+    },
+    "session_id": {
+      "minLength": 1,
+      "title": "Session Id",
+      "type": "string"
+    },
+    "artifact_id": {
+      "minLength": 1,
+      "title": "Artifact Id",
+      "type": "string"
+    },
+    "reviewer": {
+      "minLength": 1,
+      "title": "Reviewer",
+      "type": "string"
+    },
+    "verdict": {
+      "$ref": "#/$defs/ReviewVerdict"
+    },
+    "notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notes"
+    },
+    "corrections": {
+      "items": {
+        "$ref": "#/$defs/ReviewCorrection"
+      },
+      "title": "Corrections",
+      "type": "array"
+    },
+    "reviewed_at": {
+      "title": "Reviewed At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "review_id",
+    "session_id",
+    "artifact_id",
+    "reviewer",
+    "verdict",
+    "reviewed_at"
+  ],
+  "title": "LabReview",
+  "type": "object"
+}

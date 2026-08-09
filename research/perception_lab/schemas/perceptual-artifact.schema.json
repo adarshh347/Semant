@@ -1,0 +1,1307 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:perception-lab/perceptual-artifact.schema.json",
+  "$defs": {
+    "ArtifactIdentity": {
+      "additionalProperties": false,
+      "description": "Which artifact this is, what produced it, and what it continues.\n\nShares NO field name with `ArtifactProjection`. That is asserted by the contract tests rather\nthan left to care, because \"the red one\" becoming a way to refer to an artifact is how a\ndisplay attribute quietly becomes an identity.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "session_id": {
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "run_id": {
+          "minLength": 1,
+          "title": "Run Id",
+          "type": "string"
+        },
+        "step_id": {
+          "minLength": 1,
+          "title": "Step Id",
+          "type": "string"
+        },
+        "organ_family": {
+          "$ref": "#/$defs/OrganFamily"
+        },
+        "artifact_kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "operation": {
+          "minLength": 1,
+          "title": "Operation",
+          "type": "string"
+        },
+        "identity_scope": {
+          "$ref": "#/$defs/IdentityScope"
+        },
+        "identity_refs": {
+          "items": {
+            "$ref": "#/$defs/RegionRef"
+          },
+          "title": "Identity Refs",
+          "type": "array"
+        },
+        "input_refs": {
+          "items": {
+            "$ref": "#/$defs/InputRef"
+          },
+          "title": "Input Refs",
+          "type": "array"
+        },
+        "derived_from": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Derived From",
+          "type": "array"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "session_id",
+        "run_id",
+        "step_id",
+        "organ_family",
+        "artifact_kind",
+        "operation",
+        "identity_scope"
+      ],
+      "title": "ArtifactIdentity",
+      "type": "object"
+    },
+    "ArtifactInterpretation": {
+      "additionalProperties": false,
+      "description": "The reading. Never a finding, and never a person's verdict.\n\nSeparate from `ArtifactMeasurement` because they can be wrong independently \u2014 a perfect mask\ncalled \"hand\" when it is a glove is a correct measurement with a wrong reading, and a schema\nthat fused them would force a reviewer to reject both.",
+      "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "label_source": {
+          "$ref": "#/$defs/LabelSource"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "label_source",
+        "epistemic_status"
+      ],
+      "title": "ArtifactInterpretation",
+      "type": "object"
+    },
+    "ArtifactKind": {
+      "enum": [
+        "extent_set",
+        "topology_relation_set",
+        "negative_space_field",
+        "refusal",
+        "depth_field"
+      ],
+      "title": "ArtifactKind",
+      "type": "string"
+    },
+    "ArtifactLifecycle": {
+      "additionalProperties": false,
+      "description": "What the lab decided to do with it. Not what it is; not what a person thought of it.",
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/LifecycleState"
+        },
+        "changed_at": {
+          "title": "Changed At",
+          "type": "string"
+        },
+        "changed_by": {
+          "minLength": 1,
+          "title": "Changed By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "changed_at",
+        "changed_by"
+      ],
+      "title": "ArtifactLifecycle",
+      "type": "object"
+    },
+    "ArtifactMeasurement": {
+      "additionalProperties": false,
+      "description": "The number, and what kind of knowing it is. Never the colour it is drawn in.\n\nExactly one of `payload` / `data_ref`: a measurement is either small enough to carry or big\nenough to point at, and carrying both would create two truths one of which is stale.",
+      "properties": {
+        "payload_variant": {
+          "enum": [
+            "extent_set",
+            "topology_relation_set",
+            "negative_space_field",
+            "refusal"
+          ],
+          "title": "Payload Variant",
+          "type": "string"
+        },
+        "payload": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "extent_set": "#/$defs/ExtentSetPayload",
+                  "negative_space_field": "#/$defs/NegativeSpaceFieldPayload",
+                  "refusal": "#/$defs/RefusalPayload",
+                  "topology_relation_set": "#/$defs/TopologyRelationSetPayload"
+                },
+                "propertyName": "variant"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/ExtentSetPayload"
+                },
+                {
+                  "$ref": "#/$defs/TopologyRelationSetPayload"
+                },
+                {
+                  "$ref": "#/$defs/NegativeSpaceFieldPayload"
+                },
+                {
+                  "$ref": "#/$defs/RefusalPayload"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payload"
+        },
+        "data_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "coordinate_system": {
+          "$ref": "#/$defs/CoordinateSystem"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        },
+        "epistemic_basis": {
+          "$ref": "#/$defs/EpistemicBasis"
+        },
+        "basis_detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Basis Detail"
+        }
+      },
+      "required": [
+        "payload_variant",
+        "coordinate_system",
+        "epistemic_status",
+        "epistemic_basis"
+      ],
+      "title": "ArtifactMeasurement",
+      "type": "object"
+    },
+    "ArtifactProjection": {
+      "additionalProperties": false,
+      "description": "How it is DRAWN. A colour, an opacity, a z-order \u2014 and no geometry, ever.\n\n`hints` is clamped to `PROJECTION_HINT_KEYS`. The mutation test for this puts a `mask_rle` in\nhere and expects a failure, because an overlay able to carry its own mask is an overlay that\ncan disagree with the measurement it claims to depict, and the person looking at the screen\nwould have no way to tell which one they were seeing.",
+      "properties": {
+        "projection_kind": {
+          "$ref": "#/$defs/ProjectionKind"
+        },
+        "hints": {
+          "additionalProperties": true,
+          "title": "Hints",
+          "type": "object"
+        }
+      },
+      "required": [
+        "projection_kind"
+      ],
+      "title": "ArtifactProjection",
+      "type": "object"
+    },
+    "ArtifactProvenance": {
+      "additionalProperties": false,
+      "description": "The receipt. `duration_ms` is null when unmeasured and never 0 \u2014 zero is a real duration.",
+      "properties": {
+        "producer_kind": {
+          "$ref": "#/$defs/ProducerKind"
+        },
+        "producer": {
+          "minLength": 1,
+          "title": "Producer",
+          "type": "string"
+        },
+        "adapter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adapter"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revision"
+        },
+        "source_image_digest": {
+          "minLength": 8,
+          "title": "Source Image Digest",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "duration_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Ms"
+        },
+        "device": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Device"
+        },
+        "peak_memory_mb": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Peak Memory Mb"
+        }
+      },
+      "required": [
+        "producer_kind",
+        "producer",
+        "source_image_digest"
+      ],
+      "title": "ArtifactProvenance",
+      "type": "object"
+    },
+    "Box": {
+      "additionalProperties": false,
+      "description": "`normalized_xy_topleft`, the same convention `Region.box` uses.",
+      "properties": {
+        "x": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Y",
+          "type": "number"
+        },
+        "w": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "W",
+          "type": "number"
+        },
+        "h": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "H",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "title": "Box",
+      "type": "object"
+    },
+    "CoordinateSystem": {
+      "enum": [
+        "normalized_xy_topleft",
+        "pixel_xy_topleft",
+        "mask_rle_hw"
+      ],
+      "title": "CoordinateSystem",
+      "type": "string"
+    },
+    "DataRef": {
+      "additionalProperties": false,
+      "description": "An immutable pointer to a measurement too large to inline \u2014 a distance field, a raster.\n\n`digest` is mandatory. A pointer without one is a pointer to whatever is there now.",
+      "properties": {
+        "uri": {
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        },
+        "digest": {
+          "minLength": 8,
+          "title": "Digest",
+          "type": "string"
+        },
+        "media_type": {
+          "minLength": 1,
+          "title": "Media Type",
+          "type": "string"
+        },
+        "bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bytes"
+        }
+      },
+      "required": [
+        "uri",
+        "digest",
+        "media_type"
+      ],
+      "title": "DataRef",
+      "type": "object"
+    },
+    "EpistemicBasis": {
+      "description": "What the claim was computed FROM. Its ceiling is `BASIS_CEILINGS`, below.",
+      "enum": [
+        "mask",
+        "box",
+        "depth_artifact",
+        "manual",
+        "declared"
+      ],
+      "title": "EpistemicBasis",
+      "type": "string"
+    },
+    "EpistemicStatus": {
+      "description": "How an item is known. A `str` enum so a descriptor stays plain JSON.",
+      "enum": [
+        "visible",
+        "measured",
+        "interpretive",
+        "sourced",
+        "uncertain"
+      ],
+      "title": "EpistemicStatus",
+      "type": "string"
+    },
+    "ExtentComparison": {
+      "additionalProperties": false,
+      "description": "What `extent.compare` measured between two sets \u2014 including what only one of them saw.",
+      "properties": {
+        "left_artifact_id": {
+          "minLength": 1,
+          "title": "Left Artifact Id",
+          "type": "string"
+        },
+        "right_artifact_id": {
+          "minLength": 1,
+          "title": "Right Artifact Id",
+          "type": "string"
+        },
+        "iou_threshold_used": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Iou Threshold Used",
+          "type": "number"
+        },
+        "correspondences": {
+          "items": {
+            "$ref": "#/$defs/ExtentCorrespondence"
+          },
+          "title": "Correspondences",
+          "type": "array"
+        },
+        "only_in_left": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Only In Left",
+          "type": "array"
+        },
+        "only_in_right": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Only In Right",
+          "type": "array"
+        }
+      },
+      "required": [
+        "left_artifact_id",
+        "right_artifact_id",
+        "iou_threshold_used"
+      ],
+      "title": "ExtentComparison",
+      "type": "object"
+    },
+    "ExtentCorrespondence": {
+      "additionalProperties": false,
+      "properties": {
+        "left_instance_id": {
+          "minLength": 1,
+          "title": "Left Instance Id",
+          "type": "string"
+        },
+        "right_instance_id": {
+          "minLength": 1,
+          "title": "Right Instance Id",
+          "type": "string"
+        },
+        "iou": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Iou",
+          "type": "number"
+        }
+      },
+      "required": [
+        "left_instance_id",
+        "right_instance_id",
+        "iou"
+      ],
+      "title": "ExtentCorrespondence",
+      "type": "object"
+    },
+    "ExtentDuplicate": {
+      "additionalProperties": false,
+      "description": "Two instances in ONE set that may be the same thing. A warning, never a deletion.",
+      "properties": {
+        "instance_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Instance Ids",
+          "type": "array"
+        },
+        "iou": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Iou",
+          "type": "number"
+        }
+      },
+      "required": [
+        "instance_ids",
+        "iou"
+      ],
+      "title": "ExtentDuplicate",
+      "type": "object"
+    },
+    "ExtentInstance": {
+      "additionalProperties": false,
+      "description": "One extent. The mask is the identity; the box and polygons are projections of it.",
+      "properties": {
+        "instance_id": {
+          "minLength": 1,
+          "title": "Instance Id",
+          "type": "string"
+        },
+        "mask_rle": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Rle"
+        },
+        "box": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Box"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "area": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Area"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "naming": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstanceNaming"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "region_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region Id"
+        },
+        "geometry_rev": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geometry Rev"
+        }
+      },
+      "required": [
+        "instance_id"
+      ],
+      "title": "ExtentInstance",
+      "type": "object"
+    },
+    "ExtentSetPayload": {
+      "additionalProperties": false,
+      "description": "`searched` has no default because `instances: []` means two different things.\n\n\"I looked for faces and there are none\" and \"nobody looked\" arrive at the same empty list, and\nonly the first is a measurement.",
+      "properties": {
+        "variant": {
+          "const": "extent_set",
+          "title": "Variant",
+          "type": "string"
+        },
+        "searched": {
+          "minLength": 1,
+          "title": "Searched",
+          "type": "string"
+        },
+        "instances": {
+          "items": {
+            "$ref": "#/$defs/ExtentInstance"
+          },
+          "title": "Instances",
+          "type": "array"
+        },
+        "dropped_below_min_area": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dropped Below Min Area"
+        },
+        "duplicates": {
+          "items": {
+            "$ref": "#/$defs/ExtentDuplicate"
+          },
+          "title": "Duplicates",
+          "type": "array"
+        },
+        "comparison": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtentComparison"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "variant",
+        "searched"
+      ],
+      "title": "ExtentSetPayload",
+      "type": "object"
+    },
+    "IdentityScope": {
+      "enum": [
+        "session",
+        "canonical"
+      ],
+      "title": "IdentityScope",
+      "type": "string"
+    },
+    "InputRef": {
+      "additionalProperties": false,
+      "description": "One thing an operation consumed, in the role it was consumed as.\n\nExactly one of `artifact_id` / `region_id`. A ref that named both would let a step claim two\nprovenances for one input, and a ref that named neither is the invented identity this contract\nexists to make unsayable.",
+      "properties": {
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/IdentityScope"
+        },
+        "artifact_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Id"
+        },
+        "region_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region Id"
+        },
+        "geometry_rev": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geometry Rev"
+        }
+      },
+      "required": [
+        "role",
+        "scope"
+      ],
+      "title": "InputRef",
+      "type": "object"
+    },
+    "InstanceNaming": {
+      "additionalProperties": false,
+      "description": "A name for one instance, carried SEPARATELY from its geometry.\n\nCONCEPT-SEG-001 already established this: a SAM 3 result is a `measured` mask plus an\n`interpretive` label carried as two descriptors, so a wrong name can be rejected without\ndiscarding a correct measurement. This is that discipline at instance granularity.",
+      "properties": {
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/LabelSource"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        }
+      },
+      "required": [
+        "text",
+        "source",
+        "epistemic_status"
+      ],
+      "title": "InstanceNaming",
+      "type": "object"
+    },
+    "LabelSource": {
+      "enum": [
+        "adapter",
+        "prompt",
+        "human",
+        "canonical",
+        "none"
+      ],
+      "title": "LabelSource",
+      "type": "string"
+    },
+    "LifecycleState": {
+      "description": "What the LAB decided to do with an artifact. Not what it is, and not what a person thought.",
+      "enum": [
+        "proposed",
+        "edited",
+        "kept",
+        "rejected",
+        "promoted"
+      ],
+      "title": "LifecycleState",
+      "type": "string"
+    },
+    "NegativeSpaceFieldPayload": {
+      "additionalProperties": false,
+      "description": "A scalar field. Large, so it lives behind a `DataRef` on the measurement block.",
+      "properties": {
+        "variant": {
+          "const": "negative_space_field",
+          "title": "Variant",
+          "type": "string"
+        },
+        "figure_instance_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Figure Instance Ids",
+          "type": "array"
+        },
+        "max_distance_used": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Max Distance Used",
+          "type": "number"
+        },
+        "field_shape": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Field Shape",
+          "type": "array"
+        },
+        "statistics": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Statistics",
+          "type": "object"
+        }
+      },
+      "required": [
+        "variant",
+        "figure_instance_ids",
+        "max_distance_used",
+        "field_shape"
+      ],
+      "title": "NegativeSpaceFieldPayload",
+      "type": "object"
+    },
+    "OrganFamily": {
+      "description": "The eight perceptual questions. Six are registered and disabled.",
+      "enum": [
+        "extent",
+        "topology",
+        "colour",
+        "illumination",
+        "surface_pattern",
+        "orientation_flow",
+        "depth",
+        "surface_form"
+      ],
+      "title": "OrganFamily",
+      "type": "string"
+    },
+    "ProducerKind": {
+      "enum": [
+        "adapter",
+        "human",
+        "fixture",
+        "replay"
+      ],
+      "title": "ProducerKind",
+      "type": "string"
+    },
+    "ProjectionKind": {
+      "enum": [
+        "none",
+        "mask_fill",
+        "mask_outline",
+        "box_outline",
+        "point_markers",
+        "path_overlay",
+        "contact_band",
+        "intersection_area",
+        "endpoint_pair",
+        "relation_graph",
+        "scalar_wash",
+        "vector_field",
+        "swatch",
+        "contact_sheet",
+        "before_after",
+        "ab_overlay",
+        "difference_overlay"
+      ],
+      "title": "ProjectionKind",
+      "type": "string"
+    },
+    "RefusalCode": {
+      "description": "Nine, and not one of them means 'nothing was found'.",
+      "enum": [
+        "missing_extent_inputs",
+        "missing_depth_artifact",
+        "unsupported_operation",
+        "invalid_parameters",
+        "organ_locked",
+        "capability_unavailable",
+        "unknown_reference",
+        "replay_cannot_recompute",
+        "source_mutated"
+      ],
+      "title": "RefusalCode",
+      "type": "string"
+    },
+    "RefusalPayload": {
+      "additionalProperties": false,
+      "description": "A refusal IS an artifact. It has provenance, a run, a step, and a place in the ledger \u2014\nbecause \"we did not do this, and here is exactly why\" is a result worth reopening.",
+      "properties": {
+        "variant": {
+          "const": "refusal",
+          "title": "Variant",
+          "type": "string"
+        },
+        "refusal": {
+          "$ref": "#/$defs/RefusalRecord"
+        }
+      },
+      "required": [
+        "variant",
+        "refusal"
+      ],
+      "title": "RefusalPayload",
+      "type": "object"
+    },
+    "RefusalRecord": {
+      "additionalProperties": false,
+      "description": "A typed no. Never an empty result, and never an exception message.\n\n`missing` is what would satisfy it \u2014 the difference between \"this failed\" and \"bring me a\ndepth field and ask again\".",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/RefusalCode"
+        },
+        "organ": {
+          "$ref": "#/$defs/OrganFamily"
+        },
+        "operation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operation"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "remedy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remedy"
+        },
+        "detail": {
+          "additionalProperties": true,
+          "title": "Detail",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "organ",
+        "message"
+      ],
+      "title": "RefusalRecord",
+      "type": "object"
+    },
+    "RegionRef": {
+      "additionalProperties": false,
+      "description": "A canonical Region, cited by identity AND revision.\n\n`geometry_rev` is required, not optional. A relation that cites `reg_7` without saying which\nrevision of `reg_7` cannot be told to have gone stale, and a stale relation that cannot be\ndetected is worse than no relation at all.",
+      "properties": {
+        "region_id": {
+          "minLength": 1,
+          "title": "Region Id",
+          "type": "string"
+        },
+        "geometry_rev": {
+          "minimum": 0,
+          "title": "Geometry Rev",
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/IdentityScope",
+          "default": "canonical"
+        }
+      },
+      "required": [
+        "region_id",
+        "geometry_rev"
+      ],
+      "title": "RegionRef",
+      "type": "object"
+    },
+    "RelationEndpoint": {
+      "additionalProperties": false,
+      "description": "A relation cites identity and revision. It never carries the mask it measured.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "instance_id": {
+          "minLength": 1,
+          "title": "Instance Id",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/IdentityScope"
+        },
+        "region_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region Id"
+        },
+        "geometry_rev": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geometry Rev"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "instance_id",
+        "scope"
+      ],
+      "title": "RelationEndpoint",
+      "type": "object"
+    },
+    "RelationKind": {
+      "description": "The strings the existing organs already emit. Reused verbatim, not renamed.",
+      "enum": [
+        "nested_within",
+        "contains",
+        "meets",
+        "overlaps",
+        "disjoint",
+        "in_front_of",
+        "coplanar"
+      ],
+      "title": "RelationKind",
+      "type": "string"
+    },
+    "TopologyRelation": {
+      "additionalProperties": false,
+      "description": "One measured relation, with the basis it rests on and the numbers behind it.",
+      "properties": {
+        "relation_id": {
+          "minLength": 1,
+          "title": "Relation Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RelationKind"
+        },
+        "source": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "target": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "directed": {
+          "title": "Directed",
+          "type": "boolean"
+        },
+        "basis": {
+          "$ref": "#/$defs/EpistemicBasis"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        },
+        "measurements": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Measurements",
+          "type": "object"
+        },
+        "stale": {
+          "default": false,
+          "title": "Stale",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "relation_id",
+        "kind",
+        "source",
+        "target",
+        "directed",
+        "basis",
+        "epistemic_status"
+      ],
+      "title": "TopologyRelation",
+      "type": "object"
+    },
+    "TopologyRelationSetPayload": {
+      "additionalProperties": false,
+      "description": "`pairs_examined` has no default, and that single required integer is the guard.\n\n`relations: []` with `pairs_examined: 4` is a measurement: four pairs were compared and none\nstood in any of the asked-for relations. `relations: []` with nothing counted is not a\nmeasurement at all, and this model will not let it validate as one.",
+      "properties": {
+        "variant": {
+          "const": "topology_relation_set",
+          "title": "Variant",
+          "type": "string"
+        },
+        "pairs_examined": {
+          "minimum": 0,
+          "title": "Pairs Examined",
+          "type": "integer"
+        },
+        "relations": {
+          "items": {
+            "$ref": "#/$defs/TopologyRelation"
+          },
+          "title": "Relations",
+          "type": "array"
+        },
+        "bounded_to": {
+          "anyOf": [
+            {
+              "minimum": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounded To"
+        }
+      },
+      "required": [
+        "variant",
+        "pairs_examined"
+      ],
+      "title": "TopologyRelationSetPayload",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One measurement, in six blocks that cannot be mistaken for each other.\n\nThere is no `review` here, and no `review_ids` either. See the module docstring.",
+  "properties": {
+    "identity": {
+      "$ref": "#/$defs/ArtifactIdentity"
+    },
+    "measurement": {
+      "$ref": "#/$defs/ArtifactMeasurement"
+    },
+    "projection": {
+      "$ref": "#/$defs/ArtifactProjection"
+    },
+    "interpretation": {
+      "$ref": "#/$defs/ArtifactInterpretation"
+    },
+    "lifecycle": {
+      "$ref": "#/$defs/ArtifactLifecycle"
+    },
+    "provenance": {
+      "$ref": "#/$defs/ArtifactProvenance"
+    }
+  },
+  "required": [
+    "identity",
+    "measurement",
+    "projection",
+    "interpretation",
+    "lifecycle",
+    "provenance"
+  ],
+  "title": "PerceptualArtifact",
+  "type": "object"
+}

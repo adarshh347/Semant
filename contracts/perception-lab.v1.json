@@ -228,8 +228,8 @@
       "declared": "an imported region asserting its own geometry. The lab may carry the claim; it may not upgrade it."
     },
     "laws": [
-      "A measurement may never be `sourced`. Nothing in this laboratory comes from outside the image, and `sourced` is the walled status in `epistemics.WALLED_STATUSES`.",
-      "An interpretation may never be `measured` or `visible`. A label is a reading about the image; the geometry under it may be a measurement and is carried as a separate block.",
+      "A measurement is one of `measured`, `visible`, `interpretive`, `uncertain`. It may never be `sourced`: nothing in this laboratory comes from outside the image, and `sourced` is the walled status in `epistemics.WALLED_STATUSES`.",
+      "An interpretation is one of `interpretive`, `uncertain`. Never `measured` or `visible` — a label is a reading about the image, and the geometry under it is carried as a separate block. Never `sourced` either: this laboratory has no producer that cites anything outside the picture.",
       "An operation may not claim a status above its declared ceiling, and a run may not claim a status above the ceiling of the basis it actually used.",
       "`extent.reuse` inherits its input's status and may not raise it."
     ]
@@ -928,9 +928,9 @@
     {"id": "identity_is_not_rendering", "statement": "The identity and projection blocks share no field name, and no geometry key may enter `projection.hints`."},
     {"id": "interpretation_is_not_review", "statement": "The artifact carries an interpretation and no review. A verdict lives in `LabReview`, keyed by artifact id."},
     {"id": "three_axes_never_substitute", "statement": "Lifecycle status, review verdict and epistemic status are three closed sets with no shared member. `correct` is not `measured`; `kept` is not `promoted` into Semant."},
-    {"id": "measurement_is_never_sourced", "statement": "A measurement's epistemic status may not be `sourced`, and an interpretation's may not be `measured` or `visible`."},
+    {"id": "measurement_is_never_sourced", "statement": "A measurement's epistemic status is one of measured/visible/interpretive/uncertain, and an interpretation's is one of interpretive/uncertain. `sourced` has no producer in this laboratory."},
     {"id": "basis_ceiling_is_the_existing_ruling", "statement": "For every basis this contract and `epistemics.SUBSTRATE_CEILING` both name, the ceiling is the same value."},
-    {"id": "replay_cannot_recompute", "statement": "A REPLAY run declares `adapter_callable: false` and no stage attempt on it may be `invoked`."},
+    {"id": "replay_cannot_recompute", "statement": "Only a LIVE run may invoke an adapter. A REPLAY run declares `adapter_callable: false` and carries its source run; a FIXTURE run reads committed data. No stage attempt on either may be `invoked`."},
     {"id": "empty_is_not_refused_is_not_unavailable", "statement": "The five nothings in `absence_semantics` are carried by distinct outcome/refusal combinations and none may stand in for another."},
     {"id": "references_resolve_through_ids", "statement": "A step may cite only ids declared active or selected on the session. An id from nowhere is `unknown_reference`."}
   ],
