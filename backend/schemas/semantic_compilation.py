@@ -668,13 +668,26 @@ def canonical(graph: SemanticInquiryGraph) -> Dict[str, Any]:
     provenance = dict(data.get("provenance") or {})
     provenance.pop("compiled_at", None)
     for key in ("theorist", "compiler"):
-        receipt = provenance.get(key)
-        if isinstance(receipt, dict):
-            receipt = dict(receipt)
-            receipt.pop("requested_at", None)
-            provenance[key] = receipt
+        provenance[key] = _without_timestamp(provenance.get(key))
     data["provenance"] = provenance
+    # THE READING CARRIES A RECEIPT OF ITS OWN, and it is the SAME receipt object the graph's
+    # provenance points at — so stripping only `provenance.theorist` left a second `requested_at`
+    # embedded one level down and two replays of one fixture differed. Found by the cross-domain
+    # fixtures rather than by reading this function, which is the argument for having them.
+    reading = data.get("reading")
+    if isinstance(reading, dict):
+        reading = dict(reading)
+        reading["provenance"] = _without_timestamp(reading.get("provenance"))
+        data["reading"] = reading
     return data
+
+
+def _without_timestamp(receipt: Any) -> Any:
+    if not isinstance(receipt, dict):
+        return receipt
+    stripped = dict(receipt)
+    stripped.pop("requested_at", None)
+    return stripped
 
 
 __all__ = [

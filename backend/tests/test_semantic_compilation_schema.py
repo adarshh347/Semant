@@ -123,6 +123,16 @@ def test_canonical_drops_the_caller_handed_timestamps_and_keeps_every_id():
     assert data["graph_id"] == "sig_000000000001"
 
 
+def test_canonical_also_strips_the_timestamp_the_reading_carries_of_its_own():
+    """The reading holds the SAME receipt the graph's provenance points at, one level down.
+    Stripping only `provenance.theorist` left a second `requested_at` embedded in `reading`, and
+    two replays of one fixture differed — found by the cross-domain fixtures, not by reading the
+    function."""
+    g = graph(reading=SceneReading(text="a reading", provenance=receipt(
+        requested_at="2026-08-09T00:00:00+00:00")))
+    assert "requested_at" not in canonical(g)["reading"]["provenance"]
+
+
 # ── nothing starts measured ──────────────────────────────────────────────────
 
 def test_a_claim_cannot_be_constructed_with_a_measured_status():
