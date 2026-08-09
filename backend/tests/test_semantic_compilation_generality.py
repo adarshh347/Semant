@@ -32,6 +32,7 @@ PRODUCTION_SOURCES = [
     Path("backend/services/semantic_compilation"),
     Path("backend/schemas/semantic_compilation.py"),
     Path("contracts/semantic-inquiry-graph.v1.json"),
+    Path("contracts/semantic-inquiry-graph.v2.json"),
     Path("scripts/semantic_compile.py"),
 ]
 
@@ -108,16 +109,41 @@ def test_the_two_fixtures_share_no_claim_id():
 
 # ── no topic branch ──────────────────────────────────────────────────────────
 
+def _scannable(path) -> str:
+    """A production source's text, minus the one section that exists to NAME forbidden topics.
+
+    `no_topic_branch` in the graph contract says, in prose, that there is no branch for any
+    rehearsal's subject — and it says it by listing the subjects. A scan that read that section
+    would report the rule as its own violation, and the only way to satisfy it would be to delete
+    the rule. Everything else in the contract is scanned, including every closed set.
+    """
+    text = path.read_text(encoding="utf-8")
+    if path.suffix != ".json":
+        return text.lower()
+    data = json.loads(text)
+    data.pop("no_topic_branch", None)
+    return json.dumps(data).lower()
+
+
 def test_no_production_source_names_either_fixture_s_subject():
     nouns = fixtures.topic_nouns()
     assert len(nouns) >= 8
     offences = []
     for path in _sources():
-        text = path.read_text(encoding="utf-8").lower()
+        text = _scannable(path)
         for noun in nouns:
             if noun.lower() in text:
                 offences.append(f"{path}: {noun}")
     assert offences == [], offences
+
+
+def test_the_scan_still_reads_everything_else_in_the_contract(tmp_path):
+    """The negative control for the exclusion: dropping one prose key must not turn the scan off."""
+    decoy = tmp_path / "decoy.json"
+    decoy.write_text(json.dumps({"closed_sets": {"claim_kinds": ["phyllotaxis"]},
+                                 "no_topic_branch": ["ignored"]}), encoding="utf-8")
+    assert "phyllotaxis" in _scannable(decoy)
+    assert "ignored" not in _scannable(decoy)
 
 
 def test_that_scan_can_fail(tmp_path):
