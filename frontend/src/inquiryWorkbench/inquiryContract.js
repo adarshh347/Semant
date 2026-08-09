@@ -139,7 +139,18 @@ export const OUTCOME_COPY = {
     capability_gap: 'Nothing in Semant can currently make this observable.',
 };
 
-export const EXECUTION_MODES = ['fixture', 'live'];
+/**
+ * `none` is Lane B's third, and it is not a weaker `live`: it is a stage that entered no external
+ * work at all. Guessed as two here before `inquiry-stage-attempt.v1` merged, which made every
+ * framer and steward attempt on a real session read as an unrecognised mode.
+ */
+export const EXECUTION_MODES = ['fixture', 'live', 'none'];
+
+export const EXECUTION_MODE_COPY = {
+    fixture: 'a stand-in produced this; nothing was measured',
+    live: 'a real producer was called',
+    none: 'no external work was entered — this stage is deterministic',
+};
 
 // ── decisions ────────────────────────────────────────────────────────────────
 
@@ -249,7 +260,22 @@ export function normalizeReading(raw) {
         capped_from: overreach ? declared : null,
         source: str(v.source),
         model: str(v.model),
+        // The blocks the theorist emitted. `graph_view` has sent these since HARNESS-002D and
+        // nothing read them; they are the objects the dissector consumes, so a ledger that
+        // showed claims without them would start the chain in the middle.
+        blocks: arr(v.blocks).map(normalizeReadingBlock),
         provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
+    };
+}
+
+export function normalizeReadingBlock(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        block_id: str(v.block_id || v.id),
+        kind: str(v.kind),
+        text: str(v.text),
+        image_refs: arr(v.image_refs).map(String),
+        raw: v,
     };
 }
 
@@ -347,6 +373,83 @@ export function normalizeRefusal(raw) {
     };
 }
 
+// ── the dissolution objects (HARNESS-003A, rendered forward) ─────────────────
+//
+// Lane A is building these in parallel. This surface renders them where they appear and says
+// nothing when they do not, which is the board's instruction for a lane that must not wait on
+// another lane's merge — and the reason the ledger can show the whole chain the moment the
+// compiler starts emitting it.
+
+export const SOURCE_TYPES = ['prompt_clause', 'reading_block'];
+
+export const ATOM_KINDS = [
+    'entity', 'visual_quality', 'relation', 'comparison', 'interpretation',
+    'historical_or_sourced', 'causal_hypothesis', 'generative_proposal', 'unknown',
+];
+
+export const DISPOSITIONS = ['represented_by', 'duplicate_of', 'semantic_remainder', 'refused'];
+
+export const DISPOSITION_COPY = {
+    represented_by: 'became one or more atoms',
+    duplicate_of: 'says the same thing as another source unit',
+    semantic_remainder: 'was not dissolved, and the reason is recorded',
+    refused: 'was refused, and the reason is recorded',
+};
+
+export function normalizeSourceUnit(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        source_unit_id: str(v.source_unit_id || v.id),
+        source_type: enumField(v.source_type, SOURCE_TYPES),
+        source_ref: str(v.source_ref),
+        exact_quote: str(v.exact_quote),
+        image_refs: arr(v.image_refs).map(String),
+        raw: v,
+    };
+}
+
+export function normalizeAtom(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        atom_id: str(v.atom_id || v.id),
+        source_unit_ids: arr(v.source_unit_ids).map(String),
+        text: str(v.text),
+        unit_kind: enumField(v.unit_kind, ATOM_KINDS),
+        subject: str(v.subject),
+        predicate: str(v.predicate),
+        object: str(v.object),
+        image_scope: arr(v.image_scope).map(String),
+        epistemic_ceiling: enumField(v.epistemic_ceiling, CLAIM_STATUSES),
+        author: enumField(v.author, DECIDER_KINDS),
+        provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
+        raw: v,
+    };
+}
+
+export function normalizeCoverage(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        source_unit_id: str(v.source_unit_id),
+        disposition: enumField(v.disposition, DISPOSITIONS),
+        refs: arr(v.refs).map(String),
+        reason: str(v.reason),
+        raw: v,
+    };
+}
+
+/**
+ * Source units with no coverage disposition at all.
+ *
+ * The dissolution contract says every source unit gets exactly one. A unit with none is not a
+ * remainder — a remainder is a decision — it is a unit the compiler lost, and the difference is
+ * the whole point of having a coverage ledger. Computed here so no render site can mistake the
+ * two, and reported as its own row rather than folded into the remainder count.
+ */
+export function uncoveredSourceUnits(graph) {
+    const covered = new Set((graph?.coverage || []).map((c) => c.source_unit_id));
+    return (graph?.source_units || []).filter((u) => !covered.has(u.source_unit_id));
+}
+
 export function normalizeGraph(raw) {
     const v = raw && typeof raw === 'object' ? raw : {};
     return {
@@ -363,6 +466,10 @@ export function normalizeGraph(raw) {
         observables: arr(v.observables).map(normalizeObservable),
         semantic_remainder: arr(v.semantic_remainder).map(normalizeRemainder),
         refusals: arr(v.refusals).map(normalizeRefusal),
+        // HARNESS-003A's dissolution objects, rendered where present and silent where not.
+        source_units: arr(v.source_units).map(normalizeSourceUnit),
+        semantic_atoms: arr(v.semantic_atoms).map(normalizeAtom),
+        coverage: arr(v.coverage).map(normalizeCoverage),
         provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
     };
 }
@@ -514,6 +621,50 @@ export function normalizeEvidence(raw) {
     return ev;
 }
 
+// ── verdicts ─────────────────────────────────────────────────────────────────
+
+export const VERDICT_KINDS = [
+    'supported_by_evidence', 'partially_supported', 'interpretive_only',
+    'unresolved', 'contradicted', 'not_investigated',
+];
+
+/**
+ * The two that assert evidence carried a claim. A fixture receipt may never produce one — the
+ * backend validator refuses it — and this surface never derives one either.
+ */
+export const SUPPORTED_VERDICTS = ['supported_by_evidence', 'partially_supported'];
+
+export const VERDICT_COPY = {
+    supported_by_evidence: 'Something measured bears this out.',
+    partially_supported: 'Something measured bears part of this out.',
+    interpretive_only: 'It was looked at, and nothing measured bears on it.',
+    unresolved: 'Nothing settled it either way.',
+    contradicted: 'Something measured cuts against it.',
+    not_investigated: 'Nobody asked.',
+};
+
+/**
+ * The judge's conclusion about one claim.
+ *
+ * `interpretive_only` and `not_investigated` are the two that carry Phase 1 and they are NOT the
+ * same: one says the claim was examined and nothing measured bears on it, the other says nobody
+ * asked. A reader deciding how much to trust an answer needs both, and a surface that rendered
+ * them identically would erase the difference between a phase with no instruments and a phase
+ * whose instruments found nothing.
+ */
+export function normalizeVerdict(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        verdict_id: str(v.verdict_id || v.id),
+        claim_ref: str(v.claim_ref),
+        outcome: enumField(v.outcome, VERDICT_KINDS),
+        why: str(v.why),
+        evidence_refs: arr(v.evidence_refs).map(String),
+        receipt_refs: arr(v.receipt_refs).map(String),
+        raw: v,
+    };
+}
+
 // ── synthesis ────────────────────────────────────────────────────────────────
 
 export function normalizeSynthesisSection(raw) {
@@ -555,6 +706,311 @@ export function normalizeTraceEvent(raw) {
     };
 }
 
+// ── the stage ledger ─────────────────────────────────────────────────────────
+//
+// HARNESS-003C. The backend has sent `session.stages` since HARNESS-002D and this client dropped
+// it on the floor — the 002R rehearsal's fourth tree cause, and the reason a person watched
+// `Starting…` for a long time with no way to know which of seven stages was taking it.
+//
+// The vocabulary below is the UNION of what the tree sends today and what Lane B's contract
+// declares next, because this lane must render against both. `skipped` is in the current backend
+// enum and absent from Lane B's list; `queued`, `thin`, `truncated` and `interrupted` are the
+// reverse. Dropping either set would make one of the two servers unreadable — and an outcome in
+// neither still renders as itself.
+
+export const STAGE_NAMES = [
+    'framer', 'theorist', 'compiler', 'steward', 'capability', 'judge', 'composer',
+];
+
+export const STAGE_LABEL = {
+    framer: 'Reading your question',
+    theorist: 'Looking at the images',
+    compiler: 'Breaking the reading into claims',
+    steward: 'Deciding what to ask you',
+    capability: 'Running a capability',
+    judge: 'Judging what came back',
+    composer: 'Writing the answer',
+};
+
+export const STAGE_OUTCOMES = [
+    'queued', 'started', 'completed',
+    'thin', 'truncated', 'empty', 'unavailable', 'refused', 'skipped', 'error', 'interrupted',
+];
+
+/** Still going. Only these may show an elapsed time. */
+export const RUNNING_OUTCOMES = ['queued', 'started'];
+
+/**
+ * Ended having produced less than the stage is FOR — Lane B's declared
+ * `underperformance_outcomes`, exactly.
+ *
+ * This list was five here, and the two extra were a category error the contract corrects.
+ * `error` and `interrupted` are execution failures: the stage raised, or the process died. `thin`,
+ * `truncated` and `empty` are stages that RAN and came back with too little, which is a claim
+ * about the thinking rather than about the machinery. The horizontal-phase skill separates
+ * `semantic_underperformance` from `execution_failure` for the same reason, and a diagnosis that
+ * merged them would send a reader to raise an output budget when the process had been killed.
+ *
+ * Both still open the diagnosis card. It names which kind.
+ */
+export const UNDERPERFORMING_OUTCOMES = ['thin', 'truncated', 'empty'];
+
+/** The machinery broke, as opposed to the thinking coming back thin. */
+export const FAILED_OUTCOMES = ['error', 'interrupted'];
+
+/** Ended without usable output for reasons that are nobody's underperformance. */
+export const BARREN_OUTCOMES = ['empty', 'unavailable', 'refused', 'skipped'];
+
+/** Lane B's `outcome_notes`, in this surface's voice. Same distinctions, same order. */
+export const STAGE_OUTCOME_COPY = {
+    queued: 'Waiting to start. Nothing external has been touched.',
+    started: 'Running now.',
+    completed: 'Finished, and produced what the stage is for.',
+    thin: 'It parsed, and its own adequacy check failed. A parse is not an adequacy.',
+    truncated: 'Stopped on its output budget — what came back is a PREFIX, and a short result '
+        + 'here is not evidence that there was little to find.',
+    empty: 'Ran to completion and produced nothing. Look somewhere else.',
+    unavailable: 'The instrument exists and is not running. Try again.',
+    refused: 'A law said no. Stop asking this of the machine.',
+    skipped: 'The budget or the branch excluded it. Nothing is wrong.',
+    error: 'It raised.',
+    interrupted: 'The process stopped mid-call. What became of that call is not known.',
+};
+
+/**
+ * WHICH ROUTE established that a producer stopped on its budget.
+ *
+ * Lane B's contract is explicit that `unknown` is NOT `none`: the first says nothing could be
+ * consulted, the second says something was consulted and said no. "A UI that showed them alike
+ * would report an unchecked stage as a verified-untruncated one" — so they are two rows here.
+ */
+export const TRUNCATION_SOURCES = ['field', 'producer_attribute', 'receipt_note', 'none', 'unknown'];
+
+export const TRUNCATION_SOURCE_COPY = {
+    field: 'the receipt declared it in a typed field',
+    producer_attribute: 'the producer object declared it',
+    receipt_note: 'read out of a receipt note',
+    none: 'something was consulted and said it was not truncated',
+    unknown: 'nothing could be consulted — this stage is unchecked, not verified',
+};
+
+export function normalizeStageCall(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        call_id: str(v.call_id || v.id),
+        label: str(v.label),
+        started_at: ISO(v.started_at),
+        duration_ms: numOrNull(v.duration_ms),
+        finish_reason: str(v.finish_reason),
+        outcome: enumField(v.outcome, STAGE_OUTCOMES),
+    };
+}
+
+/**
+ * One stage attempt, reading today's shape and Lane B's forward one at once.
+ *
+ * Every timing field is nullable and stays null. "Never report unknown duration as zero" is
+ * enforced here rather than at each render site, because a `0 ms` beside a stage that took eleven
+ * seconds is not a cosmetic defect — it is the surface asserting a measurement nobody made.
+ */
+export function normalizeStage(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    const actor = v.actor && typeof v.actor === 'object' ? v.actor : {};
+    const stage = {
+        event_id: str(v.attempt_id || v.event_id || v.id),
+        stage: enumField(v.stage, STAGE_NAMES),
+        outcome: enumField(v.outcome, STAGE_OUTCOMES),
+        sequence: numOrNull(v.sequence),
+        revision: numOrNull(v.revision),
+        detail: str(v.detail),
+
+        // `at` is today's single timestamp; the three below are Lane B's. A server that sends only
+        // `at` still places the event in time.
+        at: ISO(v.at),
+        queued_at: ISO(v.queued_at),
+        started_at: ISO(v.started_at),
+        completed_at: ISO(v.completed_at),
+        duration_ms: numOrNull(v.duration_ms),
+
+        input_refs: arr(v.input_refs).map(String),
+        output_refs: arr(v.output_refs).map(String),
+        gap_refs: arr(v.gap_refs).map(String),
+        refusal_refs: arr(v.refusal_refs).map(String),
+        receipt_refs: arr(v.receipt_refs).map(String),
+
+        // COUNTS ARE NAMED, not numbers. Lane B sends `{"images": 2}` → `{"reading blocks": 8}`
+        // and a pre-formatted `counts_line`, because "31 → 2" is unreadable without the nouns and
+        // this surface guessing them would be inventing the units. `counts_line` is preferred
+        // where sent — it is the backend's own sentence about its own work.
+        counts_line: str(v.counts_line),
+        input_counts: countMap(v.input_counts),
+        output_counts: countMap(v.output_counts),
+        // The scalar form, for a server that sends one, derived from refs otherwise, and null for
+        // a stage that reported neither.
+        input_count: numOrNull(v.input_count)
+            ?? countTotal(v.input_counts)
+            ?? (Array.isArray(v.input_refs) ? v.input_refs.length : null),
+        output_count: numOrNull(v.output_count)
+            ?? countTotal(v.output_counts)
+            ?? (Array.isArray(v.output_refs) ? v.output_refs.length : null),
+
+        role: str(actor.role || v.role),
+        model: str(actor.model || v.model),
+        provider: str(actor.provider || v.provider),
+        execution_mode: enumField(actor.execution_mode || v.execution_mode, EXECUTION_MODES),
+
+        call_topology: str(v.call_topology),
+        planned_calls: numOrNull(v.planned_calls),
+        actual_calls: numOrNull(v.actual_calls),
+        calls: arr(v.calls).map(normalizeStageCall),
+
+        // Multi-image progress. `substages[]` is Lane B's real shape; the three scalars below
+        // were this lane's forward guess and remain as a fallback for a producer that reports
+        // progress without the array.
+        substages: arr(v.substages).map(normalizeSubstage),
+        image_index: numOrNull(v.image_index),
+        image_total: numOrNull(v.image_total),
+        substage: str(v.substage),
+
+        truncation_source: enumField(v.truncation_source, TRUNCATION_SOURCES),
+        finish_reason: str(v.finish_reason),
+        summary: str(v.summary || v.refusal_summary || v.error_summary || v.gap_summary),
+        provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
+        raw: v,
+    };
+    stage.running = RUNNING_OUTCOMES.includes(stage.outcome.value);
+    stage.barren = BARREN_OUTCOMES.includes(stage.outcome.value);
+    stage.failed = FAILED_OUTCOMES.includes(stage.outcome.value);
+    // THE DECLARATION WINS. Lane B computes `underperformed` from checks this client cannot see —
+    // a producer's own coverage result, for one — so deriving it here where the backend has
+    // already answered would be the client second-guessing the runtime that knows. Derived only
+    // when absent, and then from the same three outcomes the contract declares.
+    stage.underperformed = typeof v.underperformed === 'boolean'
+        ? v.underperformed
+        : UNDERPERFORMING_OUTCOMES.includes(stage.outcome.value);
+    stage.terminal = typeof v.terminal === 'boolean' ? v.terminal : null;
+    return stage;
+}
+
+/** `{"images": 2}` → `[['images', 2]]`, dropping anything that is not a number. */
+function countMap(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return [];
+    return Object.entries(raw)
+        .filter(([, n]) => typeof n === 'number' && Number.isFinite(n))
+        .map(([label, n]) => ({ label, count: n }));
+}
+
+function countTotal(raw) {
+    const entries = countMap(raw);
+    if (!entries.length) return null;
+    return entries.reduce((sum, e) => sum + e.count, 0);
+}
+
+/** One unit of a multi-part stage — an image being read, a synthesis pass. */
+export function normalizeSubstage(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        substage_id: str(v.substage_id || v.id),
+        label: str(v.label),
+        index: numOrNull(v.index),
+        total: numOrNull(v.total),
+        outcome: enumField(v.outcome, STAGE_OUTCOMES),
+        started_at: ISO(v.started_at),
+        completed_at: ISO(v.completed_at),
+        duration_ms: numOrNull(v.duration_ms),
+        detail: str(v.detail),
+        refs: arr(v.refs).map(String),
+    };
+}
+
+/**
+ * How long a running stage has been running, from ITS clock and the caller's `now`.
+ *
+ * Client-side, and deliberately: the directive asks for elapsed time on the current stage, and no
+ * server pushes a tick per second. Returns null rather than 0 when the stage never said when it
+ * started — a clock counting up from an unknown origin is a fabricated measurement, and the one a
+ * reader would most readily believe.
+ */
+export function stageElapsedMs(stage, now) {
+    if (!stage || !stage.running) return null;
+    const from = stage.started_at || stage.queued_at || stage.at;
+    if (!from) return null;
+    const started = Date.parse(from);
+    const at = typeof now === 'number' ? now : Date.parse(now);
+    if (!Number.isFinite(started) || !Number.isFinite(at)) return null;
+    return Math.max(0, at - started);
+}
+
+/** `840 ms`, `1.4s`, `2m 05s` — or an em dash. Never `0 ms` for an unknown. */
+export function formatDuration(ms) {
+    if (ms === null || ms === undefined || !Number.isFinite(ms)) return '—';
+    if (ms < 1000) return `${Math.round(ms)} ms`;
+    const s = ms / 1000;
+    if (s < 60) return `${s.toFixed(1)}s`;
+    const m = Math.floor(s / 60);
+    return `${m}m ${String(Math.floor(s - m * 60)).padStart(2, '0')}s`;
+}
+
+/** The stage a person is waiting on, or null. The LAST running one — stages run in order. */
+export function currentStage(session) {
+    const stages = session?.stages || [];
+    for (let i = stages.length - 1; i >= 0; i -= 1) {
+        if (stages[i].running) return stages[i];
+    }
+    return null;
+}
+
+/**
+ * Stages that ended having produced less than they should have.
+ *
+ * Deliberately NOT the same question as "did the session end badly". A session can be `complete`
+ * with a truncated compiler underneath it, and that combination — a finished-looking answer built
+ * on a stage that stopped mid-sentence — is the exact thing the 002R rehearsal could not see.
+ */
+export function underperformingStages(session) {
+    return (session?.stages || []).filter((s) => s.underperformed);
+}
+
+/**
+ * The earliest of the stages it is GIVEN, by declared order.
+ *
+ * It does not filter. It filtered by `underperformed` until the caller began handing it two
+ * categories — semantic underperformance and execution failure — at which point re-filtering
+ * silently dropped every errored stage on the floor and the diagnosis card fell back to "this run
+ * ended without completing" for a compiler that had raised.
+ *
+ * Why the earliest: everything after a failure is a consequence of it, and naming a consequence as
+ * the cause sends a reader to the wrong place — "the composer produced two sections" is true and
+ * useless when the compiler that fed it stopped mid-output.
+ */
+export function earliestFailure(stages) {
+    const named = (stages || []).filter(Boolean);
+    if (!named.length) return null;
+    return named.reduce((a, b) =>
+        (STAGE_NAMES.indexOf(a.stage.value) <= STAGE_NAMES.indexOf(b.stage.value) ? a : b));
+}
+
+/** Stages that never ran at all after a given one — by DECLARED order, not by guesswork. */
+export function downstreamOf(stageName, stages) {
+    const idx = STAGE_NAMES.indexOf(stageName);
+    if (idx < 0) return [];
+    const reached = new Set((stages || []).map((s) => s.stage.value));
+    return STAGE_NAMES.slice(idx + 1).filter((n) => !reached.has(n));
+}
+
+/**
+ * Stages that DID run after a given one and produced nothing.
+ *
+ * Not the same fact as never running, and a reader deciding what to fix needs to know which: a
+ * stage that ran and came back empty is a different repair from one the coordinator skipped.
+ */
+export function barrenAfter(stageName, stages) {
+    const idx = STAGE_NAMES.indexOf(stageName);
+    if (idx < 0) return [];
+    return (stages || []).filter(
+        (s) => STAGE_NAMES.indexOf(s.stage.value) > idx && s.barren);
+}
+
 // ── the session ──────────────────────────────────────────────────────────────
 
 export function normalizeSession(raw) {
@@ -574,8 +1030,41 @@ export function normalizeSession(raw) {
         capability_receipts: arr(v.capability_receipts).map(normalizeReceipt),
         evidence: arr(v.evidence).map(normalizeEvidence),
         synthesis: normalizeSynthesis(v.synthesis),
+        // The machinery ledger. Read at last — see the block above.
+        stages: arr(v.stages).map(normalizeStage),
         trace: arr(v.trace).map(normalizeTraceEvent),
+        // Six more the backend has always sent and this client discarded. `posts` is what was
+        // actually read (with the fingerprint that proves it did not move), `frame` is the
+        // framer's output, `verdicts` is the judge's, and `gaps` names what nothing could serve.
+        posts: arr(v.posts).map(normalizePostRef),
+        frame: v.frame && typeof v.frame === 'object' ? v.frame : null,
+        verdicts: arr(v.verdicts).map(normalizeVerdict),
+        gaps: arr(v.gaps).map(String),
+        why_paused: v.why_paused && typeof v.why_paused === 'object' ? v.why_paused : null,
+        provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
+        stop_reason: str(v.stop_reason),
         error: str(v.error),
+        raw: v,
+    };
+}
+
+/**
+ * One selected post, and the fingerprint that proves it did not move.
+ *
+ * `readable: false` is a real state the backend can send — a post whose image could not be
+ * fetched — and it must not render as a post that was read. The whole point of Phase 1's
+ * invariance claim is that source posts are unchanged, so the fingerprint is shown rather than
+ * summarised into a checkmark.
+ */
+export function normalizePostRef(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        post_id: str(v.post_id),
+        title: str(v.title),
+        image_ref: str(v.image_ref),
+        fingerprint: str(v.fingerprint),
+        readable: v.readable === false ? false : boolOrNull(v.readable),
+        note: str(v.note),
     };
 }
 

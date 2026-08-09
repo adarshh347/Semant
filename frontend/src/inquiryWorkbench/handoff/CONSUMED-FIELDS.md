@@ -34,12 +34,20 @@ list, and the Pydantic model on the other side remains the single definition.
 | `state` | **enumerated** | `framing · reading · compiling · awaiting_user · ready · executing · judging · composing · complete · exhausted · refused · error` |
 | `mode` | **enumerated** | `auto · consult · step` |
 | `graph` | object | below |
+| `posts[]` | array | **what was actually read** — `post_id`, `title`, `image_ref`, `fingerprint`, `readable`, `note`. `readable: false` renders as "could not be read", never as a post that was read |
+| `frame` | object \| null | the framer's output, rendered raw. It never sees pixels |
 | `decision_requests[]` | array | below |
 | `decision_records[]` | array | below |
 | `capability_receipts[]` | array | below |
 | `evidence[]` | array | below |
 | `synthesis` | object \| null | null renders as "no answer yet", not as an empty answer |
+| `stages[]` | array | **the machinery ledger** — below. Sent since HARNESS-002D; read since 003C |
+| `verdicts[]` | array | the judge's conclusions — below |
+| `gaps[]` | string[] | what nothing could serve |
+| `why_paused` | object \| null | rendered raw when present |
+| `provenance` | object | session-level producer and schema identity |
 | `trace[]` | array | below |
+| `stop_reason` | string | rendered in plain language when a session ends short |
 | `error` | string | rendered in the session header when present |
 
 An unrecognised `state` keeps the client polling. It is the only conservative reading: a client
@@ -65,6 +73,7 @@ older than the server must not declare a session finished because it did not kno
 | field | shape | notes |
 |---|---|---|
 | `text` | string | **required** |
+| `blocks[]` | array | `block_id`, `kind`, `text`, `image_refs[]`. Sent since HARNESS-002D and read since 003C — these are what the dissector consumes, so a ledger showing claims without them starts the chain half-way |
 | `status` | string | **capped at `interpretive`.** A reading that arrives claiming `measured` is rendered as interpretive AND the original is shown beside it. Do not send a status stronger than `interpretive · imagined · uncertain · unresolved` — it will be reported as a defect, visibly |
 | `source`, `model` | string | shown in the collapsed model receipt |
 | `provenance` | object | |
@@ -103,6 +112,35 @@ A claim's `measured`/`visible` status does not by itself produce a support row �
 | `residual_interpretation` | string | what stays interpretive even if every measurement succeeds |
 | `availability` | **enumerated** | `available · unavailable · capability_gap` — three different rows with three different treatments |
 | `gap_reason` | string | appended to the availability sentence |
+
+## Dissolution (HARNESS-003A, rendered forward)
+
+Rendered where present and silent where absent. Lane A is building these in parallel; a surface
+that showed "0 atoms" as a defect would report an unmerged lane as a failure of the run.
+
+| field | shape | notes |
+|---|---|---|
+| `graph.source_units[]` | array | `source_unit_id`, `source_type` (**enumerated**: `prompt_clause · reading_block`), `source_ref`, `exact_quote`, `image_refs[]` |
+| `graph.semantic_atoms[]` | array | `atom_id`, `source_unit_ids[]`, `text`, `unit_kind` (**enumerated**, nine forms), `subject`/`predicate`/`object`, `image_scope[]`, `epistemic_ceiling` (**enumerated**), `author` (**enumerated** — `user` renders "your direction"), `provenance` |
+| `graph.coverage[]` | array | `source_unit_id`, `disposition` (**enumerated**: `represented_by · duplicate_of · semantic_remainder · refused`), `refs[]`, `reason` |
+
+**Every source unit needs exactly one disposition.** A unit with none is rendered as **lost**, not
+as a remainder, and the coverage row is flagged — a remainder is a decision, and a unit nobody
+accounted for is a unit the compiler dropped. The two must not read alike.
+
+## Verdicts (`verdicts[]`)
+
+| field | shape | notes |
+|---|---|---|
+| `verdict_id` | string | |
+| `claim_ref` | string | |
+| `outcome` | **enumerated** | `supported_by_evidence · partially_supported · interpretive_only · unresolved · contradicted · not_investigated` |
+| `why` | string | |
+| `evidence_refs[]`, `receipt_refs[]` | string[] | |
+
+`interpretive_only` and `not_investigated` never render alike: one says the claim was examined and
+nothing measured bears on it, the other says nobody asked. A reader deciding how much to trust an
+answer needs both.
 
 ## Decisions
 
@@ -222,6 +260,49 @@ trust the answer.
 
 `evidence_refs` pointing at disqualified objects produce **no** support row; the section then says
 "no measurement supports this section" rather than showing the object.
+
+## Stage attempts (`stages[]`) — HARNESS-003C
+
+The backend has sent this list since HARNESS-002D and the client dropped it, which is the 002R
+rehearsal's fourth tree cause. It is read now, in **both** shapes: today's `StageEvent`
+(`event_id`/`stage`/`outcome`/`at`/`revision`/`detail`/`input_refs`/`output_refs`) and Lane B's
+richer forward one. Neither is required to be complete.
+
+| field | shape | notes |
+|---|---|---|
+| `attempt_id` / `event_id` | string | either spelling |
+| `stage` | **enumerated** | `framer · theorist · compiler · steward · capability · judge · composer` |
+| `outcome` | **enumerated** | `queued · started · completed · thin · truncated · empty · unavailable · refused · skipped · error · interrupted`, per `inquiry-stage-attempt.v1`. **`thin` and `truncated` never wear `completed`'s treatment** — that is what this phase is for |
+| `underperformed` | boolean | **the declaration wins.** Lane B computes it from checks this client cannot see; it is derived here only when absent, and then from the contract's own three (`thin`, `truncated`, `empty`) |
+| `terminal` | boolean | |
+| `truncation_source` | **enumerated** | `field · producer_attribute · receipt_note · none · unknown`. **`unknown` is not `none`** — the first says nothing could be consulted, the second that something was and answered. They get different treatments; showing them alike reports an unchecked stage as a verified-untruncated one |
+| `counts_line` | string | **the backend's own sentence** — "2 images in → 8 reading blocks out". Preferred over anything assembled here: the nouns are what make the numbers readable, and this surface guessing them would be inventing the units |
+| `input_counts`, `output_counts` | object | `{"images": 2}` — named counts, rendered as given |
+| `substages[]` | array | `substage_id`, `label`, `index`, `total`, `outcome`, `started_at`, `completed_at`, `duration_ms`, `detail`, `refs[]` |
+| `gap_refs[]`, `refusal_refs[]`, `receipt_refs[]` | string[] | |
+| `summary` | string | |
+| `sequence`, `revision` | number \| null | |
+| `at` | ISO \| null | today's single timestamp; still places the event in time |
+| `queued_at`, `started_at`, `completed_at` | ISO \| null | Lane B's three |
+| `duration_ms` | number \| null | **never rendered as 0 when absent.** An em dash. Elapsed time is a DIFFERENT word on screen and a different field underneath — it is this client counting from `started_at`, and a stage that never said when it started shows neither |
+| `input_refs[]`, `output_refs[]` | string[] | |
+| `input_count`, `output_count` | number \| null | read where declared, **derived from the refs otherwise**, and null for a stage that reported neither |
+| `actor.role` / `role` | string | |
+| `actor.model` / `model` | string | |
+| `actor.provider` / `provider` | string | |
+| `actor.execution_mode` / `execution_mode` | **enumerated** | `fixture · live · none`. **`none` is not a weaker `live`** — it is a stage that entered no external work at all, which is what every framer and steward attempt on a real session is |
+| `call_topology` | string | e.g. `per_image_then_synthesis`, rendered with underscores as spaces |
+| `planned_calls`, `actual_calls` | number \| null | **"4 image readings plus one synthesis planned" renders only from `planned_calls`.** A count this surface derived from the image list would be a guess wearing your authority |
+| `calls[]` | array | `call_id`, `label`, `started_at`, `duration_ms`, `finish_reason`, `outcome` |
+| `image_index`, `image_total` | number \| null | 0-based index on the wire; the renderer adds the one |
+| `substage` | string | e.g. `cross-image synthesis` |
+| `finish_reason` | string | rendered beside the stage, not buried in a receipt. `length` is the single most consequential value the live runs produced |
+| `refusal_summary` / `error_summary` / `gap_summary` | string | first non-empty is shown |
+| `provenance` | object | |
+
+No progress percentage and no estimated completion is rendered from any of this, and none should
+be sent: the inquiry does not know how long a model call takes, so a bar would be inventing a
+denominator and an ETA a rate.
 
 ## Trace (`trace[]`)
 

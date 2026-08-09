@@ -5,8 +5,11 @@ import { createMockInquiryClient } from '../inquiryClient.js';
 import {
     compilingFixture, consultFixture, respondedFixture, completedFixture, autoFixture,
     outcomesFixture, measuredEvidenceFixture, simulatedEvidenceFixture, unknownFutureFixture,
-    conflictSessionFixture, duplicateSessionFixture, otherDomainFixture, FIXTURE_CORPUS,
+    conflictSessionFixture, duplicateSessionFixture, otherDomainFixture,
+    runningStagesFixture, truncatedCompilerFixture, barrenFixture, stagedCompleteFixture,
+    dissolvedFixture, unknownStageFixture,
 } from '../inquiryFixtures.js';
+import { createMockCorpusClient } from '../../inquiryCorpus/corpusClient.js';
 import '../../index.css';
 import './preview.css';
 
@@ -31,6 +34,22 @@ import './preview.css';
  */
 
 const STORIES = [
+    // HARNESS-003C — the mechanism states, first, because they are what this phase repaired.
+    ['running-stages', 'Working — the theorist mid-way through four images',
+        { script: [runningStagesFixture()] }],
+    ['truncated', 'Truncated — a rich reading, then a compiler that stopped mid-sentence',
+        { script: [truncatedCompilerFixture()] }],
+    ['barren', 'Barren — the reading compiled into nothing at all',
+        { script: [barrenFixture()] }],
+    ['dissolved', 'Dissolved — the whole chain, source units through synthesis',
+        { script: [dissolvedFixture()] }],
+    ['staged-complete', 'Complete — with its whole stage ledger',
+        { script: [stagedCompleteFixture()] }],
+    ['unknown-stage', 'A future server — an unrecognised stage and outcome',
+        { script: [unknownStageFixture()] }],
+    ['entry', 'The entry — the whole archive, paged, with upload-and-include',
+        { script: [runningStagesFixture()], stayOnEntry: true }],
+
     ['awaiting-user', 'Awaiting user — a consult session paused at a fork',
         { script: [consultFixture()], afterResponse: respondedFixture() }],
     ['completed', 'Completed — answer, citations and remainder',
@@ -63,9 +82,34 @@ const STORIES = [
         { script: [otherDomainFixture()] }],
 ];
 
-const POSTS = FIXTURE_CORPUS.map((c) => ({
-    id: c.post_id, photo_url: c.image_url, title: c.title, region_annotations: [],
+/**
+ * A three-page archive, so paging, the end state and the scope note are all reachable by hand.
+ * Cloudinary URLs so the thumbnail transforms are exercised as they are in the app.
+ */
+const CORPUS_PAGES = [1, 2, 3].map((page) => ({
+    posts: Array.from({ length: page === 3 ? 2 : 6 }, (_, i) => {
+        const n = (page - 1) * 6 + i + 1;
+        return {
+            id: `post_${n}`,
+            photo_url: `https://res.cloudinary.com/demo/image/upload/v1/sample.jpg#${n}`,
+            text_blocks: n % 3 === 0 ? [] : [{ content: `<p>Archive image ${n}</p>` }],
+            general_tags: n % 3 === 0 ? [] : ['schinkel', 'berlin'],
+            instagram_handle: n % 2 === 0 ? 'archivist' : '',
+            region_annotations: n % 4 === 0 ? [{}, {}] : [],
+        };
+    }),
+    total_pages: 3,
+    current_page: page,
 }));
+
+/** Never resolves, so the entry story stays on the entry form to be looked at. */
+const stalledClient = {
+    start: () => new Promise(() => {}),
+    get: () => new Promise(() => {}),
+    respond: () => new Promise(() => {}),
+    watch: () => () => {},
+    live: false,
+};
 
 export function Preview() {
     const initial = new URLSearchParams(window.location.search).get('story') || 'awaiting-user';
@@ -77,6 +121,10 @@ export function Preview() {
     // whether it has been responded to), so reusing one across stories would show a session that
     // had already moved on.
     const client = useMemo(() => createMockInquiryClient(story[2]), [story]);
+    // `story` is the intended reset key: the mock is stateful — it remembers which pages it has
+    // served — so switching stories must build a fresh one even though the pages are constant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const corpusClient = useMemo(() => createMockCorpusClient({ pages: CORPUS_PAGES }), [story]);
 
     return (
         <>
@@ -111,7 +159,11 @@ export function Preview() {
                 </span>
             </div>
 
-            <InquiryWorkbenchPage key={`${storyId}`} client={client} posts={POSTS} />
+            <InquiryWorkbenchPage
+                key={`${storyId}`}
+                client={story[2].stayOnEntry ? stalledClient : client}
+                corpusClient={corpusClient}
+            />
         </>
     );
 }

@@ -53,8 +53,64 @@ const READING = {
     status: 'interpretive',
     source: 'scene_theorist',
     model: 'vlm/scene-theorist',
+    blocks: [
+        {
+            block_id: 'rdb_1', kind: 'observation',
+            text: 'The front reads as a single long horizontal: a screen of columns held between '
+                + 'two solid ends, with no centre marked on the outside.',
+            image_refs: ['post_altes_front'],
+        },
+        {
+            block_id: 'rdb_2', kind: 'observation',
+            text: 'Behind it the plan turns: the rotunda is a centre that the façade never announces.',
+            image_refs: ['post_altes_front', 'post_altes_rotunda'],
+        },
+        {
+            block_id: 'rdb_3', kind: 'association',
+            text: 'The comparison that suggests itself is with a temple front, but the temple '
+                + 'front has a centre and this one refuses to name it.',
+            image_refs: ['post_altes_front'],
+        },
+    ],
     provenance: { role: 'scene_theorist', called_at: '2026-08-09T09:14:02Z' },
 };
+
+const POSTS = [
+    {
+        post_id: 'post_altes_front', title: 'Altes Museum, Lustgarten front',
+        image_ref: 'imgref_altes_front',
+        fingerprint: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+        readable: true, note: '',
+    },
+    {
+        post_id: 'post_altes_rotunda', title: 'Rotunda, interior',
+        image_ref: 'imgref_altes_rotunda',
+        fingerprint: 'b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1',
+        readable: true, note: '',
+    },
+];
+
+const FRAME = {
+    frame_id: 'frm_1',
+    attentions: ['centre', 'threshold', 'approach'],
+    epistemic_demands: ['a comparison across two images', 'movement, which no still image holds'],
+    unresolved_terms: ['dispersed civic ground'],
+    proposed_actions: [],
+};
+
+const VERDICTS = [
+    {
+        verdict_id: 'vd_colonnade', claim_ref: 'clm_colonnade', outcome: 'interpretive_only',
+        why: 'The one request that bore on it ran against a simulation, so nothing measured '
+            + 'reaches this claim.',
+        evidence_refs: [], receipt_refs: ['capr_locate_1'],
+    },
+    {
+        verdict_id: 'vd_temple', claim_ref: 'clm_temple_front', outcome: 'not_investigated',
+        why: 'No observable was requested for it. Nobody asked.',
+        evidence_refs: [], receipt_refs: [],
+    },
+];
 
 const CLAIMS = [
     {
@@ -306,12 +362,19 @@ function baseSession(overrides = {}) {
             refusals: [],
             provenance: { compiler: 'semantic_compiler' },
         },
+        posts: clone(POSTS),
+        frame: clone(FRAME),
         decision_requests: [],
         decision_records: [],
         capability_receipts: [],
         evidence: [],
+        verdicts: [],
         synthesis: null,
+        stages: [],
         trace: clone(TRACE),
+        gaps: [],
+        stop_reason: '',
+        provenance: { producer: 'inquiry_session', schema_version: 'inquiry-session.v1' },
         error: '',
         ...overrides,
     };
@@ -440,6 +503,7 @@ export function completedFixture() {
         ...s,
         state: 'complete',
         revision: 7,
+        verdicts: clone(VERDICTS),
         synthesis: clone(SYNTHESIS),
         trace: [
             ...s.trace,
@@ -873,6 +937,320 @@ export function otherDomainFixture() {
  */
 export function canonicalFixture() {
     return completedFixture();
+}
+
+// ── stage ledgers (HARNESS-003C) ─────────────────────────────────────────────
+//
+// Written in Lane B's FORWARD shape, because that is what this surface must render next and the
+// only way to know it renders is to hand it one. `framerStage` below is deliberately written in
+// TODAY's narrower shape — `at`, no `duration_ms`, no actor block — so both servers are covered by
+// the same fixtures rather than by a promise that the old one still works.
+
+const FRAMER_STAGE_V1 = {
+    event_id: 'stg_framer',
+    stage: 'framer',
+    outcome: 'completed',
+    at: '2026-08-09T09:14:00Z',
+    revision: 1,
+    detail: 'Prompt and corpus metadata read; no pixels seen.',
+    input_refs: [],
+    output_refs: ['frm_1'],
+};
+
+const THEORIST_RUNNING = {
+    attempt_id: 'stg_theorist',
+    stage: 'theorist',
+    outcome: 'started',
+    sequence: 2,
+    revision: 2,
+    queued_at: '2026-08-09T09:14:01Z',
+    started_at: '2026-08-09T09:14:02Z',
+    completed_at: null,
+    duration_ms: null,
+    actor: {
+        role: 'scene_theorist',
+        model: 'qwen/qwen3.6-27b',
+        provider: 'groq',
+        execution_mode: 'live',
+    },
+    call_topology: 'per_image_then_synthesis',
+    planned_calls: 5,
+    actual_calls: 2,
+    image_index: 1,
+    image_total: 4,
+    substage: 'reading image 2',
+    input_refs: ['post_altes_front', 'post_altes_rotunda'],
+    input_count: 4,
+    output_refs: [],
+    output_count: 0,
+    calls: [
+        { call_id: 'call_1', label: 'image 1', duration_ms: 8400, finish_reason: 'stop' },
+        { call_id: 'call_2', label: 'image 2', duration_ms: null, finish_reason: '' },
+    ],
+};
+
+const THEORIST_COMPLETED = {
+    ...THEORIST_RUNNING,
+    outcome: 'completed',
+    completed_at: '2026-08-09T09:14:41Z',
+    duration_ms: 39200,
+    actual_calls: 5,
+    image_index: 3,
+    substage: 'cross-image synthesis',
+    output_refs: ['rdb_1', 'rdb_2', 'rdb_3'],
+    output_count: 31,
+    calls: [
+        { call_id: 'call_1', label: 'image 1', duration_ms: 8400, finish_reason: 'stop' },
+        { call_id: 'call_2', label: 'image 2', duration_ms: 7900, finish_reason: 'stop' },
+        { call_id: 'call_3', label: 'image 3', duration_ms: 8100, finish_reason: 'stop' },
+        { call_id: 'call_4', label: 'image 4', duration_ms: 7600, finish_reason: 'stop' },
+        { call_id: 'call_5', label: 'cross-image synthesis', duration_ms: 7200, finish_reason: 'stop' },
+    ],
+};
+
+const COMPILER_TRUNCATED = {
+    attempt_id: 'stg_compiler',
+    stage: 'compiler',
+    outcome: 'truncated',
+    sequence: 3,
+    revision: 3,
+    started_at: '2026-08-09T09:14:41Z',
+    completed_at: '2026-08-09T09:15:02Z',
+    duration_ms: 21400,
+    actor: {
+        role: 'semantic_compiler',
+        model: 'openai/gpt-oss-120b',
+        provider: 'groq',
+        execution_mode: 'live',
+    },
+    call_topology: 'text_only',
+    planned_calls: 1,
+    actual_calls: 1,
+    // The live measurement from the 002D finding: every run hit the output budget.
+    finish_reason: 'length',
+    input_refs: ['rdb_1', 'rdb_2', 'rdb_3'],
+    input_count: 31,
+    output_refs: ['clm_colonnade', 'clm_centre_shift'],
+    output_count: 2,
+    detail: 'The response stopped at the output limit. The parsed prefix is what is below.',
+    error_summary: '31 reading blocks entered; 2 claims and 0 observables emerged.',
+};
+
+const STEWARD_SKIPPED = {
+    attempt_id: 'stg_steward',
+    stage: 'steward',
+    outcome: 'skipped',
+    sequence: 4,
+    revision: 4,
+    duration_ms: null,
+    detail: 'No observable reached the steward, so there was no fork to offer.',
+    input_refs: [],
+    output_refs: [],
+};
+
+/**
+ * 10. Actively running: the theorist mid-way through four images.
+ *
+ * The state the 002R rehearsal spent most of its time in and could not see.
+ */
+export function runningStagesFixture() {
+    return baseSession({
+        state: 'reading',
+        revision: 2,
+        graph: { ...baseSession().graph, claims: [], claim_edges: [], observables: [],
+                 semantic_remainder: [], reading: { text: '', status: '', source: '', provenance: {} } },
+        stages: [FRAMER_STAGE_V1, THEORIST_RUNNING],
+    });
+}
+
+/** 11. A rich reading, then a compiler that stopped mid-sentence. */
+export function truncatedCompilerFixture() {
+    return baseSession({
+        state: 'exhausted',
+        revision: 5,
+        stop_reason: 'The compiler was truncated, so no observable was produced to investigate.',
+        stages: [FRAMER_STAGE_V1, THEORIST_COMPLETED, COMPILER_TRUNCATED, STEWARD_SKIPPED],
+        graph: {
+            ...baseSession().graph,
+            claims: clone(CLAIMS).slice(0, 2),
+            claim_edges: [],
+            observables: [],
+            semantic_remainder: [],
+        },
+    });
+}
+
+/** 12. Nothing compiled at all — the barren graph, with the ledger that explains it. */
+export function barrenFixture() {
+    return baseSession({
+        state: 'exhausted',
+        revision: 4,
+        stop_reason: 'Nothing was compiled from the reading.',
+        stages: [
+            FRAMER_STAGE_V1,
+            THEORIST_COMPLETED,
+            {
+                ...COMPILER_TRUNCATED,
+                outcome: 'empty',
+                finish_reason: 'stop',
+                output_refs: [],
+                output_count: 0,
+                detail: 'The compiler returned a well-formed response containing no claims.',
+                error_summary: '31 reading blocks entered; 0 claims and 0 observables emerged.',
+            },
+            STEWARD_SKIPPED,
+        ],
+        graph: {
+            ...baseSession().graph,
+            claims: [],
+            claim_edges: [],
+            observables: [],
+            semantic_remainder: [],
+        },
+    });
+}
+
+/** 13. A complete session with its whole ledger, for the ordinary case. */
+export function stagedCompleteFixture() {
+    const s = completedFixture();
+    return {
+        ...s,
+        stages: [
+            FRAMER_STAGE_V1,
+            THEORIST_COMPLETED,
+            {
+                ...COMPILER_TRUNCATED,
+                outcome: 'completed',
+                finish_reason: 'stop',
+                output_count: 4,
+                output_refs: ['clm_colonnade', 'clm_centre_shift', 'clm_threshold_converts',
+                              'clm_temple_front'],
+                detail: '',
+                error_summary: '',
+            },
+            {
+                attempt_id: 'stg_capability',
+                stage: 'capability',
+                outcome: 'completed',
+                sequence: 5,
+                duration_ms: 12,
+                actor: { role: 'capability_broker', execution_mode: 'fixture' },
+                input_refs: ['obs_extent'],
+                output_refs: ['capr_locate_1'],
+            },
+            {
+                attempt_id: 'stg_composer',
+                stage: 'composer',
+                outcome: 'completed',
+                sequence: 7,
+                duration_ms: 4300,
+                actor: { role: 'synthesis_composer', model: 'openai/gpt-oss-120b', provider: 'groq',
+                         execution_mode: 'live' },
+                finish_reason: 'stop',
+                input_refs: ['clm_colonnade'],
+                output_refs: ['syn_1'],
+                output_count: 3,
+            },
+        ],
+    };
+}
+
+/** 14. A stage vocabulary from a future server. */
+export function unknownStageFixture() {
+    return baseSession({
+        state: 'reconciling',
+        stages: [
+            FRAMER_STAGE_V1,
+            {
+                attempt_id: 'stg_future',
+                stage: 'resonator',
+                outcome: 'attuning',
+                duration_ms: null,
+                actor: { execution_mode: 'holographic' },
+            },
+        ],
+    });
+}
+
+/**
+ * 15. The whole chain, dissolved — the shape HARNESS-003A is building toward.
+ *
+ * Every source unit has exactly one disposition except `su_5`, which deliberately has none: a unit
+ * the compiler LOST is not a remainder, and the ledger has to be able to tell those apart.
+ */
+export function dissolvedFixture() {
+    const s = completedFixture();
+    return {
+        ...s,
+        graph: {
+            ...s.graph,
+            source_units: [
+                {
+                    source_unit_id: 'su_1', source_type: 'prompt_clause',
+                    source_ref: 'prompt#0:62',
+                    exact_quote: 'How does this building turn a dispersed civic ground into a centralized interior',
+                    image_refs: [],
+                },
+                {
+                    source_unit_id: 'su_2', source_type: 'prompt_clause',
+                    source_ref: 'prompt#62:110',
+                    exact_quote: 'what does the threshold between them actually do',
+                    image_refs: [],
+                },
+                {
+                    source_unit_id: 'su_3', source_type: 'reading_block', source_ref: 'rdb_1',
+                    exact_quote: 'a screen of columns held between two solid ends',
+                    image_refs: ['post_altes_front'],
+                },
+                {
+                    source_unit_id: 'su_4', source_type: 'reading_block', source_ref: 'rdb_3',
+                    exact_quote: 'The comparison that suggests itself is with a temple front',
+                    image_refs: ['post_altes_front'],
+                },
+                {
+                    source_unit_id: 'su_5', source_type: 'reading_block', source_ref: 'rdb_2',
+                    exact_quote: 'the rotunda is a centre that the façade never announces',
+                    image_refs: ['post_altes_front', 'post_altes_rotunda'],
+                },
+            ],
+            semantic_atoms: [
+                {
+                    atom_id: 'atm_1', source_unit_ids: ['su_3'],
+                    text: 'a colonnade spans the front',
+                    unit_kind: 'entity', subject: 'colonnade', predicate: 'spans',
+                    object: 'front elevation',
+                    image_scope: ['post_altes_front'], epistemic_ceiling: 'interpretive',
+                    author: 'model',
+                    provenance: { role: 'semantic_dissector', model: 'openai/gpt-oss-120b' },
+                },
+                {
+                    atom_id: 'atm_2', source_unit_ids: ['su_1', 'su_2'],
+                    text: 'the threshold converts the approach',
+                    unit_kind: 'causal_hypothesis', subject: 'threshold', predicate: 'converts',
+                    object: 'approach',
+                    image_scope: ['post_altes_front'], epistemic_ceiling: 'interpretive',
+                    author: 'user',
+                    provenance: { role: 'semantic_dissector' },
+                },
+                {
+                    atom_id: 'atm_3', source_unit_ids: ['su_4'],
+                    text: 'the front quotes a temple portico',
+                    unit_kind: 'historical_or_sourced', subject: '', predicate: '', object: '',
+                    image_scope: ['post_altes_front'], epistemic_ceiling: 'sourced',
+                    author: 'model', provenance: { role: 'semantic_dissector' },
+                },
+            ],
+            coverage: [
+                { source_unit_id: 'su_1', disposition: 'represented_by', refs: ['atm_2'], reason: '' },
+                { source_unit_id: 'su_2', disposition: 'represented_by', refs: ['atm_2'], reason: '' },
+                { source_unit_id: 'su_3', disposition: 'represented_by', refs: ['atm_1'], reason: '' },
+                {
+                    source_unit_id: 'su_4', disposition: 'semantic_remainder', refs: [],
+                    reason: 'A claim about sources. No measurement of these pixels can settle it.',
+                },
+            ],
+        },
+    };
 }
 
 export default consultFixture;
