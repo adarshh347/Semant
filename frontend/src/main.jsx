@@ -81,6 +81,11 @@ const ConstellationPage = React.lazy(() => import('./constellation/Constellation
 // WAVE4 — the curator's queue. The one surface where a proposal becomes part of the shared
 // record, and the only place in the app that writes to the ledger.
 const CuratorQueuePage = React.lazy(() => import('./curator/CuratorQueuePage.jsx'));
+// HARNESS-002 — the inquiry workbench: a question and some pictures, read into claims you can
+// argue with, paused where your judgement changes the work, answered with every sentence bound to
+// what it rests on. Calls the real /api/v1/inquiries routes; there is no fixture fallback, and an
+// undeployed API says so rather than demonstrating itself.
+const InquiryWorkbenchPage = React.lazy(() => import('./inquiryWorkbench/InquiryWorkbenchPage.jsx'));
 // DEV-ONLY · landing-migration checkpoint — the glyph contact sheet, proving the
 // 21 glyphs render identically once migrated into Semant (asset-layer fidelity).
 // Guarded so vite statically drops both the const and its dynamic-import chunk
@@ -155,6 +160,8 @@ const router = createBrowserRouter([
       { path: "writer/:manuscriptId", element: <WriterPage /> },
       // ATLAS C1 — the index picks a corpus; the canvas opens over one.
       { path: "curator", element: <CuratorQueuePage /> },
+      // HARNESS-002 — the semantic inquiry. Phase 1: one capability is a declared simulation.
+      { path: "inquiry", element: <InquiryWorkbenchPage /> },
       { path: "constellation", element: <ConstellationPage /> },
       { path: "atlas", element: <AtlasPage /> },
       { path: "atlas/:atlasId", element: <AtlasPage /> },

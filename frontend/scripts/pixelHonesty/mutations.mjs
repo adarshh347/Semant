@@ -265,6 +265,130 @@ export const MUTATIONS = [
         expect: 'liveness is probed, not declared marks an unreachable surface as not-a-door '
             + 'rather than a dim link',
     },
+
+    // ── HARNESS-002 · the inquiry workbench ─────────────────────────────────
+    //
+    // Handed here by Lane C, which wrote the guards and could not add the mutations: this file is
+    // outside its write set. They are the same shape as the ones above and probe the one thing
+    // Phase 1 rests on entirely — that a SIMULATED capability receipt cannot be read as a finding.
+    // Its payload is a plausible-looking region on purpose, so these are the mutations that matter
+    // most in the whole table.
+    {
+        id: 'inquiry/simulated-label-dropped',
+        guarantee: 'the SIMULATED label sits beside the payload in text, permanently, and not in '
+            + 'a badge a reader can scroll past',
+        file: 'src/inquiryWorkbench/CapabilityActivity.jsx',
+        find: '<p className="iw-simulated" data-simulated="true">',
+        replace: '<p className="iw-quiet" data-simulated="false">',
+        suites: ['src/inquiryWorkbench/inquiryOutput.dom.test.jsx'],
+        expect: 'the SIMULATED label sits beside the payload in TEXT, not in a tooltip',
+    },
+    {
+        id: 'inquiry/simulated-not-repeated-beside-geometry',
+        guarantee: 'the label is repeated beside the geometry itself, so a reader who expanded one '
+            + 'row out of a long list does not have to remember which one they opened',
+        file: 'src/inquiryWorkbench/CapabilityActivity.jsx',
+        find: 'SIMULATED — not evidence. This geometry was produced by a',
+        replace: 'This geometry was produced by a',
+        suites: ['src/inquiryWorkbench/simulationHonesty.dom.test.jsx'],
+        expect: 'the SIMULATED label is where a reader cannot miss it says it AGAIN beside the '
+            + 'geometry once the payload is open',
+    },
+    {
+        id: 'inquiry/simulated-can-be-evidence',
+        guarantee: 'a simulated object never supports a claim, whatever its usable flag says',
+        file: 'src/inquiryWorkbench/inquiryContract.js',
+        find: '    if (obj.simulated) return false;',
+        replace: '',
+        suites: ['src/inquiryWorkbench/simulationHonesty.dom.test.jsx'],
+        expect: 'a simulated receipt cannot be talked into being evidence a fixture receipt that '
+            + 'arrived claiming to be usable is still not evidence',
+    },
+    {
+        id: 'inquiry/reading-ceiling-lifted',
+        guarantee: 'a scene reading is interpretive at strongest, and an over-declared one is '
+            + 'capped VISIBLY rather than rendered or silently downgraded',
+        file: 'src/inquiryWorkbench/inquiryContract.js',
+        find: '        capped_from: overreach ? declared : null,',
+        replace: '        capped_from: null,',
+        suites: ['src/inquiryWorkbench/inquiryGraph.dom.test.jsx'],
+        expect: 'the provisional reading a reading that arrived claiming measured is capped, and '
+            + 'the cap is SHOWN',
+    },
+    {
+        id: 'inquiry/fixture-outcome-reads-as-its-status',
+        guarantee: 'a fixture execution mode is `simulated` whatever the backend called the status '
+            + '— the one place the client overrides a supplied value, and only downward',
+        file: 'src/inquiryWorkbench/inquiryContract.js',
+        find: "    receipt.simulated = receipt.execution_mode.value === 'fixture'\n        || receipt.status.value === 'simulated';",
+        replace: "    receipt.simulated = receipt.status.value === 'simulated';",
+        suites: ['src/inquiryWorkbench/simulationHonesty.dom.test.jsx'],
+        expect: 'a simulated receipt cannot be talked into being evidence a fixture receipt whose '
+            + 'status contradicts its mode still reads as simulated',
+    },
+    {
+        id: 'inquiry/unknown-state-ends-the-watch',
+        guarantee: 'a state this client does not recognise means the server is newer, and "not '
+            + 'finished yet" is the only reading of it that cannot lose work',
+        file: 'src/inquiryWorkbench/inquiryContract.js',
+        find: '    !IS_TERMINAL_STATE(state) && !IS_AWAITING_USER(state);',
+        replace: '    SESSION_STATES.includes(state) && !IS_TERMINAL_STATE(state) '
+            + '&& !IS_AWAITING_USER(state);',
+        suites: ['src/inquiryWorkbench/inquiryContract.test.js'],
+        expect: 'the session lifecycle keeps watching an UNRECOGNISED state rather than calling '
+            + 'it finished',
+    },
+    {
+        id: 'inquiry/missing-usable-flag-reads-as-permission',
+        guarantee: 'a missing `usable_as_evidence` is not permission; every gate tests === true',
+        file: 'src/inquiryWorkbench/inquiryContract.js',
+        find: '    return obj.usable_as_evidence === true;',
+        replace: '    return obj.usable_as_evidence !== false;',
+        suites: ['src/inquiryWorkbench/simulationHonesty.dom.test.jsx'],
+        expect: 'a simulated receipt cannot be talked into being evidence an evidence object that '
+            + 'does not say whether it is usable is not usable',
+    },
+    {
+        id: 'inquiry/simulated-wears-the-live-treatment',
+        guarantee: 'simulated and live do not share a visual treatment',
+        file: 'src/inquiryWorkbench/inquiryWorkbench.css',
+        cssRule: 'iw-outcome--simulated',
+        copyRuleFrom: 'iw-outcome--live',
+        suites: ['src/inquiryWorkbench/inquiryWorkbench.dom.test.jsx'],
+        expect: 'the stylesheet keeps the distinctions it claims never lets simulated wear the '
+            + 'live treatment',
+    },
+    {
+        id: 'inquiry/gap-looks-like-unavailable',
+        guarantee: '"nothing exists that could do this" and "it exists and is not running" are '
+            + 'different rows, because only one of them is worth retrying',
+        file: 'src/inquiryWorkbench/inquiryWorkbench.css',
+        cssRule: 'iw-outcome--capability_gap',
+        copyRuleFrom: 'iw-outcome--unavailable',
+        suites: ['src/inquiryWorkbench/inquiryWorkbench.dom.test.jsx'],
+        expect: 'the stylesheet keeps the distinctions it claims gives every capability outcome '
+            + 'its own treatment',
+    },
+    {
+        id: 'inquiry/absent-latency-rendered-as-zero',
+        guarantee: 'a measurement that was never taken is an em dash, never an instant one',
+        file: 'src/inquiryWorkbench/CapabilityActivity.jsx',
+        find: "{r.latency_ms === null ? '—' : `${r.latency_ms} ms`}",
+        replace: '{`${r.latency_ms || 0} ms`}',
+        suites: ['src/inquiryWorkbench/inquiryOutput.dom.test.jsx'],
+        expect: 'capability activity a missing latency is an em dash, never 0 ms',
+    },
+    {
+        id: 'inquiry/attempted-not-printed',
+        guarantee: '`attempted` is the single field separating "ran and found nothing" from "was '
+            + 'never there", and it is printed rather than inferred',
+        file: 'src/inquiryWorkbench/CapabilityActivity.jsx',
+        find: "                    {r.attempted === false ? 'not attempted' : null}",
+        replace: '                    {null}',
+        suites: ['src/inquiryWorkbench/inquiryOutput.dom.test.jsx'],
+        expect: 'capability activity prints whether anything was ATTEMPTED, which is what '
+            + 'separates empty from unavailable',
+    },
 ];
 
 // ── applying a lie ─────────────────────────────────────────────────────────

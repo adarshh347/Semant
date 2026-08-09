@@ -100,6 +100,12 @@ export const CLAIM_KINDS = [
  */
 export const CLAIM_STATUSES = [
     'measured', 'visible', 'sourced', 'interpretive', 'imagined', 'proposed', 'unresolved',
+    // HARNESS-002D reconciliation. The compiler's ClaimStatus is three values — `interpretive`,
+    // `sourced`, `uncertain` — and this list was written before it existed, so every `uncertain`
+    // claim on a real graph rendered as a status this client could not place. The normaliser did
+    // the right thing with it (raw value shown, nothing unlocked); it was still the most common
+    // status in the third of the graph nobody could read.
+    'uncertain',
 ];
 
 /** The statuses that assert something was actually found in the pixels or the record. */
@@ -113,6 +119,7 @@ export const STATUS_COPY = {
     imagined: 'proposed rather than found',
     proposed: 'put forward by the compiler; nothing has tested it',
     unresolved: 'nothing settled this either way',
+    uncertain: 'the compiler held this loosely; it is not sure the claim is right',
 };
 
 // ── capability outcomes ──────────────────────────────────────────────────────
@@ -136,15 +143,44 @@ export const EXECUTION_MODES = ['fixture', 'live'];
 
 // ── decisions ────────────────────────────────────────────────────────────────
 
+/**
+ * The nine the BACKEND declares, in `contracts/inquiry-interaction.v1.json`.
+ *
+ * This list was six, guessed from the board's one worked example, and only `choose_operationalization`
+ * and `choose_scope` were spelled the same. The deliberation lane's are canonical because they are
+ * the only ones with a versioned contract AND because its pause classification is keyed on the
+ * kind — the kind is not a label there, it is the policy. So `resolve_ambiguity` becomes
+ * `disambiguate_claim`, `authorial_action` becomes `author_action`, `review_evidence` becomes
+ * `review_result`, and `choose_direction` becomes `steer_inquiry`. Nothing is aliased: a client
+ * that accepted both spellings would make the divergence permanent.
+ */
 export const DECISION_KINDS = [
-    'choose_operationalization', 'choose_scope', 'resolve_ambiguity', 'authorial_action',
-    'review_evidence', 'choose_direction',
+    'disambiguate_claim', 'choose_scope', 'choose_operationalization', 'authorize_cost',
+    'review_result', 'steer_inquiry', 'review_synthesis', 'author_action', 'accept_to_ledger',
 ];
 
-export const DECISION_ACTIONS = ['select', 'reject', 'skip', 'redirect', 'amend'];
+/**
+ * What was done with a fork. The first five are the backend's `ResponseKind` and are what arrives
+ * on a record; the last five are this surface's own short spellings, kept because
+ * `decisionResponseBody` has always SENT them and the route reads both. Send short, receive long.
+ */
+export const DECISION_ACTIONS = [
+    'select_option', 'reject_all', 'skip', 'redirect', 'amend',
+    'select', 'reject',
+];
 
-/** Who made a recorded choice. `system` covers auto mode: no interruption is not no agency. */
-export const DECIDER_KINDS = ['user', 'system', 'model'];
+/** What this surface sends. The backend maps each to the canonical `ResponseKind`. */
+export const SENT_ACTIONS = ['select', 'reject', 'skip', 'redirect', 'amend'];
+
+/**
+ * Who made a recorded choice.
+ *
+ * The backend's `Actor` is four — `user`, `policy`, `steward`, `engine` — and the separation is the
+ * point: the thing that CHOSE is not always the person, and the thing that WORDED the question is
+ * neither the thing that found the fork nor the thing that answered it. `system` and `model` are
+ * this surface's older, coarser words and stay recognised so nothing that already renders breaks.
+ */
+export const DECIDER_KINDS = ['user', 'policy', 'steward', 'engine', 'system', 'model'];
 
 // ── small helpers ────────────────────────────────────────────────────────────
 
@@ -627,7 +663,7 @@ export function decisionResponseBody({
     const body = {
         decision_id: str(decisionId),
         response_id: str(responseId),
-        action: DECISION_ACTIONS.includes(action) ? action : 'select',
+        action: SENT_ACTIONS.includes(action) ? action : 'select',
     };
     if (str(optionId)) body.selected_option_id = str(optionId);
     if (str(freeText).trim()) body.free_text = str(freeText).trim();

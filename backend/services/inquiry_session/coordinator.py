@@ -58,6 +58,15 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _as_datetime(stamp: str) -> Optional[datetime]:
+    """The stage clock's string, as the datetime the framer takes. `None` on anything unparseable —
+    the framer then reads its own clock, which is the pre-existing behaviour rather than a crash."""
+    try:
+        return datetime.fromisoformat(str(stamp))
+    except (TypeError, ValueError):
+        return None
+
+
 @dataclass(frozen=True)
 class Stages:
     """The declared stage interfaces. Every one is injected; none is constructed here.
@@ -127,7 +136,13 @@ def _frame(session: SemanticInquirySession, stages: Stages, ledger: _Ledger,
         return session
     ledger.record(StageName.FRAMER, StageOutcome.STARTED, at=at)
     context = corpus.corpus_context_for(session.posts)
-    frame = stages.framer.frame(session.prompt, context, mode=InquiryMode.EXPLORE)
+    # THE CLOCK IS HANDED IN, and it is what makes a replay comparable at all. `mint_inquiry_id`
+    # hashes the prompt and the moment, and every id Lane A produces downstream is derived from
+    # that inquiry id — so a framer reading the wall clock itself would make a replayed session
+    # differ from the original in every claim, observable, alternative and decision id, and the
+    # diff would be uniformly red for a reason that has nothing to do with what changed.
+    frame = stages.framer.frame(session.prompt, context, mode=InquiryMode.EXPLORE,
+                                now=_as_datetime(at))
     payload = frame.model_dump(mode="json")
     ledger.record(StageName.FRAMER, StageOutcome.COMPLETED, at=at,
                   detail=frame.summary(), outputs=[frame.inquiry_id])
