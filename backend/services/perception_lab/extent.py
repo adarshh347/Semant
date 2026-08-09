@@ -54,7 +54,7 @@ PURE OF I/O EXCEPT THE MODELS. No routes, no persistence, no navigation, no prom
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Mapping, Optional, Protocol, Sequence, Tuple
 
@@ -72,8 +72,15 @@ from backend.schemas.perception_lab import (ArtifactIdentity, ArtifactInterpreta
 from backend.services import mask_geometry as mg
 from backend.services.perception_lab import definitions as D
 from backend.services.perception_lab import extent_metrics as M
+from backend.services.sam3_concept_service import NAMING_CONFIDENCE_FLOOR as NAMING_FLOOR
 
 ORGAN = OrganFamily.EXTENT
+
+#: THE LAB HAS ONE NAMING FLOOR AND IT IS NOT A NEW NUMBER. `sam3_concept_service` carries the one
+#: SF-004-R2 measured — 0.50, below which naming stopped tracking correctness — and every named
+#: adapter here is held to it. Retyping the value would have created a second operating point that
+#: drifts from the measured one silently, which is the whole reason it is imported rather than
+#: declared. The import is safe at module load: that service's own heavy dependencies are lazy.
 
 #: The threshold `extent.compare` uses when the caller did not choose one. The contract declares
 #: `default: null` for every parameter precisely so that this number lives HERE, in the runtime
@@ -579,22 +586,436 @@ def _param_refusal(ctx: ExtentContext, step: ResolvedStep, started_at: str,
                              detail=why))
 
 
-#: Operation → handler. Populated as the lane lands each one; `run()` refuses anything absent with
-#: `unsupported_operation`, which is the same answer a genuinely undeclared key gets, because from
-#: the caller's side "this laboratory will not do that" is one fact.
+# ── choosing an adapter, and saying so when there is none ────────────────────
+
+
+def _choose_adapter(step: ResolvedStep, ctx: ExtentContext
+                    ) -> Tuple[Optional[ExtentAdapter], Optional[RefusalRecord]]:
+    """The adapter the caller asked for, or the first declared one that is actually running.
+
+    The contract gives `adapter` no default, and this is why: absence means "you choose, and write
+    down what you chose". The choice is recorded on the artifact's provenance, so a person reading
+    a result never has to infer which model produced it from how the numbers look.
+
+    An adapter that is UNAVAILABLE is skipped rather than refused, until none is left — a
+    deployment with SAM 3 missing and Grounded-SAM present should get Grounded-SAM and a receipt
+    saying so, not a refusal it could have avoided.
+    """
+    op = D.operation(step.operation)
+    requested = step.parameters.get("adapter")
+    keys: Sequence[str] = (str(requested),) if requested else op.adapters
+    tried: List[Dict[str, str]] = []
+    for key in keys:
+        adapter = ctx.adapter(key)
+        if adapter is None:
+            tried.append({"adapter": key, "state": "not registered in this runtime"})
+            continue
+        state = capability_of(adapter, ctx)
+        if state in (CapabilityState.UNAVAILABLE, CapabilityState.DEFERRED):
+            tried.append({"adapter": key, "state": state.value})
+            continue
+        return adapter, None
+    return None, _refusal(
+        RefusalCode.CAPABILITY_UNAVAILABLE, step,
+        f"{', '.join(str(k) for k in keys)} is in the catalogue and is not running here.",
+        missing=[str(k) for k in keys],
+        remedy="choose another adapter, or run where the model lives",
+        detail={"adapters": [str(k) for k in keys], "tried": tried})
+
+
+def _measure_with_adapter(step: ResolvedStep, ctx: ExtentContext, *, searched: str,
+                          started_at: str, ref_refusals: Tuple[RefusalRecord, ...] = (),
+                          input_refs: Sequence[InputRef] = (),
+                          derived_from: Sequence[str] = ()) -> ExtentResult:
+    """Capability gate → measure → post-filter → artifact. The path every model-backed op takes.
+
+    THE FOUR ENDINGS, kept apart:
+
+        unavailable  the gate said no. The adapter was never called; `invoked` is false.
+        failed       the adapter was called and raised. No claim is made about the image, and
+                     `duration_ms` stays null because nothing completed to be measured.
+        empty        the adapter ran, looked, and returned nothing. An ARTIFACT is still produced,
+                     carrying `searched`, because "I looked for drapery and there is none" is a
+                     measurement and "nobody looked" is not.
+        ready        it returned extents.
+    """
+    adapter, refusal = _choose_adapter(step, ctx)
+    if adapter is None or refusal is not None:
+        completed_at = ctx.now()
+        return ExtentResult(
+            outcome=RunOutcome.UNAVAILABLE, refusals=(refusal,) + ref_refusals,
+            stage_attempt=_stage(ctx, step, state=StageState.UNAVAILABLE,
+                                 adapter=(refusal.missing or [None])[0], invoked=False,
+                                 started_at=started_at, completed_at=completed_at,
+                                 duration_ms=None, detail=refusal.message))
+
+    params = dict(step.parameters)
+    try:
+        out = adapter.measure(step, ctx, params)
+    except AdapterUnavailable as exc:
+        completed_at = ctx.now()
+        ref = _refusal(
+            RefusalCode.CAPABILITY_UNAVAILABLE, step,
+            f"{exc.adapter} is in the catalogue and is not running here.",
+            missing=[exc.adapter],
+            remedy="choose another adapter, or run where the model lives",
+            detail={"adapters": [exc.adapter], "why": exc.detail})
+        return ExtentResult(
+            outcome=RunOutcome.UNAVAILABLE, refusals=(ref,) + ref_refusals,
+            stage_attempt=_stage(ctx, step, state=StageState.UNAVAILABLE, adapter=adapter.key,
+                                 invoked=False, started_at=started_at, completed_at=completed_at,
+                                 duration_ms=None, detail=exc.detail or ref.message))
+    except Exception as exc:                          # the adapter ran and broke
+        return ExtentResult(
+            outcome=RunOutcome.FAILED, refusals=ref_refusals,
+            stage_attempt=_stage(
+                ctx, step, state=StageState.FAILED, adapter=adapter.key, invoked=True,
+                started_at=started_at, completed_at=None, duration_ms=None,
+                detail=f"{type(exc).__name__}: {exc}. No claim is made about the image."))
+
+    out, dropped, capped = _post_filter(out, params, ctx, step)
+    completed_at = ctx.now()
+    duplicates = [ExtentDuplicate(**row) for row in
+                  M.duplicate_pairs(out.instances, DUPLICATE_IOU)]
+
+    artifact = _build_artifact(
+        ctx, step, out, searched=searched, adapter_key=adapter.key,
+        producer_kind=ProducerKind.ADAPTER, started_at=started_at, completed_at=completed_at,
+        input_refs=input_refs, derived_from=derived_from,
+        dropped_below_min_area=dropped, duplicates=duplicates)
+
+    detail = out.detail or f"{len(out.instances)} extents"
+    if capped:
+        detail += f"; {capped} beyond the cap were not returned"
+    if duplicates:
+        detail += (f"; {len(duplicates)} possible duplicate pair(s) flagged and NOT removed — "
+                   f"a duplicate warning is evidence for a person, not a deletion")
+    empty = not out.instances
+    return ExtentResult(
+        outcome=RunOutcome.EMPTY if empty else RunOutcome.READY,
+        artifacts=(artifact,), refusals=ref_refusals,
+        stage_attempt=_stage(ctx, step, state=StageState.EMPTY if empty else StageState.COMPLETED,
+                             adapter=adapter.key, invoked=True, started_at=started_at,
+                             completed_at=completed_at, duration_ms=out.duration_ms,
+                             detail=detail))
+
+
+def _post_filter(out: AdapterOutput, params: Mapping[str, Any], ctx: ExtentContext,
+                 step: ResolvedStep) -> Tuple[AdapterOutput, Optional[int], int]:
+    """The lab's own `min_area` and `max_instances`, applied HERE so they can be counted.
+
+    The contract says instances below `min_area` are "dropped and counted, never hidden", and the
+    only way to honour the second half is to do the dropping where the counting happens. The
+    underlying services have their own internal floors — those are the model's hygiene and are
+    reported as its defaults; this is the lab's filter, and its count is a number the person asked
+    for and is owed.
+
+    `dropped_below_min_area` stays None when no floor was supplied, because 0 would claim a filter
+    ran and found nothing to drop.
+    """
+    instances = list(out.instances)
+    dropped: Optional[int] = None
+
+    min_area = params.get("min_area")
+    if isinstance(min_area, (int, float)):
+        kept = [i for i in instances if (i.get("area") is None or i["area"] >= float(min_area))]
+        dropped = len(instances) - len(kept)
+        instances = kept
+
+    capped = 0
+    max_instances = params.get("max_instances")
+    if isinstance(max_instances, int) and len(instances) > max_instances:
+        instances.sort(key=lambda i: (-(i.get("area") or 0.0), str(i.get("instance_id"))))
+        capped = len(instances) - max_instances
+        instances = instances[:max_instances]
+
+    # Ids are assigned AFTER filtering so they are dense and stable for the set that survives —
+    # a gap in the numbering would read as an instance somebody removed later.
+    renumbered = tuple({**raw, "instance_id": instance_id(ctx, step, n)}
+                       for n, raw in enumerate(instances))
+    truncated = out.truncated or bool(capped)
+    return replace(out, instances=renumbered, truncated=truncated), dropped, capped
+
+
+def _find_all(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[Any]],
+              ref_refusals: Tuple[RefusalRecord, ...], started_at: str) -> ExtentResult:
+    """`extent.find_all` — what separable instances are in this picture?"""
+    return _measure_with_adapter(step, ctx, searched="every separable instance",
+                                 started_at=started_at, ref_refusals=ref_refusals)
+
+
+def _find_named(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[Any]],
+                ref_refusals: Tuple[RefusalRecord, ...], started_at: str) -> ExtentResult:
+    """`extent.find_named` — where is the thing I named, and how many of it are there?
+
+    `searched` carries the concept verbatim. That single string is the difference between an empty
+    result that says "there is no drapery in this picture" and one that says nothing at all.
+    """
+    concept = str(step.parameters.get("concept") or "").strip()
+    if not concept:
+        return _param_refusal(ctx, step, started_at,
+                              "a named search needs something to look for")
+    return _measure_with_adapter(step, ctx, searched=concept, started_at=started_at,
+                                 ref_refusals=ref_refusals)
+
+
+# ── the real adapters ────────────────────────────────────────────────────────
+
+
+def _pil_image(ctx: ExtentContext):
+    """The image, as PIL, for adapters that take an image rather than bytes.
+
+    Opened read-only and never saved. `ExtentContext.image_bytes` is the source of truth and stays
+    byte-identical — the non-mutation test hashes it before and after every operation.
+    """
+    import io
+    from PIL import Image
+    return Image.open(io.BytesIO(ctx.image_bytes)).convert("RGB")
+
+
+def _naming_from(text: str, confidence: Optional[float], source: str, floor: float
+                 ) -> Tuple[Optional[Dict[str, Any]], bool]:
+    """`(naming, withheld)` — the rule that keeps a doubtful word from costing a good mask.
+
+    SF-004-R2 measured that confidence tracked correctness for SAM 3's naming: `snake hood` at
+    0.92 was right eleven times over, `shoulder fabric` at 0.27–0.43 masked the background. Below
+    the floor the NAME is not proposed. The extent is emitted regardless, because the mask and the
+    word are two claims and only one of them is in doubt.
+    """
+    if not text:
+        return None, False
+    if confidence is not None and confidence < floor:
+        return None, True
+    return ({"text": text, "source": source, "epistemic_status": "interpretive",
+             "confidence": confidence}, False)
+
+
+class Sam2AutoAdapter:
+    """`yolo_sam2_auto` — automatic instance proposal over the whole image.
+
+    TWO SUBSTRATES BEHIND ONE CONTRACT KEY, and the receipt always says which ran. SAM 2.1's
+    automatic generator produces class-agnostic extents with no label; YOLO11-seg produces labelled
+    ones. The adapter prefers SAM 2.1 and falls back to YOLO ONLY when SAM 2.1 is unavailable —
+    never when it FAILED. Unavailability may route; a failure is reported, because a silent
+    substitution after an error is a model change hidden inside a receipt that says nothing
+    happened.
+    """
+
+    key = "yolo_sam2_auto"
+
+    def _sam2(self):
+        from backend.services import sam2_auto_service
+        return sam2_auto_service
+
+    def _yolo(self):
+        from backend.services import segmentation_service
+        return segmentation_service
+
+    def capability(self) -> CapabilityState:
+        try:
+            if self._sam2().is_available() or self._yolo().is_available():
+                return CapabilityState.AVAILABLE
+        except Exception:
+            return CapabilityState.UNAVAILABLE
+        return CapabilityState.UNAVAILABLE
+
+    def measure(self, step: ResolvedStep, ctx: ExtentContext,
+                params: Mapping[str, Any]) -> AdapterOutput:
+        cap = params.get("max_instances")
+        cap = int(cap) if isinstance(cap, int) else DEFAULT_MAX_INSTANCES
+        sam2, yolo = self._sam2(), self._yolo()
+
+        if sam2.is_available():
+            regions = sam2.generate_masks(ctx.image_bytes, max_regions=cap)
+            substrate, model, revision = "sam2-auto", sam2.MODEL_TAG, sam2.PREPROCESSING_VERSION
+        elif yolo.is_available():
+            regions = yolo.segment_image_bytes(ctx.image_bytes, max_regions=cap)
+            substrate, model, revision = "yolo11n-seg", yolo.MODEL_TAG, None
+        else:                                          # pragma: no cover - gate already refused
+            raise AdapterUnavailable(self.key, "neither substrate is installed")
+
+        if regions is None:
+            raise RuntimeError(f"{substrate} was available and returned nothing readable")
+
+        instances: List[Dict[str, Any]] = []
+        withheld = 0
+        for n, region in enumerate(regions):
+            rle = region.get("mask_rle")
+            naming, hidden = _naming_from(str(region.get("label") or ""),
+                                          region.get("confidence"), "adapter", NAMING_FLOOR)
+            withheld += int(hidden)
+            instances.append({
+                "instance_id": instance_id(ctx, step, n),
+                "mask_rle": dict(rle) if mg.rle_is_valid(rle) else None,
+                "box": dict(region["box"]) if isinstance(region.get("box"), Mapping) else None,
+                "area": M.normalized_area(rle) if mg.rle_is_valid(rle) else None,
+                "confidence": region.get("confidence"), "naming": naming,
+                "region_id": None, "geometry_rev": None})
+
+        masked = all(i["mask_rle"] for i in instances) if instances else True
+        prov = (regions[0].get("geometry_provenance") or {}) if regions else {}
+        return AdapterOutput(
+            instances=tuple(instances),
+            basis=EpistemicBasis.MASK if masked else EpistemicBasis.BOX,
+            status=EpistemicStatus.MEASURED if masked else EpistemicStatus.INTERPRETIVE,
+            basis_detail=("per-pixel masks from the automatic generator" if masked else
+                          "at least one proposal came back without a mask, so the set is read on "
+                          "boxes and takes the interpretive ceiling"),
+            model=model, revision=revision, device=prov.get("device"),
+            duration_ms=int(prov["latency_ms"]) if isinstance(prov.get("latency_ms"),
+                                                              (int, float)) else None,
+            naming_withheld=withheld,
+            detail=f"{len(instances)} extents from {substrate}")
+
+
+class Sam3ConceptAdapter:
+    """`sam3_concept` — every instance of a named concept, as canonical RLE.
+
+    UNAVAILABLE IS NEVER EMPTY HERE, and this adapter is the reason the rule is written down. SAM 3
+    needs a 3.2 GiB checkpoint that most deployments do not have; a missing checkpoint reported as
+    "no drapery in this picture" would be a measurement nobody made, about a picture nobody looked
+    at. `capability()` answers from `weights_path()` and `is_available()` before anything runs.
+    """
+
+    key = "sam3_concept"
+
+    def _svc(self):
+        from backend.services import sam3_concept_service
+        return sam3_concept_service
+
+    def capability(self) -> CapabilityState:
+        try:
+            return (CapabilityState.AVAILABLE if self._svc().is_available()
+                    else CapabilityState.UNAVAILABLE)
+        except Exception:
+            return CapabilityState.UNAVAILABLE
+
+    def measure(self, step: ResolvedStep, ctx: ExtentContext,
+                params: Mapping[str, Any]) -> AdapterOutput:
+        svc = self._svc()
+        concept = str(params.get("concept") or "")
+        cap = params.get("max_instances")
+        cap = int(cap) if isinstance(cap, int) else DEFAULT_MAX_INSTANCES
+        result = svc.segment_concept(_pil_image(ctx), concept, max_instances=cap)
+
+        instances: List[Dict[str, Any]] = []
+        withheld = 0
+        for n, inst in enumerate(result.get("instances") or []):
+            rle = inst.get("mask_rle")
+            if not mg.rle_is_valid(rle):
+                continue
+            naming, hidden = _naming_from(concept, inst.get("confidence"), "prompt",
+                                          svc.NAMING_CONFIDENCE_FLOOR)
+            withheld += int(hidden)
+            instances.append({
+                "instance_id": instance_id(ctx, step, n),
+                "mask_rle": dict(rle), "box": mg.rle_bbox_norm(rle),
+                "area": M.normalized_area(rle), "confidence": inst.get("confidence"),
+                "naming": naming, "region_id": None, "geometry_rev": None})
+
+        return AdapterOutput(
+            instances=tuple(instances), basis=EpistemicBasis.MASK,
+            status=EpistemicStatus.MEASURED,
+            basis_detail="per-pixel concept masks on the source raster",
+            model=result.get("model"), revision=svc.PREPROCESSING_VERSION,
+            device=result.get("device"),
+            duration_ms=int(result["latency_ms"]) if isinstance(result.get("latency_ms"),
+                                                                (int, float)) else None,
+            naming_withheld=withheld, truncated=bool(result.get("truncated")),
+            detail=f"{len(instances)} instances of {concept!r}")
+
+
+class GroundedSamAdapter:
+    """`grounded_sam` — a phrase grounded to BOXES, and the artifact says so.
+
+    WHAT THIS SEAM IS AND IS NOT. `grounding_detector_service.detect` is GroundingDINO alone: it
+    returns pixel boxes, not masks. The repository's full Grounded-SAM path — detector, then a CLIP
+    presence gate, then SAM for the mask — lives in `backend/routers/posts.py::_produce_grounded_sam`
+    and is a router-level async pipeline this lane may not touch. So this adapter is the DETECTOR,
+    honestly named: `basis: box`, `interpretive`, per `epistemics.SUBSTRATE_CEILING`.
+
+    A box-basis extent is a real and useful proposal. It is not a mask, and the ceiling is what
+    stops it being read as one.
+    """
+
+    key = "grounded_sam"
+
+    def _svc(self):
+        from backend.services import grounding_detector_service
+        return grounding_detector_service
+
+    def capability(self) -> CapabilityState:
+        try:
+            return (CapabilityState.AVAILABLE if self._svc().is_available()
+                    else CapabilityState.UNAVAILABLE)
+        except Exception:
+            return CapabilityState.UNAVAILABLE
+
+    def measure(self, step: ResolvedStep, ctx: ExtentContext,
+                params: Mapping[str, Any]) -> AdapterOutput:
+        svc = self._svc()
+        concept = str(params.get("concept") or "")
+        detection = svc.detect(_pil_image(ctx), concept)
+
+        instances: List[Dict[str, Any]] = []
+        withheld = 0
+        if detection:
+            size = detection.get("image_size") or [0, 0]
+            width, height = int(size[0] or 0), int(size[1] or 0)
+            scores = detection.get("scores") or []
+            labels = detection.get("labels") or []
+            for n, box in enumerate(detection.get("boxes") or []):
+                nb = mg.normalize_box_xyxy(box, width, height)
+                if not nb:
+                    continue
+                score = float(scores[n]) if n < len(scores) else None
+                text = str(labels[n]) if n < len(labels) and labels[n] else concept
+                naming, hidden = _naming_from(text, score, "prompt", NAMING_FLOOR)
+                withheld += int(hidden)
+                instances.append({
+                    "instance_id": instance_id(ctx, step, n), "mask_rle": None, "box": nb,
+                    "area": float(nb["w"]) * float(nb["h"]), "confidence": score,
+                    "naming": naming, "region_id": None, "geometry_rev": None})
+
+        return AdapterOutput(
+            instances=tuple(instances), basis=EpistemicBasis.BOX,
+            status=EpistemicStatus.INTERPRETIVE,
+            basis_detail="grounded boxes, not masks. A box is an estimate of an extent and takes "
+                         "the interpretive ceiling `epistemics.SUBSTRATE_CEILING` gives it; the "
+                         "CLIP presence gate and the SAM mask upgrade live in the router pipeline "
+                         "this lane does not reach.",
+            model=svc.MODEL_TAG, revision=svc.REVISION, device=None,
+            naming_withheld=withheld,
+            detail=f"{len(instances)} grounded boxes for {concept!r}")
+
+
+#: Operation → handler. `run()` refuses anything absent with `unsupported_operation`, which is the
+#: same answer a genuinely undeclared key gets, because from the caller's side "this laboratory
+#: will not do that" is one fact.
 _HANDLERS: Dict[str, Callable[..., ExtentResult]] = {
+    "extent.find_all": _find_all,
+    "extent.find_named": _find_named,
     "extent.draw": _draw,
 }
 
 
 def default_adapters() -> Mapping[str, ExtentAdapter]:
-    """The real adapters, by their contract key. Overridden through `ExtentContext.adapters` in
-    tests and by Lane F where a different transport is wanted."""
-    return {}
+    """The real adapters, by their contract key.
+
+    Constructed fresh each call and holding no model: every one of them imports its service lazily
+    inside `capability()` / `measure()`, so importing this module costs nothing and a deployment
+    without torch can still read the registry and be told, honestly, that nothing is running.
+    """
+    return {
+        Sam2AutoAdapter.key: Sam2AutoAdapter(),
+        Sam3ConceptAdapter.key: Sam3ConceptAdapter(),
+        GroundedSamAdapter.key: GroundedSamAdapter(),
+    }
 
 
 __all__ = [
-    "ORGAN", "DEFAULT_IOU_THRESHOLD", "DUPLICATE_IOU", "DEFAULT_MAX_INSTANCES",
+    "ORGAN", "DEFAULT_IOU_THRESHOLD", "DUPLICATE_IOU", "DEFAULT_MAX_INSTANCES", "NAMING_FLOOR",
     "ExtentContext", "ExtentResult", "AdapterOutput", "ExtentAdapter", "AdapterUnavailable",
-    "run", "instance_id", "default_adapters",
+    "Sam2AutoAdapter", "Sam3ConceptAdapter", "GroundedSamAdapter",
+    "run", "instance_id", "capability_of", "default_adapters",
 ]
