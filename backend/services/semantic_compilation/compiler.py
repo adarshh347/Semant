@@ -260,7 +260,7 @@ class _Compilation:
         for row in rows:
             raw_type = _text(row.get("type")) or _text(row.get("source_type"))
             if raw_type not in set(contracts.closed_set("source_types")):
-                self.refuse(CompilerRefusalKind.DANGLING_REFERENCE, raw_type or "(empty)",
+                self.refuse(CompilerRefusalKind.UNKNOWN_SOURCE_TYPE, raw_type or "(empty)",
                             f"not one of {list(contracts.closed_set('source_types'))}; the pointer "
                             f"was dropped rather than guessed at.", detail=[where])
                 continue
@@ -401,6 +401,12 @@ class _Compilation:
                         f"layer decorative.", detail=[where])
             return ClaimStatus.UNCERTAIN
         if raw and raw not in {s.value for s in ClaimStatus}:
+            self.refuse(CompilerRefusalKind.UNKNOWN_CLAIM_STATUS, raw,
+                        f"not one of {[s.value for s in ClaimStatus]}. Read as `uncertain`, which "
+                        f"is the only direction that cannot overstate. Named rather than quietly "
+                        f"coerced: every other invention in this parser is counted, and a status "
+                        f"nobody declared is how a vocabulary drifts one word at a time.",
+                        detail=[where])
             return ClaimStatus.UNCERTAIN
         return ClaimStatus(raw) if raw else ClaimStatus.INTERPRETIVE
 
@@ -408,7 +414,7 @@ class _Compilation:
         raw = _text(row.get("image_scope"))
         scope = ImageScope(raw) if raw in {s.value for s in ImageScope} else ImageScope.CORPUS
         if kind is ClaimKind.COMPARISON and scope is ImageScope.ONE_IMAGE:
-            self.refuse(CompilerRefusalKind.DANGLING_REFERENCE, "one_image",
+            self.refuse(CompilerRefusalKind.IMAGE_SCOPE_CORRECTED, "one_image",
                         "a comparison scoped to one image. One observation typed as a corpus "
                         "tendency is the cheapest way to manufacture a finding, so the scope was "
                         "widened to `corpus` and the correction recorded.", detail=[where])
@@ -429,35 +435,41 @@ class _Compilation:
                               f"{MAX_CLAIMS}")
             self.pending = self.pending[:MAX_CLAIMS]
 
+        # THE LOOP DECIDES; THE REFUSALS ARE WRITTEN AFTER IT SETTLES. Refusing inside the loop
+        # emitted the same dangling parent once per iteration, so a graph that needed two rounds
+        # reported twice as many refusals as it had problems — and a refusal count is exactly the
+        # number a reader uses to judge how much of a model's output survived.
         live = {p["claim_id"] for p in self.pending}
+        orphaned: List[Dict[str, Any]] = []
         while True:
             dropped: Set[str] = set()
             for entry in self.pending:
-                resolved: List[str] = []
-                for ref in entry["parents"]:
-                    target = self.by_ref.get(ref)
-                    if target is None or target not in live or target == entry["claim_id"]:
-                        if target not in dropped:
-                            self.refuse(
-                                CompilerRefusalKind.DANGLING_REFERENCE, str(ref),
-                                "a claim was said to be inferred from something that is not in the "
-                                "graph. The parent link was dropped.", detail=[entry["where"]])
-                        continue
-                    if target not in resolved:
-                        resolved.append(target)
-                entry["resolved_parents"] = resolved
-                if not resolved and all(p.source_type is SourceType.COMPILER_INFERENCE
-                                        for p in entry["sources"]):
-                    self.refuse(
-                        CompilerRefusalKind.INFERENCE_WITHOUT_PARENT, entry["text"][:120],
-                        "every parent this inference named was dropped, leaving an assertion "
-                        "wearing an inference's clothes. The claim went with them.",
-                        detail=[entry["where"]])
+                entry["resolved_parents"] = self._parents_of(entry, live)
+                if not entry["resolved_parents"] and all(
+                        p.source_type is SourceType.COMPILER_INFERENCE for p in entry["sources"]):
                     dropped.add(entry["claim_id"])
+                    orphaned.append(entry)
             if not dropped:
                 break
             live -= dropped
             self.pending = [p for p in self.pending if p["claim_id"] not in dropped]
+
+        # OVER THE ORPHANS TOO. Scanning only the survivors traded the duplicate for a SILENT DROP,
+        # which is worse in kind: a claim refused for naming a parent that never existed would take
+        # the record of that invention down with it, and the invention is the thing worth counting.
+        for entry in [*self.pending, *orphaned]:
+            for ref in entry["parents"]:
+                target = self.by_ref.get(ref)
+                if target is None or target not in live or target == entry["claim_id"]:
+                    self.refuse(
+                        CompilerRefusalKind.DANGLING_REFERENCE, str(ref),
+                        "a claim was said to be inferred from something that is not in the graph. "
+                        "The parent link was dropped.", detail=[entry["where"]])
+        for entry in orphaned:
+            self.refuse(
+                CompilerRefusalKind.INFERENCE_WITHOUT_PARENT, entry["text"][:120],
+                "every parent this inference named was dropped, leaving an assertion wearing an "
+                "inference's clothes. The claim went with them.", detail=[entry["where"]])
 
         for entry in self.pending:
             self.claims.append(ClaimNode(
@@ -467,6 +479,16 @@ class _Compilation:
                 image_scope=entry["image_scope"], epistemic_demand=entry["epistemic_demand"],
                 status=entry["status"], inferred_from=entry["resolved_parents"],
                 note=entry["note"]))
+
+    def _parents_of(self, entry: Mapping[str, Any], live: Set[str]) -> List[str]:
+        resolved: List[str] = []
+        for ref in entry["parents"]:
+            target = self.by_ref.get(ref)
+            if target is None or target not in live or target == entry["claim_id"]:
+                continue
+            if target not in resolved:
+                resolved.append(target)
+        return resolved
 
 
 def _alternatives(comp: _Compilation, rows: Sequence[Mapping[str, Any]],
@@ -624,7 +646,7 @@ def _compile_payload(request: CompilationRequest, payload: Any,
         where = f"decision {index}"
         raw_kind = _text(row.get("kind"))
         if raw_kind not in {k.value for k in DecisionKind}:
-            comp.refuse(CompilerRefusalKind.DANGLING_REFERENCE, raw_kind or "(empty)",
+            comp.refuse(CompilerRefusalKind.UNKNOWN_DECISION_KIND, raw_kind or "(empty)",
                         f"not one of {[k.value for k in DecisionKind]}; the decision candidate was "
                         f"dropped rather than filed under the nearest kind.", detail=[where])
             continue
@@ -643,12 +665,28 @@ def _compile_payload(request: CompilationRequest, payload: Any,
                               f"about a choice that has one answer trains a person to click "
                               f"through.")
             continue
+        # A DROPPED AFFECT REFERENCE IS RECORDED. A decision whose consequences point at nothing is
+        # a question a person cannot act on, and the reference that failed to resolve is usually a
+        # claim or observable that was itself refused — which is the fact worth surfacing.
+        named = [str(r).strip() for r in row.get("affects") or () if str(r).strip()]
         affected: List[str] = []
-        for ref in row.get("affects") or ():
-            key = str(ref).strip()
+        unresolved: List[str] = []
+        for key in named:
             resolved = comp.by_ref.get(key) or comp.observable_by_ref.get(key)
-            if resolved and resolved not in affected:
+            if not resolved:
+                unresolved.append(key)
+            elif resolved not in affected:
                 affected.append(resolved)
+        for key in unresolved:
+            comp.refuse(CompilerRefusalKind.DANGLING_REFERENCE, key,
+                        "a decision candidate named something it would change that is not in the "
+                        "graph — usually a claim or observable that was itself refused.",
+                        detail=[where])
+        if named and not affected:
+            comp.notes.append(f"{where}: every object this decision said it would change was "
+                              f"refused, so the decision was dropped. A fork whose consequences "
+                              f"point at nothing is a question nobody can act on.")
+            continue
         decisions.append(DecisionCandidate(
             decision_id=decision_id, kind=kind, question=question, why_now=why_now,
             affected_refs=affected, options=options,

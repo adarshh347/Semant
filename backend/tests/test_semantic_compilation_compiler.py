@@ -219,6 +219,27 @@ def test_an_inference_whose_only_parent_was_itself_refused_goes_with_it():
     assert CompilerRefusalKind.INFERENCE_WITHOUT_PARENT in kinds_of(graph)
 
 
+def test_a_dangling_parent_is_refused_once_even_when_the_fixpoint_runs_twice():
+    """A refusal count is the number a reader uses to judge how much of a model's output survived.
+    Refusing inside the loop reported the same dangling parent once per round."""
+    graph = compile_payload({"claims": [
+        claim_row("c1", kind="vibe"),                                    # refused: invented kind
+        claim_row("c2", text="therefore A", kind="spatial_relation", sources=[],
+                  inferred_from=["c1"]),                                 # orphaned in round 1
+        claim_row("c3", text="therefore B", kind="spatial_relation", sources=[],
+                  inferred_from=["c2", "cX"])]})                         # orphaned in round 2
+    assert graph.claims == []
+    dangling = [r.what for r in graph.refusals
+                if r.kind is CompilerRefusalKind.DANGLING_REFERENCE]
+    # Each broken link once, and the orphaned claims' own broken links are still counted — scanning
+    # only the survivors would take the record of `cX` down with the claim that invented it.
+    assert sorted(dangling) == ["c1", "c2", "cX"]
+    assert len(dangling) == len(set(dangling))
+    orphans = [r for r in graph.refusals
+               if r.kind is CompilerRefusalKind.INFERENCE_WITHOUT_PARENT]
+    assert len(orphans) == 2
+
+
 def test_two_identical_claims_collapse_into_one():
     graph = compile_payload({"claims": [claim_row("c1"), claim_row("c2")]})
     assert len(graph.claims) == 1
@@ -320,7 +341,27 @@ def test_a_comparison_scoped_to_one_image_is_widened_and_the_correction_recorded
     graph = compile_payload({"claims": [claim_row(kind="comparison", text="the two differ",
                                                   image_scope="one_image")]})
     assert graph.claims[0].image_scope is ImageScope.CORPUS
-    assert any("cheapest way to manufacture a finding" in r.why for r in graph.refusals)
+    refused = next(r for r in graph.refusals
+                   if r.kind is CompilerRefusalKind.IMAGE_SCOPE_CORRECTED)
+    assert "cheapest way to manufacture a finding" in refused.why
+
+
+def test_an_invented_source_type_is_named_as_one_rather_than_as_a_dangling_reference():
+    """Four refusal kinds used to share `dangling_reference`. Collapsing distinct outcomes into one
+    word is the failure this whole lane is arranged against, so the parser applies its own rule."""
+    graph = compile_payload({"claims": [claim_row(
+        sources=[{"type": "intuition", "source_id": "prompt", "text": "x"}])]})
+    refused = next(r for r in graph.refusals
+                   if r.kind is CompilerRefusalKind.UNKNOWN_SOURCE_TYPE)
+    assert refused.what == "intuition"
+
+
+def test_an_invented_claim_status_is_named_rather_than_quietly_coerced():
+    graph = compile_payload({"claims": [claim_row(status="strong")]})
+    assert graph.claims[0].status is ClaimStatus.UNCERTAIN
+    refused = next(r for r in graph.refusals
+                   if r.kind is CompilerRefusalKind.UNKNOWN_CLAIM_STATUS)
+    assert refused.what == "strong"
 
 
 def test_an_unknown_demand_is_read_as_interpretive_which_is_the_direction_with_no_overstatement():
@@ -453,6 +494,37 @@ def test_a_decision_that_does_not_say_what_changes_is_dropped():
          "options": [{"label": "a"}, {"label": "b"}]}]})
     assert graph.decision_candidates == []
     assert any("not a reason to interrupt somebody" in n for n in graph.notes)
+
+
+def test_a_decision_naming_something_that_was_refused_records_the_dangling_reference():
+    graph = compile_payload({"claims": [claim_row("c1"), claim_row("c2", kind="vibe")],
+                             "decisions": [
+        {"kind": "choose_operationalization", "question": "Which?",
+         "why_now": "it changes the evidence", "affects": ["c1", "c2"],
+         "options": [{"label": "a"}, {"label": "b"}]}]})
+    assert graph.decision_candidates[0].affected_refs == [graph.claims[0].claim_id]
+    assert any(r.kind is CompilerRefusalKind.DANGLING_REFERENCE and r.what == "c2"
+               for r in graph.refusals)
+
+
+def test_a_decision_whose_every_consequence_was_refused_is_dropped():
+    """A fork whose consequences point at nothing is a question nobody can act on."""
+    graph = compile_payload({"claims": [claim_row("c1", kind="vibe")], "decisions": [
+        {"kind": "choose_operationalization", "question": "Which?",
+         "why_now": "it changes the evidence", "affects": ["c1"],
+         "options": [{"label": "a"}, {"label": "b"}]}]})
+    assert graph.decision_candidates == []
+    assert any("nobody can act on" in n for n in graph.notes)
+
+
+def test_an_invented_decision_kind_is_named_as_one_rather_than_as_a_dangling_reference():
+    graph = compile_payload({"claims": [claim_row()], "decisions": [
+        {"kind": "vibe_check", "question": "Which?", "why_now": "it changes things",
+         "options": [{"label": "a"}, {"label": "b"}]}]})
+    assert graph.decision_candidates == []
+    refused = next(r for r in graph.refusals
+                   if r.kind is CompilerRefusalKind.UNKNOWN_DECISION_KIND)
+    assert refused.what == "vibe_check"
 
 
 def test_a_repeated_option_does_not_become_a_fork_with_the_same_branch_twice():
