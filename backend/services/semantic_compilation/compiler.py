@@ -132,7 +132,7 @@ def _frame_digest(frame: Mapping[str, Any]) -> Dict[str, Any]:
     """The frame, compacted to what a compiler can use, with its own provenance kept separate.
 
     Deliberately NOT merged into the reading. "The user said 'sensuality'" and "a VLM thought the
-    drapery looked soft" are different warrants, and a compiler handed one undifferentiated context
+    surface looked soft" are different warrants, and a compiler handed one undifferentiated context
     would anchor claims to whichever it happened to read last.
     """
     def _rows(key: str) -> List[Any]:

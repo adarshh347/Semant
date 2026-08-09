@@ -1,0 +1,800 @@
+{
+  "name": "unrelated-weave",
+  "topic": "how three woven cloths differ in their structure, and what a fourth would have to do",
+  "why_this_fixture": [
+    "The control. It shares no noun, no cue and no capability request pattern with the rehearsal",
+    "fixture, and it runs the identical production path: the same ledger, the same three passes, the",
+    "same audit, the same assembly.",
+    "It carries the same SIX distinctions the rehearsal fixture is required to carry — a user",
+    "hypothesis, a visual quality, a relation or effect, a cross-image comparison, a possible",
+    "observation and a semantic remainder — because a control that exercised fewer of them would",
+    "prove the pipeline generalises only over the easy half."
+  ],
+  "topic_nouns": [
+    "weft",
+    "warp",
+    "selvedge",
+    "twill",
+    "heddle",
+    "loom"
+  ],
+  "prompt": "the weft does different work in each of these three. in the first the warp is buried and you only read the weft, it looks almost solid; in the second the two alternate so evenly that the surface reads as a grid rather than as cloth--the third is somewhere between, the weft floats over three warps at a time and that is what gives it the diagonal. a fourth one in this family would have to decide how long a float it wants",
+  "images": [
+    {
+      "post_id": "img_first",
+      "title": "A dense cloth, raking light"
+    },
+    {
+      "post_id": "img_second",
+      "title": "A balanced cloth, flat light"
+    },
+    {
+      "post_id": "img_third",
+      "title": "A diagonal cloth, raking light"
+    }
+  ],
+  "theorist_payload": {
+    "reading": "Three woven samples photographed at similar scale; the interlacement differs in each and the difference is legible at the surface.",
+    "blocks": [
+      {
+        "kind": "part",
+        "text": "the first sample shows continuous horizontal runs with no interruption visible",
+        "images": [
+          "img_first"
+        ]
+      },
+      {
+        "kind": "organization",
+        "text": "the second sample alternates over and under at every intersection",
+        "images": [
+          "img_second"
+        ]
+      },
+      {
+        "kind": "part",
+        "text": "the third sample carries runs that step sideways by one position each row",
+        "images": [
+          "img_third"
+        ]
+      },
+      {
+        "kind": "comparison",
+        "text": "the first and third samples both hide part of the vertical set, the second hides none of it",
+        "images": [
+          "img_first",
+          "img_second",
+          "img_third"
+        ]
+      },
+      {
+        "kind": "tension",
+        "text": "the second sample reads as a printed grid at this scale while being an interlacement",
+        "images": [
+          "img_second"
+        ]
+      },
+      {
+        "kind": "historical_association",
+        "text": "stepping the runs sideways each row is a construction documented in industrial pattern books",
+        "images": [
+          "img_third"
+        ]
+      },
+      {
+        "kind": "hypothesis",
+        "text": "the diagonal in the third sample may be a consequence of the step rather than of any dyeing",
+        "images": [
+          "img_third"
+        ]
+      }
+    ]
+  },
+  "dissector_payloads": [
+    {
+      "atoms": [
+        {
+          "ref": "b1",
+          "text": "the horizontal set does different work in each of the three samples",
+          "unit_kind": "comparison",
+          "source_unit_ids": [
+            "$UNIT:1"
+          ],
+          "quotes": [
+            "does different work in each of these three"
+          ],
+          "subject": "the horizontal set",
+          "predicate": "differs in",
+          "object": "its role",
+          "image_scope": "corpus"
+        },
+        {
+          "ref": "b2",
+          "text": "in the first sample the vertical set is buried and only the horizontal is read",
+          "unit_kind": "relation",
+          "source_unit_ids": [
+            "$UNIT:2"
+          ],
+          "quotes": [
+            "the warp is buried and you only read the weft"
+          ],
+          "subject": "the vertical set",
+          "predicate": "is buried under",
+          "object": "the horizontal set",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b3",
+          "text": "the first sample looks almost solid",
+          "unit_kind": "visual_quality",
+          "source_unit_ids": [
+            "$UNIT:2"
+          ],
+          "quotes": [
+            "it looks almost solid"
+          ],
+          "subject": "the first sample",
+          "predicate": "looks",
+          "object": "almost solid",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b4",
+          "text": "in the second sample the two sets alternate evenly",
+          "unit_kind": "relation",
+          "source_unit_ids": [
+            "$UNIT:3"
+          ],
+          "quotes": [
+            "the two alternate so evenly"
+          ],
+          "subject": "the two sets",
+          "predicate": "alternate",
+          "object": "evenly",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b5",
+          "text": "the even alternation makes the second sample read as a grid rather than as cloth",
+          "unit_kind": "causal_hypothesis",
+          "source_unit_ids": [
+            "$UNIT:3"
+          ],
+          "quotes": [
+            "so evenly that the surface reads as a grid rather than as cloth"
+          ],
+          "subject": "the even alternation",
+          "predicate": "makes",
+          "object": "the surface read as a grid",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b6",
+          "text": "in the third sample the horizontal run passes over three verticals at a time",
+          "unit_kind": "relation",
+          "source_unit_ids": [
+            "$UNIT:4"
+          ],
+          "quotes": [
+            "the weft floats over three warps at a time"
+          ],
+          "subject": "the horizontal run",
+          "predicate": "passes over",
+          "object": "three verticals at a time",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b7",
+          "text": "the length of that run is what produces the diagonal",
+          "unit_kind": "causal_hypothesis",
+          "source_unit_ids": [
+            "$UNIT:4"
+          ],
+          "quotes": [
+            "that is what gives it the diagonal"
+          ],
+          "subject": "the length of the run",
+          "predicate": "produces",
+          "object": "the diagonal",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b8",
+          "text": "a fourth sample in this family would have to choose a run length",
+          "unit_kind": "generative_proposal",
+          "source_unit_ids": [
+            "$UNIT:5"
+          ],
+          "quotes": [
+            "would have to decide how long a float it wants"
+          ],
+          "subject": "a fourth sample",
+          "predicate": "would choose",
+          "object": "a run length",
+          "image_scope": "corpus"
+        },
+        {
+          "ref": "b9",
+          "text": "the first sample shows continuous horizontal runs with no interruption",
+          "unit_kind": "entity",
+          "source_unit_ids": [
+            "$UNIT:6"
+          ],
+          "quotes": [
+            "continuous horizontal runs with no interruption visible"
+          ],
+          "subject": "the first sample",
+          "predicate": "shows",
+          "object": "continuous horizontal runs",
+          "image_scope": "one_image"
+        }
+      ],
+      "coverage": [
+        {
+          "source_unit_id": "$UNIT:1",
+          "disposition": "represented_by",
+          "refs": [
+            "b1"
+          ]
+        },
+        {
+          "source_unit_id": "$UNIT:2",
+          "disposition": "represented_by",
+          "refs": [
+            "b2",
+            "b3"
+          ]
+        },
+        {
+          "source_unit_id": "$UNIT:3",
+          "disposition": "represented_by",
+          "refs": [
+            "b4",
+            "b5"
+          ]
+        },
+        {
+          "source_unit_id": "$UNIT:4",
+          "disposition": "represented_by",
+          "refs": [
+            "b6",
+            "b7"
+          ]
+        },
+        {
+          "source_unit_id": "$UNIT:5",
+          "disposition": "represented_by",
+          "refs": [
+            "b8"
+          ]
+        },
+        {
+          "source_unit_id": "$UNIT:6",
+          "disposition": "represented_by",
+          "refs": [
+            "b9"
+          ]
+        }
+      ]
+    },
+    {
+      "atoms": [
+        {
+          "ref": "b10",
+          "text": "the second sample alternates over and under at every intersection",
+          "unit_kind": "relation",
+          "source_unit_ids": [
+            "$UNIT:7"
+          ],
+          "quotes": [
+            "alternates over and under at every intersection"
+          ],
+          "subject": "the second sample",
+          "predicate": "alternates",
+          "object": "at every intersection",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b11",
+          "text": "the third sample's runs step sideways by one position each row",
+          "unit_kind": "relation",
+          "source_unit_ids": [
+            "$UNIT:8"
+          ],
+          "quotes": [
+            "step sideways by one position each row"
+          ],
+          "subject": "the runs",
+          "predicate": "step sideways by",
+          "object": "one position each row",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b12",
+          "text": "the first and third samples hide part of the vertical set and the second hides none",
+          "unit_kind": "comparison",
+          "source_unit_ids": [
+            "$UNIT:9"
+          ],
+          "quotes": [
+            "both hide part of the vertical set, the second hides none of it"
+          ],
+          "subject": "the first and third samples",
+          "predicate": "hide",
+          "object": "part of the vertical set",
+          "image_scope": "corpus"
+        },
+        {
+          "ref": "b13",
+          "text": "the second sample reads as a printed grid while being an interlacement",
+          "unit_kind": "interpretation",
+          "source_unit_ids": [
+            "$UNIT:10"
+          ],
+          "quotes": [
+            "reads as a printed grid at this scale while being an interlacement"
+          ],
+          "subject": "the second sample",
+          "predicate": "reads as",
+          "object": "a printed grid",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b14",
+          "text": "stepping the runs sideways each row is documented in industrial pattern books",
+          "unit_kind": "historical_or_sourced",
+          "source_unit_ids": [
+            "$UNIT:11"
+          ],
+          "quotes": [
+            "documented in industrial pattern books"
+          ],
+          "subject": "the stepping construction",
+          "predicate": "is documented in",
+          "object": "industrial pattern books",
+          "image_scope": "not_an_image_question"
+        },
+        {
+          "ref": "b15",
+          "text": "the diagonal may follow from the step rather than from any dyeing",
+          "unit_kind": "causal_hypothesis",
+          "source_unit_ids": [
+            "$UNIT:12"
+          ],
+          "quotes": [
+            "may be a consequence of the step rather than of any dyeing"
+          ],
+          "subject": "the diagonal",
+          "predicate": "may follow from",
+          "object": "the step",
+          "image_scope": "one_image"
+        }
+      ],
+      "coverage": [
+        {
+          "source_unit_id": "$UNIT:7",
+          "disposition": "represented_by",
+          "refs": [
+            "b10"
+          ]
+        },
+        {
+          "source_unit_id": "$UNIT:8",
+          "disposition": "represented_by",
+          "refs": [
+            "b11"
+          ]
+        },
+        {
+          "source_unit_id": "$UNIT:9",
+          "disposition": "represented_by",
+          "refs": [
+            "b12"
+          ]
+        },
+        {
+          "source_unit_id": "$UNIT:10",
+          "disposition": "represented_by",
+          "refs": [
+            "b13"
+          ]
+        },
+        {
+          "source_unit_id": "$UNIT:11",
+          "disposition": "represented_by",
+          "refs": [
+            "b14"
+          ]
+        },
+        {
+          "source_unit_id": "$UNIT:12",
+          "disposition": "represented_by",
+          "refs": [
+            "b15"
+          ]
+        }
+      ]
+    }
+  ],
+  "architect_payload": {
+    "claims": [
+      {
+        "ref": "d1",
+        "text": "in the first sample the vertical set is covered by the horizontal set",
+        "kind": "spatial_relation",
+        "atom_ids": [
+          "$ATOM:b2",
+          "$ATOM:b9"
+        ],
+        "subject": "the vertical set",
+        "predicate": "is covered by",
+        "object": "the horizontal set",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d2",
+        "text": "the first sample looks almost solid",
+        "kind": "interpretation",
+        "atom_ids": [
+          "$ATOM:b3"
+        ],
+        "subject": "the first sample",
+        "predicate": "looks",
+        "object": "almost solid",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d3",
+        "text": "the second sample alternates over and under at every intersection",
+        "kind": "pattern_or_sequence",
+        "atom_ids": [
+          "$ATOM:b4",
+          "$ATOM:b10"
+        ],
+        "subject": "the second sample",
+        "predicate": "alternates",
+        "object": "at every intersection",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d4",
+        "text": "the even alternation is what makes the surface read as a grid",
+        "kind": "causal_hypothesis",
+        "atom_ids": [
+          "$ATOM:b5"
+        ],
+        "subject": "the even alternation",
+        "predicate": "produces",
+        "object": "a grid-like reading",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "uncertain",
+        "note": "the person's own hypothesis"
+      },
+      {
+        "ref": "d5",
+        "text": "the second sample reads as a printed grid while being an interlacement",
+        "kind": "interpretation",
+        "atom_ids": [
+          "$ATOM:b13"
+        ],
+        "subject": "the second sample",
+        "predicate": "reads as",
+        "object": "a printed grid",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d6",
+        "text": "the third sample's runs pass over three verticals and step one position each row",
+        "kind": "pattern_or_sequence",
+        "atom_ids": [
+          "$ATOM:b6",
+          "$ATOM:b11"
+        ],
+        "subject": "the runs",
+        "predicate": "pass over and step",
+        "object": "three verticals, one position each row",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d7",
+        "text": "the run length is what produces the diagonal",
+        "kind": "causal_hypothesis",
+        "atom_ids": [
+          "$ATOM:b7",
+          "$ATOM:b15"
+        ],
+        "subject": "the run length",
+        "predicate": "produces",
+        "object": "the diagonal",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "uncertain"
+      },
+      {
+        "ref": "d8",
+        "text": "the first and third samples hide part of the vertical set and the second does not",
+        "kind": "comparison",
+        "atom_ids": [
+          "$ATOM:b12",
+          "$ATOM:b1"
+        ],
+        "subject": "the three samples",
+        "predicate": "differ in",
+        "object": "how much of the vertical set is hidden",
+        "image_scope": "corpus",
+        "demand": "measurable",
+        "status": "uncertain"
+      },
+      {
+        "ref": "d9",
+        "text": "stepping the runs sideways each row is documented in industrial pattern books",
+        "kind": "historical_or_sourced",
+        "atom_ids": [
+          "$ATOM:b14"
+        ],
+        "subject": "the stepping construction",
+        "predicate": "is documented in",
+        "object": "pattern books",
+        "image_scope": "not_an_image_question",
+        "demand": "sourced",
+        "status": "sourced"
+      },
+      {
+        "ref": "d10",
+        "text": "a fourth sample in this family would have to choose a run length",
+        "kind": "generative_rule",
+        "atom_ids": [
+          "$ATOM:b8"
+        ],
+        "subject": "a fourth sample",
+        "predicate": "would choose",
+        "object": "a run length",
+        "image_scope": "corpus",
+        "demand": "imagined",
+        "status": "interpretive"
+      }
+    ],
+    "edges": [
+      {
+        "kind": "supports",
+        "from": "d1",
+        "to": "d2",
+        "why": "covering the vertical set is what the solid appearance is read from"
+      },
+      {
+        "kind": "supports",
+        "from": "d3",
+        "to": "d4",
+        "why": "the hypothesis names the even alternation as the cause"
+      },
+      {
+        "kind": "complicates",
+        "from": "d5",
+        "to": "d3",
+        "why": "reading as a print qualifies what the alternation is taken to show"
+      },
+      {
+        "kind": "supports",
+        "from": "d6",
+        "to": "d7",
+        "why": "the hypothesis names the run length the pattern measures"
+      },
+      {
+        "kind": "generalizes",
+        "from": "d8",
+        "to": "d1",
+        "why": "the corpus-wide difference generalises the single-sample relation"
+      }
+    ]
+  },
+  "operationalizer_payload": {
+    "observables": [
+      {
+        "ref": "p1",
+        "claim": "$CLAIM:d1",
+        "kind": "coverage_of_one_set_by_another",
+        "targets": [
+          "the vertical set",
+          "the horizontal set"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "extent",
+          "geometry"
+        ],
+        "ground_forms": [
+          "region",
+          "relation"
+        ],
+        "success_when": "both sets are located and the overlap is returned",
+        "ambiguous_when": "the two sets cannot be told apart at this resolution",
+        "refused_when": "neither set can be located",
+        "remains_interpretive": "whether a high coverage figure is what makes a surface look solid",
+        "alternatives": [
+          {
+            "label": "measure the covered fraction over the whole sample",
+            "consequence": "one figure for the sample, and local variation is averaged away",
+            "capability_classes": [
+              "extent"
+            ],
+            "ground_forms": [
+              "region"
+            ],
+            "recommended": true
+          },
+          {
+            "label": "measure the covered fraction in several windows",
+            "consequence": "several figures, more cost, and variation across the sample becomes visible",
+            "capability_classes": [
+              "extent",
+              "pattern"
+            ],
+            "ground_forms": [
+              "region",
+              "field"
+            ],
+            "recommended": false
+          }
+        ]
+      },
+      {
+        "ref": "p2",
+        "claim": "$CLAIM:d3",
+        "kind": "period_of_a_repeating_arrangement",
+        "targets": [
+          "the alternation"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "pattern"
+        ],
+        "ground_forms": [
+          "field"
+        ],
+        "success_when": "a period is returned in both directions",
+        "ambiguous_when": "the period is close to the sampling limit",
+        "refused_when": "no repetition is detected",
+        "remains_interpretive": "",
+        "alternatives": []
+      },
+      {
+        "ref": "p3",
+        "claim": "$CLAIM:d6",
+        "kind": "step_and_run_length_of_a_repeating_arrangement",
+        "targets": [
+          "the runs"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "pattern",
+          "geometry"
+        ],
+        "ground_forms": [
+          "field",
+          "path"
+        ],
+        "success_when": "a run length and a per-row step are returned",
+        "ambiguous_when": "the runs cannot be followed across rows",
+        "refused_when": "no run can be traced",
+        "remains_interpretive": "",
+        "alternatives": []
+      },
+      {
+        "ref": "p4",
+        "claim": "$CLAIM:d8",
+        "kind": "comparison_of_covered_fraction_across_images",
+        "targets": [
+          "the covered fraction of each sample"
+        ],
+        "image_scope": "corpus",
+        "capability_classes": [
+          "extent"
+        ],
+        "ground_forms": [
+          "region"
+        ],
+        "success_when": "each sample yields a comparable fraction",
+        "ambiguous_when": "the samples are photographed at different scales",
+        "refused_when": "one sample yields no measurement",
+        "remains_interpretive": "whether comparable fractions amount to a shared construction",
+        "alternatives": []
+      },
+      {
+        "ref": "p5",
+        "claim": "$CLAIM:d9",
+        "kind": "citation_for_a_documented_construction",
+        "targets": [
+          "the stepping construction"
+        ],
+        "image_scope": "not_an_image_question",
+        "capability_classes": [
+          "external_source"
+        ],
+        "ground_forms": [
+          "frame"
+        ],
+        "success_when": "a citation is returned",
+        "ambiguous_when": "the sources disagree",
+        "refused_when": "nothing is found",
+        "remains_interpretive": "",
+        "alternatives": []
+      }
+    ],
+    "decisions": [
+      {
+        "kind": "choose_operationalization",
+        "question": "Measure the covered fraction over the whole sample, or in several windows?",
+        "why_now": "one figure per sample makes the three directly comparable and hides variation within each; windows show the variation and make the comparison a distribution rather than a number",
+        "affects": [
+          "$CLAIM:d1",
+          "p1"
+        ],
+        "blocking": false,
+        "options": [
+          {
+            "label": "measure the covered fraction over the whole sample",
+            "consequence": "one figure for the sample, and local variation is averaged away",
+            "recommended": true
+          },
+          {
+            "label": "measure the covered fraction in several windows",
+            "consequence": "several figures, more cost, and variation across the sample becomes visible",
+            "recommended": false
+          }
+        ]
+      }
+    ],
+    "semantic_remainder": [
+      {
+        "term": "looking almost solid",
+        "why": "no instrument returns the impression a surface makes; a covered fraction contributes to it and does not settle it",
+        "contributing_capability_classes": [
+          "extent",
+          "colour"
+        ],
+        "claims": [
+          "$CLAIM:d2"
+        ]
+      },
+      {
+        "term": "reading as a print rather than as a construction",
+        "why": "what a surface is mistaken for at a given scale is a fact about looking, not a property the surface has",
+        "contributing_capability_classes": [
+          "pattern"
+        ],
+        "claims": [
+          "$CLAIM:d5"
+        ]
+      },
+      {
+        "term": "whether the samples belong to one family",
+        "why": "comparable measurements may support the grouping and cannot establish that it is the right one",
+        "contributing_capability_classes": [
+          "pattern",
+          "extent"
+        ],
+        "claims": [
+          "$CLAIM:d8"
+        ]
+      },
+      {
+        "term": "what a further sample would have to decide",
+        "why": "a rule for making something that does not exist has nothing to measure and nothing to cite",
+        "contributing_capability_classes": [],
+        "claims": [
+          "$CLAIM:d10"
+        ]
+      }
+    ]
+  }
+}
