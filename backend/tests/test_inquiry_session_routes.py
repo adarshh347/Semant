@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from backend.routers import inquiries as R
 from backend.services.inquiry_session import corpus, store
 from backend.services.inquiry_session.capability import LockedFixtureCapability
+from backend.services.inquiry_session.composer import DeterministicComposer
 from backend.services.inquiry_session.judge import judge
 from backend.tests.fixtures import inquiry_session_fixtures as F
 
@@ -42,7 +43,8 @@ def wired(monkeypatch):
     # The production bindings for everything except the two model stages, which are frozen. A
     # fresh capability adapter per call, exactly as `runtime.build_stages` does it.
     def _stages():
-        return F.stages_for(FIXTURE, capability=LockedFixtureCapability(), judge=judge)
+        return F.stages_for(FIXTURE, capability=LockedFixtureCapability(), judge=judge,
+                           composer=DeterministicComposer())
 
     monkeypatch.setattr(R, "_stages", _stages)
 
@@ -416,3 +418,28 @@ def test_the_answer_commissions_exactly_one_simulated_receipt_on_the_wire(wired)
     assert receipts[0]["status"] == "simulated"
     assert receipts[0]["usable_as_evidence"] is False
     assert after["verdicts"] and all(v["evidence_refs"] == [] for v in after["verdicts"])
+
+
+def test_the_answer_arrives_on_the_wire_with_every_section_bound(wired):
+    """The last link of the vertical: a complete session whose synthesis the workbench can render
+    and whose every reference resolves against the same body."""
+    client, _, _ = wired
+    session = _start(client).json()
+    after = _answer(client, session).json()
+
+    assert after["state"] == "complete"
+    synthesis = after["synthesis"]
+    assert synthesis and synthesis["sections"]
+    assert "SIMULATION" in synthesis["note"]
+
+    claims = {c["claim_id"] for c in after["graph"]["claims"]}
+    decisions = {d["decision_id"] for d in after["decision_requests"]}
+    remainder = {r["remainder_id"] for r in after["graph"]["semantic_remainder"]}
+    for section in synthesis["sections"]:
+        assert section["status"] not in ("measured", "visible")
+        assert section["evidence_refs"] == []
+        assert set(section["claim_refs"]) <= claims
+        assert set(section["decision_refs"]) <= decisions
+        assert set(section["refusal_refs"]) <= (remainder | {r["refusal_id"]
+                                                             for r in after["refusals"]
+                                                             if r.get("refusal_id")})

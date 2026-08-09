@@ -40,6 +40,7 @@ def build_stages(*, capability=None, judge=None, composer=None) -> Stages:
     from backend.services.semantic_compilation.theorist import ModelSceneTheorist
 
     from .capability import LockedFixtureCapability
+    from .composer import DeterministicComposer, ModelSynthesisComposer
     from .judge import judge as judge_claims
 
     live = _enabled("SEMANT_INQUIRY_LIVE_MODELS")
@@ -56,7 +57,12 @@ def build_stages(*, capability=None, judge=None, composer=None) -> Stages:
         # global budget on whichever inquiry happened to be first.
         capability=capability if capability is not None else LockedFixtureCapability(),
         judge=judge if judge is not None else judge_claims,
-        composer=composer,
+        # The deterministic composer is not a stub and not a fallback: it produces every binding
+        # the model one has to, and it is what a deployment with no provider answers with. The
+        # model composer is bound only where the other two model stages are, so an answer written
+        # by a model never sits on top of a chain that had no model in it.
+        composer=composer if composer is not None else (
+            ModelSynthesisComposer() if live else DeterministicComposer()),
     )
 
 
