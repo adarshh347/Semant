@@ -7,6 +7,7 @@ a projection that works in Python and not on the wire fails here rather than in 
 from __future__ import annotations
 
 import copy
+import time
 
 import pytest
 from fastapi import FastAPI
@@ -55,14 +56,54 @@ def wired(monkeypatch):
 
 
 def _start(client, mode="consult", **over):
+    """POST the inquiry. Returns the 202 IMMEDIATELY — the work has not happened yet.
+
+    HARNESS-003B changed what this call means. It used to return a finished session because the
+    handler ran the whole chain before replying; it now returns a durable session and a scheduled
+    driver, which is the point of the lane. Tests that want a finished session call `_settled`.
+    """
     body = {"prompt": F.prompt_for(FIXTURE), "mode": mode,
             "image_ids": [r.post_id for r in F.post_refs(FIXTURE)]}
     body.update(over)
     return client.post("/api/v1/inquiries", json=body)
 
 
+#: Where a driver stops: three terminal states plus the one that is a person's turn rather than an
+#: ending.
+_BOUNDARIES = ("awaiting_user", "complete", "exhausted", "refused", "error")
+
+
+def _settled(client, res, *, tries=400):
+    """Poll `GET` until the driver reaches a boundary, exactly as a client without a stream would.
+
+    Polling rather than reaching into the driver's task table: what is under test is that the
+    session becomes readable through the API while work proceeds, and a helper that awaited an
+    in-process handle would prove something no browser can observe.
+    """
+    session_id = res.json()["session_id"]
+    for _ in range(tries):
+        body = client.get(f"/api/v1/inquiries/{session_id}").json()
+        if body.get("state") in _BOUNDARIES:
+            return body
+        time.sleep(0.005)
+    raise AssertionError(f"session {session_id} never reached a boundary; "
+                         f"last state {body.get('state')!r}")
+
+
 def _open_decision(session):
     return next((d for d in session["decision_requests"] if not d["answered"]), None)
+
+
+def _answered(client, session, **kw):
+    """Answer, then let the driver finish the stages the answer unblocked.
+
+    The POST returns when the answer is RECORDED, not when the work it unblocked is done — the same
+    architecture the create route has. A test wanting the composed answer settles first, exactly as
+    a client would.
+    """
+    res = _answer(client, session, **kw)
+    assert res.status_code == 200, res.text
+    return _settled(client, res)
 
 
 def _answer(client, session, *, option_index=0, response_id="r1", **over):
@@ -76,15 +117,31 @@ def _answer(client, session, *, option_index=0, response_id="r1", **over):
 
 # ── creation ─────────────────────────────────────────────────────────────────
 
-def test_a_question_and_some_pictures_become_a_session_that_stops_at_a_fork(wired):
+def test_the_post_returns_a_durable_session_before_any_stage_has_run(wired):
+    """202, and the session is already in the store with nothing compiled.
+
+    This is the architecture 002R asked for. The old handler ran the whole chain and replied when
+    it finished, so a browser could not subscribe to the stream until the work was over — its
+    `Starting…` state was structurally incapable of showing progress, however it was written.
+    """
     client, _, sessions = wired
     res = _start(client)
-    assert res.status_code == 200, res.text
+    assert res.status_code == 202, res.text
     session = res.json()
 
     assert session["session_id"].startswith("inqs_")
+    assert session["session_id"] in sessions.docs, "the session must be durable before it is driven"
+    assert session["state"] == "framing"
+    assert not session["graph"].get("claims"), "nothing may be compiled before the driver runs"
+    assert session["stages"] == [], "no stage has been entered yet"
+
+
+def test_the_driven_session_reaches_the_same_fork_the_blocking_route_used_to_return(wired):
+    client, _, sessions = wired
+    session = _settled(client, _start(client))
+
     assert session["state"] == "awaiting_user"
-    assert session["graph"]["claims"], "the fixture compiles claims; the route lost them"
+    assert session["graph"]["claims"], "the fixture compiles claims; the driver lost them"
     assert _open_decision(session) is not None
     assert session["session_id"] in sessions.docs
 
@@ -92,7 +149,7 @@ def test_a_question_and_some_pictures_become_a_session_that_stops_at_a_fork(wire
 def test_the_prompt_survives_the_round_trip_byte_for_byte(wired):
     client, _, _ = wired
     prompt = "  Whitespace, an em—dash, and a \"quote\" that must not be tidied.  "
-    session = _start(client, prompt=prompt).json()
+    session = _settled(client, _start(client, prompt=prompt))
     # `.strip()` is the route's ONE normalisation and it is applied before anything reads it, so
     # every source span in the graph indexes into the stripped string.
     assert session["prompt"] == prompt.strip()
@@ -123,15 +180,15 @@ def test_post_ids_that_resolve_to_nothing_stop_the_inquiry_before_any_model_runs
 def test_both_spellings_of_the_selection_are_read_and_neither_is_load_bearing(wired):
     client, _, _ = wired
     ids = [r.post_id for r in F.post_refs(FIXTURE)]
-    a = _start(client, image_ids=ids, post_ids=[]).json()
-    b = _start(client, image_ids=[], post_ids=ids).json()
+    a = _settled(client, _start(client, image_ids=ids, post_ids=[]))
+    b = _settled(client, _start(client, image_ids=[], post_ids=ids))
     assert [p["post_id"] for p in a["posts"]] == [p["post_id"] for p in b["posts"]]
 
 
 def test_the_same_id_repeated_under_both_names_selects_one_post(wired):
     client, _, _ = wired
     ids = [r.post_id for r in F.post_refs(FIXTURE)]
-    session = _start(client, image_ids=ids, post_ids=ids).json()
+    session = _settled(client, _start(client, image_ids=ids, post_ids=ids))
     assert [p["post_id"] for p in session["posts"]] == ids
 
 
@@ -139,7 +196,7 @@ def test_the_same_id_repeated_under_both_names_selects_one_post(wired):
 
 def test_a_session_reads_back_identically_to_the_body_that_created_it(wired):
     client, _, _ = wired
-    created = _start(client).json()
+    created = _settled(client, _start(client))
     fetched = client.get(f"/api/v1/inquiries/{created['session_id']}").json()
     assert fetched == created
 
@@ -169,7 +226,7 @@ def test_the_listing_carries_only_inquiries(wired):
 
 def test_answering_resumes_the_same_session_at_a_higher_revision(wired):
     client, _, _ = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     before = session["revision"]
 
     res = _answer(client, session)
@@ -186,9 +243,9 @@ def test_the_pre_answer_trace_is_a_byte_identical_prefix_of_the_one_after(wired)
     """Append-only, checked rather than asserted. A history that could be rewritten by an answer
     would make every earlier claim about what happened unfalsifiable."""
     client, _, _ = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     before = copy.deepcopy(session["trace"])
-    after = _answer(client, session).json()["trace"]
+    after = _answered(client, session)["trace"]
 
     assert len(after) >= len(before)
     assert after[:len(before)] == before
@@ -196,19 +253,19 @@ def test_the_pre_answer_trace_is_a_byte_identical_prefix_of_the_one_after(wired)
 
 def test_the_stage_ledger_is_also_append_only(wired):
     client, _, _ = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     before = copy.deepcopy(session["stages"])
-    after = _answer(client, session).json()["stages"]
+    after = _answered(client, session)["stages"]
     assert after[:len(before)] == before
 
 
 def test_a_settled_record_names_who_chose_and_what_they_chose(wired):
     client, _, _ = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     decision = _open_decision(session)
     chosen = decision["options"][0]
 
-    record = _answer(client, session).json()["decision_records"][0]
+    record = _answered(client, session)["decision_records"][0]
     assert record["decider"] == "user"
     assert record["action"] == "select_option"
     assert record["selected_option_id"] == chosen["option_id"]
@@ -218,7 +275,7 @@ def test_a_settled_record_names_who_chose_and_what_they_chose(wired):
 
 def test_a_free_text_answer_is_kept_verbatim_on_the_record(wired):
     client, _, _ = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     words = "Neither of these — look at the thresholds instead."
     after = _answer(client, session, action="redirect", selected_option_id="",
                     free_text=words).json()
@@ -231,7 +288,7 @@ def test_auto_mode_does_not_interrupt_and_shows_every_choice_it_made(wired):
     """Auto mode means no interruption, not invisible agency: the record is in the same list, in
     the same chronology, with the same detail as one a person made."""
     client, _, _ = wired
-    session = _start(client, mode="auto").json()
+    session = _settled(client, _start(client, mode="auto"))
 
     assert session["state"] != "awaiting_user"
     assert _open_decision(session) is None
@@ -247,7 +304,7 @@ def test_auto_mode_does_not_interrupt_and_shows_every_choice_it_made(wired):
 
 def test_a_stale_revision_is_a_409_that_keeps_the_persons_words(wired):
     client, _, _ = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     res = _answer(client, session, expected_revision=session["revision"] - 1,
                   free_text="the words I typed")
     assert res.status_code == 409
@@ -260,8 +317,8 @@ def test_a_stale_revision_is_a_409_that_keeps_the_persons_words(wired):
 
 def test_a_retried_post_is_a_duplicate_and_says_nothing_was_lost(wired):
     client, _, _ = wired
-    session = _start(client).json()
-    answered = _answer(client, session, response_id="same").json()
+    session = _settled(client, _start(client))
+    answered = _answered(client, session, response_id="same")
 
     again = client.post(f"/api/v1/inquiries/{session['session_id']}/decisions",
                         json={"decision_id": _open_decision(session)["decision_id"],
@@ -279,7 +336,7 @@ def test_a_response_written_for_another_session_is_applied_to_neither(wired):
     """The path names the session, so a client that believed otherwise would otherwise have its
     belief silently corrected into agreement with the URL."""
     client, _, _ = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     decision = _open_decision(session)
     res = client.post(f"/api/v1/inquiries/{session['session_id']}/decisions", json={
         "decision_id": decision["decision_id"], "response_id": "r1", "action": "select",
@@ -296,7 +353,7 @@ def test_a_response_written_for_another_session_is_applied_to_neither(wired):
 
 def test_an_unsolicited_answer_lands_nowhere_and_is_told_so(wired):
     client, _, _ = wired
-    session = _start(client, mode="auto").json()
+    session = _settled(client, _start(client, mode="auto"))
     res = client.post(f"/api/v1/inquiries/{session['session_id']}/decisions", json={
         "decision_id": "dec_nothing", "response_id": "r1", "action": "select",
         "selected_option_id": "alt_something", "expected_revision": session["revision"]})
@@ -309,11 +366,11 @@ def test_the_four_recoverable_conflicts_have_four_distinct_bodies(wired):
     client, _, _ = wired
     bodies = []
 
-    stale = _answer(client, _start(client).json(), expected_revision=0)
+    stale = _answer(client, _settled(client, _start(client)), expected_revision=0)
     bodies.append(stale.json()["detail"])
 
-    session = _start(client).json()
-    _answer(client, session, response_id="dup")
+    session = _settled(client, _start(client))
+    _answered(client, session, response_id="dup")
     dup = client.post(f"/api/v1/inquiries/{session['session_id']}/decisions",
                       json={"decision_id": _open_decision(session)["decision_id"],
                             "response_id": "dup", "action": "select",
@@ -321,14 +378,14 @@ def test_the_four_recoverable_conflicts_have_four_distinct_bodies(wired):
                             "expected_revision": session["revision"]})
     bodies.append(dup.json()["detail"])
 
-    auto = _start(client, mode="auto").json()
+    auto = _settled(client, _start(client, mode="auto"))
     unsolicited = client.post(f"/api/v1/inquiries/{auto['session_id']}/decisions",
                               json={"decision_id": "dec_none", "response_id": "r",
                                     "action": "select", "selected_option_id": "alt_x",
                                     "expected_revision": auto["revision"]})
     bodies.append(unsolicited.json()["detail"])
 
-    elsewhere = _start(client).json()
+    elsewhere = _settled(client, _start(client))
     wrong = _answer(client, elsewhere, session_id="inqs_elsewhere")
     bodies.append(wrong.json()["detail"])
 
@@ -342,7 +399,7 @@ def test_the_four_recoverable_conflicts_have_four_distinct_bodies(wired):
 def test_an_option_that_is_not_on_the_request_is_a_422_and_not_a_409(wired):
     """The distinction that costs most if lost: 409 means try again, 422 means never this way."""
     client, _, _ = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     res = _answer(client, session, selected_option_id="alt_invented")
     assert res.status_code == 422
     assert res.json()["detail"]["error"] == "unknown_option"
@@ -354,7 +411,7 @@ def test_a_preference_has_nowhere_to_put_a_kind_of_knowing(wired):
     reach the object Lane B would have to check. A refusal that can never fire is the goal here —
     the conflict stays typed for callers that build a response in Python."""
     client, _, sessions = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     decision = _open_decision(session)
     res = client.post(f"/api/v1/inquiries/{session['session_id']}/decisions", json={
         "decision_id": decision["decision_id"], "response_id": "r1", "action": "select",
@@ -374,7 +431,7 @@ def test_a_preference_has_nowhere_to_put_a_kind_of_knowing(wired):
 def test_a_whole_inquiry_leaves_every_source_post_byte_identical(wired):
     client, posts, _ = wired
     before = copy.deepcopy(posts.docs)
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     _answer(client, session)
     assert posts.docs == before
     assert posts.writes == 0, "an inquiry wrote to the corpus it was reading"
@@ -382,7 +439,7 @@ def test_a_whole_inquiry_leaves_every_source_post_byte_identical(wired):
 
 def test_the_only_document_an_inquiry_writes_is_its_own_history(wired):
     client, _, sessions = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     _answer(client, session)
     assert set(sessions.docs) == {session["session_id"]}
     assert all(d["kind"] == store.KIND for d in sessions.docs.values())
@@ -390,7 +447,7 @@ def test_the_only_document_an_inquiry_writes_is_its_own_history(wired):
 
 def test_a_mutated_post_stops_the_write_rather_than_being_recorded(wired):
     client, posts, _ = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     first = next(iter(posts.docs))
     posts.docs[first]["title"] = "edited underneath the inquiry"
     res = _answer(client, session)
@@ -400,18 +457,18 @@ def test_a_mutated_post_stops_the_write_rather_than_being_recorded(wired):
 
 def test_no_evidence_object_exists_anywhere_in_phase_one(wired):
     client, _, _ = wired
-    session = _start(client).json()
-    after = _answer(client, session).json()
+    session = _settled(client, _start(client))
+    after = _answered(client, session)
     assert after["evidence"] == []
 
 
 def test_the_answer_commissions_exactly_one_simulated_receipt_on_the_wire(wired):
     """The whole vertical, through HTTP: create → awaiting user → answer → one fixture receipt."""
     client, _, _ = wired
-    session = _start(client).json()
+    session = _settled(client, _start(client))
     assert session["capability_receipts"] == []
 
-    after = _answer(client, session).json()
+    after = _answered(client, session)
     receipts = after["capability_receipts"]
     assert len(receipts) == 1
     assert receipts[0]["execution_mode"] == "fixture"
@@ -424,8 +481,8 @@ def test_the_answer_arrives_on_the_wire_with_every_section_bound(wired):
     """The last link of the vertical: a complete session whose synthesis the workbench can render
     and whose every reference resolves against the same body."""
     client, _, _ = wired
-    session = _start(client).json()
-    after = _answer(client, session).json()
+    session = _settled(client, _start(client))
+    after = _answered(client, session)
 
     assert after["state"] == "complete"
     synthesis = after["synthesis"]

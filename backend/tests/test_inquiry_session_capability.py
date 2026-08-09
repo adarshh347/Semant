@@ -137,7 +137,12 @@ def test_a_finished_session_is_not_advanced_again_at_all(name):
     second line rather than the only one."""
     session, stages = run(name)
     assert session.state in ("complete", "exhausted")
-    assert coordinator._continue(session, stages) is session
+    # `_continue` was the monolithic post-fork driver; HARNESS-003B replaced it with the stepped
+    # planner, and the guard it held now lives in `steps.plan` — which reports a terminal session
+    # as having nothing to do, from the persisted state rather than from control flow.
+    from backend.services.inquiry_session import steps
+    assert steps.plan(session).stage is None
+    assert steps.advance_all(session, stages) is session
 
 
 def test_an_unsettled_fork_commissions_nothing_at_all():
