@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inquiry workbench — development preview</title>
+  </head>
+  <body>
+    <!--
+      DEVELOPMENT PREVIEW ONLY.
+
+      Vite's dev server serves any .html under the project root at its own path, so this needs no
+      config entry and — because `vite build` only walks `index.html` — it cannot reach a
+      production bundle. It exists so the awaiting-user and completed states can be LOOKED at
+      rather than only asserted, and every story it mounts is driven by the mock client against
+      the lane's fixtures.
+
+      It is not the production surface and says so in a banner it cannot lose. The production
+      page shows an explicit unavailable state when the API is missing; this file is the reason
+      that rule can be kept without anyone losing the ability to see the design.
+
+          npm run dev  →  http://localhost:5173/src/inquiryWorkbench/preview/preview.html
+    -->
+    <div id="root"></div>
+    <script type="module" src="./preview.jsx"></script>
+  </body>
+</html>

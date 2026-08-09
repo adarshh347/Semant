@@ -900,3 +900,43 @@
     .iw-pulse { animation: none; opacity: 1; }
     .iw-option, .iw-receipt, .iw-claim { transition: none; }
 }
+
+/* ── corrections against the app's global button rule ──────────────────────
+ *
+ * `index.css` styles every `button` at weight 600 with a lift-on-hover transform and a shadow.
+ * That is right for the app's ordinary controls and wrong for the ones here that are CARDS
+ * containing prose: a mode card, an option card and a thumbnail are buttons for keyboard and
+ * screen-reader reasons, not because they should look like buttons, and the inherited weight
+ * rendered whole explanatory paragraphs bold. Found by looking at the surface rather than by
+ * reading the stylesheet — the DOM tests cannot see a font weight.
+ *
+ * Overriding here rather than touching `index.css`: the global rule is correct for the rest of
+ * the app and belongs to no lane. */
+
+.iw-thumb, .iw-mode, .iw-option {
+    font-weight: 400;
+    box-shadow: none;
+    transform: none;
+}
+
+.iw-thumb:hover, .iw-mode:hover, .iw-option:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--line-strong);
+    background: var(--surface);
+}
+
+.iw-mode.is-on:hover, .iw-option.is-on:hover { border-left-color: var(--accent); }
+.iw-thumb.is-on:hover { border-color: var(--accent); }
+
+.iw-mode-hint, .iw-option-consequence, .iw-thumb-title { font-weight: 400; }
+.iw-mode-name, .iw-option-label { font-weight: 600; }
+
+.iw-expand { box-shadow: none; font-weight: 400; }
+.iw-expand:hover { transform: none; box-shadow: none; background: var(--surface-2); }
+
+/* The thumbnail caption truncates only if every ancestor can shrink below its content — a grid
+   item and a flex column both default to min-width:auto, which is what let a long title run out
+   of its own card. */
+.iw-corpus > li, .iw-thumb { min-width: 0; }
+.iw-thumb-title { max-width: 100%; }
