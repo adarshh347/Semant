@@ -434,11 +434,35 @@ def test_that_model_scan_can_actually_fail():
     assert "groq" in source.lower()
 
 
+#: The branch this guard was written to police. HARNESS-002D had to add it.
+#:
+#: The check below compares the WHOLE diff against `origin/main` to Lane B's write set. That was
+#: right while Lane B was unmerged and its branch was the only thing that diff could contain. Once
+#: it merged, `origin/main` moved to include it and the diff became "everything the current branch
+#: changed" — so the guard started failing on every later branch in the repository, for the correct
+#: reason that no other lane's work is inside Lane B's write set.
+#:
+#: A lane-ownership assertion that outlives its lane is a tripwire pointed at whoever comes next.
+#: Scoping it to its own branch keeps the guarantee exactly where it means something and removes it
+#: everywhere it never did. Nothing about what Lane B is allowed to touch has changed.
+_THIS_LANES_BRANCH = "feat/inquiry-deliberation"
+
+
 def test_this_lane_does_not_edit_another_lanes_files():
     """The board's ownership boundary, asserted rather than remembered. Lane B owns four paths;
-    everything else in the tree is someone else's to change."""
+    everything else in the tree is someone else's to change.
+
+    Only meaningful ON Lane B's branch — see `_THIS_LANES_BRANCH`.
+    """
     import subprocess
     root = pathlib.Path(__file__).resolve().parents[2]
+    branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                            cwd=root, capture_output=True, text=True)
+    if branch.returncode != 0:
+        pytest.skip(f"git unavailable: {branch.stderr.strip()[:120]}")
+    if branch.stdout.strip() != _THIS_LANES_BRANCH:
+        pytest.skip(f"this guard polices {_THIS_LANES_BRANCH!r}; HEAD is "
+                    f"{branch.stdout.strip()!r}, whose write set is somebody else's to declare")
     diff = subprocess.run(["git", "diff", "--name-only", "origin/main...HEAD"],
                           cwd=root, capture_output=True, text=True)
     if diff.returncode != 0:                    # no git, or a detached checkout — say so, skip
