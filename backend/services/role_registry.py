@@ -277,6 +277,64 @@ _THINKERS: List[Role] = [
         default_model="openai/gpt-oss-120b",
         provider="groq",
     ),
+    Role(
+        name="scene_theorist",
+        kind=RoleKind.THINKER,
+        # HARNESS-002A. THE FIRST THINKER IN THIS TABLE THAT LOOKS AT THE PICTURES AND IS STILL A
+        # THINKER, and that is the whole reason it is declared rather than folded into `dissector`.
+        # `dissector` proposes PARTS with boxes around them; this role proposes a READING — parts,
+        # organisations, comparisons, possible historical associations, tensions and generative
+        # hypotheses — and authors no coordinate of any kind.
+        summary="Reads the prompt and the selected images together and returns an abundant "
+                "provisional visual reading. Sees pixels; authors no geometry.",
+        # INTERPRETIVE, and seeing the image does not raise it. The ceiling is about what a role may
+        # CLAIM, not about what it was shown: a sentence produced by a language model looking at a
+        # photograph is a reading of that photograph, and the moment it can be `measured` there is a
+        # measurement in the system that no instrument computed.
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        # The vision-capable model on the catalogue, shared with `dissector` and `writer_vision`
+        # today and separate ON PURPOSE: rebinding the part-finder to a stronger VLM must not
+        # silently change what the theorist reads, and vice versa.
+        default_model="qwen/qwen3.6-27b",
+        provider="groq",
+    ),
+    Role(
+        name="semantic_compiler",
+        kind=RoleKind.THINKER,
+        # HARNESS-002A. Reads WORDS ONLY — the prompt, the accepted frame, and the theorist's
+        # reading as text. It is deliberately not given the images: its job is to atomize and type
+        # what has already been said, and a compiler that could look would start adding claims
+        # nobody made and anchoring them to a source pointer that resolves to nothing.
+        summary="Atomizes a prompt and a scene reading into typed claims, relations and the "
+                "observables each would need. Reads text, never pixels.",
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        default_model="openai/gpt-oss-120b",
+        provider="groq",
+    ),
+    Role(
+        name="deliberation_steward",
+        kind=RoleKind.THINKER,
+        summary="Decides whether an inquiry can proceed automatically or whether a person can "
+                "resolve a material fork, and phrases the choice.",
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        default_model="openai/gpt-oss-120b",
+        provider="groq",
+    ),
+    Role(
+        name="synthesis_composer",
+        kind=RoleKind.THINKER,
+        # Declared here, in Lane A, because Wave 1 gives this file to one lane — not because this
+        # lane calls it. The binding has to exist before the composer does, or the composing lane
+        # edits a shared file three lanes are already holding.
+        summary="Writes an answer from the claim/evidence graph, with every substantive sentence "
+                "carrying its claim and evidence references.",
+        # INTERPRETIVE, and load-bearing: this role writes the sentences a reader will believe. A
+        # composer whose ceiling were anything higher could publish a paragraph that reads as a
+        # finding while resting on an unsatisfied observable.
+        epistemic_ceiling=EpistemicStatus.INTERPRETIVE,
+        default_model="openai/gpt-oss-120b",
+        provider="groq",
+    ),
 ]
 
 
