@@ -15,7 +15,11 @@ from pathlib import Path
 import pytest
 
 from backend.schemas.inquiry import DemandKind
-from backend.schemas.semantic_compilation import (SCHEMA_VERSION, CallTopology, CapabilityClass,
+from backend.schemas.semantic_compilation import (READABLE_SCHEMA_VERSIONS, SCHEMA_VERSION,
+                                                  SCHEMA_VERSION_V1, SCHEMA_VERSION_V2,
+                                                  AtomKind, AtomAuthor, DispositionKind,
+                                                  DissolutionPass, PassOutcome, SourceUnitKind,
+                                                  CallTopology, CapabilityClass,
                                                   ClaimEdgeKind, ClaimKind, ClaimStatus,
                                                   CompilerRefusalKind, DecisionKind,
                                                   FORBIDDEN_INITIAL_STATUSES, GroundForm,
@@ -31,7 +35,7 @@ def _values(enum_cls) -> tuple:
 
 def test_the_contract_loads_and_declares_the_version_this_code_enforces():
     data = contracts.graph_contract()
-    assert data["schema_version"] == SCHEMA_VERSION == "semantic-inquiry-graph.v1"
+    assert data["schema_version"] == SCHEMA_VERSION == "semantic-inquiry-graph.v2"
 
 
 @pytest.mark.parametrize("set_name,enum_cls", [
@@ -195,3 +199,59 @@ def test_that_scan_can_fail(tmp_path):
                 for node in ast.walk(ast.parse(decoy.read_text(encoding="utf-8")))
                 if isinstance(node, ast.Import) for n in node.names}
     assert not imported <= {"__future__", "hashlib", "re", "typing"}
+
+
+# ── v2, and what it may not break ────────────────────────────────────────────
+
+@pytest.mark.parametrize("set_name,enum_cls", [
+    ("source_unit_kinds", SourceUnitKind),
+    ("atom_kinds", AtomKind),
+    ("atom_authors", AtomAuthor),
+    ("coverage_dispositions", DispositionKind),
+    ("dissolution_passes", DissolutionPass),
+    ("pass_outcomes", PassOutcome),
+])
+def test_every_v2_closed_set_is_pinned_in_order(set_name, enum_cls):
+    assert contracts.closed_set(set_name) == _values(enum_cls)
+
+
+def test_v1_is_still_on_disk_and_still_loadable():
+    """A stored v1 graph is explained by v1's vocabulary. Deleting the file would leave every
+    session written before this lane described by a contract that no longer exists."""
+    v1 = contracts.graph_contract_v1()
+    assert v1["schema_version"] == SCHEMA_VERSION_V1
+    assert SCHEMA_VERSION_V1 in READABLE_SCHEMA_VERSIONS
+
+
+def test_v2_is_a_superset_of_v1_rather_than_a_rewrite():
+    """Checked against the file, not promised in prose. A v1 value quietly dropped would make every
+    stored graph carrying it unreadable by the code that claims to read v1."""
+    v1, v2 = contracts.graph_contract_v1(), contracts.graph_contract()
+    for name, members in (v1["closed_sets"]).items():
+        assert name in v2["closed_sets"], f"v2 dropped the closed set {name!r}"
+        missing = [m for m in members if m not in v2["closed_sets"][name]]
+        assert not missing, f"v2 dropped {missing} from {name!r}"
+    for name, prefix in (v1["id_prefixes"]).items():
+        assert v2["id_prefixes"].get(name) == prefix, f"v2 changed the {name!r} id prefix"
+
+
+def test_v2_declares_the_laws_v1_had_and_the_ones_the_ledger_needs():
+    v1_ids = {law["id"] for law in contracts.graph_contract_v1()["laws"]}
+    v2_ids = {law["id"] for law in contracts.laws()}
+    assert v1_ids <= v2_ids, f"v2 dropped the law(s) {sorted(v1_ids - v2_ids)}"
+    for required in ("every-source-unit-has-exactly-one-disposition", "every-atom-is-anchored",
+                     "a-user-statement-stays-the-users", "the-architect-does-not-look",
+                     "a-parsed-response-is-not-a-successful-one", "one-repair-and-no-silent-retry"):
+        assert required in v2_ids
+
+
+def test_the_atom_vocabulary_maps_onto_the_claim_vocabulary_completely():
+    """Every atom kind has a default claim kind, and every default is a real claim kind. A gap here
+    would strand a whole category of atom with nothing the architect could build from it."""
+    mapping = contracts.atom_kind_to_claim_kind()
+    assert set(mapping) == {k.value for k in AtomKind}
+    assert set(mapping.values()) <= set(contracts.closed_set("claim_kinds"))
+
+
+def test_the_id_prefixes_in_the_contract_are_the_ones_the_minter_uses():
+    assert contracts.id_prefixes() == ids.PREFIXES
