@@ -731,6 +731,18 @@ export const MUTATIONS = [
             + 'below disagree with it',
     },
     {
+        id: 'inquiry/stage-sentence-printed-twice',
+        guarantee: 'a stage that filled two fields with the same sentence has it printed once — '
+            + 'saying it twice reads as the stage having done the thing twice',
+        file: 'src/inquiryWorkbench/StageActivity.jsx',
+        find: '            {s.counts_line && s.counts_line !== s.summary '
+            + '&& s.counts_line !== s.detail ? (',
+        replace: '            {s.counts_line ? (',
+        suites: ['src/inquiryWorkbench/stageActivity.dom.test.jsx'],
+        expect: 'TestOneSentenceIsPrintedOnce prints a stage\'s own sentence once when two fields '
+            + 'carry it',
+    },
+    {
         id: 'inquiry/coverage-imbalance-softened',
         guarantee: 'a ledger that does not balance says so in those words',
         file: 'src/inquiryWorkbench/ArtifactLedger.jsx',
