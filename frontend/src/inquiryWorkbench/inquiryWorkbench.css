@@ -632,6 +632,120 @@
     color: var(--ink-muted);
 }
 
+/* ── LIVE / REPLAY / FIXTURE — HARNESS-003D ────────────────────────────────
+   Four treatments, and none of them is a shade of another. A replay badge differing from a live
+   one only in tone would be a distinction nobody notices in a screenshot, which is the one place
+   this badge has to work: the 002R rehearsal's replay was indistinguishable from a live run in
+   exactly that medium. So they differ in FILL and BORDER STYLE as well as colour, and `undeclared`
+   is struck through rather than dimmed — dimming reads as "less important", and not knowing
+   whether a run was live is not less important than knowing. */
+.iw-deployment {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .375rem;
+    font-size: .6875rem;
+    letter-spacing: .06em;
+    padding: .0625rem .375rem;
+    border-radius: .1875rem;
+}
+
+.iw-deployment-kind { font-weight: 700; }
+
+.iw-deployment--live {
+    background: var(--accent-deep);
+    color: var(--surface);
+    border: 1px solid var(--accent-deep);
+}
+
+.iw-deployment--replay {
+    background: transparent;
+    color: var(--accent);
+    border: 1px dashed var(--accent);
+}
+
+.iw-deployment--fixture {
+    background: var(--ink-muted);
+    color: var(--surface);
+    border: 1px dotted var(--ink);
+}
+
+.iw-deployment--undeclared {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+    text-decoration: line-through;
+}
+
+.iw-deployment-flag {
+    text-decoration: none;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* ── the council's passes — HARNESS-003D ──────────────────────────────────── */
+.iw-passes { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+
+.iw-pass {
+    display: grid;
+    gap: .25rem;
+    padding: .5rem .625rem;
+    border-left: 3px solid var(--line-strong);
+}
+
+/* A pass that came back with less than its inputs implied is not a quieter completed one.
+   `completed` is the only outcome that is not an underperformance, and a border that merely faded
+   would let `coverage_failed` read as a slightly weaker success. */
+.iw-pass.is-underperforming { border-left-color: var(--accent); background: var(--surface-2); }
+
+.iw-pass-name { font-weight: 600; }
+
+.iw-pass-outcome {
+    font-size: .6875rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .0625rem .3125rem;
+    border-radius: .1875rem;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-muted);
+}
+
+.iw-pass-outcome--completed { border-color: var(--line-strong); color: var(--ink); }
+.iw-pass-outcome--truncated { border-style: dashed; border-color: var(--accent); color: var(--accent); }
+.iw-pass-outcome--coverage_failed { border-style: double; border-color: var(--accent-deep); color: var(--accent-deep); }
+.iw-pass-outcome--thin { border-style: dotted; border-color: var(--accent); color: var(--accent); }
+.iw-pass-outcome--empty { border-color: var(--ink-muted); color: var(--ink-muted); }
+.iw-pass-outcome--unavailable { border-color: var(--ink-subtle); color: var(--ink-subtle); background: var(--surface-2); }
+.iw-pass-outcome--refused { border-width: 2px; border-color: var(--ink); color: var(--ink); }
+.iw-pass-outcome--error { border-width: 2px; border-color: var(--accent-deep); color: var(--surface); background: var(--accent-deep); }
+.iw-pass-outcome--unknown { border-style: dotted; color: var(--accent); text-transform: none; }
+
+.iw-pass-facts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .625rem;
+    font-size: .8125rem;
+    color: var(--ink-subtle);
+}
+
+/* Waiting is not thinking, so it does not wear the duration's treatment. */
+.iw-pass-waited { color: var(--accent); font-weight: 600; }
+
+.iw-pass-waits {
+    margin: .25rem 0 0;
+    padding-left: 1.25rem;
+    font-size: .8125rem;
+    color: var(--ink-subtle);
+}
+
+/* A refusal nothing waited on is the run STOPPING, not another pause. */
+.iw-wait--stopped { color: var(--accent-deep); font-weight: 600; }
+
+.iw-coverage-summary { margin: .25rem 0 .5rem; }
+
 .iw-session-prompt {
     margin: 0;
     font-size: 1.125rem;

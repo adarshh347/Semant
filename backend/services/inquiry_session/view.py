@@ -214,6 +214,130 @@ def refusal_view(raw: Mapping[str, Any]) -> Dict[str, Any]:
             "refs": [_s(raw.get("what"))] if raw.get("what") else []}
 
 
+# ── the dissolution, projected (HARNESS-003D) ────────────────────────────────
+#
+# Lane A's council writes four objects nothing outside the backend could read: the source ledger,
+# the atoms, the coverage dispositions and the per-pass receipts. Lane C wrote normalisers for the
+# first three against a shape nobody had produced yet, and `graph_view` did not send them — which is
+# `disconnected_artifact` exactly, and the phase's central artifact at that. A coverage ledger the
+# person cannot see is a coverage ledger that only the tests benefit from.
+
+def source_unit_view(raw: Mapping[str, Any]) -> Dict[str, Any]:
+    """One piece of source prose. `kind` here, `source_type` there — both are emitted.
+
+    Lane A named the field `kind` and Lane C's normaliser reads `source_type`. The same divergence
+    this module already resolves for `success_when`/`success_condition`, and resolved the same way:
+    both spellings on the wire, with the disagreement visible in one place rather than settled by
+    renaming a field inside a merged lane.
+    """
+    span = raw.get("span")
+    start, end = (span[0], span[1]) if isinstance(span, (list, tuple)) and len(span) == 2 \
+        else (None, None)
+    kind = _s(raw.get("kind"))
+    return {
+        "source_unit_id": _s(raw.get("source_unit_id")),
+        "kind": kind,
+        "source_type": kind,
+        "source_ref": _s(raw.get("source_ref")),
+        # BYTE FOR BYTE. The span indexes into the prompt, so a projection that trimmed this would
+        # misalign every highlight over the person's own words.
+        "exact_quote": raw.get("exact_quote") if isinstance(raw.get("exact_quote"), str) else "",
+        "span": [start, end] if start is not None and end is not None else None,
+        "start": start,
+        "end": end,
+        "image_refs": [_s(i) for i in _list(raw.get("image_refs"))],
+        "block_kind": _s(raw.get("block_kind")),
+        "ordinal": raw.get("ordinal") if isinstance(raw.get("ordinal"), int) else None,
+        # Derived from the kind rather than read: `prompt_clause` IS the person's, and a field a
+        # model could fill would be the one attribution error nothing downstream can detect.
+        "author": "user" if kind == "prompt_clause" else "scene_theorist",
+        "note": _s(raw.get("note")),
+    }
+
+
+def atom_view(raw: Mapping[str, Any]) -> Dict[str, Any]:
+    """One semantic atom. Its ceiling and its author travel with it, and neither is strengthened."""
+    return {
+        "atom_id": _s(raw.get("atom_id")),
+        "text": _s(raw.get("text")),
+        "unit_kind": _s(raw.get("unit_kind")),
+        "source_unit_ids": [_s(s) for s in _list(raw.get("source_unit_ids"))],
+        "quotes": [_s(q) for q in _list(raw.get("quotes"))],
+        "subject": _s(raw.get("subject")),
+        "predicate": _s(raw.get("predicate")),
+        "object": _s(raw.get("object")),
+        # One enum there, a list here — the same shape `claim_view` gives `image_scope`.
+        "image_scope": [_s(raw.get("image_scope"))] if raw.get("image_scope") else [],
+        "image_refs": [_s(i) for i in _list(raw.get("image_refs"))],
+        # `user` on anything anchored to a prompt clause, and this projection does not touch it.
+        # The graph validator freezes it; a view that recomputed it would be a second opinion about
+        # whose hypothesis it is.
+        "author": _s(raw.get("author")),
+        "epistemic_ceiling": _s(raw.get("epistemic_ceiling")),
+        "note": _s(raw.get("note")),
+        "provenance": _m(raw.get("provenance")),
+    }
+
+
+def coverage_view(raw: Mapping[str, Any]) -> Dict[str, Any]:
+    return {
+        "coverage_id": _s(raw.get("coverage_id")),
+        "source_unit_id": _s(raw.get("source_unit_id")),
+        "disposition": _s(raw.get("disposition")),
+        "refs": [_s(r) for r in _list(raw.get("refs"))],
+        "reason": _s(raw.get("reason")),
+    }
+
+
+def capacity_wait_view(raw: Mapping[str, Any]) -> Dict[str, Any]:
+    return {
+        "attempt": raw.get("attempt") if isinstance(raw.get("attempt"), int) else None,
+        "seconds": raw.get("seconds") if isinstance(raw.get("seconds"), (int, float)) else None,
+        "source": _s(raw.get("source")),
+        "detail": _s(raw.get("detail")),
+        "taken": raw.get("taken") is not False,
+    }
+
+
+def pass_view(raw: Mapping[str, Any]) -> Dict[str, Any]:
+    """One pass of the council: which mind, what it cost, and how it ended IN ITS OWN WORD.
+
+    `outcome` is passed through unchanged, including `coverage_failed` and `truncated`. This is the
+    field the whole lane turns on — a pass that ran out of budget and happened to close its JSON is
+    indistinguishable from an honest short one by every other measure — so nothing here maps it onto
+    a friendlier neighbour.
+
+    `waited_ms` stays null where nothing waited. Zero would say a pacer answered and reported no
+    wait, and a reader deciding whether the account's allowance is the problem needs that apart from
+    "nothing paced this run".
+    """
+    waits = [capacity_wait_view(w) for w in _list(raw.get("capacity_waits"))
+             if isinstance(w, Mapping)]
+    return {
+        "pass_id": _s(raw.get("pass_id")),
+        "pass_name": _s(raw.get("pass_name")),
+        "outcome": _s(raw.get("outcome")),
+        "model": _s(raw.get("model")),
+        "provider": _s(raw.get("provider")),
+        # SEMANTIC ATTEMPTS AND TRANSPORT ATTEMPTS, apart. One is how many times the pass asked; the
+        # other is how many times bytes went on the wire. Merging them would make a rate-limited run
+        # read as a pass that could not make up its mind.
+        "call_count": raw.get("call_count") if isinstance(raw.get("call_count"), int) else None,
+        "transport_attempts": (raw.get("transport_attempts")
+                               if isinstance(raw.get("transport_attempts"), int) else None),
+        "finish_reasons": [_s(f) for f in _list(raw.get("finish_reasons"))],
+        "prompt_tokens": raw.get("prompt_tokens"),
+        "completion_tokens": raw.get("completion_tokens"),
+        "duration_ms": raw.get("duration_ms"),
+        "waited_ms": raw.get("waited_ms"),
+        "capacity_waits": waits,
+        "inputs": raw.get("inputs") if isinstance(raw.get("inputs"), int) else None,
+        "outputs": raw.get("outputs") if isinstance(raw.get("outputs"), int) else None,
+        "detail": _s(raw.get("detail")),
+        "notes": [_s(n) for n in _list(raw.get("notes"))],
+    }
+
+
 def graph_view(graph: Mapping[str, Any], *, servable: Sequence[str] = ()) -> Dict[str, Any]:
     raw = _m(graph)
     inquiry_id = _s(raw.get("inquiry_id"))
@@ -226,6 +350,15 @@ def graph_view(graph: Mapping[str, Any], *, servable: Sequence[str] = ()) -> Dic
         "image_refs": [image_ref_view(i) for i in _list(raw.get("image_refs"))
                        if isinstance(i, Mapping)],
         "reading": reading_view(raw.get("reading")),
+        # The dissolution, in the order it happened. Empty lists on a v1 graph, and empty is the
+        # truth there rather than a missing key a reader would take for not-yet-populated.
+        "source_units": [source_unit_view(u) for u in _list(raw.get("source_units"))
+                         if isinstance(u, Mapping)],
+        "semantic_atoms": [atom_view(a) for a in _list(raw.get("semantic_atoms"))
+                           if isinstance(a, Mapping)],
+        "coverage": [coverage_view(c) for c in _list(raw.get("coverage"))
+                     if isinstance(c, Mapping)],
+        "passes": [pass_view(p) for p in _list(raw.get("passes")) if isinstance(p, Mapping)],
         "claims": [claim_view(c) for c in _list(raw.get("claims")) if isinstance(c, Mapping)],
         "claim_edges": [claim_edge_view(e) for e in _list(raw.get("claim_edges"))
                         if isinstance(e, Mapping)],
@@ -238,6 +371,51 @@ def graph_view(graph: Mapping[str, Any], *, servable: Sequence[str] = ()) -> Dic
                      if isinstance(r, Mapping)],
         "notes": [_s(n) for n in _list(raw.get("notes"))],
         "provenance": _m(raw.get("provenance")),
+        # The council's own verdict on its own coverage, computed from the ledger rather than
+        # restated — see `coverage_summary`.
+        "coverage_summary": coverage_summary(raw),
+    }
+
+
+#: The four dispositions, and which of them mean a source unit SURVIVED into the graph. A unit that
+#: is `duplicate_of` another is accounted for; one that is `semantic_remainder` or `refused` is
+#: accounted for and NOT represented, which is a different thing again from a unit with no entry.
+_REPRESENTED = ("represented_by", "duplicate_of")
+
+
+def coverage_summary(graph: Mapping[str, Any]) -> Dict[str, Any]:
+    """What became of the source prose, in one object a surface can render without arithmetic.
+
+    LOST IS ITS OWN NUMBER, and it is the one this exists for. A unit with no disposition is not a
+    remainder — a remainder is a decision, with a reason — it is a unit the compiler dropped, and
+    the contract says every unit gets exactly one entry. Those two must never read alike, and a
+    surface computing this itself would be free to fold them together on any render site that
+    forgot.
+    """
+    units = [u for u in _list(graph.get("source_units")) if isinstance(u, Mapping)]
+    entries = [c for c in _list(graph.get("coverage")) if isinstance(c, Mapping)]
+    by_unit = {_s(c.get("source_unit_id")): _s(c.get("disposition")) for c in entries}
+
+    counts: Dict[str, int] = {}
+    for disposition in by_unit.values():
+        counts[disposition] = counts.get(disposition, 0) + 1
+    lost = [_s(u.get("source_unit_id")) for u in units
+            if _s(u.get("source_unit_id")) not in by_unit]
+    represented = sum(1 for d in by_unit.values() if d in _REPRESENTED)
+
+    return {
+        "source_units": len(units),
+        "disposed": len(by_unit),
+        "represented": represented,
+        "by_disposition": counts,
+        "lost": lost,
+        "lost_count": len(lost),
+        "user_units": sum(1 for u in units if _s(u.get("kind")) == "prompt_clause"),
+        "reading_units": sum(1 for u in units if _s(u.get("kind")) == "reading_block"),
+        # `complete` is the producer's own arithmetic over its own ledger, not a threshold. Null
+        # where there is no ledger at all — a v1 graph has no coverage claim to report, and `False`
+        # there would accuse a compilation of failing a check it never declared.
+        "complete": (len(lost) == 0 and bool(units)) if units else None,
     }
 
 
@@ -362,9 +540,39 @@ def attempt_view(e: Any) -> Dict[str, Any]:
 
 # ── the session ──────────────────────────────────────────────────────────────
 
+def _deployment_view(raw: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
+    """The badge, or the admission that nobody said.
+
+    `declared: False` is the whole reason this is a function. A missing key would be read by every
+    client as "not implemented yet" and silently rendered as nothing, which puts a replay and a live
+    run back on the same screen — the thing the badge exists to separate.
+    """
+    block = _m(raw)
+    if not block:
+        return {"kind": "undeclared", "declared": False, "reachable": None, "stages": {},
+                "detail": "this response was built without a stage binding, so nothing here can "
+                          "say whether the session was read live or replayed. It is not a claim "
+                          "that it was live."}
+    return {
+        "kind": _s(block.get("kind")) or "undeclared",
+        "declared": block.get("declared") is True,
+        # Tri-state, and null is not false: "we did not check whether the provider answers" and
+        # "we checked and it does not" send a reader to different places.
+        "reachable": block.get("reachable") if isinstance(block.get("reachable"), bool) else None,
+        "stages": {str(k): _s(v) for k, v in _m(block.get("stages")).items()},
+        "detail": _s(block.get("detail")),
+    }
+
+
 def session_view(session: SemanticInquirySession, *,
-                 servable_classes: Sequence[str] = ()) -> Dict[str, Any]:
-    """One session, as the workbench reads it. The single response body of every route here."""
+                 servable_classes: Sequence[str] = (),
+                 deployment: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
+    """One session, as the workbench reads it. The single response body of every route here.
+
+    `deployment` is what PRODUCED this session — live models, a frozen replay, or nothing bound.
+    Absent, it is reported as `undeclared`, which is the honest answer and is deliberately not one
+    of the three: a caller that did not say must not read as one that said `live`.
+    """
     interaction = session.interaction
     state = machine.from_dict(interaction) if interaction.get("session_id") else None   # a `_finish` stub is truthy and is not a state machine
 
@@ -398,6 +606,10 @@ def session_view(session: SemanticInquirySession, *,
         "revision": session.revision,
         "state": session.state,
         "mode": session.mode,
+        # BESIDE THE STATE, in every response, because a replay screenshot and a live one are
+        # otherwise the same picture. Computed by the caller from the stages it bound — this module
+        # cannot ask, and inventing an answer here would be the invention the badge exists to stop.
+        "deployment": _deployment_view(deployment),
         "prompt": session.prompt,
         "posts": [p.model_dump(mode="json") for p in session.posts],
         "graph": graph_view(session.graph, servable=servable_classes),

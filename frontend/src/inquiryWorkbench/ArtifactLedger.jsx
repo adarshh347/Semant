@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
     DISPOSITION_COPY, VERDICT_COPY, STATUS_COPY, uncoveredSourceUnits,
+    PASS_LABEL, PASS_OUTCOME_COPY, WAIT_SOURCE_COPY, formatDuration,
 } from './inquiryContract';
 
 /**
@@ -136,10 +137,125 @@ const producerOf = (prov) => {
 
 const modelOf = (prov) => String((prov && typeof prov === 'object' && prov.model) || '');
 
+/**
+ * What one mind of the council did — HARNESS-003D.
+ *
+ * `provenance.compiler` is null on a v2 graph and that is deliberate: naming one of three minds as
+ * the author of the whole thing would be a lie, and the pass list IS the receipt. So this row is
+ * the only place a reader can find out WHICH mind came up short, which is the question 002R's
+ * one-call compiler made unanswerable.
+ *
+ * Three numbers that a careless row would merge:
+ *
+ *   calls        how many times this pass ASKED a model
+ *   sends        how many times bytes went on the wire — identical re-sends after a capacity refusal
+ *   waited       time spent queueing for the account's allowance, not for the model
+ *
+ * A run whose elapsed time is mostly `waited` is not slow. It is a run inside a smaller allowance
+ * than the work needs, and the repairs are opposite.
+ */
+export function PassRow({ pass }) {
+    const name = pass.pass_name.known ? pass.pass_name.value : 'unknown';
+    const outcome = pass.outcome.known ? pass.outcome.value : 'unknown';
+    return (
+        <li
+            className={`iw-pass${pass.underperformed ? ' is-underperforming' : ''}`}
+            data-pass={name}
+            data-pass-outcome={pass.outcome.value}
+        >
+            <span className="iw-led-item-head">
+                <span className="iw-pass-name">
+                    {pass.pass_name.known
+                        ? PASS_LABEL[name]
+                        : <>a pass this client does not recognise
+                            (<span className="iw-badge-raw">{pass.pass_name.value}</span>)</>}
+                </span>
+                <span
+                    className={`iw-pass-outcome iw-pass-outcome--${outcome}`}
+                    data-outcome={pass.outcome.value}
+                >
+                    {pass.outcome.known
+                        ? outcome
+                        : <>unknown: <span className="iw-badge-raw">{pass.outcome.value}</span></>}
+                </span>
+            </span>
+
+            {pass.outcome.known && PASS_OUTCOME_COPY[outcome] ? (
+                <p className="iw-quiet">{PASS_OUTCOME_COPY[outcome]}</p>
+            ) : null}
+            {pass.detail ? <p className="iw-led-text">{pass.detail}</p> : null}
+
+            <ul className="iw-pass-facts">
+                {pass.model ? <li data-fact="model"><code>{pass.model}</code></li> : null}
+                {/* A deterministic pass genuinely made no call, and `0 calls` is the right thing to
+                    print for it. A pass that reported no count at all prints nothing — an
+                    unreported count is not zero, which is the same law `counts_line` follows. */}
+                {pass.call_count !== null ? (
+                    <li data-fact="calls">{pass.call_count} call{pass.call_count === 1 ? '' : 's'}</li>
+                ) : null}
+                {/* SHOWN ONLY WHERE IT DIFFERS. Sends equal to calls is the ordinary case and
+                    printing it everywhere would bury the one case that matters. */}
+                {pass.transport_attempts !== null && pass.transport_attempts !== pass.call_count ? (
+                    <li data-fact="sends">
+                        {pass.transport_attempts} send{pass.transport_attempts === 1 ? '' : 's'}
+                        {' '}— identical bytes, re-sent after a capacity refusal
+                    </li>
+                ) : null}
+                <li data-fact="duration">{formatDuration(pass.duration_ms)} in the model</li>
+                {/* NULL IS AN EM DASH AND NOT `0 ms`. `waited_ms` is only present where something
+                    waited, so a row printing zero would report an unpaced run as a paced one that
+                    never hit the limit. */}
+                {pass.waited_ms !== null ? (
+                    <li data-fact="waited" className="iw-pass-waited">
+                        {formatDuration(pass.waited_ms)} waiting for provider capacity
+                    </li>
+                ) : null}
+                {pass.finish_reasons.length ? (
+                    <li data-fact="finish">
+                        finish {pass.finish_reasons.join(', ')}
+                    </li>
+                ) : null}
+            </ul>
+
+            {pass.capacity_waits.length ? (
+                <ol className="iw-pass-waits" data-waits-for={pass.pass_id}>
+                    {pass.capacity_waits.map((w, i) => (
+                        <li
+                            key={`${pass.pass_id}-${i}`}
+                            data-wait-source={w.source.value}
+                            data-wait-taken={String(w.taken)}
+                            className={w.taken === false ? 'iw-wait--stopped' : ''}
+                        >
+                            {w.taken === false
+                                ? <b>the run stopped waiting</b>
+                                : <>waited {w.seconds === null ? '—' : `${w.seconds}s`}</>}
+                            {' — '}
+                            {w.source.known
+                                ? WAIT_SOURCE_COPY[w.source.value]
+                                : <>an unrecognised reason
+                                    (<span className="iw-badge-raw">{w.source.value}</span>)</>}
+                            {w.detail ? <span className="iw-quiet"> · {w.detail}</span> : null}
+                        </li>
+                    ))}
+                </ol>
+            ) : null}
+
+            <WhyHere
+                id={pass.pass_id}
+                producer={name}
+                model={pass.model}
+                sources={pass.inputs !== null ? [`${pass.inputs} input(s)`] : []}
+                raw={pass.raw}
+            />
+        </li>
+    );
+}
+
 export default function ArtifactLedger({ session }) {
     if (!session) return null;
     const g = session.graph;
     const uncovered = uncoveredSourceUnits(g);
+    const cs = g.coverage_summary;
 
     return (
         <section className="iw-panel iw-ledger" aria-label="Artifacts and provenance">
@@ -229,6 +345,26 @@ export default function ArtifactLedger({ session }) {
                     </ul>
                 </Row>
 
+                {/* THE COUNCIL, BEFORE ITS OUTPUT. Everything below this row was produced by one of
+                    these passes, so a reader who finds a barren atom list needs this row first —
+                    "the dissector was rate-limited out" and "the dissector found little" produce
+                    the same empty list and send you to opposite repairs. */}
+                <Row
+                    id="passes"
+                    label="Council passes"
+                    count={g.passes.length}
+                    schema="PassReceipt"
+                    tone={g.passes.some((p) => p.underperformed) ? 'warn' : ''}
+                    note={g.passes.some((p) => p.capacity_limited)
+                        ? 'This run stopped waiting for provider capacity before every pass had '
+                          + 'finished. What is below is what it got to, not what there was.'
+                        : ''}
+                >
+                    <ol className="iw-led-items iw-passes">
+                        {g.passes.map((p) => <PassRow key={p.pass_id} pass={p} />)}
+                    </ol>
+                </Row>
+
                 <Row
                     id="source_units"
                     label="Source units"
@@ -272,6 +408,21 @@ export default function ArtifactLedger({ session }) {
                           + 'is a decision — it is a unit the compiler lost.'
                         : ''}
                 >
+                    {/* THE BACKEND'S OWN ARITHMETIC OVER ITS OWN LEDGER, not this client's. The
+                        two agree today and the point of printing the backend's is that they must:
+                        `lost` here and the rows below are computed on different sides of the wire,
+                        so a divergence is visible rather than absorbed. */}
+                    {cs.source_units !== null ? (
+                        <p className="iw-quiet iw-coverage-summary" data-coverage-summary="true">
+                            {cs.disposed} of {cs.source_units} source unit(s) disposed of
+                            {' · '}{cs.represented} represented
+                            {' · '}<b data-lost-count={cs.lost_count}>{cs.lost_count} lost</b>
+                            {' · '}{cs.user_units} from you, {cs.reading_units} from the reading
+                            {cs.complete === null ? null : (
+                                <> · the ledger {cs.complete ? 'balances' : 'does NOT balance'}</>
+                            )}
+                        </p>
+                    ) : null}
                     <ul className="iw-led-items">
                         {g.coverage.map((c) => (
                             <li key={c.source_unit_id} data-coverage-for={c.source_unit_id}>
