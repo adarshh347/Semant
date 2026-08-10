@@ -776,7 +776,7 @@
     },
     "InputRef": {
       "additionalProperties": false,
-      "description": "One thing an operation consumed, in the role it was consumed as.\n\nExactly one of `artifact_id` / `region_id`. A ref that named both would let a step claim two\nprovenances for one input, and a ref that named neither is the invented identity this contract\nexists to make unsayable.",
+      "description": "One thing an operation consumed, in the role it was consumed as.\n\nExactly one of `artifact_id` / `region_id`. A ref that named both would let a step claim two\nprovenances for one input, and a ref that named neither is the invented identity this contract\nexists to make unsayable.\n\nONE REFERENCE TYPE, TWO DEPTHS (PERCEPTUAL-ORGANS-002A2). An `extent_set` holds many instances,\nand a person who clicked one mask said something more precise than \"that artifact\". Before\n`instance_id` existed here, four lanes each reached past the contract in their own way \u2014 Extent\nrefused every multi-instance refinement, Topology froze a local `instance_id` on its own input\ntype, the conductor could not bind \"that mask\", and the frontend emitted a field this schema\nrejected. Four private answers to one question is exactly how a second identity system starts,\nso the repair is one optional field here rather than a second reference record anywhere.\n\nTHE THREE RULES, and each is a shape rather than a convention:\n\n    `instance_id` beside `artifact_id`   one instance inside that artifact\n    `artifact_id` alone                  the WHOLE artifact, meaning what it always meant\n    `instance_id` beside `region_id`     REFUSED \u2014 a canonical Region is already one shape,\n                                         and an instance inside it would be a second geometry\n                                         wearing one id\n\nA bare `instance_id` cannot validate: it fails the exactly-one-identity rule first, because an\ninstance id without its container is not a reference to anything.\n\nBACKWARD COMPATIBLE BY CONSTRUCTION. The field is optional and defaults to None, so every\nrecord written before it existed reads back unchanged and means what it meant.",
       "properties": {
         "role": {
           "minLength": 1,
@@ -797,6 +797,18 @@
           ],
           "default": null,
           "title": "Artifact Id"
+        },
+        "instance_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instance Id"
         },
         "region_id": {
           "anyOf": [

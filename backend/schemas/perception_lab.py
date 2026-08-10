@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import Annotated, Any, Dict, List, Literal, Mapping, Optional, Union
+from typing import Annotated, Any, Dict, List, Literal, Mapping, Optional, Tuple, Union
 
 from pydantic import (BaseModel, ConfigDict, Field, field_validator, model_validator)
 
@@ -356,16 +356,59 @@ class RegionRef(_Base):
     scope: IdentityScope = IdentityScope.CANONICAL
 
 
+class InstanceRef(_Base):
+    """One instance inside one artifact, as a session records having selected it.
+
+    BOTH FIELDS ARE REQUIRED, and that is the whole design. "Never store a bare instance_id" is a
+    rule nobody has to remember when there is no arrangement of this record that could hold one:
+    an instance id is unique inside its artifact and nowhere else, so `inst_1` on its own names
+    every extent set's first mask at once. A flat list of instance ids would be ambiguous in the
+    NORMAL case rather than an exotic one, because every set numbers its own from 1.
+    """
+    artifact_id: str = Field(min_length=1)
+    instance_id: str = Field(min_length=1)
+
+    @property
+    def key(self) -> Tuple[str, str]:
+        return self.artifact_id, self.instance_id
+
+    def __str__(self) -> str:                      # what a refusal message prints
+        return f"{self.artifact_id}#{self.instance_id}"
+
+
 class InputRef(_Base):
     """One thing an operation consumed, in the role it was consumed as.
 
     Exactly one of `artifact_id` / `region_id`. A ref that named both would let a step claim two
     provenances for one input, and a ref that named neither is the invented identity this contract
     exists to make unsayable.
+
+    ONE REFERENCE TYPE, TWO DEPTHS (PERCEPTUAL-ORGANS-002A2). An `extent_set` holds many instances,
+    and a person who clicked one mask said something more precise than "that artifact". Before
+    `instance_id` existed here, four lanes each reached past the contract in their own way — Extent
+    refused every multi-instance refinement, Topology froze a local `instance_id` on its own input
+    type, the conductor could not bind "that mask", and the frontend emitted a field this schema
+    rejected. Four private answers to one question is exactly how a second identity system starts,
+    so the repair is one optional field here rather than a second reference record anywhere.
+
+    THE THREE RULES, and each is a shape rather than a convention:
+
+        `instance_id` beside `artifact_id`   one instance inside that artifact
+        `artifact_id` alone                  the WHOLE artifact, meaning what it always meant
+        `instance_id` beside `region_id`     REFUSED — a canonical Region is already one shape,
+                                             and an instance inside it would be a second geometry
+                                             wearing one id
+
+    A bare `instance_id` cannot validate: it fails the exactly-one-identity rule first, because an
+    instance id without its container is not a reference to anything.
+
+    BACKWARD COMPATIBLE BY CONSTRUCTION. The field is optional and defaults to None, so every
+    record written before it existed reads back unchanged and means what it meant.
     """
     role: str = Field(min_length=1)
     scope: IdentityScope
     artifact_id: Optional[str] = None
+    instance_id: Optional[str] = None
     region_id: Optional[str] = None
     geometry_rev: Optional[int] = Field(default=None, ge=0)
 
@@ -376,7 +419,28 @@ class InputRef(_Base):
             raise ValueError("an input ref names exactly one of artifact_id / region_id")
         if self.region_id and self.geometry_rev is None:
             raise ValueError("a region ref without geometry_rev is not a reference")
+        if self.instance_id and not self.artifact_id:
+            raise ValueError(
+                "an instance ref names the artifact that holds it. An instance id is unique "
+                "inside one artifact and nowhere else, so one recorded alone names nothing")
         return self
+
+    @property
+    def names_one_instance(self) -> bool:
+        return self.instance_id is not None
+
+    @property
+    def reference(self) -> str:
+        """What this ref is called in a refusal — the composite when it reaches an instance.
+
+        `art_3#inst_2` and `art_3` are different references and a message that printed the same
+        string for both would tell a person to select something they already had selected.
+        """
+        if self.artifact_id is None:
+            return str(self.region_id)
+        if self.instance_id is None:
+            return self.artifact_id
+        return f"{self.artifact_id}#{self.instance_id}"
 
 
 class DataRef(_Base):
@@ -447,9 +511,15 @@ class LabSession(_Base):
     """One sitting at the laboratory.
 
     THE FOLLOW-UP LAW LIVES HERE. "that mask" is resolvable only through `active_artifact_id`,
-    `active_region_ids` and `selected_artifact_ids`. There is deliberately no field in which a
-    planner could record what it thinks the person meant, because a remembered intention is
-    indistinguishable from an invented identity the moment it is wrong.
+    `active_region_ids`, `selected_artifact_ids` and `selected_instance_refs`. There is
+    deliberately no field in which a planner could record what it thinks the person meant, because
+    a remembered intention is indistinguishable from an invented identity the moment it is wrong.
+
+    `selected_instance_refs` IS PAIRS, NOT IDS, and that is the whole reason it is a record type.
+    A list of bare instance ids would be ambiguous the moment two selected artifacts each held an
+    `inst_1` — which is every time, since each extent set numbers its own from 1. It is also why
+    an instance ref may not name an artifact this session has not selected: a reference reachable
+    from one field and invisible in the other is how a deselection gets disobeyed.
     """
     session_id: str = Field(min_length=1)
     source: LabSource
@@ -458,6 +528,7 @@ class LabSession(_Base):
     active_artifact_id: Optional[str] = None
     active_region_ids: List[str] = Field(default_factory=list)
     selected_artifact_ids: List[str] = Field(default_factory=list)
+    selected_instance_refs: List[InstanceRef] = Field(default_factory=list)
     prompt_turns: List[PromptTurn] = Field(default_factory=list)
     run_ids: List[str] = Field(default_factory=list)
     review_ids: List[str] = Field(default_factory=list)
@@ -477,6 +548,32 @@ class LabSession(_Base):
                 f"the {v.value} organ is registered and not enabled in this phase. Selecting it "
                 f"would give a person a laboratory with nothing behind the glass.")
         return v
+
+    @model_validator(mode="after")
+    def _an_instance_is_selected_with_its_artifact(self) -> "LabSession":
+        """An instance ref whose artifact is not declared here is not a reference.
+
+        Without this, "select A and B, select instance A#2, deselect A, now measure that mask"
+        would still resolve A#2 — the person's deselection recorded and disobeyed, through the
+        other field that happened to still hold it. `SessionMachine.deselect` maintains the
+        invariant; this is where the record refuses to be written any other way.
+        """
+        declared = set(self.selected_artifact_ids)
+        if self.active_artifact_id:
+            declared.add(self.active_artifact_id)
+        stray = sorted({r.artifact_id for r in self.selected_instance_refs} - declared)
+        if stray:
+            raise ValueError(
+                f"selected instances name {stray}, which this session has neither selected nor "
+                f"made active. Selecting an instance selects its artifact; an instance reachable "
+                f"from one field and absent from the other is a deselection that did not take")
+        return self
+
+    @property
+    def instance_keys(self) -> Tuple[Tuple[str, str], ...]:
+        """The declared artifact/instance pairs, for a membership test that cannot be fooled by
+        two artifacts whose instances happen to share a local id."""
+        return tuple(r.key for r in self.selected_instance_refs)
 
 
 # ── the plan: a proposal, and what the resolver made of it ───────────────────
@@ -1196,6 +1293,12 @@ RECORD_MODELS: Mapping[str, type] = {
     "LabReview": LabReview,
 }
 
+#: The two reference shapes, by the name the contract's `references` block uses.
+REFERENCE_MODELS: Mapping[str, type] = {
+    "InputRef": InputRef,
+    "InstanceRef": InstanceRef,
+}
+
 #: The six blocks of a `PerceptualArtifact`, by the name the contract's `records` block uses.
 ARTIFACT_BLOCK_MODELS: Mapping[str, type] = {
     "identity": ArtifactIdentity,
@@ -1206,6 +1309,34 @@ ARTIFACT_BLOCK_MODELS: Mapping[str, type] = {
     "provenance": ArtifactProvenance,
 }
 
+def _assert_field_parity() -> None:
+    """Every field list the contract declares equals the model's, at import.
+
+    The closed-set check above catches a renamed MEMBER; this catches a renamed or dropped FIELD,
+    which is the failure A2 was written to repair — `instance_id` existed on the frontend and not
+    in this file, and nothing failed until a request reached a validator. Now adding a field to a
+    declared record without saying so in the contract stops the first import.
+    """
+    contract = lab_contract()
+    declared: Dict[str, Any] = {}
+    declared.update({k: v for k, v in contract["references"].items() if k in REFERENCE_MODELS})
+    declared.update({k: v for k, v in contract["records"].items() if k in RECORD_MODELS})
+    for name, block in declared.items():
+        fields = block.get("fields")
+        if fields is None:
+            continue
+        model = {**REFERENCE_MODELS, **RECORD_MODELS}[name]
+        here = tuple(model.model_fields)
+        if tuple(fields) != here:
+            raise ContractError(
+                f"the contract declares {name} as {tuple(fields)} and "
+                f"backend/schemas/perception_lab.py declares {here}. A field that exists in one "
+                f"runtime and not the other is the A2 defect verbatim — move both or neither.")
+
+
+_assert_field_parity()
+
+
 __all__ = [
     "SCHEMA_VERSION", "OrganFamily", "SessionMode", "PlannerIdentity", "ExecutionIdentity",
     "RunOutcome", "StageState", "LifecycleState", "ReviewVerdict", "EpistemicStatus",
@@ -1213,7 +1344,8 @@ __all__ = [
     "CoordinateSystem", "LabelSource", "RefusalCode", "ProjectionKind", "ManualToolKind",
     "RelationKind",
     "BASIS_CEILINGS", "MEASUREMENT_STATUSES", "INTERPRETATION_STATUSES", "PROJECTION_HINT_KEYS",
-    "ENABLED_ORGAN_FAMILIES", "Box", "RegionRef", "InputRef", "DataRef", "RefusalRecord",
+    "ENABLED_ORGAN_FAMILIES", "Box", "RegionRef", "InstanceRef", "InputRef", "DataRef",
+    "RefusalRecord",
     "LabSource", "PromptTurn", "LabSession", "ProposedStep", "ResolvedStep", "DroppedParameter",
     "ClampedParameter", "LabPlan", "ArtifactIdentity", "InstanceNaming", "ExtentInstance",
     "ExtentCorrespondence", "ExtentDuplicate", "ExtentComparison", "ExtentSetPayload",
@@ -1221,5 +1353,5 @@ __all__ = [
     "NegativeSpaceFieldPayload", "RefusalPayload", "ArtifactMeasurement", "ArtifactProjection",
     "ArtifactInterpretation", "ArtifactLifecycle", "ArtifactProvenance", "PerceptualArtifact",
     "StageAttempt", "ReplayProvenance", "LabRun", "ReviewCorrection", "LabReview",
-    "RECORD_MODELS", "ARTIFACT_BLOCK_MODELS",
+    "RECORD_MODELS", "REFERENCE_MODELS", "ARTIFACT_BLOCK_MODELS",
 ]

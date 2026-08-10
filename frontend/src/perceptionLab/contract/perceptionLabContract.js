@@ -101,6 +101,7 @@ export const ENFORCED_LAWS = Object.freeze([
     'replay_cannot_recompute',
     'empty_is_not_refused_is_not_unavailable',
     'references_resolve_through_ids',
+    'an_instance_is_named_with_its_artifact',
 ]);
 
 // ── the registry ────────────────────────────────────────────────────────────
@@ -404,6 +405,71 @@ export function missingConsumedFields(recordType, record) {
 
 const fail = (list, msg) => { list.push(msg); return list; };
 
+// ── references: one type, two depths ────────────────────────────────────────
+
+/**
+ * The rules of `contract.references.InputRef`, in the language that emits them.
+ *
+ * THIS IS THE FUNCTION A2 EXISTS FOR. The laboratory shipped for a while with an `instance_id`
+ * that the frontend wrote and the backend schema rejected, and nothing said so until a request
+ * reached a Python validator — a whole class of "the panel is blank in production" that a shared
+ * rule stated in both runtimes cannot produce.
+ *
+ * `artifact_id` alone still means the whole artifact. That is not a leniency for old records: it
+ * is a different question with a different answer, and `pairs_examined` on a topology run is the
+ * field that would lie if the two collapsed.
+ */
+export function validateInputRef(ref, where = 'an input ref') {
+    const out = [];
+    if (!ref || typeof ref !== 'object') return fail(out, `${where} is not an object`);
+    const named = [ref.artifact_id, ref.region_id].filter(Boolean).length;
+    if (named !== 1) {
+        fail(out, `${where} names exactly one of artifact_id / region_id`);
+    }
+    if (ref.instance_id && !ref.artifact_id) {
+        fail(out, `${where} names an instance with no artifact. An instance id is unique inside `
+            + 'one artifact and nowhere else, so one recorded alone names nothing');
+    }
+    if (ref.instance_id && ref.region_id) {
+        fail(out, `${where} names an instance inside a canonical region. A Region is already `
+            + 'exactly one shape; an instance within it would be a second geometry wearing one id');
+    }
+    if (ref.region_id && (ref.geometry_rev === null || ref.geometry_rev === undefined)) {
+        fail(out, `${where} cites a region without a geometry_rev, which is not a reference`);
+    }
+    return out;
+}
+
+/** What a refusal calls this reference. `art_3#inst_2` and `art_3` are different references. */
+export function referenceOf(ref) {
+    if (!ref?.artifact_id) return String(ref?.region_id ?? '');
+    return ref.instance_id ? `${ref.artifact_id}#${ref.instance_id}` : ref.artifact_id;
+}
+
+/**
+ * Whether a session declared what a ref names — the reference law, at instance depth.
+ *
+ * `declared` is `{ artifacts: Set<string>, instances: Set<"artifact#instance"> }`. Composite keys,
+ * not bare instance ids, because every extent set numbers its own instances from 1 and two
+ * selected sets both holding `inst_1` is the normal case rather than the exotic one.
+ */
+export function sessionKnows(ref, declared) {
+    if (!ref?.artifact_id) return true;                 // a region ref; regions are declared elsewhere
+    if (!declared?.artifacts?.has(ref.artifact_id)) return false;
+    if (!ref.instance_id) return true;
+    return Boolean(declared.instances?.has(referenceOf(ref)));
+}
+
+/** The two id sets a session declares, in the shape `sessionKnows` reads. */
+export function declaredReferences(session) {
+    const artifacts = new Set(session?.selected_artifact_ids || []);
+    if (session?.active_artifact_id) artifacts.add(session.active_artifact_id);
+    const instances = new Set((session?.selected_instance_refs || [])
+        .filter((r) => r?.artifact_id && r?.instance_id)
+        .map((r) => `${r.artifact_id}#${r.instance_id}`));
+    return { artifacts, instances };
+}
+
 /**
  * Validate a `PerceptualArtifact` against the separations. Returns an array of problems; empty
  * means it holds. Deliberately NOT a boolean: a UI that must render "why this is malformed" needs
@@ -441,6 +507,11 @@ export function validateArtifact(artifact) {
     }
     if (!IDENTITY_SCOPES.includes(identity.identity_scope)) {
         fail(out, `unknown identity scope "${identity.identity_scope}"`);
+    }
+    for (const ref of identity.input_refs || []) {
+        for (const problem of validateInputRef(ref, `input ref "${referenceOf(ref)}"`)) {
+            fail(out, problem);
+        }
     }
 
     if (identity.artifact_kind !== measurement.payload_variant) {
@@ -559,6 +630,20 @@ export function validateSession(session) {
             + 'phase. Selecting it would give a person a laboratory with nothing behind the glass.');
     }
     if (!SESSION_MODES.includes(session.mode)) fail(out, `unknown mode "${session.mode}"`);
+
+    // The pair law. A selected instance whose artifact is not also declared is a reference
+    // reachable from one field and invisible in the other, which is how a deselection gets
+    // recorded and then disobeyed.
+    const declared = declaredReferences(session);
+    for (const ref of session.selected_instance_refs || []) {
+        if (!ref?.artifact_id || !ref?.instance_id) {
+            fail(out, 'a selected instance is an artifact/instance PAIR. A bare instance id names '
+                + "every extent set's first mask at once");
+        } else if (!declared.artifacts.has(ref.artifact_id)) {
+            fail(out, `selected instance ${referenceOf(ref)} names an artifact this session has `
+                + 'neither selected nor made active. Selecting an instance selects its artifact');
+        }
+    }
     return out;
 }
 
@@ -589,6 +674,12 @@ export function validatePlan(plan) {
         if ('authorized_by' in step) {
             fail(out, `proposed step ${step.step_id} carries an authorization field. A proposal `
                 + 'has no authority to claim.');
+        }
+    }
+    for (const step of [...proposed, ...resolved]) {
+        for (const ref of step.input_refs || []) {
+            for (const problem of validateInputRef(
+                ref, `${step.step_id}'s input ref "${referenceOf(ref)}"`)) fail(out, problem);
         }
     }
     if (plan.mode === 'isolation') {
