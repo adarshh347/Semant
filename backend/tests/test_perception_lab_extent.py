@@ -560,12 +560,14 @@ def test_some_references_resolving_and_some_not_is_partial_rather_than_ready():
 # ── identity, revision and lineage ───────────────────────────────────────────
 
 
-def _refine(mode: str, base: PerceptualArtifact, *, refiner_mask=RIGHT_HALF):
+def _refine(mode: str, base: PerceptualArtifact, *, refiner_mask=RIGHT_HALF,
+            instance_id=None, artifact_id=None):
     refiner = FakeAdapter(key="sam2_refine", masks=[{"mask_rle": refiner_mask}])
     return E.run(step("extent.refine", step_id="sref",
                       params={"mode": mode, "points": [[0.8, 0.5]]},
                       refs=[InputRef(role="base", scope="canonical",
-                                     artifact_id=base.identity.artifact_id)]),
+                                     artifact_id=artifact_id or base.identity.artifact_id,
+                                     instance_id=instance_id)]),
                  ctx(adapters={refiner.key: refiner},
                      artifacts={base.identity.artifact_id: base}))
 
@@ -613,14 +615,39 @@ def test_a_refinement_inherits_the_name_it_did_not_re_earn():
     assert refined.measurement.payload.instances[0].naming.text == "finial"
 
 
-def test_a_refine_against_a_multi_extent_set_refuses_rather_than_choosing_a_subject():
-    """Lane A's `InputRef` addresses an artifact, not an instance inside it. Picking the largest
-    would be the lab choosing on the person's behalf and then attributing the choice to them."""
+def test_a_refine_against_a_multi_extent_set_naming_none_of_them_still_refuses():
+    """A set of five and a step naming none of them is a question with five answers. Picking the
+    largest would be the lab choosing on the person's behalf and then attributing the choice."""
     base = artifact_from([{"mask_rle": LEFT_HALF}, {"mask_rle": RIGHT_HALF}])
     result = _refine("replace", base)
     assert result.outcome is RunOutcome.REFUSED
     assert result.refusals[0].code is RefusalCode.INVALID_PARAMETERS
-    assert "Select a single extent first" in result.refusals[0].detail["why"]
+    assert "Name the extent" in result.refusals[0].detail["why"]
+
+
+def test_a_refine_naming_one_instance_refines_exactly_that_one():
+    """PERCEPTUAL-ORGANS-002A2. The identity that comes back is the one that was named, and the
+    geometry that comes back is that instance's — not the set's first."""
+    base = artifact_from([{"mask_rle": LEFT_HALF}, {"mask_rle": CORNER}])
+    second = base.measurement.payload.instances[1].instance_id
+    result = _refine("add", base, refiner_mask=RIGHT_HALF, instance_id=second)
+    assert result.outcome is RunOutcome.READY
+    refined = result.artifacts[0].measurement.payload.instances[0]
+    assert refined.mask_rle == M.mask_union(CORNER, RIGHT_HALF), \
+        "the named instance's mask is the base of the arithmetic, not the first one's"
+    assert result.artifacts[0].identity.input_refs[0].instance_id == second, \
+        "the receipt says which extent was refined, not merely which artifact"
+
+
+def test_a_refine_naming_an_instance_the_artifact_does_not_hold_refuses():
+    base = artifact_from([{"mask_rle": LEFT_HALF}, {"mask_rle": CORNER}])
+    result = _refine("replace", base, instance_id="inst_from_somewhere_else")
+    assert result.outcome is RunOutcome.REFUSED
+    assert result.refusals[0].code is RefusalCode.UNKNOWN_REFERENCE, \
+        "a mistyped instance is an invented identity, not a bad parameter"
+    assert result.refusals[0].missing == [
+        f"{base.identity.artifact_id}#inst_from_somewhere_else"], \
+        "the composite is what did not resolve — a bare instance id names every set's first mask"
 
 
 def test_refine_arithmetic_across_rasters_refuses_rather_than_resampling():

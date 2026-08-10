@@ -262,6 +262,11 @@ def _resolve_refs(step: ResolvedStep, ctx: ExtentContext
     through declared ids and never through language, applied at the moment of use. Refusals are
     collected rather than raised on the first one, because a person who supplied four regions and
     mistyped one should be told which one.
+
+    AN INSTANCE IS CHECKED HERE TOO, and against the artifact that is supposed to hold it. A ref
+    naming `art_a#inst_3` where `inst_3` lives in `art_b` refuses rather than resolving to the
+    whole of `art_a`: falling back to the container would answer a question about seven masks that
+    was asked about one, and the receipt would look exactly like a successful narrow measurement.
     """
     resolved: Dict[str, List[Any]] = {}
     refusals: List[RefusalRecord] = []
@@ -281,8 +286,32 @@ def _resolve_refs(step: ResolvedStep, ctx: ExtentContext
                 remedy="select the artifact or region first — a reference resolves through ids",
                 detail={"role": ref.role, "reference": name, "scope": ref.scope.value}))
             continue
+        if ref.instance_id is not None:
+            held = _instance_ids(target)
+            if ref.instance_id not in held:
+                refusals.append(_refusal(
+                    RefusalCode.UNKNOWN_REFERENCE, step,
+                    f"{ref.reference} is not a selected or active reference in this session.",
+                    missing=[ref.reference],
+                    remedy="select an extent this artifact actually holds — an instance id is "
+                           "unique inside its artifact and nowhere else",
+                    detail={"role": ref.role, "reference": ref.reference,
+                            "artifact_id": ref.artifact_id, "instance_id": ref.instance_id,
+                            "available": list(held)}))
+                continue
         resolved.setdefault(ref.role, []).append((ref, target))
     return resolved, refusals
+
+
+def _instance_ids(artifact: Any) -> Tuple[str, ...]:
+    """The instance ids an artifact holds, or empty for anything that holds none.
+
+    Empty for a region, for a refusal artifact, and for a payload carried by reference — and in
+    all three the caller then refuses the instance ref, which is right. A measurement this lane
+    cannot read is not a measurement it may assume contains what was asked for.
+    """
+    payload = getattr(getattr(artifact, "measurement", None), "payload", None)
+    return tuple(str(i.instance_id) for i in getattr(payload, "instances", ()) or ())
 
 
 def capability_of(adapter: "ExtentAdapter", ctx: ExtentContext) -> CapabilityState:
@@ -828,24 +857,31 @@ def _single_instance(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[s
                      role: str) -> Tuple[Optional[Any], Optional[ExtentInstance], Optional[str]]:
     """The one extent an operation is about, or why there isn't one.
 
-    A CONTRACT LIMIT, MADE VISIBLE RATHER THAN GUESSED AROUND. Lane A's `InputRef` addresses an
-    ARTIFACT, not an instance inside it, so a refine request against a set of five extents cannot
-    say which one it means. Picking the largest, or the first, would be the lab choosing a subject
-    on the person's behalf and then attributing the choice to them.
+    THE REF SAYS WHICH, WHEN IT SAYS. `InputRef.instance_id` (PERCEPTUAL-ORGANS-002A2) is how a
+    refine request against a set of five extents names the one it means; `_resolve_refs` has
+    already proved that instance is in that artifact, so the lookup here cannot fail.
 
-    So this refuses, and says how to proceed: select one extent first. Lane F should read this as
-    the argument for an optional `instance_id` on `InputRef`.
+    WITHOUT ONE, THIS STILL REFUSES, and that is not a leftover. A set holding five extents and a
+    step naming none of them is a question with five answers, and picking the largest or the first
+    would be the lab choosing a subject on the person's behalf and then attributing the choice to
+    them. A set holding exactly one is unambiguous and resolves, which is what keeps every
+    pre-A2 record and every single-extent flow working untouched.
     """
     entries = resolved.get(role) or []
     if not entries:
         return None, None, f"{step.operation} needs a {role} extent and none resolved"
-    _ref, artifact = entries[0]
+    ref, artifact = entries[0]
     payload = getattr(artifact.measurement, "payload", None)
     instances = list(getattr(payload, "instances", ()) or ())
+    if ref.instance_id is not None:
+        chosen = next((i for i in instances if i.instance_id == ref.instance_id), None)
+        if chosen is None:                      # unreachable: `_resolve_refs` checked it
+            return artifact, None, f"{ref.reference} is not an extent this artifact holds"
+        return artifact, chosen, None
     if len(instances) != 1:
         return artifact, None, (
             f"the {role} artifact holds {len(instances)} extents and this operation works on one. "
-            f"Select a single extent first — the lab will not choose which one you meant")
+            f"Name the extent — the lab will not choose which one you meant")
     return artifact, instances[0], None
 
 
@@ -1073,6 +1109,21 @@ def _as_mapping(instance: ExtentInstance) -> Dict[str, Any]:
             "naming": _carry_naming(instance)}
 
 
+def _cited_instances(entry: Any) -> List[ExtentInstance]:
+    """The extents a resolved `(ref, artifact)` pair actually names.
+
+    The whole set when the ref names the artifact; exactly one when it names an instance. So
+    "did this one mask come back?" and "did this whole run come back?" are two comparisons with
+    two correspondence counts, rather than one comparison and a caption.
+    """
+    ref, artifact = entry
+    instances = list(getattr(getattr(artifact, "measurement", None), "payload", None)
+                     and artifact.measurement.payload.instances or ())
+    if ref.instance_id is None:
+        return instances
+    return [i for i in instances if i.instance_id == ref.instance_id]
+
+
 def _compare(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[Any]],
              ref_refusals: Tuple[RefusalRecord, ...], started_at: str) -> ExtentResult:
     """`extent.compare` — did those two runs see the same thing?
@@ -1106,8 +1157,8 @@ def _compare(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List
     left_artifact = left_entry[1]
     right_artifact = right_entry[1]
 
-    left = [_as_mapping(i) for i in left_artifact.measurement.payload.instances]
-    right = [_as_mapping(i) for i in right_artifact.measurement.payload.instances]
+    left = [_as_mapping(i) for i in _cited_instances(left_entry)]
+    right = [_as_mapping(i) for i in _cited_instances(right_entry)]
 
     unmasked = [i["instance_id"] for i in (left + right) if not mg.rle_is_valid(i["mask_rle"])]
     if unmasked:

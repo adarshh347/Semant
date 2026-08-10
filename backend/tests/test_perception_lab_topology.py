@@ -74,8 +74,8 @@ def pair(operation: str, artifact: Dict[str, Any], source: str, target: str,
     art_id = artifact["identity"]["artifact_id"]
     return T.TopologyRequest(
         operation=operation, context=context(),
-        inputs=(T.TopologyInput(role="source", artifact_id=art_id, instance_id=source),
-                T.TopologyInput(role="target", artifact_id=art_id, instance_id=target)),
+        inputs=(T.topology_input(role="source", artifact_id=art_id, instance_id=source),
+                T.topology_input(role="target", artifact_id=art_id, instance_id=target)),
         parameters=parameters or {}, extents=(artifact, *extras), **over)
 
 
@@ -85,7 +85,7 @@ def members(operation: str, artifact: Dict[str, Any], instance_ids: Sequence[str
     art_id = artifact["identity"]["artifact_id"]
     return T.TopologyRequest(
         operation=operation, context=context(),
-        inputs=tuple(T.TopologyInput(role=role, artifact_id=art_id, instance_id=i)
+        inputs=tuple(T.topology_input(role=role, artifact_id=art_id, instance_id=i)
                      for i in instance_ids),
         parameters=parameters or {}, extents=(artifact,))
 
@@ -588,7 +588,7 @@ def test_a_measured_no_relation_is_not_a_refusal_and_not_a_not_run():
 
     refused = T.run(T.TopologyRequest(
         operation="topology.containment", context=context(),
-        inputs=(T.TopologyInput(role="source", artifact_id="art_topo_disjoint",
+        inputs=(T.topology_input(role="source", artifact_id="art_topo_disjoint",
                                 instance_id="inst_a"),),
         extents=(apart,)))
     assert refused.refused
@@ -639,7 +639,7 @@ def test_an_empty_mask_refuses_rather_than_measuring_nothing():
 def test_a_missing_endpoint_refuses_in_every_pair_operation(operation):
     result = T.run(T.TopologyRequest(
         operation=operation, context=context(),
-        inputs=(T.TopologyInput(role="source", artifact_id="art_topo_overlap",
+        inputs=(T.topology_input(role="source", artifact_id="art_topo_overlap",
                                 instance_id="inst_a"),),
         extents=(fixture("extent-set.overlap.json"),)))
     assert result.refused
@@ -656,8 +656,8 @@ def test_no_inputs_at_all_refuses_missing_extent_inputs():
 def test_a_dangling_artifact_reference_refuses_unknown_reference():
     result = T.run(T.TopologyRequest(
         operation="topology.overlap", context=context(),
-        inputs=(T.TopologyInput(role="source", artifact_id="art_nobody_supplied"),
-                T.TopologyInput(role="target", artifact_id="art_topo_overlap",
+        inputs=(T.topology_input(role="source", artifact_id="art_nobody_supplied"),
+                T.topology_input(role="target", artifact_id="art_topo_overlap",
                                 instance_id="inst_b")),
         extents=(fixture("extent-set.overlap.json"),)))
     assert result.refused
@@ -678,8 +678,8 @@ def test_an_artifact_of_several_instances_will_not_be_guessed_at():
     """A laboratory that picked the first mask would answer about one nobody selected."""
     result = T.run(T.TopologyRequest(
         operation="topology.overlap", context=context(),
-        inputs=(T.TopologyInput(role="source", artifact_id="art_topo_overlap"),
-                T.TopologyInput(role="target", artifact_id="art_topo_overlap",
+        inputs=(T.topology_input(role="source", artifact_id="art_topo_overlap"),
+                T.topology_input(role="target", artifact_id="art_topo_overlap",
                                 instance_id="inst_b")),
         extents=(fixture("extent-set.overlap.json"),)))
     assert result.refused
@@ -957,8 +957,8 @@ depth = load("depth-field.inner-in-front.json")
 
 def two(op, art, a, b, **kw):
     return T.TopologyRequest(operation=op, context=ctx, extents=(art,), inputs=(
-        T.TopologyInput(role="source", artifact_id=art["identity"]["artifact_id"], instance_id=a),
-        T.TopologyInput(role="target", artifact_id=art["identity"]["artifact_id"], instance_id=b),
+        T.topology_input(role="source", artifact_id=art["identity"]["artifact_id"], instance_id=a),
+        T.topology_input(role="target", artifact_id=art["identity"]["artifact_id"], instance_id=b),
     ), **kw)
 
 outcomes = []
@@ -967,10 +967,10 @@ outcomes.append(T.run(two("topology.adjacency", contact, "inst_left", "inst_righ
 outcomes.append(T.run(two("topology.overlap", scene, "inst_inner", "inst_outer")).outcome.value)
 outcomes.append(T.run(two("topology.disjoint", scene, "inst_inner", "inst_outer")).outcome.value)
 outcomes.append(T.run(T.TopologyRequest(operation="topology.negative_space", context=ctx,
-    extents=(scene,), inputs=(T.TopologyInput(role="figure",
+    extents=(scene,), inputs=(T.topology_input(role="figure",
         artifact_id="art_topo_containment", instance_id="inst_inner"),))).outcome.value)
 outcomes.append(T.run(T.TopologyRequest(operation="topology.all_pairs", context=ctx,
-    extents=(scene,), inputs=tuple(T.TopologyInput(role="members",
+    extents=(scene,), inputs=tuple(T.topology_input(role="members",
         artifact_id="art_topo_containment", instance_id=i)
         for i in ("inst_inner", "inst_outer")))).outcome.value)
 outcomes.append(T.run(two("topology.occlusion", scene, "inst_inner", "inst_outer",
@@ -1162,35 +1162,36 @@ def test_mutation_masks_on_two_rasters_may_not_be_compared():
         ev.same_raster(a, b)
 
 
-def test_the_local_instance_id_is_provisional_and_says_so_when_lane_a2_lands():
-    """A TRIPWIRE, and it is meant to fail on somebody else's merge.
+def test_there_is_no_second_reference_type_left_in_this_lane():
+    """The tripwire that used to live here fired, and this is what replaced it.
 
-    `TopologyInput.instance_id` is Lane C's local reach past the contract, not a second contract.
-    Lane A2's narrow repair puts `instance_id` on the canonical `InputRef`; the moment it does,
-    keeping a private one alongside it means two ways to say which mask an input is, which is the
-    invented identity this whole contract exists to make unsayable.
+    Lane C carried a local `TopologyInput` with its own `instance_id` for exactly as long as the
+    contract could not reach an instance. PERCEPTUAL-ORGANS-002A2 put the field on canonical
+    `InputRef`, so the dataclass is GONE rather than kept alongside — two ways to say which mask
+    an input is would be the invented identity this contract exists to make unsayable.
 
-    So: while the canonical field is absent, this test asserts the local one is doing a job nobody
-    else can do. When the canonical field arrives, this test fails ON PURPOSE with the three-line
-    change spelled out. A TODO comment would have been silent, and the merge that made the local
-    field redundant is precisely the merge nobody re-reads this module during.
+    What this asserts is the absence: nothing in `topology` constructs a reference record of its
+    own, and `topology_input` is a three-argument spelling that returns the canonical one.
     """
-    if "instance_id" in InputRef.model_fields:
-        pytest.fail(
-            "Lane A2 has landed: `InputRef.instance_id` now exists. Reconcile Lane C — pass "
-            "instance_id through `TopologyInput.as_ref()`, delete the local field from "
-            "`TopologyInput`, and delete this test. Nothing else in topology.py builds an "
-            "InputRef, so that is the whole change.")
+    assert not hasattr(T, "TopologyInput"), \
+        "the provisional input type is deleted, not deprecated alongside the canonical field"
+    ref = T.topology_input("source", "art_1", "inst_1")
+    assert isinstance(ref, InputRef)
+    assert (ref.artifact_id, ref.instance_id) == ("art_1", "inst_1")
+    assert ref.reference == "art_1#inst_1"
 
-    ref = T.TopologyInput(role="source", artifact_id="art_1", instance_id="inst_1").as_ref()
-    assert not hasattr(ref, "instance_id"), "the canonical ref does not carry one yet"
-    assert ref.artifact_id == "art_1"
-    # And the endpoint inside the payload does carry it, which is why the gap is a loss of
-    # resolution in `input_refs` rather than an ambiguity anyone reading the relation would meet.
-    relation = only(T.run(pair("topology.containment", fixture("extent-set.containment.json"),
-                               "inst_inner", "inst_outer")))
-    assert relation.source.instance_id == "inst_inner"
-    assert relation.target.instance_id == "inst_outer"
+
+def test_the_input_refs_on_an_all_pairs_artifact_now_name_four_instances():
+    """The resolution A2 restored. Before it, four members recorded four refs naming ONE artifact
+    in one role, and reading the receipt back could not tell you which masks were measured."""
+    art = fixture("extent-set.scene.json")
+    request = members("topology.all_pairs", art,
+                      ["inst_inner", "inst_outer", "inst_far", "inst_finial"])
+    result = T.run(request)
+    cited = [r.instance_id for r in result.artifact.identity.input_refs]
+    assert cited == ["inst_inner", "inst_outer", "inst_far", "inst_finial"]
+    assert {r.artifact_id for r in result.artifact.identity.input_refs} == \
+        {art["identity"]["artifact_id"]}, "every instance still travels with its container"
 
 
 # ── golden fixtures: this lane's real output, in the shared corpus ───────────
@@ -1212,7 +1213,7 @@ def _golden() -> Dict[str, str]:
     def over(step_id: str, operation: str, roles: Sequence[Tuple[str, str]]) -> T.TopologyResult:
         return T.run(T.TopologyRequest(
             operation=operation, context=dataclasses.replace(ctx, step_id=step_id),
-            inputs=tuple(T.TopologyInput(role=r, artifact_id=art_id, instance_id=i)
+            inputs=tuple(T.topology_input(role=r, artifact_id=art_id, instance_id=i)
                          for r, i in roles),
             extents=(scene,)))
 
