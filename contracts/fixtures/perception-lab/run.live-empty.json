@@ -1,0 +1,30 @@
+{
+  "run_id": "run_live_empty",
+  "session_id": "labs_extent_1",
+  "execution_identity": "LIVE",
+  "outcome": "empty",
+  "requested_plan_id": "plan_rules_fallback",
+  "resolved_plan_id": "plan_rules_fallback",
+  "artifact_ids": ["art_extent_empty"],
+  "stage_attempts": [
+    {
+      "attempt_id": "att_2",
+      "step_id": "step_3",
+      "operation": "extent.find_named",
+      "state": "empty",
+      "adapter": "sam3_concept",
+      "invoked": true,
+      "started_at": "2026-08-10T09:03:01Z",
+      "completed_at": "2026-08-10T09:03:03Z",
+      "duration_ms": null,
+      "detail": "the concept was looked for and is not in this picture. duration_ms is null because this deployment does not instrument the adapter's own clock — and 0 would report a fast search where there was an unmeasured one."
+    }
+  ],
+  "refusals": [],
+  "source_digest_before": "sha256:9f1c0a5b7d2e4438",
+  "source_digest_after": "sha256:9f1c0a5b7d2e4438",
+  "started_at": "2026-08-10T09:03:01Z",
+  "completed_at": "2026-08-10T09:03:03Z",
+  "duration_ms": 2140,
+  "replay": null
+}

@@ -1,0 +1,403 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:perception-lab/lab-run.schema.json",
+  "$defs": {
+    "ExecutionIdentity": {
+      "enum": [
+        "LIVE",
+        "REPLAY",
+        "FIXTURE"
+      ],
+      "title": "ExecutionIdentity",
+      "type": "string"
+    },
+    "OrganFamily": {
+      "description": "The eight perceptual questions. Six are registered and disabled.",
+      "enum": [
+        "extent",
+        "topology",
+        "colour",
+        "illumination",
+        "surface_pattern",
+        "orientation_flow",
+        "depth",
+        "surface_form"
+      ],
+      "title": "OrganFamily",
+      "type": "string"
+    },
+    "RefusalCode": {
+      "description": "Nine, and not one of them means 'nothing was found'.",
+      "enum": [
+        "missing_extent_inputs",
+        "missing_depth_artifact",
+        "unsupported_operation",
+        "invalid_parameters",
+        "organ_locked",
+        "capability_unavailable",
+        "unknown_reference",
+        "replay_cannot_recompute",
+        "source_mutated"
+      ],
+      "title": "RefusalCode",
+      "type": "string"
+    },
+    "RefusalRecord": {
+      "additionalProperties": false,
+      "description": "A typed no. Never an empty result, and never an exception message.\n\n`missing` is what would satisfy it \u2014 the difference between \"this failed\" and \"bring me a\ndepth field and ask again\".",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/RefusalCode"
+        },
+        "organ": {
+          "$ref": "#/$defs/OrganFamily"
+        },
+        "operation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operation"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "remedy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remedy"
+        },
+        "detail": {
+          "additionalProperties": true,
+          "title": "Detail",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "organ",
+        "message"
+      ],
+      "title": "RefusalRecord",
+      "type": "object"
+    },
+    "ReplayProvenance": {
+      "additionalProperties": false,
+      "description": "Where a REPLAY run's content came from, and the fact that it cannot go and get more.\n\n`adapter_callable` is `Literal[False]`. Not a default, not a boolean anyone can flip: there is\nno way to write `True` into this field, so \"replay has no callable adapter\" is not a rule the\nreplay code has to obey \u2014 it is a sentence about a replay that cannot be typed.",
+      "properties": {
+        "source_run_id": {
+          "minLength": 1,
+          "title": "Source Run Id",
+          "type": "string"
+        },
+        "recorded_at": {
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "adapter_callable": {
+          "const": false,
+          "title": "Adapter Callable",
+          "type": "boolean"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "source_run_id",
+        "recorded_at",
+        "adapter_callable"
+      ],
+      "title": "ReplayProvenance",
+      "type": "object"
+    },
+    "RunOutcome": {
+      "description": "Six endings, and the ones that look redundant are the deliverable.\n\nready        it ran and produced something\nempty        it ran, looked, and there was nothing of that kind      \u2192 look elsewhere\nunavailable  the adapter exists and is not running here             \u2192 try elsewhere\nrefused      a law said no                                          \u2192 satisfy it, or ask differently\npartial      some stages produced, some did not                     \u2192 read the stage list\nfailed       something raised; no claim is made at all              \u2192 fix it",
+      "enum": [
+        "ready",
+        "empty",
+        "unavailable",
+        "refused",
+        "partial",
+        "failed"
+      ],
+      "title": "RunOutcome",
+      "type": "string"
+    },
+    "StageAttempt": {
+      "additionalProperties": false,
+      "description": "What one step of the machinery did.\n\n`invoked` is the field the replay law turns on. It is not derived from `adapter` being set \u2014\na replay stage legitimately NAMES the adapter whose recorded output it is showing, and\nconflating \"names an adapter\" with \"called an adapter\" would make the honest record unsayable.",
+      "properties": {
+        "attempt_id": {
+          "minLength": 1,
+          "title": "Attempt Id",
+          "type": "string"
+        },
+        "step_id": {
+          "minLength": 1,
+          "title": "Step Id",
+          "type": "string"
+        },
+        "operation": {
+          "minLength": 1,
+          "title": "Operation",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/StageState"
+        },
+        "adapter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adapter"
+        },
+        "invoked": {
+          "title": "Invoked",
+          "type": "boolean"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "duration_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Ms"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        }
+      },
+      "required": [
+        "attempt_id",
+        "step_id",
+        "operation",
+        "state",
+        "invoked"
+      ],
+      "title": "StageAttempt",
+      "type": "object"
+    },
+    "StageState": {
+      "enum": [
+        "queued",
+        "started",
+        "completed",
+        "empty",
+        "refused",
+        "unavailable",
+        "skipped",
+        "failed"
+      ],
+      "title": "StageState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One execution, with the identity that says whether anything was actually asked of a model.",
+  "properties": {
+    "run_id": {
+      "minLength": 1,
+      "title": "Run Id",
+      "type": "string"
+    },
+    "session_id": {
+      "minLength": 1,
+      "title": "Session Id",
+      "type": "string"
+    },
+    "execution_identity": {
+      "$ref": "#/$defs/ExecutionIdentity"
+    },
+    "outcome": {
+      "$ref": "#/$defs/RunOutcome"
+    },
+    "requested_plan_id": {
+      "minLength": 1,
+      "title": "Requested Plan Id",
+      "type": "string"
+    },
+    "resolved_plan_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resolved Plan Id"
+    },
+    "artifact_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Artifact Ids",
+      "type": "array"
+    },
+    "stage_attempts": {
+      "items": {
+        "$ref": "#/$defs/StageAttempt"
+      },
+      "title": "Stage Attempts",
+      "type": "array"
+    },
+    "refusals": {
+      "items": {
+        "$ref": "#/$defs/RefusalRecord"
+      },
+      "title": "Refusals",
+      "type": "array"
+    },
+    "source_digest_before": {
+      "minLength": 8,
+      "title": "Source Digest Before",
+      "type": "string"
+    },
+    "source_digest_after": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Digest After"
+    },
+    "started_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Started At"
+    },
+    "completed_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Completed At"
+    },
+    "duration_ms": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Duration Ms"
+    },
+    "replay": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReplayProvenance"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "run_id",
+    "session_id",
+    "execution_identity",
+    "outcome",
+    "requested_plan_id",
+    "source_digest_before"
+  ],
+  "title": "LabRun",
+  "type": "object"
+}

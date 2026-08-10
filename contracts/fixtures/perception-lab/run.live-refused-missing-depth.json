@@ -1,0 +1,40 @@
+{
+  "run_id": "run_live_refused_depth",
+  "session_id": "labs_topology_1",
+  "execution_identity": "LIVE",
+  "outcome": "refused",
+  "requested_plan_id": "plan_chain_1",
+  "resolved_plan_id": "plan_chain_1",
+  "artifact_ids": ["art_refusal_depth"],
+  "stage_attempts": [
+    {
+      "attempt_id": "att_4",
+      "step_id": "step_occlusion",
+      "operation": "topology.occlusion",
+      "state": "refused",
+      "adapter": "occlusion_organ",
+      "invoked": false,
+      "started_at": "2026-08-10T10:03:00Z",
+      "completed_at": "2026-08-10T10:03:00Z",
+      "duration_ms": 2,
+      "detail": "the depth input did not resolve, so the organ was never asked"
+    }
+  ],
+  "refusals": [
+    {
+      "code": "missing_depth_artifact",
+      "organ": "topology",
+      "operation": "topology.occlusion",
+      "message": "topology.occlusion needs a prepared depth field. This laboratory does not compute one.",
+      "missing": ["depth"],
+      "remedy": "supply a prepared depth artifact, or wait for the Depth phase",
+      "detail": {"role": "depth", "artifact_kinds": ["depth_field"], "min": 1, "max": 1}
+    }
+  ],
+  "source_digest_before": "sha256:41b7e0d9c3a58612",
+  "source_digest_after": "sha256:41b7e0d9c3a58612",
+  "started_at": "2026-08-10T10:03:00Z",
+  "completed_at": "2026-08-10T10:03:00Z",
+  "duration_ms": 5,
+  "replay": null
+}

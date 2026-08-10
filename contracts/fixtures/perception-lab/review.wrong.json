@@ -1,0 +1,17 @@
+{
+  "review_id": "rev_wrong",
+  "session_id": "labs_topology_1",
+  "artifact_id": "art_topology_box",
+  "reviewer": "curator",
+  "verdict": "wrong",
+  "notes": "the finial is in front of the sky, not inside it. The number is not the problem — the basis is. Note that this verdict does nothing to the artifact's epistemic status and nothing to its lifecycle; those were already `interpretive` and `rejected`, decided by the organ and by the lab, not by me.",
+  "corrections": [
+    {
+      "field": "relations[0].kind",
+      "was": "nested_within",
+      "now": "in_front_of",
+      "note": "and it cannot be recorded as measured from here — occlusion needs a depth field this session does not have"
+    }
+  ],
+  "reviewed_at": "2026-08-10T10:03:40Z"
+}

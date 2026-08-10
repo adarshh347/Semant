@@ -1,0 +1,451 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:perception-lab/lab-plan.schema.json",
+  "$defs": {
+    "ClampedParameter": {
+      "additionalProperties": false,
+      "description": "A value the operation declares bounds for, and what it became. Clamping is not refusal.",
+      "properties": {
+        "step_id": {
+          "minLength": 1,
+          "title": "Step Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "requested": {
+          "default": null,
+          "title": "Requested"
+        },
+        "applied": {
+          "default": null,
+          "title": "Applied"
+        },
+        "bound": {
+          "minLength": 1,
+          "title": "Bound",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_id",
+        "name",
+        "bound"
+      ],
+      "title": "ClampedParameter",
+      "type": "object"
+    },
+    "DroppedParameter": {
+      "additionalProperties": false,
+      "description": "A key the planner asked for that the operation does not declare. Recorded, not silent.",
+      "properties": {
+        "step_id": {
+          "minLength": 1,
+          "title": "Step Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_id",
+        "name",
+        "reason"
+      ],
+      "title": "DroppedParameter",
+      "type": "object"
+    },
+    "IdentityScope": {
+      "enum": [
+        "session",
+        "canonical"
+      ],
+      "title": "IdentityScope",
+      "type": "string"
+    },
+    "InputRef": {
+      "additionalProperties": false,
+      "description": "One thing an operation consumed, in the role it was consumed as.\n\nExactly one of `artifact_id` / `region_id`. A ref that named both would let a step claim two\nprovenances for one input, and a ref that named neither is the invented identity this contract\nexists to make unsayable.",
+      "properties": {
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/IdentityScope"
+        },
+        "artifact_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Id"
+        },
+        "region_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region Id"
+        },
+        "geometry_rev": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geometry Rev"
+        }
+      },
+      "required": [
+        "role",
+        "scope"
+      ],
+      "title": "InputRef",
+      "type": "object"
+    },
+    "OrganFamily": {
+      "description": "The eight perceptual questions. Six are registered and disabled.",
+      "enum": [
+        "extent",
+        "topology",
+        "colour",
+        "illumination",
+        "surface_pattern",
+        "orientation_flow",
+        "depth",
+        "surface_form"
+      ],
+      "title": "OrganFamily",
+      "type": "string"
+    },
+    "PlannerIdentity": {
+      "enum": [
+        "direct",
+        "rules",
+        "model"
+      ],
+      "title": "PlannerIdentity",
+      "type": "string"
+    },
+    "ProposedStep": {
+      "additionalProperties": false,
+      "description": "What a planner asked for.\n\nTHERE IS NO AUTHORIZATION FIELD ON THIS MODEL, and its absence is the mechanism. A planner \u2014\ndirect, rules or model \u2014 constructs these and nothing else, so \"planner output is a proposal,\nnever execution authority\" is not a rule anyone has to remember: there is no field in which\nthe proposal could claim to have been authorized.\n\n`parameters` is permissive `Dict[str, Any]` ON PURPOSE. A model planner WILL emit keys that do\nnot exist; the resolver drops them and RECORDS the drop (`DroppedParameter`). Refusing the\nwhole plan on a stray key would hide the smuggling attempt instead of showing it.",
+      "properties": {
+        "step_id": {
+          "minLength": 1,
+          "title": "Step Id",
+          "type": "string"
+        },
+        "organ": {
+          "$ref": "#/$defs/OrganFamily"
+        },
+        "operation": {
+          "minLength": 1,
+          "title": "Operation",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": true,
+          "title": "Parameters",
+          "type": "object"
+        },
+        "input_refs": {
+          "items": {
+            "$ref": "#/$defs/InputRef"
+          },
+          "title": "Input Refs",
+          "type": "array"
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale"
+        }
+      },
+      "required": [
+        "step_id",
+        "organ",
+        "operation"
+      ],
+      "title": "ProposedStep",
+      "type": "object"
+    },
+    "RefusalCode": {
+      "description": "Nine, and not one of them means 'nothing was found'.",
+      "enum": [
+        "missing_extent_inputs",
+        "missing_depth_artifact",
+        "unsupported_operation",
+        "invalid_parameters",
+        "organ_locked",
+        "capability_unavailable",
+        "unknown_reference",
+        "replay_cannot_recompute",
+        "source_mutated"
+      ],
+      "title": "RefusalCode",
+      "type": "string"
+    },
+    "RefusalRecord": {
+      "additionalProperties": false,
+      "description": "A typed no. Never an empty result, and never an exception message.\n\n`missing` is what would satisfy it \u2014 the difference between \"this failed\" and \"bring me a\ndepth field and ask again\".",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/RefusalCode"
+        },
+        "organ": {
+          "$ref": "#/$defs/OrganFamily"
+        },
+        "operation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operation"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "remedy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remedy"
+        },
+        "detail": {
+          "additionalProperties": true,
+          "title": "Detail",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "organ",
+        "message"
+      ],
+      "title": "RefusalRecord",
+      "type": "object"
+    },
+    "ResolvedStep": {
+      "additionalProperties": false,
+      "description": "What the resolver authorized. The only thing a runner may execute.\n\n`authorized_by` is a one-member `Literal`. Not an enum with a future second member, not a\nboolean: the single sayable value is `resolver`, so no other component can construct this\nobject claiming to have granted the authority.",
+      "properties": {
+        "step_id": {
+          "minLength": 1,
+          "title": "Step Id",
+          "type": "string"
+        },
+        "organ": {
+          "$ref": "#/$defs/OrganFamily"
+        },
+        "operation": {
+          "minLength": 1,
+          "title": "Operation",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": true,
+          "title": "Parameters",
+          "type": "object"
+        },
+        "input_refs": {
+          "items": {
+            "$ref": "#/$defs/InputRef"
+          },
+          "title": "Input Refs",
+          "type": "array"
+        },
+        "adapter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adapter"
+        },
+        "authorized_by": {
+          "const": "resolver",
+          "title": "Authorized By",
+          "type": "string"
+        },
+        "prerequisites_checked": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Prerequisites Checked",
+          "type": "array"
+        }
+      },
+      "required": [
+        "step_id",
+        "organ",
+        "operation",
+        "authorized_by"
+      ],
+      "title": "ResolvedStep",
+      "type": "object"
+    },
+    "SessionMode": {
+      "enum": [
+        "isolation",
+        "chain"
+      ],
+      "title": "SessionMode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The visible proposal a person confirms before anything runs.\n\n`planner_fell_back_from` is the truthfulness field. When the model planner is unreachable and\nthe rules planner answers, `planner` is `rules` and this says `model`. A rules fallback\nwearing the model's name is the specific dishonesty the phase gate looks for.",
+  "properties": {
+    "plan_id": {
+      "minLength": 1,
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "session_id": {
+      "minLength": 1,
+      "title": "Session Id",
+      "type": "string"
+    },
+    "planner": {
+      "$ref": "#/$defs/PlannerIdentity"
+    },
+    "planner_fell_back_from": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlannerIdentity"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "selected_organ": {
+      "$ref": "#/$defs/OrganFamily"
+    },
+    "mode": {
+      "$ref": "#/$defs/SessionMode"
+    },
+    "proposed_steps": {
+      "items": {
+        "$ref": "#/$defs/ProposedStep"
+      },
+      "title": "Proposed Steps",
+      "type": "array"
+    },
+    "resolved_steps": {
+      "items": {
+        "$ref": "#/$defs/ResolvedStep"
+      },
+      "title": "Resolved Steps",
+      "type": "array"
+    },
+    "prerequisites": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Prerequisites",
+      "type": "array"
+    },
+    "refusals": {
+      "items": {
+        "$ref": "#/$defs/RefusalRecord"
+      },
+      "title": "Refusals",
+      "type": "array"
+    },
+    "dropped_parameters": {
+      "items": {
+        "$ref": "#/$defs/DroppedParameter"
+      },
+      "title": "Dropped Parameters",
+      "type": "array"
+    },
+    "clamped_parameters": {
+      "items": {
+        "$ref": "#/$defs/ClampedParameter"
+      },
+      "title": "Clamped Parameters",
+      "type": "array"
+    },
+    "requires_confirmation": {
+      "title": "Requires Confirmation",
+      "type": "boolean"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "plan_id",
+    "session_id",
+    "planner",
+    "selected_organ",
+    "mode",
+    "requires_confirmation",
+    "created_at"
+  ],
+  "title": "LabPlan",
+  "type": "object"
+}

@@ -1,0 +1,66 @@
+{
+  "identity": {
+    "artifact_id": "art_refusal_depth",
+    "session_id": "labs_topology_1",
+    "run_id": "run_live_refused_depth",
+    "step_id": "step_occlusion",
+    "organ_family": "topology",
+    "artifact_kind": "refusal",
+    "operation": "topology.occlusion",
+    "identity_scope": "session",
+    "identity_refs": [],
+    "input_refs": [
+      {"role": "source", "scope": "session", "artifact_id": "art_extent_1", "region_id": null, "geometry_rev": null},
+      {"role": "target", "scope": "session", "artifact_id": "art_extent_manual", "region_id": null, "geometry_rev": null}
+    ],
+    "derived_from": []
+  },
+  "measurement": {
+    "payload_variant": "refusal",
+    "payload": {
+      "variant": "refusal",
+      "refusal": {
+        "code": "missing_depth_artifact",
+        "organ": "topology",
+        "operation": "topology.occlusion",
+        "message": "topology.occlusion needs a prepared depth field. This laboratory does not compute one.",
+        "missing": ["depth"],
+        "remedy": "supply a prepared depth artifact, or wait for the Depth phase",
+        "detail": {"role": "depth", "artifact_kinds": ["depth_field"], "min": 1, "max": 1}
+      }
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "uncertain",
+    "epistemic_basis": "declared",
+    "basis_detail": "a refusal makes no claim about the image. `uncertain` on the `declared` basis is the honest floor — the alternative would be a status implying something was looked at."
+  },
+  "projection": {
+    "projection_kind": "none",
+    "hints": {}
+  },
+  "interpretation": {
+    "label": null,
+    "label_source": "none",
+    "epistemic_status": "uncertain",
+    "notes": "This is a result, not an error. It is in the ledger with a run, a step and a provenance so a person can reopen it and see exactly what was asked and what was missing."
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "changed_at": "2026-08-10T10:03:00Z",
+    "changed_by": "perception_lab"
+  },
+  "provenance": {
+    "producer_kind": "adapter",
+    "producer": "topology_facade",
+    "adapter": "occlusion_organ",
+    "model": null,
+    "revision": "wave3",
+    "source_image_digest": "sha256:41b7e0d9c3a58612",
+    "started_at": "2026-08-10T10:03:00Z",
+    "completed_at": "2026-08-10T10:03:00Z",
+    "duration_ms": 2,
+    "device": "cpu",
+    "peak_memory_mb": null
+  }
+}

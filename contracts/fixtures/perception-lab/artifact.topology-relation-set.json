@@ -1,0 +1,88 @@
+{
+  "identity": {
+    "artifact_id": "art_topology_1",
+    "session_id": "labs_topology_1",
+    "run_id": "run_live_partial",
+    "step_id": "step_b",
+    "organ_family": "topology",
+    "artifact_kind": "topology_relation_set",
+    "operation": "topology.adjacency",
+    "identity_scope": "session",
+    "identity_refs": [],
+    "input_refs": [
+      {"role": "source", "scope": "session", "artifact_id": "art_extent_1", "region_id": null, "geometry_rev": null},
+      {"role": "target", "scope": "session", "artifact_id": "art_extent_manual", "region_id": null, "geometry_rev": null}
+    ],
+    "derived_from": ["art_extent_1", "art_extent_manual"]
+  },
+  "measurement": {
+    "payload_variant": "topology_relation_set",
+    "payload": {
+      "variant": "topology_relation_set",
+      "pairs_examined": 1,
+      "relations": [
+        {
+          "relation_id": "rel_1",
+          "kind": "meets",
+          "source": {
+            "artifact_id": "art_extent_1",
+            "instance_id": "inst_1",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_extent_manual",
+            "instance_id": "inst_manual_1",
+            "scope": "canonical",
+            "region_id": "reg_finial_7",
+            "geometry_rev": 4
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_pixels": 1184.0,
+            "contact_fraction_of_source_perimeter": 0.21,
+            "contact_tolerance_px": 2.0
+          },
+          "stale": false
+        }
+      ],
+      "bounded_to": null
+    },
+    "data_ref": null,
+    "coordinate_system": "mask_rle_hw",
+    "epistemic_status": "measured",
+    "epistemic_basis": "mask",
+    "basis_detail": "per-pixel contact band on a shared raster"
+  },
+  "projection": {
+    "projection_kind": "contact_band",
+    "hints": {"opacity": 0.6, "palette_role": "relation", "legend": "contact band, not a centroid line"}
+  },
+  "interpretation": {
+    "label": "the two shapes meet along the upper edge",
+    "label_source": "adapter",
+    "epistemic_status": "interpretive",
+    "notes": "the sentence is a reading of the number; the number is the contact band above."
+  },
+  "lifecycle": {
+    "status": "kept",
+    "changed_at": "2026-08-10T10:01:20Z",
+    "changed_by": "curator"
+  },
+  "provenance": {
+    "producer_kind": "adapter",
+    "producer": "topology_facade",
+    "adapter": "adjacency_organ",
+    "model": null,
+    "revision": "wave3",
+    "source_image_digest": "sha256:41b7e0d9c3a58612",
+    "started_at": "2026-08-10T10:01:00Z",
+    "completed_at": "2026-08-10T10:01:01Z",
+    "duration_ms": 412,
+    "device": "cpu",
+    "peak_memory_mb": 84.0
+  }
+}

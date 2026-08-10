@@ -1,0 +1,59 @@
+{
+  "identity": {
+    "artifact_id": "art_extent_empty",
+    "session_id": "labs_extent_1",
+    "run_id": "run_live_empty",
+    "step_id": "step_3",
+    "organ_family": "extent",
+    "artifact_kind": "extent_set",
+    "operation": "extent.find_named",
+    "identity_scope": "session",
+    "identity_refs": [],
+    "input_refs": [],
+    "derived_from": []
+  },
+  "measurement": {
+    "payload_variant": "extent_set",
+    "payload": {
+      "variant": "extent_set",
+      "searched": "drapery",
+      "instances": [],
+      "dropped_below_min_area": 0,
+      "duplicates": [],
+      "comparison": null
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "measured",
+    "epistemic_basis": "mask",
+    "basis_detail": "the adapter ran over the whole raster and returned no instance above threshold"
+  },
+  "projection": {
+    "projection_kind": "none",
+    "hints": {}
+  },
+  "interpretation": {
+    "label": null,
+    "label_source": "none",
+    "epistemic_status": "uncertain",
+    "notes": "nothing to read. `searched` carries what was looked for, which is the whole difference between this artifact and a run nobody made."
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "changed_at": "2026-08-10T09:03:03Z",
+    "changed_by": "perception_lab"
+  },
+  "provenance": {
+    "producer_kind": "adapter",
+    "producer": "extent_facade",
+    "adapter": "sam3_concept",
+    "model": "sam3",
+    "revision": "2026-02-11",
+    "source_image_digest": "sha256:9f1c0a5b7d2e4438",
+    "started_at": "2026-08-10T09:03:01Z",
+    "completed_at": "2026-08-10T09:03:03Z",
+    "duration_ms": null,
+    "device": "mps",
+    "peak_memory_mb": null
+  }
+}

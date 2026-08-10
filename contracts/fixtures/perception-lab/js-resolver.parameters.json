@@ -1,0 +1,281 @@
+{
+  "generated_by": "frontend/src/perceptionLab/contract/perceptionLab.parity.test.js",
+  "how_to_regenerate": "UPDATE_PARITY_FIXTURES=1 npx vitest run src/perceptionLab/contract",
+  "cases": [
+    {
+      "name": "a clean direct command",
+      "operation": "extent.find_all",
+      "params": {
+        "max_instances": 4
+      },
+      "result": {
+        "clean": {
+          "max_instances": 4
+        },
+        "dropped": [],
+        "clamped": [],
+        "refusal": null
+      }
+    },
+    {
+      "name": "a model smuggling geometry",
+      "operation": "extent.find_all",
+      "params": {
+        "max_instances": 4,
+        "mask_rle": {
+          "size": [
+            1,
+            1
+          ],
+          "counts": []
+        },
+        "region_id": "reg_7"
+      },
+      "result": {
+        "clean": {
+          "max_instances": 4
+        },
+        "dropped": [
+          {
+            "name": "mask_rle",
+            "reason": "extent.find_all declares no parameter 'mask_rle'"
+          },
+          {
+            "name": "region_id",
+            "reason": "extent.find_all declares no parameter 'region_id'"
+          }
+        ],
+        "clamped": [],
+        "refusal": null
+      }
+    },
+    {
+      "name": "a number past its bound",
+      "operation": "extent.find_all",
+      "params": {
+        "max_instances": 9000
+      },
+      "result": {
+        "clean": {
+          "max_instances": 64
+        },
+        "dropped": [],
+        "clamped": [
+          {
+            "name": "max_instances",
+            "requested": 9000,
+            "applied": 64,
+            "bound": "maximum=64"
+          }
+        ],
+        "refusal": null
+      }
+    },
+    {
+      "name": "a number below its floor",
+      "operation": "extent.find_all",
+      "params": {
+        "min_area": -1
+      },
+      "result": {
+        "clean": {
+          "min_area": 0
+        },
+        "dropped": [],
+        "clamped": [
+          {
+            "name": "min_area",
+            "requested": -1,
+            "applied": 0,
+            "bound": "minimum=0"
+          }
+        ],
+        "refusal": null
+      }
+    },
+    {
+      "name": "a wrong type",
+      "operation": "extent.find_all",
+      "params": {
+        "max_instances": "lots"
+      },
+      "result": {
+        "clean": {},
+        "dropped": [],
+        "clamped": [],
+        "refusal": {
+          "code": "invalid_parameters",
+          "organ": "extent",
+          "operation": "extent.find_all",
+          "message": "extent.find_all refused the supplied parameters: 'max_instances' is not a integer.",
+          "missing": [],
+          "remedy": "read the operation's parameter declarations",
+          "detail": {
+            "why": "'max_instances' is not a integer"
+          }
+        }
+      }
+    },
+    {
+      "name": "a missing required parameter",
+      "operation": "extent.find_named",
+      "params": {},
+      "result": {
+        "clean": {},
+        "dropped": [],
+        "clamped": [],
+        "refusal": {
+          "code": "invalid_parameters",
+          "organ": "extent",
+          "operation": "extent.find_named",
+          "message": "extent.find_named refused the supplied parameters: 'concept' is required.",
+          "missing": [],
+          "remedy": "read the operation's parameter declarations",
+          "detail": {
+            "why": "'concept' is required"
+          }
+        }
+      }
+    },
+    {
+      "name": "an undeclared enum member",
+      "operation": "extent.find_named",
+      "params": {
+        "concept": "drapery",
+        "adapter": "clairvoyance"
+      },
+      "result": {
+        "clean": {},
+        "dropped": [],
+        "clamped": [],
+        "refusal": {
+          "code": "invalid_parameters",
+          "organ": "extent",
+          "operation": "extent.find_named",
+          "message": "extent.find_named refused the supplied parameters: 'adapter' must be one of ['sam3_concept', 'grounded_sam'].",
+          "missing": [],
+          "remedy": "read the operation's parameter declarations",
+          "detail": {
+            "why": "'adapter' must be one of ['sam3_concept', 'grounded_sam']"
+          }
+        }
+      }
+    },
+    {
+      "name": "a declared enum member",
+      "operation": "extent.find_named",
+      "params": {
+        "concept": "drapery",
+        "adapter": "sam3_concept"
+      },
+      "result": {
+        "clean": {
+          "concept": "drapery",
+          "adapter": "sam3_concept"
+        },
+        "dropped": [],
+        "clamped": [],
+        "refusal": null
+      }
+    },
+    {
+      "name": "a null is absence, not a value",
+      "operation": "extent.find_all",
+      "params": {
+        "max_instances": null
+      },
+      "result": {
+        "clean": {},
+        "dropped": [
+          {
+            "name": "max_instances",
+            "reason": "null is absence, and absence is not a value to record"
+          }
+        ],
+        "clamped": [],
+        "refusal": null
+      }
+    },
+    {
+      "name": "a clamped list",
+      "operation": "topology.all_pairs",
+      "params": {
+        "max_regions": 40,
+        "relations": [
+          "meets",
+          "overlaps",
+          "disjoint",
+          "contains",
+          "nested_within"
+        ]
+      },
+      "result": {
+        "clean": {
+          "max_regions": 12,
+          "relations": [
+            "meets",
+            "overlaps",
+            "disjoint",
+            "contains"
+          ]
+        },
+        "dropped": [],
+        "clamped": [
+          {
+            "name": "max_regions",
+            "requested": 40,
+            "applied": 12,
+            "bound": "maximum=12"
+          },
+          {
+            "name": "relations",
+            "requested": 5,
+            "applied": 4,
+            "bound": "max_items=4"
+          }
+        ],
+        "refusal": null
+      }
+    },
+    {
+      "name": "a tolerance past its bound",
+      "operation": "topology.adjacency",
+      "params": {
+        "contact_tolerance_px": 900
+      },
+      "result": {
+        "clean": {
+          "contact_tolerance_px": 32
+        },
+        "dropped": [],
+        "clamped": [
+          {
+            "name": "contact_tolerance_px",
+            "requested": 900,
+            "applied": 32,
+            "bound": "maximum=32"
+          }
+        ],
+        "refusal": null
+      }
+    },
+    {
+      "name": "an operation with no parameters at all",
+      "operation": "topology.overlap",
+      "params": {
+        "basis": "mask"
+      },
+      "result": {
+        "clean": {},
+        "dropped": [
+          {
+            "name": "basis",
+            "reason": "topology.overlap declares no parameter 'basis'"
+          }
+        ],
+        "clamped": [],
+        "refusal": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "plan_id": "plan_direct_1",
+  "session_id": "labs_extent_1",
+  "planner": "direct",
+  "planner_fell_back_from": null,
+  "selected_organ": "extent",
+  "mode": "isolation",
+  "proposed_steps": [
+    {
+      "step_id": "step_1",
+      "organ": "extent",
+      "operation": "extent.find_all",
+      "parameters": {
+        "max_instances": 900,
+        "mask_rle": {"size": [2, 2], "counts": [0, 4]}
+      },
+      "input_refs": [],
+      "rationale": "the person pressed Find all"
+    }
+  ],
+  "resolved_steps": [
+    {
+      "step_id": "step_1",
+      "organ": "extent",
+      "operation": "extent.find_all",
+      "parameters": {"max_instances": 64},
+      "input_refs": [],
+      "adapter": "yolo_sam2_auto",
+      "authorized_by": "resolver",
+      "prerequisites_checked": ["organ_lock", "parameters", "capability"]
+    }
+  ],
+  "prerequisites": [],
+  "refusals": [],
+  "dropped_parameters": [
+    {
+      "step_id": "step_1",
+      "name": "mask_rle",
+      "reason": "extent.find_all declares no parameter 'mask_rle'"
+    }
+  ],
+  "clamped_parameters": [
+    {
+      "step_id": "step_1",
+      "name": "max_instances",
+      "requested": 900,
+      "applied": 64,
+      "bound": "maximum=64"
+    }
+  ],
+  "requires_confirmation": false,
+  "created_at": "2026-08-10T09:00:11Z"
+}

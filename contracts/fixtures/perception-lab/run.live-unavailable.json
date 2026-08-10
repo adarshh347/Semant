@@ -1,0 +1,40 @@
+{
+  "run_id": "run_live_unavailable",
+  "session_id": "labs_extent_1",
+  "execution_identity": "LIVE",
+  "outcome": "unavailable",
+  "requested_plan_id": "plan_rules_fallback",
+  "resolved_plan_id": "plan_rules_fallback",
+  "artifact_ids": [],
+  "stage_attempts": [
+    {
+      "attempt_id": "att_3",
+      "step_id": "step_3",
+      "operation": "extent.find_named",
+      "state": "unavailable",
+      "adapter": "sam3_concept",
+      "invoked": false,
+      "started_at": "2026-08-10T09:04:00Z",
+      "completed_at": "2026-08-10T09:04:00Z",
+      "duration_ms": 4,
+      "detail": "the adapter is named because it is the one that is missing, and invoked is false because nothing was called"
+    }
+  ],
+  "refusals": [
+    {
+      "code": "capability_unavailable",
+      "organ": "extent",
+      "operation": "extent.find_named",
+      "message": "sam3_concept is in the catalogue and is not running here.",
+      "missing": ["sam3_concept"],
+      "remedy": "choose another adapter, or run where the model lives",
+      "detail": {"adapters": ["sam3_concept"]}
+    }
+  ],
+  "source_digest_before": "sha256:9f1c0a5b7d2e4438",
+  "source_digest_after": "sha256:9f1c0a5b7d2e4438",
+  "started_at": "2026-08-10T09:04:00Z",
+  "completed_at": "2026-08-10T09:04:00Z",
+  "duration_ms": 6,
+  "replay": null
+}

@@ -1,0 +1,64 @@
+{
+  "run_id": "run_live_partial",
+  "session_id": "labs_topology_1",
+  "execution_identity": "LIVE",
+  "outcome": "partial",
+  "requested_plan_id": "plan_chain_1",
+  "resolved_plan_id": "plan_chain_1",
+  "artifact_ids": ["art_topology_1", "art_negative_1"],
+  "stage_attempts": [
+    {
+      "attempt_id": "att_5",
+      "step_id": "step_b",
+      "operation": "topology.adjacency",
+      "state": "completed",
+      "adapter": "adjacency_organ",
+      "invoked": true,
+      "started_at": "2026-08-10T10:01:00Z",
+      "completed_at": "2026-08-10T10:01:01Z",
+      "duration_ms": 412,
+      "detail": "one meets relation on the mask basis"
+    },
+    {
+      "attempt_id": "att_5b",
+      "step_id": "step_negative_ok",
+      "operation": "topology.negative_space",
+      "state": "completed",
+      "adapter": "distance_transform",
+      "invoked": true,
+      "started_at": "2026-08-10T10:01:38Z",
+      "completed_at": "2026-08-10T10:01:40Z",
+      "duration_ms": 1970,
+      "detail": "the complement of the two prepared extents"
+    },
+    {
+      "attempt_id": "att_6",
+      "step_id": "step_c",
+      "operation": "topology.negative_space",
+      "state": "refused",
+      "adapter": "distance_transform",
+      "invoked": false,
+      "started_at": "2026-08-10T10:01:01Z",
+      "completed_at": "2026-08-10T10:01:01Z",
+      "duration_ms": 1,
+      "detail": "the figure role resolved to nothing"
+    }
+  ],
+  "refusals": [
+    {
+      "code": "missing_extent_inputs",
+      "organ": "topology",
+      "operation": "topology.negative_space",
+      "message": "topology.negative_space needs extents to measure and none were supplied.",
+      "missing": ["figure"],
+      "remedy": "draw, find, or reuse extents, then ask again",
+      "detail": {"role": "figure", "artifact_kinds": ["extent_set"], "min": 1, "max": 8}
+    }
+  ],
+  "source_digest_before": "sha256:41b7e0d9c3a58612",
+  "source_digest_after": "sha256:41b7e0d9c3a58612",
+  "started_at": "2026-08-10T10:01:00Z",
+  "completed_at": "2026-08-10T10:01:01Z",
+  "duration_ms": 640,
+  "replay": null
+}

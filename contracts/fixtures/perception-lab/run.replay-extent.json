@@ -1,0 +1,35 @@
+{
+  "run_id": "run_replay_extent",
+  "session_id": "labs_extent_1",
+  "execution_identity": "REPLAY",
+  "outcome": "ready",
+  "requested_plan_id": "plan_direct_1",
+  "resolved_plan_id": "plan_direct_1",
+  "artifact_ids": ["art_extent_1"],
+  "stage_attempts": [
+    {
+      "attempt_id": "att_9",
+      "step_id": "step_1",
+      "operation": "extent.find_all",
+      "state": "completed",
+      "adapter": "yolo_sam2_auto",
+      "invoked": false,
+      "started_at": "2026-08-10T09:06:00Z",
+      "completed_at": "2026-08-10T09:06:00Z",
+      "duration_ms": 3,
+      "detail": "re-shown from the lab ledger. The 1840ms on run_live_ready was the measurement; the 3ms here is the reading of it, and they are deliberately different numbers."
+    }
+  ],
+  "refusals": [],
+  "source_digest_before": "sha256:9f1c0a5b7d2e4438",
+  "source_digest_after": "sha256:9f1c0a5b7d2e4438",
+  "started_at": "2026-08-10T09:06:00Z",
+  "completed_at": "2026-08-10T09:06:00Z",
+  "duration_ms": 5,
+  "replay": {
+    "source_run_id": "run_live_ready",
+    "recorded_at": "2026-08-10T09:00:14Z",
+    "adapter_callable": false,
+    "reason": "re-opened from the lab ledger by the person who ran it"
+  }
+}
