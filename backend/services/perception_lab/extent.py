@@ -538,11 +538,11 @@ def _draw(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[An
         provenance={"adapter": None, "model": None, "method": f"lab-draw-{tool}",
                     "actor": "creator", "tool": tool})
 
-    if not mg.rle_is_valid(region.get("mask_rle")):
+    if not M.normalized_area(region.get("mask_rle")):
         return _param_refusal(
             ctx, step, started_at,
             "the drawing did not rasterize to any pixels — a ring with no interior is not an "
-            "extent")
+            "extent, and a well-formed description of nothing is still nothing")
 
     out = AdapterOutput(
         instances=({"instance_id": region["id"], "mask_rle": region["mask_rle"],
@@ -559,6 +559,21 @@ def _draw(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[An
     return _finish(step, ctx, out, searched="the boundary the person drew by hand",
                    adapter_key=None, producer_kind=ProducerKind.HUMAN, started_at=started_at,
                    invoked=False, ref_refusals=ref_refusals)
+
+
+def _unresolved(ctx: ExtentContext, step: ResolvedStep, started_at: str,
+                ref_refusals: Tuple[RefusalRecord, ...]) -> ExtentResult:
+    """A required input did not resolve, and the reason is the REFERENCE — not the parameters.
+
+    Kept apart from `_param_refusal` because "reg_9 is not in this session" and "a refinement needs
+    points" send a person to two different places, and an `invalid_parameters` wrapped around a
+    mistyped id would send them to the wrong one.
+    """
+    return ExtentResult(
+        outcome=RunOutcome.REFUSED, refusals=ref_refusals,
+        stage_attempt=_stage(ctx, step, state=StageState.REFUSED, adapter=None, invoked=False,
+                             started_at=started_at, completed_at=ctx.now(), duration_ms=None,
+                             detail="; ".join(r.message for r in ref_refusals)))
 
 
 def _param_refusal(ctx: ExtentContext, step: ResolvedStep, started_at: str,
@@ -870,6 +885,8 @@ def _refine(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[
     Doing it this way makes `add` and `subtract` checkable claims about two masks rather than
     hints whose effect depends on how the model felt about the points.
     """
+    if ref_refusals and not resolved.get("base"):
+        return _unresolved(ctx, step, started_at, ref_refusals)
     base_artifact, base_instance, why = _single_instance(step, ctx, resolved, "base")
     if why is not None:
         return _param_refusal(ctx, step, started_at, why)
@@ -910,7 +927,10 @@ def _refine(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[
             ctx, step, started_at,
             "the base mask and the refiner's mask are on different rasters, and the lab does not "
             "resample one to meet the other — a resampled refinement is a mask of neither")
-    if not mg.rle_is_valid(combined):
+    # AREA, not validity. `rle_is_valid` is happy with an all-zero mask — it is a well-formed
+    # description of nothing — so a `subtract` that removed everything would sail through a
+    # validity check and arrive as an extent with no extent.
+    if not M.normalized_area(combined):
         return _param_refusal(ctx, step, started_at,
                               f"{mode!r} left no pixels — a refinement that erases the extent is "
                               f"a rejection, not a revision")
@@ -998,13 +1018,10 @@ def _reuse(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[A
     """
     entries = resolved.get("regions") or []
     if not entries:
-        completed_at = ctx.now()
-        return ExtentResult(
-            outcome=RunOutcome.REFUSED, refusals=ref_refusals,
-            stage_attempt=_stage(ctx, step, state=StageState.REFUSED, adapter="canonical_region",
-                                 invoked=False, started_at=started_at, completed_at=completed_at,
-                                 duration_ms=None,
-                                 detail="no reference resolved to a region held in this session"))
+        if ref_refusals:
+            return _unresolved(ctx, step, started_at, ref_refusals)
+        return _param_refusal(ctx, step, started_at,
+                              "no reference resolved to a region held in this session")
 
     instances: List[Dict[str, Any]] = []
     bases: List[Tuple[EpistemicBasis, EpistemicStatus, str]] = []
@@ -1081,6 +1098,8 @@ def _compare(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List
     """
     left_entry = (resolved.get("left") or [None])[0]
     right_entry = (resolved.get("right") or [None])[0]
+    if ref_refusals and (left_entry is None or right_entry is None):
+        return _unresolved(ctx, step, started_at, ref_refusals)
     if left_entry is None or right_entry is None:
         return _param_refusal(ctx, step, started_at,
                               "a comparison needs both a left and a right extent set")

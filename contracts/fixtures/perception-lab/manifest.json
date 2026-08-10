@@ -35,7 +35,8 @@
       "run.live-partial.json",
       "run.live-failed.json",
       "run.fixture-topology.json",
-      "run.replay-extent.json"
+      "run.replay-extent.json",
+      "run.live-extent-lane-b.json"
     ],
     "PerceptualArtifact": [
       "artifact.extent-set.json",
@@ -44,7 +45,8 @@
       "artifact.topology-relation-set.json",
       "artifact.topology-relation-set-box-basis.json",
       "artifact.negative-space-field.json",
-      "artifact.refusal-missing-depth.json"
+      "artifact.refusal-missing-depth.json",
+      "artifact.extent-set-lane-b.json"
     ],
     "LabReview": [
       "review.correct.json",
