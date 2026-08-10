@@ -1,0 +1,117 @@
+{
+  "identity": {
+    "artifact_id": "art_run_lane_b_step_find_all",
+    "session_id": "labs_extent_1",
+    "run_id": "run_lane_b",
+    "step_id": "step_find_all",
+    "organ_family": "extent",
+    "artifact_kind": "extent_set",
+    "operation": "extent.find_all",
+    "identity_scope": "session",
+    "identity_refs": [],
+    "input_refs": [],
+    "derived_from": []
+  },
+  "measurement": {
+    "payload_variant": "extent_set",
+    "payload": {
+      "variant": "extent_set",
+      "searched": "every separable instance",
+      "instances": [
+        {
+          "instance_id": "ext_run_lane_b_step_find_all_00",
+          "mask_rle": {
+            "size": [
+              4,
+              4
+            ],
+            "counts": [
+              0,
+              8,
+              8
+            ]
+          },
+          "box": {
+            "x": 0.0,
+            "y": 0.0,
+            "w": 0.5,
+            "h": 1.0
+          },
+          "area": 0.5,
+          "confidence": 0.91,
+          "naming": {
+            "text": "finial",
+            "source": "adapter",
+            "epistemic_status": "interpretive",
+            "confidence": 0.91
+          },
+          "region_id": null,
+          "geometry_rev": null
+        },
+        {
+          "instance_id": "ext_run_lane_b_step_find_all_01",
+          "mask_rle": {
+            "size": [
+              4,
+              4
+            ],
+            "counts": [
+              8,
+              8
+            ]
+          },
+          "box": {
+            "x": 0.5,
+            "y": 0.0,
+            "w": 0.5,
+            "h": 1.0
+          },
+          "area": 0.5,
+          "confidence": 0.34,
+          "naming": null,
+          "region_id": null,
+          "geometry_rev": null
+        }
+      ],
+      "dropped_below_min_area": null,
+      "duplicates": [],
+      "comparison": null
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "measured",
+    "epistemic_basis": "mask",
+    "basis_detail": "fake per-pixel masks"
+  },
+  "projection": {
+    "projection_kind": "mask_fill",
+    "hints": {
+      "opacity": 0.35,
+      "palette_role": "figure"
+    }
+  },
+  "interpretation": {
+    "label": "finial",
+    "label_source": "adapter",
+    "epistemic_status": "interpretive",
+    "notes": "1 of 2 extents came back below the naming floor and stay unnamed. The geometry is kept: a doubtful word is not a reason to discard a measured mask."
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "changed_at": "2026-08-11T11:02:00.000+00:00",
+    "changed_by": "perception_lab"
+  },
+  "provenance": {
+    "producer_kind": "adapter",
+    "producer": "extent_facade",
+    "adapter": "yolo_sam2_auto",
+    "model": "fake-model",
+    "revision": "fake-rev",
+    "source_image_digest": "sha256:9f1c0a5b7d2e4438",
+    "started_at": "2026-08-11T11:01:00.000+00:00",
+    "completed_at": "2026-08-11T11:02:00.000+00:00",
+    "duration_ms": 7,
+    "device": "cpu",
+    "peak_memory_mb": null
+  }
+}
