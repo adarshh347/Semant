@@ -20,6 +20,7 @@ that is what the live gate is for, and this suite says so rather than standing i
 """
 from __future__ import annotations
 
+import asyncio
 import threading
 import time
 from unittest import mock
@@ -485,6 +486,60 @@ def test_progress_reaches_the_store_while_the_stage_is_still_inside_its_call(wir
     # And the durable record still carries everything, not just what the tap flushed: the ledger
     # and the tap are fed together rather than as alternatives.
     assert len(_stage(settled, "compiler")["substages"]) > len(compiler["substages"])
+
+
+def test_a_progress_write_that_loses_its_acknowledgement_cannot_cost_a_stage_its_result(wired):
+    """The defect the first live fold rehearsal found, at the cost of a twenty-minute compilation.
+
+    Atlas dropped this driver's connection mid-write, twice. A progress flush's write therefore
+    LANDED and its acknowledgement did not, so the live tap went on believing a checkpoint it no
+    longer held — and every later compare-and-set of its own was refused, the terminal one
+    included. The council's graph was discarded and the session sat at `compiler · started` for
+    good, with `SessionWriteFailed` saying "something else advanced it first". Something else was
+    the driver's own progress tap.
+
+    Reproduced rather than described: one flush applies its write and then raises as a dropped
+    connection does. The assertion is that the compilation SURVIVED — the driver holds the lease,
+    so a refused write can only be its own tap, and re-reading is the honest repair rather than a
+    second writer being tolerated.
+    """
+    client, _, sessions = wired(FOLD)
+
+    real_update = sessions.update_one
+    armed, dropped = [], []
+
+    async def loses_one_ack(query, update, upsert=False):
+        result = await real_update(query, update, upsert=upsert)
+        # The write is applied FIRST, then the reply is lost. A failure before the write would have
+        # been no failure at all; THIS is the shape that desynchronises a caller from the truth.
+        if armed and not dropped and "session.checkpoint" in query:
+            dropped.append(query["session.checkpoint"])
+            raise ConnectionError("connection closed")
+        return result
+
+    sessions.update_one = loses_one_ack
+
+    real_compile = DissolutionCompiler.compile
+
+    def reports_on_the_way_in(self, request, *, on_substage=None):
+        # Armed only once the compiler is inside its call, so the write that loses its reply is a
+        # PROGRESS flush rather than one of the driver's own.
+        armed.append(True)
+        if on_substage is not None:
+            on_substage("the council is starting", outcome="started")
+        return real_compile(self, request, on_substage=on_substage)
+
+    with client:
+        with mock.patch.object(DissolutionCompiler, "compile", reports_on_the_way_in):
+            settled = _settled(client, _start(client, FOLD, mode="auto"))
+
+    assert dropped, "no write lost its acknowledgement, so nothing was under test"
+    compiler = _stage(settled, "compiler")
+    assert compiler["outcome"] == "completed", compiler["outcome"]
+    assert settled["state"] in _BOUNDARIES, settled["state"]
+    # and the graph the council spent the whole stage building is in the document
+    assert settled["graph"]["semantic_atoms"], "the compilation was written and then lost"
+    assert settled["graph"]["passes"]
 
 
 def test_the_stage_stream_reports_every_stage_the_chain_entered(wired):
