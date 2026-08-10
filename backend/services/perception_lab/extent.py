@@ -684,6 +684,7 @@ def _finish(step: ResolvedStep, ctx: ExtentContext, out: AdapterOutput, *, searc
             derived_from: Sequence[str] = (),
             identity_scope: IdentityScope = IdentityScope.SESSION,
             comparison: Optional[ExtentComparison] = None,
+            duplicates_override: Optional[Sequence[ExtentDuplicate]] = None,
             dropped: Optional[int] = None, capped: int = 0) -> ExtentResult:
     """Measured output → artifact, duplicates, receipt, outcome.
 
@@ -696,7 +697,13 @@ def _finish(step: ResolvedStep, ctx: ExtentContext, out: AdapterOutput, *, searc
     missing input behind a result that looks complete.
     """
     completed_at = ctx.now()
-    duplicates = [ExtentDuplicate(**row) for row in M.duplicate_pairs(out.instances, DUPLICATE_IOU)]
+    # `extent.compare` computes duplicates per SIDE and prefixes their ids, so it supplies its own
+    # list; every other operation has one set and finds them here. Running the default over a
+    # comparison's union would report every correspondence as a duplicate, which is the opposite
+    # of what it means.
+    duplicates = (list(duplicates_override) if duplicates_override is not None else
+                  [ExtentDuplicate(**row) for row in M.duplicate_pairs(out.instances,
+                                                                       DUPLICATE_IOU)])
     artifact = _build_artifact(
         ctx, step, out, searched=searched, adapter_key=adapter_key,
         producer_kind=producer_kind, started_at=started_at, completed_at=completed_at,
@@ -1040,6 +1047,133 @@ def _reuse(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[A
         identity_scope=IdentityScope.CANONICAL)
 
 
+def _as_mapping(instance: ExtentInstance) -> Dict[str, Any]:
+    """An `ExtentInstance` as the plain mapping `extent_metrics` reads. One conversion, one place."""
+    return {"instance_id": instance.instance_id, "mask_rle": instance.mask_rle,
+            "box": instance.box.model_dump() if instance.box is not None else None,
+            "area": instance.area, "confidence": instance.confidence,
+            "region_id": instance.region_id, "geometry_rev": instance.geometry_rev,
+            "naming": _carry_naming(instance)}
+
+
+def _compare(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[Any]],
+             ref_refusals: Tuple[RefusalRecord, ...], started_at: str) -> ExtentResult:
+    """`extent.compare` — did those two runs see the same thing?
+
+    WHAT THE ARTIFACT CARRIES, and why it is shaped this way. The measurement is the
+    CORRESPONDENCE — which extent on the left is which extent on the right, and how much they
+    agree — plus what only one side saw. The artifact's own `instances` are the union of both
+    sets, prefixed `L:` and `R:`, so a renderer has the geometry for an A/B overlay without
+    re-fetching the inputs; the correspondence rows name the INPUTS' own instance ids, because
+    those are the identities the left and right artifacts actually hold.
+
+    MASKS ONLY, and this is a real limit rather than a shortcut. The contract declares
+    `allowed_bases: ["mask"]` for this operation, and it is right to: an IoU between a box and a
+    mask is a number about neither, and a box-versus-box agreement of 0.9 next to a per-pixel one
+    of 0.9 would invite exactly the reading `epistemics.SUBSTRATE_CEILING` exists to prevent. A set
+    carrying a box-only extent is refused, by name, with what to do instead. That means the
+    box-basis Grounded-SAM detector cannot currently be A/B'd against SAM 3 — see the lane report.
+
+    NO SUMMARY NUMBER IS STORED. Mean agreement, "identical", "stable across a repeat" — all of
+    them are derivable from the correspondence rows, and all of them are READINGS. They are
+    offered as functions below, computed by whoever displays them, rather than frozen into the
+    measurement where a later change of definition would silently rewrite history.
+    """
+    left_entry = (resolved.get("left") or [None])[0]
+    right_entry = (resolved.get("right") or [None])[0]
+    if left_entry is None or right_entry is None:
+        return _param_refusal(ctx, step, started_at,
+                              "a comparison needs both a left and a right extent set")
+    left_artifact = left_entry[1]
+    right_artifact = right_entry[1]
+
+    left = [_as_mapping(i) for i in left_artifact.measurement.payload.instances]
+    right = [_as_mapping(i) for i in right_artifact.measurement.payload.instances]
+
+    unmasked = [i["instance_id"] for i in (left + right) if not mg.rle_is_valid(i["mask_rle"])]
+    if unmasked:
+        return _param_refusal(
+            ctx, step, started_at,
+            f"comparison is exact mask arithmetic and {len(unmasked)} extent(s) carry no mask "
+            f"({', '.join(unmasked[:4])}). An agreement between a box and a mask is a number "
+            f"about neither — compare sets from mask-producing adapters")
+
+    threshold = step.parameters.get("iou_threshold")
+    threshold = float(threshold) if isinstance(threshold, (int, float)) else DEFAULT_IOU_THRESHOLD
+    matched = M.greedy_correspondence(left, right, threshold)
+
+    comparison = ExtentComparison(
+        left_artifact_id=left_artifact.identity.artifact_id,
+        right_artifact_id=right_artifact.identity.artifact_id,
+        iou_threshold_used=threshold,
+        correspondences=[ExtentCorrespondence(**row) for row in matched["correspondences"]],
+        only_in_left=matched["only_in_left"], only_in_right=matched["only_in_right"])
+
+    union: List[Dict[str, Any]] = []
+    for side, rows in (("L", left), ("R", right)):
+        for raw in rows:
+            union.append({**raw, "instance_id": f"{side}:{raw['instance_id']}"})
+    duplicates = [ExtentDuplicate(instance_ids=[f"{side}:{a}" for a in row["instance_ids"]],
+                                  iou=row["iou"])
+                  for side, rows in (("L", left), ("R", right))
+                  for row in M.duplicate_pairs(rows, DUPLICATE_IOU)]
+
+    ious = [row["iou"] for row in matched["correspondences"]]
+    identical = (not matched["only_in_left"] and not matched["only_in_right"]
+                 and bool(ious) and all(v >= 1.0 for v in ious))
+    changed = [row for row in matched["correspondences"] if row["iou"] < 1.0]
+    detail = (f"{len(matched['correspondences'])} matched at IoU ≥ {threshold}; "
+              f"{len(matched['only_in_left'])} only on the left, "
+              f"{len(matched['only_in_right'])} only on the right; "
+              f"{len(changed)} matched pair(s) differ in geometry"
+              + ("; the two sets are identical" if identical else ""))
+
+    out = AdapterOutput(
+        instances=tuple(union), basis=EpistemicBasis.MASK, status=EpistemicStatus.MEASURED,
+        basis_detail="per-pixel intersection over union on a shared raster",
+        model=None, revision=None, device=None, duration_ms=None, detail=detail)
+
+    return _finish(
+        step, ctx, out,
+        searched=(f"the union of {left_artifact.identity.artifact_id} and "
+                  f"{right_artifact.identity.artifact_id}"),
+        adapter_key="lab_compare", producer_kind=ProducerKind.ADAPTER, started_at=started_at,
+        invoked=False, ref_refusals=ref_refusals, input_refs=list(step.input_refs),
+        derived_from=[left_artifact.identity.artifact_id, right_artifact.identity.artifact_id],
+        comparison=comparison, duplicates_override=duplicates)
+
+
+# ── readings over a comparison, computed rather than stored ──────────────────
+
+
+def mean_agreement(comparison: ExtentComparison) -> Optional[float]:
+    """Mean IoU across matched pairs, or None when nothing matched.
+
+    None rather than 0.0. Two sets with no correspondence at all did not agree badly — they did not
+    agree about anything, and a 0.0 in a column of averages reads as a measurement of disagreement.
+    """
+    values = [c.iou for c in comparison.correspondences]
+    return sum(values) / len(values) if values else None
+
+
+def is_identical(comparison: ExtentComparison) -> bool:
+    """Did the two sets see exactly the same extents, pixel for pixel?
+
+    This is the repeat-stability question. Run the same operation twice on the same image with the
+    same adapter and compare the results: `True` means the producer is deterministic on this
+    input, and `False` with a high `mean_agreement` means it is stable but not deterministic —
+    two different findings that a single "stability score" would blur.
+    """
+    return (not comparison.only_in_left and not comparison.only_in_right
+            and bool(comparison.correspondences)
+            and all(c.iou >= 1.0 for c in comparison.correspondences))
+
+
+def changed_geometry(comparison: ExtentComparison) -> List[ExtentCorrespondence]:
+    """Matched pairs whose masks are not identical — the same extent, drawn differently."""
+    return [c for c in comparison.correspondences if c.iou < 1.0]
+
+
 # ── the real adapters ────────────────────────────────────────────────────────
 
 
@@ -1370,6 +1504,7 @@ _HANDLERS: Dict[str, Callable[..., ExtentResult]] = {
     "extent.refine": _refine,
     "extent.draw": _draw,
     "extent.reuse": _reuse,
+    "extent.compare": _compare,
 }
 
 
@@ -1398,5 +1533,6 @@ __all__ = [
     "ORGAN", "DEFAULT_IOU_THRESHOLD", "DUPLICATE_IOU", "DEFAULT_MAX_INSTANCES", "NAMING_FLOOR",
     "ExtentContext", "ExtentResult", "AdapterOutput", "ExtentAdapter", "AdapterUnavailable",
     "Sam2AutoAdapter", "Sam3ConceptAdapter", "GroundedSamAdapter",
-    "run", "instance_id", "capability_of", "default_adapters",
+    "Sam2RefineAdapter", "run", "instance_id", "capability_of", "default_adapters",
+    "mean_agreement", "is_identical", "changed_geometry",
 ]
