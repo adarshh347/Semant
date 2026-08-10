@@ -1,0 +1,714 @@
+/* PERCEPTUAL-ORGANS-002 Lane E — the Perception Lab, styled on the app's tokens.
+ *
+ * Every colour, space, radius and type size here is a `var(--…)` from `src/index.css`. No hex, no
+ * new global token, nothing outside `.pl`. Dark mode needs no separate block: the tokens already
+ * swap under `[data-theme='dark']`, so anything written in tokens is already correct in both. The
+ * few places that need a colour the palette does not name use `color-mix(in srgb, var(--…) …)`,
+ * which follows the theme for the same reason.
+ *
+ * ── THE ONE RULE THIS SHEET EXISTS TO ENFORCE ───────────────────────────────
+ *
+ * SIX AXES, SIX TREATMENTS. Execution identity, run outcome, epistemic status, basis, lifecycle
+ * and review verdict are six different facts, and a person must never learn one by looking at
+ * another. So each has its own chip class and its own `data-` attribute, and no two share a
+ * treatment:
+ *
+ *     execution   a hard mono badge, letter-spaced        .pl-exec[data-id]
+ *     outcome     a left rule in a state colour           .pl-outcome[data-outcome]
+ *     epistemic   ink weight — only `measured` gets ink   .pl-epi[data-status]
+ *     basis       mono, dashed where the ceiling bites    .pl-basis[data-basis]
+ *     lifecycle   an outlined pill, never filled          .pl-life[data-status]
+ *     verdict     a bracketed human mark                  .pl-verdict[data-verdict]
+ *
+ * The strongest claim also looks strongest, never the reverse: `measured` gets full ink, `box`
+ * gets a dashed rule, a refusal is legible rather than alarming. A red refusal would teach people
+ * to avoid the state the laboratory exists to show them.
+ *
+ * ── RESPONSIVE ─────────────────────────────────────────────────────────────
+ *
+ * The lab responds to the width of its own container, not the window, because Lane F will mount
+ * it in a route that may itself be inside a pane. `data-w` is set by `useContainerWidth` and the
+ * layout keys off that attribute — so the harness can prove 1100 / 720 / 430 / 320 without
+ * resizing a browser.
+ */
+
+.pl {
+    --pl-gap: var(--space-4);
+    --pl-rail: 232px;
+    --pl-inspector: 320px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+    color: var(--ink);
+    background: var(--bg);
+    font-family: var(--font-sans);
+    font-size: var(--fs-small);
+    line-height: 1.5;
+    container-type: inline-size;
+}
+
+/* ── the identity bar ─────────────────────────────────────────────────────── */
+
+.pl-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 4;
+}
+
+.pl-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-h3);
+    letter-spacing: var(--tracking-tight);
+    margin: 0;
+}
+
+.pl-kicker {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+}
+
+.pl-bar-spacer { flex: 1 1 auto; }
+
+.pl-bar-note {
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    max-width: 42ch;
+}
+
+/* ── layout ───────────────────────────────────────────────────────────────── */
+
+.pl-body {
+    display: grid;
+    grid-template-columns: var(--pl-rail) minmax(0, 1fr) var(--pl-inspector);
+    gap: var(--pl-gap);
+    padding: var(--pl-gap);
+    align-items: start;
+}
+
+.pl[data-w='mid'] .pl-body { grid-template-columns: var(--pl-rail) minmax(0, 1fr); }
+.pl[data-w='narrow'] .pl-body,
+.pl[data-w='tight'] .pl-body { grid-template-columns: minmax(0, 1fr); }
+.pl[data-w='tight'] { --pl-gap: var(--space-2); }
+
+/* Narrow order: organ and mode identity, stage, controls, inspector, history.
+   `order` on the same DOM keeps one reading order for the keyboard AND one source of truth. */
+.pl[data-w='mid'] .pl-inspector,
+.pl[data-w='narrow'] .pl-inspector,
+.pl[data-w='tight'] .pl-inspector { grid-column: 1 / -1; order: 4; }
+.pl[data-w='narrow'] .pl-rail,
+.pl[data-w='tight'] .pl-rail { order: 1; }
+.pl[data-w='narrow'] .pl-main,
+.pl[data-w='tight'] .pl-main { order: 2; }
+
+.pl-rail,
+.pl-main,
+.pl-inspector {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pl-gap);
+    min-width: 0;
+}
+
+.pl-panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+}
+
+.pl-panel-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.pl-panel-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-small);
+    font-weight: 600;
+    margin: 0;
+}
+
+.pl-panel-sub {
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+    margin: 0 0 var(--space-2);
+}
+
+/* ── the six axes ─────────────────────────────────────────────────────────── */
+
+.pl-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    line-height: 1.4;
+    padding: 1px var(--space-2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line-strong);
+    color: var(--ink-muted);
+    white-space: nowrap;
+}
+
+/* execution identity — the hardest mark on the page, because it answers "is this real?" */
+.pl-exec {
+    letter-spacing: var(--tracking-wide);
+    font-weight: 600;
+    border-width: 2px;
+}
+.pl-exec[data-id='LIVE'] { color: var(--ink); border-color: var(--ink); background: var(--surface); }
+.pl-exec[data-id='REPLAY'] { color: var(--ink-muted); border-style: dashed; }
+.pl-exec[data-id='FIXTURE'] {
+    color: var(--ink-muted);
+    border-style: dotted;
+    background: repeating-linear-gradient(135deg,
+        transparent 0 6px, color-mix(in srgb, var(--ink) 6%, transparent) 6px 8px);
+}
+
+/* run outcome — a left rule, so it reads as a status of the block it opens */
+.pl-outcome {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-left: 3px solid var(--line-strong);
+    background: var(--surface-2);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.pl-outcome[data-outcome='ready'] { border-left-color: var(--accent); }
+.pl-outcome[data-outcome='empty'] { border-left-color: var(--ink-subtle); border-left-style: dashed; }
+.pl-outcome[data-outcome='unavailable'] { border-left-color: var(--indigo); border-left-style: dotted; }
+.pl-outcome[data-outcome='refused'] { border-left-color: var(--mulberry); }
+.pl-outcome[data-outcome='partial'] { border-left-color: var(--clay); border-left-style: double; border-left-width: 4px; }
+.pl-outcome[data-outcome='failed'] { border-left-color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, var(--surface-2)); }
+
+.pl-outcome-name { font-weight: 600; }
+.pl-outcome-hint { color: var(--ink-muted); font-size: var(--fs-caption); }
+
+/* epistemic status — ink weight. Only `measured` gets full ink. */
+.pl-epi[data-status='measured'] { color: var(--ink); border-color: var(--ink); font-weight: 600; }
+.pl-epi[data-status='visible'] { color: var(--ink-muted); border-color: var(--ink-muted); }
+.pl-epi[data-status='interpretive'] { color: var(--ink-muted); border-style: dashed; }
+.pl-epi[data-status='uncertain'] { color: var(--ink-subtle); border-style: dotted; }
+
+/* basis — mono, dashed where the ceiling bites */
+.pl-basis[data-basis='mask'] { color: var(--ink); }
+.pl-basis[data-basis='box'] { border-style: dashed; color: var(--ink-muted); }
+.pl-basis[data-basis='manual'] { border-style: solid; color: var(--plum); border-color: var(--plum); }
+.pl-basis[data-basis='declared'] { border-style: dotted; }
+.pl-basis[data-basis='depth_artifact'] { border-style: double; border-width: 3px; }
+
+/* lifecycle — an outlined pill, and there is no filled variant to reach for */
+.pl-life {
+    border-radius: var(--radius-pill);
+    background: none;
+    text-transform: lowercase;
+}
+.pl-life[data-status='kept'] { border-color: var(--ink); color: var(--ink); }
+.pl-life[data-status='rejected'] { text-decoration: line-through; }
+.pl-life[data-status='promoted'] { border-color: var(--accent); color: var(--accent); }
+
+/* review verdict — a human mark, bracketed, in the serif so it does not read as machine output */
+.pl-verdict {
+    font-family: var(--font-display);
+    font-style: italic;
+    border: none;
+    color: var(--ink);
+    padding: 0;
+}
+.pl-verdict::before { content: '[ '; color: var(--ink-subtle); }
+.pl-verdict::after { content: ' ]'; color: var(--ink-subtle); }
+.pl-verdict[data-verdict='wrong'] { color: var(--mulberry); }
+.pl-verdict[data-verdict='unclear'] { color: var(--ink-subtle); }
+
+/* capability */
+.pl-cap[data-state='available'] { color: var(--ink); }
+.pl-cap[data-state='unavailable'] { border-style: dotted; color: var(--ink-subtle); }
+.pl-cap[data-state='deferred'] { border-style: dashed; }
+
+/* identity scope — session vs canonical is a distinction with consequences */
+.pl-scope[data-scope='canonical'] { border-color: var(--accent); color: var(--accent); }
+.pl-scope[data-scope='session'] { border-style: dashed; }
+
+/* a projection the browser drew, never the measurement */
+.pl-derived {
+    border-style: dashed;
+    color: var(--ink-subtle);
+    font-style: italic;
+}
+
+.pl-chiprow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    align-items: center;
+}
+
+/* ── buttons ──────────────────────────────────────────────────────────────── */
+
+.pl-btn {
+    font: inherit;
+    font-size: var(--fs-caption);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    transition: transform 120ms var(--ease), background 120ms var(--ease),
+        border-color 120ms var(--ease);
+}
+.pl-btn:hover:not(:disabled) { background: var(--surface-hover); transform: translateY(-1px); }
+.pl-btn:active:not(:disabled) { transform: translateY(0); }
+.pl-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pl-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.pl-btn[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+.pl-btn--primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+}
+.pl-btn--primary:hover:not(:disabled) { background: var(--accent-deep); }
+
+.pl-btn--quiet { border-color: transparent; background: none; color: var(--ink-muted); }
+.pl-btn--quiet:hover:not(:disabled) { background: var(--surface-2); }
+
+.pl-btnrow { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.pl-input,
+.pl-textarea,
+.pl-select {
+    font: inherit;
+    font-size: var(--fs-caption);
+    width: 100%;
+    padding: var(--space-2);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink);
+}
+.pl-input:focus-visible,
+.pl-textarea:focus-visible,
+.pl-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.pl-label {
+    display: block;
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    margin-bottom: var(--space-1);
+}
+
+.pl-field { margin-bottom: var(--space-2); }
+
+/* ── the source rail ──────────────────────────────────────────────────────── */
+
+.pl-sources { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+
+.pl-source {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: var(--space-2);
+    align-items: center;
+    width: 100%;
+    text-align: left;
+    padding: var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+.pl-source:hover { background: var(--surface-hover); }
+.pl-source:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pl-source[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); }
+.pl-source img {
+    width: 56px;
+    height: 42px;
+    object-fit: contain;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+}
+.pl-source-title { display: block; font-size: var(--fs-caption); font-weight: 600; }
+.pl-source-note { display: block; font-size: var(--fs-caption); color: var(--ink-subtle); }
+
+.pl-upload { margin-top: var(--space-3); }
+.pl-error {
+    margin: var(--space-2) 0 0;
+    padding: var(--space-2);
+    border: 1px dashed var(--mulberry);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    font-size: var(--fs-caption);
+}
+
+/* ── the organ catalogue ──────────────────────────────────────────────────── */
+
+.pl-organs { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+
+.pl-organ {
+    display: grid;
+    gap: 2px;
+    width: 100%;
+    text-align: left;
+    padding: var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+.pl-organ:hover:not(:disabled) { background: var(--surface-hover); }
+.pl-organ:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pl-organ[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); }
+.pl-organ:disabled {
+    cursor: not-allowed;
+    opacity: 1;                       /* the disabled six are readable, not greyed into invisibility */
+    background: none;
+    border-style: dashed;
+    color: var(--ink-subtle);
+}
+.pl-organ-name { font-weight: 600; font-size: var(--fs-caption); text-transform: capitalize; }
+.pl-organ-q { font-size: var(--fs-caption); color: var(--ink-muted); }
+.pl-organ-off { font-size: var(--fs-caption); color: var(--ink-subtle); font-style: italic; }
+
+/* ── the mode switches ────────────────────────────────────────────────────── */
+
+.pl-modes { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.pl-modegroup { display: flex; flex-direction: column; gap: var(--space-1); }
+.pl-modegroup-label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+}
+.pl-segmented { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius-pill); overflow: hidden; }
+.pl-segmented .pl-btn { border: none; border-radius: 0; }
+.pl-segmented .pl-btn + .pl-btn { border-left: 1px solid var(--line-strong); }
+
+/* ── the stage ────────────────────────────────────────────────────────────── */
+
+.pl-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    touch-action: none;
+}
+.pl-stage img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+.pl-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+.pl-svg--passive { pointer-events: none; }
+
+/* Shapes are drawn by RegionOverlay; these two-class rules win wherever RegionSurface.css is
+   also loaded, exactly as `proposalMasks.css` does it. */
+.pl-svg .rs-shape {
+    fill: color-mix(in srgb, var(--accent) 22%, transparent);
+    stroke: var(--accent);
+    stroke-width: 2;
+    cursor: pointer;
+}
+.pl-svg .rs-shape.is-dim {
+    fill: color-mix(in srgb, var(--ink) 6%, transparent);
+    stroke: color-mix(in srgb, var(--ink) 45%, transparent);
+    stroke-width: 1.25;
+}
+.pl-svg .rs-shape.is-lit { stroke-width: 3; }
+.pl-svg .rs-shape:focus-visible { outline: none; stroke: var(--accent-deep); stroke-width: 4; }
+
+/* An outline view is an outline view — no fill, so the picture underneath stays readable. */
+.pl-stage[data-view='outline'] .pl-svg .rs-shape { fill: none; }
+/* Isolation dims everything that is not the focus, including the picture. */
+.pl-stage[data-view='focus'] .pl-svg .rs-shape.is-dim { opacity: 0.25; }
+
+/* A drawn extent must never look segmented. `RegionOverlay` emits `rs-shape--${viewMap}`, which
+   is how the BASIS reaches the stylesheet: one overlay per basis, so a box can never be drawn
+   with a mask's confident edge. The view mode rides `data-view` on the stage instead, so the two
+   never compete for the same string. */
+.pl-svg .rs-shape--manual {
+    stroke-dasharray: 2 3;
+    stroke: var(--plum);
+    fill: color-mix(in srgb, var(--plum) 18%, transparent);
+}
+/* A box basis is dashed, everywhere, always. */
+.pl-svg .rs-shape--box,
+.pl-layer[data-basis='box'] { stroke-dasharray: 7 5; }
+
+/* A hand-drawn trace, before it is anything at all. */
+.pl-freehand {
+    fill: none;
+    stroke: var(--plum);
+    stroke-width: 2;
+    stroke-dasharray: 4 3;
+    stroke-linejoin: round;
+}
+
+/* The tool decides what the pointer means, so it decides what the cursor says. */
+.pl-stage.tool-point,
+.pl-stage.tool-box,
+.pl-stage.tool-freehand { cursor: crosshair; }
+.pl-stage.tool-point img,
+.pl-stage.tool-box img,
+.pl-stage.tool-freehand img { pointer-events: none; }
+
+/* derived projections — the browser's drawing of a measurement, never the measurement */
+.pl-layer[data-derived='true'] { stroke-dasharray: 4 3; }
+.pl-layer { pointer-events: auto; cursor: pointer; }
+.pl-layer[data-focused='false'] { opacity: 0.45; }
+/* A relation whose endpoint has moved is drawn faintly and hatched: still on the image, because
+   removing it would hide the finding, and never at full strength, because the number describes a
+   boundary that is not the one under it. */
+.pl-layer[data-stale='true'] { opacity: 0.5; stroke-dasharray: 2 4; }
+.pl-band { fill: color-mix(in srgb, var(--clay) 45%, transparent); stroke: var(--clay); stroke-width: 1.5; }
+.pl-intersection { fill: color-mix(in srgb, var(--amethyst) 50%, transparent); stroke: var(--amethyst); stroke-width: 1.5; }
+.pl-endpoint-line { stroke: var(--ink); stroke-width: 2; fill: none; }
+.pl-endpoint-dot { fill: var(--ink); }
+.pl-endpoint-label {
+    font-family: var(--font-mono);
+    fill: var(--ink);
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-width: 3;
+}
+.pl-wash-cell { stroke: none; }
+.pl-before { fill: none; stroke: var(--ink-subtle); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.pl-after { fill: color-mix(in srgb, var(--accent) 20%, transparent); stroke: var(--accent); stroke-width: 2; }
+.pl-a-side { fill: color-mix(in srgb, var(--indigo) 28%, transparent); stroke: var(--indigo); }
+.pl-b-side { fill: color-mix(in srgb, var(--clay) 28%, transparent); stroke: var(--clay); }
+.pl-point { stroke-width: 2; }
+.pl-point.is-pos { fill: none; stroke: var(--accent); }
+.pl-point.is-neg { fill: none; stroke: var(--mulberry); }
+.pl-boxprompt { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
+
+.pl-stage-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+}
+.pl-swatch {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+    border: 2px solid var(--line-strong);
+    vertical-align: -1px;
+    margin-right: var(--space-1);
+}
+.pl-swatch--band { background: color-mix(in srgb, var(--clay) 45%, transparent); border-color: var(--clay); }
+.pl-swatch--inter { background: color-mix(in srgb, var(--amethyst) 50%, transparent); border-color: var(--amethyst); }
+.pl-swatch--figure { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: var(--accent); }
+.pl-swatch--manual { background: none; border-color: var(--plum); border-style: dashed; }
+
+/* ── plan, stream, tables ─────────────────────────────────────────────────── */
+
+.pl-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+
+.pl-step {
+    display: grid;
+    gap: 2px;
+    padding: var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+}
+.pl-step[data-role='proposed'] { border-style: dashed; background: none; }
+.pl-step[data-role='refused'] { border-color: var(--mulberry); background: none; }
+.pl-step-op { font-family: var(--font-mono); font-size: var(--fs-caption); }
+.pl-step-why { font-size: var(--fs-caption); color: var(--ink-muted); }
+
+.pl-kv {
+    display: grid;
+    grid-template-columns: minmax(7em, auto) minmax(0, 1fr);
+    gap: 2px var(--space-2);
+    margin: 0;
+    font-size: var(--fs-caption);
+}
+.pl-kv dt { color: var(--ink-subtle); font-family: var(--font-mono); }
+.pl-kv dd { margin: 0; overflow-wrap: anywhere; }
+
+.pl-table { width: 100%; border-collapse: collapse; font-size: var(--fs-caption); }
+.pl-table th,
+.pl-table td {
+    text-align: left;
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+.pl-table th { color: var(--ink-subtle); font-weight: 500; font-family: var(--font-mono); }
+.pl-scroll { overflow-x: auto; }
+
+.pl-empty {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-4);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    color: var(--ink-muted);
+}
+.pl-empty-title { font-family: var(--font-display); font-size: var(--fs-small); color: var(--ink); }
+.pl-empty-hint { font-size: var(--fs-caption); }
+
+.pl-refusal {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    border: 1px solid var(--mulberry);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--mulberry) 6%, transparent);
+}
+.pl-refusal-code { font-family: var(--font-mono); font-size: var(--fs-caption); font-weight: 600; }
+.pl-refusal-remedy { font-size: var(--fs-caption); color: var(--ink-muted); }
+
+.pl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+
+.pl-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: baseline;
+    width: 100%;
+    text-align: left;
+    padding: var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+.pl-row:hover { background: var(--surface-hover); }
+.pl-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pl-row[aria-pressed='true'],
+.pl-row[aria-selected='true'] { border-color: var(--accent); background: var(--accent-soft); }
+.pl-row-name { font-family: var(--font-mono); font-size: var(--fs-caption); }
+.pl-row-meta { color: var(--ink-muted); font-size: var(--fs-caption); margin-left: auto; }
+
+.pl-stale {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--clay);
+    border: 1px solid var(--clay);
+    border-radius: var(--radius-sm);
+    padding: 0 var(--space-1);
+}
+.pl-dangling {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--mulberry);
+    border: 1px dashed var(--mulberry);
+    border-radius: var(--radius-sm);
+    padding: 0 var(--space-1);
+}
+
+/* ── conversation ─────────────────────────────────────────────────────────── */
+
+.pl-turns { list-style: none; margin: 0 0 var(--space-2); padding: 0; display: grid; gap: var(--space-2); }
+.pl-turn { display: grid; gap: 2px; }
+.pl-turn-text { font-family: var(--font-display); font-size: var(--fs-small); }
+.pl-turn-meta { font-size: var(--fs-caption); color: var(--ink-subtle); font-family: var(--font-mono); }
+.pl-turn-refs { font-size: var(--fs-caption); color: var(--ink-muted); }
+
+.pl-examples { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-2); }
+
+/* ── review ───────────────────────────────────────────────────────────────── */
+
+.pl-verdicts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pl-axisnote {
+    margin: var(--space-2) 0 0;
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+    border-left: 2px solid var(--line-strong);
+    padding-left: var(--space-2);
+}
+
+/* ── the responsive harness ───────────────────────────────────────────────── */
+
+.pl-harness { padding: var(--space-4); background: var(--bg); min-height: 100vh; }
+.pl-harness-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    margin-bottom: var(--space-4);
+}
+.pl-harness-pane {
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    resize: horizontal;
+    max-width: 100%;
+}
+
+/* The four widths the build names. Here rather than inline, so the harness that proves the
+   design tokens govern the surface is not itself a pile of hardcoded values. Drag a pane past
+   one of these and the `data-w` band changes — the numbers are where the build asks, not where
+   the layout happens to work. */
+.pl-harness-pane[data-harness-width='1100'] { width: 1100px; }
+.pl-harness-pane[data-harness-width='720'] { width: 720px; }
+.pl-harness-pane[data-harness-width='430'] { width: 430px; }
+.pl-harness-pane[data-harness-width='320'] { width: 320px; }
+
+.pl-harness-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-4);
+}
+.pl-harness-figure { margin: 0; display: grid; gap: var(--space-2); }
+.pl-harness-caption { order: -1; }
+
+/* ── motion ───────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .pl-btn,
+    .pl-source,
+    .pl-organ { transition: none; }
+    .pl-btn:hover:not(:disabled) { transform: none; }
+}
+
+.pl-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
