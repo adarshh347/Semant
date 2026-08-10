@@ -152,6 +152,15 @@ _CLAUSE = re.compile(r"\s*(?:[,.;:?!]|\band\s+then\b|\bthen\b|\bso\s+that\b|\bbe
 #: made silently, because a concept the person did not say is a concept that will be searched for.
 MAX_CONCEPT_WORDS = 8
 
+#: The words that point at something already on the screen. They are never RESOLVED here — the
+#: session's declared ids do that — but noticing them is what turns "no extents were supplied"
+#: into "you said 'those two' and this session has nothing selected", which is a sentence a person
+#: can act on.
+DEMONSTRATIVES: Tuple[str, ...] = (
+    "that mask", "that one", "that region", "that extent", "those two", "those masks", "these two",
+    "these masks", "them", "those", "these", "it", "the other one", "the same",
+)
+
 #: Trailing locatives that name the image rather than the thing being looked for.
 _TAIL = re.compile(
     r"\s+\b(?:in|on|of)\s+(?:this|the)\s+"
@@ -239,6 +248,25 @@ def _concept(raw: str) -> str:
 # -- proposing ----------------------------------------------------------------
 
 
+def _unbound(prompt: str, refs: Tuple, session: SessionView, builder: StepBuilder) -> None:
+    """Say when the sentence pointed at something and the session had nothing to point at.
+
+    This adds NO resolution power whatsoever — the step still goes to the resolver with no inputs
+    and is still refused. What it adds is a reason the refusal makes sense: `missing_extent_inputs`
+    on its own reads as a complaint about the operation, and the person's actual mistake was that
+    "those two" refers to a selection they have not made.
+    """
+    if refs:
+        return
+    said = [d for d in DEMONSTRATIVES if d in prompt]
+    if not said:
+        return
+    builder.note(
+        f"the prompt said '{max(said, key=len)}' and this session has "
+        f"{len(session.artifact_ids)} declared artifact references. A demonstrative resolves "
+        f"through selected and active ids and through nothing else, so nothing was cited.")
+
+
 def _propose(op_key: str, prompt: str, session: SessionView, builder: StepBuilder,
              matched: Dict[str, str]) -> None:
     cue = matched.get(op_key, "a search verb")
@@ -259,14 +287,20 @@ def _propose(op_key: str, prompt: str, session: SessionView, builder: StepBuilde
         builder.propose(op_key, parameters={"concept": concept}, rationale=why)
 
     elif op_key == "extent.refine":
-        builder.propose(op_key, parameters={"mode": _refine_mode(prompt)},
-                        input_refs=bind_single(session, "base"), rationale=why)
+        refs = bind_single(session, "base")
+        _unbound(prompt, refs, session, builder)
+        builder.propose(op_key, parameters={"mode": _refine_mode(prompt)}, input_refs=refs,
+                        rationale=why)
 
     elif op_key == "extent.compare":
-        builder.propose(op_key, input_refs=bind_pair(session, ("left", "right")), rationale=why)
+        refs = bind_pair(session, ("left", "right"))
+        _unbound(prompt, refs, session, builder)
+        builder.propose(op_key, input_refs=refs, rationale=why)
 
     elif op_key == "topology.negative_space":
-        builder.propose(op_key, input_refs=bind_single(session, "figure"), rationale=why)
+        refs = bind_single(session, "figure")
+        _unbound(prompt, refs, session, builder)
+        builder.propose(op_key, input_refs=refs, rationale=why)
 
     elif op_key == "topology.all_pairs":
         params: Dict[str, object] = {}
@@ -275,13 +309,14 @@ def _propose(op_key: str, prompt: str, session: SessionView, builder: StepBuilde
             params["relations"] = kinds
             builder.note(f"the prompt named {', '.join(kinds)}, so the all-pairs sweep is bounded "
                          f"to those relations rather than every declared kind.")
-        builder.propose(op_key, parameters=params,
-                        input_refs=bind_many(session, "members", input_limit(op_key, "members")),
-                        rationale=why)
+        refs = bind_many(session, "members", input_limit(op_key, "members"))
+        _unbound(prompt, refs, session, builder)
+        builder.propose(op_key, parameters=params, input_refs=refs, rationale=why)
 
     else:                                    # every remaining topology operation is a pair
-        builder.propose(op_key, input_refs=bind_pair(session, ("source", "target")),
-                        rationale=why)
+        refs = bind_pair(session, ("source", "target"))
+        _unbound(prompt, refs, session, builder)
+        builder.propose(op_key, input_refs=refs, rationale=why)
 
 
 def _refine_mode(prompt: str) -> str:
