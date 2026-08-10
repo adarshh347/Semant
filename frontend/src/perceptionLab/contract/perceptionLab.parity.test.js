@@ -45,6 +45,7 @@ import {
     resolveParameters, checkOrganLock, checkInputs, checkCapability,
     consumedFields, missingConsumedFields, readPath,
     validateArtifact, validateRun, validatePlan, validateReview, validateSession,
+    validateInputRef, referenceOf, sessionKnows, declaredReferences,
 } from './perceptionLabContract';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -59,6 +60,8 @@ const MANIFEST = fixture('manifest.json');
 
 // Written by this file, read by `test_perception_lab_contracts.py`.
 const JS_RESOLVER_FIXTURE = path.join(FIXTURES, 'js-resolver.parameters.json');
+// Written by this file, read by `test_perception_lab_instance_refs.py`.
+const JS_REFS_FIXTURE = path.join(FIXTURES, 'js-instance-refs.json');
 // Written by that file, recomputed here.
 const PY_GATES_FIXTURE = path.join(FIXTURES, 'py-gates.refusals.json');
 
@@ -464,6 +467,88 @@ describe('the two-runtime loop', () => {
                'the JS resolver output has drifted from the committed fixture — regenerate with '
                + 'UPDATE_PARITY_FIXTURES=1 and check the backend suite still agrees')
             .toBe(rendered);
+    });
+
+    // ── the reference cases, at both depths ─────────────────────────────────
+    //
+    // PERCEPTUAL-ORGANS-002A2's own parity loop. The frontend emits what it thinks each of these
+    // references IS — malformed or not, declared or not, and what it is called — and
+    // `test_perception_lab_instance_refs.py` rebuilds all three answers from `InputRef`,
+    // `SessionView.knows` and `InputRef.reference`. That is the exact check whose absence was the
+    // A2 bug: the frontend wrote `instance_id` and the backend schema rejected it, and no test in
+    // either language could see the disagreement.
+    const REF_CASES = [
+        { name: 'an artifact-level ref, exactly as it read before A2',
+          ref: { role: 'base', scope: 'session', artifact_id: 'art_a', instance_id: null,
+                 region_id: null, geometry_rev: null } },
+        { name: 'a pre-A2 record with no instance_id key at all',
+          ref: { role: 'base', scope: 'session', artifact_id: 'art_a', region_id: null,
+                 geometry_rev: null } },
+        { name: 'one instance inside a declared artifact',
+          ref: { role: 'base', scope: 'session', artifact_id: 'art_a', instance_id: 'inst_2',
+                 region_id: null, geometry_rev: null } },
+        { name: 'an instance the session never declared',
+          ref: { role: 'base', scope: 'session', artifact_id: 'art_a', instance_id: 'inst_9',
+                 region_id: null, geometry_rev: null } },
+        { name: 'an instance declared under a DIFFERENT artifact',
+          ref: { role: 'base', scope: 'session', artifact_id: 'art_b', instance_id: 'inst_2',
+                 region_id: null, geometry_rev: null } },
+        { name: 'a bare instance identity', malformed: true,
+          ref: { role: 'base', scope: 'session', artifact_id: null, instance_id: 'inst_2',
+                 region_id: null, geometry_rev: null } },
+        { name: 'an instance beside a canonical region', malformed: true,
+          ref: { role: 'regions', scope: 'canonical', artifact_id: null, instance_id: 'inst_2',
+                 region_id: 'reg_7', geometry_rev: 3 } },
+        { name: 'a canonical region, which never carried an instance',
+          ref: { role: 'regions', scope: 'canonical', artifact_id: null, instance_id: null,
+                 region_id: 'reg_7', geometry_rev: 3 } },
+        { name: 'a ref naming nothing at all', malformed: true,
+          ref: { role: 'base', scope: 'session', artifact_id: null, instance_id: null,
+                 region_id: null, geometry_rev: null } },
+    ];
+
+    // What the session declared, for `sessionKnows`. `art_a#inst_2` and nothing else at instance
+    // depth — so `art_b#inst_2` is the wrong-artifact case and is refused on a matching bare id.
+    const DECLARED_SESSION = {
+        selected_artifact_ids: ['art_a', 'art_b'],
+        active_artifact_id: 'art_a',
+        active_region_ids: ['reg_7'],
+        selected_instance_refs: [{ artifact_id: 'art_a', instance_id: 'inst_2' }],
+    };
+
+    it('commits what it thinks every reference is, for the backend to rebuild', () => {
+        const declared = declaredReferences(DECLARED_SESSION);
+        const rendered = `${JSON.stringify({
+            generated_by: 'frontend/src/perceptionLab/contract/perceptionLab.parity.test.js',
+            how_to_regenerate:
+                'UPDATE_PARITY_FIXTURES=1 npx vitest run src/perceptionLab/contract',
+            session: DECLARED_SESSION,
+            cases: REF_CASES.map((c) => ({
+                name: c.name,
+                ref: c.ref,
+                problems: validateInputRef(c.ref),
+                reference: referenceOf(c.ref),
+                known: sessionKnows(c.ref, declared),
+            })),
+        }, null, 2)}\n`;
+
+        if (process.env.UPDATE_PARITY_FIXTURES) {
+            fs.writeFileSync(JS_REFS_FIXTURE, rendered, 'utf8');
+        }
+        expect(fs.existsSync(JS_REFS_FIXTURE),
+               `${path.basename(JS_REFS_FIXTURE)} is missing — regenerate with `
+               + 'UPDATE_PARITY_FIXTURES=1').toBe(true);
+        expect(read(JS_REFS_FIXTURE),
+               'the JS reference rules have drifted from the committed fixture — regenerate with '
+               + 'UPDATE_PARITY_FIXTURES=1 and check the backend suite still agrees')
+            .toBe(rendered);
+    });
+
+    it('refuses exactly the three malformed shapes and admits the rest', () => {
+        for (const c of REF_CASES) {
+            const problems = validateInputRef(c.ref);
+            expect(problems.length > 0, c.name).toBe(Boolean(c.malformed));
+        }
     });
 
     it('reproduces every refusal the Python gates built', () => {

@@ -710,7 +710,10 @@ def test_the_fixtures_cover_every_planner_identity():
 def test_the_manifest_lists_every_fixture_file_on_disk():
     listed = {n for names in MANIFEST["records"].values() for n in names}
     on_disk = {p.name for p in FIXTURE_DIR.glob("*.json")} - {
-        "manifest.json", JS_RESOLVER_FIXTURE.name, PY_GATES_FIXTURE.name}
+        "manifest.json", JS_RESOLVER_FIXTURE.name, PY_GATES_FIXTURE.name,
+        # Not a record fixture but a cross-language answer sheet, like the two above. Checked by
+        # `test_perception_lab_instance_refs.py`.
+        "js-instance-refs.json"}
     assert listed == on_disk
 
 

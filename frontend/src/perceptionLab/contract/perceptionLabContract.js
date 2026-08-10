@@ -426,7 +426,10 @@ export function validateInputRef(ref, where = 'an input ref') {
     if (named !== 1) {
         fail(out, `${where} names exactly one of artifact_id / region_id`);
     }
-    if (ref.instance_id && !ref.artifact_id) {
+    // Exactly one problem per defect, in the order Python raises them: an instance beside a
+    // region is a DIFFERENT mistake from an instance beside nothing, and reporting both for one
+    // ref would make the two runtimes' answers impossible to compare line for line.
+    if (ref.instance_id && !ref.artifact_id && !ref.region_id) {
         fail(out, `${where} names an instance with no artifact. An instance id is unique inside `
             + 'one artifact and nowhere else, so one recorded alone names nothing');
     }
@@ -449,25 +452,31 @@ export function referenceOf(ref) {
 /**
  * Whether a session declared what a ref names — the reference law, at instance depth.
  *
- * `declared` is `{ artifacts: Set<string>, instances: Set<"artifact#instance"> }`. Composite keys,
- * not bare instance ids, because every extent set numbers its own instances from 1 and two
- * selected sets both holding `inst_1` is the normal case rather than the exotic one.
+ * `declared` is `{ artifacts, instances, regions }` of Sets, where `instances` holds composite
+ * `"artifact#instance"` keys rather than bare ids: every extent set numbers its own instances
+ * from 1, so two selected sets both holding `inst_1` is the normal case, not the exotic one.
+ *
+ * A REGION REF IS CHECKED TOO, against `active_region_ids`. The first draft of this function
+ * returned `true` for regions on the grounds that they were declared elsewhere, and the
+ * cross-language parity loop caught it on its first run: Python's `SessionView.knows` was
+ * refusing exactly the ref this admitted. One law, both runtimes — including the branch nobody
+ * was thinking about when they wrote it.
  */
 export function sessionKnows(ref, declared) {
-    if (!ref?.artifact_id) return true;                 // a region ref; regions are declared elsewhere
+    if (!ref?.artifact_id) return Boolean(declared?.regions?.has(String(ref?.region_id)));
     if (!declared?.artifacts?.has(ref.artifact_id)) return false;
     if (!ref.instance_id) return true;
     return Boolean(declared.instances?.has(referenceOf(ref)));
 }
 
-/** The two id sets a session declares, in the shape `sessionKnows` reads. */
+/** The three id sets a session declares, in the shape `sessionKnows` reads. */
 export function declaredReferences(session) {
     const artifacts = new Set(session?.selected_artifact_ids || []);
     if (session?.active_artifact_id) artifacts.add(session.active_artifact_id);
     const instances = new Set((session?.selected_instance_refs || [])
         .filter((r) => r?.artifact_id && r?.instance_id)
         .map((r) => `${r.artifact_id}#${r.instance_id}`));
-    return { artifacts, instances };
+    return { artifacts, instances, regions: new Set(session?.active_region_ids || []) };
 }
 
 /**
@@ -676,7 +685,11 @@ export function validatePlan(plan) {
                 + 'has no authority to claim.');
         }
     }
-    for (const step of [...proposed, ...resolved]) {
+    // RESOLVED steps only. A PROPOSAL is allowed to be wrong — that is what the resolver is for,
+    // and it records the refusal beside the proposal so the attempt stays visible. Failing the
+    // whole plan record here would throw away both the refusal and the evidence, which is the
+    // same argument this contract already makes about a planner's stray parameters.
+    for (const step of resolved) {
         for (const ref of step.input_refs || []) {
             for (const problem of validateInputRef(
                 ref, `${step.step_id}'s input ref "${referenceOf(ref)}"`)) fail(out, problem);

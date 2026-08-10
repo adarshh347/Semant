@@ -1,0 +1,154 @@
+{
+  "generated_by": "frontend/src/perceptionLab/contract/perceptionLab.parity.test.js",
+  "how_to_regenerate": "UPDATE_PARITY_FIXTURES=1 npx vitest run src/perceptionLab/contract",
+  "session": {
+    "selected_artifact_ids": [
+      "art_a",
+      "art_b"
+    ],
+    "active_artifact_id": "art_a",
+    "active_region_ids": [
+      "reg_7"
+    ],
+    "selected_instance_refs": [
+      {
+        "artifact_id": "art_a",
+        "instance_id": "inst_2"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "an artifact-level ref, exactly as it read before A2",
+      "ref": {
+        "role": "base",
+        "scope": "session",
+        "artifact_id": "art_a",
+        "instance_id": null,
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "problems": [],
+      "reference": "art_a",
+      "known": true
+    },
+    {
+      "name": "a pre-A2 record with no instance_id key at all",
+      "ref": {
+        "role": "base",
+        "scope": "session",
+        "artifact_id": "art_a",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "problems": [],
+      "reference": "art_a",
+      "known": true
+    },
+    {
+      "name": "one instance inside a declared artifact",
+      "ref": {
+        "role": "base",
+        "scope": "session",
+        "artifact_id": "art_a",
+        "instance_id": "inst_2",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "problems": [],
+      "reference": "art_a#inst_2",
+      "known": true
+    },
+    {
+      "name": "an instance the session never declared",
+      "ref": {
+        "role": "base",
+        "scope": "session",
+        "artifact_id": "art_a",
+        "instance_id": "inst_9",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "problems": [],
+      "reference": "art_a#inst_9",
+      "known": false
+    },
+    {
+      "name": "an instance declared under a DIFFERENT artifact",
+      "ref": {
+        "role": "base",
+        "scope": "session",
+        "artifact_id": "art_b",
+        "instance_id": "inst_2",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "problems": [],
+      "reference": "art_b#inst_2",
+      "known": false
+    },
+    {
+      "name": "a bare instance identity",
+      "ref": {
+        "role": "base",
+        "scope": "session",
+        "artifact_id": null,
+        "instance_id": "inst_2",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "problems": [
+        "an input ref names exactly one of artifact_id / region_id",
+        "an input ref names an instance with no artifact. An instance id is unique inside one artifact and nowhere else, so one recorded alone names nothing"
+      ],
+      "reference": "",
+      "known": false
+    },
+    {
+      "name": "an instance beside a canonical region",
+      "ref": {
+        "role": "regions",
+        "scope": "canonical",
+        "artifact_id": null,
+        "instance_id": "inst_2",
+        "region_id": "reg_7",
+        "geometry_rev": 3
+      },
+      "problems": [
+        "an input ref names an instance inside a canonical region. A Region is already exactly one shape; an instance within it would be a second geometry wearing one id"
+      ],
+      "reference": "reg_7",
+      "known": true
+    },
+    {
+      "name": "a canonical region, which never carried an instance",
+      "ref": {
+        "role": "regions",
+        "scope": "canonical",
+        "artifact_id": null,
+        "instance_id": null,
+        "region_id": "reg_7",
+        "geometry_rev": 3
+      },
+      "problems": [],
+      "reference": "reg_7",
+      "known": true
+    },
+    {
+      "name": "a ref naming nothing at all",
+      "ref": {
+        "role": "base",
+        "scope": "session",
+        "artifact_id": null,
+        "instance_id": null,
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "problems": [
+        "an input ref names exactly one of artifact_id / region_id"
+      ],
+      "reference": "",
+      "known": false
+    }
+  ]
+}

@@ -635,3 +635,91 @@ describe('what a person can reach', () => {
         expect(named.refusal.message).toMatch(/not running here/);
     });
 });
+
+describe('"that mask" reaches one instance, and deselection takes it away', () => {
+    /** Find several extents, then narrow the selection to one of them. */
+    async function narrowed(client = createFixtureClient()) {
+        const session = await openSession(client, { source_id: 'scene_instances' });
+        const sid = session.session_id;
+        const plan = await client.plan({ session_id: sid, planner: 'direct',
+            operation: 'extent.find_all', parameters: {}, input_refs: [] });
+        const found = await client.run({ session_id: sid, plan_id: plan.plan_id });
+        const artifact = found.artifacts[0];
+        const [first, second] = artifact.measurement.payload.instances;
+        const artifact_id = artifact.identity.artifact_id;
+        await client.select({ session_id: sid, artifact_ids: [artifact_id],
+            active_artifact_id: artifact_id,
+            selected_instance_refs: [{ artifact_id, instance_id: second.instance_id }] });
+        return { client, sid, artifact_id, first, second };
+    }
+
+    it('binds the selected instance, not its set, for a follow-up phrase', async () => {
+        const { client, sid, artifact_id, second } = await narrowed();
+        const plan = await client.plan({ session_id: sid, planner: 'rules',
+            prompt: 'refine that', for_execution: false });
+        expect(plan.proposed_steps[0].input_refs[0]).toMatchObject({
+            artifact_id, instance_id: second.instance_id });
+    });
+
+    it('asks a pair question about two masks inside ONE set', async () => {
+        const { client, sid, artifact_id, first, second } = await narrowed();
+        await client.select({ session_id: sid, artifact_ids: [artifact_id],
+            active_artifact_id: artifact_id,
+            selected_instance_refs: [
+                { artifact_id, instance_id: first.instance_id },
+                { artifact_id, instance_id: second.instance_id }] });
+        await client.setOrgan({ session_id: sid, selected_organ: 'topology', mode: 'isolation' });
+        const plan = await client.plan({ session_id: sid, planner: 'rules',
+            prompt: 'do those two touch?', for_execution: false });
+        const refs = plan.proposed_steps[0].input_refs;
+        // The question A2 made askable at all. Before it, both endpoints had to be whole sets and
+        // the run measured every cross pair while the surface pretended one of them was asked.
+        expect(refs.map((r) => r.instance_id))
+            .toEqual([first.instance_id, second.instance_id]);
+        expect(new Set(refs.map((r) => r.artifact_id))).toEqual(new Set([artifact_id]));
+    });
+
+    it('widens back to the whole set when the instance is deselected', async () => {
+        const { client, sid, artifact_id } = await narrowed();
+        await client.select({ session_id: sid, artifact_ids: [artifact_id],
+            active_artifact_id: artifact_id, selected_instance_refs: [] });
+        const plan = await client.plan({ session_id: sid, planner: 'rules',
+            prompt: 'refine that', for_execution: false });
+        expect(plan.proposed_steps[0].input_refs[0].instance_id).toBeNull();
+    });
+
+    it('drops the instance when its artifact leaves the selection', async () => {
+        const { client, sid } = await narrowed();
+        const session = await client.select({ session_id: sid, artifact_ids: [],
+            active_artifact_id: null });
+        expect(session.selected_instance_refs).toEqual([]);
+        valid('LabSession', session);
+    });
+
+    it('refuses an instance the session never declared, naming artifact#instance', async () => {
+        const { client, sid, artifact_id, first } = await narrowed();
+        const plan = await client.plan({ session_id: sid, planner: 'direct',
+            operation: 'extent.refine', parameters: { mode: 'add', points: [[0.4, 0.4]] },
+            input_refs: [{ role: 'base', scope: 'session', artifact_id,
+                instance_id: first.instance_id, region_id: null, geometry_rev: null }],
+            for_execution: false });
+        expect(plan.resolved_steps).toHaveLength(0);
+        expect(plan.refusals[0].code).toBe('unknown_reference');
+        expect(plan.refusals[0].missing)
+            .toEqual([`${artifact_id}#${first.instance_id}`]);
+    });
+
+    it('refuses a malformed reference rather than reading past it', async () => {
+        const { client, sid, artifact_id } = await narrowed();
+        const plan = await client.plan({ session_id: sid, planner: 'direct',
+            operation: 'extent.reuse', parameters: {},
+            input_refs: [{ role: 'regions', scope: 'canonical', artifact_id: null,
+                instance_id: 'inst_2', region_id: 'reg_7', geometry_rev: 3 }],
+            for_execution: false });
+        expect(plan.resolved_steps).toHaveLength(0);
+        expect(plan.refusals[0].code).toBe('invalid_parameters');
+        expect(plan.refusals[0].detail.problems.join(' '))
+            .toMatch(/second geometry wearing one id/);
+        expect(artifact_id).toBeTruthy();
+    });
+});
