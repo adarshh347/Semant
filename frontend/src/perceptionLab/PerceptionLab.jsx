@@ -1,0 +1,111 @@
+import React, { useMemo, useRef, useState } from 'react';
+import useLabSession from './useLabSession';
+import useContainerWidth from './useContainerWidth';
+import SourcePicker from './components/SourcePicker';
+import OrganCatalogue from './components/OrganCatalogue';
+import ModeControls from './components/ModeControls';
+import { EmptyState } from './components/Chips';
+import './perceptionLab.css';
+
+/**
+ * PERCEPTUAL-ORGANS-002 Lane E — the Perception Lab shell.
+ *
+ * One prop: a client (see `clients/labClient.js`). Lane F mounts this at `/lab/perception` and
+ * passes an HTTP client; every test in this lane passes a fixture one. Nothing below this file
+ * knows what a URL is.
+ *
+ * WHAT THE SHELL ITSELF IS RESPONSIBLE FOR, and it is only these:
+ *
+ *   1. the identity line — which organ, which scope, which arm, and WHICH WIRE. `clientIdentity`
+ *      says what this page is talking to; the LIVE/REPLAY/FIXTURE badge on a run comes from the
+ *      run and is rendered next to the run, because those are two different questions and a page
+ *      that answered them with one badge would be lying about one of them;
+ *   2. the container band, which drives the whole responsive layout off one attribute;
+ *   3. wiring the panels to the one state hook.
+ *
+ * It renders no measurement and decides no status.
+ */
+export default function PerceptionLab({ client, initialOrgan = 'extent',
+    initialMode = 'isolation' }) {
+    const rootRef = useRef(null);
+    const { band, width } = useContainerWidth(rootRef);
+    const [arm, setArm] = useState('direct');
+    const lab = useLabSession(client, { initialOrgan, initialMode });
+
+    const capabilitySummary = useMemo(() => {
+        const values = Object.values(lab.capabilities);
+        const off = values.filter((v) => v === 'unavailable').length;
+        if (!values.length) return 'adapter states not yet read';
+        return off
+            ? `${values.length - off} of ${values.length} adapters available here`
+            : `all ${values.length} adapters available here`;
+    }, [lab.capabilities]);
+
+    return (
+        <div className="pl" ref={rootRef} data-w={band} data-organ={lab.organ}
+            data-mode={lab.mode} data-arm={arm} data-client={lab.clientIdentity}>
+            <header className="pl-bar">
+                <span className="pl-kicker">Perception laboratory</span>
+                <h1 className="pl-title">Extent &amp; Topology</h1>
+                <span className="pl-bar-spacer" />
+                <span className="pl-chip" data-client-identity={lab.clientIdentity}
+                    title="what this page is talking to. The badge on a run says where that run's
+                        answer came from, and they are different questions.">
+                    client: {lab.clientIdentity}
+                </span>
+                <span className="pl-chip" title="read from the backend, never guessed here">
+                    {capabilitySummary}
+                </span>
+                {width ? (
+                    <span className="pl-chip" data-band={band} title="the width of this container,
+                        which is what the layout responds to">
+                        {Math.round(width)}px · {band}
+                    </span>
+                ) : null}
+            </header>
+
+            {lab.error ? (
+                <p className="pl-error" role="alert">
+                    Could not finish {lab.error.what}: {lab.error.message}. Nothing on this page
+                    has been changed by the attempt.
+                </p>
+            ) : null}
+
+            <div className="pl-body">
+                <div className="pl-rail">
+                    <SourcePicker
+                        sources={lab.sources}
+                        activeSourceId={lab.sourceId}
+                        onOpen={lab.openSession}
+                        onUpload={lab.uploadSource}
+                        uploadError={lab.uploadError}
+                        busy={lab.busy} />
+                    <OrganCatalogue
+                        selected={lab.organ}
+                        onSelect={lab.setOrgan}
+                        capabilities={lab.capabilities} />
+                </div>
+
+                <div className="pl-main">
+                    <ModeControls
+                        mode={lab.mode}
+                        arm={arm}
+                        organ={lab.organ}
+                        onMode={lab.setMode}
+                        onArm={setArm} />
+                    {!lab.session ? (
+                        <section className="pl-panel" aria-label="Stage">
+                            <EmptyState
+                                title="No session is open"
+                                hint="Choose a source on the left. A session records the image
+                                    digest it was opened against, so every run can say whether
+                                    the ground moved under it." />
+                        </section>
+                    ) : null}
+                </div>
+
+                <div className="pl-inspector" />
+            </div>
+        </div>
+    );
+}
