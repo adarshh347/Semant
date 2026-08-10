@@ -17,16 +17,19 @@ import { describe, it, expect } from 'vitest';
 import awaitingUser from '../../../contracts/samples/inquiry-session.awaiting-user.json';
 import complete from '../../../contracts/samples/inquiry-session.complete.json';
 import autoComplete from '../../../contracts/samples/inquiry-session.auto-complete.json';
+import dissolution from '../../../contracts/samples/inquiry-session.dissolution.json';
 import {
     normalizeSession, openDecision, isEvidenceGrade, hasMeasuredEvidence, supportingEvidence,
     outcomeCounts, SHOULD_KEEP_WATCHING, IS_TERMINAL_STATE, receiptOutcome,
-    STATE_LABEL, STATUS_COPY, OUTCOME_COPY,
+    STATE_LABEL, STATUS_COPY, OUTCOME_COPY, PASS_LABEL, PASS_OUTCOME_COPY,
+    uncoveredSourceUnits, earliestFailingPass,
 } from './inquiryContract';
 
 const SAMPLES = [
     ['awaiting-user', awaitingUser],
     ['complete', complete],
     ['auto-complete', autoComplete],
+    ['dissolution', dissolution],
 ];
 
 /** Every `{value, known}` pair anywhere in a normalised session, with the path that produced it. */
@@ -222,5 +225,146 @@ describe('the session lifecycle the client drives', () => {
         for (const claim of normalizeSession(complete).graph.claims) {
             expect(STATUS_COPY[claim.status.value]).toBeTruthy();
         }
+    });
+});
+
+/**
+ * HARNESS-003D — the dissolution sample, and why a fourth one was needed.
+ *
+ * The three above are v1 graphs. Every dissolution field on them is legitimately empty, so a parity
+ * suite reading only those proves that this client TOLERATES the absence of source units, atoms,
+ * coverage and pass receipts — which is precisely the assurance Lane C already had, and precisely
+ * why nobody noticed the backend was not sending them.
+ *
+ * These tests fail if a field this surface consumes disappears from the wire. That is the
+ * directive's `frontend parity must fail if a field it consumes disappears`, and it is a different
+ * claim from "nothing unrecognised arrived": a backend that dropped `coverage` entirely would pass
+ * every enum check above while making the phase's central artifact invisible again.
+ */
+describe('the dissolution a v2 graph carries', () => {
+    const session = () => normalizeSession(dissolution);
+
+    it('the whole chain arrived: units, atoms, coverage, claims, observables, remainder', () => {
+        const g = session().graph;
+        // Not `toBeDefined`. A count is what makes this a parity test rather than a shape test —
+        // an empty array is what the wire sent before this lane, and it satisfied every normaliser.
+        expect(g.source_units.length).toBeGreaterThan(0);
+        expect(g.semantic_atoms.length).toBeGreaterThan(0);
+        expect(g.coverage.length).toBeGreaterThan(0);
+        expect(g.claims.length).toBeGreaterThan(0);
+        expect(g.observables.length).toBeGreaterThan(0);
+        expect(g.semantic_remainder.length).toBeGreaterThan(0);
+    });
+
+    it('every source unit carries the words it is a pointer at, and who wrote them', () => {
+        for (const u of session().graph.source_units) {
+            expect(u.source_unit_id).not.toBe('');
+            expect(u.source_type.known).toBe(true);
+            expect(u.exact_quote).not.toBe('');
+        }
+    });
+
+    it('the person\'s own clauses stay theirs', () => {
+        const g = session().graph;
+        const mine = g.semantic_atoms.filter((a) => a.author.value === 'user');
+        expect(mine.length).toBeGreaterThan(0);
+        // Derived from the anchors by the backend and NOT recomputed here: every atom the wire
+        // attributes to the person is anchored only to prompt clauses, and a client that
+        // re-derived it would be second-guessing the one attribution nothing downstream can check.
+        const clauses = new Set(g.source_units
+            .filter((u) => u.source_type.value === 'prompt_clause')
+            .map((u) => u.source_unit_id));
+        for (const atom of mine) {
+            expect(atom.source_unit_ids.every((id) => clauses.has(id))).toBe(true);
+        }
+    });
+
+    it('every source unit has exactly one disposition, and none is lost', () => {
+        const g = session().graph;
+        expect(uncoveredSourceUnits(g)).toEqual([]);
+        const seen = new Set();
+        for (const c of g.coverage) {
+            expect(c.disposition.known).toBe(true);
+            expect(seen.has(c.source_unit_id)).toBe(false);
+            seen.add(c.source_unit_id);
+        }
+        expect(seen.size).toBe(g.source_units.length);
+    });
+
+    it('the backend\'s coverage arithmetic and this client\'s agree', () => {
+        // Computed on opposite sides of the wire on purpose. Agreement is the assertion; a
+        // divergence is a real disagreement rather than something one side quietly absorbs.
+        const g = session().graph;
+        expect(g.coverage_summary.source_units).toBe(g.source_units.length);
+        expect(g.coverage_summary.lost_count).toBe(uncoveredSourceUnits(g).length);
+        expect(g.coverage_summary.complete).toBe(true);
+        expect(g.coverage_summary.user_units + g.coverage_summary.reading_units)
+            .toBe(g.source_units.length);
+    });
+
+    it('every pass says which mind it was and how it ended, in words this client has', () => {
+        const passes = session().graph.passes;
+        expect(passes.length).toBeGreaterThan(3);
+        for (const p of passes) {
+            expect(p.pass_name.known).toBe(true);
+            expect(p.outcome.known).toBe(true);
+            expect(PASS_LABEL[p.pass_name.value]).toBeTruthy();
+            expect(PASS_OUTCOME_COPY[p.outcome.value]).toBeTruthy();
+        }
+        expect(earliestFailingPass(session().graph)).toBeNull();
+    });
+
+    it('a pass that never waited reports no waiting rather than zero', () => {
+        // `waited_ms: 0` would say a pacer answered and reported no wait. Nothing paced a replay,
+        // and those two must not render alike — it is the null-duration law, one field over.
+        for (const p of session().graph.passes) {
+            expect(p.waited_ms).toBeNull();
+            expect(p.capacity_waits).toEqual([]);
+            expect(p.capacity_limited).toBe(false);
+        }
+    });
+
+    it('the compiler stage counts the dissolution, not just the claims', () => {
+        const compiler = session().stages.find((s) => s.stage.value === 'compiler');
+        expect(compiler).toBeTruthy();
+        // The nouns are the backend's. A surface assembling "7 → 13" from the numbers would be
+        // inventing the units, and the units are the half that makes the numbers readable.
+        for (const noun of ['source units', 'atoms', 'claims', 'observables']) {
+            expect([noun, compiler.counts_line.includes(noun)]).toEqual([noun, true]);
+        }
+        expect(compiler.call_topology).toBe('council_passes');
+    });
+
+    it('the compiler stage streams the council\'s own progress', () => {
+        const compiler = session().stages.find((s) => s.stage.value === 'compiler');
+        // One event per pass entered and left, plus one per dissector batch. Reported once at the
+        // end, a stage that sat silent for four minutes is indistinguishable from one that hung.
+        expect(compiler.substages.length).toBeGreaterThan(5);
+        for (const s of compiler.substages) {
+            expect(s.label).not.toBe('');
+        }
+        expect(compiler.substages.some((s) => s.label.includes('batch'))).toBe(true);
+    });
+});
+
+describe('the deployment badge', () => {
+    it.each(SAMPLES)('%s: says what produced it, and it is not a guess', (_n, raw) => {
+        const s = normalizeSession(raw);
+        expect(s.deployment.declared).toBe(true);
+        expect(s.deployment.kind.known).toBe(true);
+        expect(s.deployment.detail).not.toBe('');
+    });
+
+    it('the samples are a replay and say so', () => {
+        // The 002R rehearsal ran against a replay server and the record said so in a receipt three
+        // panels down. A screenshot of a replay is otherwise the same picture as a live one.
+        expect(normalizeSession(dissolution).deployment.kind.value).toBe('replay');
+    });
+
+    it('a response built without a stage binding says nobody asked, never `live`', () => {
+        const s = normalizeSession({ ...dissolution, deployment: undefined });
+        expect(s.deployment.declared).toBe(false);
+        expect(s.deployment.kind.value).toBe('undeclared');
+        expect(s.deployment.kind.value).not.toBe('live');
     });
 });
