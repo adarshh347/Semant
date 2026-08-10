@@ -452,11 +452,35 @@
 /* Isolation dims everything that is not the focus, including the picture. */
 .pl-stage[data-view='focus'] .pl-svg .rs-shape.is-dim { opacity: 0.25; }
 
-/* A drawn extent must never look segmented. */
-.pl-svg .rs-shape[data-basis='manual'] { stroke-dasharray: 2 3; stroke: var(--plum); }
+/* A drawn extent must never look segmented. `RegionOverlay` emits `rs-shape--${viewMap}`, which
+   is how the BASIS reaches the stylesheet: one overlay per basis, so a box can never be drawn
+   with a mask's confident edge. The view mode rides `data-view` on the stage instead, so the two
+   never compete for the same string. */
+.pl-svg .rs-shape--manual {
+    stroke-dasharray: 2 3;
+    stroke: var(--plum);
+    fill: color-mix(in srgb, var(--plum) 18%, transparent);
+}
 /* A box basis is dashed, everywhere, always. */
-.pl-svg .rs-shape[data-basis='box'],
+.pl-svg .rs-shape--box,
 .pl-layer[data-basis='box'] { stroke-dasharray: 7 5; }
+
+/* A hand-drawn trace, before it is anything at all. */
+.pl-freehand {
+    fill: none;
+    stroke: var(--plum);
+    stroke-width: 2;
+    stroke-dasharray: 4 3;
+    stroke-linejoin: round;
+}
+
+/* The tool decides what the pointer means, so it decides what the cursor says. */
+.pl-stage.tool-point,
+.pl-stage.tool-box,
+.pl-stage.tool-freehand { cursor: crosshair; }
+.pl-stage.tool-point img,
+.pl-stage.tool-box img,
+.pl-stage.tool-freehand img { pointer-events: none; }
 
 /* derived projections — the browser's drawing of a measurement, never the measurement */
 .pl-layer[data-derived='true'] { stroke-dasharray: 4 3; }

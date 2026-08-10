@@ -51,8 +51,23 @@ export const canonicalRef = (artifact_id, instance_id, region_id, geometry_rev) 
     artifact_id, instance_id, scope: 'canonical', region_id, geometry_rev,
 });
 
-export const inputRef = (role, artifact_id, { scope = 'session', region_id = null,
-    geometry_rev = null } = {}) => ({ role, scope, artifact_id, region_id, geometry_rev });
+/**
+ * An input reference, optionally down to one instance.
+ *
+ * `instance_id` is the Lane A2 repair. Without it an input names a whole `extent_set`, so asking
+ * "is the disc inside the frame?" about a set of seven forces the organ to measure forty-nine
+ * pairs and the surface to pretend one of them was the question. That is not a convenience
+ * problem: `pairs_examined` would say 49 when the person asked about 1, and a record that
+ * overstates what was examined is a record that cannot be read back.
+ *
+ * It stays OPTIONAL, and the reason matters. An artifact-level ref is still the honest way to ask
+ * "how do all of these relate", and the two questions have different answers. Omitting it means
+ * every instance; supplying it means exactly one, and the count says which was asked.
+ */
+export const inputRef = (role, artifact_id, { instance_id = null, scope = 'session',
+    region_id = null, geometry_rev = null } = {}) => ({
+    role, scope, artifact_id, instance_id, region_id, geometry_rev,
+});
 
 // ── the session ─────────────────────────────────────────────────────────────
 

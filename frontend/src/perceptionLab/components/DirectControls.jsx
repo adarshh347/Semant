@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { availableOperations } from '../planning';
+import { inputRef } from '../records';
 import { Refusal } from './Chips';
 
 /**
@@ -107,9 +108,10 @@ export default function DirectControls({ organ, mode, capabilities, selectedIds,
 
     const inputRefs = (chosen.inputs || []).flatMap((spec) => {
         const picked = roleChoices[spec.role] || [];
-        return picked.map((artifact_id) => ({
-            role: spec.role, scope: 'session', artifact_id, region_id: null, geometry_rev: null,
-        }));
+        return picked.map((key) => {
+            const [artifact_id, instance_id = null] = key.split('#');
+            return inputRef(spec.role, artifact_id, { instance_id });
+        });
     });
 
     const selectable = ledger.filter((a) => selectedIds.includes(a.identity.artifact_id));
@@ -161,27 +163,47 @@ export default function DirectControls({ organ, mode, capabilities, selectedIds,
                         </p>
                     ) : (
                         <ul className="pl-list">
-                            {selectable.map((a) => {
+                            {selectable.flatMap((a) => {
                                 const id = a.identity.artifact_id;
-                                const on = (roleChoices[spec.role] || []).includes(id);
-                                return (
-                                    <li key={id}>
-                                        <button type="button" className="pl-row"
-                                            data-role-option={`${spec.role}:${id}`}
-                                            aria-pressed={on}
-                                            onClick={() => setRoleChoices((prev) => {
-                                                const cur = prev[spec.role] || [];
-                                                const next = on ? cur.filter((x) => x !== id)
-                                                    : [...cur, id].slice(-spec.max);
-                                                return { ...prev, [spec.role]: next };
-                                            })}>
-                                            <span className="pl-row-name">{id}</span>
-                                            <span className="pl-row-meta">
-                                                {a.identity.artifact_kind}
-                                            </span>
-                                        </button>
-                                    </li>
-                                );
+                                const instances = a.measurement.payload?.variant === 'extent_set'
+                                    ? a.measurement.payload.instances : [];
+                                const rows = [{ key: id, name: id,
+                                    meta: instances.length > 1
+                                        ? `${a.identity.artifact_kind} · all ${instances.length}, `
+                                            + `and every cross pair is measured`
+                                        : a.identity.artifact_kind }];
+                                // One row per instance, because "is the disc inside the frame"
+                                // is a question about two extents and not about two SETS. Asking
+                                // it of the sets measures every cross pair and then makes the
+                                // surface pretend one of them was the question.
+                                for (const inst of instances) {
+                                    rows.push({
+                                        key: `${id}#${inst.instance_id}`,
+                                        name: `↳ ${inst.instance_id}`,
+                                        meta: inst.naming
+                                            ? `“${inst.naming.text}”` : 'unnamed',
+                                    });
+                                }
+                                return rows.map((row) => {
+                                    const on = (roleChoices[spec.role] || []).includes(row.key);
+                                    return (
+                                        <li key={row.key}>
+                                            <button type="button" className="pl-row"
+                                                data-role-option={`${spec.role}:${row.key}`}
+                                                aria-pressed={on}
+                                                onClick={() => setRoleChoices((prev) => {
+                                                    const cur = prev[spec.role] || [];
+                                                    const next = on
+                                                        ? cur.filter((x) => x !== row.key)
+                                                        : [...cur, row.key].slice(-spec.max);
+                                                    return { ...prev, [spec.role]: next };
+                                                })}>
+                                                <span className="pl-row-name">{row.name}</span>
+                                                <span className="pl-row-meta">{row.meta}</span>
+                                            </button>
+                                        </li>
+                                    );
+                                });
                             })}
                         </ul>
                     )}

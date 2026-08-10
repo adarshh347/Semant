@@ -9,8 +9,11 @@ import PromptConversation from './components/PromptConversation';
 import PlanPreview from './components/PlanPreview';
 import RunStream from './components/RunStream';
 import ArtifactInspector from './components/ArtifactInspector';
+import ExtentStage from './components/ExtentStage';
+import ExtentReadout from './components/ExtentReadout';
 import Ledger from './components/Ledger';
 import { EmptyState } from './components/Chips';
+import { inputRef } from './records';
 import './perceptionLab.css';
 
 /**
@@ -37,6 +40,46 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
     const { band, width } = useContainerWidth(rootRef);
     const [arm, setArm] = useState('direct');
     const lab = useLabSession(client, { initialOrgan, initialMode });
+
+    const source = useMemo(
+        () => (lab.sources || []).find((s) => s.id === lab.sourceId) || null,
+        [lab.sources, lab.sourceId]);
+
+    /**
+     * The extent set on the stage, and the one it is being compared against.
+     *
+     * `stageArtifact` follows the ACTIVE artifact when that artifact is an extent set, and
+     * otherwise falls back to the last extent set in the ledger — because activating a topology
+     * relation should not blank the picture the relation is about. `comparisonArtifact` is the
+     * previous extent set from a DIFFERENT run, which is what makes the repeat metrics a
+     * statement about stability rather than about one answer read twice.
+     */
+    const extentSets = useMemo(
+        () => lab.ledger.filter((a) => a.identity.artifact_kind === 'extent_set'),
+        [lab.ledger]);
+    const stageArtifact = lab.active?.identity.artifact_kind === 'extent_set'
+        ? lab.active : (extentSets[extentSets.length - 1] || null);
+    const comparisonArtifact = useMemo(() => {
+        if (!stageArtifact) return null;
+        return [...extentSets].reverse().find(
+            (a) => a.identity.artifact_id !== stageArtifact.identity.artifact_id
+                && a.identity.run_id !== stageArtifact.identity.run_id) || null;
+    }, [extentSets, stageArtifact]);
+
+    /**
+     * A stage gesture becomes a PROPOSAL, never a dispatch.
+     *
+     * Both of these go through `planDirectly`, which is the same call the Direct controls make
+     * and therefore the same four gates. A refinement that reached the runner from a pointer
+     * event would be a control doing something a prompt is refused.
+     */
+    const proposeRefine = (mode, { points, box, instanceId }) => lab.planDirectly(
+        'extent.refine',
+        { mode, ...(points.length ? { points } : {}), ...(box ? { box } : {}) },
+        [inputRef('base', stageArtifact.identity.artifact_id, { instance_id: instanceId })]);
+
+    const proposeDraw = (stroke) => lab.planDirectly(
+        'extent.draw', { tool: 'polygon', polygon: stroke }, []);
 
     const capabilitySummary = useMemo(() => {
         const values = Object.values(lab.capabilities);
@@ -109,6 +152,19 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                         </section>
                     ) : (
                         <>
+                            {lab.organ === 'extent' || stageArtifact ? (
+                                <ExtentStage
+                                    artifact={stageArtifact}
+                                    source={source}
+                                    session={lab.session}
+                                    focusedInstanceId={lab.focus.instanceId}
+                                    comparisonArtifact={comparisonArtifact}
+                                    onFocusInstance={(instanceId) => lab.setFocus(
+                                        (f) => ({ ...f, instanceId }))}
+                                    onRefine={proposeRefine}
+                                    onDraw={proposeDraw}
+                                    busy={lab.busy} />
+                            ) : null}
                             {arm === 'direct' ? (
                                 <DirectControls
                                     organ={lab.organ}
@@ -163,6 +219,15 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                 focusedInstanceId={lab.focus.instanceId}
                                 onFocusInstance={(instanceId) => lab.setFocus(
                                     (f) => ({ ...f, instanceId }))} />
+                            {stageArtifact ? (
+                                <ExtentReadout
+                                    artifact={stageArtifact}
+                                    comparisonArtifact={comparisonArtifact}
+                                    byId={lab.byId}
+                                    focusedInstanceId={lab.focus.instanceId}
+                                    onFocusInstance={(instanceId) => lab.setFocus(
+                                        (f) => ({ ...f, instanceId }))} />
+                            ) : null}
                         </>
                     ) : null}
                 </div>
