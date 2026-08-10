@@ -215,8 +215,19 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                     session={lab.session}
                                     focusedInstanceId={lab.focus.instanceId}
                                     comparisonArtifact={comparisonArtifact}
-                                    onFocusInstance={(instanceId) => lab.setFocus(
-                                        (f) => ({ ...f, instanceId }))}
+                                    onFocusInstance={(instanceId) => {
+                                        lab.setFocus((f) => ({ ...f, instanceId }));
+                                        // FOCUS IS LOOKING; SELECTION IS SAYING. Clicking a mask
+                                        // does both, because that click is the whole of how a
+                                        // person says "that one" — and a follow-up prompt reads
+                                        // the selection, never the focus. Clicking it again
+                                        // widens back to the set rather than clearing it, which
+                                        // is what un-narrowing means.
+                                        if (instanceId && stageArtifact) {
+                                            lab.toggleSelectedInstance(
+                                                stageArtifact.identity.artifact_id, instanceId);
+                                        }
+                                    }}
                                     onRefine={proposeRefine}
                                     onDraw={proposeDraw}
                                     stageRef={stageRef}

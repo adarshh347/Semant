@@ -24,8 +24,12 @@ async function busySession(client = createFixtureClient()) {
     const extentId = found.artifacts[0].identity.artifact_id;
     const instanceId = found.artifacts[0].measurement.payload.instances[0].instance_id;
 
+    // The INSTANCE is selected too, not merely its set. Selecting an artifact means the whole
+    // artifact; a step naming one mask inside it cites a reference the session has to have
+    // declared, or "deselect that mask" would be a gesture with no effect.
     await client.select({ session_id: sid, artifact_ids: [extentId],
-        active_artifact_id: extentId });
+        active_artifact_id: extentId,
+        selected_instance_refs: [{ artifact_id: extentId, instance_id: instanceId }] });
 
     const refinePlan = await client.plan({ session_id: sid, planner: 'direct',
         operation: 'extent.refine',

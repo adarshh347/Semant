@@ -123,33 +123,40 @@ class StepBuilder:
 
 
 def bind_single(session: SessionView, role: str) -> Tuple[InputRef, ...]:
-    """The one artifact a follow-up means, or nothing at all.
+    """The one thing a follow-up means, or nothing at all.
 
-    "that mask" is the ACTIVE artifact and nothing else. When none is active this returns empty
+    "that mask" is `SessionView.references[0]` and nothing else — the active artifact, narrowed to
+    the instance inside it if the person selected one. When nothing is declared this returns empty
     and the step goes to the resolver with no inputs, which refuses `missing_extent_inputs` — the
     honest answer. Searching the store for the most recent plausible artifact would be right most
     of the time, and the times it was wrong would look exactly like the times it was right.
+
+    DESELECTION IS WHAT MAKES THIS TRUSTWORTHY. `references` is derived from the session's fields
+    on every call rather than remembered, so a mask that was deselected is not bound by the next
+    prompt — there is no cached intention here for it to survive in.
     """
-    ids = session.artifact_ids[:1]
-    return tuple(session.artifact_ref(role, a) for a in ids)
+    return tuple(session.artifact_ref(role, a, i) for a, i in session.references[:1])
 
 
 def bind_pair(session: SessionView, roles: Tuple[str, str]) -> Tuple[InputRef, ...]:
-    """The two artifacts a pair question means: active first, then selected, in session order.
+    """The two things a pair question means: active first, then selected, in session order.
+
+    Both endpoints may be instances of ONE artifact — "do those two touch?" about two masks in
+    one extent set is the ordinary case, and before instance refs existed it was unaskable.
 
     Fewer than two available yields fewer than two refs rather than repeating one. A relation
-    between an artifact and itself is not what "do those two touch" asked, and it would measure
+    between something and itself is not what "do those two touch" asked, and it would measure
     perfectly and answer nothing.
     """
-    ids = session.artifact_ids[:2]
-    if len(ids) < 2:
+    picked = session.references[:2]
+    if len(picked) < 2:
         return ()
-    return (session.artifact_ref(roles[0], ids[0]), session.artifact_ref(roles[1], ids[1]))
+    return tuple(session.artifact_ref(role, a, i) for role, (a, i) in zip(roles, picked))
 
 
 def bind_many(session: SessionView, role: str, limit: int) -> Tuple[InputRef, ...]:
-    """Every selected artifact, up to the operation's declared maximum."""
-    return tuple(session.artifact_ref(role, a) for a in session.artifact_ids[:limit])
+    """Every declared reference, up to the operation's declared maximum."""
+    return tuple(session.artifact_ref(role, a, i) for a, i in session.references[:limit])
 
 
 def input_limit(op_key: str, role: str) -> int:
