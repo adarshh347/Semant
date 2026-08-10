@@ -22,11 +22,11 @@ segment anything itself, it does not tune anything, and it writes nowhere:
 
 THE FOUR THINGS IT REFUSES TO BLUR.
 
-  1. UNAVAILABLE IS NOT EMPTY. Every adapter is asked `is_available()` FIRST. Only an adapter that
-     said yes is allowed to return `[]`, and only then does `[]` mean "looked, found nothing".
-     Several of the underlying services return `None` for both conditions — that conflation is the
-     single most important thing this façade un-conflates, and `_UNAVAILABLE_IS_NOT_EMPTY` below
-     is where it happens.
+  1. UNAVAILABLE IS NOT EMPTY. Every adapter is asked `is_available()` FIRST, in
+     `_capability_refusal` / `_choose_adapter`, before it is called. Only an adapter that said yes
+     is allowed to return `[]`, and only then does `[]` mean "looked, found nothing". Several of
+     the underlying services return `None` for both conditions, and un-conflating that is the
+     single most load-bearing thing in this file.
 
   2. GEOMETRY IS NOT NAMING. A mask and the word for it are two claims with two statuses, carried
      as two fields. `sam3_concept_service.NAMING_CONFIDENCE_FLOOR` already encodes the ruling that
@@ -544,7 +544,6 @@ def _draw(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[An
             "the drawing did not rasterize to any pixels — a ring with no interior is not an "
             "extent")
 
-    completed_at = ctx.now()
     out = AdapterOutput(
         instances=({"instance_id": region["id"], "mask_rle": region["mask_rle"],
                     "box": region.get("box"),
@@ -557,14 +556,9 @@ def _draw(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[An
         model=None, revision=None, device=None, duration_ms=None,
         detail=f"one extent drawn with {tool}")
 
-    artifact = _build_artifact(
-        ctx, step, out, searched="the boundary the person drew by hand", adapter_key=None,
-        producer_kind=ProducerKind.HUMAN, started_at=started_at, completed_at=completed_at)
-    return ExtentResult(
-        outcome=RunOutcome.READY, artifacts=(artifact,), refusals=ref_refusals,
-        stage_attempt=_stage(ctx, step, state=StageState.COMPLETED, adapter=None, invoked=False,
-                             started_at=started_at, completed_at=completed_at, duration_ms=None,
-                             detail=out.detail))
+    return _finish(step, ctx, out, searched="the boundary the person drew by hand",
+                   adapter_key=None, producer_kind=ProducerKind.HUMAN, started_at=started_at,
+                   invoked=False, ref_refusals=ref_refusals)
 
 
 def _param_refusal(ctx: ExtentContext, step: ResolvedStep, started_at: str,
@@ -623,33 +617,41 @@ def _choose_adapter(step: ResolvedStep, ctx: ExtentContext
         detail={"adapters": [str(k) for k in keys], "tried": tried})
 
 
-def _measure_with_adapter(step: ResolvedStep, ctx: ExtentContext, *, searched: str,
-                          started_at: str, ref_refusals: Tuple[RefusalRecord, ...] = (),
-                          input_refs: Sequence[InputRef] = (),
-                          derived_from: Sequence[str] = ()) -> ExtentResult:
-    """Capability gate → measure → post-filter → artifact. The path every model-backed op takes.
+@dataclass(frozen=True)
+class _Invocation:
+    """Either an adapter and what it measured, or a finished result that ended before that.
 
-    THE FOUR ENDINGS, kept apart:
+    Split out of the measure path so `extent.refine` can invoke SAM 2.1 and then do its own exact
+    mask arithmetic before an artifact exists. Without the split, refine would either duplicate the
+    capability/failure handling or push the arithmetic into the adapter — and the arithmetic is the
+    lab's, not the model's.
+    """
+    adapter: Optional[ExtentAdapter] = None
+    out: Optional[AdapterOutput] = None
+    terminal: Optional[ExtentResult] = None
 
-        unavailable  the gate said no. The adapter was never called; `invoked` is false.
-        failed       the adapter was called and raised. No claim is made about the image, and
-                     `duration_ms` stays null because nothing completed to be measured.
-        empty        the adapter ran, looked, and returned nothing. An ARTIFACT is still produced,
-                     carrying `searched`, because "I looked for drapery and there is none" is a
-                     measurement and "nobody looked" is not.
-        ready        it returned extents.
+
+def _invoke(step: ResolvedStep, ctx: ExtentContext, params: Mapping[str, Any], started_at: str,
+            ref_refusals: Tuple[RefusalRecord, ...]) -> _Invocation:
+    """Capability gate, then the call. Ends the step itself on `unavailable` or `failed`.
+
+    THE TWO ENDINGS THAT STOP HERE:
+
+        unavailable  the gate said no. The adapter was NEVER CALLED and `invoked` is false, which
+                     is the field a reader uses to tell a refusal from a failure.
+        failed       it was called and raised. No claim is made about the image, and `duration_ms`
+                     stays null because nothing completed to be measured — 0 would report a fast
+                     failure where there was an unmeasured one.
     """
     adapter, refusal = _choose_adapter(step, ctx)
     if adapter is None or refusal is not None:
         completed_at = ctx.now()
-        return ExtentResult(
+        return _Invocation(terminal=ExtentResult(
             outcome=RunOutcome.UNAVAILABLE, refusals=(refusal,) + ref_refusals,
             stage_attempt=_stage(ctx, step, state=StageState.UNAVAILABLE,
                                  adapter=(refusal.missing or [None])[0], invoked=False,
                                  started_at=started_at, completed_at=completed_at,
-                                 duration_ms=None, detail=refusal.message))
-
-    params = dict(step.parameters)
+                                 duration_ms=None, detail=refusal.message)))
     try:
         out = adapter.measure(step, ctx, params)
     except AdapterUnavailable as exc:
@@ -660,28 +662,46 @@ def _measure_with_adapter(step: ResolvedStep, ctx: ExtentContext, *, searched: s
             missing=[exc.adapter],
             remedy="choose another adapter, or run where the model lives",
             detail={"adapters": [exc.adapter], "why": exc.detail})
-        return ExtentResult(
+        return _Invocation(adapter=adapter, terminal=ExtentResult(
             outcome=RunOutcome.UNAVAILABLE, refusals=(ref,) + ref_refusals,
             stage_attempt=_stage(ctx, step, state=StageState.UNAVAILABLE, adapter=adapter.key,
                                  invoked=False, started_at=started_at, completed_at=completed_at,
-                                 duration_ms=None, detail=exc.detail or ref.message))
+                                 duration_ms=None, detail=exc.detail or ref.message)))
     except Exception as exc:                          # the adapter ran and broke
-        return ExtentResult(
+        return _Invocation(adapter=adapter, terminal=ExtentResult(
             outcome=RunOutcome.FAILED, refusals=ref_refusals,
             stage_attempt=_stage(
                 ctx, step, state=StageState.FAILED, adapter=adapter.key, invoked=True,
                 started_at=started_at, completed_at=None, duration_ms=None,
-                detail=f"{type(exc).__name__}: {exc}. No claim is made about the image."))
+                detail=f"{type(exc).__name__}: {exc}. No claim is made about the image.")))
+    return _Invocation(adapter=adapter, out=out)
 
-    out, dropped, capped = _post_filter(out, params, ctx, step)
+
+def _finish(step: ResolvedStep, ctx: ExtentContext, out: AdapterOutput, *, searched: str,
+            adapter_key: Optional[str], producer_kind: ProducerKind, started_at: str,
+            invoked: bool, ref_refusals: Tuple[RefusalRecord, ...] = (),
+            input_refs: Sequence[InputRef] = (), identity_refs: Sequence[RegionRef] = (),
+            derived_from: Sequence[str] = (),
+            identity_scope: IdentityScope = IdentityScope.SESSION,
+            comparison: Optional[ExtentComparison] = None,
+            dropped: Optional[int] = None, capped: int = 0) -> ExtentResult:
+    """Measured output → artifact, duplicates, receipt, outcome.
+
+    `empty` still produces an ARTIFACT, carrying `searched`, because "I looked for drapery and
+    there is none" is a measurement and "nobody looked" is not — and the two arrive at the same
+    empty panel unless the artifact says which.
+
+    `partial` is what comes back when some references resolved and some did not: real extents plus
+    a typed refusal naming the ones that were not found. Reporting that as `ready` would hide a
+    missing input behind a result that looks complete.
+    """
     completed_at = ctx.now()
-    duplicates = [ExtentDuplicate(**row) for row in
-                  M.duplicate_pairs(out.instances, DUPLICATE_IOU)]
-
+    duplicates = [ExtentDuplicate(**row) for row in M.duplicate_pairs(out.instances, DUPLICATE_IOU)]
     artifact = _build_artifact(
-        ctx, step, out, searched=searched, adapter_key=adapter.key,
-        producer_kind=ProducerKind.ADAPTER, started_at=started_at, completed_at=completed_at,
-        input_refs=input_refs, derived_from=derived_from,
+        ctx, step, out, searched=searched, adapter_key=adapter_key,
+        producer_kind=producer_kind, started_at=started_at, completed_at=completed_at,
+        input_refs=input_refs, identity_refs=identity_refs, derived_from=derived_from,
+        identity_scope=identity_scope, comparison=comparison,
         dropped_below_min_area=dropped, duplicates=duplicates)
 
     detail = out.detail or f"{len(out.instances)} extents"
@@ -690,14 +710,37 @@ def _measure_with_adapter(step: ResolvedStep, ctx: ExtentContext, *, searched: s
     if duplicates:
         detail += (f"; {len(duplicates)} possible duplicate pair(s) flagged and NOT removed — "
                    f"a duplicate warning is evidence for a person, not a deletion")
+
     empty = not out.instances
+    if ref_refusals and not empty:
+        outcome, state = RunOutcome.PARTIAL, StageState.COMPLETED
+    elif ref_refusals:
+        outcome, state = RunOutcome.REFUSED, StageState.REFUSED
+    else:
+        outcome = RunOutcome.EMPTY if empty else RunOutcome.READY
+        state = StageState.EMPTY if empty else StageState.COMPLETED
+
     return ExtentResult(
-        outcome=RunOutcome.EMPTY if empty else RunOutcome.READY,
-        artifacts=(artifact,), refusals=ref_refusals,
-        stage_attempt=_stage(ctx, step, state=StageState.EMPTY if empty else StageState.COMPLETED,
-                             adapter=adapter.key, invoked=True, started_at=started_at,
-                             completed_at=completed_at, duration_ms=out.duration_ms,
-                             detail=detail))
+        outcome=outcome, artifacts=(artifact,), refusals=ref_refusals,
+        stage_attempt=_stage(ctx, step, state=state, adapter=adapter_key, invoked=invoked,
+                             started_at=started_at, completed_at=completed_at,
+                             duration_ms=out.duration_ms, detail=detail))
+
+
+def _measure_with_adapter(step: ResolvedStep, ctx: ExtentContext, *, searched: str,
+                          started_at: str, ref_refusals: Tuple[RefusalRecord, ...] = (),
+                          input_refs: Sequence[InputRef] = (),
+                          derived_from: Sequence[str] = ()) -> ExtentResult:
+    """Capability gate → measure → post-filter → artifact. The path every model-backed op takes."""
+    params = dict(step.parameters)
+    call = _invoke(step, ctx, params, started_at, ref_refusals)
+    if call.terminal is not None:
+        return call.terminal
+    out, dropped, capped = _post_filter(call.out, params, ctx, step)
+    return _finish(step, ctx, out, searched=searched, adapter_key=call.adapter.key,
+                   producer_kind=ProducerKind.ADAPTER, started_at=started_at, invoked=True,
+                   ref_refusals=ref_refusals, input_refs=input_refs, derived_from=derived_from,
+                   dropped=dropped, capped=capped)
 
 
 def _post_filter(out: AdapterOutput, params: Mapping[str, Any], ctx: ExtentContext,
@@ -757,6 +800,244 @@ def _find_named(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, L
                               "a named search needs something to look for")
     return _measure_with_adapter(step, ctx, searched=concept, started_at=started_at,
                                  ref_refusals=ref_refusals)
+
+
+def _single_instance(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[Any]],
+                     role: str) -> Tuple[Optional[Any], Optional[ExtentInstance], Optional[str]]:
+    """The one extent an operation is about, or why there isn't one.
+
+    A CONTRACT LIMIT, MADE VISIBLE RATHER THAN GUESSED AROUND. Lane A's `InputRef` addresses an
+    ARTIFACT, not an instance inside it, so a refine request against a set of five extents cannot
+    say which one it means. Picking the largest, or the first, would be the lab choosing a subject
+    on the person's behalf and then attributing the choice to them.
+
+    So this refuses, and says how to proceed: select one extent first. Lane F should read this as
+    the argument for an optional `instance_id` on `InputRef`.
+    """
+    entries = resolved.get(role) or []
+    if not entries:
+        return None, None, f"{step.operation} needs a {role} extent and none resolved"
+    _ref, artifact = entries[0]
+    payload = getattr(artifact.measurement, "payload", None)
+    instances = list(getattr(payload, "instances", ()) or ())
+    if len(instances) != 1:
+        return artifact, None, (
+            f"the {role} artifact holds {len(instances)} extents and this operation works on one. "
+            f"Select a single extent first — the lab will not choose which one you meant")
+    return artifact, instances[0], None
+
+
+def _carry_naming(instance: ExtentInstance) -> Optional[Dict[str, Any]]:
+    """A refinement inherits the base's name and does not re-earn it.
+
+    The geometry changed; the reading did not. Re-deriving a name from a refined mask would be the
+    lab inventing an interpretation nobody made, and dropping the name would lose one a person may
+    have typed.
+    """
+    if instance.naming is None:
+        return None
+    return {"text": instance.naming.text, "source": instance.naming.source.value,
+            "epistemic_status": instance.naming.epistemic_status.value,
+            "confidence": instance.naming.confidence}
+
+
+def _refine(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[Any]],
+            ref_refusals: Tuple[RefusalRecord, ...], started_at: str) -> ExtentResult:
+    """`extent.refine` — is this the boundary I meant?
+
+    IDENTITY IS PRESERVED AND THE REVISION MOVES. A refinement continuing the same subject keeps
+    the base's `region_id` and increments `geometry_rev`; it does not mint a new identity, because
+    a relation citing that region must be able to notice that its endpoint moved. Split and merge
+    mint new identities, and this lane implements neither — the plan defers them until the lineage
+    rules exist, and a split that quietly reused an id would be the exact defect those rules are
+    for.
+
+    THE THREE MODES ARE EXACT SET ARITHMETIC, not three prompts to a model. SAM 2.1 predicts a
+    mask from the points or box it was given; what happens to the BASE is the lab's arithmetic,
+    per pixel, in `extent_metrics`:
+
+        replace   the prediction stands alone
+        add       base ∪ prediction
+        subtract  base − prediction
+
+    Doing it this way makes `add` and `subtract` checkable claims about two masks rather than
+    hints whose effect depends on how the model felt about the points.
+    """
+    base_artifact, base_instance, why = _single_instance(step, ctx, resolved, "base")
+    if why is not None:
+        return _param_refusal(ctx, step, started_at, why)
+
+    params = dict(step.parameters)
+    mode = str(params.get("mode") or "")
+    if not params.get("points") and not params.get("box"):
+        return _param_refusal(ctx, step, started_at,
+                              "a refinement needs points or a box to refine with")
+    if mode in ("add", "subtract") and not mg.rle_is_valid(base_instance.mask_rle):
+        return _param_refusal(
+            ctx, step, started_at,
+            f"{mode!r} is arithmetic on the base mask and the base extent has no mask. "
+            f"Use 'replace', or refine something that carries one")
+
+    call = _invoke(step, ctx, params, started_at, ref_refusals)
+    if call.terminal is not None:
+        return call.terminal
+    out = call.out
+    predicted = out.instances[0]["mask_rle"] if out.instances else None
+    if not mg.rle_is_valid(predicted):
+        return _param_refusal(ctx, step, started_at,
+                              "the refiner returned no mask for that prompt")
+
+    base_rle = base_instance.mask_rle
+    if mode == "replace" or not mg.rle_is_valid(base_rle):
+        combined = dict(predicted)
+        arithmetic = "the prediction, standing alone"
+    elif mode == "add":
+        combined = M.mask_union(base_rle, predicted)
+        arithmetic = "base ∪ prediction, per pixel"
+    else:
+        combined = M.mask_subtract(base_rle, predicted)
+        arithmetic = "base − prediction, per pixel"
+
+    if combined is None:
+        return _param_refusal(
+            ctx, step, started_at,
+            "the base mask and the refiner's mask are on different rasters, and the lab does not "
+            "resample one to meet the other — a resampled refinement is a mask of neither")
+    if not mg.rle_is_valid(combined):
+        return _param_refusal(ctx, step, started_at,
+                              f"{mode!r} left no pixels — a refinement that erases the extent is "
+                              f"a rejection, not a revision")
+
+    # ONE canonicalization, on a dict the lab owns. `canonicalize_geometry` bumps `geometry_rev`
+    # exactly once per identity derivation, so the base's revision goes in and the bump takes it to
+    # the next one. Doing the arithmetic first and canonicalizing once is what keeps the revision
+    # honest — running it twice would report two revisions for one refinement.
+    base_rev = int(base_instance.geometry_rev or 0)
+    region: Dict[str, Any] = {
+        "id": base_instance.region_id or instance_id(ctx, step, 0),
+        "actor": "creator",
+        "mask_rle": combined,
+        "geometry_rev": base_rev,
+        "refined_from": base_instance.instance_id,
+    }
+    mg.canonicalize_geometry(region, provenance={
+        "adapter": call.adapter.key, "model": out.model, "device": out.device,
+        "method": f"lab-refine-{mode}", "arithmetic": arithmetic})
+
+    refined = {
+        "instance_id": instance_id(ctx, step, 0),
+        "mask_rle": region["mask_rle"], "box": region.get("box"),
+        "area": M.normalized_area(region["mask_rle"]),
+        "confidence": out.instances[0].get("confidence"),
+        "naming": _carry_naming(base_instance),
+        "region_id": base_instance.region_id,
+        "geometry_rev": region.get("geometry_rev"),
+    }
+    identity_refs = ([RegionRef(region_id=base_instance.region_id,
+                                geometry_rev=int(region.get("geometry_rev") or base_rev + 1))]
+                     if base_instance.region_id else [])
+
+    out = replace(out, instances=(refined,), basis=EpistemicBasis.MASK,
+                  status=EpistemicStatus.MEASURED,
+                  basis_detail=f"per-pixel refinement: {arithmetic}",
+                  detail=f"{mode} refinement of {base_instance.instance_id} "
+                         f"(geometry_rev {base_rev} → {region.get('geometry_rev')})")
+    return _finish(
+        step, ctx, out,
+        searched=f"the boundary of {base_instance.instance_id}, refined",
+        adapter_key=call.adapter.key, producer_kind=ProducerKind.ADAPTER,
+        started_at=started_at, invoked=True, ref_refusals=ref_refusals,
+        input_refs=list(step.input_refs), identity_refs=identity_refs,
+        derived_from=[base_artifact.identity.artifact_id],
+        identity_scope=(IdentityScope.CANONICAL if base_instance.region_id
+                        else IdentityScope.SESSION))
+
+
+#: How much the lab will vouch for geometry it did not measure, ordered weakest first. `declared`
+#: is the abstention: a mask whose maker nobody recorded is not weak evidence, it is evidence the
+#: lab will not stand behind — the hole REGION-PROV-001 counted, with
+#: `region_provenance.is_attributed` as its reader.
+_REUSE_BASIS_ORDER = {EpistemicBasis.DECLARED: 0, EpistemicBasis.BOX: 1, EpistemicBasis.MASK: 2}
+
+
+def _region_epistemics(region: Mapping[str, Any]) -> Tuple[EpistemicBasis, EpistemicStatus, str]:
+    from backend.services import region_provenance as rp
+    if not mg.rle_is_valid(region.get("mask_rle")):
+        return (EpistemicBasis.BOX, EpistemicStatus.INTERPRETIVE,
+                "a box-only region: an estimate of an extent, and interpretive by "
+                "`epistemics.SUBSTRATE_CEILING`")
+    if rp.is_attributed(region):
+        maker = rp.maker_of(region)
+        return (EpistemicBasis.MASK, EpistemicStatus.MEASURED,
+                f"an attributed mask — {maker.get('detail')} — carried, not re-derived")
+    return (EpistemicBasis.DECLARED, EpistemicStatus.UNCERTAIN,
+            "a mask with no recorded maker. The lab carries the claim and will not vouch for it: "
+            "`uncertain` is an abstention, not a low score")
+
+
+def _reuse(step: ResolvedStep, ctx: ExtentContext, resolved: Mapping[str, List[Any]],
+           ref_refusals: Tuple[RefusalRecord, ...], started_at: str) -> ExtentResult:
+    """`extent.reuse` — work on extents Semant already holds, without copying or re-deriving them.
+
+    NOTHING IS CANONICALIZED HERE, and that is the whole care of this function.
+    `mask_geometry.canonicalize_geometry` mutates in place and bumps `geometry_rev`; running it on
+    a caller's Region would silently revise the corpus from inside a laboratory whose first promise
+    is that it does not write. So the geometry is READ and deep-copied, and the artifact references
+    `region_id` + `geometry_rev` rather than owning them.
+
+    THE SET TAKES ITS WEAKEST MEMBER'S STATUS. One unattributed mask among four attributed ones
+    drags the artifact to `declared` / `uncertain`, because a set reported as `measured` invites a
+    reader to trust a part of it nobody can trace.
+    """
+    entries = resolved.get("regions") or []
+    if not entries:
+        completed_at = ctx.now()
+        return ExtentResult(
+            outcome=RunOutcome.REFUSED, refusals=ref_refusals,
+            stage_attempt=_stage(ctx, step, state=StageState.REFUSED, adapter="canonical_region",
+                                 invoked=False, started_at=started_at, completed_at=completed_at,
+                                 duration_ms=None,
+                                 detail="no reference resolved to a region held in this session"))
+
+    instances: List[Dict[str, Any]] = []
+    bases: List[Tuple[EpistemicBasis, EpistemicStatus, str]] = []
+    for n, (ref, region) in enumerate(entries):
+        basis, status, why = _region_epistemics(region)
+        bases.append((basis, status, why))
+        rle = region.get("mask_rle")
+        box = region.get("box")
+        naming, _hidden = _naming_from(str(region.get("label") or ""),
+                                       region.get("confidence"), "canonical", 0.0)
+        instances.append({
+            "instance_id": instance_id(ctx, step, n),
+            # Deep copies. The dicts handed in belong to the caller and go back untouched.
+            "mask_rle": dict(rle) if mg.rle_is_valid(rle) else None,
+            "box": dict(box) if isinstance(box, Mapping) else None,
+            "area": M.normalized_area(rle) if mg.rle_is_valid(rle) else None,
+            "confidence": region.get("confidence"), "naming": naming,
+            "region_id": str(region.get("id") or ref.region_id),
+            "geometry_rev": int(region.get("geometry_rev") or ref.geometry_rev or 0)})
+
+    weakest = min(bases, key=lambda row: _REUSE_BASIS_ORDER[row[0]])
+    mixed = len({row[0] for row in bases}) > 1
+    out = AdapterOutput(
+        instances=tuple(instances), basis=weakest[0], status=weakest[1],
+        basis_detail=(weakest[2] + ("; the set is mixed and takes its weakest member's status"
+                                    if mixed else "")),
+        model=None, revision=None, device=None, duration_ms=None,
+        detail=f"{len(instances)} region(s) referenced, none re-derived")
+
+    identity_refs = [RegionRef(region_id=str(i["region_id"]),
+                               geometry_rev=int(i["geometry_rev"] or 0))
+                     for i in instances if i.get("region_id")]
+    return _finish(
+        step, ctx, out,
+        searched=("extents Semant already holds: "
+                  + ", ".join(str(i["region_id"]) for i in instances)),
+        adapter_key="canonical_region", producer_kind=ProducerKind.ADAPTER,
+        started_at=started_at, invoked=False, ref_refusals=ref_refusals,
+        input_refs=list(step.input_refs), identity_refs=identity_refs,
+        identity_scope=IdentityScope.CANONICAL)
 
 
 # ── the real adapters ────────────────────────────────────────────────────────
@@ -989,27 +1270,127 @@ class GroundedSamAdapter:
             detail=f"{len(instances)} grounded boxes for {concept!r}")
 
 
+def _call_refine_session(image_bytes: bytes, prompt: Mapping[str, Any], base_id: Optional[str],
+                         base_rev: int) -> Mapping[str, Any]:
+    """The sync seam over `refine_session.preview`, which is async.
+
+    WHY A SEAM AND NOT AN ASYNC FAÇADE. Everything else this organ wraps is blocking, and an async
+    `run()` would make five synchronous adapters pay for one asynchronous one — and would make the
+    test that matters (a direct step and a planner step reaching the same runner) harder to write
+    than the thing it proves. So the façade stays synchronous and the one async producer is
+    adapted here, in six lines a reader can check.
+
+    When there is no running loop this is `asyncio.run`. When there IS one — a FastAPI request
+    thread, which is where Lane F will call from — the coroutine goes to its own loop on a worker
+    thread rather than blocking the caller's. Lane F may inject a plain `await` seam instead.
+    """
+    import asyncio
+    from backend.services.vision_orchestrator.refine_session import refine_session
+
+    def _go():
+        return asyncio.run(refine_session.preview(image_bytes, dict(prompt), base_id, base_rev))
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return _go()
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(_go).result()
+
+
+class Sam2RefineAdapter:
+    """`sam2_refine` — SAM 2.1 point/box refinement, through `vision_orchestrator/refine_session`.
+
+    THE ADAPTER PREDICTS; THE FAÇADE DOES THE ARITHMETIC. What comes back here is one mask for the
+    prompt that was given, and nothing else. `add` and `subtract` are then exact set operations on
+    the base, done in `extent_metrics` where they can be tested on a 4×4 mask. Pushing them into
+    the adapter would make the modes depend on a model's response to point labels, which is not a
+    thing anyone can check.
+
+    Point labels still travel: `add` sends foreground points, `subtract` sends background ones, so
+    the prediction is the best one available for what the person meant. The arithmetic is what
+    makes the mode's EFFECT definite.
+    """
+
+    key = "sam2_refine"
+
+    def __init__(self, refine_call: Callable[..., Mapping[str, Any]] = _call_refine_session
+                 ) -> None:
+        self._refine_call = refine_call
+
+    def _session(self):
+        from backend.services.vision_orchestrator.refine_session import refine_session
+        return refine_session
+
+    def capability(self) -> CapabilityState:
+        try:
+            return (CapabilityState.AVAILABLE if self._session().available()
+                    else CapabilityState.UNAVAILABLE)
+        except Exception:
+            return CapabilityState.UNAVAILABLE
+
+    def measure(self, step: ResolvedStep, ctx: ExtentContext,
+                params: Mapping[str, Any]) -> AdapterOutput:
+        points = params.get("points") or []
+        box = params.get("box")
+        mode = str(params.get("mode") or "replace")
+        prompt: Dict[str, Any] = {}
+        if points:
+            prompt["points"] = [[float(p[0]), float(p[1])] for p in points]
+            # `subtract` means "not this part of it", which is SAM 2.1's background label.
+            prompt["labels"] = [0 if mode == "subtract" else 1] * len(prompt["points"])
+        if isinstance(box, Mapping):
+            prompt["box"] = [float(box["x"]), float(box["y"]),
+                             float(box["x"]) + float(box["w"]),
+                             float(box["y"]) + float(box["h"])]
+
+        region = self._refine_call(ctx.image_bytes, prompt, None, 0) or {}
+        rle = region.get("mask_rle")
+        prov = region.get("geometry_provenance") or {}
+        return AdapterOutput(
+            instances=({"instance_id": instance_id(ctx, step, 0),
+                        "mask_rle": dict(rle) if mg.rle_is_valid(rle) else None,
+                        "box": region.get("box"),
+                        "area": M.normalized_area(rle) if mg.rle_is_valid(rle) else None,
+                        "confidence": region.get("confidence"), "naming": None,
+                        "region_id": None, "geometry_rev": None},),
+            basis=EpistemicBasis.MASK, status=EpistemicStatus.MEASURED,
+            basis_detail="a per-pixel prediction from the point/box prompt",
+            model=prov.get("model"), revision=prov.get("checkpoint"), device=prov.get("device"),
+            detail=f"{mode} prompt refined")
+
+
 #: Operation → handler. `run()` refuses anything absent with `unsupported_operation`, which is the
 #: same answer a genuinely undeclared key gets, because from the caller's side "this laboratory
 #: will not do that" is one fact.
 _HANDLERS: Dict[str, Callable[..., ExtentResult]] = {
     "extent.find_all": _find_all,
     "extent.find_named": _find_named,
+    "extent.refine": _refine,
     "extent.draw": _draw,
+    "extent.reuse": _reuse,
 }
 
 
 def default_adapters() -> Mapping[str, ExtentAdapter]:
     """The real adapters, by their contract key.
 
-    Constructed fresh each call and holding no model: every one of them imports its service lazily
-    inside `capability()` / `measure()`, so importing this module costs nothing and a deployment
-    without torch can still read the registry and be told, honestly, that nothing is running.
+    ONLY THE THINGS THAT CAN BE ABSENT ARE IN HERE. `extent.draw`, `extent.reuse` and
+    `extent.compare` name their contract adapter on the provenance (`null` for a person,
+    `canonical_region`, `lab_compare`) and never consult this registry, because an operation with
+    no model behind it cannot be unavailable — and a registry entry that is always available would
+    be a capability declaration that means nothing.
+
+    Constructed fresh each call and holding no model: every adapter imports its service lazily, so
+    importing this module costs nothing and a deployment without torch can still read the registry
+    and be told, honestly, that nothing is running.
     """
     return {
         Sam2AutoAdapter.key: Sam2AutoAdapter(),
         Sam3ConceptAdapter.key: Sam3ConceptAdapter(),
         GroundedSamAdapter.key: GroundedSamAdapter(),
+        Sam2RefineAdapter.key: Sam2RefineAdapter(),
     }
 
 
