@@ -173,11 +173,22 @@ class LabContext:
 class TopologyInput:
     """One extent artifact, in the role the operation consumes it as, and which instance of it.
 
-    `instance_id` is Lane C's, not Lane A's: the contract's `InputRef` names an ARTIFACT, and an
-    `extent_set` holds many instances. A pair operation needs one endpoint per role, so the
-    reference has to reach one instance deeper. Absent, it resolves when the artifact holds exactly
-    one instance and refuses `unknown_reference` when it holds several — a laboratory that picked
-    the first would answer a question about a mask nobody selected.
+    `instance_id` here is PROVISIONAL AND LOCAL, and is deliberately not offered as a second way
+    of saying what an input is. The contract's `InputRef` names an ARTIFACT; an `extent_set` holds
+    many instances; a pair operation needs one endpoint per role, so the reference has to reach one
+    instance deeper than the contract currently reaches. This field is the smallest thing that
+    closes that gap until Lane A2's narrow repair adds `instance_id` to the canonical `InputRef` —
+    at which point it is deleted, not kept alongside. Two names for one reference is exactly the
+    invented identity this contract exists to make unsayable, and a lane that froze its own would
+    be the one that made it sayable again.
+
+    `as_ref()` below is the WHOLE reconciliation seam. Nothing else in this module constructs an
+    `InputRef`, so when the canonical field lands the change is: pass `instance_id` through there,
+    drop this field, and delete the tripwire test that watches for it.
+
+    Absent, it resolves when the artifact holds exactly one instance and refuses `unknown_reference`
+    when it holds several — a laboratory that picked the first would answer a question about a mask
+    nobody selected.
     """
     role: str
     artifact_id: str
@@ -185,6 +196,14 @@ class TopologyInput:
     scope: IdentityScope = IdentityScope.SESSION
 
     def as_ref(self) -> InputRef:
+        """The one place a canonical `InputRef` is built. See the class docstring.
+
+        Until Lane A2 lands, `instance_id` does NOT travel into the artifact's `input_refs`: an
+        all-pairs run over four members records four refs that name the same artifact in the same
+        role. That is a real loss of resolution and it is recorded as a known gap rather than
+        papered over with a local field the rest of the system does not read. The endpoints inside
+        the payload carry the instance, so nothing a reader looks at is ambiguous.
+        """
         return InputRef(role=self.role, scope=self.scope, artifact_id=self.artifact_id)
 
 

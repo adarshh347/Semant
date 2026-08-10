@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import pytest
 
 from backend.schemas.perception_lab import (ArtifactKind, EpistemicBasis, EpistemicStatus,
-                                            IdentityScope, LabelSource, LifecycleState,
+                                            IdentityScope, InputRef, LabelSource, LifecycleState,
                                             PerceptualArtifact, ProducerKind, ProjectionKind,
                                             RefusalCode, RelationKind, RunOutcome)
 from backend.services import adjacency_organ as adjacency_organ
@@ -1160,6 +1160,37 @@ def test_mutation_masks_on_two_rasters_may_not_be_compared():
     b = ev.decode({"size": [2, 8], "counts": [0, 16]})
     with pytest.raises(ev.GeometryUnavailable):
         ev.same_raster(a, b)
+
+
+def test_the_local_instance_id_is_provisional_and_says_so_when_lane_a2_lands():
+    """A TRIPWIRE, and it is meant to fail on somebody else's merge.
+
+    `TopologyInput.instance_id` is Lane C's local reach past the contract, not a second contract.
+    Lane A2's narrow repair puts `instance_id` on the canonical `InputRef`; the moment it does,
+    keeping a private one alongside it means two ways to say which mask an input is, which is the
+    invented identity this whole contract exists to make unsayable.
+
+    So: while the canonical field is absent, this test asserts the local one is doing a job nobody
+    else can do. When the canonical field arrives, this test fails ON PURPOSE with the three-line
+    change spelled out. A TODO comment would have been silent, and the merge that made the local
+    field redundant is precisely the merge nobody re-reads this module during.
+    """
+    if "instance_id" in InputRef.model_fields:
+        pytest.fail(
+            "Lane A2 has landed: `InputRef.instance_id` now exists. Reconcile Lane C — pass "
+            "instance_id through `TopologyInput.as_ref()`, delete the local field from "
+            "`TopologyInput`, and delete this test. Nothing else in topology.py builds an "
+            "InputRef, so that is the whole change.")
+
+    ref = T.TopologyInput(role="source", artifact_id="art_1", instance_id="inst_1").as_ref()
+    assert not hasattr(ref, "instance_id"), "the canonical ref does not carry one yet"
+    assert ref.artifact_id == "art_1"
+    # And the endpoint inside the payload does carry it, which is why the gap is a loss of
+    # resolution in `input_refs` rather than an ambiguity anyone reading the relation would meet.
+    relation = only(T.run(pair("topology.containment", fixture("extent-set.containment.json"),
+                               "inst_inner", "inst_outer")))
+    assert relation.source.instance_id == "inst_inner"
+    assert relation.target.instance_id == "inst_outer"
 
 
 # ── golden fixtures: this lane's real output, in the shared corpus ───────────
