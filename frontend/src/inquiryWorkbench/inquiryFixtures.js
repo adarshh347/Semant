@@ -1253,4 +1253,129 @@ export function dissolvedFixture() {
     };
 }
 
+/**
+ * 16. The council's own receipts — HARNESS-003D.
+ *
+ * `dissolvedFixture` shows what a compilation PRODUCED. This shows what produced it: five passes,
+ * their model, their calls, and — on the dissector — the two things that only exist once a real
+ * account's per-minute allowance is in the loop. `transport_attempts` exceeds `call_count` because
+ * the same bytes were re-sent after a refusal, and `waited_ms` is the wall-clock that bought.
+ *
+ * The deployment is `live` and reachable, because this fixture's job is to be the case where every
+ * number is real. `pacedOutFixture` is the same run with the budget gate closing on it.
+ */
+export function councilFixture() {
+    const s = dissolvedFixture();
+    return {
+        ...s,
+        deployment: {
+            kind: 'live',
+            declared: true,
+            reachable: true,
+            detail: 'compiler and theorist bound to openai/gpt-oss-120b on groq',
+        },
+        graph: {
+            ...s.graph,
+            passes: [
+                {
+                    pass_id: 'pss_1', pass_name: 'source_ledger', outcome: 'completed',
+                    model: 'openai/gpt-oss-120b', provider: 'groq',
+                    call_count: 1, transport_attempts: 1, finish_reasons: ['stop'],
+                    duration_ms: 4200, waited_ms: null, capacity_waits: [],
+                    inputs: 7, outputs: 5, detail: '', notes: [],
+                },
+                {
+                    pass_id: 'pss_2', pass_name: 'semantic_dissector', outcome: 'completed',
+                    model: 'openai/gpt-oss-120b', provider: 'groq',
+                    call_count: 2, transport_attempts: 4, finish_reasons: ['stop', 'stop'],
+                    duration_ms: 31800, waited_ms: 41000,
+                    capacity_waits: [
+                        {
+                            attempt: 1, seconds: 7.7, source: 'provider_message', taken: true,
+                            detail: 'try again in 7.66s',
+                        },
+                        {
+                            attempt: 2, seconds: 33.3, source: 'provider_retry_after', taken: true,
+                            detail: 'retry-after: 33.3',
+                        },
+                    ],
+                    inputs: 5, outputs: 3, detail: '', notes: [],
+                },
+                {
+                    pass_id: 'pss_3', pass_name: 'targeted_repair', outcome: 'thin',
+                    model: 'openai/gpt-oss-120b', provider: 'groq',
+                    call_count: 1, transport_attempts: 1, finish_reasons: ['stop'],
+                    duration_ms: 6100, waited_ms: null, capacity_waits: [],
+                    inputs: 1, outputs: 0,
+                    detail: 'su_5 came back with nothing said about it.', notes: [],
+                },
+                {
+                    pass_id: 'pss_4', pass_name: 'relation_architect', outcome: 'completed',
+                    model: 'openai/gpt-oss-120b', provider: 'groq',
+                    call_count: 1, transport_attempts: 1, finish_reasons: ['stop'],
+                    duration_ms: 18400, waited_ms: null, capacity_waits: [],
+                    inputs: 3, outputs: 4, detail: '', notes: [],
+                },
+                {
+                    pass_id: 'pss_5', pass_name: 'epistemic_operationalizer', outcome: 'completed',
+                    model: 'openai/gpt-oss-120b', provider: 'groq',
+                    call_count: 1, transport_attempts: 1, finish_reasons: ['stop'],
+                    // A deterministic-looking pass that genuinely made a call and genuinely did
+                    // not wait: `waited_ms` stays null rather than becoming 0.
+                    duration_ms: 12900, waited_ms: null, capacity_waits: [],
+                    inputs: 4, outputs: 2, detail: '', notes: [],
+                },
+            ],
+            coverage_summary: {
+                source_units: 5, disposed: 4, represented: 3,
+                by_disposition: { represented_by: 3, semantic_remainder: 1 },
+                lost: ['su_5'], lost_count: 1,
+                user_units: 2, reading_units: 3,
+                complete: false,
+            },
+        },
+    };
+}
+
+/**
+ * 17. The same council, stopped by its own declared budget.
+ *
+ * The last wait was NOT taken: the gate closed instead. That is the case the whole pacing design
+ * exists for — a run that ends honestly short rather than one that quietly shrinks its reading to
+ * fit an allowance — and it must never render as a run that was still going.
+ */
+export function pacedOutFixture() {
+    const s = councilFixture();
+    const notReached = (p) => ({
+        ...p,
+        outcome: 'unavailable', call_count: 0, transport_attempts: 0,
+        duration_ms: null, waited_ms: null, capacity_waits: [], finish_reasons: [],
+        inputs: null, outputs: null,
+        detail: 'The run had stopped before this pass was entered.',
+    });
+    const passes = s.graph.passes.map((p) => (p.pass_name === 'epistemic_operationalizer'
+        ? notReached(p) : p)).map((p) => (p.pass_name === 'relation_architect'
+        ? {
+            ...p,
+            outcome: 'unavailable',
+            call_count: 0, transport_attempts: 6, duration_ms: null,
+            waited_ms: 1_684_000, finish_reasons: [],
+            capacity_waits: [
+                { attempt: 1, seconds: 20, source: 'declared_interval', taken: true, detail: '' },
+                {
+                    attempt: 6, seconds: null, source: 'budget_exhausted', taken: false,
+                    detail: 'the 30 minute gate budget was spent',
+                },
+            ],
+            detail: 'The provider had no allowance left inside this run\'s budget.',
+        }
+        : p));
+    return {
+        ...s,
+        state: 'exhausted',
+        stop_reason: 'The run stopped waiting for provider capacity after 28m of its 30m budget.',
+        graph: { ...s.graph, passes },
+    };
+}
+
 export default consultFixture;
