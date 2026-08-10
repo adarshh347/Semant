@@ -46,7 +46,10 @@
       "artifact.topology-relation-set-box-basis.json",
       "artifact.negative-space-field.json",
       "artifact.refusal-missing-depth.json",
-      "artifact.extent-set-lane-b.json"
+      "artifact.extent-set-lane-b.json",
+      "artifact.topology-relation-set-lane-c.json",
+      "artifact.negative-space-field-lane-c.json",
+      "artifact.refusal-missing-depth-lane-c.json"
     ],
     "LabReview": [
       "review.correct.json",
