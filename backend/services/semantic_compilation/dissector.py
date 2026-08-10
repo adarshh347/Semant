@@ -364,10 +364,23 @@ class SemanticDissector(ModelPass):
         receipts: List[PassReceipt] = []
         seen: Set[str] = set()
 
-        for batch in batched(units, self.budget.batch_size):
+        # THE BATCH IS WHERE THE TIME GOES, so the batch is what a person watches. At three units a
+        # call and roughly 1.5 calls a minute inside an 8000 TPM allowance, a 30-block reading is
+        # eleven calls and several minutes — reported once at the end, that is a stage which sat
+        # silent and then finished, which is indistinguishable from one that hung.
+        batches = batched(units, self.budget.batch_size)
+        for number, batch in enumerate(batches, 1):
             batch_ids = {u.source_unit_id for u in batch}
+            self.observe(f"dissolving batch {number} of {len(batches)}",
+                         index=number, total=len(batches), outcome="started",
+                         refs=sorted(batch_ids),
+                         detail=f"{len(batch)} source unit(s)")
             result = self.invoke(build_prompt(units, prompt=prompt, batch=batch),
                                  inquiry_id=inquiry_id, attempt=attempt, inputs=len(batch))
+            self.observe(f"dissolving batch {number} of {len(batches)}",
+                         index=number, total=len(batches),
+                         outcome=result.receipt.outcome.value, refs=sorted(batch_ids),
+                         detail=result.receipt.detail or f"{len(batch)} source unit(s)")
             receipts.append(result.receipt)
             comp.refusals.extend(result.refusals)
             if result.payload is None:

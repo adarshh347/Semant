@@ -34,9 +34,10 @@ underperformance becomes VISIBLE, not where it gets tidied.
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 
 from backend.schemas.semantic_compilation import PassOutcome, PassReceipt, SemanticInquiryGraph
+from backend.services.semantic_compilation import pacing
 from backend.services.semantic_compilation.base import CompilationRequest
 from backend.services.semantic_compilation.dissolution import Council, dissolve, live_council
 
@@ -57,8 +58,14 @@ class DissolutionCompiler:
 
     name = "council"
 
-    def __init__(self, council: Optional[Council] = None):
+    #: 003B's opt-in. A DECLARATION rather than signature introspection — the coordinator hands an
+    #: observer only to a stage that said it reports its own insides, because guessing from a
+    #: parameter list fails silently the moment a stage grows `**kwargs`.
+    wants_substage_observer = True
+
+    def __init__(self, council: Optional[Council] = None, *, pacer: Any = None):
         self._council = council
+        self._pacer = pacer
         #: 003B's producer-attribute route reads these two by name. They are properties of the last
         #: compilation rather than of the object, and they are reset per call so a second inquiry
         #: on a reused adapter cannot inherit the first one's truncation.
@@ -69,13 +76,22 @@ class DissolutionCompiler:
 
     # ── the seam ──
 
-    def compile(self, request: CompilationRequest) -> SemanticInquiryGraph:
+    def compile(self, request: CompilationRequest, *,
+                on_substage: Optional[Callable[..., None]] = None) -> SemanticInquiryGraph:
+        """One compilation, narrated if anybody is listening, inside one declared wall-clock budget.
+
+        THE BUDGET IS OPENED HERE, once per compilation, and that placement is the decision's
+        `30-minute default per prompt` read literally. Opened per PASS instead, five passes each
+        granted thirty minutes would be a two-and-a-half-hour gate wearing a thirty-minute label.
+        """
         self.last_finish_reason = ""
         self.truncated_calls = 0
         self.last_passes = ()
         self.calls += 1
+        (self._pacer if self._pacer is not None else pacing.provider_pacer()).open_budget()
 
-        graph = dissolve(request, self._council if self._council is not None else live_council())
+        graph = dissolve(request, self._council if self._council is not None else live_council(),
+                         on_substage=on_substage)
 
         self.last_passes = tuple(graph.passes)
         self.truncated_calls = sum(
@@ -108,11 +124,62 @@ class DissolutionCompiler:
         return next(iter(providers)) if len(providers) == 1 else None
 
     @property
+    def call_topology(self) -> str:
+        """How this graph was actually obtained. `council_passes`, and it is not a `CallTopology`.
+
+        The v1 enum's five values all describe ONE producer's relationship to the images —
+        `single_joint_call`, `per_image_then_synthesis`, `text_only`, `replay`, `unavailable`. A
+        council is a different shape: several bounded minds, each with its own prompt, budget and
+        receipt, none of which has seen an image. Reporting `text_only` would be true of every pass
+        and false about the compilation, and adding a sixth enum value would put the council's shape
+        into a vocabulary the theorist also uses.
+
+        Empty where nothing ran, so an unbound council does not advertise a topology it never had.
+        """
+        return "council_passes" if self.last_passes else ""
+
+    @property
     def actual_calls(self) -> int:
         """Requests this council made. The deterministic passes contribute zero, which is correct:
         the ledger and the audit are transforms, and counting them as calls would inflate the number
         a reader uses to judge cost."""
         return sum(p.call_count for p in self.last_passes)
+
+    @property
+    def transport_attempts(self) -> int:
+        """Bytes on the wire, including identical re-sends after a capacity refusal.
+
+        Apart from `actual_calls` because they answer different questions. `actual_calls` is what
+        the council ASKED and is what a reader judges the shape of the compilation by;
+        `transport_attempts` is what the network cost, and the gap between them is the account's
+        allowance rather than anything about the prompt.
+        """
+        return sum(p.transport_attempts for p in self.last_passes)
+
+    @property
+    def waited_ms(self) -> Optional[float]:
+        """Time spent waiting for the allowance rather than for a model.
+
+        `None` where nothing waited — the same law `duration_ms` follows one field over. A zero here
+        would say a pacer was consulted and reported no wait, which is not what "no pacer ran"
+        means, and a rehearsal that could not tell those apart would report an unpaced run as one
+        that never hit the limit.
+        """
+        spent = [p.waited_ms for p in self.last_passes if p.waited_ms is not None]
+        return round(sum(spent), 3) if spent else None
+
+    @property
+    def capacity_waits(self) -> tuple:
+        return tuple(w for p in self.last_passes for w in p.capacity_waits)
+
+    @property
+    def capacity_limited(self) -> bool:
+        """Did the gate's declared budget, or the attempt bound, end this compilation?
+
+        The decision's honest ending: on exhaustion the phase stops as `capacity_limited` and issues
+        `REPAIR`. It does not continue with a partial graph and call itself ratified.
+        """
+        return any(not w.taken for w in self.capacity_waits)
 
     @property
     def worst_outcome(self) -> Optional[PassOutcome]:

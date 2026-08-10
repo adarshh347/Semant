@@ -52,15 +52,19 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import dataclasses
 import itertools
 import os
+import threading
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Deque, Dict, List, Optional
 
 from backend.schemas.inquiry_session import SemanticInquirySession
+from backend.schemas.inquiry_stage import StageAttemptOutcome, SubstageEvent
 
-from . import steps, store
+from . import ids, steps, store
 from .coordinator import Stages
 
 #: Blocking-SDK work for inquiry stages. Separate from the Director's single `director-orch` worker
@@ -193,6 +197,123 @@ async def checkpoint(session: SemanticInquirySession, *, expected: int,
     return advanced
 
 
+def _replace(stages: Stages, **fields: Any) -> Stages:
+    """`Stages` is frozen, and the observer is bound per stage entry rather than per driver.
+
+    Per ENTRY because the tap has to know which attempt it is writing progress onto. A driver-wide
+    observer would have to look that up on every event, which is the same lookup done N times with
+    N chances to disagree with the checkpoint the driver is holding.
+    """
+    return dataclasses.replace(stages, **fields)
+
+
+class _LiveProgress:
+    """A stage's own account of itself, persisted WHILE the stage is still inside its call.
+
+    ## Why this exists at all
+
+    HARNESS-003B made the chain watchable BETWEEN stages: a `started` attempt goes in before the
+    call and a terminal one after, so a person sees which of seven stages is running and for how
+    long. That is enough while a stage takes seconds. It is not enough for a compiler that spends
+    four minutes queueing against an 8000 TPM allowance, because `compiler · started · 4m 12s` and
+    a hung process are the same screen — and `DECISION-harness-003D` says in as many words that the
+    UI may say `waiting for provider capacity` and may not look frozen.
+
+    So the substages are flushed to the store as they are reported, onto the `started` attempt the
+    driver already wrote. `GET` and the stream then show the council's passes arriving one at a
+    time, and each capacity wait the moment it is planned rather than once it is over.
+
+    ## What makes it safe
+
+    The stage runs on a pool thread and every write happens on the event loop. The observer does not
+    write; it BUFFERS under a plain lock and schedules a drain. So there is exactly one writer, and
+    it is the same coroutine that does the driver's own checkpoints — which is why the moving
+    checkpoint can live in a plain attribute here rather than needing a second compare-and-set
+    scheme on top of the store's.
+
+    Fire and forget, deliberately: a model call must never be paced by a store write. A flush that
+    fails is dropped and the terminal attempt still carries the whole substage list, because
+    `_Ledger` records them regardless — see `coordinator._sink_for`, which feeds both.
+    """
+
+    def __init__(self, session: SemanticInquirySession, stage: Any, *, collection: Any,
+                 on_checkpoint: Optional[Callable[[SemanticInquirySession], None]] = None):
+        self.session = session
+        self._stage = stage
+        self._collection = collection
+        self._on_checkpoint = on_checkpoint
+        self._loop = asyncio.get_running_loop()
+        self._pending: Deque[Dict[str, Any]] = deque()
+        self._buffer_lock = threading.Lock()
+        self._write_lock = asyncio.Lock()
+        self._seen = 0
+
+    @property
+    def checkpoint(self) -> int:
+        return self.session.checkpoint
+
+    # ── called from the stage's thread ──
+
+    def __call__(self, label: str, **fields: Any) -> None:
+        with self._buffer_lock:
+            self._seen += 1
+            self._pending.append({"label": str(label), "seq": self._seen, **fields})
+        with contextlib.suppress(RuntimeError):
+            # RuntimeError: the loop is closing. A late progress report is dropped rather than
+            # raised — it would otherwise fail a stage that had already finished its work.
+            asyncio.run_coroutine_threadsafe(self._flush(), self._loop)
+
+    # ── called on the loop ──
+
+    async def _flush(self) -> None:
+        async with self._write_lock:
+            with self._buffer_lock:
+                if not self._pending:
+                    return
+                batch = list(self._pending)
+                self._pending.clear()
+            events = [self._event(row) for row in batch]
+            advanced = _with_substages(self.session, self._stage, events)
+            if advanced is None:
+                return
+            try:
+                self.session = await checkpoint(advanced, expected=self.session.checkpoint,
+                                                collection=self._collection)
+            except store.SessionWriteFailed:
+                # Somebody else moved the document. Progress is a courtesy; the terminal attempt
+                # carries the same events, so nothing is lost by giving up on this one.
+                return
+            if self._on_checkpoint:
+                self._on_checkpoint(self.session)
+
+    def _event(self, row: Dict[str, Any]) -> SubstageEvent:
+        seq = int(row.pop("seq"))
+        label = str(row.pop("label"))
+        return SubstageEvent(
+            substage_id=ids.stage_id(self.session.session_id, "substage", label, seq),
+            label=label,
+            index=row.get("index"), total=row.get("total"), at=row.get("at"),
+            outcome=str(row.get("outcome") or ""),
+            refs=[str(r) for r in (row.get("refs") or ())],
+            detail=str(row.get("detail") or ""))
+
+
+def _with_substages(session: SemanticInquirySession, stage: Any,
+                    events: List[SubstageEvent]) -> Optional[SemanticInquirySession]:
+    """Append progress to the `started` attempt this driver wrote for `stage`.
+
+    ONLY onto a `started` attempt, and `None` when there is not one. A terminal attempt is a closed
+    record: writing progress onto it after the fact would let a stage that had already reported its
+    ending grow a longer story afterwards.
+    """
+    latest = steps.latest_by_stage(session).get(stage)
+    if latest is None or latest.outcome is not StageAttemptOutcome.STARTED:
+        return None
+    grown = latest.model_copy(update={"substages": [*latest.substages, *events]})
+    return session.model_copy(update={
+        "stages": [grown if a.attempt_id == latest.attempt_id else a for a in session.stages]})
+
+
 async def drive(session_id: str, stages: Stages, *, driver_id: str = "",
                 collection=None, on_checkpoint: Optional[Callable[[SemanticInquirySession], None]] = None,
                 limit: int = 32) -> DriverReport:
@@ -248,10 +369,19 @@ async def drive(session_id: str, stages: Stages, *, driver_id: str = "",
             if on_checkpoint:
                 on_checkpoint(session)
 
-            loop = asyncio.get_running_loop()
-            advanced = await loop.run_in_executor(_POOL, steps.run, session, step.stage, stages)
+            # THE LIVE TAP, bound for the duration of this stage only. A stage reports its own
+            # insides through it and the progress lands in the store while the call is still in
+            # flight — which is what stops a four-minute wait for provider capacity from looking
+            # like a hung process. `_LiveProgress` holds the moving checkpoint, so the terminal
+            # write below expects whatever the flushes left rather than what this iteration read.
+            progress = _LiveProgress(session, step.stage, collection=collection,
+                                     on_checkpoint=on_checkpoint)
+            watched = _replace(stages, observer=progress)
 
-            session = await checkpoint(advanced, expected=session.checkpoint,
+            loop = asyncio.get_running_loop()
+            advanced = await loop.run_in_executor(_POOL, steps.run, session, step.stage, watched)
+
+            session = await checkpoint(advanced, expected=progress.checkpoint,
                                        collection=collection)
             writes += 1
             ran.append(step.stage.value)

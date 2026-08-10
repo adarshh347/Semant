@@ -28,11 +28,23 @@ produces no atoms, so the architect reports `empty` rather than `unavailable` �
 had nothing to work with, and collapsing those two would hide which mind was missing. The overall
 state is decided by `audit.overall`, which orders the explanations so the first cause is the one
 reported.
+
+## Narration (HARNESS-003D)
+
+`on_substage` is an optional sink the caller supplies. The council reports which pass it is entering,
+which batch it is on, and what each pass came back with — and `passes.ModelPass` reports each
+capacity refusal and planned wait through the same sink, as it happens.
+
+It is a SINK rather than a return value because a compilation that only narrates at the end narrates
+nothing: the whole reason 002R's rehearsal read as `visibility_failure` is that a person watched a
+two-minute wait with no account of it. What arrives here is a callable and a label; nothing about the
+inquiry's subject reaches it, and a sink that raises is ignored rather than allowed to fail the pass.
 """
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Tuple
 
 from backend.schemas.semantic_compilation import (SCHEMA_VERSION_V2, ClaimEdge, ClaimNode,
                                                   CompilerRefusal, CoverageDisposition,
@@ -73,14 +85,104 @@ def live_council() -> Council:
                    operationalizer=EpistemicOperationalizer(), repairer=SemanticDissector())
 
 
-def dissolve(request: CompilationRequest, council: Council) -> SemanticInquiryGraph:
+#: The order a person watches the council in, and the denominator of `pass N of M`. Declared as
+#: data rather than counted from the code, so the progress a surface renders is the sequence this
+#: module actually runs rather than a number somebody kept in step by hand.
+PASS_ORDER: Tuple[DissolutionPass, ...] = (
+    DissolutionPass.SOURCE_LEDGER, DissolutionPass.SEMANTIC_DISSECTOR,
+    DissolutionPass.TARGETED_REPAIR, DissolutionPass.RELATION_ARCHITECT,
+    DissolutionPass.EPISTEMIC_OPERATIONALIZER, DissolutionPass.COVERAGE_AUDIT,
+)
+
+#: What each pass is called where a person reads it. The council's names are accurate and the
+#: surface has to render something a reader who has not read this file can follow.
+PASS_LABEL = {
+    DissolutionPass.SOURCE_LEDGER: "splitting the question and the reading into source units",
+    DissolutionPass.SEMANTIC_DISSECTOR: "dissolving source units into semantic atoms",
+    DissolutionPass.TARGETED_REPAIR: "one targeted repair over the units nothing accounted for",
+    DissolutionPass.RELATION_ARCHITECT: "building claims and the relations between them",
+    DissolutionPass.EPISTEMIC_OPERATIONALIZER: "deciding what could be observed, and what cannot",
+    DissolutionPass.COVERAGE_AUDIT: "auditing what became of every source unit",
+}
+
+
+class _Narrator:
+    """The council's account of itself, for whoever is watching. Nobody, usually.
+
+    Every method is a no-op with no sink, so the pipeline below reads the same whether or not
+    anything is listening — the alternative, an `if observer is not None` at each of six sites, is
+    six places for the narration to fall out of step with the thing it narrates.
+    """
+
+    def __init__(self, sink: Optional[Callable[..., None]] = None):
+        self._sink = sink
+        self.index = 0
+
+    def say(self, label: str, **fields: Any) -> None:
+        if self._sink is None:
+            return
+        try:
+            self._sink(label, **fields)
+        except Exception:                                        # noqa: BLE001
+            pass
+
+    def entering(self, name: DissolutionPass, *, inputs: int, detail: str = "") -> None:
+        self.index += 1
+        self.say(PASS_LABEL.get(name, name.value), index=self.index, total=len(PASS_ORDER),
+                 outcome="started",
+                 detail=detail or f"{name.value} · {inputs} input(s)")
+
+    def left(self, receipt: PassReceipt) -> None:
+        """What the pass came back with — its own outcome and its own sentence, never a rewrite.
+
+        `outcome` travels as the pass's word for it. A narrator that mapped `coverage_failed` onto
+        `completed` because the pipeline carried on would be the exact laundering the coverage
+        ledger exists to prevent, one layer out.
+        """
+        self.say(PASS_LABEL.get(receipt.pass_name, receipt.pass_name.value),
+                 index=self.index, total=len(PASS_ORDER), outcome=receipt.outcome.value,
+                 detail=f"{receipt.pass_name.value} · {receipt.outcome.value}"
+                        + (f" · {receipt.detail}" if receipt.detail else "")
+                        + (f" · {receipt.call_count} call(s)" if receipt.call_count else "")
+                        + (f" · {receipt.transport_attempts} transport attempt(s)"
+                           if receipt.transport_attempts > receipt.call_count else ""))
+
+
+@contextlib.contextmanager
+def _narrating(council: Council, sink: Optional[Callable[..., None]]) -> Iterator[None]:
+    """Bind the sink onto every bound adapter for one run, and unbind it after.
+
+    Unbinding matters: `live_council()` builds fresh adapters per compilation today, but a
+    deployment that cached one would otherwise keep narrating into the session that finished.
+    """
+    adapters = [a for a in (council.dissector, council.architect, council.operationalizer,
+                            council.repairer) if a is not None]
+    for adapter in adapters:
+        setattr(adapter, "observer", sink)
+    try:
+        yield
+    finally:
+        for adapter in adapters:
+            setattr(adapter, "observer", None)
+
+
+def dissolve(request: CompilationRequest, council: Council, *,
+             on_substage: Optional[Callable[..., None]] = None) -> SemanticInquiryGraph:
     """The whole pipeline. Returns a v2 graph whatever happened, including when nothing ran."""
+    with _narrating(council, on_substage):
+        return _dissolve(request, council, _Narrator(on_substage))
+
+
+def _dissolve(request: CompilationRequest, council: Council,
+              say: _Narrator) -> SemanticInquiryGraph:
     inquiry_id = request.inquiry_id
     refusals: List[CompilerRefusal] = list(request.inherited_refusals)
     notes: List[str] = list(request.inherited_notes)
     passes: List[PassReceipt] = []
 
     # ── the ledger ──
+    say.entering(DissolutionPass.SOURCE_LEDGER,
+                 inputs=1 + len(request.reading.blocks if request.reading else ()))
     units, ledger_notes = ledger_mod.build(request.prompt, request.reading, inquiry_id=inquiry_id)
     notes.extend(ledger_notes)
     passes.append(PassReceipt(
@@ -92,11 +194,13 @@ def dissolve(request: CompilationRequest, council: Council) -> SemanticInquiryGr
         detail=f"{len(units)} source unit(s): "
                f"{sum(1 for u in units if u.is_user_authored)} from the person, "
                f"{sum(1 for u in units if not u.is_user_authored)} from the reading"))
+    say.left(passes[-1])
 
     # ── dissection ──
     atoms: List[SemanticAtom] = []
     coverage: List[CoverageDisposition] = []
     dissector_ran = False
+    say.entering(DissolutionPass.SEMANTIC_DISSECTOR, inputs=len(units))
     if council.dissector is not None and units:
         atoms, coverage, pass_refusals, receipt = council.dissector.dissolve(
             units, prompt=request.prompt, inquiry_id=inquiry_id)
@@ -110,15 +214,18 @@ def dissolve(request: CompilationRequest, council: Council) -> SemanticInquiryGr
             inputs=len(units),
             detail="no dissector was bound" if council.dissector is None
                    else "the ledger was empty, so there was nothing to dissolve"))
+    say.left(passes[-1])
 
     # ── the audit, and the one repair it may ask for ──
     report = audit_mod.audit(units, atoms, coverage, [], inquiry_id=inquiry_id,
                              dissector_ran=dissector_ran)
     if report.repairable and council.repairer is not None:
+        say.entering(DissolutionPass.TARGETED_REPAIR, inputs=len(report.repairable))
         atoms, coverage, refusals, notes, repair_receipt = _repair(
             council.repairer, report, units, atoms, coverage, refusals, notes,
             prompt=request.prompt, inquiry_id=inquiry_id)
         passes.append(repair_receipt)
+        say.left(repair_receipt)
         report = audit_mod.audit(units, atoms, coverage, [], inquiry_id=inquiry_id,
                                  dissector_ran=dissector_ran)
     elif report.repairable:
@@ -128,6 +235,7 @@ def dissolve(request: CompilationRequest, council: Council) -> SemanticInquiryGr
     # ── relations ──
     claims: List[ClaimNode] = []
     edges: List[ClaimEdge] = []
+    say.entering(DissolutionPass.RELATION_ARCHITECT, inputs=len(atoms))
     if council.architect is not None:
         claims, edges, pass_refusals, pass_notes, receipt = council.architect.assemble(
             atoms, units, inquiry_id=inquiry_id)
@@ -139,11 +247,13 @@ def dissolve(request: CompilationRequest, council: Council) -> SemanticInquiryGr
             pass_id=ids.pass_id(inquiry_id, DissolutionPass.RELATION_ARCHITECT),
             pass_name=DissolutionPass.RELATION_ARCHITECT, outcome=PassOutcome.UNAVAILABLE,
             inputs=len(atoms), detail="no relation architect was bound"))
+    say.left(passes[-1])
 
     # ── operationalization ──
     observables: List[ObservableSpec] = []
     decisions: List[DecisionCandidate] = []
     remainder: List[SemanticRemainderItem] = []
+    say.entering(DissolutionPass.EPISTEMIC_OPERATIONALIZER, inputs=len(claims))
     if council.operationalizer is not None:
         observables, decisions, remainder, pass_refusals, pass_notes, receipt = \
             council.operationalizer.operationalize(claims, edges, inquiry_id=inquiry_id)
@@ -155,12 +265,15 @@ def dissolve(request: CompilationRequest, council: Council) -> SemanticInquiryGr
             pass_id=ids.pass_id(inquiry_id, DissolutionPass.EPISTEMIC_OPERATIONALIZER),
             pass_name=DissolutionPass.EPISTEMIC_OPERATIONALIZER, outcome=PassOutcome.UNAVAILABLE,
             inputs=len(claims), detail="no operationalizer was bound"))
+    say.left(passes[-1])
 
     # ── the final audit, over everything ──
+    say.entering(DissolutionPass.COVERAGE_AUDIT, inputs=len(units))
     final = audit_mod.audit(units, atoms, coverage, claims, inquiry_id=inquiry_id,
                             dissector_ran=dissector_ran)
     refusals.extend(final.refusals)
     passes.append(audit_mod.receipt_for(final, inquiry_id=inquiry_id, units=len(units)))
+    say.left(passes[-1])
 
     # A CLAIM STANDING ON A REMOVED ATOM IS DROPPED, not carried. The graph validator refuses one
     # outright, and a compilation that raised there would lose the whole run over one bad reference.
@@ -327,4 +440,5 @@ def coverage_table(graph: SemanticInquiryGraph) -> List[Dict[str, Any]]:
     return rows
 
 
-__all__ = ["PRODUCER", "Council", "live_council", "dissolve", "coverage_table"]
+__all__ = ["PRODUCER", "PASS_ORDER", "PASS_LABEL", "Council", "live_council", "dissolve",
+           "coverage_table"]
