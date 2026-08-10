@@ -935,3 +935,224 @@ def test_the_lab_cannot_mint_a_depth_field_artifact_at_all():
     assert declaration["may_invoke"] is False
     assert declaration["refusal_when_missing"] == "missing_depth_artifact"
 
+
+# ── isolation: no Extent, no Depth model, no database, no post ───────────────
+
+_SUBPROCESS_PROBE = """
+import json, sys
+sys.path.insert(0, {repo!r})
+from backend.services.perception_lab import topology as T
+
+F = {fixtures!r}
+load = lambda n: json.load(open(F + "/" + n))
+ctx = T.LabContext(session_id="s", run_id="r", step_id="p",
+                   source_image_digest="sha256:70909a17c0d5e4b2", now="2026-08-10T12:00:00Z")
+scene = load("extent-set.containment.json")
+contact = load("extent-set.contact.json")
+depth = load("depth-field.inner-in-front.json")
+
+def two(op, art, a, b, **kw):
+    return T.TopologyRequest(operation=op, context=ctx, extents=(art,), inputs=(
+        T.TopologyInput(role="source", artifact_id=art["identity"]["artifact_id"], instance_id=a),
+        T.TopologyInput(role="target", artifact_id=art["identity"]["artifact_id"], instance_id=b),
+    ), **kw)
+
+outcomes = []
+outcomes.append(T.run(two("topology.containment", scene, "inst_inner", "inst_outer")).outcome.value)
+outcomes.append(T.run(two("topology.adjacency", contact, "inst_left", "inst_right")).outcome.value)
+outcomes.append(T.run(two("topology.overlap", scene, "inst_inner", "inst_outer")).outcome.value)
+outcomes.append(T.run(two("topology.disjoint", scene, "inst_inner", "inst_outer")).outcome.value)
+outcomes.append(T.run(T.TopologyRequest(operation="topology.negative_space", context=ctx,
+    extents=(scene,), inputs=(T.TopologyInput(role="figure",
+        artifact_id="art_topo_containment", instance_id="inst_inner"),))).outcome.value)
+outcomes.append(T.run(T.TopologyRequest(operation="topology.all_pairs", context=ctx,
+    extents=(scene,), inputs=tuple(T.TopologyInput(role="members",
+        artifact_id="art_topo_containment", instance_id=i)
+        for i in ("inst_inner", "inst_outer")))).outcome.value)
+outcomes.append(T.run(two("topology.occlusion", scene, "inst_inner", "inst_outer",
+    depth=T.DepthArtifact(artifact_id=depth["artifact_id"], field=depth["field"]))).outcome.value)
+
+print(json.dumps({{
+    "outcomes": outcomes,
+    "loaded": sorted(m for m in T.FORBIDDEN_MODULES if m in sys.modules),
+    "torch": "torch" in sys.modules,
+}}))
+"""
+
+
+def test_a_full_topology_run_imports_no_model_no_segmenter_and_no_database():
+    """THE NON-MUTATION TEST, taken at the import graph rather than at the call site.
+
+    A subprocess, because `sys.modules` in a long test session is full of everything every other
+    test imported. Here nothing is loaded but this façade, and if a database handle or a model
+    service appears while seven operations run, it appeared because this lane reached for it.
+    """
+    probe = _SUBPROCESS_PROBE.format(repo=str(REPO_ROOT), fixtures=str(FIXTURE_DIR))
+    done = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True,
+                          cwd=str(REPO_ROOT))
+    assert done.returncode == 0, done.stderr
+    report = json.loads(done.stdout.strip().splitlines()[-1])
+    assert report["loaded"] == [], f"the façade reached for {report['loaded']}"
+    assert report["torch"] is False, "no model stack is loaded by a topology run"
+    assert set(report["outcomes"]) <= {"ready", "empty"}
+
+
+def test_the_façade_never_mutates_what_it_was_handed():
+    """Artifacts, regions and depth fields go in; the caller's objects come out unchanged.
+
+    Not a matter of taste: a session holds one extent artifact and several runs read it, and an
+    organ that normalised a mask in place would make the second run a measurement of the first.
+    """
+    scene = fixture("extent-set.containment.json")
+    depth = fixture("depth-field.inner-in-front.json")
+    regions = [{"id": "reg_finial_7", "geometry_rev": 4}]
+    before = copy.deepcopy((scene, depth, regions))
+
+    request = dataclasses.replace(
+        pair("topology.containment", scene, "inst_inner", "inst_outer"),
+        regions=tuple(regions))
+    T.run(request)
+    T.run(dataclasses.replace(request, operation="topology.overlap"))
+    T.run(dataclasses.replace(
+        request, operation="topology.occlusion",
+        depth=T.DepthArtifact(artifact_id=depth["artifact_id"], field=depth["field"])))
+
+    assert (scene, depth, regions) == before
+
+
+def test_the_organ_regions_handed_to_the_adapters_are_copies():
+    """The adapters take mappings and this lane promises not to give them the caller's."""
+    endpoint = T._Endpoint(role="source", artifact_id="a", instance_id="i",
+                           scope=IdentityScope.SESSION, region_id=None, geometry_rev=None,
+                           mask_rle={"size": [2, 2], "counts": [0, 4]}, box=None, stale=False)
+    region = endpoint.as_region()
+    region["mask_rle"]["counts"] = [4]
+    assert endpoint.mask_rle["counts"] == [0, 4]
+
+
+def test_the_forbidden_module_list_is_not_empty_and_names_the_real_ones():
+    """A guard whose list is empty passes forever."""
+    assert "backend.services.depth_service" in T.FORBIDDEN_MODULES
+    assert "backend.database" in T.FORBIDDEN_MODULES
+    for name in T.FORBIDDEN_MODULES:
+        parts = name.split(".")
+        path = REPO_ROOT.joinpath(*parts)
+        assert path.with_suffix(".py").exists() or path.is_dir(), \
+            f"{name} is not a module in this tree — the guard is watching a ghost"
+
+
+# ── the vocabulary is reconciled, not renamed ────────────────────────────────
+
+
+def test_the_relation_kinds_are_the_strings_the_organs_already_emit():
+    assert RelationKind.NESTED_WITHIN.value == nestedness_organ.RELATION_NESTED_WITHIN
+    assert RelationKind.MEETS.value == adjacency_organ.RELATION_MEETS
+    assert RelationKind.IN_FRONT_OF.value == occlusion_organ.RELATION_IN_FRONT_OF
+    assert RelationKind.COPLANAR.value == occlusion_organ.RELATION_COPLANAR
+
+
+def test_every_declared_topology_operation_has_a_runner():
+    assert set(T.RUNNERS) == {op.key for op in D.operations_for("topology")}
+
+
+def test_every_operation_only_uses_an_adapter_its_contract_declares():
+    for operation, adapter in T.PRIMARY_ADAPTER.items():
+        assert adapter in D.operation(operation).adapters
+
+
+def test_the_committed_controls_have_not_drifted_from_their_generator():
+    done = subprocess.run([sys.executable, str(FIXTURE_SCRIPT), "--check"],
+                          capture_output=True, text=True, cwd=str(REPO_ROOT))
+    assert done.returncode == 0, done.stdout + done.stderr
+
+
+# ── mutation tests: break a rule, watch it fail ──────────────────────────────
+
+
+def test_mutation_raising_the_containment_threshold_unmakes_the_relation(monkeypatch):
+    """THRESHOLD MUTATION. The façade reads the organ's floor; it does not keep a copy.
+
+    A copy would drift, and a laboratory whose reported threshold and applied threshold were two
+    different numbers would be lying in the most convincing way available: with a receipt.
+    """
+    before = only(T.run(pair("topology.containment", fixture("extent-set.containment.json"),
+                             "inst_inner", "inst_outer")))
+    assert before.kind is RelationKind.NESTED_WITHIN
+
+    monkeypatch.setattr(nestedness_organ, "MIN_CONTAINMENT", 1.01)
+    after = T.run(pair("topology.containment", fixture("extent-set.containment.json"),
+                       "inst_inner", "inst_outer"))
+    assert after.artifact.measurement.payload.relations == [], \
+        "a floor nothing can clear must leave nothing nested"
+    assert after.outcome is RunOutcome.EMPTY
+
+
+def test_mutation_raising_the_contact_threshold_turns_meeting_into_apartness(monkeypatch):
+    monkeypatch.setattr(adjacency_organ, "MIN_CONTACT", 0.99)
+    relation = only(T.run(pair("topology.adjacency", fixture("extent-set.contact.json"),
+                               "inst_left", "inst_right")))
+    assert relation.kind is RelationKind.DISJOINT
+    assert relation.measurements["threshold_min_contact"] == 0.99, \
+        "the receipt reports the floor that was actually applied"
+
+
+def test_mutation_raising_the_separation_floor_turns_in_front_of_into_coplanar(monkeypatch):
+    monkeypatch.setattr(occlusion_organ, "MIN_SEPARATION", 0.999)
+    relation = only(T.run(occlusion_request()))
+    assert relation.kind is RelationKind.COPLANAR
+
+
+def test_mutation_a_direction_ignoring_containment_would_fail_this(monkeypatch):
+    """DIRECTION MUTATION. Force the reverse reading to be taken as the forward one and watch the
+    endpoints stop matching the word."""
+    real = nestedness_organ.measure
+
+    def swapped(inner, outer, **kwargs):
+        return real(outer, inner, **kwargs)
+
+    monkeypatch.setattr(nestedness_organ, "measure", swapped)
+    result = T.run(pair("topology.containment", fixture("extent-set.containment.json"),
+                        "inst_inner", "inst_outer"))
+    relation = only(result)
+    assert relation.kind is RelationKind.CONTAINS, \
+        "with the organ's arguments swapped the façade reports the other word — which is what it " \
+        "means for the direction to come from the measurement rather than from the argument order"
+
+
+def test_mutation_a_missing_input_treated_as_empty_would_fail_this():
+    """MISSING-INPUT MUTATION. The difference between `refused` and `empty` is the deliverable.
+
+    Written as an assertion about the RECORD rather than about a mutated function, because the
+    mutation being guarded against is a caller reading one for the other: an artifact kind, an
+    outcome and a payload variant all have to move together for a refusal to masquerade as a
+    measurement.
+    """
+    refused = T.run(T.TopologyRequest(operation="topology.overlap", context=context()))
+    assert refused.outcome is RunOutcome.REFUSED
+    assert refused.artifact.identity.artifact_kind is ArtifactKind.REFUSAL
+    assert refused.artifact.measurement.payload_variant == "refusal"
+    assert not hasattr(refused.artifact.measurement.payload, "pairs_examined")
+
+
+def test_mutation_a_box_relation_claiming_measured_does_not_validate():
+    """The record itself refuses it, so no façade bug can publish one."""
+    from pydantic import ValidationError
+
+    from backend.schemas.perception_lab import RelationEndpoint, TopologyRelation
+    endpoint = RelationEndpoint(artifact_id="a", instance_id="i", scope=IdentityScope.SESSION)
+    with pytest.raises(ValidationError):
+        TopologyRelation(relation_id="r", kind=RelationKind.NESTED_WITHIN, source=endpoint,
+                         target=endpoint, directed=True, basis=EpistemicBasis.BOX,
+                         epistemic_status=EpistemicStatus.MEASURED)
+
+
+def test_mutation_an_empty_mask_read_as_a_zero_area_extent_would_fail_this():
+    with pytest.raises(ev.GeometryUnavailable):
+        ev.decode({"size": [40, 60], "counts": [2400]})
+
+
+def test_mutation_masks_on_two_rasters_may_not_be_compared():
+    a = ev.decode({"size": [4, 4], "counts": [0, 16]})
+    b = ev.decode({"size": [2, 8], "counts": [0, 16]})
+    with pytest.raises(ev.GeometryUnavailable):
+        ev.same_raster(a, b)
