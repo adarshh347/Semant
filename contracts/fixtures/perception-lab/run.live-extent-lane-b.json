@@ -1,0 +1,32 @@
+{
+  "run_id": "run_lane_b",
+  "session_id": "labs_extent_1",
+  "execution_identity": "LIVE",
+  "outcome": "ready",
+  "requested_plan_id": "plan_lane_b",
+  "resolved_plan_id": "plan_lane_b",
+  "artifact_ids": [
+    "art_run_lane_b_step_find_all"
+  ],
+  "stage_attempts": [
+    {
+      "attempt_id": "att_run_lane_b_step_find_all",
+      "step_id": "step_find_all",
+      "operation": "extent.find_all",
+      "state": "completed",
+      "adapter": "yolo_sam2_auto",
+      "invoked": true,
+      "started_at": "2026-08-11T11:01:00.000+00:00",
+      "completed_at": "2026-08-11T11:02:00.000+00:00",
+      "duration_ms": 7,
+      "detail": "2 fake extents"
+    }
+  ],
+  "refusals": [],
+  "source_digest_before": "sha256:9f1c0a5b7d2e4438",
+  "source_digest_after": "sha256:9f1c0a5b7d2e4438",
+  "started_at": "2026-08-11T11:01:00.000+00:00",
+  "completed_at": "2026-08-11T11:02:00.000+00:00",
+  "duration_ms": 7,
+  "replay": null
+}
