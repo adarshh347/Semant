@@ -484,6 +484,12 @@
 
 /* derived projections — the browser's drawing of a measurement, never the measurement */
 .pl-layer[data-derived='true'] { stroke-dasharray: 4 3; }
+.pl-layer { pointer-events: auto; cursor: pointer; }
+.pl-layer[data-focused='false'] { opacity: 0.45; }
+/* A relation whose endpoint has moved is drawn faintly and hatched: still on the image, because
+   removing it would hide the finding, and never at full strength, because the number describes a
+   boundary that is not the one under it. */
+.pl-layer[data-stale='true'] { opacity: 0.5; stroke-dasharray: 2 4; }
 .pl-band { fill: color-mix(in srgb, var(--clay) 45%, transparent); stroke: var(--clay); stroke-width: 1.5; }
 .pl-intersection { fill: color-mix(in srgb, var(--amethyst) 50%, transparent); stroke: var(--amethyst); stroke-width: 1.5; }
 .pl-endpoint-line { stroke: var(--ink); stroke-width: 2; fill: none; }

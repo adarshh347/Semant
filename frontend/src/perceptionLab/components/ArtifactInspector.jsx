@@ -407,9 +407,11 @@ function PayloadReading({ payload, onFocusInstance, focusedInstanceId }) {
                         {num(payload.max_distance_used)}
                     </dd>
                     <dt>values</dt>
-                    <dd data-field-ref={payload.field_ref || 'none'}>
+                    <dd data-field-ref={payload.field_ref?.uri || 'none'}>
                         {payload.field_ref
-                            ? <>behind <code>{payload.field_ref}</code> — the numbers are not in
+                            ? <>behind <code>{payload.field_ref.uri}</code>{' '}
+                                ({payload.field_ref.bytes} bytes,{' '}
+                                <code>{payload.field_ref.digest}</code>) — the numbers are not in
                                 this record and this laboratory will not invent them</>
                             : 'not carried'}
                     </dd>

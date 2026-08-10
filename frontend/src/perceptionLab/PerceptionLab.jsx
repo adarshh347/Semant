@@ -11,6 +11,8 @@ import RunStream from './components/RunStream';
 import ArtifactInspector from './components/ArtifactInspector';
 import ExtentStage from './components/ExtentStage';
 import ExtentReadout from './components/ExtentReadout';
+import TopologyStage from './components/TopologyStage';
+import RelationReadout from './components/RelationReadout';
 import Ledger from './components/Ledger';
 import { EmptyState } from './components/Chips';
 import { inputRef } from './records';
@@ -57,6 +59,18 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
     const extentSets = useMemo(
         () => lab.ledger.filter((a) => a.identity.artifact_kind === 'extent_set'),
         [lab.ledger]);
+
+    /**
+     * The topology artifact on the stage.
+     *
+     * It follows the ACTIVE artifact only. A relation set is a specific answer to a specific
+     * question, and falling back to "the most recent one" the way the extent stage does would put
+     * a picture of one measurement under the heading of another.
+     */
+    const topologyArtifact = lab.active
+        && ['topology_relation_set', 'negative_space_field'].includes(
+            lab.active.identity.artifact_kind)
+        ? lab.active : null;
     const stageArtifact = lab.active?.identity.artifact_kind === 'extent_set'
         ? lab.active : (extentSets[extentSets.length - 1] || null);
     const comparisonArtifact = useMemo(() => {
@@ -152,6 +166,16 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                         </section>
                     ) : (
                         <>
+                            {topologyArtifact ? (
+                                <TopologyStage
+                                    artifact={topologyArtifact}
+                                    source={source}
+                                    session={lab.session}
+                                    byId={lab.byId}
+                                    focusedRelationId={lab.focus.relationId}
+                                    onFocusRelation={(relationId) => lab.setFocus(
+                                        (f) => ({ ...f, relationId }))} />
+                            ) : null}
                             {lab.organ === 'extent' || stageArtifact ? (
                                 <ExtentStage
                                     artifact={stageArtifact}
@@ -219,6 +243,14 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                 focusedInstanceId={lab.focus.instanceId}
                                 onFocusInstance={(instanceId) => lab.setFocus(
                                     (f) => ({ ...f, instanceId }))} />
+                            {topologyArtifact ? (
+                                <RelationReadout
+                                    artifact={topologyArtifact}
+                                    byId={lab.byId}
+                                    focusedRelationId={lab.focus.relationId}
+                                    onFocusRelation={(relationId) => lab.setFocus(
+                                        (f) => ({ ...f, relationId }))} />
+                            ) : null}
                             {stageArtifact ? (
                                 <ExtentReadout
                                     artifact={stageArtifact}
