@@ -22,3 +22,8 @@ export {
 } from './clients/labClient';
 
 export { TARGET_WIDTHS, widthBand } from './useContainerWidth';
+
+// A session bundle, and the check that it holds the contract. Exported because Lane F's
+// integration suite should be able to take a real session out of a real client and run the same
+// validators over it that this lane runs over the fixture one.
+export { buildExport, verifyExport, exportJson, exportFilename } from './exportSession';

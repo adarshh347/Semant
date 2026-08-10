@@ -47,8 +47,11 @@ const TOOLS = [
 ];
 
 export default function ExtentStage({ artifact, source, session, focusedInstanceId = null,
-    comparisonArtifact = null, onFocusInstance, onRefine, onDraw, busy }) {
-    const stageRef = useRef(null);
+    comparisonArtifact = null, onFocusInstance, onRefine, onDraw, busy, stageRef: externalRef }) {
+    const localRef = useRef(null);
+    // The shell holds the ref when it needs one, so the snapshot exporter can serialize exactly
+    // the element a person is looking at rather than guessing at it with a selector.
+    const stageRef = externalRef || localRef;
     const [loaded, onImgLoad] = useNaturalSize();
     // MEMOIZED, and it has to be. `useStageGeometry` re-measures whenever `natural` changes
     // IDENTITY, and re-measuring sets state. A fresh object literal here therefore makes every

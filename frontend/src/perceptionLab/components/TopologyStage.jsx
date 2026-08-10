@@ -22,8 +22,9 @@ import { num } from '../display';
  * is the exact inversion the WAVE2.5 ruling exists to prevent.
  */
 export default function TopologyStage({ artifact, source, session, byId,
-    focusedRelationId = null, onFocusRelation }) {
-    const stageRef = useRef(null);
+    focusedRelationId = null, onFocusRelation, stageRef: externalRef }) {
+    const localRef = useRef(null);
+    const stageRef = externalRef || localRef;
     const [loaded, onImgLoad] = useNaturalSize();
     const declared = useMemo(
         () => (session?.source

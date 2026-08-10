@@ -13,6 +13,9 @@ import ExtentStage from './components/ExtentStage';
 import ExtentReadout from './components/ExtentReadout';
 import TopologyStage from './components/TopologyStage';
 import RelationReadout from './components/RelationReadout';
+import ReviewTray from './components/ReviewTray';
+import HistoryPanel from './components/HistoryPanel';
+import ExportBar from './components/ExportBar';
 import Ledger from './components/Ledger';
 import { EmptyState } from './components/Chips';
 import { inputRef } from './records';
@@ -37,10 +40,12 @@ import './perceptionLab.css';
  * It renders no measurement and decides no status.
  */
 export default function PerceptionLab({ client, initialOrgan = 'extent',
-    initialMode = 'isolation' }) {
+    initialMode = 'isolation', now = () => new Date().toISOString() }) {
     const rootRef = useRef(null);
+    const stageRef = useRef(null);
     const { band, width } = useContainerWidth(rootRef);
     const [arm, setArm] = useState('direct');
+    const [comparisonRunId, setComparisonRunId] = useState(null);
     const lab = useLabSession(client, { initialOrgan, initialMode });
 
     const source = useMemo(
@@ -73,12 +78,24 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
         ? lab.active : null;
     const stageArtifact = lab.active?.identity.artifact_kind === 'extent_set'
         ? lab.active : (extentSets[extentSets.length - 1] || null);
+    /**
+     * The comparison side.
+     *
+     * A run chosen explicitly in the history wins. Otherwise the most recent extent set from a
+     * DIFFERENT run stands in — which is what makes the repeat metrics a statement about
+     * stability rather than about one answer read twice. Choosing it in the history is the
+     * stronger form: it says which two answers a person meant to put beside each other.
+     */
     const comparisonArtifact = useMemo(() => {
         if (!stageArtifact) return null;
+        if (comparisonRunId) {
+            return extentSets.find((a) => a.identity.run_id === comparisonRunId
+                && a.identity.artifact_id !== stageArtifact.identity.artifact_id) || null;
+        }
         return [...extentSets].reverse().find(
             (a) => a.identity.artifact_id !== stageArtifact.identity.artifact_id
                 && a.identity.run_id !== stageArtifact.identity.run_id) || null;
-    }, [extentSets, stageArtifact]);
+    }, [extentSets, stageArtifact, comparisonRunId]);
 
     /**
      * A stage gesture becomes a PROPOSAL, never a dispatch.
@@ -94,6 +111,20 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
 
     const proposeDraw = (stroke) => lab.planDirectly(
         'extent.draw', { tool: 'polygon', polygon: stroke }, []);
+
+    /**
+     * Reopen an earlier run.
+     *
+     * NOTHING RUNS. The artifacts are already in the ledger and this makes them active and
+     * selected again — which is deliberately a different act from Replay, and a different button.
+     * Replay writes a new run record; reopening writes nothing at all, because reading the history
+     * must not rewrite it.
+     */
+    const reopenRun = (run) => {
+        const ids = run.artifact_ids;
+        if (!ids.length) return;
+        lab.select(ids, ids[ids.length - 1]);
+    };
 
     const capabilitySummary = useMemo(() => {
         const values = Object.values(lab.capabilities);
@@ -172,11 +203,12 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                     source={source}
                                     session={lab.session}
                                     byId={lab.byId}
+                                    stageRef={stageRef}
                                     focusedRelationId={lab.focus.relationId}
                                     onFocusRelation={(relationId) => lab.setFocus(
                                         (f) => ({ ...f, relationId }))} />
                             ) : null}
-                            {lab.organ === 'extent' || stageArtifact ? (
+                            {!topologyArtifact && (lab.organ === 'extent' || stageArtifact) ? (
                                 <ExtentStage
                                     artifact={stageArtifact}
                                     source={source}
@@ -187,6 +219,7 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                         (f) => ({ ...f, instanceId }))}
                                     onRefine={proposeRefine}
                                     onDraw={proposeDraw}
+                                    stageRef={stageRef}
                                     busy={lab.busy} />
                             ) : null}
                             {arm === 'direct' ? (
@@ -260,6 +293,34 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                     onFocusInstance={(instanceId) => lab.setFocus(
                                         (f) => ({ ...f, instanceId }))} />
                             ) : null}
+                            <ReviewTray
+                                artifact={lab.active}
+                                reviews={lab.active
+                                    ? lab.reviewsFor(lab.active.identity.artifact_id) : []}
+                                onReview={lab.review}
+                                onLifecycle={lab.setLifecycle}
+                                busy={lab.busy} />
+                            <HistoryPanel
+                                session={lab.session}
+                                runs={lab.runs}
+                                plans={lab.plans}
+                                byId={lab.byId}
+                                comparisonRunId={comparisonRunId}
+                                onReopen={reopenRun}
+                                onReplay={lab.replayRun}
+                                onCompare={setComparisonRunId}
+                                busy={lab.busy} />
+                            <ExportBar
+                                session={lab.session}
+                                plans={lab.plans}
+                                runs={lab.runs}
+                                artifacts={lab.ledger}
+                                reviews={lab.reviews}
+                                run={lab.run}
+                                artifact={lab.active}
+                                clientIdentity={lab.clientIdentity}
+                                stageRef={stageRef}
+                                now={now} />
                         </>
                     ) : null}
                 </div>
