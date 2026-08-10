@@ -23,6 +23,11 @@ export {
 
 export { TARGET_WIDTHS, widthBand } from './useContainerWidth';
 
+// The responsive proof, as a mountable component. Lane F may put it behind a lab route; it needs
+// no backend, because it builds its own fixture client per pane.
+export { default as ResponsiveHarness } from './ResponsiveHarness';
+export { HARNESS_SCENARIOS } from './harnessScenarios';
+
 // A session bundle, and the check that it holds the contract. Exported because Lane F's
 // integration suite should be able to take a real session out of a real client and run the same
 // validators over it that this lane runs over the fixture one.

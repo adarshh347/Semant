@@ -674,6 +674,24 @@
     max-width: 100%;
 }
 
+/* The four widths the build names. Here rather than inline, so the harness that proves the
+   design tokens govern the surface is not itself a pile of hardcoded values. Drag a pane past
+   one of these and the `data-w` band changes — the numbers are where the build asks, not where
+   the layout happens to work. */
+.pl-harness-pane[data-harness-width='1100'] { width: 1100px; }
+.pl-harness-pane[data-harness-width='720'] { width: 720px; }
+.pl-harness-pane[data-harness-width='430'] { width: 430px; }
+.pl-harness-pane[data-harness-width='320'] { width: 320px; }
+
+.pl-harness-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-4);
+}
+.pl-harness-figure { margin: 0; display: grid; gap: var(--space-2); }
+.pl-harness-caption { order: -1; }
+
 /* ── motion ───────────────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
