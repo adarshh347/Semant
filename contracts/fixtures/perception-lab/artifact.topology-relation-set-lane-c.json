@@ -1,0 +1,337 @@
+{
+  "identity": {
+    "artifact_id": "art_93eb15e45cf1",
+    "session_id": "labs_topology_lane_c",
+    "run_id": "run_lane_c",
+    "step_id": "step_all_pairs",
+    "organ_family": "topology",
+    "artifact_kind": "topology_relation_set",
+    "operation": "topology.all_pairs",
+    "identity_scope": "session",
+    "identity_refs": [],
+    "input_refs": [
+      {
+        "role": "members",
+        "scope": "session",
+        "artifact_id": "art_topo_scene",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      {
+        "role": "members",
+        "scope": "session",
+        "artifact_id": "art_topo_scene",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      {
+        "role": "members",
+        "scope": "session",
+        "artifact_id": "art_topo_scene",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      {
+        "role": "members",
+        "scope": "session",
+        "artifact_id": "art_topo_scene",
+        "region_id": null,
+        "geometry_rev": null
+      }
+    ],
+    "derived_from": [
+      "art_topo_scene"
+    ]
+  },
+  "measurement": {
+    "payload_variant": "topology_relation_set",
+    "payload": {
+      "variant": "topology_relation_set",
+      "pairs_examined": 6,
+      "relations": [
+        {
+          "relation_id": "rel_0b098bc69340",
+          "kind": "contains",
+          "source": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_outer",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_inner",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": true,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "containment": 1.0,
+            "scale_ratio": 0.114286,
+            "nesting_index": 0.885714,
+            "margin": 0.166667,
+            "area_inner": 0.04166667,
+            "area_outer": 0.36458333,
+            "threshold_min_containment": 0.95,
+            "threshold_max_scale_ratio": 0.75,
+            "boundary_clearance_px": 8.0,
+            "boundary_clearance_normalized": 0.11094,
+            "boundary_nearest_x": 0.258333,
+            "boundary_nearest_y": 0.3125
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_a5d949d6009c",
+          "kind": "overlaps",
+          "source": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_outer",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_inner",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "intersection_pixels": 100.0,
+            "intersection_fraction_of_source": 0.114286,
+            "intersection_fraction_of_target": 1.0,
+            "iou": 0.114286,
+            "area_source_pixels": 875.0,
+            "area_target_pixels": 100.0,
+            "intersection_locus_x": 0.25,
+            "intersection_locus_y": 0.3,
+            "intersection_locus_w": 0.166667,
+            "intersection_locus_h": 0.25
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_e8f88d732a49",
+          "kind": "meets",
+          "source": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_outer",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_touching",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.155172,
+            "contact_pixels": 18.0,
+            "source_perimeter_pixels": 116.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 1.0,
+            "clearance_normalized": 0.013868,
+            "nearest_x": 0.658333,
+            "nearest_y": 0.2125,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02,
+            "contact_locus_x": 0.65,
+            "contact_locus_y": 0.175,
+            "contact_locus_w": 0.016667,
+            "contact_locus_h": 0.45
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_6ff1fac01008",
+          "kind": "disjoint",
+          "source": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_outer",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_far",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.0,
+            "contact_pixels": 0.0,
+            "source_perimeter_pixels": 116.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 5.0,
+            "clearance_normalized": 0.069338,
+            "nearest_x": 0.091667,
+            "nearest_y": 0.7375,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_cdb9d7985f3d",
+          "kind": "disjoint",
+          "source": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_inner",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_touching",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.0,
+            "contact_pixels": 0.0,
+            "source_perimeter_pixels": 36.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 16.0,
+            "clearance_normalized": 0.22188,
+            "nearest_x": 0.408333,
+            "nearest_y": 0.3125,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_33eb705d06dc",
+          "kind": "disjoint",
+          "source": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_inner",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_far",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.0,
+            "contact_pixels": 0.0,
+            "source_perimeter_pixels": 36.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 13.0,
+            "clearance_normalized": 0.180278,
+            "nearest_x": 0.258333,
+            "nearest_y": 0.5375,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_65170c17ad44",
+          "kind": "disjoint",
+          "source": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_touching",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_topo_scene",
+            "instance_id": "inst_far",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.0,
+            "contact_pixels": 0.0,
+            "source_perimeter_pixels": 58.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 25.5563,
+            "clearance_normalized": 0.354403,
+            "nearest_x": 0.675,
+            "nearest_y": 0.5875,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02
+          },
+          "stale": false
+        }
+      ],
+      "bounded_to": 4
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "measured",
+    "epistemic_basis": "mask",
+    "basis_detail": "4 extents, 6 unordered pairs, families ['adjacency', 'containment', 'overlap', 'separation']"
+  },
+  "projection": {
+    "projection_kind": "relation_graph",
+    "hints": {
+      "palette_role": "relation",
+      "emphasis": "primary",
+      "legend": "measured — read the basis before the number"
+    }
+  },
+  "interpretation": {
+    "label": null,
+    "label_source": "none",
+    "epistemic_status": "uncertain",
+    "notes": "7 relation(s) over 6 pair(s) of 4 extents"
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "changed_at": "2026-08-10T12:00:00Z",
+    "changed_by": "perception_lab"
+  },
+  "provenance": {
+    "producer_kind": "adapter",
+    "producer": "topology_facade",
+    "adapter": "mask_arithmetic",
+    "model": null,
+    "revision": null,
+    "source_image_digest": "sha256:70909a17c0d5e4b2",
+    "started_at": null,
+    "completed_at": null,
+    "duration_ms": null,
+    "device": null,
+    "peak_memory_mb": null
+  }
+}
