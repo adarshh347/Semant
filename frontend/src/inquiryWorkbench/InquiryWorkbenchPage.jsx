@@ -16,7 +16,7 @@ import SessionExport from './SessionExport.jsx';
 import { createInquiryClient } from './inquiryClient.js';
 import {
     openDecision, outcomeCounts, STATE_LABEL, MODE_COPY,
-    IS_AWAITING_USER, IS_TERMINAL_STATE,
+    IS_AWAITING_USER, IS_TERMINAL_STATE, DEPLOYMENT_LABEL, DEPLOYMENT_COPY,
 } from './inquiryContract.js';
 import './inquiryWorkbench.css';
 
@@ -227,6 +227,45 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
     );
 }
 
+/**
+ * LIVE, REPLAY or FIXTURE — beside the state, in words, permanently.
+ *
+ * NOT A TOOLTIP AND NOT A COLOUR. The 002R rehearsal was run against a replay server and said so
+ * in a receipt three panels down, which is the right fact in the wrong place: a screenshot of a
+ * replay is the same picture as a screenshot of a live run to anyone who does not open the
+ * provenance. Every one of the four states below is printed as a WORD, including the one that says
+ * nobody declared it — because a badge that renders as nothing when the answer is missing puts a
+ * replay and a live run back on one screen.
+ *
+ * `undeclared` is not styled as a weaker `live`. It is its own treatment, and it says out loud that
+ * the absence of an answer is not an answer.
+ */
+export function DeploymentBadge({ deployment }) {
+    if (!deployment) return null;
+    const kind = deployment.kind.known ? deployment.kind.value : 'undeclared';
+    const label = deployment.kind.known
+        ? DEPLOYMENT_LABEL[kind]
+        : deployment.kind.value.toUpperCase();
+    return (
+        <span
+            className={`iw-deployment iw-deployment--${kind}`}
+            data-deployment={kind}
+            data-declared={String(deployment.declared)}
+            title={deployment.detail || DEPLOYMENT_COPY[kind]}
+        >
+            <b className="iw-deployment-kind">{label}</b>
+            {/* Unreachable is its own word, and only ever appears on a live binding: it means the
+                models are bound and the provider did not answer, which is a different thing from a
+                deployment that binds no model at all. */}
+            {deployment.reachable === false ? (
+                <span className="iw-deployment-flag" data-unreachable="true">
+                    provider unreachable
+                </span>
+            ) : null}
+        </span>
+    );
+}
+
 /** The question, the pictures and the mode — immutable, and above everything they produced. */
 export function SessionHeader({ session, working = false }) {
     const state = session.state.known ? session.state.value : 'unknown';
@@ -242,6 +281,7 @@ export function SessionHeader({ session, working = false }) {
                             (<span className="iw-badge-raw">{session.state.value}</span>)</>
                         : (STATE_LABEL[state] || state)}
                 </span>
+                <DeploymentBadge deployment={session.deployment} />
                 {mode ? (
                     <span className="iw-mode-chip" data-mode={mode} title={MODE_COPY[mode].hint}>
                         {MODE_COPY[mode].title} mode

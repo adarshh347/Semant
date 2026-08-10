@@ -154,7 +154,16 @@ def _stages():
 
 
 def _view(session) -> Dict[str, Any]:
-    return view.session_view(session, servable_classes=coordinator.servable_classes(_stages()))
+    """One body shape, and it always says what produced it.
+
+    `_stages()` is called ONCE and both answers come from that one binding. Asking twice would let
+    a deployment report the servable classes of one stage order and the deployment identity of
+    another — a disagreement nothing downstream could detect, in the one field a person consults to
+    find out whether they are looking at a live reading.
+    """
+    stages = _stages()
+    return view.session_view(session, servable_classes=coordinator.servable_classes(stages),
+                             deployment=runtime.deployment(stages))
 
 
 def _conflict_body(exc: InteractionConflict, session, submitted: Dict[str, Any]) -> Dict[str, Any]:
