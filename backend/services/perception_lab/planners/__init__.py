@@ -14,9 +14,10 @@ The seam is `backend/services/inquiry/base.py`'s, one level down: the same argum
 deterministic framer and a model framer differ in the SOURCE of a proposal and in nothing else.
 """
 from backend.services.perception_lab.planners.base import (DirectCommand, LabPlanner, StepBuilder,
-                                                           bind_pair, bind_single)
+                                                           bind_many, bind_pair, bind_single)
 from backend.services.perception_lab.planners.direct import DirectPlanner
+from backend.services.perception_lab.planners.model import ModelPlanner
 from backend.services.perception_lab.planners.rules import RulesPlanner
 
-__all__ = ["DirectCommand", "LabPlanner", "StepBuilder", "bind_pair", "bind_single",
-           "DirectPlanner", "RulesPlanner"]
+__all__ = ["DirectCommand", "LabPlanner", "StepBuilder", "bind_many", "bind_pair", "bind_single",
+           "DirectPlanner", "RulesPlanner", "ModelPlanner"]
