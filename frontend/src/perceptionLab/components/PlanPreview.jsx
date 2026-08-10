@@ -120,9 +120,19 @@ export default function PlanPreview({ plan, onRun, onReplay, busy, canRunLive = 
                                     {step.prerequisites_checked.join(', ')}
                                 </span>
                                 {step.input_refs.length ? (
-                                    <span className="pl-step-why">
-                                        inputs: {step.input_refs.map(
-                                            (r) => `${r.role}=${r.artifact_id || r.region_id}`).join(', ')}
+                                    <span className="pl-step-why" data-resolved-inputs>
+                                        {/*
+                                          * THE INSTANCE IS PART OF THE INPUT, so it is part of
+                                          * what the plan says it will run. Showing `art_11`
+                                          * where the ref is `art_11#inst_5` would mean the
+                                          * preview and the record disagree about what was asked
+                                          * — and the preview is the thing a person reads before
+                                          * pressing the button.
+                                          */}
+                                        inputs: {step.input_refs.map((r) => `${r.role}=`
+                                            + `${r.artifact_id || r.region_id}`
+                                            + `${r.instance_id ? `#${r.instance_id}` : ''}`)
+                                            .join(', ')}
                                     </span>
                                 ) : null}
                             </li>

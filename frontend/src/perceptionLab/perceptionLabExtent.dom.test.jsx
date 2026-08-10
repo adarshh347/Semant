@@ -174,6 +174,12 @@ describe('one extent inside a multi-extent artifact', () => {
             await click(all('[data-role-option^="target:"]')
                 .filter((b) => b.getAttribute('data-role-option').includes('#'))[3]);
             await click(q('[data-action="propose"]'));
+
+            // The plan preview names the instance too. Showing only the artifact would mean the
+            // thing a person reads before pressing the button disagrees with the record.
+            expect(q('[data-resolved-inputs]').textContent).toMatch(/source=\w+#\w+/);
+            expect(q('[data-resolved-inputs]').textContent).toMatch(/target=\w+#\w+/);
+
             await click(q('[data-action="run-fixture"]'));
 
             // Two instances named, so exactly one pair was examined — not twenty-five.
