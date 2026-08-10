@@ -397,6 +397,16 @@ def settle(session: SemanticInquirySession, stages: coordinator.Stages) -> Seman
         exhausted       every stage was entered and the chain produced no answer. `exhausted_reason`
                         names the stage that came up short and carries its declared counts.
         complete        an answer exists and every sentence of it names what it rests on.
+
+    AN ANSWER OVER NOTHING IS NOT A CLOSED CHAIN. The live fold rehearsal ended `complete`, with
+    `the chain closed: every claim carries a verdict` printed under `0 claims · 0 observables`. That
+    sentence was vacuously true — there were no claims, so all of them carried a verdict — and it is
+    the exact shape a person reads as success. The relation architect had failed on a 413 and every
+    section the composer wrote rested on nothing.
+
+    So `complete` now requires the graph to carry a claim. Without one the session is `exhausted`,
+    and `exhausted_reason` names the stage that came up short and prints its declared counts, which
+    is the sentence that was wanted and was one condition away.
     """
     if interrupted_stages(session):
         return coordinator._finish(session, SessionState.ERROR, stages.clock(),
@@ -405,7 +415,8 @@ def settle(session: SemanticInquirySession, stages: coordinator.Stages) -> Seman
     if state in HALTED_STATES:
         return session
     at = stages.clock()
-    if session.synthesis is not None and session.synthesis.sections:
+    composed = session.synthesis is not None and bool(session.synthesis.sections)
+    if composed and (session.graph.get("claims") or []):
         return coordinator._finish(
             session, SessionState.COMPLETE, at,
             "the chain closed: every claim carries a verdict and every sentence of the answer "

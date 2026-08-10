@@ -542,6 +542,35 @@ def test_a_progress_write_that_loses_its_acknowledgement_cannot_cost_a_stage_its
     assert settled["graph"]["passes"]
 
 
+def test_an_answer_over_no_claim_is_not_a_closed_chain(wired):
+    """The live fold rehearsal ended COMPLETE with `0 claims · 0 observables` on the same screen.
+
+    Its stop reason read "the chain closed: every claim carries a verdict" — vacuously true, since
+    there were no claims, and the exact sentence a person reads as success. The relation architect
+    had failed on a 413 and every section the composer wrote rested on nothing.
+
+    `exhausted` is the honest state, and `exhausted_reason` already names the stage that came up
+    short. The composer is left alone: writing a "nothing to say" answer is its job, and the
+    session's own state is where that gets called what it is.
+    """
+    client, _, _ = wired(FOLD)
+    real_compile = DissolutionCompiler.compile
+
+    def compiles_no_claim(self, request, *, on_substage=None):
+        graph = real_compile(self, request, on_substage=on_substage)
+        return graph.model_copy(update={"claims": [], "observables": []})
+
+    with client:
+        with mock.patch.object(DissolutionCompiler, "compile", compiles_no_claim):
+            settled = _settled(client, _start(client, FOLD, mode="auto"))
+
+    assert settled["graph"]["claims"] == []
+    assert settled["state"] == "exhausted", settled["state"]
+    assert "the chain closed" not in (settled["stop_reason"] or "")
+    # and the reason names the stage rather than reporting a healthy chain
+    assert settled["stop_reason"]
+
+
 def test_the_stage_stream_reports_every_stage_the_chain_entered(wired):
     session, *_ = _run(wired)
     entered = [s["stage"] for s in session["stages"]]
