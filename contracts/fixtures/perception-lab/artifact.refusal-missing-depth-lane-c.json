@@ -1,0 +1,89 @@
+{
+  "identity": {
+    "artifact_id": "art_2aed77be819a",
+    "session_id": "labs_topology_lane_c",
+    "run_id": "run_lane_c",
+    "step_id": "step_occlusion",
+    "organ_family": "topology",
+    "artifact_kind": "refusal",
+    "operation": "topology.occlusion",
+    "identity_scope": "session",
+    "identity_refs": [],
+    "input_refs": [
+      {
+        "role": "source",
+        "scope": "session",
+        "artifact_id": "art_topo_scene",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      {
+        "role": "target",
+        "scope": "session",
+        "artifact_id": "art_topo_scene",
+        "region_id": null,
+        "geometry_rev": null
+      }
+    ],
+    "derived_from": [
+      "art_topo_scene"
+    ]
+  },
+  "measurement": {
+    "payload_variant": "refusal",
+    "payload": {
+      "variant": "refusal",
+      "refusal": {
+        "code": "missing_depth_artifact",
+        "organ": "topology",
+        "operation": "topology.occlusion",
+        "message": "topology.occlusion needs a prepared depth field. This laboratory does not compute one.",
+        "missing": [
+          "depth"
+        ],
+        "remedy": "A PREPARED depth field. Optional to PLAN — a person may compose the request before they have one — and required to RUN. Nothing here computes it: the Depth organ is registered and disabled, so `missing_depth_artifact` is the honest end of this path and not a placeholder for a call the lab could make if it tried.",
+        "detail": {
+          "role": "depth",
+          "artifact_kinds": [
+            "depth_field"
+          ],
+          "min": 1,
+          "max": 1
+        }
+      }
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "uncertain",
+    "epistemic_basis": "declared",
+    "basis_detail": "a refusal makes no claim about the image"
+  },
+  "projection": {
+    "projection_kind": "none",
+    "hints": {}
+  },
+  "interpretation": {
+    "label": null,
+    "label_source": "none",
+    "epistemic_status": "uncertain",
+    "notes": "This is a result, not an error: what was asked, and what was missing."
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "changed_at": "2026-08-10T12:00:00Z",
+    "changed_by": "perception_lab"
+  },
+  "provenance": {
+    "producer_kind": "adapter",
+    "producer": "topology_facade",
+    "adapter": "occlusion_organ",
+    "model": null,
+    "revision": null,
+    "source_image_digest": "sha256:70909a17c0d5e4b2",
+    "started_at": null,
+    "completed_at": null,
+    "duration_ms": null,
+    "device": null,
+    "peak_memory_mb": null
+  }
+}
