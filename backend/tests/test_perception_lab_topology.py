@@ -26,6 +26,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -48,6 +49,9 @@ from backend.services.perception_lab import topology_evidence as ev
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_DIR = REPO_ROOT / "research" / "perception_lab" / "fixtures" / "topology"
 FIXTURE_SCRIPT = REPO_ROOT / "scripts" / "perception_lab_topology_fixtures.py"
+# Lane A's shared corpus — the one directory both runtimes validate. This lane APPENDS to it.
+PARITY_FIXTURE_DIR = REPO_ROOT / "contracts" / "fixtures" / "perception-lab"
+MANIFEST = PARITY_FIXTURE_DIR / "manifest.json"
 
 DIGEST = "sha256:70909a17c0d5e4b2"
 NOW = "2026-08-10T12:00:00Z"
@@ -1156,3 +1160,111 @@ def test_mutation_masks_on_two_rasters_may_not_be_compared():
     b = ev.decode({"size": [2, 8], "counts": [0, 16]})
     with pytest.raises(ev.GeometryUnavailable):
         ev.same_raster(a, b)
+
+
+# ── golden fixtures: this lane's real output, in the shared corpus ───────────
+
+
+def _golden() -> Dict[str, str]:
+    """`{filename: text}` for the artifacts Lane A's suites validate.
+
+    Three, because they are the three things this organ can hand a person: a relation SET with
+    several kinds in it, a measured negative-space FIELD, and the typed REFUSAL the occlusion seam
+    exists to produce. Deterministic by construction — fixed session, run and step, no injected
+    clock, and controls whose geometry is committed beside them.
+    """
+    ctx = T.LabContext(session_id="labs_topology_lane_c", run_id="run_lane_c",
+                       step_id="step_all_pairs", source_image_digest=DIGEST, now=NOW)
+    scene = fixture("extent-set.scene.json")
+    art_id = scene["identity"]["artifact_id"]
+
+    def over(step_id: str, operation: str, roles: Sequence[Tuple[str, str]]) -> T.TopologyResult:
+        return T.run(T.TopologyRequest(
+            operation=operation, context=dataclasses.replace(ctx, step_id=step_id),
+            inputs=tuple(T.TopologyInput(role=r, artifact_id=art_id, instance_id=i)
+                         for r, i in roles),
+            extents=(scene,)))
+
+    graph = over("step_all_pairs", "topology.all_pairs",
+                 [("members", i) for i in
+                  ("inst_outer", "inst_inner", "inst_touching", "inst_far")])
+    field = over("step_negative_space", "topology.negative_space",
+                 [("figure", "inst_outer"), ("figure", "inst_far")])
+    denied = over("step_occlusion", "topology.occlusion",
+                  [("source", "inst_inner"), ("target", "inst_outer")])
+
+    assert graph.outcome is RunOutcome.READY
+    assert field.outcome is RunOutcome.READY
+    assert denied.refusal.code is RefusalCode.MISSING_DEPTH_ARTIFACT
+
+    def dump(model: Any) -> str:
+        # `ensure_ascii=False` so an em-dash in a detail sentence stays an em-dash. These sit
+        # beside Lane A's hand-written files and a reader should not be able to tell which is which.
+        return json.dumps(json.loads(model.model_dump_json()), indent=2,
+                          ensure_ascii=False) + "\n"
+
+    return {"artifact.topology-relation-set-lane-c.json": dump(graph.artifact),
+            "artifact.negative-space-field-lane-c.json": dump(field.artifact),
+            "artifact.refusal-missing-depth-lane-c.json": dump(denied.artifact)}
+
+
+def test_the_golden_fixtures_match_what_the_facade_produces_today():
+    """These files are the ONLY place Lane C's real output meets the JavaScript law: Lane A's
+    manifest carries them, so `test_perception_lab_contracts.py` validates them in Python and
+    `perceptionLab.parity.test.js` validates them in the browser's runtime.
+
+    Regenerate an intentional change with:
+
+        UPDATE_PARITY_FIXTURES=1 python -m pytest backend/tests/test_perception_lab_topology.py
+
+    The manifest is read, APPENDED TO and written back — never regenerated. Lane A's entries and
+    Lane B's are not this lane's to rewrite, and a lane that rebuilt the list from its own output
+    would quietly delete the other lanes from the shared corpus.
+    """
+    rendered = _golden()
+    if os.environ.get("UPDATE_PARITY_FIXTURES"):
+        for name, text in rendered.items():
+            (PARITY_FIXTURE_DIR / name).write_text(text, encoding="utf-8")
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        for name in rendered:
+            if name not in manifest["records"]["PerceptualArtifact"]:
+                manifest["records"]["PerceptualArtifact"].append(name)
+        MANIFEST.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+                            encoding="utf-8")
+
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    listed = {n for names in manifest["records"].values() for n in names}
+    for name, text in rendered.items():
+        path = PARITY_FIXTURE_DIR / name
+        assert path.exists(), f"{name} is missing — regenerate with UPDATE_PARITY_FIXTURES=1"
+        assert path.read_text(encoding="utf-8") == text, (
+            f"{name} has drifted from what the Topology façade produces — regenerate with "
+            f"UPDATE_PARITY_FIXTURES=1 and check the Lane A suites still pass")
+        assert name in listed, f"{name} is on disk and not in the manifest"
+
+
+def test_the_shared_corpus_still_carries_the_other_lanes():
+    """The mutation for the paragraph above. If adding Lane C's fixtures ever costs Lane A or
+    Lane B theirs, it is caught here rather than in their suite three merges later."""
+    listed = {n for names in json.loads(MANIFEST.read_text(encoding="utf-8"))["records"].values()
+              for n in names}
+    for name in ("artifact.extent-set.json", "artifact.extent-set-manual.json",
+                 "artifact.extent-set-empty.json", "artifact.topology-relation-set.json",
+                 "artifact.topology-relation-set-box-basis.json",
+                 "artifact.negative-space-field.json", "artifact.refusal-missing-depth.json",
+                 "artifact.extent-set-lane-b.json", "run.live-extent-lane-b.json"):
+        assert name in listed, f"{name} fell out of the manifest"
+
+
+def test_the_golden_relation_set_is_the_shape_lane_e_will_render():
+    artifact = PerceptualArtifact.model_validate(json.loads(
+        (PARITY_FIXTURE_DIR / "artifact.topology-relation-set-lane-c.json").read_text(
+            encoding="utf-8")))
+    payload = artifact.measurement.payload
+    assert payload.pairs_examined == 6, "four members, six unordered pairs, all of them walked"
+    assert artifact.projection.projection_kind is ProjectionKind.RELATION_GRAPH
+    assert artifact.measurement.epistemic_status is EpistemicStatus.MEASURED
+    assert artifact.interpretation.label is None, "a relation set names nothing"
+    assert artifact.lifecycle.status is LifecycleState.PROPOSED
+    for relation in payload.relations:
+        assert relation.measurements, "every edge carries the numbers a person can look at"
