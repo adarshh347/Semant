@@ -120,13 +120,89 @@ that showed "0 atoms" as a defect would report an unmerged lane as a failure of 
 
 | field | shape | notes |
 |---|---|---|
-| `graph.source_units[]` | array | `source_unit_id`, `source_type` (**enumerated**: `prompt_clause · reading_block`), `source_ref`, `exact_quote`, `image_refs[]` |
-| `graph.semantic_atoms[]` | array | `atom_id`, `source_unit_ids[]`, `text`, `unit_kind` (**enumerated**, nine forms), `subject`/`predicate`/`object`, `image_scope[]`, `epistemic_ceiling` (**enumerated**), `author` (**enumerated** — `user` renders "your direction"), `provenance` |
+| `graph.source_units[]` | array | `source_unit_id`, `source_type` (**enumerated**: `prompt_clause · reading_block`), `source_ref`, `exact_quote`, `block_kind`, `author` (**enumerated**, see below), `image_refs[]` |
+| `graph.semantic_atoms[]` | array | `atom_id`, `source_unit_ids[]`, `text`, `unit_kind` (**enumerated**, nine forms), `subject`/`predicate`/`object`, `image_scope[]`, `epistemic_ceiling` (**enumerated**), `author` (**enumerated**, see below — `user` renders "your direction"), `provenance` |
+
+**`author` is `user · scene_theorist · semantic_dissector`, and it is NOT the decider vocabulary.**
+This surface typed it as `DECIDER_KINDS` while writing forward, so every atom the dissector wrote
+arrived as an author it could not place — handled correctly by the normaliser and still the majority
+column of a live dissection reading as unknown. Who **said** something is a different question from
+who **chose** something. `user` is frozen by a backend validator onto anything anchored to a prompt
+clause, and it is the one attribution nothing downstream could check if it were wrong.
 | `graph.coverage[]` | array | `source_unit_id`, `disposition` (**enumerated**: `represented_by · duplicate_of · semantic_remainder · refused`), `refs[]`, `reason` |
 
 **Every source unit needs exactly one disposition.** A unit with none is rendered as **lost**, not
 as a remainder, and the coverage row is flagged — a remainder is a decision, and a unit nobody
 accounted for is a unit the compiler dropped. The two must not read alike.
+
+### `graph.coverage_summary` — the backend's own arithmetic over its own ledger
+
+The counts are printed from this object rather than derived on the client, and the client keeps its
+own `uncoveredSourceUnits` beside it. That is deliberate duplication: the two are computed on
+opposite sides of the wire, so a divergence is a visible disagreement rather than something one
+side quietly absorbs.
+
+| field | shape | notes |
+|---|---|---|
+| `source_units`, `disposed`, `represented` | number | |
+| `by_disposition` | object | `{disposition: count}` — only the dispositions actually present |
+| `lost`, `lost_count` | string[], number | units with NO entry. Their own number, never folded into remainder |
+| `user_units`, `reading_units` | number | how much of the ledger is the person's own words |
+| `complete` | **tri-state** | `null` on a v1 graph, which declares no coverage check at all. `false` there would accuse a compilation of failing something it never claimed |
+
+## Council passes (`graph.passes[]`) — HARNESS-003D
+
+**`provenance.compiler` is `null` on a v2 graph and that is not an omission.** Naming one of three
+minds as the author of the whole graph would be a lie; the pass list IS the receipt. This is the
+only place a reader can find out WHICH mind came up short, which is the question the one-call
+compiler made unanswerable.
+
+| field | shape | notes |
+|---|---|---|
+| `pass_id` | string | |
+| `pass_name` | **enumerated** | `source_ledger · semantic_dissector · targeted_repair · relation_architect · epistemic_operationalizer · coverage_audit` |
+| `outcome` | **enumerated** | `completed · thin · truncated · coverage_failed · empty · refused · unavailable · error`. `coverage_failed` has no equivalent in the stage vocabulary and must not be mapped onto one |
+| `model`, `provider` | string | absent on a deterministic pass, which called nothing |
+| `call_count` | number | how many times this pass **asked** — semantic attempts |
+| `transport_attempts` | number | how many times **bytes went on the wire**, including identical re-sends after a capacity refusal. Never merged with `call_count`: the gap between them is the account's allowance, not anything about the prompt |
+| `finish_reasons[]` | string[] | every batch's, kept — one `length` in six is a truncated pass |
+| `prompt_tokens`, `completion_tokens`, `duration_ms` | number \| null | null where the provider did not report it |
+| `waited_ms` | number \| null | time queueing for the allowance rather than for a model. **null, never 0** — zero would say a pacer answered and reported no wait |
+| `capacity_waits[]` | array | see below |
+| `inputs`, `outputs`, `detail`, `notes[]` | | the pass's own account of itself |
+
+## `deployment` — what produced this session (HARNESS-003D)
+
+**Beside the state, in every response, as a word.** The 002R rehearsal was run against a replay
+server and the record said so in a receipt three panels down. That is the right fact in the wrong
+place: a screenshot of a replay is the same picture as a screenshot of a live run to anyone who does
+not open the provenance, and a phase ratified on the strength of one is `never display a simulation
+as measurement` failing at the level of the whole run.
+
+| field | shape | notes |
+|---|---|---|
+| `kind` | **enumerated** | `live · replay · fixture · undeclared` |
+| `declared` | boolean | `false` means the response was built without a stage binding. It renders as `UNDECLARED`, struck through, and **never** as `live` — a badge that disappears when the answer is missing puts a replay and a live run back on one screen |
+| `reachable` | **tri-state** | only meaningful on a live binding. `null` is "nobody checked"; `false` is "the provider did not answer, and nothing was substituted" |
+| `stages` | object | `{theorist, compiler} → live \| replay \| unbound`, so the badge can be checked against its parts |
+| `detail` | string | the sentence the badge's title carries |
+
+**The weaker claim wins.** A live theorist with a frozen compiler is `replay`, not `live`: what the
+person is reading is not all live, and a badge naming the stronger half would be true about one
+stage and misleading about the session.
+
+### `capacity_waits[]` — one provider refusal each
+
+| field | shape | notes |
+|---|---|---|
+| `attempt` | number | which transport attempt was refused |
+| `seconds` | number | how long was waited, **or would have been** |
+| `source` | **enumerated** | `provider_retry_after · provider_reset_header · provider_message · declared_interval · budget_exhausted · attempts_exhausted` |
+| `detail` | string | the header or sentence the number came from |
+| `taken` | **tri-state** | `false` is a refusal nothing waited on, because the declared budget or the attempt bound stopped it. A surface rendering it as just another wait would report a run that gave up as one still going |
+
+The last two `source` values are not sources — they say the pacer **stopped**. A run carrying one
+of them stopped short of what there was, and the ledger says so above the artifacts it produced.
 
 ## Verdicts (`verdicts[]`)
 

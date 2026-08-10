@@ -52,15 +52,19 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import dataclasses
 import itertools
 import os
+import threading
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Deque, Dict, List, Optional
 
 from backend.schemas.inquiry_session import SemanticInquirySession
+from backend.schemas.inquiry_stage import StageAttemptOutcome, SubstageEvent
 
-from . import steps, store
+from . import ids, steps, store
 from .coordinator import Stages
 
 #: Blocking-SDK work for inquiry stages. Separate from the Director's single `director-orch` worker
@@ -193,6 +197,189 @@ async def checkpoint(session: SemanticInquirySession, *, expected: int,
     return advanced
 
 
+def _replace(stages: Stages, **fields: Any) -> Stages:
+    """`Stages` is frozen, and the observer is bound per stage entry rather than per driver.
+
+    Per ENTRY because the tap has to know which attempt it is writing progress onto. A driver-wide
+    observer would have to look that up on every event, which is the same lookup done N times with
+    N chances to disagree with the checkpoint the driver is holding.
+    """
+    return dataclasses.replace(stages, **fields)
+
+
+class _LiveProgress:
+    """A stage's own account of itself, persisted WHILE the stage is still inside its call.
+
+    ## Why this exists at all
+
+    HARNESS-003B made the chain watchable BETWEEN stages: a `started` attempt goes in before the
+    call and a terminal one after, so a person sees which of seven stages is running and for how
+    long. That is enough while a stage takes seconds. It is not enough for a compiler that spends
+    four minutes queueing against an 8000 TPM allowance, because `compiler · started · 4m 12s` and
+    a hung process are the same screen — and `DECISION-harness-003D` says in as many words that the
+    UI may say `waiting for provider capacity` and may not look frozen.
+
+    So the substages are flushed to the store as they are reported, onto the `started` attempt the
+    driver already wrote. `GET` and the stream then show the council's passes arriving one at a
+    time, and each capacity wait the moment it is planned rather than once it is over.
+
+    ## What makes it safe
+
+    The stage runs on a pool thread and every write happens on the event loop. The observer does not
+    write; it BUFFERS under a plain lock and schedules a drain. So there is exactly one writer, and
+    it is the same coroutine that does the driver's own checkpoints — which is why the moving
+    checkpoint can live in a plain attribute here rather than needing a second compare-and-set
+    scheme on top of the store's.
+
+    Fire and forget, deliberately: a model call must never be paced by a store write. A flush that
+    fails is dropped and the terminal attempt still carries the whole substage list, because
+    `_Ledger` records them regardless — see `coordinator._sink_for`, which feeds both.
+
+    ## The terminal write goes through here too, and that is not tidiness
+
+    THE FIRST LIVE FOLD REHEARSAL LOST A TWENTY-MINUTE COMPILATION TO THIS. The driver used to do
+    the stage's terminal write itself, as `checkpoint(advanced, expected=progress.checkpoint)` —
+    and that argument is evaluated BEFORE the `await` inside it. A flush scheduled from the stage
+    thread in its last moments then ran on the loop during that await, moved the document, and the
+    terminal compare-and-set was refused against a number that had been correct when it was read.
+
+    `SessionWriteFailed` was raised, the council's whole graph was discarded, and the session sat
+    at `compiler · started` for good — with the store's own message saying "something else advanced
+    it first", which was true and useless. The something else was this object.
+
+    So `settle` performs the terminal write under the SAME lock the flushes take, reads the
+    checkpoint inside that lock, and closes the tap before it writes. Progress may be dropped; a
+    stage's RESULT may not be, and the courtesy is not allowed to cost the work.
+    """
+
+    def __init__(self, session: SemanticInquirySession, stage: Any, *, collection: Any,
+                 on_checkpoint: Optional[Callable[[SemanticInquirySession], None]] = None):
+        self.session = session
+        self._stage = stage
+        self._collection = collection
+        self._on_checkpoint = on_checkpoint
+        self._loop = asyncio.get_running_loop()
+        self._pending: Deque[Dict[str, Any]] = deque()
+        self._buffer_lock = threading.Lock()
+        self._write_lock = asyncio.Lock()
+        self._seen = 0
+        self._closed = False
+
+    @property
+    def checkpoint(self) -> int:
+        return self.session.checkpoint
+
+    # ── called from the stage's thread ──
+
+    def __call__(self, label: str, **fields: Any) -> None:
+        with self._buffer_lock:
+            self._seen += 1
+            self._pending.append({"label": str(label), "seq": self._seen, **fields})
+        with contextlib.suppress(RuntimeError):
+            # RuntimeError: the loop is closing. A late progress report is dropped rather than
+            # raised — it would otherwise fail a stage that had already finished its work.
+            asyncio.run_coroutine_threadsafe(self._flush(), self._loop)
+
+    # ── called on the loop ──
+
+    async def _flush(self) -> None:
+        async with self._write_lock:
+            if self._closed:
+                # The stage has already been settled. Its terminal attempt carries every event,
+                # including these, so writing them again would only be a second chance to race.
+                return
+            with self._buffer_lock:
+                if not self._pending:
+                    return
+                batch = list(self._pending)
+                self._pending.clear()
+            events = [self._event(row) for row in batch]
+            advanced = _with_substages(self.session, self._stage, events)
+            if advanced is None:
+                return
+            try:
+                self.session = await checkpoint(advanced, expected=self.session.checkpoint,
+                                                collection=self._collection)
+            except store.SessionWriteFailed:
+                # Somebody else moved the document. Progress is a courtesy; the terminal attempt
+                # carries the same events, so nothing is lost by giving up on this one.
+                return
+            except Exception:                               # noqa: BLE001
+                # The store was unreachable — the live rehearsal's Atlas replica set lost its
+                # primary mid-run. This coroutine is fire-and-forget, so an exception here would be
+                # stored in a future nobody awaits and surface as a warning at interpreter exit.
+                # Progress is a courtesy either way; the stage's own result is written by `settle`,
+                # which is awaited and does raise.
+                return
+            if self._on_checkpoint:
+                self._on_checkpoint(self.session)
+
+    async def settle(self, advanced: SemanticInquirySession, *,
+                     driver_id: str) -> SemanticInquirySession:
+        """The stage's terminal write, taken under the lock the flushes hold — and not given up on.
+
+        `advanced` is what the stage returned. Two things protect it:
+
+        THE CHECKPOINT IS READ INSIDE THE LOCK, so no flush can move the document between the read
+        and the compare-and-set.
+
+        AND A REFUSED COMPARE-AND-SET IS RE-READ RATHER THAN RAISED. This is the one the live fold
+        rehearsal needed. A progress write can LAND and lose its acknowledgement — Atlas dropped
+        this driver's connection mid-write, twice — and the tap then believes a checkpoint it does
+        not hold. Every later write of its own is refused, including this one, and a twenty-minute
+        compilation was discarded because a courtesy write could not be confirmed.
+
+        Re-reading is safe here for a reason that does not generalise: this driver holds the LEASE.
+        `claim` made it the only writer, so "something else advanced it first" can only be this
+        object, and re-applying the stage's result at whatever number the document actually carries
+        is not overwriting anybody. If the lease has moved, it is somebody else's session and the
+        failure is real — so the check is on the lease and the raise is kept for that case.
+        """
+        async with self._write_lock:
+            self._closed = True
+            with self._buffer_lock:
+                # Anything still buffered is already on the terminal attempt.
+                self._pending.clear()
+            try:
+                self.session = await checkpoint(advanced, expected=self.session.checkpoint,
+                                                collection=self._collection)
+                return self.session
+            except store.SessionWriteFailed:
+                stored = await store.load(advanced.session_id, collection=self._collection)
+                if _lease_of(stored) != driver_id:
+                    raise
+            self.session = await checkpoint(advanced, expected=stored.checkpoint,
+                                            collection=self._collection)
+            return self.session
+
+    def _event(self, row: Dict[str, Any]) -> SubstageEvent:
+        seq = int(row.pop("seq"))
+        label = str(row.pop("label"))
+        return SubstageEvent(
+            substage_id=ids.stage_id(self.session.session_id, "substage", label, seq),
+            label=label,
+            index=row.get("index"), total=row.get("total"), at=row.get("at"),
+            outcome=str(row.get("outcome") or ""),
+            refs=[str(r) for r in (row.get("refs") or ())],
+            detail=str(row.get("detail") or ""))
+
+
+def _with_substages(session: SemanticInquirySession, stage: Any,
+                    events: List[SubstageEvent]) -> Optional[SemanticInquirySession]:
+    """Append progress to the `started` attempt this driver wrote for `stage`.
+
+    ONLY onto a `started` attempt, and `None` when there is not one. A terminal attempt is a closed
+    record: writing progress onto it after the fact would let a stage that had already reported its
+    ending grow a longer story afterwards.
+    """
+    latest = steps.latest_by_stage(session).get(stage)
+    if latest is None or latest.outcome is not StageAttemptOutcome.STARTED:
+        return None
+    grown = latest.model_copy(update={"substages": [*latest.substages, *events]})
+    return session.model_copy(update={
+        "stages": [grown if a.attempt_id == latest.attempt_id else a for a in session.stages]})
+
+
 async def drive(session_id: str, stages: Stages, *, driver_id: str = "",
                 collection=None, on_checkpoint: Optional[Callable[[SemanticInquirySession], None]] = None,
                 limit: int = 32) -> DriverReport:
@@ -248,11 +435,22 @@ async def drive(session_id: str, stages: Stages, *, driver_id: str = "",
             if on_checkpoint:
                 on_checkpoint(session)
 
-            loop = asyncio.get_running_loop()
-            advanced = await loop.run_in_executor(_POOL, steps.run, session, step.stage, stages)
+            # THE LIVE TAP, bound for the duration of this stage only. A stage reports its own
+            # insides through it and the progress lands in the store while the call is still in
+            # flight — which is what stops a four-minute wait for provider capacity from looking
+            # like a hung process.
+            progress = _LiveProgress(session, step.stage, collection=collection,
+                                     on_checkpoint=on_checkpoint)
+            watched = _replace(stages, observer=progress)
 
-            session = await checkpoint(advanced, expected=session.checkpoint,
-                                       collection=collection)
+            loop = asyncio.get_running_loop()
+            advanced = await loop.run_in_executor(_POOL, steps.run, session, step.stage, watched)
+
+            # AND THE TERMINAL WRITE THROUGH THE SAME TAP. Not `checkpoint(...)` directly: the
+            # expected number has to be read under the lock the flushes hold, or a report that
+            # arrived in the stage's last moments can move the document between the read and the
+            # write and cost the stage its whole result. See `_LiveProgress.settle`.
+            session = await progress.settle(advanced, driver_id=driver_id)
             writes += 1
             ran.append(step.stage.value)
             if on_checkpoint:

@@ -149,14 +149,26 @@ export function StageRow({ stage: s, at }) {
                     : 'This client does not recognise the outcome this stage reported.'}
             </p>
 
+            {/* THREE FIELDS, AND OFTEN ONE SENTENCE. `detail`, `summary` and `counts_line` are
+                separate on the wire and a stage is free to fill them with the same words — the
+                live framer fills summary and counts_line with the same counts line, and the
+                theorist's `started` attempt fills detail and summary both with "theorist entered".
+
+                Printing each field unconditionally rendered that sentence twice, which reads as
+                the stage having done the thing twice. Found in the browser on the first live run;
+                no DOM suite could see it, because a fixture that repeats itself is not a fixture
+                anybody writes. This drops the REPEAT and never the field: a summary that says
+                something new still prints, in its own place, and nothing is merged or reworded. */}
             {s.detail ? <p className="iw-quiet iw-stage-detail">{s.detail}</p> : null}
-            {s.summary ? <p className="iw-quiet iw-stage-summary">{s.summary}</p> : null}
+            {s.summary && s.summary !== s.detail ? (
+                <p className="iw-quiet iw-stage-summary">{s.summary}</p>
+            ) : null}
 
             {/* THE BACKEND'S OWN SENTENCE about its own work — "2 images in → 8 reading blocks
                 out". Preferred over anything assembled here, because the nouns are the half that
                 makes the numbers readable and this surface guessing them would be inventing the
                 units. */}
-            {s.counts_line ? (
+            {s.counts_line && s.counts_line !== s.summary && s.counts_line !== s.detail ? (
                 <p className="iw-stage-counts" data-counts-line="true">{s.counts_line}</p>
             ) : null}
 

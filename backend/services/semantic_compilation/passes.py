@@ -32,13 +32,14 @@ from __future__ import annotations
 import json
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
-from backend.schemas.semantic_compilation import (CompilerRefusal, CompilerRefusalKind,
-                                                  DissolutionPass, PassOutcome, PassReceipt)
+from backend.schemas.semantic_compilation import (CapacityWaitRecord, CompilerRefusal,
+                                                  CompilerRefusalKind, DissolutionPass,
+                                                  PassOutcome, PassReceipt)
 from backend.services import role_registry
 
-from . import contracts, ids
+from . import contracts, ids, pacing
 from .base import refusal, sha256_of
 
 
@@ -47,15 +48,26 @@ from .base import refusal, sha256_of
 #: bounded because a provider is free to return a page of HTML.
 PROVIDER_DETAIL_CHARS = 300
 
-#: How many times the SDK may re-send an identical request the provider refused for capacity. This
-#: is the SDK's default, named here so it is a decision rather than an inheritance.
-TRANSPORT_RETRIES = 2
+#: How many times the SDK may re-send an identical request the provider refused for capacity.
+#:
+#: ZERO SINCE HARNESS-003D, and this is the second time this constant has moved — so the reasoning
+#: matters more than the value. Lane A set it to 0 on the theory that a guarantee stopping at the
+#: module boundary is not a guarantee; nine batches then fired in two seconds, every one was
+#: refused, and the dissection came back empty. The rule had been applied to the wrong thing, and
+#: the SDK's default was restored.
+#:
+#: It is 0 again now, and for the opposite reason: `pacing.ProviderPacer` re-sends the identical
+#: bytes ITSELF, serialised against one provider allowance, on the provider's own reset information,
+#: bounded by a declared wall-clock budget — and it RECORDS each refusal and each wait. The SDK's
+#: retry does none of that. Two backoff loops stacked would double the waiting and hide half of it
+#: inside somebody else's client, which is exactly the invisible waiting the decision forbids.
+TRANSPORT_RETRIES = 0
 
 TRANSPORT_RETRY_NOTE = (
-    f"`call_count` counts requests this module made. The provider SDK may re-send an identical "
-    f"request up to {TRANSPORT_RETRIES} more times when it is refused for capacity; those are "
-    f"transport retries of the same bytes, not second attempts at the prompt, and they are not "
-    f"counted here.")
+    "`call_count` counts requests this module made — semantic attempts. Identical bytes re-sent "
+    "after a capacity refusal are TRANSPORT attempts, counted separately in "
+    "`transport_attempts` with each refusal and planned wait on `capacity_waits`. A transport "
+    "retry re-sends a request the provider never read; it is not a second attempt at the prompt.")
 
 
 def _provider_detail(exc: BaseException) -> str:
@@ -106,13 +118,20 @@ class ModelPass:
     budget: PassBudget = PassBudget()
 
     def __init__(self, client: Any = None, *, model: Optional[str] = None,
-                 budget: Optional[PassBudget] = None):
+                 budget: Optional[PassBudget] = None, pacer: Any = None):
         self._client = client
         self._client_resolved = client is not None
         self._model = model
         if budget is not None:
             self.budget = budget
         self.calls = 0
+        #: HARNESS-003D. The transport boundary's pacer. Injected for tests; the process's one
+        #: pacer otherwise, because the allowance being paced is the account's and not the pass's.
+        self._pacer = pacer
+        #: An injected progress sink, set by the council for the duration of one compilation. A
+        #: plain attribute rather than a constructor argument: the adapters are built once by
+        #: `live_council()` and the observer belongs to a single run through them.
+        self.observer: Optional[Callable[..., None]] = None
 
     # ── the provider ──
 
@@ -148,8 +167,12 @@ class ModelPass:
             # seconds, every one was rate limited, and the whole dissection came back empty with
             # eighteen `pass_unavailable` refusals. The rule had been applied to the wrong thing.
             #
-            # So the SDK's default stands, and the receipt SAYS so rather than implying one call
-            # per `call_count` — see `TRANSPORT_RETRY_NOTE`.
+            # It is 0 again since HARNESS-003D, and the difference is that the transport retry now
+            # HAPPENS HERE, in `pacing.ProviderPacer`, where it is serialised against one account
+            # allowance, timed from the provider's own reset information, bounded by a declared
+            # wall-clock budget, and RECORDED on the receipt as it happens. Leaving the SDK's loop
+            # on underneath it would stack two backoffs and hide one of them — see
+            # `TRANSPORT_RETRIES`.
             self._client = (Groq(api_key=settings.GROQ_API_KEY, max_retries=TRANSPORT_RETRIES)
                             if settings.GROQ_API_KEY else None)
         except Exception:
@@ -159,15 +182,38 @@ class ModelPass:
     def is_available(self) -> bool:
         return self._get_client() is not None
 
+    @property
+    def pacer(self) -> Any:
+        return self._pacer if self._pacer is not None else pacing.provider_pacer()
+
+    def observe(self, label: str, **fields: Any) -> None:
+        """Report progress from inside this pass, if anybody is listening.
+
+        Swallows whatever the sink raises. An observer is a UI concern reaching into a model call,
+        and one that broke the call it was watching would be strictly worse than no observer.
+        """
+        sink = self.observer
+        if sink is None:
+            return
+        try:
+            sink(label, **fields)
+        except Exception:                                          # noqa: BLE001
+            pass
+
     # ── the one call ──
 
     def invoke(self, user_prompt: str, *, inquiry_id: str, attempt: int = 1,
                inputs: int = 0) -> PassResult:
-        """Exactly one request. Returns a receipt in every branch, including the ones that failed.
+        """Exactly one SEMANTIC request. Returns a receipt in every branch, including the failures.
 
         The geometry scan runs on the RAW parsed payload, before anything is constructed. By the
         time a typed object exists `extra="forbid"` has already dropped the key and nobody can say
         it was ever there — and a pass emitting a box is the fact most worth recording.
+
+        ONE ASK, POSSIBLY SEVERAL SENDS. The request is built ONCE and handed to the pacer as a
+        thunk; a capacity refusal re-sends that same closure. There is no branch here in which the
+        prompt is rebuilt, so `no silent semantic retry` and `identical bytes on a capacity retry`
+        are the same line of code rather than two rules that have to agree.
         """
         pass_id = ids.pass_id(inquiry_id, self.pass_name, attempt)
         prompt_hash = sha256_of(user_prompt)
@@ -181,29 +227,53 @@ class ModelPass:
                          f"rule-based was substituted: a fallback here would have to invent the "
                          f"decomposition this pass exists to produce."),))
 
+        client = self._get_client()
+        model = self.model
+        # BUILT ONCE, ABOVE THE PACER. The dict is the request; the thunk closes over it. Nothing
+        # below can vary it, which is what makes the capacity retry identical rather than merely
+        # intended to be.
+        request = dict(
+            messages=[{"role": "system", "content": self.system_prompt},
+                      {"role": "user", "content": user_prompt}],
+            model=model,
+            response_format={"type": "json_object"},
+            max_completion_tokens=self.budget.max_completion_tokens)
+
         started = time.perf_counter()
+        self.calls += 1
+        sent = self.pacer.send(lambda: client.chat.completions.create(**request),
+                               on_event=self._announce_wait)
+        waits = [CapacityWaitRecord(attempt=w.attempt, seconds=round(w.seconds, 3),
+                                    source=w.source, detail=w.detail, taken=w.taken)
+                 for w in sent.waits]
+        transport = dict(transport_attempts=sent.attempts, capacity_waits=waits,
+                         waited_ms=sent.waited_ms if sent.waits else None)
+
         try:
-            self.calls += 1
-            completion = self._get_client().chat.completions.create(
-                messages=[{"role": "system", "content": self.system_prompt},
-                          {"role": "user", "content": user_prompt}],
-                model=self.model,
-                response_format={"type": "json_object"},
-                max_completion_tokens=self.budget.max_completion_tokens)
+            if not sent.ok:
+                raise sent.error
+            completion = sent.value
             raw = completion.choices[0].message.content or ""
             finish = str(getattr(completion.choices[0], "finish_reason", "") or "")
             usage = getattr(completion, "usage", None)
             payload = json.loads(raw)
         except Exception as exc:                                   # noqa: BLE001
             duration = (time.perf_counter() - started) * 1000
+            waiting = pacing.waiting_line(sent.waits)
+            stopped = (f" The pacer stopped waiting: {sent.stopped_by}." if sent.stopped_by else "")
             return PassResult(None, self._receipt(
                 pass_id, PassOutcome.ERROR, prompt_hash=[prompt_hash], inputs=inputs,
                 duration_ms=round(duration, 3),
-                detail=f"{self.role} failed: {type(exc).__name__}: {_provider_detail(exc)}"),
+                detail=f"{self.role} failed: {type(exc).__name__}: {_provider_detail(exc)}"
+                       + (f" · {waiting}" if waiting else ""),
+                notes=[waiting] if waiting else (),
+                **transport),
                 (refusal(inquiry_id, CompilerRefusalKind.PASS_UNAVAILABLE, self.role,
                          f"{self.role} raised {type(exc).__name__}: {_provider_detail(exc)}. One "
-                         f"call was made and no retry was attempted; a retry loop would hide a "
-                         f"marginal prompt behind a good average."),))
+                         f"semantic attempt was made and no second question was asked; a retry loop "
+                         f"would hide a marginal prompt behind a good average."
+                         + (f" {sent.attempts} transport attempt(s) sent identical bytes against a "
+                            f"capacity refusal.{stopped}" if sent.waits else "")),))
 
         duration = (time.perf_counter() - started) * 1000
         notes: List[str] = []
@@ -229,23 +299,42 @@ class ModelPass:
             return PassResult(None, self._receipt(
                 pass_id, PassOutcome.ERROR, prompt_hash=[prompt_hash], raw=[raw], finish=[finish],
                 usage=usage, duration_ms=round(duration, 3), inputs=inputs,
-                detail=f"{self.role} returned {type(payload).__name__}, not a JSON object"),
+                detail=f"{self.role} returned {type(payload).__name__}, not a JSON object",
+                **transport),
                 (*refusals, refusal(inquiry_id, CompilerRefusalKind.UNPARSEABLE_MODEL_OUTPUT,
                                     type(payload).__name__,
                                     "the response was not a JSON object. Nothing was invented in "
                                     "its place.")))
 
+        waiting = pacing.waiting_line(sent.waits)
         return PassResult(payload, self._receipt(
             pass_id, outcome, prompt_hash=[prompt_hash], raw=[raw], finish=[finish], usage=usage,
             duration_ms=round(duration, 3), inputs=inputs,
-            notes=[*notes, TRANSPORT_RETRY_NOTE]), tuple(refusals))
+            notes=[*notes, *( [waiting] if waiting else []), TRANSPORT_RETRY_NOTE],
+            **transport), tuple(refusals))
+
+    def _announce_wait(self, wait: Any) -> None:
+        """A capacity refusal, reported the moment it happens rather than when the pass finishes.
+
+        BEFORE the sleep, which is the whole reason the pacer calls this rather than returning a
+        list. A wait reported afterwards is a wait nobody could watch, and the surface would show a
+        stage frozen for four minutes with no account of why — which is 002R's `visibility_failure`
+        with a different cause underneath it.
+        """
+        self.observe(
+            "waiting for provider capacity" if wait.taken else "provider capacity refused",
+            outcome="waiting" if wait.taken else "capacity_limited",
+            detail=f"{wait.line()} — {wait.detail}".strip(" —"))
 
     # ── the receipt ──
 
     def _receipt(self, pass_id: str, outcome: PassOutcome, *, prompt_hash: Sequence[str] = (),
                  raw: Sequence[str] = (), finish: Sequence[str] = (), usage: Any = None,
                  duration_ms: Optional[float] = None, inputs: int = 0, outputs: int = 0,
-                 detail: str = "", notes: Sequence[str] = (), calls: int = 1) -> PassReceipt:
+                 detail: str = "", notes: Sequence[str] = (), calls: int = 1,
+                 transport_attempts: int = 0,
+                 capacity_waits: Sequence[CapacityWaitRecord] = (),
+                 waited_ms: Optional[float] = None) -> PassReceipt:
         return PassReceipt(
             pass_id=pass_id, pass_name=self.pass_name, outcome=outcome,
             model=self.model, provider=self.provider,
@@ -259,7 +348,9 @@ class ModelPass:
             prompt_tokens=getattr(usage, "prompt_tokens", None),
             completion_tokens=getattr(usage, "completion_tokens", None),
             duration_ms=duration_ms, inputs=inputs, outputs=outputs, detail=detail,
-            notes=list(notes))
+            notes=list(notes),
+            transport_attempts=transport_attempts, capacity_waits=list(capacity_waits),
+            waited_ms=waited_ms)
 
 
 class FrozenPass(ModelPass):
@@ -322,6 +413,10 @@ def merge_receipts(pass_name: DissolutionPass, receipts: Sequence[PassReceipt], 
     durations = [r.duration_ms for r in receipts if r.duration_ms is not None]
     prompt_tokens = [r.prompt_tokens for r in receipts if r.prompt_tokens is not None]
     completion_tokens = [r.completion_tokens for r in receipts if r.completion_tokens is not None]
+    # WAITING IS SUMMED AND ITS ENTRIES ARE KEPT. A pass whose six batches each waited eleven
+    # seconds waited sixty-six, and a merged receipt reporting only the last one would make a pass
+    # that spent most of a minute queueing look like one that spent eleven seconds.
+    waited = [r.waited_ms for r in receipts if r.waited_ms is not None]
     return PassReceipt(
         pass_id=ids.pass_id(inquiry_id, pass_name, attempt),
         pass_name=pass_name, outcome=outcome,
@@ -335,7 +430,10 @@ def merge_receipts(pass_name: DissolutionPass, receipts: Sequence[PassReceipt], 
         completion_tokens=sum(completion_tokens) if completion_tokens else None,
         duration_ms=round(sum(durations), 3) if durations else None,
         inputs=sum(r.inputs for r in receipts), outputs=outputs, detail=detail,
-        notes=[*(n for r in receipts for n in r.notes), *notes])
+        notes=[*(n for r in receipts for n in r.notes), *notes],
+        transport_attempts=sum(r.transport_attempts for r in receipts),
+        capacity_waits=[w for r in receipts for w in r.capacity_waits],
+        waited_ms=round(sum(waited), 3) if waited else None)
 
 
 def bounded(items: Sequence[Any], limit: int) -> Tuple[List[Any], List[Any]]:

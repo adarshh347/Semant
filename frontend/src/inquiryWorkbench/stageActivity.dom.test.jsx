@@ -217,6 +217,43 @@ describe('a stage that produced less than it should have', () => {
     });
 });
 
+// ── one sentence, printed once ──────────────────────────────────────────────
+
+describe('TestOneSentenceIsPrintedOnce', () => {
+    /** `detail`, `summary` and `counts_line` filled with the SAME words — the live shape. */
+    const repeating = (fields) => {
+        const raw = truncatedCompilerFixture();
+        raw.stages = raw.stages.map((s) => (s.stage === 'framer' ? { ...s, ...fields } : s));
+        return raw;
+    };
+    const occurrences = (node, sentence) =>
+        node.textContent.split(sentence).length - 1;
+
+    it('prints a stage\'s own sentence once when two fields carry it', async () => {
+        // The first live run's framer filled `summary` and `counts_line` with one counts line and
+        // the running theorist filled `detail` and `summary` both with "theorist entered", so the
+        // panel said each of them twice — which reads as the stage having done it twice. No
+        // fixture caught it because a fixture that repeats itself is not one anybody writes.
+        const line = '5 attentions · 12 terms nothing can serve';
+        await mount(repeating({ detail: '', summary: line, counts_line: line }),
+            { working: false, open: true });
+        expect(occurrences($('[data-stage="framer"]'), line)).toBe(1);
+        expect($('[data-stage="framer"] [data-counts-line="true"]')).toBeNull();
+    });
+
+    it('still prints a summary that says something the detail did not', async () => {
+        // The de-duplication drops the REPEAT, never the field.
+        await mount(repeating({ detail: 'framer entered', summary: 'a different sentence',
+            counts_line: '4 images in → 30 reading blocks out' }),
+            { working: false, open: true });
+        const framer = $('[data-stage="framer"]');
+        expect(framer.textContent).toContain('framer entered');
+        expect(framer.textContent).toContain('a different sentence');
+        expect(framer.querySelector('[data-counts-line="true"]').textContent)
+            .toBe('4 images in → 30 reading blocks out');
+    });
+});
+
 // ── forward and backward compatibility ──────────────────────────────────────
 
 describe('reading two servers at once', () => {

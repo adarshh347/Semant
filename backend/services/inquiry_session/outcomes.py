@@ -102,6 +102,17 @@ def _notes_of(receipt: Any) -> Sequence[str]:
     return [str(n) for n in (notes or ())]
 
 
+def _disposition_of(entry: Any) -> str:
+    """One coverage entry's disposition, whether it arrived as a mapping or as a typed object.
+
+    An enum member is unwrapped to its value: `DispositionKind.REFUSED` compared against the string
+    `"refused"` is False, and a comparison that is always False is a check that never fires.
+    """
+    raw = entry.get("disposition") if isinstance(entry, Mapping) \
+        else getattr(entry, "disposition", None)
+    return str(getattr(raw, "value", raw) or "")
+
+
 def _field_of(receipt: Any, name: str) -> Optional[str]:
     if receipt is None:
         return None
@@ -201,10 +212,16 @@ def declared_adequacy(artifact: Any) -> Adequacy:
                                 + (f"; {uncovered} source unit(s) uncovered" if uncovered else "")))
         if isinstance(block, Sequence) and not isinstance(block, (str, bytes)):
             # A coverage LEDGER: one disposition per source unit. Incomplete when any entry says so.
+            #
+            # BOTH SHAPES, and the reconciliation is the point. This read `isinstance(entry,
+            # Mapping)` and nothing else, so a TYPED v2 graph — a list of `CoverageDisposition`
+            # models — matched no entry and reported `complete` for a ledger that might be entirely
+            # refusals. Production stores the dumped mapping, so it was never wrong in the running
+            # system; it was wrong for anyone who passed the object, which is what an in-process
+            # caller naturally holds. Lane A pinned it with a failing-on-fix test rather than
+            # editing this file, and this is that fix.
             uncovered = sum(1 for entry in block
-                            if isinstance(entry, Mapping)
-                            and str(entry.get("disposition") or "") in ("", "semantic_remainder",
-                                                                        "refused"))
+                            if _disposition_of(entry) in ("", "semantic_remainder", "refused"))
             return Adequacy(
                 complete=uncovered == 0, uncovered=uncovered,
                 detail=(f"the producer's coverage ledger disposes of {len(block)} source unit(s); "

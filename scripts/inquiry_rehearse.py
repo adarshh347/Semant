@@ -31,16 +31,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.schemas.inquiry_session import canonical  # noqa: E402
-from backend.services.inquiry_session import coordinator, view  # noqa: E402
+from backend.services.inquiry_session import coordinator, runtime, view  # noqa: E402
 from backend.services.inquiry_session.capability import LockedFixtureCapability  # noqa: E402
-from backend.services.inquiry_session.composer import (DeterministicComposer,  # noqa: E402
-                                                       ModelSynthesisComposer)
+from backend.services.inquiry_session.composer import DeterministicComposer  # noqa: E402
 from backend.services.inquiry_session.judge import judge, tally  # noqa: E402
 from backend.tests.fixtures import inquiry_session_fixtures as F  # noqa: E402
 
@@ -48,17 +48,22 @@ AT = "2026-08-09T00:00:00+00:00"
 
 
 def build(args) -> coordinator.Stages:
+    """Offline: the frozen stage order. Live: THE PRODUCTION BINDING, and nothing else.
+
+    HARNESS-003D. This used to construct its own live stage order — framer, theorist,
+    `ModelSemanticCompiler`, composer — which was the same list `runtime.build_stages()` produced
+    on the day it was written and stopped being so the moment 003A's council was bound. A rehearsal
+    that assembles its own approximation of production rehearses the approximation: it would have
+    reported a healthy v1 compilation for a deployment whose `/inquiry` runs five passes.
+
+    So `--live` calls the one function a route calls. The capability stays the locked fixture in
+    both, because Phase 1's single capability is a declared simulation in production too.
+    """
     common = dict(capability=LockedFixtureCapability(), judge=judge)
     if not args.live:
         return F.stages_for(args.fixture, clock=F.frozen_clock(AT),
                             composer=DeterministicComposer(), **common)
-
-    from backend.services.inquiry import get_framer
-    from backend.services.semantic_compilation.compiler import ModelSemanticCompiler
-    from backend.services.semantic_compilation.theorist import ModelSceneTheorist
-    return coordinator.Stages(framer=get_framer("deterministic"),
-                              theorist=ModelSceneTheorist(), compiler=ModelSemanticCompiler(),
-                              composer=ModelSynthesisComposer(), **common)
+    return runtime.build_stages(**common)
 
 
 def posts_for(args):
@@ -98,15 +103,90 @@ def drive(args, stages, *, session_id: Optional[str] = None):
 
 # ── printing ─────────────────────────────────────────────────────────────────
 
-def show(session, request, args) -> None:
+def _show_council(session, out) -> None:
+    """The five passes, what became of every source unit, and where the wall clock went.
+
+    HARNESS-003D. A v1 graph has none of this and prints none of it — an absent council is not a
+    council that produced nothing, and a transcript that showed `0 passes` for a one-call compiler
+    would report the version as a failure.
+
+    `sends` is printed apart from `calls` wherever they differ. They differ only when the provider
+    refused for capacity and the SAME bytes went again, so the gap is a fact about the account's
+    allowance and never about the compiler having asked more.
+    """
+    graph = session.graph or {}
+    passes = graph.get("passes") or []
+    units = graph.get("source_units") or []
+    if not passes and not units:
+        return
+
+    print(f"\ncouncil   {len(passes)} pass(es)", file=out)
+    waited_total = 0.0
+    for receipt in passes:
+        calls = receipt.get("call_count")
+        sends = receipt.get("transport_attempts")
+        waited = receipt.get("waited_ms")
+        waited_total += float(waited or 0)
+        line = (f"  {str(receipt.get('pass_name')):27.27} {str(receipt.get('outcome')):15.15}"
+                f" {(receipt.get('duration_ms') or 0) / 1000:7.1f}s"
+                f"  {calls if calls is not None else '—'} call(s)")
+        if sends is not None and sends != calls:
+            line += f", {sends} send(s)"
+        if waited:
+            line += f", waited {waited / 1000:.1f}s"
+        print(line, file=out)
+        if receipt.get("detail"):
+            print(f"      {str(receipt['detail'])[:100]}", file=out)
+        for wait in receipt.get("capacity_waits") or []:
+            taken = wait.get("taken")
+            secs = wait.get("seconds")
+            head = (f"waited {secs:.1f}s" if taken and secs is not None
+                    else "STOPPED WAITING" if taken is False else "waited")
+            print(f"      · {head:18} {wait.get('source')}  {wait.get('detail') or ''}", file=out)
+
+    atoms = graph.get("semantic_atoms") or []
+    coverage = graph.get("coverage") or []
+    disposed = {c.get("source_unit_id") for c in coverage}
+    lost = [u.get("source_unit_id") for u in units if u.get("source_unit_id") not in disposed]
+    kinds: Dict[str, int] = {}
+    for c in coverage:
+        kinds[str(c.get("disposition"))] = kinds.get(str(c.get("disposition")), 0) + 1
+
+    print(f"\ncoverage  {len(disposed)} of {len(units)} source unit(s) disposed of · "
+          f"{len(atoms)} atom(s)", file=out)
+    for disposition, count in sorted(kinds.items()):
+        print(f"  {disposition:24} {count}", file=out)
+    # LOST IS ITS OWN NUMBER. A unit nothing said anything about is not a remainder — a remainder is
+    # a decision — and a transcript that folded them together would hide the only coverage failure
+    # the audit can actually catch.
+    print(f"  {'lost (no disposition)':24} {len(lost)}"
+          f"{'  ' + ', '.join(lost) if lost else ''}", file=out)
+    if waited_total:
+        print(f"\nwaiting   {waited_total / 1000:.1f}s spent waiting for provider capacity",
+              file=out)
+
+
+def show(session, request, args, *, stages=None) -> None:
     out = sys.stdout
     print(f"\nsession   {session.session_id}   {session.mode} mode", file=out)
     print(f"question  {session.prompt}", file=out)
     print(f"images    {', '.join(p.post_id for p in session.posts)}", file=out)
 
+    # WHAT PRODUCED THIS, first and not in a receipt three panels down. A transcript of a replay is
+    # indistinguishable from a transcript of a live run to anyone who does not go looking.
+    if stages is not None:
+        badge = runtime.deployment(stages)
+        print(f"deployed  {badge['kind'].upper()}   {badge['detail']}", file=out)
+
     print("\nstages", file=out)
     for event in session.stages:
-        print(f"  {event.stage.value:11} {event.outcome.value:12} {event.detail}", file=out)
+        took = "" if event.duration_ms is None else f" {event.duration_ms / 1000:6.1f}s"
+        print(f"  {event.stage.value:11} {event.outcome.value:12}{took}  {event.detail}", file=out)
+        for sub in event.substages:
+            sub_took = "" if sub.duration_ms is None else f" {sub.duration_ms / 1000:6.1f}s"
+            print(f"     · {sub.label:52.52} {sub.outcome:11}{sub_took}", file=out)
+
+    _show_council(session, out)
 
     reading = (session.graph.get("reading") or {})
     if reading.get("text"):
@@ -229,14 +309,20 @@ def main() -> int:
         return replay_check(args)
 
     stages = build(args)
+    began = time.monotonic()
     session, request = drive(args, stages)
+    elapsed = time.monotonic() - began
     if args.json:
+        # The SAME body the route serves, deployment badge included. A rehearsal transcript that
+        # omitted it would be a session record that cannot say what produced it.
         json.dump(view.session_view(
-            session, servable_classes=coordinator.servable_classes(stages)),
+            session, servable_classes=coordinator.servable_classes(stages),
+            deployment=runtime.deployment(stages)),
             sys.stdout, indent=2, ensure_ascii=False)
         print()
     else:
-        show(session, request, args)
+        show(session, request, args, stages=stages)
+        print(f"wall      {elapsed:.1f}s end to end", file=sys.stdout)
     return 0
 
 

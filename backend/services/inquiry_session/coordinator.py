@@ -357,6 +357,35 @@ def _wants_observer(stage: Any) -> bool:
     return bool(getattr(stage, "wants_substage_observer", False))
 
 
+def _sink_for(stages: Stages, ledger: "_Ledger", at: str) -> Callable[..., None]:
+    """Where a stage's progress goes: the ledger ALWAYS, and the live tap as well when one is bound.
+
+    BOTH, and this was `stages.observer or ledger.observe` until HARNESS-003D. The `or` made the two
+    alternatives, so binding a driver-side observer to persist progress mid-stage silently stopped
+    the substages reaching the terminal attempt — the live view would move and the finished session
+    would have no record of what moved. They answer different questions: the ledger is the durable
+    account of what happened, the tap is what a person watching sees before it is over.
+
+    It also STAMPS THE TIME. The council owns no clock and neither does the theorist's parser —
+    nothing in those packages reads one, which is what makes a replay a byte comparison — so an
+    event minted inside them carries no `at`, and a progress list with no times has no order.
+    """
+    tap = stages.observer
+
+    def sink(label: str, **fields: Any) -> None:
+        fields.setdefault("at", stages.clock())
+        ledger.observe(label, **fields)
+        if tap is not None:
+            try:
+                tap(label, **fields)
+            except Exception:                                    # noqa: BLE001
+                # A live tap is a UI concern reaching into a stage. One that raised would turn a
+                # watched run into a failed one, which is strictly worse than an unwatched run.
+                pass
+
+    return sink
+
+
 def _read_with_observer(stages: Stages, session: SemanticInquirySession, images: Any, at: str,
                         ledger: "_Ledger") -> Any:
     """Call the theorist, handing it an observer only if it said it wants one.
@@ -369,9 +398,48 @@ def _read_with_observer(stages: Stages, session: SemanticInquirySession, images:
     call = dict(inquiry_id=session.inquiry_id,
                 corpus=corpus.corpus_context_for(session.posts), now=at)
     if _wants_observer(stages.theorist):
-        sink = stages.observer or ledger.observe
-        call["on_substage"] = sink
+        call["on_substage"] = _sink_for(stages, ledger, at)
     return stages.theorist.read(session.prompt, images, **call)
+
+
+def _compile_with_observer(stages: Stages, request: Any, ledger: "_Ledger", at: str) -> Any:
+    """Call the compiler, handing it an observer only if it said it wants one.
+
+    The same seam and the same rule as `_read_with_observer`, and the reason it is a second function
+    rather than a shared one is that the two stages take different keywords: a helper that guessed
+    which would be introspecting a signature, which is the check `_wants_observer` exists to refuse.
+
+    """
+    if not _wants_observer(stages.compiler):
+        return stages.compiler.compile(request)
+    return stages.compiler.compile(request, on_substage=_sink_for(stages, ledger, at))
+
+
+def _compiler_actor(compiler: Any) -> Dict[str, Any]:
+    """Model, provider, topology and call counts, read off the PRODUCER.
+
+    v1 put a single `ModelReceipt` on `graph.provenance.compiler` and this stage read it. v2 leaves
+    that `None` on purpose — naming one of three minds as the author of the whole graph would be a
+    lie — so a stage projection that only knew the receipt route reported a live five-pass council
+    as a compilation with no model, no provider and no calls, which is what an unbound compiler
+    looks like.
+
+    So the producer is asked, using the attribute names `dissolution_binding` declares, and the
+    receipt stays the first route for the one-call compiler that still has one. Both routes are
+    declared reads; neither derives anything from prose.
+    """
+    receipt = getattr(compiler, "last_receipt", None)
+    calls = getattr(compiler, "actual_calls", None)
+    return {
+        "model": getattr(compiler, "model", None),
+        "provider": getattr(compiler, "provider", None),
+        "call_topology": str(getattr(compiler, "call_topology", "") or ""),
+        "actual_calls": calls if isinstance(calls, int) else None,
+        "transport_attempts": getattr(compiler, "transport_attempts", None),
+        "waited_ms": getattr(compiler, "waited_ms", None),
+        "capacity_limited": bool(getattr(compiler, "capacity_limited", False)),
+        "receipt": receipt,
+    }
 
 
 def _compile(session: SemanticInquirySession, reading: Any, stages: Stages, ledger: _Ledger,
@@ -389,40 +457,81 @@ def _compile(session: SemanticInquirySession, reading: Any, stages: Stages, ledg
         corpus=corpus.corpus_context_for(session.posts), now=at,
         inherited_refusals=reading.refusals if reading is not None else (),
         inherited_notes=reading.notes if reading is not None else ())
-    graph = stages.compiler.compile(request)
+    graph = _compile_with_observer(stages, request, ledger, at)
     payload = graph.model_dump(mode="json", by_alias=True)
     finished_at = stages.clock()
     receipt = graph.provenance.compiler
+    actor = _compiler_actor(stages.compiler)
     truncation = outcomes.detect_truncation(receipt, producer=stages.compiler)
     outcome = outcomes.outcome_for(
         produced=bool(graph.claims), truncation=truncation,
         adequacy=outcomes.declared_adequacy(payload),
         unavailable=graph.provenance.compiler_kind == "unavailable")
+    waiting = _waiting_note(actor)
     ledger.record(StageName.COMPILER, outcome, at=finished_at, started_at=started_at,
                   detail=graph.summary() + (f" · {truncation.detail}" if truncation.truncated
-                                            else ""),
+                                            else "") + (f" · {waiting}" if waiting else ""),
                   outputs=[c.claim_id for c in graph.claims], role="semantic_compiler",
-                  model=receipt.model if receipt else None,
-                  provider=receipt.provider if receipt else None,
+                  model=receipt.model if receipt else actor["model"],
+                  provider=receipt.provider if receipt else actor["provider"],
                   execution_mode=AttemptExecutionMode.LIVE,
+                  # WHAT THE COUNCIL ACTUALLY ATE AND PRODUCED. `31 reading blocks in` was the whole
+                  # story while one call did everything; a ledger and a dissection sit between the
+                  # blocks and the claims now, and a counts line that skipped them would put the
+                  # phase's central artifact — the coverage ledger — outside the sentence a person
+                  # reads to find out what happened.
                   input_counts={"reading blocks": blocks},
-                  output_counts={"claims": len(graph.claims),
+                  output_counts={"source units": len(graph.source_units),
+                                 "atoms": len(graph.semantic_atoms),
+                                 "claims": len(graph.claims),
                                  "observables": len(graph.observables),
                                  "remainder": len(graph.semantic_remainder)},
-                  call_topology=receipt.call_topology.value if receipt else "",
-                  actual_calls=receipt.call_count if receipt else None,
+                  call_topology=(receipt.call_topology.value if receipt
+                                 else actor["call_topology"]),
+                  actual_calls=receipt.call_count if receipt else actor["actual_calls"],
                   truncation_source=truncation.source,
                   refusals=[r.what for r in graph.refusals],
                   provenance={"truncation": truncation.detail,
-                              "compiler_kind": graph.provenance.compiler_kind})
+                              "compiler_kind": graph.provenance.compiler_kind,
+                              **_transport_provenance(actor)})
     return session.model_copy(update={
         "graph": payload,
         "refusals": [r.model_dump(mode="json") for r in graph.refusals],
         "gaps": _gaps_from(graph),
         "provenance": session.provenance.model_copy(update={
-            "compiler_model": graph.provenance.compiler.model if graph.provenance.compiler else None,
+            "compiler_model": (graph.provenance.compiler.model if graph.provenance.compiler
+                               else actor["model"]),
         }),
     })
+
+
+def _transport_provenance(actor: Mapping[str, Any]) -> Dict[str, Any]:
+    """The waiting, on the attempt, as facts rather than as a sentence.
+
+    ABSENT WHERE NOTHING WAITED, and that is the null-duration law wearing a different field name: a
+    `waited_ms: 0` beside a compiler that never met the allowance would read as a measurement, and a
+    reader deciding whether the pacing is working needs "this run did not wait" and "nothing paced
+    this run" to look different.
+    """
+    out: Dict[str, Any] = {}
+    if isinstance(actor.get("transport_attempts"), int):
+        out["transport_attempts"] = actor["transport_attempts"]
+    if actor.get("waited_ms") is not None:
+        out["waited_ms"] = actor["waited_ms"]
+    if actor.get("capacity_limited"):
+        out["capacity_limited"] = True
+    return out
+
+
+def _waiting_note(actor: Mapping[str, Any]) -> str:
+    """`waited 92.4s for provider capacity over 14 transport attempt(s)`, or nothing at all."""
+    waited = actor.get("waited_ms")
+    if waited is None:
+        return ""
+    attempts = actor.get("transport_attempts")
+    tail = f" over {attempts} transport attempt(s)" if isinstance(attempts, int) else ""
+    stopped = " — the declared budget stopped the waiting" if actor.get("capacity_limited") else ""
+    return f"waited {float(waited) / 1000:.1f}s for provider capacity{tail}{stopped}"
 
 
 def _gaps_from(graph: Any) -> List[str]:

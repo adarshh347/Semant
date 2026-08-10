@@ -389,6 +389,29 @@ export const ATOM_KINDS = [
 
 export const DISPOSITIONS = ['represented_by', 'duplicate_of', 'semantic_remainder', 'refused'];
 
+/**
+ * Who SAID an atom — which is not the same question as who DECIDED something.
+ *
+ * Written forward against `DECIDER_KINDS` before Lane A merged, and that was the wrong vocabulary:
+ * a decider is `user · policy · steward · engine`, and an atom's author is one of the three things
+ * that can produce prose. Every atom the dissector wrote therefore arrived as an author this client
+ * could not place — which the normaliser handled correctly (nothing unlocked, raw value kept) and
+ * which still meant the majority column of a live dissection read as unknown.
+ *
+ * Found by Lane D's parity test against the backend's own generated sample rather than by review,
+ * which is the fourth time that arrangement has caught a divergence review did not.
+ *
+ * `user` is the load-bearing one: it is frozen onto any atom anchored to a prompt clause, by a
+ * backend validator, and it is what "your direction" renders from.
+ */
+export const ATOM_AUTHORS = ['user', 'scene_theorist', 'semantic_dissector'];
+
+export const ATOM_AUTHOR_COPY = {
+    user: 'you wrote this',
+    scene_theorist: 'the model that looked at the images wrote this',
+    semantic_dissector: 'the pass that read the prose wrote this',
+};
+
 export const DISPOSITION_COPY = {
     represented_by: 'became one or more atoms',
     duplicate_of: 'says the same thing as another source unit',
@@ -404,6 +427,11 @@ export function normalizeSourceUnit(raw) {
         source_ref: str(v.source_ref),
         exact_quote: str(v.exact_quote),
         image_refs: arr(v.image_refs).map(String),
+        // Derived by the backend from the unit's KIND rather than read off a model's answer: a
+        // prompt clause is the person's, and this is the one attribution nothing downstream could
+        // check if it were wrong.
+        author: enumField(v.author, ATOM_AUTHORS),
+        block_kind: str(v.block_kind),
         raw: v,
     };
 }
@@ -420,7 +448,9 @@ export function normalizeAtom(raw) {
         object: str(v.object),
         image_scope: arr(v.image_scope).map(String),
         epistemic_ceiling: enumField(v.epistemic_ceiling, CLAIM_STATUSES),
-        author: enumField(v.author, DECIDER_KINDS),
+        // ATOM_AUTHORS, not DECIDER_KINDS — see the note on that list. Who said it is a different
+        // question from who chose.
+        author: enumField(v.author, ATOM_AUTHORS),
         provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
         raw: v,
     };
@@ -450,6 +480,168 @@ export function uncoveredSourceUnits(graph) {
     return (graph?.source_units || []).filter((u) => !covered.has(u.source_unit_id));
 }
 
+// ── the council's own passes (HARNESS-003D) ─────────────────────────────────
+//
+// v2 leaves `provenance.compiler` null on purpose: naming one of three minds as the author of the
+// whole graph would be a lie, and the pass list IS the receipt. So this is the object a reader
+// consults to find out which mind came up short, and it is the first thing on this surface that
+// distinguishes a compilation from a call.
+
+export const PASS_NAMES = [
+    'source_ledger', 'semantic_dissector', 'targeted_repair',
+    'relation_architect', 'epistemic_operationalizer', 'coverage_audit',
+];
+
+export const PASS_LABEL = {
+    source_ledger: 'Splitting the question and the reading into source units',
+    semantic_dissector: 'Dissolving source units into semantic atoms',
+    targeted_repair: 'One targeted repair over the units nothing accounted for',
+    relation_architect: 'Building claims and the relations between them',
+    epistemic_operationalizer: 'Deciding what could be observed, and what cannot',
+    coverage_audit: 'Auditing what became of every source unit',
+};
+
+/**
+ * How a pass ended, in the council's own vocabulary.
+ *
+ * `coverage_failed` is the one that has no equivalent in the stage vocabulary and must not be
+ * mapped onto one: it means the ledger did not balance, which is a different repair from a stage
+ * that came back thin and a different repair again from one that ran out of budget.
+ */
+export const PASS_OUTCOMES = [
+    'completed', 'thin', 'truncated', 'coverage_failed', 'empty', 'refused', 'unavailable', 'error',
+];
+
+export const PASS_OUTCOME_COPY = {
+    completed: 'It did what the pass is for.',
+    thin: 'It parsed, and produced less than its inputs implied.',
+    truncated: 'It stopped on its output budget. What came back is a PREFIX.',
+    coverage_failed: 'Source units went through it and came out with nothing said about them.',
+    empty: 'It ran and produced nothing.',
+    refused: 'A law said no.',
+    unavailable: 'It was not reached, so nothing was attempted.',
+    error: 'It raised.',
+};
+
+/** Passes that did not deliver what they are for. `completed` is the only one that is not here. */
+export const UNDERPERFORMING_PASS_OUTCOMES = PASS_OUTCOMES.filter((o) => o !== 'completed');
+
+/**
+ * Where a capacity wait's length came from — the provider, or a number we declared.
+ *
+ * The last two are not sources at all: they say the pacer STOPPED. `budget_exhausted` is the
+ * declared wall-clock gate ending the run honestly; a surface that rendered it as just another
+ * wait would report a run that gave up as one that was still going.
+ */
+export const WAIT_SOURCES = [
+    'provider_retry_after', 'provider_reset_header', 'provider_message', 'declared_interval',
+    'budget_exhausted', 'attempts_exhausted',
+];
+
+export const WAIT_SOURCE_COPY = {
+    provider_retry_after: 'the provider said how long to wait',
+    provider_reset_header: 'the provider said when its allowance resets',
+    provider_message: 'the refusal itself said how long to wait',
+    declared_interval: 'the provider would not say, so the configured interval was used',
+    budget_exhausted: 'this run\'s declared time budget ran out, so nothing waited',
+    attempts_exhausted: 'the provider kept refusing, so nothing waited again',
+};
+
+export function normalizeCapacityWait(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return {
+        attempt: numOrNull(v.attempt),
+        seconds: numOrNull(v.seconds),
+        source: enumField(v.source, WAIT_SOURCES),
+        detail: str(v.detail),
+        // Tri-state on purpose. A wait nobody took is a boundary being reported, and `taken: false`
+        // arriving as a missing field must not read as one that was.
+        taken: boolOrNull(v.taken),
+    };
+}
+
+/**
+ * One pass of the council.
+ *
+ * `call_count` and `transport_attempts` stay apart, and the gap between them is the account's
+ * allowance rather than anything about the prompt. Every timing field is nullable and stays null —
+ * `waited_ms: 0` would say a pacer answered and reported no wait, which is not the same fact as a
+ * run nothing paced.
+ */
+export function normalizePass(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    const pass = {
+        pass_id: str(v.pass_id),
+        pass_name: enumField(v.pass_name, PASS_NAMES),
+        outcome: enumField(v.outcome, PASS_OUTCOMES),
+        model: str(v.model),
+        provider: str(v.provider),
+        call_count: numOrNull(v.call_count),
+        transport_attempts: numOrNull(v.transport_attempts),
+        finish_reasons: arr(v.finish_reasons).map(String),
+        prompt_tokens: numOrNull(v.prompt_tokens),
+        completion_tokens: numOrNull(v.completion_tokens),
+        duration_ms: numOrNull(v.duration_ms),
+        waited_ms: numOrNull(v.waited_ms),
+        capacity_waits: arr(v.capacity_waits).map(normalizeCapacityWait),
+        inputs: numOrNull(v.inputs),
+        outputs: numOrNull(v.outputs),
+        detail: str(v.detail),
+        notes: arr(v.notes).map(String),
+        raw: v,
+    };
+    // DERIVED ONLY BECAUSE THE BACKEND DOES NOT DECLARE IT FOR A PASS. `StageAttempt` carries
+    // `underperformed` and this client defers to it there; `PassReceipt` has no such field, and
+    // `completed` is the only outcome that is not an underperformance — which is an enumeration
+    // rather than a judgement, so deriving it here is reading rather than second-guessing.
+    pass.underperformed = pass.outcome.known
+        && UNDERPERFORMING_PASS_OUTCOMES.includes(pass.outcome.value);
+    pass.waited = pass.capacity_waits.some((w) => w.taken === true);
+    pass.capacity_limited = pass.capacity_waits.some((w) => w.taken === false);
+    return pass;
+}
+
+/**
+ * What became of the source prose. The backend computes it; this reads it.
+ *
+ * `complete` is TRI-STATE and the null matters: a v1 graph has no coverage ledger, so it makes no
+ * coverage claim, and rendering that as `false` would accuse a compilation of failing a check it
+ * never declared. `lost_count` is its own number — a unit with no disposition is one the compiler
+ * dropped, never a remainder, and the whole point of a coverage ledger is that those two do not
+ * read alike.
+ */
+export function normalizeCoverageSummary(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    const counts = v.by_disposition && typeof v.by_disposition === 'object' ? v.by_disposition : {};
+    return {
+        source_units: numOrNull(v.source_units),
+        disposed: numOrNull(v.disposed),
+        represented: numOrNull(v.represented),
+        by_disposition: Object.entries(counts)
+            .filter(([, n]) => typeof n === 'number' && Number.isFinite(n))
+            .map(([disposition, count]) => ({ disposition, count })),
+        lost: arr(v.lost).map(String),
+        lost_count: numOrNull(v.lost_count),
+        user_units: numOrNull(v.user_units),
+        reading_units: numOrNull(v.reading_units),
+        complete: boolOrNull(v.complete),
+    };
+}
+
+/** Total time this graph spent waiting for provider capacity — or null, where nothing waited. */
+export function totalWaitedMs(graph) {
+    const spent = (graph?.passes || []).map((p) => p.waited_ms).filter((n) => n !== null);
+    return spent.length ? spent.reduce((a, b) => a + b, 0) : null;
+}
+
+/** The first pass that did not deliver, in declared order. Everything after it is a consequence. */
+export function earliestFailingPass(graph) {
+    const failing = (graph?.passes || []).filter((p) => p.underperformed);
+    if (!failing.length) return null;
+    return failing.reduce((a, b) =>
+        (PASS_NAMES.indexOf(a.pass_name.value) <= PASS_NAMES.indexOf(b.pass_name.value) ? a : b));
+}
+
 export function normalizeGraph(raw) {
     const v = raw && typeof raw === 'object' ? raw : {};
     return {
@@ -470,6 +662,9 @@ export function normalizeGraph(raw) {
         source_units: arr(v.source_units).map(normalizeSourceUnit),
         semantic_atoms: arr(v.semantic_atoms).map(normalizeAtom),
         coverage: arr(v.coverage).map(normalizeCoverage),
+        // HARNESS-003D. The per-pass receipts, and the backend's own arithmetic over its ledger.
+        passes: arr(v.passes).map(normalizePass),
+        coverage_summary: normalizeCoverageSummary(v.coverage_summary),
         provenance: v.provenance && typeof v.provenance === 'object' ? v.provenance : {},
     };
 }
@@ -1011,6 +1206,58 @@ export function barrenAfter(stageName, stages) {
         (s) => STAGE_NAMES.indexOf(s.stage.value) > idx && s.barren);
 }
 
+// ── what produced this session (HARNESS-003D) ────────────────────────────────
+//
+// The 002R rehearsal was run against a replay server on purpose, and the session record said so —
+// in a receipt three panels down. That is the right fact in the wrong place: a screenshot of a
+// replay is indistinguishable from a screenshot of a live run to anyone who does not open the
+// provenance, and a phase ratified on the strength of a replay is `never display a simulation as
+// measurement` failing at the level of the whole run rather than of one object.
+
+export const DEPLOYMENT_KINDS = ['live', 'replay', 'fixture', 'undeclared'];
+
+export const DEPLOYMENT_LABEL = {
+    live: 'LIVE',
+    replay: 'REPLAY',
+    fixture: 'FIXTURE',
+    undeclared: 'UNDECLARED',
+};
+
+export const DEPLOYMENT_COPY = {
+    live: 'The models on this run called a real provider.',
+    replay: 'A frozen payload stood in for at least one model. Nothing here was read from a '
+        + 'provider on this run, and it may not be read as one that was.',
+    fixture: 'No model is bound to this deployment. Every stage that would have called one is '
+        + 'skipped, and nothing is substituted in its place.',
+    undeclared: 'This response did not say what produced it. That is not a claim that it was live.',
+};
+
+/**
+ * The badge.
+ *
+ * `undeclared` is deliberately IN the vocabulary rather than treated as a missing field. A missing
+ * key reads to every client as "not implemented yet" and renders as nothing, which puts a replay
+ * and a live run back on the same screen — the one thing this object exists to separate.
+ */
+export function normalizeDeployment(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    const declared = v.declared === true;
+    const kind = declared ? str(v.kind) : 'undeclared';
+    const stages = v.stages && typeof v.stages === 'object' && !Array.isArray(v.stages)
+        ? v.stages : {};
+    return {
+        kind: enumField(kind || 'undeclared', DEPLOYMENT_KINDS),
+        declared,
+        // Tri-state. "We did not check whether the provider answers" and "we checked and it does
+        // not" send a reader to different places, and only one of them is worth retrying.
+        reachable: boolOrNull(v.reachable),
+        stages: Object.entries(stages).map(([stage, producer]) => ({
+            stage, producer: str(producer),
+        })),
+        detail: str(v.detail) || DEPLOYMENT_COPY[kind] || DEPLOYMENT_COPY.undeclared,
+    };
+}
+
 // ── the session ──────────────────────────────────────────────────────────────
 
 export function normalizeSession(raw) {
@@ -1024,6 +1271,8 @@ export function normalizeSession(raw) {
         revision: numOrNull(v.revision),
         state: enumField(v.state, SESSION_STATES),
         mode: enumField(v.mode, INTERACTION_MODES),
+        // Beside the state, because that is where it is rendered and where a reader looks.
+        deployment: normalizeDeployment(v.deployment),
         graph: normalizeGraph(v.graph),
         decision_requests: arr(v.decision_requests).map(normalizeDecisionRequest),
         decision_records: arr(v.decision_records).map(normalizeDecisionRecord),

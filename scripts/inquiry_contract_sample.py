@@ -33,11 +33,11 @@ AT = "2026-08-09T00:00:00+00:00"
 #: Fixed rather than minted: the session id is the one clock-derived value in the lane, and a
 #: sample whose id changed every run would make the diff useless.
 SESSION_IDS = {"awaiting-user": "inqs_sample000001", "complete": "inqs_sample000002",
-               "auto-complete": "inqs_sample000003"}
+               "auto-complete": "inqs_sample000003", "dissolution": "inqs_sample000004"}
 
 
 def _build():
-    from backend.services.inquiry_session import coordinator, view
+    from backend.services.inquiry_session import coordinator, runtime, view
     from backend.services.inquiry_session.capability import LockedFixtureCapability
     from backend.services.inquiry_session.composer import DeterministicComposer
     from backend.services.inquiry_session.judge import judge
@@ -54,20 +54,48 @@ def _build():
                                        mode=mode, session_id=session_id, now=AT)
 
     servable = tuple(LockedFixtureCapability().servable_classes)
+    # THE SAMPLES ARE A REPLAY AND THEY SAY SO. Derived from the same bound stages the run
+    # used rather than hardcoded: a sample that asserted its own deployment kind would be the
+    # one place in the contract where the badge is a claim instead of a reading.
+    deployed = runtime.deployment(stages())
     out = {}
 
     paused = coordinator.begin(fresh(SESSION_IDS["awaiting-user"], "consult"), stages())
-    out["awaiting-user"] = view.session_view(paused, servable_classes=servable)
+    out["awaiting-user"] = view.session_view(paused, servable_classes=servable, deployment=deployed)
 
     request = coordinator.machine.from_dict(paused.interaction).open_decision
     answered = coordinator.resume(paused, {
         "response_id": "resp_sample", "session_id": paused.session_id,
         "decision_id": request.decision_id, "expected_revision": paused.revision,
         "kind": "select_option", "option_id": request.options[0].option_id, "at": AT}, stages())
-    out["complete"] = view.session_view(answered, servable_classes=servable)
+    out["complete"] = view.session_view(answered, servable_classes=servable, deployment=deployed)
 
     auto = coordinator.begin(fresh(SESSION_IDS["auto-complete"], "auto"), stages())
-    out["auto-complete"] = view.session_view(auto, servable_classes=servable)
+    out["auto-complete"] = view.session_view(auto, servable_classes=servable, deployment=deployed)
+
+    # ── the v2 sample (HARNESS-003D) ──────────────────────────────────────────
+    #
+    # The three above are v1 graphs, and every dissolution field on them is legitimately empty. A
+    # parity suite reading only those would prove that the client tolerates the ABSENCE of source
+    # units, atoms, coverage and pass receipts, which is exactly the assurance Lane C already had
+    # and exactly what stopped anybody noticing the backend was not sending them.
+    #
+    # So this one is the council, driven by the coordinator, over a frozen four-image reading —
+    # the shape the live rehearsal runs. It is the sample the consumed-field parity test reads.
+    council = F.DISSOLUTION_FIXTURES[0]
+
+    def council_stages():
+        return F.dissolution_stages_for(council, capability=LockedFixtureCapability(), judge=judge,
+                                        composer=DeterministicComposer(),
+                                        clock=F.frozen_clock(AT))
+
+    dissolved = coordinator.begin(
+        coordinator.new_session(prompt=F.dissolution_prompt_for(council),
+                                refs=F.dissolution_post_refs(council), mode="auto",
+                                session_id=SESSION_IDS["dissolution"], now=AT),
+        council_stages())
+    out["dissolution"] = view.session_view(dissolved, servable_classes=servable,
+                                           deployment=runtime.deployment(council_stages()))
     return out
 
 

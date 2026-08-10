@@ -189,16 +189,16 @@ def test_an_incomplete_ledger_reads_as_incomplete_on_lane_bs_side_too():
     assert adequacy.declared is True and adequacy.complete is False and adequacy.uncovered == 1
 
 
-def test_the_reader_under_reports_on_a_TYPED_graph_and_production_never_passes_one():
-    """A fragility at the seam, pinned rather than left to be discovered.
+def test_the_reader_counts_a_refused_ledger_the_same_whether_typed_or_dumped():
+    """003A pinned this as a FAILING-ON-FIX test and 003D is the fix.
 
-    003B's reader tests `isinstance(entry, Mapping)`, and a `CoverageDisposition` is a pydantic
-    model. Handed the TYPED graph it counts nothing and reports `complete` — for a ledger that is
-    entirely refusals. Production never hands it one (the session stores the dumped mapping), so
-    this is not a live defect; it is one edit away from becoming one, and the assertion below is
-    what would fail if somebody passed the object instead of its dump.
+    `declared_adequacy` tested `isinstance(entry, Mapping)` and nothing else, so a typed v2 graph —
+    a list of `CoverageDisposition` models — matched no entry and reported `complete` for a ledger
+    that could be entirely refusals. Production stores the dumped mapping, so the running system was
+    never wrong; anyone holding the object in process was.
 
-    Recorded for Lane D rather than fixed here: `outcomes.py` is 003B's file.
+    The old test asserted the broken behaviour on purpose, with a note saying it should fail the day
+    somebody fixed it. It did, and this replaced it.
     """
     from backend.schemas.semantic_compilation import (CoverageDisposition, DispositionKind,
                                                       GraphProvenance, SemanticInquiryGraph,
@@ -218,5 +218,20 @@ def test_the_reader_under_reports_on_a_TYPED_graph_and_production_never_passes_o
         provenance=GraphProvenance(producer="test", compiler_kind="council"))
     typed = outcomes.declared_adequacy(graph)
     dumped = outcomes.declared_adequacy(graph.model_dump(mode="json", by_alias=True))
-    assert dumped.uncovered == 1
-    assert typed.uncovered == 0, "if this starts failing, 003B fixed it and this note can go"
+    assert typed.uncovered == dumped.uncovered == 1
+    assert typed.complete is dumped.complete is False
+
+
+def test_an_enum_disposition_is_compared_by_value_and_not_by_repr():
+    """`DispositionKind.REFUSED` against the string `"refused"` is False, and a comparison that is
+    always False is a check that never fires — the same shape as the Mapping bug, one level in."""
+    from backend.schemas.semantic_compilation import DispositionKind
+    from backend.services.inquiry_session.outcomes import _disposition_of
+
+    class _Entry:
+        disposition = DispositionKind.REFUSED
+
+    assert _disposition_of(_Entry()) == "refused"
+    assert _disposition_of({"disposition": "refused"}) == "refused"
+    assert _disposition_of({"disposition": DispositionKind.REPRESENTED_BY}) == "represented_by"
+    assert _disposition_of({}) == ""

@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 from backend.schemas.inquiry_session import PostRef
 from backend.services.semantic_compilation.compiler import FrozenSemanticCompiler
 from backend.tests.fixtures import semantic_compilation_fixtures as compilation
+from backend.tests.fixtures import semantic_dissolution_fixtures as dissolution
 
 #: The two integration fixtures. Same coordinator, same state machine, same capability, same
 #: composer — the only difference is which frozen payload is read.
@@ -93,6 +94,55 @@ def stages_for(name: str, *, clock=None, **bound):
     from backend.services.inquiry_session.coordinator import Stages
     return Stages(framer=get_framer("deterministic"), theorist=theorist_for(name),
                   compiler=compiler_for(name), clock=clock or frozen_clock(), **bound)
+
+
+# ── the v2 council, driven by the coordinator (HARNESS-003D) ────────────────
+#
+# `stages_for` binds the v1 one-call compiler, which is what the 002D fixtures were written against
+# and what the checked-in samples exercised until this lane. Production now binds the council, and a
+# chain nothing drove end to end over a v2 graph is a chain whose integration was never tested —
+# Lane A's pipeline compiled and ran, and Lane D is where it meets a session, a stage ledger and a
+# wire projection.
+
+DISSOLUTION_FIXTURES = dissolution.FIXTURES
+
+
+def dissolution_post_refs(name: str, *, readable: bool = True) -> List[PostRef]:
+    return [PostRef(post_id=image["post_id"], title=image.get("title", ""),
+                    image_ref=f"https://fixture.invalid/{image['post_id']}.jpg" if readable else "",
+                    fingerprint=f"fp_{image['post_id']}", readable=readable)
+            for image in dissolution.load(name)["images"]]
+
+
+def dissolution_post_docs(name: str) -> Dict[str, Dict[str, Any]]:
+    return {image["post_id"]: {"_id": image["post_id"], "title": image.get("title", ""),
+                               "photo_url": f"https://fixture.invalid/{image['post_id']}.jpg",
+                               "region_annotations": [], "visual_marks": []}
+            for image in dissolution.load(name)["images"]}
+
+
+def dissolution_prompt_for(name: str) -> str:
+    return dissolution.prompt_for(name)
+
+
+def dissolution_stages_for(name: str, *, clock=None, **bound):
+    """The production stage order with the REAL `DissolutionCompiler` over a frozen council.
+
+    The compiler under test is the production adapter rather than a stand-in for it, so everything
+    Lane D added at that seam actually runs: the substage narration, the wall-clock budget it opens,
+    the producer attributes 003B's truncation reader consults, and the pass receipts the view
+    projects. Only the three minds behind it are frozen — the same substitution `stages_for` makes
+    one layer up, at the layer where it proves something different.
+    """
+    from backend.services.inquiry import get_framer
+    from backend.services.inquiry_session.coordinator import Stages
+    from backend.services.inquiry_session.dissolution_binding import DissolutionCompiler
+    from backend.services.semantic_compilation.theorist import FrozenSceneTheorist
+
+    return Stages(framer=get_framer("deterministic"),
+                  theorist=FrozenSceneTheorist(dissolution.load(name)["theorist_payload"]),
+                  compiler=DissolutionCompiler(dissolution.council_for(name)),
+                  clock=clock or frozen_clock(), **bound)
 
 
 # ── the fakes a route test needs ────────────────────────────────────────────
@@ -173,6 +223,13 @@ def post_collection_for(name: str) -> FakeCollection:
     return FakeCollection(list(post_docs(name).values()))
 
 
+def dissolution_post_collection_for(name: str) -> FakeCollection:
+    return FakeCollection(list(dissolution_post_docs(name).values()))
+
+
 __all__ = ["FIXTURES", "FixtureCompiler", "FakeCollection", "fixture", "post_refs", "post_docs",
            "post_collection_for", "theorist_for", "compiler_for", "prompt_for", "stages_for",
-           "topic_nouns", "frozen_clock"]
+           "topic_nouns", "frozen_clock",
+           "DISSOLUTION_FIXTURES", "dissolution_post_refs", "dissolution_post_docs",
+           "dissolution_prompt_for", "dissolution_stages_for",
+           "dissolution_post_collection_for"]

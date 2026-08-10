@@ -768,6 +768,28 @@ class CoverageDisposition(_Strict):
         return self
 
 
+class CapacityWaitRecord(_Strict):
+    """One provider capacity refusal, and the pause that followed it — or the pause that did not.
+
+    HARNESS-003D. Lane A's fifth live run was rate-limited out of the relation architect and the
+    record could say only that a pass had `error`ed with a `429`. A wait is a fact about the ACCOUNT
+    rather than about the prompt, and a run whose elapsed time is mostly waiting is not a slow run —
+    it is a run inside a smaller allowance than the work needs. Those two read alike in a latency
+    column and their repairs are opposite, so the waiting is recorded apart from the thinking.
+
+    `taken=False` is a refusal the pacer did NOT wait on, because the declared wall-clock budget or
+    the attempt bound stopped it. Kept rather than dropped: giving up because you ran out of time
+    and giving up because the provider kept refusing are different reports.
+    """
+    attempt: int = Field(..., ge=1, description="which transport attempt was refused")
+    seconds: float = Field(..., ge=0.0, description="how long was waited, or would have been")
+    #: `provider_retry_after` | `provider_reset_header` | `provider_message` | `declared_interval`
+    #: for a wait, and `budget_exhausted` | `attempts_exhausted` for a refusal nothing waited on.
+    source: str
+    detail: str = ""
+    taken: bool = True
+
+
 class PassReceipt(_Strict):
     """What one pass of the council did, whether or not it produced anything.
 
@@ -795,9 +817,24 @@ class PassReceipt(_Strict):
     detail: str = ""
     notes: List[str] = Field(default_factory=list)
 
+    #: HARNESS-003D. How many times BYTES went on the wire, including identical re-sends after a
+    #: capacity refusal. Deliberately not folded into `call_count`, which counts how many times the
+    #: pass ASKED: a pass that asked once and was refused twice for capacity is `call_count=1,
+    #: transport_attempts=3`, and one number for both would make a rate-limited run look like a pass
+    #: that could not make up its mind.
+    transport_attempts: int = 0
+    capacity_waits: List[CapacityWaitRecord] = Field(default_factory=list)
+    #: Time spent waiting for the allowance, not for the model. `None` where nothing waited — zero
+    #: would say a pacer was consulted and reported no wait, which is not the same as no pacer.
+    waited_ms: Optional[float] = None
+
     @property
     def truncated(self) -> bool:
         return "length" in self.finish_reasons
+
+    @property
+    def waited(self) -> bool:
+        return any(w.taken for w in self.capacity_waits)
 
     @property
     def underperformed(self) -> bool:
@@ -1127,6 +1164,6 @@ __all__ = [
     "ImageRef", "SourcePointer", "ReadingBlock", "ModelReceipt", "SceneReading", "ClaimNode",
     "ClaimEdge", "OperationalAlternative", "ObservableSpec", "DecisionCandidate",
     "SemanticRemainderItem", "CompilerRefusal", "GraphProvenance", "SemanticInquiryGraph",
-    "SourceUnit", "SemanticAtom", "CoverageDisposition", "PassReceipt",
+    "SourceUnit", "SemanticAtom", "CoverageDisposition", "PassReceipt", "CapacityWaitRecord",
     "canonical",
 ]
