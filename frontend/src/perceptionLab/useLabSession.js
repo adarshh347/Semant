@@ -174,6 +174,19 @@ export default function useLabSession(client, { initialOrgan = 'extent',
 
     // ── planning and running ────────────────────────────────────────────────
 
+    /**
+     * COMPOSING IS NOT RUNNING, and the contract says so in one flag.
+     *
+     * `for_execution: false` is not laxity. `topology.occlusion` declares its depth input optional
+     * to plan and required to run, precisely so a person may assemble the question before they
+     * have a depth field — and this laboratory has no organ that can make one. Planning with
+     * `for_execution: true` would collapse that into "you may not even ask", which is the shape of
+     * a hidden capability rather than a declared one.
+     *
+     * The gate is not skipped, it is MOVED: `PlanPreview` runs the execution-time input check over
+     * every resolved step and says, before the button is pressed, which of them will refuse when
+     * run. The run then refuses for real, with a refusal artifact in the ledger.
+     */
     const planDirectly = useCallback((operation, parameters, input_refs) => guard(
         'proposing a plan', async () => {
             const plan = await client.plan({
@@ -183,7 +196,7 @@ export default function useLabSession(client, { initialOrgan = 'extent',
                 parameters,
                 input_refs,
                 references: selectedIds,
-                for_execution: true,
+                for_execution: false,
             });
             setState((prev) => ({ ...prev, plan }));
             return plan;
@@ -198,7 +211,7 @@ export default function useLabSession(client, { initialOrgan = 'extent',
                 // Follow-ups resolve ONLY through what this session has selected. "those two"
                 // means these ids, or it means nothing.
                 references: selectedIds,
-                for_execution: true,
+                for_execution: false,   // see `planDirectly` — composing is not running
             });
             setState((prev) => ({ ...prev, plan }));
             await refresh(state.session.session_id);

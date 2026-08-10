@@ -4,6 +4,12 @@ import useContainerWidth from './useContainerWidth';
 import SourcePicker from './components/SourcePicker';
 import OrganCatalogue from './components/OrganCatalogue';
 import ModeControls from './components/ModeControls';
+import DirectControls from './components/DirectControls';
+import PromptConversation from './components/PromptConversation';
+import PlanPreview from './components/PlanPreview';
+import RunStream from './components/RunStream';
+import ArtifactInspector from './components/ArtifactInspector';
+import Ledger from './components/Ledger';
 import { EmptyState } from './components/Chips';
 import './perceptionLab.css';
 
@@ -101,10 +107,65 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                     digest it was opened against, so every run can say whether
                                     the ground moved under it." />
                         </section>
-                    ) : null}
+                    ) : (
+                        <>
+                            {arm === 'direct' ? (
+                                <DirectControls
+                                    organ={lab.organ}
+                                    mode={lab.mode}
+                                    capabilities={lab.capabilities}
+                                    selectedIds={lab.selectedIds}
+                                    ledger={lab.ledger}
+                                    onPropose={lab.planDirectly}
+                                    busy={lab.busy} />
+                            ) : (
+                                <PromptConversation
+                                    organ={lab.organ}
+                                    turns={lab.session.prompt_turns}
+                                    plans={lab.plans}
+                                    selectedIds={lab.selectedIds}
+                                    activeId={lab.activeId}
+                                    byId={lab.byId}
+                                    onAsk={lab.planFromText}
+                                    busy={lab.busy} />
+                            )}
+                            <PlanPreview
+                                plan={lab.plan}
+                                onRun={lab.runPlan}
+                                onReplay={lab.runs.length
+                                    ? () => lab.replayRun(lab.runs[lab.runs.length - 1].run_id)
+                                    : null}
+                                canRunLive={lab.clientIdentity === 'LIVE'}
+                                busy={lab.busy} />
+                            <RunStream
+                                run={lab.run}
+                                plan={lab.plan}
+                                onReplay={lab.replayRun}
+                                busy={lab.busy} />
+                        </>
+                    )}
                 </div>
 
-                <div className="pl-inspector" />
+                <div className="pl-inspector">
+                    {lab.session ? (
+                        <>
+                            <Ledger
+                                ledger={lab.ledger}
+                                selectedIds={lab.selectedIds}
+                                activeId={lab.activeId}
+                                reviewsFor={lab.reviewsFor}
+                                onToggleSelect={lab.toggleSelected}
+                                onActivate={lab.setActiveId} />
+                            <ArtifactInspector
+                                artifact={lab.active}
+                                reviews={lab.active
+                                    ? lab.reviewsFor(lab.active.identity.artifact_id) : []}
+                                focusedInstanceId={lab.focus.instanceId}
+                                onFocusInstance={(instanceId) => lab.setFocus(
+                                    (f) => ({ ...f, instanceId }))} />
+                        </>
+                    ) : null}
+                </div>
             </div>
         </div>
     );
