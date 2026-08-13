@@ -720,3 +720,44 @@ def test_a_lab_store_that_cannot_be_reached_is_a_503_and_not_a_silent_success(wi
     res = client.post(f"{PREFIX}/sessions", json={"post_id": F.POST_ID})
     assert res.status_code == 503
     assert res.json()["detail"]["error"] == "lab_store_unavailable"
+
+
+# ── the source label ─────────────────────────────────────────────────────────
+
+
+def test_a_source_label_is_a_label_and_never_a_four_hundred_character_url():
+    """Found by the F3 rehearsal, at the first thing a person does.
+
+    Most of the corpus has no text block, so the title fell back to `source_url` — and a Google
+    image-search URL is four hundred characters of base64. It filled the picker and pushed every
+    image off the page, which made the laboratory unusable for the one job it opens with.
+    """
+    from backend.services.perception_lab.source import TITLE_MAX, _title
+
+    monstrous = ("https://www.google.com/search?sca_esv=856d4ba1f97ab2d0&sxsrf=APpeQnsJysBI9X4"
+                 "09u31BW0yirILemzOyA:1784693038621&udm=2&tbs=rimg:CezX8205fIZzYRhsz77E3xVv4AIA"
+                 "&q=&sa=X&ved=2ahUKEwjV-uTUs-WVAxVWaHADHS6xEcwQuIIBegQIOhAA")
+    assert _title({"source_url": monstrous}) == "google.com · search"
+    assert len(_title({"source_url": monstrous})) <= TITLE_MAX
+
+    # Where the URL says something, it is kept and made readable.
+    assert _title({"source_url": "https://en.wikipedia.org/wiki/Baroque_sculpture"}) \
+        == "en.wikipedia.org · Baroque sculpture"
+
+    # A CDN leaf is a uuid and tells a person nothing, with or without an extension.
+    assert _title({"source_url": "https://res.cloudinary.com/x/upload/v1/posts/"
+                                 "bec04e30-ae0b-4ec8-8676-f5add70ccdd1.jpg"}) \
+        == "res.cloudinary.com"
+
+    # A text block wins, and the editor's HTML is not a label until the tags come out.
+    assert _title({"text_blocks": [{"content": "<p><span class='bn-x'>Bernini, the fold</span></p>"}],
+                   "source_url": monstrous}) == "Bernini, the fold"
+
+    # Nothing usable is None — the picker says "untitled" rather than rendering rubbish.
+    assert _title({}) is None
+    assert _title({"text_blocks": [{"content": "   "}], "source_url": ""}) is None
+
+
+def test_a_long_text_block_is_bounded_too(wired):
+    from backend.services.perception_lab.source import TITLE_MAX, _title
+    assert len(_title({"text_blocks": [{"content": "word " * 400}]})) <= TITLE_MAX

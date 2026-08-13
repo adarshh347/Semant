@@ -54,11 +54,23 @@ export default function SourcePicker({ sources, activeSourceId, onOpen, onUpload
                                     ? <img src={s.photo_url} alt="" />
                                     : <span className="pl-source-blank" aria-hidden="true" />}
                                 <span>
-                                    <span className="pl-source-title">{s.title}</span>
-                                    <span className="pl-source-note">
-                                        {s.natural_width}×{s.natural_height} · {s.origin}
+                                    <span className="pl-source-title">
+                                        {s.title || 'untitled'}
                                     </span>
-                                    <span className="pl-source-note">{s.image_digest}</span>
+                                    {/* A LISTING HAS NOT LOOKED YET, and says so rather than
+                                      * rendering the absence. The live backend returns null
+                                      * dimensions and a null digest for a list — it would have to
+                                      * download every image to fill them — and `{null}×{null}`
+                                      * came out as a bare "×", which reads as a broken row rather
+                                      * than as a fact about when the lab reads a picture. */}
+                                    <span className="pl-source-note">
+                                        {s.natural_width && s.natural_height
+                                            ? `${s.natural_width}×${s.natural_height} · ${s.origin}`
+                                            : `${s.origin} · not read yet`}
+                                    </span>
+                                    <span className="pl-source-note">
+                                        {s.image_digest || 'digest on opening'}
+                                    </span>
                                 </span>
                             </button>
                         </li>

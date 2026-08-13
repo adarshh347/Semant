@@ -35,11 +35,17 @@ from __future__ import annotations
 
 import hashlib
 import io
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Tuple
+from urllib.parse import unquote, urlparse
 
 from backend.schemas.perception_lab import LabSource
 from backend.services.movement_kernel import posts_fingerprint
+
+#: How long a source label may be. Long enough to tell two sculptures apart, short enough that
+#: a picker row stays a row.
+TITLE_MAX = 90
 
 #: How long the lab waits for a source image. Generous: this is a person pressing "open" on one
 #: picture, not a batch, and a timeout here reads to them as "the laboratory is broken".
@@ -141,10 +147,43 @@ class SourceSnapshot:
 
 
 def _title(post: Mapping[str, Any]) -> Optional[str]:
+    """A short label a person can tell one picture from another by.
+
+    A TITLE IS NOT A URL, and this is what the F3 rehearsal ran into: most of the corpus has no
+    text block, so the fallback returned `source_url` — and a Google image-search URL is four
+    hundred characters of base64 that filled the picker and pushed every image off the page. The
+    laboratory was unusable for the one job it opens with, choosing a source.
+
+    So the URL is reduced to what a person actually reads in it — the host, and the file if there
+    is one — and everything is bounded. A source with no text and no usable URL comes back `None`,
+    and the picker says "untitled" rather than being handed something to render badly.
+    """
     for block in (post.get("text_blocks") or []):
-        if isinstance(block, Mapping) and str(block.get("content") or "").strip():
-            return str(block["content"]).strip()[:120]
-    return post.get("source_url") or None
+        text = str((block or {}).get("content") or "").strip() if isinstance(block, Mapping) else ""
+        # HTML is what the editor stores; a title made of `<p><span class=…>` is no more readable
+        # than a URL. Tags out, whitespace collapsed, and only then is it a label.
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = " ".join(text.split())
+        if text:
+            return text[:TITLE_MAX]
+
+    raw = str(post.get("source_url") or "").strip()
+    if not raw:
+        return None
+    try:
+        parsed = urlparse(raw)
+    except ValueError:
+        return None
+    host = (parsed.hostname or "").removeprefix("www.")
+    leaf = (parsed.path or "").rstrip("/").rsplit("/", 1)[-1]
+    # A Cloudinary or CDN leaf is a uuid and tells a person nothing; a Wikipedia one is the
+    # article. Keep the leaf only when it reads like words rather than like an identifier.
+    stem = leaf.rsplit(".", 1)[0] if "." in leaf else leaf
+    if leaf and len(leaf) <= 60 and not re.fullmatch(r"[0-9a-f-]{16,}", stem):
+        label = f"{host} · {unquote(leaf).replace('_', ' ')}"
+    else:
+        label = host or None
+    return label[:TITLE_MAX] if label else None
 
 
 def snapshot_from(post: Mapping[str, Any], image_bytes: bytes) -> SourceSnapshot:

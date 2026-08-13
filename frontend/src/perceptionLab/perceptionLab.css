@@ -343,8 +343,28 @@
     background: var(--surface-2);
     border-radius: var(--radius-sm);
 }
-.pl-source-title { display: block; font-size: var(--fs-caption); font-weight: 600; }
-.pl-source-note { display: block; font-size: var(--fs-caption); color: var(--ink-subtle); }
+/* A ROW STAYS A ROW WHATEVER IT IS HANDED. The backend now sends a short label, and this is the
+ * second half of the same repair: a picker whose layout depends on the server having been tidy is
+ * a picker that breaks on the first untidy record. Titles clamp to two lines, notes to one, and a
+ * digest — which is one 71-character word and cannot wrap on a space — breaks anywhere. */
+.pl-source-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: var(--fs-caption);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.pl-source-note {
+    display: block;
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pl-source > span { min-width: 0; }
 
 .pl-upload { margin-top: var(--space-3); }
 .pl-error {
