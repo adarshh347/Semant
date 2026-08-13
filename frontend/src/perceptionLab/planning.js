@@ -20,9 +20,9 @@
 
 import {
     checkCapability, checkInputs, checkOrganLock, message, operation, operationsFor,
-    resolveParameters,
+    referenceOf, resolveParameters, sessionKnows, validateInputRef,
 } from './contract/perceptionLabContract';
-import { labPlan, proposedStep, resolvedStep } from './records';
+import { inputRef, labPlan, proposedStep, resolvedStep } from './records';
 
 // ── the resolver ────────────────────────────────────────────────────────────
 
@@ -60,24 +60,45 @@ export function resolve({ session_id, planner, planner_fell_back_from = null, se
         if (params.refusal) { refusals.push({ ...params.refusal, step_id: step.step_id }); continue; }
 
         // gate 2b — references. Language may not mint an identity: an input naming an artifact
-        // this session has never selected is `unknown_reference`, not a lookup.
+        // this session has never selected is `unknown_reference`, not a lookup. The same is true
+        // one level down — selecting a SET does not license every mask inside it, or "deselect
+        // that mask" would be a gesture with no effect while the containing set stayed selected.
         if (knownReferences) {
             const stray = (step.input_refs || [])
-                .filter((r) => r.artifact_id && !knownReferences.has(r.artifact_id));
+                .filter((r) => r.artifact_id && !sessionKnows(r, knownReferences));
             if (stray.length) {
                 refusals.push({
                     code: 'unknown_reference',
                     organ: selected_organ,
                     operation: step.operation,
                     step_id: step.step_id,
-                    message: message('unknown_reference', { reference: stray[0].artifact_id }),
-                    missing: stray.map((r) => r.artifact_id),
+                    message: message('unknown_reference', { reference: referenceOf(stray[0]) }),
+                    missing: stray.map(referenceOf),
                     remedy: "select the artifact first — 'that mask' resolves through ids, never "
                         + 'through language',
-                    detail: { references: stray.map((r) => r.artifact_id) },
+                    detail: { references: stray.map(referenceOf) },
                 });
                 continue;
             }
+        }
+
+        // gate 2c — the shape of every ref. `instance_id` beside `region_id`, or with no
+        // artifact at all, is not a reference this contract can read.
+        const malformed = (step.input_refs || []).flatMap((r) => validateInputRef(r));
+        if (malformed.length) {
+            refusals.push({
+                code: 'invalid_parameters',
+                organ: selected_organ,
+                operation: step.operation,
+                step_id: step.step_id,
+                message: message('invalid_parameters',
+                    { operation: step.operation, detail: malformed.join('; ') }),
+                missing: [],
+                remedy: 'an instance is named with the artifact that holds it, and never beside '
+                    + 'a canonical region',
+                detail: { problems: malformed },
+            });
+            continue;
         }
 
         // gate 3 — inputs.
@@ -185,12 +206,28 @@ export function conceptFrom(text) {
 }
 
 /**
- * Text → proposals, using ONLY the ids the session says are active or selected.
+ * A reference as this planner reads one: `"art_3"` or `{ artifact_id, instance_id }`.
  *
- * `references` is the session's own list. When the phrase needs two endpoints and the session has
- * selected fewer, the proposal is emitted WITH the roles it could fill and the resolver refuses
- * it as `missing_extent_inputs` — which is the honest sequence. Quietly picking two artifacts
- * from the ledger would be the language minting an identity.
+ * Both spellings, because a caller that has only artifact ids is still saying something true.
+ * Normalising here rather than at four call sites is what stops "that mask" from meaning one
+ * thing in the prompt arm and another in the direct arm.
+ */
+const asReference = (entry) => (typeof entry === 'string'
+    ? { artifact_id: entry, instance_id: null }
+    : { artifact_id: entry?.artifact_id, instance_id: entry?.instance_id ?? null });
+
+/**
+ * Text → proposals, using ONLY the references the session says are active or selected.
+ *
+ * `references` is the session's own list, at whatever depth the person selected: whole artifacts,
+ * or artifact/instance pairs. "Do those two touch?" about two masks inside ONE extent set is the
+ * ordinary case and it binds two instance refs of one artifact — before A2 that question could
+ * not be asked at all.
+ *
+ * When the phrase needs two endpoints and the session declared fewer, the proposal is emitted
+ * WITH the roles it could fill and the resolver refuses it as `missing_extent_inputs` — the
+ * honest sequence. Quietly picking two artifacts from the ledger would be language minting an
+ * identity.
  */
 export function planFromPrompt({ text, selectedOrgan, references = [], step_id = 'step_1',
     parameters = {} }) {
@@ -210,20 +247,17 @@ export function planFromPrompt({ text, selectedOrgan, references = [], step_id =
         const concept = conceptFrom(said);
         if (concept) params.concept = concept;
     }
+    const declared = references.map(asReference).filter((r) => r.artifact_id);
     const input_refs = [];
     const roles = hit.roles;
     if (roles.length === 1 && roles[0] === 'members') {
-        for (const id of references.slice(0, 12)) {
-            input_refs.push({ role: 'members', scope: 'session', artifact_id: id,
-                region_id: null, geometry_rev: null });
+        for (const r of declared.slice(0, 12)) {
+            input_refs.push(inputRef('members', r.artifact_id, { instance_id: r.instance_id }));
         }
     } else {
         roles.forEach((role, i) => {
-            const id = references[i];
-            if (id) {
-                input_refs.push({ role, scope: 'session', artifact_id: id,
-                    region_id: null, geometry_rev: null });
-            }
+            const r = declared[i];
+            if (r) input_refs.push(inputRef(role, r.artifact_id, { instance_id: r.instance_id }));
         });
     }
     return {

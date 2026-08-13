@@ -832,6 +832,31 @@
     }
   },
 
+  "references": {
+    "why": "ONE reference type, reaching two depths. An `extent_set` holds many instances, and a person who clicks one mask has said something more precise than 'that artifact'. Before this block existed, four lanes each reached past the contract in their own way — Extent refused every multi-instance refinement, Topology froze a local `instance_id`, the conductor could not bind 'that mask', and the frontend emitted a field the backend schema rejected. Four private answers to one question is how a second identity system starts.",
+    "InputRef": {
+      "fields": ["role", "scope", "artifact_id", "instance_id", "region_id", "geometry_rev"],
+      "laws": [
+        "Exactly one of `artifact_id` / `region_id`. A ref naming both claims two provenances for one input; a ref naming neither is the invented identity this contract exists to make unsayable.",
+        "`instance_id` is permitted ONLY beside `artifact_id`. An instance id is unique inside its artifact and nowhere else, so one stored without its container names nothing.",
+        "`instance_id` is FORBIDDEN beside `region_id`. A canonical Region is already exactly one shape; an instance inside it would be a second geometry wearing one id.",
+        "`artifact_id` alone addresses the WHOLE artifact and continues to. `artifact_id` + `instance_id` addresses one instance inside it. Those are two different questions with two different answers, and the reference says which was asked.",
+        "An unknown artifact id, or an instance id the named artifact does not hold, is `unknown_reference`. Neither falls back to the other, and neither falls back to the whole artifact.",
+        "An operation that measures ONE instance refuses `unknown_reference` when the artifact holds several and no `instance_id` was supplied. A laboratory that picked the first would answer about a mask nobody selected.",
+        "A plan may cite an instance only when the session declared that artifact/instance PAIR. Deselecting it removes the reference; it does not survive in another field."
+      ],
+      "compatibility": "`instance_id` is optional and defaults to null. Every record written before the field existed reads back unchanged, and an artifact-level reference still means exactly what it always meant."
+    },
+    "InstanceRef": {
+      "fields": ["artifact_id", "instance_id"],
+      "laws": [
+        "BOTH fields are required. This is what makes 'never store a bare instance_id' structural rather than remembered: there is no arrangement of this record in which an instance id can be written down alone.",
+        "A session's `selected_instance_refs` are PAIRS, never a list of bare ids. A flat list would be ambiguous the moment two artifacts held instances with the same local id — which is the normal case, because every extent set numbers its own from 1.",
+        "An instance ref whose artifact is neither selected nor active is not a reference. Selecting an instance selects its artifact."
+      ]
+    }
+  },
+
   "records": {
     "why_blocks": "The five things a lab artifact must never let collapse into each other are given their own OBJECTS, not their own prefixes. A prefix convention is broken by one careless field; a nested model is broken only by moving a field on purpose, in a diff a reviewer can see.",
     "PerceptualArtifact": {
@@ -854,9 +879,10 @@
       ]
     },
     "LabSession": {
-      "fields": ["session_id", "source", "selected_organ", "mode", "active_artifact_id", "active_region_ids", "selected_artifact_ids", "prompt_turns", "run_ids", "review_ids", "created_at", "updated_at"],
+      "fields": ["session_id", "source", "selected_organ", "mode", "active_artifact_id", "active_region_ids", "selected_artifact_ids", "selected_instance_refs", "prompt_turns", "run_ids", "review_ids", "created_at", "updated_at"],
       "laws": [
-        "A follow-up phrase resolves ONLY through `active_artifact_id`, `active_region_ids` and `selected_artifact_ids`. Text may not mint an identity.",
+        "A follow-up phrase resolves ONLY through `active_artifact_id`, `active_region_ids`, `selected_artifact_ids` and `selected_instance_refs`. Text may not mint an identity.",
+        "`selected_instance_refs` holds artifact/instance PAIRS. 'that mask' means one of these or it means nothing, and deselecting the artifact drops its instances with it.",
         "`selected_organ` is the lock in isolation mode."
       ]
     },
@@ -891,7 +917,8 @@
     "why": "The list the frontend actually reads, declared here so that DELETING OR RENAMING one breaks a test in both languages rather than blanking a panel in production. Dotted paths resolve through the nested block models.",
     "LabSession": [
       "session_id", "selected_organ", "mode", "source.image_digest",
-      "source.natural_width", "source.natural_height", "active_artifact_id", "updated_at"
+      "source.natural_width", "source.natural_height", "active_artifact_id",
+      "selected_artifact_ids", "selected_instance_refs", "updated_at"
     ],
     "LabPlan": [
       "plan_id", "planner", "planner_fell_back_from", "selected_organ", "mode",
@@ -932,7 +959,8 @@
     {"id": "basis_ceiling_is_the_existing_ruling", "statement": "For every basis this contract and `epistemics.SUBSTRATE_CEILING` both name, the ceiling is the same value."},
     {"id": "replay_cannot_recompute", "statement": "Only a LIVE run may invoke an adapter. A REPLAY run declares `adapter_callable: false` and carries its source run; a FIXTURE run reads committed data. No stage attempt on either may be `invoked`."},
     {"id": "empty_is_not_refused_is_not_unavailable", "statement": "The five nothings in `absence_semantics` are carried by distinct outcome/refusal combinations and none may stand in for another."},
-    {"id": "references_resolve_through_ids", "statement": "A step may cite only ids declared active or selected on the session. An id from nowhere is `unknown_reference`."}
+    {"id": "references_resolve_through_ids", "statement": "A step may cite only ids declared active or selected on the session. An id from nowhere is `unknown_reference`."},
+    {"id": "an_instance_is_named_with_its_artifact", "statement": "`instance_id` appears only beside `artifact_id`, never beside `region_id`, and never alone. One reference type reaches both depths; there is no second one."}
   ],
 
   "messages": {

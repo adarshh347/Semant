@@ -357,6 +357,11 @@ def _inputs(raw: Any, session: SessionView) -> Tuple[Tuple[InputRef, ...], List[
     name — guard 2. A `region_id` is refused here instead, because `InputRef` requires a
     `geometry_rev` beside it and a model has no revision to cite; constructing one would invent
     the identity the revision exists to pin.
+
+    AN `instance_id` TRAVELS THE SAME ROAD. It is carried onto the ref rather than dropped, so a
+    model that named a mask nobody selected is refused BY NAME — `art_3#inst_9` — and the
+    fabrication is counted. Dropping it would quietly widen the request from one mask to the whole
+    set and then report success, which is guard 1's argument applied one level down.
     """
     refs: List[InputRef] = []
     refusals: List[RefusalRecord] = []
@@ -364,11 +369,13 @@ def _inputs(raw: Any, session: SessionView) -> Tuple[Tuple[InputRef, ...], List[
     for row in rows:
         role = _text(row.get("role"))
         artifact_id = _text(row.get("artifact_id"))
+        instance_id = _text(row.get("instance_id"))
         region_id = _text(row.get("region_id"))
         if not role:
             continue
         if artifact_id:
-            refs.append(InputRef(role=role, scope=IdentityScope.SESSION, artifact_id=artifact_id))
+            refs.append(InputRef(role=role, scope=IdentityScope.SESSION, artifact_id=artifact_id,
+                                 instance_id=instance_id or None))
             continue
         if region_id:
             refusals.append(RefusalRecord(

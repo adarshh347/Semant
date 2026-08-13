@@ -78,6 +78,28 @@ const ADAPTER_REVISIONS = {
 };
 
 /**
+ * What a follow-up prompt may mean, in session order.
+ *
+ * An artifact with a selected instance contributes that instance; one without contributes itself,
+ * meaning the whole set. Derived from the session's two selection fields rather than stored, so
+ * there is no third place a deselected mask could linger — which is the same rule `SessionView`
+ * applies in Python, and the reason both runtimes answer "which one did it mean" identically.
+ */
+export function sessionReferences(session) {
+    const ids = [...new Set([
+        ...(session?.active_artifact_id ? [session.active_artifact_id] : []),
+        ...(session?.selected_artifact_ids || []),
+    ])];
+    return ids.flatMap((artifact_id) => {
+        const chosen = (session?.selected_instance_refs || [])
+            .filter((r) => r.artifact_id === artifact_id);
+        return chosen.length
+            ? chosen.map((r) => ({ artifact_id, instance_id: r.instance_id }))
+            : [{ artifact_id, instance_id: null }];
+    });
+}
+
+/**
  * @param {object} options
  * @param {Record<string,string>} [options.capabilityStates] adapter → capability_state
  * @param {boolean} [options.uploadFails] make `uploadSource` reject, to exercise the failure path
@@ -213,7 +235,10 @@ export function createFixtureClient(options = {}) {
                 const out = planFromPrompt({
                     text: prompt,
                     selectedOrgan: session.selected_organ,
-                    references: references.length ? references : session.selected_artifact_ids,
+                    // The session's own declared references, at the depth they were declared to.
+                    // A caller may override with its own list; it may not widen what the session
+                    // said, because `knownReferences` below is built from the session either way.
+                    references: references.length ? references : sessionReferences(session),
                     step_id: `step_${ids.peek() + 1}`,
                     parameters,
                 });
@@ -229,10 +254,17 @@ export function createFixtureClient(options = {}) {
                 mode: session.mode,
                 proposals,
                 capabilityStates,
-                knownReferences: new Set([
-                    ...world.artifactsById.keys(),
-                    ...session.selected_artifact_ids,
-                ]),
+                // Artifacts the ledger holds OR the session selected; instances only where the
+                // session named the pair. A set in the ledger does not license every mask inside
+                // it — "deselect that mask" has to mean something.
+                knownReferences: {
+                    artifacts: new Set([
+                        ...world.artifactsById.keys(),
+                        ...session.selected_artifact_ids,
+                    ]),
+                    instances: new Set((session.selected_instance_refs || [])
+                        .map((r) => `${r.artifact_id}#${r.instance_id}`)),
+                },
                 plan_id: ids.next('plan'),
                 created_at: clock.now(),
                 forExecution: for_execution,
@@ -448,13 +480,24 @@ export function createFixtureClient(options = {}) {
             };
         },
 
-        select: async ({ session_id, artifact_ids, active_artifact_id }) => {
+        select: async ({ session_id, artifact_ids, active_artifact_id,
+            selected_instance_refs }) => {
             const world = worldOf(session_id);
+            const ids = artifact_ids ?? world.session.selected_artifact_ids;
+            const active = active_artifact_id !== undefined
+                ? active_artifact_id : world.session.active_artifact_id;
+            // An instance ref whose artifact is no longer selected is dropped HERE as well as in
+            // the hook, because this stands in for the backend and the backend is where the
+            // invariant has to hold. `LabSession` refuses the other shape, so a client that let
+            // one through would fail the validator rather than quietly disobey a deselection.
+            const declared = new Set([...ids, ...(active ? [active] : [])]);
+            const instances = (selected_instance_refs ?? world.session.selected_instance_refs)
+                .filter((r) => declared.has(r.artifact_id));
             world.session = {
                 ...world.session,
-                selected_artifact_ids: artifact_ids ?? world.session.selected_artifact_ids,
-                active_artifact_id: active_artifact_id !== undefined
-                    ? active_artifact_id : world.session.active_artifact_id,
+                selected_artifact_ids: ids,
+                active_artifact_id: active,
+                selected_instance_refs: instances,
                 updated_at: clock.now(),
             };
             return world.session;

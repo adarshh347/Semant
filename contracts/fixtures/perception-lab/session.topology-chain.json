@@ -12,6 +12,10 @@
   "active_artifact_id": "art_topology_1",
   "active_region_ids": [],
   "selected_artifact_ids": ["art_extent_1", "art_extent_manual"],
+  "selected_instance_refs": [
+    {"artifact_id": "art_extent_1", "instance_id": "inst_1"},
+    {"artifact_id": "art_extent_manual", "instance_id": "inst_manual_1"}
+  ],
   "prompt_turns": [
     {
       "turn_id": "turn_1",

@@ -14,6 +14,7 @@
         "role": "members",
         "scope": "session",
         "artifact_id": "art_topo_scene",
+        "instance_id": "inst_outer",
         "region_id": null,
         "geometry_rev": null
       },
@@ -21,6 +22,7 @@
         "role": "members",
         "scope": "session",
         "artifact_id": "art_topo_scene",
+        "instance_id": "inst_inner",
         "region_id": null,
         "geometry_rev": null
       },
@@ -28,6 +30,7 @@
         "role": "members",
         "scope": "session",
         "artifact_id": "art_topo_scene",
+        "instance_id": "inst_touching",
         "region_id": null,
         "geometry_rev": null
       },
@@ -35,6 +38,7 @@
         "role": "members",
         "scope": "session",
         "artifact_id": "art_topo_scene",
+        "instance_id": "inst_far",
         "region_id": null,
         "geometry_rev": null
       }

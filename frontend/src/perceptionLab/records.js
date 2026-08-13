@@ -43,6 +43,15 @@ export function createIds(seed = 0) {
     };
 }
 
+/**
+ * A relation ENDPOINT — which instance, in which scope, one end of a topology relation.
+ *
+ * NOT an `InputRef`, and the difference is worth stating because the two look alike. An input ref
+ * says what a step consumed; an endpoint says what a measured relation is about. An endpoint may
+ * carry an artifact, an instance AND a region at once — the instance came from a canonical
+ * region, and citing all three is how a stale relation is later detectable. `InputRef` refuses
+ * that combination, because there the three would be three competing answers to one question.
+ */
 export const sessionRef = (artifact_id, instance_id) => ({
     artifact_id, instance_id, scope: 'session', region_id: null, geometry_rev: null,
 });
@@ -52,21 +61,38 @@ export const canonicalRef = (artifact_id, instance_id, region_id, geometry_rev) 
 });
 
 /**
+ * One instance inside one artifact, as the SESSION records having selected it.
+ *
+ * A pair, never a bare id, and `assertValid('LabSession', …)` refuses the other shape. Every
+ * extent set numbers its own instances from 1, so `inst_1` on its own is not a reference to a
+ * mask — it is a reference to the first mask of every set at once.
+ */
+export const instanceRef = (artifact_id, instance_id) => ({ artifact_id, instance_id });
+
+/**
  * An input reference, optionally down to one instance.
  *
- * `instance_id` is the Lane A2 repair. Without it an input names a whole `extent_set`, so asking
- * "is the disc inside the frame?" about a set of seven forces the organ to measure forty-nine
- * pairs and the surface to pretend one of them was the question. That is not a convenience
- * problem: `pairs_examined` would say 49 when the person asked about 1, and a record that
- * overstates what was examined is a record that cannot be read back.
+ * `instance_id` is the A2 repair, now canonical in `contracts/perception-lab.v1.json`. Without it
+ * an input names a whole `extent_set`, so asking "is the disc inside the frame?" about a set of
+ * seven forces the organ to measure forty-nine pairs and the surface to pretend one of them was
+ * the question. That is not a convenience problem: `pairs_examined` would say 49 when the person
+ * asked about 1, and a record that overstates what it examined cannot be read back.
  *
  * It stays OPTIONAL, and the reason matters. An artifact-level ref is still the honest way to ask
  * "how do all of these relate", and the two questions have different answers. Omitting it means
- * every instance; supplying it means exactly one, and the count says which was asked.
+ * every instance; supplying it means exactly one, and the record says which was asked.
+ *
+ * There is deliberately no way to build a region ref with an instance on it from here — see
+ * `validateInputRef`, which refuses that combination in both runtimes.
  */
 export const inputRef = (role, artifact_id, { instance_id = null, scope = 'session',
     region_id = null, geometry_rev = null } = {}) => ({
     role, scope, artifact_id, instance_id, region_id, geometry_rev,
+});
+
+/** A canonical Region as an input. No instance may ride along: a Region is already one shape. */
+export const regionInputRef = (role, region_id, geometry_rev) => ({
+    role, scope: 'canonical', artifact_id: null, instance_id: null, region_id, geometry_rev,
 });
 
 // ── the session ─────────────────────────────────────────────────────────────
@@ -80,6 +106,7 @@ export function labSession({ session_id, source, selected_organ, mode, at }) {
         active_artifact_id: null,
         active_region_ids: [],
         selected_artifact_ids: [],
+        selected_instance_refs: [],
         prompt_turns: [],
         run_ids: [],
         review_ids: [],

@@ -259,4 +259,4 @@ def test_the_view_carries_only_what_the_resolver_may_decide_from():
     """No prompt turns, no run history, no timestamps — nothing a resolver could reason from."""
     fields = set(SessionView.__dataclass_fields__)
     assert fields == {"session_id", "selected_organ", "mode", "active_artifact_id",
-                      "active_region_ids", "selected_artifact_ids"}
+                      "active_region_ids", "selected_artifact_ids", "selected_instance_refs"}

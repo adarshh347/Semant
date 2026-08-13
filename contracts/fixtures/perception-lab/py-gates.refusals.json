@@ -78,6 +78,7 @@
           "role": "source",
           "scope": "session",
           "artifact_id": "art_a",
+          "instance_id": null,
           "region_id": null,
           "geometry_rev": null
         },
@@ -85,6 +86,7 @@
           "role": "target",
           "scope": "session",
           "artifact_id": "art_b",
+          "instance_id": null,
           "region_id": null,
           "geometry_rev": null
         }
@@ -101,6 +103,7 @@
           "role": "source",
           "scope": "session",
           "artifact_id": "art_a",
+          "instance_id": null,
           "region_id": null,
           "geometry_rev": null
         },
@@ -108,6 +111,7 @@
           "role": "target",
           "scope": "session",
           "artifact_id": "art_b",
+          "instance_id": null,
           "region_id": null,
           "geometry_rev": null
         }

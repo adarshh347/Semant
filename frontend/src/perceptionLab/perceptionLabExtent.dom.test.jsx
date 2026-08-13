@@ -329,6 +329,8 @@ describe('a refinement is proposed, not dispatched', () => {
             const session = await client.getSession({ session_id: 'labs_1' });
             const artifactId = [...(await client.history({ session_id: session.session_id }))
                 .artifacts][0].identity.artifact_id;
+            await client.select({ session_id: session.session_id, artifact_ids: [artifactId],
+                active_artifact_id: artifactId });
             const plan = await client.plan({
                 session_id: session.session_id,
                 planner: 'direct',
@@ -338,12 +340,43 @@ describe('a refinement is proposed, not dispatched', () => {
                     instance_id: 'ext_not_here', region_id: null, geometry_rev: null }],
                 for_execution: false,
             });
+            // It dies at the REFERENCE gate now, one gate earlier than it used to. The session
+            // declared the artifact and never that mask, so the step is refused before anything
+            // is measured — and the message names `art#instance`, because a bare `ext_not_here`
+            // would send a person looking for it in every set they have open.
+            expect(plan.resolved_steps).toHaveLength(0);
+            expect(plan.refusals[0].code).toBe('unknown_reference');
+            expect(plan.refusals[0].missing).toEqual([`${artifactId}#ext_not_here`]);
+
             const out = await client.run({ session_id: session.session_id,
                 plan_id: plan.plan_id });
             expect(out.run.outcome).toBe('refused');
-            expect(out.run.refusals[0].detail.why)
-                .toMatch(/ext_not_here is not an instance of/);
         });
+
+    it('refines exactly the instance that was selected, and not its neighbour', async () => {
+        const client = await findAll();
+        const session = await client.getSession({ session_id: 'labs_1' });
+        const artifact = [...(await client.history({ session_id: session.session_id }))
+            .artifacts][0];
+        const artifactId = artifact.identity.artifact_id;
+        const second = artifact.measurement.payload.instances[1].instance_id;
+        await client.select({ session_id: session.session_id, artifact_ids: [artifactId],
+            active_artifact_id: artifactId,
+            selected_instance_refs: [{ artifact_id: artifactId, instance_id: second }] });
+        const plan = await client.plan({
+            session_id: session.session_id,
+            planner: 'direct',
+            operation: 'extent.refine',
+            parameters: { mode: 'add', points: [[0.5, 0.5]] },
+            input_refs: [{ role: 'base', scope: 'session', artifact_id: artifactId,
+                instance_id: second, region_id: null, geometry_rev: null }],
+            for_execution: false,
+        });
+        expect(plan.resolved_steps[0].input_refs[0].instance_id).toBe(second);
+        const out = await client.run({ session_id: session.session_id, plan_id: plan.plan_id });
+        expect(out.run.outcome).toBe('ready');
+        expect(out.artifacts[0].identity.input_refs[0].instance_id).toBe(second);
+    });
 });
 
 describe('a hand-drawn extent never reads as a segmented one', () => {

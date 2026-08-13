@@ -27,8 +27,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Sequence, Tuple
 
-from backend.schemas.perception_lab import (IdentityScope, InputRef, LabSession, LabSource,
-                                            OrganFamily, PromptTurn, SessionMode)
+from backend.schemas.perception_lab import (IdentityScope, InputRef, InstanceRef, LabSession,
+                                            LabSource, OrganFamily, PromptTurn, SessionMode)
 from backend.services.perception_lab.clock import Clock, IdFactory
 
 
@@ -45,6 +45,7 @@ class SessionView:
     active_artifact_id: Optional[str] = None
     active_region_ids: Tuple[str, ...] = ()
     selected_artifact_ids: Tuple[str, ...] = ()
+    selected_instance_refs: Tuple[InstanceRef, ...] = ()
 
     @classmethod
     def of(cls, session: LabSession) -> "SessionView":
@@ -54,7 +55,8 @@ class SessionView:
             mode=session.mode,
             active_artifact_id=session.active_artifact_id,
             active_region_ids=tuple(session.active_region_ids),
-            selected_artifact_ids=tuple(session.selected_artifact_ids))
+            selected_artifact_ids=tuple(session.selected_artifact_ids),
+            selected_instance_refs=tuple(session.selected_instance_refs))
 
     # ── the declared references ──
 
@@ -74,30 +76,82 @@ class SessionView:
     def region_ids(self) -> Tuple[str, ...]:
         return self.active_region_ids
 
+    @property
+    def instance_keys(self) -> Tuple[Tuple[str, str], ...]:
+        """The declared artifact/instance PAIRS.
+
+        Pairs rather than bare ids, all the way through. Every extent set numbers its own
+        instances from 1, so a flat set of instance ids would say yes to `art_b#inst_1` because
+        `art_a#inst_1` was selected — a reference law that admits the wrong mask is not one.
+        """
+        return tuple(r.key for r in self.selected_instance_refs)
+
+    @property
+    def references(self) -> Tuple[Tuple[str, Optional[str]], ...]:
+        """Every artifact this session declared, at the depth it was declared to.
+
+        THE ORDER IS THE ANSWER TO "WHICH ONE DID IT MEAN". Artifacts come in `artifact_ids`
+        order — active first, then selected — and within each artifact its selected instances come
+        in selection order. An artifact with no instance selected contributes itself, meaning the
+        whole set, which is what it has always meant.
+
+        So a person who selected two masks inside ONE extent set gets two references and their
+        pair question measures those two; a person who selected two whole sets gets two references
+        and measures those two; and neither case needs the planner to guess which reading applies.
+        """
+        out: List[Tuple[str, Optional[str]]] = []
+        for artifact_id in self.artifact_ids:
+            chosen = [r.instance_id for r in self.selected_instance_refs
+                      if r.artifact_id == artifact_id]
+            if chosen:
+                out.extend((artifact_id, instance_id) for instance_id in chosen)
+            else:
+                out.append((artifact_id, None))
+        return tuple(out)
+
     def knows_artifact(self, artifact_id: str) -> bool:
         return artifact_id in self.artifact_ids
 
     def knows_region(self, region_id: str) -> bool:
         return region_id in self.active_region_ids
 
+    def knows_instance(self, artifact_id: str, instance_id: str) -> bool:
+        return (artifact_id, instance_id) in self.instance_keys
+
     def knows(self, ref: InputRef) -> bool:
         """Whether this session declared the thing an input ref names.
 
         `InputRef` has already guaranteed exactly one of the two ids is set, so there is no third
         branch here and no `else: return True` for a shape that cannot occur.
+
+        AN INSTANCE NEEDS ITS OWN DECLARATION. Selecting an artifact does not silently license
+        every mask inside it: the artifact-level reference means the whole set, and a step that
+        wants one mask has to name a pair the person actually selected. Otherwise "deselect that
+        mask" would be a gesture with no effect, since the containing artifact stayed selected.
         """
-        if ref.artifact_id is not None:
-            return self.knows_artifact(ref.artifact_id)
-        return self.knows_region(str(ref.region_id))
+        if ref.artifact_id is None:
+            return self.knows_region(str(ref.region_id))
+        if not self.knows_artifact(ref.artifact_id):
+            return False
+        if ref.instance_id is None:
+            return True
+        return self.knows_instance(ref.artifact_id, ref.instance_id)
 
     def unknown(self, ref: InputRef) -> str:
-        """The id that did not resolve, for the refusal message."""
-        return str(ref.artifact_id if ref.artifact_id is not None else ref.region_id)
+        """The reference that did not resolve, for the refusal message.
+
+        The COMPOSITE when the ref reaches an instance. `art_3` and `art_3#inst_2` are different
+        references, and a message printing the same string for both would tell a person to select
+        something they already had selected.
+        """
+        return ref.reference
 
     # ── building refs, which is the only way a planner may cite anything ──
 
-    def artifact_ref(self, role: str, artifact_id: str) -> InputRef:
-        return InputRef(role=role, scope=IdentityScope.SESSION, artifact_id=artifact_id)
+    def artifact_ref(self, role: str, artifact_id: str,
+                     instance_id: Optional[str] = None) -> InputRef:
+        return InputRef(role=role, scope=IdentityScope.SESSION, artifact_id=artifact_id,
+                        instance_id=instance_id)
 
 
 class SessionMachine:
@@ -173,18 +227,61 @@ class SessionMachine:
         return self._touch(selected_artifact_ids=current)
 
     def deselect(self, *artifact_ids: str) -> LabSession:
-        """Remove from the selection, and from `active` if that is where it also was.
+        """Remove from the selection, from `active` if that is where it also was, and with it
+        every instance selected inside it.
 
-        See the class docstring. This is the invariant the follow-up law rests on.
+        See the class docstring. This is the invariant the follow-up law rests on, and the
+        instance half of it is the one A2 added: an instance ref surviving its artifact's
+        deselection would be a reference the person removed, still reachable through a field they
+        were not looking at. `LabSession` refuses that shape too — two gates for one law, because
+        this is the law a selection surface is most likely to break by accident.
         """
         removing = {a for a in artifact_ids if a}
         remaining = [a for a in self.session.selected_artifact_ids if a not in removing]
         active = self.session.active_artifact_id
         return self._touch(selected_artifact_ids=remaining,
-                           active_artifact_id=None if active in removing else active)
+                           active_artifact_id=None if active in removing else active,
+                           selected_instance_refs=[r for r in self.session.selected_instance_refs
+                                                   if r.artifact_id not in removing])
 
     def clear_selection(self) -> LabSession:
-        return self._touch(selected_artifact_ids=[], active_artifact_id=None)
+        return self._touch(selected_artifact_ids=[], active_artifact_id=None,
+                           selected_instance_refs=[])
+
+    def select_instance(self, artifact_id: str, *instance_ids: str) -> LabSession:
+        """Narrow the selection to particular masks inside one artifact.
+
+        SELECTING AN INSTANCE SELECTS ITS ARTIFACT, for the same reason `activate` does: a
+        reference reachable from one field and invisible in the other is how a later deselection
+        gets disobeyed. Appended in order, without repeats, so "select the disc, then the frame"
+        is the order a pair question reads them in.
+        """
+        current = list(self.session.selected_instance_refs)
+        for instance_id in instance_ids:
+            if not instance_id:
+                continue
+            ref = InstanceRef(artifact_id=artifact_id, instance_id=instance_id)
+            if ref.key not in [r.key for r in current]:
+                current.append(ref)
+        selected = list(self.session.selected_artifact_ids)
+        if artifact_id not in selected:
+            selected.append(artifact_id)
+        return self._touch(selected_instance_refs=current, selected_artifact_ids=selected)
+
+    def deselect_instance(self, artifact_id: str, *instance_ids: str) -> LabSession:
+        """Drop particular masks. The ARTIFACT stays selected, and that is deliberate.
+
+        Deselecting the one mask you had narrowed to returns the reference to the whole set,
+        which is where it was before you narrowed it. Removing the artifact as well would make
+        un-narrowing indistinguishable from un-selecting.
+        """
+        removing = {(artifact_id, i) for i in instance_ids if i}
+        return self._touch(selected_instance_refs=[r for r in self.session.selected_instance_refs
+                                                   if r.key not in removing])
+
+    def clear_instance_selection(self) -> LabSession:
+        """Back to whole artifacts. The sets stay selected; only the narrowing goes."""
+        return self._touch(selected_instance_refs=[])
 
     def activate(self, artifact_id: str) -> LabSession:
         """Make one artifact the one "that mask" means. Selecting it too, because an active
@@ -242,9 +339,13 @@ class SessionMachine:
 
 
 def declared_ids(session: LabSession) -> Tuple[str, ...]:
-    """Every reference this session has declared, for a refusal that wants to list them."""
+    """Every reference this session has declared, for a refusal that wants to list them.
+
+    Instances appear as `artifact#instance`, which is what a person has to type back.
+    """
     view = SessionView.of(session)
-    return view.artifact_ids + view.region_ids
+    instances = tuple(f"{a}#{i}" for a, i in view.instance_keys)
+    return view.artifact_ids + instances + view.region_ids
 
 
 __all__ = ["SessionView", "SessionMachine", "declared_ids"]

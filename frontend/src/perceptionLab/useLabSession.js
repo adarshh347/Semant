@@ -13,14 +13,17 @@
 //
 //   - it does not derive a lifecycle from a verdict, or a verdict from a lifecycle;
 //   - it does not mark anything `kept` because a run succeeded;
-//   - it does not resolve a follow-up prompt against anything but `selected_artifact_ids` and
-//     `active_artifact_id`, which is why `references` is passed explicitly to `plan()`;
+//   - it does not resolve a follow-up prompt against anything but `selected_artifact_ids`,
+//     `selected_instance_refs` and `active_artifact_id`, which is why `references` is derived
+//     from those on every render and passed explicitly to `plan()`. Derived, never remembered —
+//     a deselected mask has nowhere in this hook to survive;
 //   - it does not swallow an error. A rejected client call lands in `error`, with the outcome
 //     `failed` on the surface, and never silently leaves the previous run on screen as if it
 //     were the answer to the new question.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { assertClientShape } from './clients/labClient';
+import { instanceRef } from './records';
 
 const EMPTY = Object.freeze({
     session: null,
@@ -45,6 +48,7 @@ export default function useLabSession(client, { initialOrgan = 'extent',
     const [organ, setOrganState] = useState(initialOrgan);
     const [mode, setModeState] = useState(initialMode);
     const [selectedIds, setSelectedIds] = useState([]);
+    const [selectedInstances, setSelectedInstances] = useState([]);
     const [activeId, setActiveId] = useState(null);
     const [focus, setFocus] = useState({ instanceId: null, relationId: null });
 
@@ -101,6 +105,7 @@ export default function useLabSession(client, { initialOrgan = 'extent',
         setSourceId(source_id);
         setState({ ...EMPTY, session, ledger: [], plans: [], runs: [], reviews: [] });
         setSelectedIds([]);
+        setSelectedInstances([]);
         setActiveId(null);
         setFocus({ instanceId: null, relationId: null });
         await refresh(session.session_id);
@@ -154,23 +159,65 @@ export default function useLabSession(client, { initialOrgan = 'extent',
 
     // ── selection ───────────────────────────────────────────────────────────
 
-    const select = useCallback(async (ids, nextActive) => {
+    const select = useCallback(async (ids, nextActive, nextInstances) => {
         setSelectedIds(ids);
         if (nextActive !== undefined) setActiveId(nextActive);
+        // An instance whose artifact just left the selection leaves with it. Otherwise "deselect
+        // that set" would be recorded and then disobeyed by the next follow-up, which would still
+        // find the mask through the other field.
+        const kept = (nextInstances ?? selectedInstances).filter(
+            (r) => ids.includes(r.artifact_id));
+        setSelectedInstances(kept);
         if (!state.session) return;
         const session = await client.select({
             session_id: state.session.session_id,
             artifact_ids: ids,
             active_artifact_id: nextActive,
+            selected_instance_refs: kept,
         });
         setState((prev) => ({ ...prev, session }));
-    }, [client, state.session]);
+    }, [client, state.session, selectedInstances]);
 
     const toggleSelected = useCallback((id) => {
         const next = selectedIds.includes(id)
             ? selectedIds.filter((x) => x !== id) : [...selectedIds, id];
         select(next, next.includes(id) ? id : activeId);
     }, [selectedIds, activeId, select]);
+
+    /**
+     * Narrow the selection to one mask, or widen it back.
+     *
+     * SELECTING AN INSTANCE SELECTS ITS ARTIFACT — the contract refuses a session that holds an
+     * instance ref for an artifact it has not selected, because a reference reachable from one
+     * field and invisible in the other is how a deselection stops taking effect.
+     *
+     * Deselecting the instance leaves the ARTIFACT selected: un-narrowing returns the reference
+     * to the whole set, which is where it was. Making it also un-select would leave a person no
+     * way to say "actually, all of them".
+     */
+    const toggleSelectedInstance = useCallback((artifact_id, instance_id) => {
+        const has = selectedInstances.some(
+            (r) => r.artifact_id === artifact_id && r.instance_id === instance_id);
+        const nextInstances = has
+            ? selectedInstances.filter(
+                (r) => !(r.artifact_id === artifact_id && r.instance_id === instance_id))
+            : [...selectedInstances, instanceRef(artifact_id, instance_id)];
+        const nextIds = selectedIds.includes(artifact_id)
+            ? selectedIds : [...selectedIds, artifact_id];
+        select(nextIds, has ? activeId : artifact_id, nextInstances);
+    }, [selectedInstances, selectedIds, activeId, select]);
+
+    /**
+     * What a follow-up prompt is allowed to mean, in session order.
+     *
+     * An artifact with a selected instance contributes that instance; one without contributes
+     * itself, meaning the whole set. Derived on every render from the two selection fields rather
+     * than remembered, so there is nowhere for a deselected mask to survive.
+     */
+    const references = useMemo(() => selectedIds.flatMap((id) => {
+        const chosen = selectedInstances.filter((r) => r.artifact_id === id);
+        return chosen.length ? chosen : [{ artifact_id: id, instance_id: null }];
+    }), [selectedIds, selectedInstances]);
 
     // ── planning and running ────────────────────────────────────────────────
 
@@ -189,18 +236,46 @@ export default function useLabSession(client, { initialOrgan = 'extent',
      */
     const planDirectly = useCallback((operation, parameters, input_refs) => guard(
         'proposing a plan', async () => {
+            // A CONTROL THAT NAMED A MASK HAS SELECTED THAT MASK, and the session is told so
+            // before the plan is proposed.
+            //
+            // The reference gate is one gate for both arms — that is the whole claim the Direct
+            // and Prompt arms rest on — and it refuses an instance the session never declared.
+            // So rather than exempting the Direct arm, clicking a mask on the stage RECORDS the
+            // selection, which is what clicking a mask means. The consequence is the one that
+            // matters: the follow-up prompt afterwards reads the same list, and deselecting the
+            // mask takes it away from both arms at once.
+            //
+            // Only instances the LEDGER holds are recorded. A control cannot declare a mask into
+            // existence: a ref naming one that is not in the artifact stays undeclared and the
+            // resolver refuses it `unknown_reference`, which is the same answer a prompt gets.
+            const holds = (artifact_id, instance_id) => state.ledger
+                .filter((a) => a.identity.artifact_id === artifact_id)
+                .some((a) => (a.measurement?.payload?.instances || [])
+                    .some((i) => i.instance_id === instance_id));
+            const named = (input_refs || []).filter(
+                (r) => r?.artifact_id && r?.instance_id && holds(r.artifact_id, r.instance_id));
+            const fresh = named.filter((r) => !selectedInstances.some(
+                (s) => s.artifact_id === r.artifact_id && s.instance_id === r.instance_id));
+            if (fresh.length) {
+                const nextInstances = [...selectedInstances,
+                    ...fresh.map((r) => instanceRef(r.artifact_id, r.instance_id))];
+                const nextIds = [...new Set([...selectedIds, ...named.map((r) => r.artifact_id)])];
+                await select(nextIds, activeId ?? named[0].artifact_id, nextInstances);
+            }
             const plan = await client.plan({
                 session_id: state.session.session_id,
                 planner: 'direct',
                 operation,
                 parameters,
                 input_refs,
-                references: selectedIds,
+                references,
                 for_execution: false,
             });
             setState((prev) => ({ ...prev, plan }));
             return plan;
-        }), [client, guard, state.session, selectedIds]);
+        }), [client, guard, state.session, state.ledger, references, selectedInstances, selectedIds,
+        activeId, select]);
 
     const planFromText = useCallback((text, planner = 'model') => guard(
         'proposing a plan', async () => {
@@ -208,15 +283,15 @@ export default function useLabSession(client, { initialOrgan = 'extent',
                 session_id: state.session.session_id,
                 planner,
                 prompt: text,
-                // Follow-ups resolve ONLY through what this session has selected. "those two"
-                // means these ids, or it means nothing.
-                references: selectedIds,
+                // Follow-ups resolve ONLY through what this session has selected, at the depth
+                // it was selected to. "those two" means these references, or it means nothing.
+                references,
                 for_execution: false,   // see `planDirectly` — composing is not running
             });
             setState((prev) => ({ ...prev, plan }));
             await refresh(state.session.session_id);
             return plan;
-        }), [client, guard, state.session, selectedIds, refresh]);
+        }), [client, guard, state.session, references, refresh]);
 
     const runPlan = useCallback((plan_id, execution_identity = 'FIXTURE') => guard(
         'running', async () => {
@@ -288,6 +363,8 @@ export default function useLabSession(client, { initialOrgan = 'extent',
         active,
         activeId,
         selectedIds,
+        selectedInstances,
+        references,
         focus,
         // what it is doing
         busy,
@@ -300,6 +377,7 @@ export default function useLabSession(client, { initialOrgan = 'extent',
         setMode,
         select,
         toggleSelected,
+        toggleSelectedInstance,
         setActiveId,
         setFocus,
         planDirectly,

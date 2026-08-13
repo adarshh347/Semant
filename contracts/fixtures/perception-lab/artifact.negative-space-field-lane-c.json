@@ -14,6 +14,7 @@
         "role": "figure",
         "scope": "session",
         "artifact_id": "art_topo_scene",
+        "instance_id": "inst_outer",
         "region_id": null,
         "geometry_rev": null
       },
@@ -21,6 +22,7 @@
         "role": "figure",
         "scope": "session",
         "artifact_id": "art_topo_scene",
+        "instance_id": "inst_far",
         "region_id": null,
         "geometry_rev": null
       }

@@ -2,6 +2,28 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "semant:perception-lab/lab-session.schema.json",
   "$defs": {
+    "InstanceRef": {
+      "additionalProperties": false,
+      "description": "One instance inside one artifact, as a session records having selected it.\n\nBOTH FIELDS ARE REQUIRED, and that is the whole design. \"Never store a bare instance_id\" is a\nrule nobody has to remember when there is no arrangement of this record that could hold one:\nan instance id is unique inside its artifact and nowhere else, so `inst_1` on its own names\nevery extent set's first mask at once. A flat list of instance ids would be ambiguous in the\nNORMAL case rather than an exotic one, because every set numbers its own from 1.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "instance_id": {
+          "minLength": 1,
+          "title": "Instance Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "instance_id"
+      ],
+      "title": "InstanceRef",
+      "type": "object"
+    },
     "LabSource": {
       "additionalProperties": false,
       "description": "What is being looked at, and the digest that proves it did not move underneath the run.",
@@ -116,7 +138,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "One sitting at the laboratory.\n\nTHE FOLLOW-UP LAW LIVES HERE. \"that mask\" is resolvable only through `active_artifact_id`,\n`active_region_ids` and `selected_artifact_ids`. There is deliberately no field in which a\nplanner could record what it thinks the person meant, because a remembered intention is\nindistinguishable from an invented identity the moment it is wrong.",
+  "description": "One sitting at the laboratory.\n\nTHE FOLLOW-UP LAW LIVES HERE. \"that mask\" is resolvable only through `active_artifact_id`,\n`active_region_ids`, `selected_artifact_ids` and `selected_instance_refs`. There is\ndeliberately no field in which a planner could record what it thinks the person meant, because\na remembered intention is indistinguishable from an invented identity the moment it is wrong.\n\n`selected_instance_refs` IS PAIRS, NOT IDS, and that is the whole reason it is a record type.\nA list of bare instance ids would be ambiguous the moment two selected artifacts each held an\n`inst_1` \u2014 which is every time, since each extent set numbers its own from 1. It is also why\nan instance ref may not name an artifact this session has not selected: a reference reachable\nfrom one field and invisible in the other is how a deselection gets disobeyed.",
   "properties": {
     "session_id": {
       "minLength": 1,
@@ -156,6 +178,13 @@
         "type": "string"
       },
       "title": "Selected Artifact Ids",
+      "type": "array"
+    },
+    "selected_instance_refs": {
+      "items": {
+        "$ref": "#/$defs/InstanceRef"
+      },
+      "title": "Selected Instance Refs",
       "type": "array"
     },
     "prompt_turns": {

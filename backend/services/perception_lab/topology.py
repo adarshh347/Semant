@@ -169,42 +169,27 @@ class LabContext:
     changed_by: str = "perception_lab"
 
 
-@dataclass(frozen=True)
-class TopologyInput:
-    """One extent artifact, in the role the operation consumes it as, and which instance of it.
+def topology_input(role: str, artifact_id: str, instance_id: Optional[str] = None, *,
+                   scope: IdentityScope = IdentityScope.SESSION) -> InputRef:
+    """A canonical `InputRef` for one extent input, at whichever depth was meant.
 
-    `instance_id` here is PROVISIONAL AND LOCAL, and is deliberately not offered as a second way
-    of saying what an input is. The contract's `InputRef` names an ARTIFACT; an `extent_set` holds
-    many instances; a pair operation needs one endpoint per role, so the reference has to reach one
-    instance deeper than the contract currently reaches. This field is the smallest thing that
-    closes that gap until Lane A2's narrow repair adds `instance_id` to the canonical `InputRef` —
-    at which point it is deleted, not kept alongside. Two names for one reference is exactly the
-    invented identity this contract exists to make unsayable, and a lane that froze its own would
-    be the one that made it sayable again.
+    A CONSTRUCTOR, NOT A TYPE. Lane C carried a local `TopologyInput` dataclass with its own
+    `instance_id` for exactly as long as the contract could not reach an instance;
+    PERCEPTUAL-ORGANS-002A2 put the field on `InputRef`, so the dataclass is deleted rather than
+    kept alongside. Two names for one reference is the invented identity this contract exists to
+    make unsayable, and a lane that froze its own would be the one that made it sayable again.
 
-    `as_ref()` below is the WHOLE reconciliation seam. Nothing else in this module constructs an
-    `InputRef`, so when the canonical field lands the change is: pass `instance_id` through there,
-    drop this field, and delete the tripwire test that watches for it.
+    What survives is this three-argument spelling, because `topology_input("source", art, inst)`
+    reads better at a call site than a five-field record — and it returns the canonical record, so
+    there is nothing local left for the rest of the system to fail to read. An `all_pairs` run
+    over four members now records four refs that name four INSTANCES, where before it recorded
+    four refs naming the same artifact in the same role.
 
-    Absent, it resolves when the artifact holds exactly one instance and refuses `unknown_reference`
-    when it holds several — a laboratory that picked the first would answer a question about a mask
-    nobody selected.
+    `instance_id` absent resolves when the artifact holds exactly one instance and refuses
+    `unknown_reference` when it holds several: a laboratory that picked the first would answer
+    about a mask nobody selected.
     """
-    role: str
-    artifact_id: str
-    instance_id: Optional[str] = None
-    scope: IdentityScope = IdentityScope.SESSION
-
-    def as_ref(self) -> InputRef:
-        """The one place a canonical `InputRef` is built. See the class docstring.
-
-        Until Lane A2 lands, `instance_id` does NOT travel into the artifact's `input_refs`: an
-        all-pairs run over four members records four refs that name the same artifact in the same
-        role. That is a real loss of resolution and it is recorded as a known gap rather than
-        papered over with a local field the rest of the system does not read. The endpoints inside
-        the payload carry the instance, so nothing a reader looks at is ambiguous.
-        """
-        return InputRef(role=self.role, scope=self.scope, artifact_id=self.artifact_id)
+    return InputRef(role=role, scope=scope, artifact_id=artifact_id, instance_id=instance_id)
 
 
 @dataclass(frozen=True)
@@ -231,7 +216,7 @@ class TopologyRequest:
     """
     operation: str
     context: LabContext
-    inputs: Tuple[TopologyInput, ...] = ()
+    inputs: Tuple[InputRef, ...] = ()
     parameters: Mapping[str, Any] = dc_field(default_factory=dict)
     extents: Tuple[Any, ...] = ()
     regions: Tuple[Mapping[str, Any], ...] = ()
@@ -353,11 +338,17 @@ def _resolve_endpoints(request: TopologyRequest, role: str, *,
                        allow_many: bool) -> List[_Endpoint]:
     """Every endpoint a role resolved to, or a typed refusal saying which id did not.
 
-    THREE WAYS THIS REFUSES, and they are three different sentences to a person:
+    FOUR WAYS THIS REFUSES, and they are four different sentences to a person:
 
         no input in this role at all        `missing_extent_inputs` — nothing was measured
         an artifact id nobody supplied      `unknown_reference`     — that id is not in the session
+        an instance the artifact lacks      `unknown_reference`     — named, and not in there
         an artifact holding several masks   `unknown_reference`     — which one did you mean
+
+    The third and fourth are the two halves of A2 and neither falls back to the other, nor to the
+    whole artifact. An instance id the set does not hold is a mistake worth hearing about; quietly
+    measuring all seven instead would answer a question nobody asked and count seven pairs to
+    prove it.
     """
     operation = request.operation
     refs = [i for i in request.inputs if i.role == role]
@@ -390,15 +381,18 @@ def _resolve_endpoints(request: TopologyRequest, role: str, *,
     return out
 
 
-def _choose_instances(instances: Sequence[Any], ref: TopologyInput, operation: str, *,
+def _choose_instances(instances: Sequence[Any], ref: InputRef, operation: str, *,
                       allow_many: bool) -> List[Any]:
     if ref.instance_id is not None:
         found = [i for i in instances if i.instance_id == ref.instance_id]
         if not found:
             raise _Refused(_refusal(
                 RefusalCode.UNKNOWN_REFERENCE, operation,
-                D._message("unknown_reference", reference=ref.instance_id),
-                missing=[ref.instance_id],
+                # `art_3#inst_9`, never `inst_9`. An instance id is unique inside its artifact and
+                # nowhere else, so a message naming it alone sends a person looking for something
+                # that could be in any set they have open.
+                D._message("unknown_reference", reference=ref.reference),
+                missing=[ref.reference],
                 remedy="select an instance the artifact actually holds",
                 detail={"reason": "dangling_instance", "role": ref.role,
                         "artifact_id": ref.artifact_id, "instance_id": ref.instance_id,
@@ -424,7 +418,7 @@ def _choose_instances(instances: Sequence[Any], ref: TopologyInput, operation: s
                 "available": [i.instance_id for i in instances]}))
 
 
-def _endpoint_from(request: TopologyRequest, ref: TopologyInput, art: PerceptualArtifact,
+def _endpoint_from(request: TopologyRequest, ref: InputRef, art: PerceptualArtifact,
                    inst: Any) -> _Endpoint:
     """One instance → an endpoint, with the explicit-region seam applied and revisions checked."""
     mask = inst.mask_rle
@@ -566,7 +560,7 @@ def _identity(request: TopologyRequest, kind: ArtifactKind,
         # what it cites would be a lab measurement wearing Semant's identity.
         identity_scope=IdentityScope.SESSION,
         identity_refs=list(seen.values()),
-        input_refs=[i.as_ref() for i in request.inputs],
+        input_refs=list(request.inputs),
         derived_from=derived)
 
 
@@ -692,7 +686,7 @@ def _gate(request: TopologyRequest) -> Tuple[Dict[str, Any], List[Tuple[str, str
     if resolution.refusal is not None:
         raise _Refused(resolution.refusal)
 
-    refs = [i.as_ref() for i in request.inputs]
+    refs = list(request.inputs)
     if request.depth is not None:
         refs.append(InputRef(role="depth", scope=request.depth.scope,
                              artifact_id=request.depth.artifact_id))
@@ -1494,7 +1488,7 @@ def run(request: TopologyRequest) -> TopologyResult:
 
 
 __all__ = ["ORGAN", "PRODUCER", "PRIMARY_ADAPTER", "PROJECTION", "FORBIDDEN_MODULES", "RUNNERS",
-           "LabContext", "TopologyInput", "DepthArtifact", "TopologyRequest", "TopologyResult",
+           "LabContext", "topology_input", "DepthArtifact", "TopologyRequest", "TopologyResult",
            "relation_id", "artifact_id_for", "refusal_artifact", "containment",
            "adjacency_relation", "overlap", "disjoint", "negative_space", "all_pairs",
            "occlusion_relation", "run"]

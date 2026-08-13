@@ -221,6 +221,9 @@ def _resolve_step(step: ProposedStep, proposal: Proposal, session: SessionView,
                    "language",
             detail={"reference": name, "role": stranger.role,
                     "declared_artifacts": list(session.artifact_ids),
+                    # `art#inst` pairs, because that is what a person has to select back. A bare
+                    # instance id in this list would name every set's first mask at once.
+                    "declared_instances": [f"{a}#{i}" for a, i in session.instance_keys],
                     "declared_regions": list(session.region_ids)})
         return out
     if step.input_refs:

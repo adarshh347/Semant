@@ -57,6 +57,7 @@ ENFORCED_LAWS: Tuple[str, ...] = (
     "replay_cannot_recompute",
     "empty_is_not_refused_is_not_unavailable",
     "references_resolve_through_ids",
+    "an_instance_is_named_with_its_artifact",
 )
 
 
