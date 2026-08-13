@@ -301,7 +301,8 @@ class PerceptionConductor:
             parameters=dict(step.parameters), input_refs=tuple(step.input_refs),
             inputs={role: tuple(found) for role, found in inputs.items()},
             source=session.source, cancel=cancel,
-            deadline_ms=max(0, self.budget.max_wall_ms - observer.elapsed_ms))
+            deadline_ms=max(0, self.budget.max_wall_ms - observer.elapsed_ms),
+            step=step)
         try:
             outcome = adapter.invoke(call)
         except Cancelled as exc:
@@ -315,7 +316,14 @@ class PerceptionConductor:
         if outcome.state in (StageState.COMPLETED, StageState.EMPTY):
             artifact = self._artifact(step, outcome, attempt, session, observer.run_id)
             self.store.put_artifact(artifact)
-            return 1, None, artifact
+            # A MEASUREMENT AND A REFUSAL CAN BOTH BE TRUE OF ONE STAGE, and Lane F's Extent bridge
+            # is where that stopped being hypothetical: `extent.run` returns four masks AND an
+            # `unknown_reference` when one of five cited refs did not resolve, and calls the whole
+            # thing `partial`. Dropping the refusal here because an artifact arrived would report
+            # that as `ready` — a result that looks complete with a missing input hidden behind it.
+            # `_outcome` already reads the pair correctly; it was only ever this line that could
+            # not hand it one.
+            return 1, outcome.refusal, artifact
         return 1, outcome.refusal, None
 
     def _artifact(self, step: ResolvedStep, outcome, attempt, session: LabSession,
