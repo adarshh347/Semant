@@ -51,7 +51,10 @@ export default function useLabSession(client, { initialOrgan = 'extent',
     const [selectedInstances, setSelectedInstances] = useState([]);
     const [activeId, setActiveId] = useState(null);
     const [focus, setFocus] = useState({ instanceId: null, relationId: null });
+    const [runTicket, setRunTicket] = useState(null);      // non-null only while a run is in flight
+    const [cancelNote, setCancelNote] = useState(null);    // what the last stop request answered
 
+    const ticketSeq = useRef(0);
     const alive = useRef(true);
     /**
      * Is this hook still mounted? Set on the way IN as well as on the way out.
@@ -311,17 +314,66 @@ export default function useLabSession(client, { initialOrgan = 'extent',
             return plan;
         }), [client, guard, state.session, references, refresh]);
 
+    /**
+     * Run an authorized plan.
+     *
+     * THE PRESS IS THE CONFIRMATION. `PlanPreview` labels the button "Confirm and run" when the
+     * plan asks for it, so `confirmed` is read off the plan being run rather than from a second
+     * dialog that would ask the same question twice. It is read off THAT plan and not off whatever
+     * is currently on screen: running an older plan out of the history must not inherit a
+     * confirmation the person gave to a newer one.
+     *
+     * THE TICKET IS MINTED HERE because the run's own id does not exist yet — it is minted inside
+     * the backend's `execute`, and by then there is nothing left to cancel by. It is held for
+     * exactly as long as the call is in flight.
+     */
     const runPlan = useCallback((plan_id, execution_identity = 'FIXTURE') => guard(
         'running', async () => {
-            const out = await client.run({
-                session_id: state.session.session_id, plan_id, execution_identity });
-            setState((prev) => ({ ...prev, run: out.run, artifacts: out.artifacts }));
-            const nextActive = out.artifacts.length
-                ? out.artifacts[out.artifacts.length - 1].identity.artifact_id : activeId;
-            setActiveId(nextActive);
-            await refresh(state.session.session_id);
+            const plan = state.plan?.plan_id === plan_id ? state.plan : null;
+            const ticket = `tkt_${(ticketSeq.current += 1)}`;
+            setRunTicket(ticket);
+            setCancelNote(null);
+            try {
+                const out = await client.run({
+                    session_id: state.session.session_id, plan_id, execution_identity,
+                    confirmed: !!plan?.requires_confirmation, run_ticket: ticket });
+                setState((prev) => ({ ...prev, run: out.run, artifacts: out.artifacts }));
+                const nextActive = out.artifacts.length
+                    ? out.artifacts[out.artifacts.length - 1].identity.artifact_id : activeId;
+                setActiveId(nextActive);
+                await refresh(state.session.session_id);
+                return out;
+            } finally {
+                if (alive.current) setRunTicket(null);
+            }
+        }), [client, guard, state.session, state.plan, activeId, refresh]);
+
+    /**
+     * Stop the run in flight, as far as anything can.
+     *
+     * DELIBERATELY NOT THROUGH `guard`. A cancel happens WHILE a run is in flight, and `guard`
+     * owns `busy` — routing this through it would replace "running" with "cancelling" on the
+     * surface and then clear it, leaving a run still in progress and a page that says nothing is
+     * happening.
+     *
+     * The answer is kept verbatim in `cancelNote`, including `cancelled: false`. That is not a
+     * failure to report: cancellation is cooperative, and a stop that reached nothing has to look
+     * different from one that skipped three stages.
+     */
+    const cancelRun = useCallback(async () => {
+        if (!runTicket) return null;
+        try {
+            const out = await client.cancel({
+                session_id: state.session.session_id, run_ticket: runTicket });
+            if (alive.current) setCancelNote(out);
             return out;
-        }), [client, guard, state.session, activeId, refresh]);
+        } catch (err) {
+            if (alive.current) {
+                setCancelNote({ cancelled: false, note: String(err?.message || err) });
+            }
+            return null;
+        }
+    }, [client, runTicket, state.session]);
 
     const replayRun = useCallback((run_id) => guard('replaying', async () => {
         const out = await client.replay({ session_id: state.session.session_id, run_id });
@@ -388,6 +440,8 @@ export default function useLabSession(client, { initialOrgan = 'extent',
         busy,
         error,
         uploadError,
+        runTicket,
+        cancelNote,
         // what a person can do
         openSession,
         uploadSource,
@@ -401,6 +455,7 @@ export default function useLabSession(client, { initialOrgan = 'extent',
         planDirectly,
         planFromText,
         runPlan,
+        cancelRun,
         replayRun,
         review,
         setLifecycle,

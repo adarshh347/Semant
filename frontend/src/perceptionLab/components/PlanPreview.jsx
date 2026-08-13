@@ -21,7 +21,8 @@ import { checkInputs } from '../contract/perceptionLabContract';
  * The run buttons live at the bottom because a plan is read before it is run, and a plan that
  * `requires_confirmation` says so on the button rather than beside it.
  */
-export default function PlanPreview({ plan, onRun, onReplay, busy, canRunLive = true }) {
+export default function PlanPreview({ plan, onRun, onCancel = null, onReplay, busy,
+    canRunLive = true, canRunFixture = true, runTicket = null, cancelNote = null }) {
     if (!plan) {
         return (
             <section className="pl-panel" aria-label="Plan">
@@ -212,8 +213,14 @@ export default function PlanPreview({ plan, onRun, onReplay, busy, canRunLive = 
             ) : null}
 
             <div className="pl-btnrow">
+                {/* THE TWO WIRES ARE TWO BUTTONS, and each is disabled by the client's own
+                    account of itself rather than by a guess here. A LIVE client has no fixtures
+                    behind it and its `run` REJECTS a fixture request outright; leaving the button
+                    live would offer a person an act this laboratory would then have to refuse. */}
                 <button type="button" className="pl-btn pl-btn--primary" data-action="run-fixture"
-                    disabled={!runnable || !!busy}
+                    disabled={!runnable || !!busy || !canRunFixture}
+                    title={canRunFixture ? 'run against the committed scenes'
+                        : 'this client is on the live wire and has no fixtures to run'}
                     onClick={() => onRun(plan.plan_id, 'FIXTURE')}>
                     {plan.requires_confirmation
                         ? 'Confirm and run from fixtures' : 'Run from fixtures'}
@@ -225,6 +232,13 @@ export default function PlanPreview({ plan, onRun, onReplay, busy, canRunLive = 
                     onClick={() => onRun(plan.plan_id, 'LIVE')}>
                     {plan.requires_confirmation ? 'Confirm and run LIVE' : 'Run LIVE'}
                 </button>
+                {onCancel && runTicket ? (
+                    <button type="button" className="pl-btn pl-btn--quiet" data-action="cancel-run"
+                        title="ask the run to stop before its next stage"
+                        onClick={onCancel}>
+                        Stop
+                    </button>
+                ) : null}
                 {onReplay ? (
                     <button type="button" className="pl-btn pl-btn--quiet" data-action="replay-last"
                         disabled={!!busy} onClick={onReplay}>
@@ -232,6 +246,16 @@ export default function PlanPreview({ plan, onRun, onReplay, busy, canRunLive = 
                     </button>
                 ) : null}
             </div>
+            {cancelNote ? (
+                <p className="pl-panel-sub" role="status" data-cancel-note
+                    data-cancelled={String(cancelNote.cancelled)}>
+                    {cancelNote.cancelled
+                        ? 'The run was asked to stop. No further stage will be invoked; the ones '
+                          + 'already skipped are on the record with the reason.'
+                        : 'Nothing was stopped. '}
+                    {cancelNote.cancelled ? null : cancelNote.note}
+                </p>
+            ) : null}
             {plan.requires_confirmation ? (
                 <p className="pl-panel-sub" data-requires-confirmation>
                     This plan asks for confirmation before it runs — it crosses the organ
