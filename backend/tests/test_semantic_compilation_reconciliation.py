@@ -13,6 +13,7 @@ completed.
 """
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List, Optional, Sequence
 
 import pytest
@@ -408,3 +409,97 @@ def test_no_reconciliation_request_exceeds_the_allowance():
             reconciliation.SYSTEM_PROMPT, prompt,
             completion_tokens=architect.RECONCILE_COMPLETION.maximum_tokens)
         assert estimate <= usable + architect.RECONCILE_COMPLETION.maximum_tokens, prompt[:200]
+
+
+# ── the pacing this lane may not have changed ───────────────────────────────
+
+class _Refusing:
+    """A provider client that refuses for capacity, then answers. Records the exact bytes sent."""
+
+    def __init__(self, status_codes, answer):
+        self.status_codes = list(status_codes)
+        self.answer = answer
+        self.sent = []
+
+        class _Completions:
+            def create(inner, **request):                          # noqa: N805
+                self.sent.append(json.dumps(request, sort_keys=True))
+                if self.status_codes:
+                    raise _ProviderRefusal(self.status_codes.pop(0))
+                return self.answer
+
+        class _Chat:
+            completions = _Completions()
+
+        self.chat = _Chat()
+
+
+class _ProviderRefusal(Exception):
+    def __init__(self, status_code):
+        super().__init__(f"Error code: {status_code}")
+        self.status_code = status_code
+        self.headers = {"retry-after": "0.01"}
+
+
+def _completion(payload):
+    class _Message:
+        content = json.dumps(payload)
+
+    class _Choice:
+        message = _Message()
+        finish_reason = "stop"
+
+    class _Completion:
+        choices = [_Choice()]
+        usage = None
+
+    return _Completion()
+
+
+def _paced(client):
+    from backend.services.semantic_compilation import pacing
+    pacer = pacing.ProviderPacer(interval_seconds=0.001, max_attempts=4, budget_seconds=60,
+                                 sleep=lambda _s: None, monotonic=_Clock())
+    pacer.open_budget(60)
+    pas = architect.RelationArchitect(client=client, pacer=pacer)
+    return pas
+
+
+class _Clock:
+    def __init__(self):
+        self.t = 0.0
+
+    def __call__(self):
+        self.t += 0.001
+        return self.t
+
+
+def test_a_capacity_refusal_re_sends_the_identical_bytes_through_the_batched_pass():
+    """003D's rule, unchanged by the batching: a 429 is congestion and the SAME request goes
+    again. Identical is a property of the signature — the request dict is built once, above the
+    pacer — and this asserts it end to end through a batched architect."""
+    atoms, units = corpus(2, 2)
+    client = _Refusing([429], _completion({"claims": [], "edges": []}))
+    pas = _paced(client)
+    _c, _e, _r, _n, receipt = pas.assemble(atoms, units, inquiry_id=INQUIRY)
+
+    assert len(client.sent) == 2
+    assert client.sent[0] == client.sent[1], "the retry did not re-send identical bytes"
+    assert receipt.call_count == 1, "a transport retry was counted as a second semantic attempt"
+    assert receipt.transport_attempts == 2
+    assert receipt.waited
+
+
+def test_a_request_the_provider_calls_too_large_is_never_re_sent():
+    """A 413 says the request itself cannot go. Re-sending it unchanged would fail identically
+    forever and spend the gate's budget proving what the first response already said."""
+    atoms, units = corpus(2, 2)
+    client = _Refusing([413], _completion({"claims": [], "edges": []}))
+    pas = _paced(client)
+    _c, _e, refusals, _n, receipt = pas.assemble(atoms, units, inquiry_id=INQUIRY)
+
+    assert len(client.sent) == 1
+    assert receipt.outcome is PassOutcome.ERROR
+    assert receipt.transport_attempts == 1
+    assert receipt.capacity_waits == []
+    assert any("413" in r.why for r in refusals)
