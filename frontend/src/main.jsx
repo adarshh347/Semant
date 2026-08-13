@@ -43,6 +43,7 @@ const RegionSurfaceLab = React.lazy(() => import('./pages/RegionSurfaceLab.jsx')
 const RefineLab = React.lazy(() => import('./pages/RefineLab.jsx'));
 const DifferentialLab = React.lazy(() => import('./pages/DifferentialLab.jsx')); // DEV-ONLY · CIRCUIT-001 P2E-B harness
 const ArticleLab = React.lazy(() => import('./pages/ArticleLab.jsx')); // DEV-ONLY · CIRCUIT-003 M4 harness
+const PerceptionLabPage = React.lazy(() => import('./pages/PerceptionLabPage.jsx')); // PERCEPTUAL-ORGANS-002 F2 — the live Extent & Topology laboratory
 // AGENT-DEMO — the run surface: images + a prompt → the orchestrator working, in the open.
 // Its OWN route and shell, deliberately not folded into /differential, which is the manual
 // instrument and has diverged from this on purpose.
@@ -136,6 +137,10 @@ const router = createBrowserRouter([
       { path: "lab/differential", element: <DifferentialLab /> },
       // DEV-ONLY · CIRCUIT-003 M4 — the perceptual article over an offline fixture draft.
       { path: "lab/article", element: <ArticleLab /> },
+      // PERCEPTUAL-ORGANS-002 · Lane F2 — one picture, one organ, one question at a time,
+      // wired to the real Extent and Topology organs. `?client=fixture` reads the committed
+      // scenes instead; there is no fallback between the two and the badge says which.
+      { path: "lab/perception", element: <PerceptionLabPage /> },
       // AGENT-DEMO — a real user surface, not a lab: images + a prompt, and the run in the open.
       { path: "agent", element: <AgentDemoPage /> },
       // WAVE4 — watch a being think within an image: an agent's walk, its measured perceptions,
