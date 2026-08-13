@@ -223,14 +223,20 @@ def council_for(name: str, *, inquiry_id: str = FROZEN_INQUIRY) -> Council:
             self._served = 0
             return super().assemble(atoms, units, inquiry_id=inquiry_id, attempt=attempt)
 
+    operationalizer_payloads = _payload_list(data, "operationalizer_payload")
+    architect_claim_rows = [row for payload in architect_payloads
+                            for row in (payload.get("claims") or [])]
+
     class _LazyOperationalizer(FrozenEpistemicOperationalizer):
         def __init__(self):
-            super().__init__({})
+            super().__init__([])
 
         def operationalize(self, claims, edges, *, inquiry_id, attempt=1):
-            self._frozen = resolve_refs(
-                copy.deepcopy(data["operationalizer_payload"]), CLAIM_MARKER,
-                refs_by_text(data["architect_payload"].get("claims"), claims, id_attr="claim_id"))
+            self._frozen = [resolve_refs(copy.deepcopy(p), CLAIM_MARKER,
+                                         refs_by_text(architect_claim_rows, claims,
+                                                      id_attr="claim_id"))
+                            for p in operationalizer_payloads]
+            self._served = 0
             return super().operationalize(claims, edges, inquiry_id=inquiry_id, attempt=attempt)
 
     return Council(dissector=dissector, architect=_LazyArchitect(),

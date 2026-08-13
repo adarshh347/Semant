@@ -319,24 +319,50 @@ def plan(items: Sequence[SizedItem], *, inquiry_id: str, pass_name: DissolutionP
     close(BatchBoundaryReason.LAST_ITEMS)
 
     total = max(1, len(planned))
+    by_ref = {item.ref: item.tokens for item in items}
     assignments: List[BatchAssignment] = []
     batches: List[SizedBatch] = []
+    trimmed = 0
     for index, (batch_items, reason) in enumerate(planned, 1):
         refs = [i.ref for i in batch_items]
         oversized = reason is BatchBoundaryReason.OVERSIZED_ITEM
-        context = list(context_refs_for(refs)) if context_refs_for is not None else []
-        context = [c for c in context if c not in set(refs)]
+        primary_tokens = fixed_tokens + sum(i.tokens for i in batch_items)
+        reservation = completion.for_batch(len(batch_items))
+
+        # CONTEXT IS PART OF THE REQUEST AND IS SIZED AS SUCH. It was not, at first, and the
+        # under-count was the shape of the very failure this module exists to prevent: a hub item
+        # with many neighbours would plan as if its neighbours cost nothing and send a request
+        # larger than the allowance. Context is trimmed rather than the primaries, because it is
+        # enrichment — the batch still answers for everything it is primary for, and what a trim
+        # costs is cross-batch visibility, which the reconciliation covers and REPORTS.
+        context: List[str] = []
+        spare = allowance.usable_tokens - primary_tokens - reservation
+        dropped = 0
+        for ref in (list(context_refs_for(refs)) if context_refs_for is not None else []):
+            if ref in set(refs):
+                continue
+            cost = by_ref.get(ref, 0)
+            if cost > spare:
+                dropped += 1
+                continue
+            context.append(ref)
+            spare -= cost
+        trimmed += dropped
+
         assignment = BatchAssignment(
             batch_id=ids.batch_id(inquiry_id, pass_name, refs), index=index, total=total,
             primary_refs=refs, context_refs=context,
-            estimated_prompt_tokens=fixed_tokens + sum(i.tokens for i in batch_items),
-            requested_completion_tokens=completion.for_batch(len(batch_items)),
+            estimated_prompt_tokens=primary_tokens + sum(by_ref.get(c, 0) for c in context),
+            requested_completion_tokens=reservation,
             allowance_tokens=allowance.tokens, boundary_reason=reason, sendable=not oversized,
             note=("one item alone estimates at more tokens than a whole request may carry "
                   f"({batch_items[0].tokens} + {share} of answer > {room} of room). It was NOT "
                   f"sent: a provider would refuse it as too large at any moment, and discovering "
                   f"that costs the allowance a round trip to learn what this arithmetic already "
-                  f"knew." if oversized else ""))
+                  f"knew." if oversized else
+                  f"{dropped} neighbour(s) did not fit as context and were left out of this "
+                  f"request. They are answered for in their own batch; what is lost here is one "
+                  f"batch's view of them." if dropped else ""))
         assignments.append(assignment)
         batches.append(SizedBatch(assignment=assignment, items=tuple(batch_items)))
 
@@ -346,6 +372,10 @@ def plan(items: Sequence[SizedItem], *, inquiry_id: str, pass_name: DissolutionP
              f"{room} token(s) of room per request for {len(items)} item(s)"]
     if note:
         notes.append(note)
+    if trimmed:
+        notes.append(f"{trimmed} neighbour reference(s) did not fit as context in the batch that "
+                     f"would have shown them. Every one is still primary in its own batch; the "
+                     f"cross-batch pass is where what was lost between them is looked for.")
     if room <= 0:
         notes.append("the fixed part of this prompt and its completion reservation already exceed "
                      "the allowance, so no item fits in any request. Nothing was sent.")
