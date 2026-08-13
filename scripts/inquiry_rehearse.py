@@ -103,6 +103,64 @@ def drive(args, stages, *, session_id: Optional[str] = None):
 
 # ── printing ─────────────────────────────────────────────────────────────────
 
+def _show_plan(plan: Optional[Dict[str, Any]], out) -> None:
+    """How the pass was cut into sendable requests, and what that cost in coverage. HARNESS-003E.
+
+    NOTHING AT ALL for a pass that was never partitioned, because the ledger and the audit make no
+    request and a plan on them reading `1 batch` would report a partition that never happened.
+
+    The unexamined pairs print IN FULL with their reasons. A pair nobody compared is a relation
+    nobody looked for, and a transcript that gave a count would be reporting the size of a gap
+    instead of where it is.
+    """
+    if not isinstance(plan, dict):
+        return
+    batches = plan.get("batches") or []
+    pairs = plan.get("pairs") or []
+    rounds = plan.get("rounds") or []
+    sizes = [int(b.get("estimated_prompt_tokens") or 0) + int(b.get("requested_completion_tokens")
+                                                              or 0) for b in batches]
+    unsendable = [b for b in batches if b.get("sendable") is False]
+    print(f"      plan   {len(batches)} batch(es) over {plan.get('total_items')} "
+          f"{plan.get('unit')}(s) · largest request ~{max(sizes) if sizes else 0} of "
+          f"{batches[0].get('allowance_tokens') if batches else '—'} allowed", file=out)
+    for batch in batches:
+        print(f"        · {str(batch.get('batch_id')):18} "
+              f"{len(batch.get('primary_refs') or []):3} primary, "
+              f"{len(batch.get('context_refs') or []):3} context  "
+              f"~{int(batch.get('estimated_prompt_tokens') or 0)}+"
+              f"{int(batch.get('requested_completion_tokens') or 0)}  "
+              f"{batch.get('boundary_reason')}"
+              f"{'  UNSENDABLE' if batch.get('sendable') is False else ''}", file=out)
+    if unsendable:
+        print(f"      {len(unsendable)} batch(es) were too large to send and were refused before "
+              f"transport", file=out)
+
+    examined = sum(1 for p in pairs if p.get("examined"))
+    if pairs:
+        print(f"      pairs  {examined} of {len(pairs)} batch pair(s) compared across "
+              f"{len(rounds)} round(s)", file=out)
+    else:
+        print("      pairs  one batch, so there was nothing across to compare", file=out)
+    for entry in rounds:
+        print(f"        · {str(entry.get('round_id')):18} groups "
+              f"{len(entry.get('group_ids') or [])}  {entry.get('outcome')}  "
+              f"+{entry.get('added_edges')} edge(s), +{entry.get('added_claims')} claim(s), "
+              f"{entry.get('duplicate_claims')} duplicate(s)", file=out)
+    for pair in [p for p in pairs if not p.get("examined")]:
+        print(f"        · NEVER COMPARED  {pair.get('left_batch_id')} / "
+              f"{pair.get('right_batch_id')} — {pair.get('reason')}", file=out)
+
+    kinds: Dict[str, int] = {}
+    for entry in plan.get("dispositions") or []:
+        key = str(entry.get("disposition"))
+        kinds[key] = kinds.get(key, 0) + 1
+    if kinds:
+        print("      became " + " · ".join(f"{k} {v}" for k, v in sorted(kinds.items())), file=out)
+    if plan.get("duplicate_map"):
+        print(f"      merged {len(plan['duplicate_map'])} duplicate claim(s)", file=out)
+
+
 def _show_council(session, out) -> None:
     """The five passes, what became of every source unit, and where the wall clock went.
 
@@ -143,6 +201,7 @@ def _show_council(session, out) -> None:
             head = (f"waited {secs:.1f}s" if taken and secs is not None
                     else "STOPPED WAITING" if taken is False else "waited")
             print(f"      · {head:18} {wait.get('source')}  {wait.get('detail') or ''}", file=out)
+        _show_plan(receipt.get("batch_plan"), out)
 
     atoms = graph.get("semantic_atoms") or []
     coverage = graph.get("coverage") or []
@@ -178,7 +237,13 @@ def show(session, request, args, *, stages=None) -> None:
         badge = runtime.deployment(stages)
         print(f"deployed  {badge['kind'].upper()}   {badge['detail']}", file=out)
 
-    print("\nstages", file=out)
+    # TWO CLOCKS, SAID OUT LOUD. A stage's duration is the difference between the timestamps it was
+    # handed; `wall` below is the process's monotonic clock. On a host that suspends mid-run they
+    # disagree — this lane's live fold rehearsal reported a compiler stage of 6,181.6s inside a run
+    # whose `wall` said 4,395.1s, and nothing in the transcript said the two numbers were measured
+    # differently. A reader chasing that gap looks for a bug in the pacer.
+    print("\nstages    (durations from the stamps the stage was handed — wall-clock, so a host "
+          "that suspends is counted)", file=out)
     for event in session.stages:
         took = "" if event.duration_ms is None else f" {event.duration_ms / 1000:6.1f}s"
         print(f"  {event.stage.value:11} {event.outcome.value:12}{took}  {event.detail}", file=out)
@@ -301,6 +366,8 @@ def main() -> int:
     parser.add_argument("--live", action="store_true", help="reach the real models")
     parser.add_argument("--replay-check", action="store_true")
     parser.add_argument("--json", action="store_true", help="the wire body, as the routes serve it")
+    parser.add_argument("--json-out", default="",
+                        help="also write the wire body here, keeping the transcript on stdout")
     args = parser.parse_args()
 
     if args.live and not args.image:
@@ -312,6 +379,18 @@ def main() -> int:
     began = time.monotonic()
     session, request = drive(args, stages)
     elapsed = time.monotonic() - began
+
+    # BOTH, WHEN ASKED FOR BOTH. `--json` REPLACED the transcript, which meant a live rehearsal that
+    # wanted the readable account and the canonical record had to be run twice — and at an 8000 TPM
+    # allowance a second run of a four-image inquiry is half an hour of waiting to produce bytes the
+    # first run already held. HARNESS-003E, and it cost this lane the fold run's own record to
+    # notice.
+    if args.json_out:
+        Path(args.json_out).write_text(json.dumps(view.session_view(
+            session, servable_classes=coordinator.servable_classes(stages),
+            deployment=runtime.deployment(stages)), indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"canonical session written to {args.json_out}", file=sys.stderr)
+
     if args.json:
         # The SAME body the route serves, deployment badge included. A rehearsal transcript that
         # omitted it would be a session record that cannot say what produced it.
@@ -322,7 +401,9 @@ def main() -> int:
         print()
     else:
         show(session, request, args, stages=stages)
-        print(f"wall      {elapsed:.1f}s end to end", file=sys.stdout)
+        print(f"wall      {elapsed:.1f}s end to end, on the process's MONOTONIC clock — which does "
+              f"not tick while the host is suspended, so a stage duration above it is not a "
+              f"contradiction", file=sys.stdout)
     return 0
 
 
