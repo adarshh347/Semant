@@ -191,7 +191,8 @@
       "atom_invented_visual_content",
       "duplicate_points_at_itself",
       "pass_unavailable",
-      "repair_budget_spent"
+      "repair_budget_spent",
+      "reconciliation_added_local_content"
     ],
     "call_topologies": [
       "single_joint_call",

@@ -561,6 +561,59 @@ export function normalizeCapacityWait(raw) {
 }
 
 /**
+ * How a pass was cut into sendable requests, and what that cost in coverage. HARNESS-003E.
+ *
+ * NULL WHERE THE PASS WAS NEVER PARTITIONED, and null is the truth there: the source ledger and the
+ * coverage audit make no request at all, and a plan on them reading `1 batch` would report a
+ * partition that never happened.
+ *
+ * `pairs_examined` against `pairs_total` is the number this object exists for. Batching the
+ * architect makes a relation crossing a boundary structurally invisible unless something puts both
+ * sides in front of the model, so a pair nobody compared is a relation nobody looked for — and each
+ * one arrives with its reason attached, because "the budget stopped the run" and "nothing was found
+ * between these two" are opposite reports that must never render alike.
+ */
+export function normalizeBatchPlan(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const plan = {
+        plan_id: str(raw.plan_id),
+        plan_version: str(raw.plan_version),
+        unit: str(raw.unit),
+        total_items: numOrNull(raw.total_items),
+        batches: numOrNull(raw.batches),
+        unsendable_batches: numOrNull(raw.unsendable_batches),
+        allowance_tokens: numOrNull(raw.allowance_tokens),
+        largest_request_tokens: numOrNull(raw.largest_request_tokens),
+        pairs_total: numOrNull(raw.pairs_total),
+        pairs_examined: numOrNull(raw.pairs_examined),
+        unexamined_pairs: arr(raw.unexamined_pairs).map((p) => ({
+            left: str(p?.left), right: str(p?.right), reason: str(p?.reason),
+        })),
+        rounds: arr(raw.rounds).map((r) => ({
+            round_id: str(r?.round_id),
+            index: numOrNull(r?.index),
+            total: numOrNull(r?.total),
+            groups: numOrNull(r?.groups),
+            outcome: enumField(r?.outcome, PASS_OUTCOMES),
+            added_edges: numOrNull(r?.added_edges),
+            added_claims: numOrNull(r?.added_claims),
+            duplicate_claims: numOrNull(r?.duplicate_claims),
+            detail: str(r?.detail),
+        })),
+        dispositions: (raw.dispositions && typeof raw.dispositions === 'object')
+            ? { ...raw.dispositions } : {},
+        duplicates_merged: numOrNull(raw.duplicates_merged),
+        notes: arr(raw.notes).map(String),
+    };
+    // TRI-STATE, and the null is the point. A plan with no pairs because one batch held everything
+    // and a plan whose pairs were never compared are different facts; `false` for both would report
+    // a complete comparison as a missing one.
+    plan.pairs_complete = (plan.pairs_total === null || plan.pairs_total === 0)
+        ? null : plan.pairs_examined === plan.pairs_total;
+    return plan;
+}
+
+/**
  * One pass of the council.
  *
  * `call_count` and `transport_attempts` stay apart, and the gap between them is the account's
@@ -588,6 +641,7 @@ export function normalizePass(raw) {
         outputs: numOrNull(v.outputs),
         detail: str(v.detail),
         notes: arr(v.notes).map(String),
+        batch_plan: normalizeBatchPlan(v.batch_plan),
         raw: v,
     };
     // DERIVED ONLY BECAUSE THE BACKEND DOES NOT DECLARE IT FOR A PASS. `StageAttempt` carries

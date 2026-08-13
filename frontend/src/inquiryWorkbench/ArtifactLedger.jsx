@@ -217,6 +217,78 @@ export function PassRow({ pass }) {
                 ) : null}
             </ul>
 
+            {/* HOW THE PASS WAS CUT UP, and what that cost. HARNESS-003E.
+
+                One request over every atom could not be sent — 9,827 tokens against an 8,000
+                allowance — so the architect works in batches, and batching alone would make every
+                relation crossing a boundary invisible. `pairs` is the number that says whether it
+                looked: two batches nobody put in front of the model together is a relation nobody
+                searched for. Unexamined pairs print in full WITH THEIR REASON, because a run the
+                budget stopped and a comparison that found nothing are opposite facts. */}
+            {pass.batch_plan ? (
+                <div className="iw-pass-plan" data-batch-plan={pass.batch_plan.plan_id}>
+                    <ul className="iw-pass-facts">
+                        <li data-fact="batches">
+                            {pass.batch_plan.batches} batch
+                            {pass.batch_plan.batches === 1 ? '' : 'es'} over
+                            {' '}{pass.batch_plan.total_items} {pass.batch_plan.unit || 'item'}
+                            {pass.batch_plan.total_items === 1 ? '' : 's'}
+                        </li>
+                        {/* No pairs is not zero pairs compared: one batch held everything, so
+                            there was nothing across. `pairs_complete` is null for exactly that. */}
+                        {pass.batch_plan.pairs_total ? (
+                            <li
+                                data-fact="pairs"
+                                className={pass.batch_plan.pairs_complete === false
+                                    ? 'iw-pass-pairs--short' : ''}
+                            >
+                                {pass.batch_plan.pairs_examined} of {pass.batch_plan.pairs_total}
+                                {' '}batch pair{pass.batch_plan.pairs_total === 1 ? '' : 's'}
+                                {' '}compared across {pass.batch_plan.rounds.length} round
+                                {pass.batch_plan.rounds.length === 1 ? '' : 's'}
+                            </li>
+                        ) : (
+                            <li data-fact="pairs-none" className="iw-quiet">
+                                one batch, so there was nothing across to compare
+                            </li>
+                        )}
+                        {pass.batch_plan.unsendable_batches ? (
+                            <li data-fact="unsendable">
+                                {pass.batch_plan.unsendable_batches} batch
+                                {pass.batch_plan.unsendable_batches === 1 ? '' : 'es'} too large to
+                                {' '}send — refused before transport
+                            </li>
+                        ) : null}
+                        {pass.batch_plan.duplicates_merged ? (
+                            <li data-fact="duplicates">
+                                {pass.batch_plan.duplicates_merged} duplicate claim
+                                {pass.batch_plan.duplicates_merged === 1 ? '' : 's'} merged
+                            </li>
+                        ) : null}
+                        {pass.batch_plan.largest_request_tokens !== null
+                            && pass.batch_plan.allowance_tokens !== null ? (
+                                <li data-fact="request-size" className="iw-quiet">
+                                    largest request ~{pass.batch_plan.largest_request_tokens} of
+                                    {' '}{pass.batch_plan.allowance_tokens} allowed
+                                </li>
+                            ) : null}
+                    </ul>
+                    {pass.batch_plan.unexamined_pairs.length ? (
+                        <ul className="iw-pass-unexamined" data-unexamined-for={pass.pass_id}>
+                            {pass.batch_plan.unexamined_pairs.map((p) => (
+                                <li key={`${p.left}-${p.right}`} data-unexamined-pair="true">
+                                    <b>never compared</b>
+                                    {' — '}
+                                    <code>{p.left}</code> and <code>{p.right}</code>
+                                    {p.reason ? <span className="iw-quiet"> · {p.reason}</span>
+                                        : null}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : null}
+                </div>
+            ) : null}
+
             {pass.capacity_waits.length ? (
                 <ol className="iw-pass-waits" data-waits-for={pass.pass_id}>
                     {pass.capacity_waits.map((w, i) => (

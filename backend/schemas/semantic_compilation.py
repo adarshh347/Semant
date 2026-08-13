@@ -216,6 +216,12 @@ class CompilerRefusalKind(str, Enum):
     PASS_UNAVAILABLE = "pass_unavailable"
     REPAIR_BUDGET_SPENT = "repair_budget_spent"
 
+    # ── HARNESS-003E: the cross-batch reconciliation ──
+    #: A claim the reconciliation added whose parents all come from one batch. That batch had the
+    #: material in front of it and did not build the claim, so admitting it here is the pass making
+    #: an ordinary claim with no atoms behind it rather than finding one that crosses a boundary.
+    RECONCILIATION_ADDED_LOCAL_CONTENT = "reconciliation_added_local_content"
+
 
 class SourceUnitKind(str, Enum):
     """Where a piece of source prose came from. Two, and the difference is a WARRANT.
@@ -935,6 +941,27 @@ class ReconciliationRound(_Strict):
         return self
 
 
+class DuplicateClaim(_Strict):
+    """One claim the reconciliation identified as another's duplicate. HARNESS-003E.
+
+    THE MAPPING IS AUDITABLE OR THE MERGE IS A DELETION. Merging two claims removes one id from the
+    graph, and every edge, observable and remainder item that named it has to be rewritten — so the
+    record has to say which id went, which one it went into, and which round decided.
+    """
+    claim_id: str = Field(..., description="the id that was merged away")
+    canonical_id: str = Field(..., description="the id it was merged into")
+    round_id: str = ""
+    why: str = ""
+
+    @model_validator(mode="after")
+    def _a_claim_does_not_duplicate_itself(self) -> "DuplicateClaim":
+        if self.claim_id == self.canonical_id:
+            raise ValueError(
+                f"claim {self.claim_id} is said to duplicate itself, which removes it from the "
+                f"graph while looking like an entry in it.")
+        return self
+
+
 class ItemDisposition(_Strict):
     """What became of one atom or one claim. HARNESS-003E.
 
@@ -977,6 +1004,7 @@ class BatchPlanRecord(_Strict):
     pairs: List[ComparisonPair] = Field(default_factory=list)
     rounds: List[ReconciliationRound] = Field(default_factory=list)
     dispositions: List[ItemDisposition] = Field(default_factory=list)
+    duplicate_map: List[DuplicateClaim] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
 
     @property

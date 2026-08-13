@@ -58,15 +58,16 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 from backend.schemas.inquiry import DemandKind
 from backend.schemas.semantic_compilation import (AtomKind, BatchPlanRecord, ClaimEdge,
                                                   ClaimEdgeKind, ClaimKind, ClaimNode, ClaimStatus,
-                                                  CompilerRefusal, CompilerRefusalKind,
-                                                  DissolutionPass, FORBIDDEN_INITIAL_STATUSES,
+                                                  ComparisonPair, CompilerRefusal,
+                                                  CompilerRefusalKind, DissolutionPass,
+                                                  DuplicateClaim, FORBIDDEN_INITIAL_STATUSES,
                                                   ImageScope, ItemDisposition, ItemDispositionKind,
-                                                  PassOutcome, PassReceipt, SemanticAtom,
-                                                  SourcePointer, SourceType, SourceUnit,
-                                                  SourceUnitKind, _FORBIDDEN_DEMANDS,
+                                                  PassOutcome, PassReceipt, ReconciliationRound,
+                                                  SemanticAtom, SourcePointer, SourceType,
+                                                  SourceUnit, SourceUnitKind, _FORBIDDEN_DEMANDS,
                                                   _REQUIRED_DEMANDS)
 
-from . import contracts, ids, sizing
+from . import contracts, ids, reconciliation, sizing
 from .base import refusal
 from .passes import ModelPass, PassBudget, PassResult, merge_receipts
 
@@ -484,11 +485,16 @@ class _Merged:
     copy without taking its atoms would report those atoms as orphans the architect never used.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, inquiry_id: str = "") -> None:
+        self._inquiry_id = inquiry_id
         self.claims: Dict[str, ClaimNode] = {}
         self.edges: Dict[str, ClaimEdge] = {}
         self.batch_of: Dict[str, str] = {}
         self.duplicates = 0
+        #: What the reconciliation rounds SAID duplicates what. Applied once at the end rather than
+        #: per round, because a later round may map the survivor of an earlier one onto a third
+        #: claim and only the whole set can be followed to a fixpoint.
+        self.pending_duplicates: List[DuplicateClaim] = []
 
     def add_claims(self, claims: Sequence[ClaimNode], *, batch_id: str = "") -> None:
         for claim in claims:
@@ -509,6 +515,52 @@ class _Merged:
     def add_edges(self, edges: Sequence[ClaimEdge]) -> None:
         for edge in edges:
             self.edges.setdefault(edge.edge_id, edge)
+
+    def apply_duplicates(self, notes: List[str]) -> List[DuplicateClaim]:
+        """Merge every claim the reconciliation called a duplicate into the one it named canonical.
+
+        A MERGE IS A DELETION, so everything that pointed at the removed id has to move with it:
+        its atoms and source pointers go to the survivor (otherwise those atoms become orphans the
+        architect never used), edges are re-minted around the survivor, and any claim that named the
+        removed id as a parent names the survivor instead. An edge that becomes a self-edge under
+        the rewrite is dropped — a claim supporting itself is what a merged pair leaves behind.
+        """
+        mapping, kept, cycle_notes = reconciliation.resolve_duplicates(
+            self.claims, self.pending_duplicates)
+        notes.extend(cycle_notes)
+        if not mapping:
+            return []
+
+        for dead, canonical in mapping.items():
+            gone, survivor = self.claims.pop(dead), self.claims[canonical]
+            self.claims[canonical] = survivor.model_copy(update={
+                "atom_refs": _union(survivor.atom_refs, gone.atom_refs),
+                "inferred_from": _union(survivor.inferred_from, gone.inferred_from),
+                "sources": _union_pointers(survivor.sources, gone.sources)})
+
+        rewritten: Dict[str, ClaimEdge] = {}
+        for edge in self.edges.values():
+            source = mapping.get(edge.from_claim, edge.from_claim)
+            target = mapping.get(edge.to_claim, edge.to_claim)
+            if source == target:
+                continue
+            edge_id = ids.edge_id(self._inquiry_id, edge.kind, source, target)
+            rewritten.setdefault(edge_id, edge.model_copy(update={
+                "edge_id": edge_id, "from_claim": source, "to_claim": target}))
+        self.edges = rewritten
+
+        for claim_id, claim in list(self.claims.items()):
+            parents = [mapping.get(p, p) for p in claim.inferred_from]
+            parents = [p for p in dict.fromkeys(parents) if p != claim_id]
+            if parents != claim.inferred_from:
+                self.claims[claim_id] = claim.model_copy(update={"inferred_from": parents})
+
+        notes.append(
+            f"{len(kept)} claim(s) were identified as duplicates across batches and merged into "
+            f"the claim named canonical, carrying their atoms and source pointers with them. The "
+            f"mapping is on the batch plan: a merge removes an id, and a removal nobody can trace "
+            f"is a deletion.")
+        return kept
 
     def live(self) -> List[ClaimNode]:
         """Claims whose parents all survived. The graph validator refuses a dangling
@@ -590,7 +642,7 @@ class RelationArchitect(ModelPass):
             return [], [], [], ["the architect was given no atom, so it built nothing"], receipt
 
         plan = self.plan_batches(atoms, inquiry_id=inquiry_id)
-        merged = _Merged()
+        merged = _Merged(inquiry_id)
         refusals: List[CompilerRefusal] = []
         notes: List[str] = list(plan.record.notes)
         receipts: List[PassReceipt] = []
@@ -644,25 +696,144 @@ class RelationArchitect(ModelPass):
                          detail=result.receipt.detail
                                 or f"{len(comp.claims)} claim(s) from {len(picked)} atom(s)")
 
-        claims = merged.live()
-        edges = merged.edge_list()
         if merged.duplicates:
             notes.append(
                 f"{merged.duplicates} claim(s) were built in more than one batch and merged into "
                 f"one, taking the union of the atoms each sighting named. A duplicate is one object "
                 f"seen twice, not two claims kept.")
 
-        record = self._close_plan(plan, atoms=atoms, claims=claims, considered=considered)
+        # THE HALF THAT MAKES THE BATCHING LEGITIMATE. Without it the pass sends green requests and
+        # reports a relation search it never performed across any boundary.
+        rounds, pairs, duplicate_map = self._reconcile(
+            merged, inquiry_id=inquiry_id, attempt=attempt, plan=plan, receipts=receipts,
+            refusals=refusals, notes=notes)
+
+        claims = merged.live()
+        edges = merged.edge_list()
+        record = self._close_plan(plan, atoms=atoms, claims=claims, considered=considered,
+                                  rounds=rounds, pairs=pairs, duplicate_map=duplicate_map)
         outcome, detail = self._outcome(atoms, claims, edges, receipts, record, notes)
         receipt = merge_receipts(self.pass_name, receipts, inquiry_id=inquiry_id, outcome=outcome,
                                  attempt=attempt, outputs=len(claims), detail=detail,
                                  batch_plan=record)
         return claims, edges, refusals, notes, receipt
 
+    # ── across the boundaries ──
+
+    def _reconcile(self, merged: "_Merged", *, inquiry_id: str, attempt: int,
+                   plan: sizing.BatchPlan, receipts: List[PassReceipt],
+                   refusals: List[CompilerRefusal], notes: List[str]
+                   ) -> Tuple[List[ReconciliationRound], List[ComparisonPair],
+                              List[DuplicateClaim]]:
+        """Every pair of batches put in front of the model at least once, or named as unexamined.
+
+        The rounds are scheduled from a capacity sized against the LARGEST groups, so every round
+        the schedule produces fits by construction — the alternative is discovering at send time
+        that a round does not fit, at which point both options are bad.
+
+        A round that the pacer could not send stops the schedule. The remaining pairs are reported
+        as unreached rather than silently dropped, because "the budget ended the run" and "nothing
+        was found between these two" are opposite reports.
+        """
+        cards_by_group: Dict[str, List[Dict[str, Any]]] = {}
+        for claim in merged.claims.values():
+            group = merged.batch_of.get(claim.claim_id, "")
+            cards_by_group.setdefault(group, []).append(
+                reconciliation.claim_card(claim, group=group))
+        groups = [b.batch_id for b in plan.batches if cards_by_group.get(b.batch_id)]
+
+        if len(groups) < 2:
+            notes.append(
+                "one batch produced claims, so every claim was already in front of the model "
+                "together and there is no pair to reconcile. The coverage matrix is empty because "
+                "there is nothing across, not because nothing was compared.")
+            return [], [], []
+
+        fixed = reconciliation.fixed_prompt_text()
+        room = RECONCILE_COMPLETION.room(sizing.configured_allowance(), fixed)
+        sizes = {g: sum(sizing.estimate_tokens(json.dumps(c, **_COMPACT))
+                        + RECONCILE_COMPLETION.per_item_tokens for c in cards_by_group[g])
+                 for g in groups}
+        capacity = reconciliation.group_capacity(sizes, room=room, share=0)
+        if capacity < 2:
+            notes.append(
+                f"no two batches' claim cards fit in one reconciliation request "
+                f"({room} token(s) of room). Every pair is reported unexamined rather than "
+                f"compared over a shortened set of cards.")
+            return [], reconciliation.matrix_for(groups, [], {}), []
+
+        schedule = sizing.schedule_rounds(groups, capacity=capacity)
+        outcomes: Dict[Tuple[str, ...], ReconciliationRound] = {}
+        rounds: List[ReconciliationRound] = []
+        stopped = ""
+        for number, members in enumerate(schedule, 1):
+            round_id = ids.round_id(inquiry_id, self.pass_name, members)
+            if stopped:
+                continue
+            cards = [c for g in members for c in cards_by_group[g]]
+            prompt = reconciliation.build_prompt(cards)
+            estimate = sizing.estimate_tokens(fixed) + sizing.estimate_tokens(prompt) \
+                - sizing.estimate_tokens(reconciliation.build_prompt([]))
+            self.observe(f"reconciling round {number} of {len(schedule)}", index=number,
+                         total=len(schedule), outcome="started", refs=list(members),
+                         detail=f"{len(cards)} claim card(s) across {len(members)} batch(es)")
+            result = self.invoke(
+                prompt, inquiry_id=inquiry_id, attempt=attempt, inputs=len(cards),
+                system_prompt=reconciliation.SYSTEM_PROMPT,
+                estimated_prompt_tokens=max(0, estimate),
+                completion_tokens=RECONCILE_COMPLETION.for_batch(len(cards)))
+            receipts.append(result.receipt)
+            refusals.extend(result.refusals)
+
+            comp = reconciliation.Reconciliation(inquiry_id, merged.claims, merged.batch_of)
+            if result.payload is not None:
+                comp.read_edges([r for r in (result.payload.get("edges") or [])
+                                 if isinstance(r, Mapping)], round_id=round_id)
+                comp.read_duplicates([r for r in (result.payload.get("duplicates") or [])
+                                      if isinstance(r, Mapping)], round_id=round_id)
+                comp.read_claims([r for r in (result.payload.get("claims") or [])
+                                  if isinstance(r, Mapping)], round_id=round_id)
+                merged.add_claims(comp.added, batch_id=round_id)
+                merged.add_edges(comp.edges)
+                merged.pending_duplicates.extend(comp.duplicates)
+            refusals.extend(comp.refusals)
+            notes.extend(comp.notes)
+
+            entry = ReconciliationRound(
+                round_id=round_id, index=number, total=len(schedule), group_ids=list(members),
+                estimated_prompt_tokens=max(0, estimate), outcome=result.receipt.outcome,
+                added_edges=len(comp.edges), added_claims=len(comp.added),
+                duplicate_claims=len(comp.duplicates),
+                detail=result.receipt.detail or f"{len(cards)} card(s)")
+            rounds.append(entry)
+            outcomes[tuple(members)] = entry
+            self.observe(f"reconciling round {number} of {len(schedule)}", index=number,
+                         total=len(schedule), outcome=result.receipt.outcome.value,
+                         refs=list(members),
+                         detail=f"{len(comp.edges)} edge(s), {len(comp.added)} cross-batch "
+                                f"claim(s), {len(comp.duplicates)} duplicate(s)")
+            if any(not w.taken for w in result.receipt.capacity_waits):
+                stopped = reconciliation.NOT_REACHED
+                notes.append(
+                    f"the reconciliation stopped after round {number} of {len(schedule)}: the "
+                    f"provider refused capacity and the declared budget would not cover the wait. "
+                    f"The pairs the remaining rounds would have compared are named in the coverage "
+                    f"matrix as unexamined.")
+
+        ran = [list(r.group_ids) for r in rounds]
+        pairs = reconciliation.matrix_for(
+            groups, ran, outcomes,
+            unscheduled_reason=stopped or reconciliation.NOT_SCHEDULED)
+        duplicate_map = merged.apply_duplicates(notes)
+        return rounds, pairs, duplicate_map
+
     # ── what the plan says happened ──
 
     def _close_plan(self, plan: sizing.BatchPlan, *, atoms: Sequence[SemanticAtom],
-                    claims: Sequence[ClaimNode], considered: Set[str]) -> BatchPlanRecord:
+                    claims: Sequence[ClaimNode], considered: Set[str],
+                    rounds: Sequence[ReconciliationRound] = (),
+                    pairs: Sequence[ComparisonPair] = (),
+                    duplicate_map: Sequence[DuplicateClaim] = ()) -> BatchPlanRecord:
         """One disposition per atom, written onto the plan rather than into prose.
 
         `orphan` and `used` are read off the output; `refused` is the decision the sizing made about
@@ -685,7 +856,9 @@ class RelationArchitect(ModelPass):
             elif atom.atom_id in considered:
                 dispositions.append(ItemDisposition(
                     ref=atom.atom_id, disposition=ItemDispositionKind.ORPHAN, batch_id=batch))
-        return plan.record.model_copy(update={"dispositions": dispositions})
+        return plan.record.model_copy(update={
+            "dispositions": dispositions, "rounds": list(rounds), "pairs": list(pairs),
+            "duplicate_map": list(duplicate_map)})
 
     def _outcome(self, atoms: Sequence[SemanticAtom], claims: Sequence[ClaimNode],
                  edges: Sequence[ClaimEdge], receipts: Sequence[PassReceipt],
@@ -722,6 +895,18 @@ class RelationArchitect(ModelPass):
                     f"{len(unconsidered)} of {len(atoms)} atom(s) were too large for any request "
                     f"and no architect call saw them")
 
+        # EVERY PAIR OF BATCHES COMPARED, OR THE RELATION SEARCH DID NOT HAPPEN ACROSS THEM. This is
+        # the gate the batching is not legitimate without: local batches alone make a cross-boundary
+        # relation structurally invisible, so a pass that never put two groups in front of the model
+        # has no grounds to say it looked. The pairs are named, never counted away.
+        unexamined = record.unexamined_pairs
+        if unexamined:
+            named = ", ".join(f"{p.left_batch_id}/{p.right_batch_id}" for p in unexamined[:3])
+            return (PassOutcome.THIN,
+                    f"{len(unexamined)} of {len(record.pairs)} batch pair(s) were never compared, "
+                    f"so any relation between them was invisible to this pass: {named}"
+                    f"{'…' if len(unexamined) > 3 else ''}. {unexamined[0].reason}")
+
         orphans = [d.ref for d in record.dispositions
                    if d.disposition is ItemDispositionKind.ORPHAN]
         if orphans:
@@ -747,7 +932,9 @@ class RelationArchitect(ModelPass):
                     f"dissection was set aside than was used")
         return (PassOutcome.COMPLETED,
                 f"{len(claims)} claim(s) and {len(edges)} relation(s) over {len(atoms)} atoms in "
-                f"{len(record.batches)} batch(es)")
+                f"{len(record.batches)} batch(es), with {record.pairs_examined} of "
+                f"{len(record.pairs)} batch pair(s) compared across "
+                f"{len(record.rounds)} reconciliation round(s)")
 
 
 def orphaned_atoms(atoms: Sequence[SemanticAtom],
