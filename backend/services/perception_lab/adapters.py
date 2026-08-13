@@ -48,7 +48,7 @@ from typing import Any, Dict, Mapping, Optional, Protocol, Sequence, Tuple, runt
 from backend.schemas.perception_lab import (ArtifactInterpretation, ArtifactMeasurement,
                                             ArtifactProjection, CapabilityState, InputRef,
                                             LabSource, OrganFamily, PerceptualArtifact,
-                                            RefusalRecord, StageState)
+                                            RefusalRecord, ResolvedStep, StageState)
 from backend.services.perception_lab.contracts import operation_index
 from backend.services.perception_lab.definitions import operation
 
@@ -132,6 +132,13 @@ class AdapterCall:
 
     `inputs` are RESOLVED ARTIFACTS keyed by the role the operation declares, not ids. An adapter
     handed ids would need a store to resolve them in, and a store is a door.
+
+    `step` IS THE AUTHORIZATION ITSELF, carried rather than reconstructed. It adds no information —
+    every one of its fields is already a field of this call — and that is exactly why it is here.
+    Lane F's real façades take a `ResolvedStep`, and a bridge that rebuilt one out of the flat
+    fields would have to write `authorized_by="resolver"` on an object the resolver never made.
+    One line of plumbing against a bridge that mints authority: no contest. It stays optional so
+    the fakes, which read the flat fields, keep working unchanged.
     """
     session_id: str
     run_id: str
@@ -145,6 +152,7 @@ class AdapterCall:
     source: LabSource
     cancel: CancelToken
     deadline_ms: Optional[int] = None
+    step: Optional[ResolvedStep] = None
 
     def one(self, role: str) -> Optional[PerceptualArtifact]:
         got = self.inputs.get(role, ())

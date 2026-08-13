@@ -9,6 +9,7 @@ from backend.routers import scene
 from backend.routers import constellation
 from backend.routers import relations
 from backend.routers import inquiries
+from backend.routers import perception_lab
 from backend.routers.posts import test_connection, post_helper
 from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
@@ -173,6 +174,12 @@ app.include_router(relations.router, prefix="/api/v1/relations", tags=["Relation
 # sentence bound to what it rests on. Writes exactly one document — the session's own history — and
 # accepts nothing into the perceptual ledger. Phase 1's one capability is a declared SIMULATION.
 app.include_router(inquiries.router, prefix="/api/v1/inquiries", tags=["Semantic Inquiry"], dependencies=[Depends(require_api_key)])
+
+# PERCEPTUAL-ORGANS-002 Lane F1 — the Perception Lab: one picture, one organ, one question at a
+# time, with the plan a person can read before it runs and the receipt they can read after. Its
+# store is five collections of its own; it holds no post, region, mark, Ground or percept, and it
+# has no promotion endpoint. Every artifact it makes is session-scoped and stays that way.
+app.include_router(perception_lab.router, prefix="/api/v1/perception-lab", tags=["Perception Lab"], dependencies=[Depends(require_api_key)])
 
 # Health check endpoint for Render
 @app.get("/health")
