@@ -70,6 +70,27 @@ TRANSPORT_RETRY_NOTE = (
     "retry re-sends a request the provider never read; it is not a second attempt at the prompt.")
 
 
+#: How a sizing under-estimate announces itself on a receipt. HARNESS-003E sizes every request
+#: against a conservative character bound because no tokenizer for the served model is in this tree;
+#: this is the sentence that appears the day that bound is wrong, which is the only way anyone finds
+#: out before a 413 does.
+SIZING_UNDERESTIMATE = "sizing under-estimated this request"
+
+
+def _sizing_shortfall(estimated: int, usage: Any) -> str:
+    """The provider's own prompt-token count against what `sizing` predicted, when both exist.
+
+    Silent when the estimate agrees or sits above, which is the intended direction — a note on
+    every well-sized call would be noise a reader learns to skip, and this one has to be read.
+    """
+    actual = getattr(usage, "prompt_tokens", None)
+    if not estimated or not isinstance(actual, int) or actual <= estimated:
+        return ""
+    return (f"{SIZING_UNDERESTIMATE}: {estimated} token(s) predicted, the provider counted "
+            f"{actual}. The bound is meant to sit ABOVE the real count; a request sized this way "
+            f"is one the allowance may refuse as too large.")
+
+
 def _provider_detail(exc: BaseException) -> str:
     """The provider's own words, trimmed.
 
@@ -203,7 +224,8 @@ class ModelPass:
     # ── the one call ──
 
     def invoke(self, user_prompt: str, *, inquiry_id: str, attempt: int = 1,
-               inputs: int = 0) -> PassResult:
+               inputs: int = 0, system_prompt: Optional[str] = None,
+               estimated_prompt_tokens: int = 0) -> PassResult:
         """Exactly one SEMANTIC request. Returns a receipt in every branch, including the failures.
 
         The geometry scan runs on the RAW parsed payload, before anything is constructed. By the
@@ -214,8 +236,20 @@ class ModelPass:
         thunk; a capacity refusal re-sends that same closure. There is no branch here in which the
         prompt is rebuilt, so `no silent semantic retry` and `identical bytes on a capacity retry`
         are the same line of code rather than two rules that have to agree.
+
+        `system_prompt` overrides this pass's own for one call. HARNESS-003E's cross-batch
+        reconciliation is a different question asked by the same role, of the same model, inside the
+        same receipt — a second `ModelPass` subclass for it would give it its own `call_count` and
+        split one pass's accounting in half.
+
+        `estimated_prompt_tokens` is what `sizing` said this request would cost. It is carried here
+        for one purpose: comparing it against the provider's own `prompt_tokens` afterwards, so the
+        claim that the bound is conservative is CHECKED on every live call rather than asserted in a
+        docstring. An under-estimate is recorded by name; it is the one way this lane's arithmetic
+        can be wrong in the direction that costs a 413.
         """
         pass_id = ids.pass_id(inquiry_id, self.pass_name, attempt)
+        system = self.system_prompt if system_prompt is None else system_prompt
         prompt_hash = sha256_of(user_prompt)
 
         if not self.is_available():
@@ -233,7 +267,7 @@ class ModelPass:
         # below can vary it, which is what makes the capacity retry identical rather than merely
         # intended to be.
         request = dict(
-            messages=[{"role": "system", "content": self.system_prompt},
+            messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user_prompt}],
             model=model,
             response_format={"type": "json_object"},
@@ -277,6 +311,9 @@ class ModelPass:
 
         duration = (time.perf_counter() - started) * 1000
         notes: List[str] = []
+        under = _sizing_shortfall(estimated_prompt_tokens, usage)
+        if under:
+            notes.append(under)
         outcome = PassOutcome.COMPLETED
         if finish == "length":
             outcome = PassOutcome.TRUNCATED
@@ -371,7 +408,8 @@ class FrozenPass(ModelPass):
         return True
 
     def invoke(self, user_prompt: str, *, inquiry_id: str, attempt: int = 1,
-               inputs: int = 0) -> PassResult:
+               inputs: int = 0, system_prompt: Optional[str] = None,
+               estimated_prompt_tokens: int = 0) -> PassResult:
         pass_id = ids.pass_id(inquiry_id, self.pass_name, attempt)
         prompt_hash = sha256_of(user_prompt)
         if self._served >= len(self._payloads):
@@ -403,12 +441,17 @@ class FrozenPass(ModelPass):
 
 def merge_receipts(pass_name: DissolutionPass, receipts: Sequence[PassReceipt], *,
                    inquiry_id: str, outcome: PassOutcome, attempt: int = 1,
-                   outputs: int = 0, detail: str = "",
-                   notes: Sequence[str] = ()) -> PassReceipt:
+                   outputs: int = 0, detail: str = "", notes: Sequence[str] = (),
+                   batch_plan: Optional[Any] = None) -> PassReceipt:
     """Several batch calls, as one receipt for the pass.
 
     The parts are summed rather than averaged, and every `finish_reason` is kept: one truncated
     batch out of six is a truncated pass, and an average would round it away.
+
+    `batch_plan` rides on the MERGED receipt and never on the parts. A plan is a fact about the
+    partition, and one copy per batch would say the pass was partitioned once per batch — which is
+    the same triangular-counting mistake `call_count` made in the first live run, in a field a
+    reader trusts more.
     """
     durations = [r.duration_ms for r in receipts if r.duration_ms is not None]
     prompt_tokens = [r.prompt_tokens for r in receipts if r.prompt_tokens is not None]
@@ -433,7 +476,8 @@ def merge_receipts(pass_name: DissolutionPass, receipts: Sequence[PassReceipt], 
         notes=[*(n for r in receipts for n in r.notes), *notes],
         transport_attempts=sum(r.transport_attempts for r in receipts),
         capacity_waits=[w for r in receipts for w in r.capacity_waits],
-        waited_ms=round(sum(waited), 3) if waited else None)
+        waited_ms=round(sum(waited), 3) if waited else None,
+        batch_plan=batch_plan)
 
 
 def bounded(items: Sequence[Any], limit: int) -> Tuple[List[Any], List[Any]]:

@@ -10,7 +10,6 @@
     "class invented at a call site is indistinguishable from one somebody decided, and the compiler is a",
     "model — the closed sets are exactly what it is not allowed to extend on its own."
   ],
-
   "what_v2_adds": [
     "v1 asked ONE model call to turn prose into claims, edges, observables, decisions and remainder at",
     "once. HARNESS-002R's rehearsal showed the failure that produces: an abundant reading became a",
@@ -25,7 +24,6 @@
     "v1 remains READABLE. Stored sessions and frozen fixtures validate unchanged; they simply carry no",
     "source units, no atoms and no coverage, which is what they in fact never had."
   ],
-
   "not_this": [
     "Not the Perceptual Action Grammar (what act may be PROPOSED to a curator).",
     "Not the Director's actuator vocabulary (what globally scoped operation has an EXECUTOR).",
@@ -34,10 +32,11 @@
     "implementation on purpose, so that the broker — not the compiler — chooses one, and so that a class",
     "with no instrument today is a visible gap rather than an unfilled tool name."
   ],
-
   "closed_sets": {
-    "source_unit_kinds": ["prompt_clause", "reading_block"],
-
+    "source_unit_kinds": [
+      "prompt_clause",
+      "reading_block"
+    ],
     "atom_kinds": [
       "entity",
       "visual_quality",
@@ -49,14 +48,12 @@
       "generative_proposal",
       "unknown"
     ],
-
     "coverage_dispositions": [
       "represented_by",
       "duplicate_of",
       "semantic_remainder",
       "refused"
     ],
-
     "dissolution_passes": [
       "source_ledger",
       "semantic_dissector",
@@ -65,7 +62,6 @@
       "coverage_audit",
       "targeted_repair"
     ],
-
     "pass_outcomes": [
       "completed",
       "thin",
@@ -76,9 +72,11 @@
       "unavailable",
       "error"
     ],
-
-    "atom_authors": ["user", "scene_theorist", "semantic_dissector"],
-
+    "atom_authors": [
+      "user",
+      "scene_theorist",
+      "semantic_dissector"
+    ],
     "claim_kinds": [
       "entity",
       "attribute",
@@ -108,10 +106,27 @@
       "imagined",
       "unresolved"
     ],
-    "claim_statuses": ["interpretive", "sourced", "uncertain"],
-    "forbidden_initial_statuses": ["visible", "measured"],
-    "image_scopes": ["one_image", "image_pair", "corpus", "not_an_image_question"],
-    "source_types": ["prompt", "inquiry_frame", "scene_reading", "compiler_inference"],
+    "claim_statuses": [
+      "interpretive",
+      "sourced",
+      "uncertain"
+    ],
+    "forbidden_initial_statuses": [
+      "visible",
+      "measured"
+    ],
+    "image_scopes": [
+      "one_image",
+      "image_pair",
+      "corpus",
+      "not_an_image_question"
+    ],
+    "source_types": [
+      "prompt",
+      "inquiry_frame",
+      "scene_reading",
+      "compiler_inference"
+    ],
     "capability_classes": [
       "extent",
       "geometry",
@@ -124,7 +139,13 @@
       "semantic_reading",
       "external_source"
     ],
-    "ground_forms": ["region", "frame", "field", "path", "relation"],
+    "ground_forms": [
+      "region",
+      "frame",
+      "field",
+      "path",
+      "relation"
+    ],
     "reading_block_kinds": [
       "part",
       "organization",
@@ -160,7 +181,6 @@
       "unparseable_model_output",
       "compiler_unavailable",
       "reading_unavailable",
-
       "unknown_atom_kind",
       "unknown_disposition",
       "unanchored_atom",
@@ -179,9 +199,22 @@
       "text_only",
       "replay",
       "unavailable"
+    ],
+    "batch_boundary_reasons": [
+      "allowance_reached",
+      "affinity_boundary",
+      "last_items",
+      "oversized_item"
+    ],
+    "item_dispositions": [
+      "used",
+      "orphan",
+      "refused",
+      "operationalized",
+      "semantic_remainder",
+      "not_investigated"
     ]
   },
-
   "source_units": {
     "what": [
       "One addressable piece of source prose. Everything the dissector is allowed to read is a source",
@@ -196,7 +229,6 @@
       "its pointer with `span: null` and is reported."
     ]
   },
-
   "atom_kinds": {
     "entity": "a thing the source says is present",
     "visual_quality": "a property of a thing as it appears — its finish, its edge, its weight, its apparent material",
@@ -208,14 +240,12 @@
     "generative_proposal": "a proposal for something that does not exist yet",
     "unknown": "the dissector could not type it. LEGAL and VISIBLE, for the same reason `unknown` is a claim kind."
   },
-
   "coverage_dispositions": {
     "represented_by": "one or more atoms carry this unit's content; refs are atom ids",
     "duplicate_of": "another source unit says the same thing; refs is that source unit id",
     "semantic_remainder": "real content that no atom captures, kept as remainder with a reason",
     "refused": "the unit was not dissolved, with a reason. Not the same as remainder: remainder is content nothing measures, refused is content nothing processed."
   },
-
   "pass_outcomes": {
     "completed": "references resolve and every source unit has exactly one disposition",
     "thin": "coverage exists, but the relations or operationalization the produced atom kinds imply are absent. Reported, never padded.",
@@ -226,7 +256,6 @@
     "unavailable": "the pass could not run; nothing was attempted",
     "error": "the machinery failed"
   },
-
   "claim_kinds": {
     "entity": "A thing the reading says is present. The only kind a segmenter can even be asked about.",
     "attribute": "A property OF something — its scale, its density, its finish.",
@@ -242,7 +271,6 @@
     "generative_rule": "A rule for making something that does not exist. Imagined by construction.",
     "unknown": "The compiler could not type it. LEGAL and VISIBLE — see the law of the same name."
   },
-
   "atom_kind_to_claim_kind": {
     "why": [
       "The dissector types what a SOURCE UNIT says; the relation architect types what a CLAIM asserts.",
@@ -261,52 +289,76 @@
     "generative_proposal": "generative_rule",
     "unknown": "unknown"
   },
-
   "capability_classes": {
     "extent": {
       "asks_for": "where a named thing is, as an extent on the image",
-      "typical_grounds": ["region"]
+      "typical_grounds": [
+        "region"
+      ]
     },
     "geometry": {
       "asks_for": "a computed relation between extents — containment, adjacency, centrality, alignment",
-      "typical_grounds": ["relation", "region"]
+      "typical_grounds": [
+        "relation",
+        "region"
+      ]
     },
     "topology": {
       "asks_for": "connectedness, enclosure, holes; relations that survive deformation",
-      "typical_grounds": ["relation", "region"]
+      "typical_grounds": [
+        "relation",
+        "region"
+      ]
     },
     "pattern": {
       "asks_for": "recurrence, spacing, rhythm, ordering across the frame",
-      "typical_grounds": ["field", "path"]
+      "typical_grounds": [
+        "field",
+        "path"
+      ]
     },
     "scalar_field": {
       "asks_for": "a continuous per-pixel quantity — density, pressure, luminance",
-      "typical_grounds": ["field"]
+      "typical_grounds": [
+        "field"
+      ]
     },
     "vector_field": {
       "asks_for": "a continuous per-pixel direction — flow, orientation, surface normal",
-      "typical_grounds": ["field", "path"]
+      "typical_grounds": [
+        "field",
+        "path"
+      ]
     },
     "depth": {
       "asks_for": "how far back something sits",
-      "typical_grounds": ["field", "region"]
+      "typical_grounds": [
+        "field",
+        "region"
+      ]
     },
     "colour": {
       "asks_for": "chromatic quantity — temperature, saturation, distribution",
-      "typical_grounds": ["field", "region"]
+      "typical_grounds": [
+        "field",
+        "region"
+      ]
     },
     "semantic_reading": {
       "asks_for": "a sentence about the picture, produced by a thinker",
-      "typical_grounds": ["frame"],
+      "typical_grounds": [
+        "frame"
+      ],
       "never_settles": "a measurable demand. A reading is not evidence in the picture."
     },
     "external_source": {
       "asks_for": "a citation from outside the picture",
-      "typical_grounds": ["frame"],
+      "typical_grounds": [
+        "frame"
+      ],
       "never_settles": "a measurable demand. Nothing measured in the frame can stand in for a source."
     }
   },
-
   "ground_forms": {
     "region": "an extent on one image",
     "frame": "the whole image, as the thing being spoken about",
@@ -314,30 +366,39 @@
     "path": "an ordered traversal — a direction, a sequence, a trajectory",
     "relation": "a named link between two grounds"
   },
-
   "demand_constraints": {
     "historical_or_sourced": {
-      "forbidden_demands": ["measurable"],
+      "forbidden_demands": [
+        "measurable"
+      ],
       "why": "its warrant lies outside the picture. `epistemics.py` walls `sourced` for this reason; the same wall is applied one level up, on the claim, before any instrument is chosen."
     },
     "interpretation": {
-      "forbidden_demands": ["measurable"],
+      "forbidden_demands": [
+        "measurable"
+      ],
       "why": "an interpretation does not become measurable because measurements contribute to it. That promotion is the single failure HARNESS-001A's semantic remainder exists to prevent."
     },
     "causal_hypothesis": {
-      "forbidden_demands": ["measurable"],
+      "forbidden_demands": [
+        "measurable"
+      ],
       "why": "the CONSEQUENCES of a because may be observable and should be emitted as observables on separate claims. The link itself is not something an instrument returns."
     },
     "generative_rule": {
-      "required_demands": ["imagined", "unresolved"],
+      "required_demands": [
+        "imagined",
+        "unresolved"
+      ],
       "why": "a rule for making what does not exist has nothing to measure and nothing to cite. HARNESS-001B declined to give `imagined` an EpistemicStatus for exactly this reason."
     },
     "comparison": {
-      "forbidden_image_scopes": ["one_image"],
+      "forbidden_image_scopes": [
+        "one_image"
+      ],
       "why": "a comparison across images is not available from one image. Typed from one, it would be a corpus tendency asserted from a single observation."
     }
   },
-
   "id_prefixes": {
     "graph": "sig_",
     "claim": "clm_",
@@ -350,9 +411,11 @@
     "source_unit": "su_",
     "semantic_atom": "atm_",
     "coverage": "cov_",
-    "pass_receipt": "pas_"
+    "pass_receipt": "pas_",
+    "batch_plan": "plan_",
+    "batch": "bat_",
+    "reconciliation_round": "rnd_"
   },
-
   "id_rule": [
     "Every id is sha256 over the inquiry id, the object's kind, and the object's STABLE CONTENT,",
     "truncated to 12 hex characters and prefixed. Nothing is minted from a clock or a counter.",
@@ -362,15 +425,47 @@
     "position in the ledger, because a reading block the theorist emits in a different order is the",
     "same block."
   ],
-
   "forbidden_geometry_keys": [
-    "mask", "mask_rle", "masks", "bbox", "bboxes", "box", "boxes", "polygon", "polygons",
-    "point", "points", "coordinates", "coords", "x0", "y0", "x1", "y1", "cx", "cy",
-    "centroid", "area_px", "extent_px", "width_px", "height_px", "pixels", "geometry",
-    "region_id", "region_ids", "mark_id", "mark_ids", "mask_ref", "region_ref",
-    "confidence", "score", "scores", "iou", "epistemic_status", "measurement", "measurements"
+    "mask",
+    "mask_rle",
+    "masks",
+    "bbox",
+    "bboxes",
+    "box",
+    "boxes",
+    "polygon",
+    "polygons",
+    "point",
+    "points",
+    "coordinates",
+    "coords",
+    "x0",
+    "y0",
+    "x1",
+    "y1",
+    "cx",
+    "cy",
+    "centroid",
+    "area_px",
+    "extent_px",
+    "width_px",
+    "height_px",
+    "pixels",
+    "geometry",
+    "region_id",
+    "region_ids",
+    "mark_id",
+    "mark_ids",
+    "mask_ref",
+    "region_ref",
+    "confidence",
+    "score",
+    "scores",
+    "iou",
+    "epistemic_status",
+    "measurement",
+    "measurements"
   ],
-
   "forbidden_geometry_why": [
     "A scene theorist reads pixels and is still a thinker: it may say a thing is there and may not say",
     "WHERE, in numbers. The moment a reading can carry a box, its output is a measurement nobody measured",
@@ -380,7 +475,6 @@
     "In v2 the scan runs on every pass's raw payload, not only the compiler's. A dissector is the pass",
     "closest to the pixels in the reader's mind and is therefore the one most likely to be asked for a box."
   ],
-
   "laws": [
     {
       "id": "no-geometry-in-a-reading",
@@ -491,7 +585,6 @@
       "why": "every refusal downstream is only checkable against what was actually asked."
     }
   ],
-
   "no_topic_branch": [
     "No production module reading this contract may name a topic. There is no fold branch, no sculpture",
     "branch, no architecture branch, and no botany branch. Subjects, predicates, targets and descriptions",

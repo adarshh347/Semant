@@ -308,6 +308,39 @@ UNDERPERFORMING_OUTCOMES: Tuple[PassOutcome, ...] = (
 )
 
 
+class BatchBoundaryReason(str, Enum):
+    """Why one batch stopped where it did. HARNESS-003E.
+
+    A batch boundary is where a relation becomes hard to see, so every boundary owes a reason. The
+    four are not degrees: `ALLOWANCE_REACHED` is the sizing working, `AFFINITY_BOUNDARY` is a
+    deliberate seam kept at a source or image edge where a relation is least likely to cross,
+    `LAST_ITEMS` is the tail, and `OVERSIZED_ITEM` is a single item no request could carry — the one
+    case where the plan has to report a limit rather than a partition.
+    """
+    ALLOWANCE_REACHED = "allowance_reached"
+    AFFINITY_BOUNDARY = "affinity_boundary"
+    LAST_ITEMS = "last_items"
+    OVERSIZED_ITEM = "oversized_item"
+
+
+class ItemDispositionKind(str, Enum):
+    """What became of one atom or one claim inside a batched pass. HARNESS-003E.
+
+    The coverage ledger's argument, one layer along. `DispositionKind` answers it for a source unit;
+    this answers it for the objects the batched passes consume, because a pass that quietly used
+    half its input and called itself complete is the shape the whole lane exists to prevent.
+
+    Silence is not one of these. A claim nobody operationalized is `NOT_INVESTIGATED` with a reason,
+    which is a decision; a claim missing from this list is a claim the pass lost.
+    """
+    USED = "used"
+    ORPHAN = "orphan"
+    REFUSED = "refused"
+    OPERATIONALIZED = "operationalized"
+    SEMANTIC_REMAINDER = "semantic_remainder"
+    NOT_INVESTIGATED = "not_investigated"
+
+
 class CallTopology(str, Enum):
     """How the reading was actually obtained. Recorded because it changes what the reading IS:
     three separate per-image calls plus a synthesis is not a joint view of three pictures, and a
@@ -790,6 +823,209 @@ class CapacityWaitRecord(_Strict):
     taken: bool = True
 
 
+#: The version stamped on every `BatchPlanRecord`. Its own version rather than the graph's: the plan
+#: is the object a later lane is most likely to extend (a real tokenizer, a different provider), and
+#: a reader has to be able to tell a plan written under one sizing rule from one written under
+#: another without inferring it from the graph around it.
+BATCH_PLAN_VERSION = "semantic-batch-plan.v1"
+
+
+class BatchAssignment(_Strict):
+    """One request's worth of work, sized before anything was sent. HARNESS-003E.
+
+    `primary_refs` and `context_refs` are the whole design in two fields. An item is PRIMARY in
+    exactly one batch — that is what makes "every atom was locally considered" a countable fact
+    rather than a hope — and may appear as CONTEXT in others, where the model may read it and may
+    not produce output for it. Collapsing the two would let one claim be operationalized three times
+    from three neighbourhoods and report three observables as three findings.
+    """
+    batch_id: str
+    index: int = Field(..., ge=1)
+    total: int = Field(..., ge=1)
+    primary_refs: List[str] = Field(default_factory=list)
+    context_refs: List[str] = Field(default_factory=list)
+    #: What this module's conservative bound said the whole request would cost, and what was
+    #: reserved for the answer. Both recorded because the sum is what the provider counts.
+    estimated_prompt_tokens: int = Field(default=0, ge=0)
+    requested_completion_tokens: int = Field(default=0, ge=0)
+    allowance_tokens: int = Field(default=0, ge=0)
+    boundary_reason: BatchBoundaryReason = BatchBoundaryReason.LAST_ITEMS
+    #: True where a single item exceeds everything one request can carry. The batch is NOT sent —
+    #: 413 is a request that cannot be sent at any moment, and discovering that from the provider
+    #: costs the allowance a round trip to learn what arithmetic already knew.
+    sendable: bool = True
+    note: str = ""
+
+    @property
+    def estimated_total_tokens(self) -> int:
+        """What the provider counts against the per-minute allowance: the prompt AND the reservation.
+
+        Lane A learned this the expensive way — raising `max_completion_tokens` from 4096 to 8192
+        made every request fail with `413`, because a completion budget is charged whether or not
+        the model spends it.
+        """
+        return self.estimated_prompt_tokens + self.requested_completion_tokens
+
+    @model_validator(mode="after")
+    def _an_item_is_primary_or_context_and_never_both(self) -> "BatchAssignment":
+        overlap = sorted(set(self.primary_refs) & set(self.context_refs))
+        if overlap:
+            raise ValueError(
+                f"batch {self.batch_id} lists {len(overlap)} ref(s) as both primary and context: "
+                f"{overlap[:5]}. An item the model may answer for and may not answer for is one the "
+                f"parser cannot decide about.")
+        if self.index > self.total:
+            raise ValueError(f"batch {self.batch_id} is {self.index} of {self.total}")
+        return self
+
+
+class ComparisonPair(_Strict):
+    """Two batches, and whether anything ever looked at them together. HARNESS-003E.
+
+    THE COVERAGE MATRIX IS THIS LIST. Local batching alone makes a cross-batch relation structurally
+    invisible — the model is never shown both sides — so the claim "this pass looked for relations"
+    is only true of pairs that co-occurred in some reconciliation request. An unexamined pair is a
+    relation nobody looked for, and it is named rather than rounded off.
+    """
+    left_batch_id: str
+    right_batch_id: str
+    #: The reconciliation round both groups appeared in, or empty where none did.
+    round_id: str = ""
+    examined: bool = False
+    #: Why it was not examined, when it was not. Empty on an examined pair.
+    reason: str = ""
+
+    @model_validator(mode="after")
+    def _examined_means_a_round_can_be_named(self) -> "ComparisonPair":
+        if self.left_batch_id == self.right_batch_id:
+            raise ValueError("a batch pair compares a batch with itself, which examines nothing")
+        if self.examined and not self.round_id.strip():
+            raise ValueError(
+                f"the pair {self.left_batch_id}/{self.right_batch_id} says it was examined and "
+                f"names no round. A comparison nobody can point at did not happen.")
+        if not self.examined and not self.reason.strip():
+            raise ValueError(
+                f"the pair {self.left_batch_id}/{self.right_batch_id} was not examined and gives no "
+                f"reason. An unexamined pair with no reason reads as an oversight rather than a "
+                f"reported limit.")
+        return self
+
+
+class ReconciliationRound(_Strict):
+    """One cross-batch request, and which groups of claim cards it actually held. HARNESS-003E."""
+    round_id: str
+    index: int = Field(..., ge=1)
+    total: int = Field(..., ge=1)
+    #: The batch ids whose claim cards co-occurred in this request. Two or more, always: a round
+    #: over one group compares nothing.
+    group_ids: List[str] = Field(default_factory=list)
+    estimated_prompt_tokens: int = Field(default=0, ge=0)
+    outcome: PassOutcome = PassOutcome.COMPLETED
+    added_edges: int = Field(default=0, ge=0)
+    added_claims: int = Field(default=0, ge=0)
+    duplicate_claims: int = Field(default=0, ge=0)
+    detail: str = ""
+
+    @model_validator(mode="after")
+    def _a_round_compares_something(self) -> "ReconciliationRound":
+        if len(set(self.group_ids)) < 2:
+            raise ValueError(
+                f"reconciliation round {self.round_id} carries {len(set(self.group_ids))} group(s). "
+                f"A round over one group is a second look at material that was already together.")
+        return self
+
+
+class ItemDisposition(_Strict):
+    """What became of one atom or one claim. HARNESS-003E.
+
+    `reason` is required exactly where the disposition is a JUDGEMENT rather than a fact:
+    `used` and `orphan` are read off the output, and `refused` / `not_investigated` are decisions
+    somebody made — the same rule `CoverageDisposition` applies one layer up.
+    """
+    ref: str
+    disposition: ItemDispositionKind
+    batch_id: str = ""
+    reason: str = ""
+
+    @model_validator(mode="after")
+    def _a_judgement_carries_its_reason(self) -> "ItemDisposition":
+        if self.disposition in (ItemDispositionKind.REFUSED,
+                                ItemDispositionKind.NOT_INVESTIGATED) and not self.reason.strip():
+            raise ValueError(
+                f"{self.ref} is {self.disposition.value!r} with no reason. The reason is the only "
+                f"thing separating a decision from a pass that lost track of it.")
+        return self
+
+
+class BatchPlanRecord(_Strict):
+    """How a pass was cut into sendable requests, and what that cost in coverage. HARNESS-003E.
+
+    A VERSIONED OBJECT rather than a note, because the fact it carries — "every atom was considered,
+    and these four batch pairs were never compared" — is the fact a reader most needs and the one
+    prose is worst at holding. It is content-derived and replay-stable for the same reason every id
+    in this package is: a plan that renumbered itself between two runs of the same input would make
+    a replay a comparison of two different partitions.
+    """
+    plan_version: str = BATCH_PLAN_VERSION
+    plan_id: str
+    pass_name: DissolutionPass
+    #: What was partitioned: `semantic_atom` or `claim`. Not an enum — a later pass may batch
+    #: something else, and inventing a closed set for two members would make that a schema change.
+    unit: str = ""
+    total_items: int = Field(default=0, ge=0)
+    batches: List[BatchAssignment] = Field(default_factory=list)
+    pairs: List[ComparisonPair] = Field(default_factory=list)
+    rounds: List[ReconciliationRound] = Field(default_factory=list)
+    dispositions: List[ItemDisposition] = Field(default_factory=list)
+    notes: List[str] = Field(default_factory=list)
+
+    @property
+    def unexamined_pairs(self) -> List[ComparisonPair]:
+        return [p for p in self.pairs if not p.examined]
+
+    @property
+    def pairs_examined(self) -> int:
+        return sum(1 for p in self.pairs if p.examined)
+
+    @property
+    def unsendable_batches(self) -> List[BatchAssignment]:
+        return [b for b in self.batches if not b.sendable]
+
+    @property
+    def every_item_is_primary_once(self) -> bool:
+        primary = [r for b in self.batches for r in b.primary_refs]
+        return len(primary) == len(set(primary)) == self.total_items
+
+    @model_validator(mode="after")
+    def _the_partition_is_a_partition(self) -> "BatchPlanRecord":
+        primary = [r for b in self.batches for r in b.primary_refs]
+        doubled = sorted({r for r in primary if primary.count(r) > 1})
+        if doubled:
+            raise ValueError(
+                f"{len(doubled)} item(s) are primary in more than one batch: {doubled[:5]}. An item "
+                f"answered for twice produces the same object twice and reports it as two findings.")
+        known = {b.batch_id for b in self.batches}
+        for pair in self.pairs:
+            for side in (pair.left_batch_id, pair.right_batch_id):
+                if side not in known:
+                    raise ValueError(
+                        f"the coverage matrix names batch {side!r}, which this plan does not "
+                        f"contain. A matrix over batches that do not exist proves nothing.")
+        rounds = {r.round_id for r in self.rounds}
+        for pair in self.pairs:
+            if pair.examined and pair.round_id not in rounds:
+                raise ValueError(
+                    f"the pair {pair.left_batch_id}/{pair.right_batch_id} names round "
+                    f"{pair.round_id!r}, which this plan does not contain.")
+        for entry in self.rounds:
+            for group in entry.group_ids:
+                if group not in known:
+                    raise ValueError(
+                        f"reconciliation round {entry.round_id} names group {group!r}, which is not "
+                        f"a batch in this plan.")
+        return self
+
+
 class PassReceipt(_Strict):
     """What one pass of the council did, whether or not it produced anything.
 
@@ -827,6 +1063,11 @@ class PassReceipt(_Strict):
     #: Time spent waiting for the allowance, not for the model. `None` where nothing waited — zero
     #: would say a pacer was consulted and reported no wait, which is not the same as no pacer.
     waited_ms: Optional[float] = None
+
+    #: HARNESS-003E. How this pass was cut into sendable requests, and what that cost in coverage.
+    #: `None` on a pass that was never partitioned — the ledger and the audit make no request at all,
+    #: and an empty plan on them would say a partition happened and found one batch.
+    batch_plan: Optional[BatchPlanRecord] = None
 
     @property
     def truncated(self) -> bool:

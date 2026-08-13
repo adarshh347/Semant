@@ -39,6 +39,9 @@ PREFIXES = {
     "semantic_atom": "atm_",
     "coverage": "cov_",
     "pass_receipt": "pas_",
+    "batch_plan": "plan_",
+    "batch": "bat_",
+    "reconciliation_round": "rnd_",
 }
 
 #: Twelve hex characters. The same width HARNESS-001A chose for `inq_`, for the same reason: long
@@ -151,6 +154,33 @@ def pass_id(inquiry_id: str, pass_name: Any, attempt: int = 1) -> str:
     return _mint("pass_receipt", [inquiry_id, getattr(pass_name, "value", pass_name), attempt])
 
 
+# ── HARNESS-003E: the batch plan ─────────────────────────────────────────────
+
+def batch_id(inquiry_id: str, pass_name: Any, primary_refs: Sequence[str]) -> str:
+    """Keyed on the SET of items the batch is primary for — never on its position in the plan.
+
+    The same reason `source_unit_id` refuses an ordinal. A sizing change that moves one atom from
+    the third batch to the second should rename two batches, not renumber every one after it; and a
+    plan whose ids moved on a re-run of identical input would make a replay a comparison of two
+    different partitions rather than of the same one twice.
+    """
+    return _mint("batch", [inquiry_id, getattr(pass_name, "value", pass_name),
+                           "|".join(sorted(normalise(r) for r in primary_refs))])
+
+
+def round_id(inquiry_id: str, pass_name: Any, group_ids: Sequence[str]) -> str:
+    """Keyed on the SET of batch groups the round compared. Two rounds over the same groups are one
+    round asked twice, which is a fact worth collapsing rather than two comparisons."""
+    return _mint("reconciliation_round", [inquiry_id, getattr(pass_name, "value", pass_name),
+                                          "|".join(sorted(normalise(g) for g in group_ids))])
+
+
+def plan_id(inquiry_id: str, pass_name: Any, batch_ids: Sequence[str]) -> str:
+    return _mint("batch_plan", [inquiry_id, getattr(pass_name, "value", pass_name),
+                                "|".join(normalise(b) for b in batch_ids)])
+
+
 __all__ = ["PREFIXES", "WIDTH", "normalise", "graph_id", "claim_id", "edge_id", "observable_id",
            "alternative_id", "decision_id", "refusal_id", "block_id",
-           "source_unit_id", "atom_id", "coverage_id", "pass_id"]
+           "source_unit_id", "atom_id", "coverage_id", "pass_id",
+           "batch_id", "round_id", "plan_id"]

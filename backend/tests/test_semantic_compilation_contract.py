@@ -17,7 +17,8 @@ import pytest
 from backend.schemas.inquiry import DemandKind
 from backend.schemas.semantic_compilation import (READABLE_SCHEMA_VERSIONS, SCHEMA_VERSION,
                                                   SCHEMA_VERSION_V1, SCHEMA_VERSION_V2,
-                                                  AtomKind, AtomAuthor, DispositionKind,
+                                                  AtomKind, AtomAuthor, BatchBoundaryReason,
+                                                  DispositionKind, ItemDispositionKind,
                                                   DissolutionPass, PassOutcome, SourceUnitKind,
                                                   CallTopology, CapabilityClass,
                                                   ClaimEdgeKind, ClaimKind, ClaimStatus,
@@ -210,6 +211,8 @@ def test_that_scan_can_fail(tmp_path):
     ("coverage_dispositions", DispositionKind),
     ("dissolution_passes", DissolutionPass),
     ("pass_outcomes", PassOutcome),
+    ("batch_boundary_reasons", BatchBoundaryReason),
+    ("item_dispositions", ItemDispositionKind),
 ])
 def test_every_v2_closed_set_is_pinned_in_order(set_name, enum_cls):
     assert contracts.closed_set(set_name) == _values(enum_cls)
