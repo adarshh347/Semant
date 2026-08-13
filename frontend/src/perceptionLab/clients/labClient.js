@@ -42,10 +42,18 @@
 // contract says so in as many words; the review verdict and the epistemic status are two other
 // axes and neither moves when it does.
 
-/** Method names a Perception Lab client must have. Missing one is a wiring bug, not a 404. */
+/** Method names a Perception Lab client must have. Missing one is a wiring bug, not a 404.
+ *
+ * `cancel` joined the list in Lane F2, and it is on the INTERFACE rather than on the live client
+ * alone because the interesting part of cancellation is the promise it cannot make. It is
+ * cooperative all the way down — nothing can interrupt a model mid-forward-pass — so a client must
+ * be able to answer `cancelled: false` and mean "no run of that ticket was in flight here", which
+ * is a different sentence from "the run has stopped". A method that existed on one wire only would
+ * be a promise no fixture test could hold it to.
+ */
 export const REQUIRED_CLIENT_METHODS = Object.freeze([
     'identity', 'capabilities', 'listSources', 'uploadSource', 'createSession', 'setOrgan',
-    'plan', 'run', 'replay', 'review', 'setLifecycle',
+    'plan', 'run', 'cancel', 'replay', 'review', 'setLifecycle',
 ]);
 
 /**

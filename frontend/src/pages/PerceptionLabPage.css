@@ -1,0 +1,98 @@
+/* PERCEPTUAL-ORGANS-002 Lane F2 — the route around the laboratory.
+ *
+ * Three rules and nothing else. The instrument owns its own layout in `perceptionLab.css`; this
+ * file styles the banner that says which wire the page is on, and it must not reach inside.
+ * Tokens only — no hex, no invented spacing — per `frontend/AGENTS.md`. */
+
+.plab-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+/* The wire banner. Loud on purpose: a person has to be able to tell, without reading a word,
+ * whether pressing a button here reaches a model. */
+.plab-wire {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--ink-muted);
+    font-family: var(--font-sans);
+    font-size: var(--fs-small);
+    line-height: 1.5;
+}
+
+.plab-wire[data-lab-wire='LIVE'] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--ink);
+}
+
+.plab-wire-badge {
+    flex: 0 0 auto;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-pill);
+    border: 1px solid currentColor;
+    font-family: var(--font-sans);
+    font-size: var(--fs-caption);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+}
+
+.plab-wire-badge[data-identity='LIVE'] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--surface);
+}
+
+.plab-wire-badge[data-identity='FIXTURE'] {
+    background: transparent;
+    border-color: var(--line);
+    color: var(--ink-muted);
+}
+
+.plab-wire-text strong {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.plab-wire-link {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+.plab-wire-link:hover {
+    color: var(--ink);
+}
+
+.plab-wire-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Something arrived in the archive from somewhere else. A note, not a row: this page does not
+ * invent a source it has not read the digest of. */
+.plab-arrived {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--ink-muted);
+    font-family: var(--font-sans);
+    font-size: var(--fs-small);
+}
+
+@media (max-width: 720px) {
+    .plab-wire {
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+}
