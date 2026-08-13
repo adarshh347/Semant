@@ -292,3 +292,67 @@ writer_register_collection = database.get_collection("writer_registers")
 # `curator.assert_valid_proposal` refuses `epistemic_status`, `committed` and `status` outright,
 # the way Lane G refuses a status on a movement edge and WAVE3 refuses one on an observation.
 curator_proposal_collection = database.get_collection("curator_proposals")
+
+
+# --- The Perception Lab (PERCEPTUAL-ORGANS-002 · Lane F1) ---
+# Five collections, one per record type the lab's `LabStore` interface declares, and DELIBERATELY
+# not `posts`. The whole of Lane D rests on the conductor having been handed a store with no door
+# onto canon: there is no `put_region`, no `put_mark`, no `put_percept`, and these five names are
+# the durable half of that sentence. A lab session may run for an hour and touch none of them.
+#
+#   perception_lab_sessions   one sitting: the source, the organ, the selection, the prompt turns
+#   perception_lab_plans      what a planner proposed and the resolver authorized or refused
+#   perception_lab_runs       one execution: stage attempts, refusals, source digests, outcome
+#   perception_lab_artifacts  one measurement, session-scoped. NOT a Region and never becomes one
+#   perception_lab_reviews    a person's verdict, keyed by artifact. Changes no lifecycle
+#
+# NOTHING HERE IS CANON. An artifact carries `identity_scope: session` and a `proposed` lifecycle;
+# promotion into Semant is a separate, explicit, confirmed act that this lane does not implement,
+# and no `kept`, `correct` or confidence value in these documents can reach a post.
+PERCEPTION_LAB_COLLECTIONS = {
+    "sessions": "perception_lab_sessions",
+    "plans": "perception_lab_plans",
+    "runs": "perception_lab_runs",
+    "artifacts": "perception_lab_artifacts",
+    "reviews": "perception_lab_reviews",
+}
+
+perception_lab_session_collection = database.get_collection(PERCEPTION_LAB_COLLECTIONS["sessions"])
+perception_lab_plan_collection = database.get_collection(PERCEPTION_LAB_COLLECTIONS["plans"])
+perception_lab_run_collection = database.get_collection(PERCEPTION_LAB_COLLECTIONS["runs"])
+perception_lab_artifact_collection = database.get_collection(PERCEPTION_LAB_COLLECTIONS["artifacts"])
+perception_lab_review_collection = database.get_collection(PERCEPTION_LAB_COLLECTIONS["reviews"])
+
+# THE ONE SYNCHRONOUS CLIENT IN THIS FILE, and it is not an oversight.
+#
+# `LabStore` is a synchronous Protocol with fifteen methods, and the conductor calls them from
+# inside `execute()` — between an adapter call that loads SAM and one that runs a distance
+# transform. Both of those block for seconds; the lab's routes are therefore plain `def` handlers
+# that FastAPI runs in its threadpool, exactly as `routers/retina.py` runs LanceDB. A store built
+# on `motor` would have to be awaited from a thread with no event loop, and the two usual escapes —
+# `asyncio.run` per call, or reaching into `AsyncIOMotorClient.delegate` — are a new loop per
+# document and an unsupported access to a pool that belongs to another loop.
+#
+# So the lab gets its own pymongo client, created on first use and never at import, against the
+# same connection string and the same database. It is small (the lab is one person at a time), it
+# is lazy (a deployment that never opens the lab never opens it), and it is honest about which
+# concurrency model it is in.
+_sync_client = None
+
+
+def sync_database():
+    """The lab's synchronous handle on the same database. Lazily created, cached, never at import."""
+    global _sync_client
+    if _sync_client is None:
+        from pymongo import MongoClient
+        _sync_client = MongoClient(
+            settings.MONGO_DETAILS, serverSelectionTimeoutMS=30000, socketTimeoutMS=30000,
+            connectTimeoutMS=30000, retryWrites=True, retryReads=True, maxPoolSize=8,
+            minPoolSize=0)
+    return _sync_client.visualDictionaryDB
+
+
+def perception_lab_collections():
+    """The five lab collections, synchronously. `{record_kind: collection}`."""
+    db = sync_database()
+    return {kind: db.get_collection(name) for kind, name in PERCEPTION_LAB_COLLECTIONS.items()}
