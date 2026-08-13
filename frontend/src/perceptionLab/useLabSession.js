@@ -53,7 +53,25 @@ export default function useLabSession(client, { initialOrgan = 'extent',
     const [focus, setFocus] = useState({ instanceId: null, relationId: null });
 
     const alive = useRef(true);
-    useEffect(() => () => { alive.current = false; }, []);
+    /**
+     * Is this hook still mounted? Set on the way IN as well as on the way out.
+     *
+     * THE `alive.current = true` IS THE WHOLE OF A BUG THIS LANE FOUND BY MOUNTING THE
+     * LABORATORY FOR REAL. Under `React.StrictMode` — which the app root uses — React mounts,
+     * runs the effect, runs its cleanup, and runs the effect again. With only a cleanup here, the
+     * second pass left `alive.current` false forever: `guard`'s `finally` then skipped
+     * `setBusy(null)`, `busy` stayed truthy, and every control in the laboratory was disabled from
+     * the first action onwards. The surface looked completely finished and did nothing.
+     *
+     * It was invisible to this lane's own suite because those tests mount without StrictMode, and
+     * invisible in production because the double-invoke is a development behaviour. Which is
+     * exactly why it took mounting it at a route to find, and why the fix belongs here rather than
+     * in the route.
+     */
+    useEffect(() => {
+        alive.current = true;
+        return () => { alive.current = false; };
+    }, []);
 
     useMemo(() => assertClientShape(client), [client]);
 
