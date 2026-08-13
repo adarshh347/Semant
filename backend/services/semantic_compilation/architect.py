@@ -28,6 +28,27 @@ An atom may end up inside a composed claim, and several atoms may compose one. W
 is an atom quietly having no claim: `orphaned_atoms` reports every atom no claim was built from, so
 "the architect ignored half the dissection" is a number rather than something a reader has to
 notice.
+
+## HARNESS-003E: batched locally, then reconciled across the batches
+
+This pass used to make ONE call over the first forty atoms and report the rest as overflow. Forty
+was a guess — the constant's own comment said "forty is what fits under an 8000-token allowance" —
+and the live fold rehearsal refuted it: forty atoms plus a 4096-token reservation is 9,827 tokens
+against an 8,000 ceiling, and the request could not be sent at all.
+
+The repair is NOT to slice the atoms into independent calls. Relations are what this pass is for and
+a batch boundary is a relation it was structurally unable to see, so independent slices would make
+the 413 vanish by making cross-image relations impossible to discover — a green request rather than
+a successful relation pass.
+
+So it is two halves:
+
+    every atom -> sized local batches, each atom PRIMARY exactly once -> claims and local edges
+               -> compact CLAIM CARDS -> reconciliation rounds covering every pair of batches
+               -> edges, duplicate mappings and parented cross-batch claims
+
+and `completed` requires both: every atom locally considered AND every planned pair of batches
+actually compared. An unexamined pair is named in the coverage matrix rather than rounded off.
 """
 from __future__ import annotations
 
@@ -35,18 +56,19 @@ import json
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from backend.schemas.inquiry import DemandKind
-from backend.schemas.semantic_compilation import (AtomKind, ClaimEdge, ClaimEdgeKind, ClaimKind,
-                                                  ClaimNode, ClaimStatus, CompilerRefusal,
-                                                  CompilerRefusalKind, DissolutionPass,
-                                                  FORBIDDEN_INITIAL_STATUSES, ImageScope,
+from backend.schemas.semantic_compilation import (AtomKind, BatchPlanRecord, ClaimEdge,
+                                                  ClaimEdgeKind, ClaimKind, ClaimNode, ClaimStatus,
+                                                  CompilerRefusal, CompilerRefusalKind,
+                                                  DissolutionPass, FORBIDDEN_INITIAL_STATUSES,
+                                                  ImageScope, ItemDisposition, ItemDispositionKind,
                                                   PassOutcome, PassReceipt, SemanticAtom,
                                                   SourcePointer, SourceType, SourceUnit,
                                                   SourceUnitKind, _FORBIDDEN_DEMANDS,
                                                   _REQUIRED_DEMANDS)
 
-from . import contracts, ids
+from . import contracts, ids, sizing
 from .base import refusal
-from .passes import ModelPass, PassBudget, PassResult, bounded, merge_receipts
+from .passes import ModelPass, PassBudget, PassResult, merge_receipts
 
 ROLE = "relation_architect"
 PRODUCER = "semantic_compilation/architect-v1"
@@ -58,16 +80,24 @@ DEFAULT_BUDGET = PassBudget(max_completion_tokens=4096, batch_size=0)
 
 MAX_CLAIMS = 80
 
-#: How many atoms may go into one architect request. The live run sent 88 and the provider answered
-#: `413 Request too large for model`, and forty is what fits under an 8000-token allowance
-#: alongside the completion budget — a fact worth having rather than guessing at, which is why the
-#: provider's message now travels onto the receipt.
+#: What one architect request reserves for its answer. HARNESS-003E, and it replaces the flat 4096
+#: this pass used to spend on every call.
 #:
-#: NOT BATCHED, and the cap is the price of that: relations are what this pass is FOR, and a batch
-#: boundary is a relation it was structurally unable to see. So it gets one call over as many atoms
-#: as fit, and the remainder is REPORTED — a pass that quietly used half its input and called itself
-#: complete is the shape this lane exists to make impossible.
-MAX_ATOMS_PER_CALL = 40
+#: `reserved_tokens` is the headroom 003D's second-order finding named and nothing counted: a
+#: reasoning model emits its reasoning into the same completion budget as the JSON, so a reservation
+#: sized only from the expected output is short by however much thinking the model does first.
+#: `per_item_tokens` is one atom's share of the claims and edges built from it — the frozen fixtures
+#: run at roughly 0.7 claims per atom at about eighty tokens of JSON each.
+#:
+#: `maximum_tokens` is `DEFAULT_BUDGET.max_completion_tokens` and is a ceiling that is never raised.
+ARCHITECT_COMPLETION = sizing.CompletionPolicy(
+    reserved_tokens=1536, per_item_tokens=80, minimum_tokens=1024, maximum_tokens=4096)
+
+#: What one reconciliation round reserves. Smaller per item than the local pass because a round
+#: emits edges and duplicate mappings over cards it was GIVEN rather than claims built from scratch,
+#: and larger at the floor because comparing two groups is where the reasoning actually happens.
+RECONCILE_COMPLETION = sizing.CompletionPolicy(
+    reserved_tokens=1536, per_item_tokens=24, minimum_tokens=1024, maximum_tokens=4096)
 
 SYSTEM_PROMPT = (
     "You are a relation architect inside a visual close-reading tool. You are given SEMANTIC "
@@ -117,9 +147,17 @@ def atom_digest(atoms: Sequence[SemanticAtom], units: Mapping[str, SourceUnit]) 
     } for a in atoms]
 
 
-def build_prompt(atoms: Sequence[SemanticAtom], units: Mapping[str, SourceUnit]) -> str:
+#: Compact separators, and the saving is not cosmetic. `indent=2` spends about a fifth of every
+#: prompt on newlines and leading spaces that no reader ever sees — the prompt goes to a model, not
+#: to a person — and inside an 8000-token allowance that fifth is atoms that would otherwise fall
+#: into another batch, and another batch is another pair of groups the reconciliation has to
+#: compare. Nothing about the content changes; this is the same JSON.
+_COMPACT = dict(separators=(",", ":"), ensure_ascii=False)
+
+
+def _vocabulary() -> Dict[str, Any]:
     contract = contracts.graph_contract()
-    vocabulary = {
+    return {
         "claim_kinds": contract["claim_kinds"],
         "claim_edge_kinds": list(contracts.closed_set("claim_edge_kinds")),
         "epistemic_demands": list(contracts.closed_set("epistemic_demands")),
@@ -127,10 +165,14 @@ def build_prompt(atoms: Sequence[SemanticAtom], units: Mapping[str, SourceUnit])
         "image_scopes": list(contracts.closed_set("image_scopes")),
         "atom_kind_to_claim_kind": contracts.atom_kind_to_claim_kind(),
     }
+
+
+def build_prompt(atoms: Sequence[SemanticAtom], units: Mapping[str, SourceUnit]) -> str:
+    vocabulary = _vocabulary()
     return (
         f"THE ATOMS — this is everything you may build from:\n"
-        f"{json.dumps(atom_digest(atoms, units), indent=2, ensure_ascii=False)}\n\n"
-        f"THE VOCABULARY — use only these:\n{json.dumps(vocabulary, indent=2)}\n\n"
+        f"{json.dumps(atom_digest(atoms, units), **_COMPACT)}\n\n"
+        f"THE VOCABULARY — use only these:\n{json.dumps(vocabulary, **_COMPACT)}\n\n"
         f"Return JSON of exactly this shape. `ref` values are yours and link objects within this "
         f"response:\n"
         f'{{"claims": [{{"ref": "c1", "text": "<one claim>", "kind": "<claim kind>", '
@@ -140,6 +182,16 @@ def build_prompt(atoms: Sequence[SemanticAtom], units: Mapping[str, SourceUnit])
         f'"edges": [{{"kind": "<edge kind>", "from": "c1", "to": "c2", "why": ""}}]}}\n'
         f"Return empty lists rather than inventing content."
     )
+
+
+def fixed_prompt_text() -> str:
+    """Everything charged on EVERY architect request, whatever atoms it carries.
+
+    Handed to `sizing.plan` so the room left for atoms is what is actually left rather than the
+    whole allowance. Built from the same pieces `build_prompt` uses — an empty atom list through the
+    real builder, plus the system prompt — so it cannot drift from the thing it is measuring.
+    """
+    return SYSTEM_PROMPT + build_prompt([], {})
 
 
 class _Assembly:
@@ -422,69 +474,258 @@ class _Assembly:
         return out
 
 
+class _Merged:
+    """Claims and edges accumulated across batches, keyed by their content-derived ids.
+
+    A DUPLICATE IS ONE OBJECT SEEN TWICE, not two claims silently retained. Two batches that both
+    arrive at the same sentence under the same kind produce the same `claim_id`, and what the second
+    sighting adds is its ANCHORS: the atoms it was built from and the source pointers those imply.
+    So the merge is a union of provenance rather than a first-writer-wins, and dropping the second
+    copy without taking its atoms would report those atoms as orphans the architect never used.
+    """
+
+    def __init__(self) -> None:
+        self.claims: Dict[str, ClaimNode] = {}
+        self.edges: Dict[str, ClaimEdge] = {}
+        self.batch_of: Dict[str, str] = {}
+        self.duplicates = 0
+
+    def add_claims(self, claims: Sequence[ClaimNode], *, batch_id: str = "") -> None:
+        for claim in claims:
+            self.batch_of.setdefault(claim.claim_id, batch_id)
+            seen = self.claims.get(claim.claim_id)
+            if seen is None:
+                self.claims[claim.claim_id] = claim
+                continue
+            self.duplicates += 1
+            self.claims[claim.claim_id] = seen.model_copy(update={
+                "atom_refs": _union(seen.atom_refs, claim.atom_refs),
+                "inferred_from": _union(seen.inferred_from, claim.inferred_from),
+                "sources": _union_pointers(seen.sources, claim.sources),
+                # The FIRST note stands. A note is one batch's account of its own typing decision,
+                # and concatenating two of them makes a sentence neither batch wrote.
+                "note": seen.note or claim.note})
+
+    def add_edges(self, edges: Sequence[ClaimEdge]) -> None:
+        for edge in edges:
+            self.edges.setdefault(edge.edge_id, edge)
+
+    def live(self) -> List[ClaimNode]:
+        """Claims whose parents all survived. The graph validator refuses a dangling
+        `inferred_from`, and a claim built in one batch may name a parent another batch's claim
+        supplied — so the check happens once, over the merged set, rather than per batch."""
+        kept = set(self.claims)
+        return [c.model_copy(update={"inferred_from": [p for p in c.inferred_from if p in kept]})
+                for c in self.claims.values()]
+
+    def edge_list(self) -> List[ClaimEdge]:
+        kept = set(self.claims)
+        return [e for e in self.edges.values() if e.from_claim in kept and e.to_claim in kept]
+
+
+def _union(first: Sequence[str], second: Sequence[str]) -> List[str]:
+    out = list(first)
+    out.extend(x for x in second if x not in set(first))
+    return out
+
+
+def _union_pointers(first: Sequence[SourcePointer],
+                    second: Sequence[SourcePointer]) -> List[SourcePointer]:
+    seen = {(p.source_type.value, p.source_id) for p in first}
+    out = list(first)
+    for pointer in second:
+        key = (pointer.source_type.value, pointer.source_id)
+        if key not in seen:
+            seen.add(key)
+            out.append(pointer)
+    return out
+
+
 class RelationArchitect(ModelPass):
-    """One call over all accepted atoms. Not batched: relations are what it is for, and a batch
-    boundary is a relation the pass was structurally unable to see."""
+    """Every atom locally considered, then every pair of batches compared. HARNESS-003E.
+
+    Not one call: forty atoms and a 4096-token reservation is 9,827 tokens against an 8,000
+    ceiling, so the single call this pass used to make could not be sent. Not independent slices
+    either: relations are what this pass is FOR and a batch boundary is a relation it was
+    structurally unable to see, so the cross-batch reconciliation is not an optimisation on top of
+    the batching — it is the half that makes the batching legitimate.
+    """
 
     role = ROLE
     pass_name = DissolutionPass.RELATION_ARCHITECT
     system_prompt = SYSTEM_PROMPT
     budget = DEFAULT_BUDGET
 
+    def plan_batches(self, atoms: Sequence[SemanticAtom], *,
+                     inquiry_id: str) -> sizing.BatchPlan:
+        """The partition, sized against the account's allowance.
+
+        AFFINITY IS THE SOURCE UNIT. Atoms dissolved out of one reading block or one prompt clause
+        are the atoms most likely to relate to each other, so a seam between them is the most
+        expensive kind — and one placed between two source units costs least. It is a preference,
+        never a constraint: a source unit whose atoms exceed one request is split, and the split
+        shows up in the plan as `allowance_reached` rather than as an affinity boundary.
+        """
+        units = {}
+        items = []
+        for atom in atoms:
+            digest = atom_digest([atom], units)
+            items.append(sizing.SizedItem(
+                ref=atom.atom_id, text=json.dumps(digest[0], **_COMPACT),
+                affinity=atom.source_unit_ids[0] if atom.source_unit_ids else atom.atom_id))
+        return sizing.plan(items, inquiry_id=inquiry_id, pass_name=self.pass_name,
+                           unit="semantic_atom", fixed_text=fixed_prompt_text(),
+                           completion=ARCHITECT_COMPLETION)
+
     def assemble(self, atoms: Sequence[SemanticAtom], units: Sequence[SourceUnit], *,
                  inquiry_id: str, attempt: int = 1
                  ) -> Tuple[List[ClaimNode], List[ClaimEdge], List[CompilerRefusal], List[str],
                             PassReceipt]:
         by_unit = {u.source_unit_id: u for u in units}
-        atoms, overflow = bounded(atoms, MAX_ATOMS_PER_CALL)
-        comp = _Assembly(inquiry_id, atoms, by_unit)
-        if overflow:
-            comp.notes.append(
-                f"{len(overflow)} atom(s) beyond the first {MAX_ATOMS_PER_CALL} were not sent to "
-                f"the architect: one request over all of them is refused by the provider as too "
-                f"large. They remain in the graph, unbuilt-from, and are counted in the orphan "
-                f"total rather than dropped.")
+        by_atom = {a.atom_id: a for a in atoms}
         if not atoms:
             receipt = merge_receipts(self.pass_name, [], inquiry_id=inquiry_id,
                                      outcome=PassOutcome.EMPTY, attempt=attempt,
                                      detail="no atom reached the architect")
             return [], [], [], ["the architect was given no atom, so it built nothing"], receipt
 
-        result = self.invoke(build_prompt(atoms, by_unit), inquiry_id=inquiry_id, attempt=attempt,
-                             inputs=len(atoms))
-        comp.refusals.extend(result.refusals)
-        if result.payload is None:
-            receipt = merge_receipts(self.pass_name, [result.receipt], inquiry_id=inquiry_id,
-                                     outcome=result.receipt.outcome, attempt=attempt,
-                                     detail=result.receipt.detail)
-            return [], [], comp.refusals, comp.notes, receipt
+        plan = self.plan_batches(atoms, inquiry_id=inquiry_id)
+        merged = _Merged()
+        refusals: List[CompilerRefusal] = []
+        notes: List[str] = list(plan.record.notes)
+        receipts: List[PassReceipt] = []
+        considered: Set[str] = set()
 
-        rows = result.payload.get("claims")
-        for index, row in enumerate(rows if isinstance(rows, list) else []):
-            if isinstance(row, Mapping):
-                comp.claim(index, row)
-        comp.build()
-        rows = result.payload.get("edges")
-        edges = comp.edges([r for r in (rows if isinstance(rows, list) else [])
-                            if isinstance(r, Mapping)])
+        for batch in plan.batches:
+            picked = [by_atom[r] for r in batch.assignment.primary_refs if r in by_atom]
+            number, total = batch.assignment.index, batch.assignment.total
+            if not batch.sendable:
+                # THE 413, CAUGHT BY ARITHMETIC. Refused by name, at no cost to the allowance.
+                for atom in picked:
+                    refusals.append(refusal(
+                        inquiry_id, CompilerRefusalKind.PASS_UNAVAILABLE, atom.atom_id,
+                        f"this atom alone estimates larger than one whole request may carry, so no "
+                        f"architect call could include it. Refused before transport rather than "
+                        f"sent and refused by the provider. {batch.assignment.note}"))
+                self.observe(f"relating batch {number} of {total}", index=number, total=total,
+                             outcome="refused", refs=list(batch.assignment.primary_refs),
+                             detail="too large to send; refused before transport")
+                continue
 
-        outcome, detail = self._outcome(atoms, comp, edges, result)
-        receipt = merge_receipts(self.pass_name, [result.receipt], inquiry_id=inquiry_id,
-                                 outcome=outcome, attempt=attempt, outputs=len(comp.claims),
-                                 detail=detail)
-        return comp.claims, edges, comp.refusals, comp.notes, receipt
+            self.observe(f"relating batch {number} of {total}", index=number, total=total,
+                         outcome="started", refs=list(batch.assignment.primary_refs),
+                         detail=f"{len(picked)} atom(s), "
+                                f"~{batch.assignment.estimated_total_tokens} token(s)")
+            comp = _Assembly(inquiry_id, picked, by_unit)
+            result = self.invoke(
+                build_prompt(picked, by_unit), inquiry_id=inquiry_id, attempt=attempt,
+                inputs=len(picked),
+                estimated_prompt_tokens=batch.assignment.estimated_prompt_tokens,
+                completion_tokens=batch.assignment.requested_completion_tokens)
+            receipts.append(result.receipt)
+            refusals.extend(result.refusals)
+            considered.update(a.atom_id for a in picked)
 
-    def _outcome(self, atoms: Sequence[SemanticAtom], comp: _Assembly,
-                 edges: Sequence[ClaimEdge], result: PassResult) -> Tuple[PassOutcome, str]:
-        if result.receipt.truncated:
+            if result.payload is not None:
+                rows = result.payload.get("claims")
+                for index, row in enumerate(rows if isinstance(rows, list) else []):
+                    if isinstance(row, Mapping):
+                        comp.claim(index, row)
+                comp.build()
+                rows = result.payload.get("edges")
+                merged.add_claims(comp.claims, batch_id=batch.batch_id)
+                merged.add_edges(comp.edges([r for r in (rows if isinstance(rows, list) else [])
+                                             if isinstance(r, Mapping)]))
+            refusals.extend(comp.refusals)
+            notes.extend(comp.notes)
+            self.observe(f"relating batch {number} of {total}", index=number, total=total,
+                         outcome=result.receipt.outcome.value,
+                         refs=list(batch.assignment.primary_refs),
+                         detail=result.receipt.detail
+                                or f"{len(comp.claims)} claim(s) from {len(picked)} atom(s)")
+
+        claims = merged.live()
+        edges = merged.edge_list()
+        if merged.duplicates:
+            notes.append(
+                f"{merged.duplicates} claim(s) were built in more than one batch and merged into "
+                f"one, taking the union of the atoms each sighting named. A duplicate is one object "
+                f"seen twice, not two claims kept.")
+
+        record = self._close_plan(plan, atoms=atoms, claims=claims, considered=considered)
+        outcome, detail = self._outcome(atoms, claims, edges, receipts, record, notes)
+        receipt = merge_receipts(self.pass_name, receipts, inquiry_id=inquiry_id, outcome=outcome,
+                                 attempt=attempt, outputs=len(claims), detail=detail,
+                                 batch_plan=record)
+        return claims, edges, refusals, notes, receipt
+
+    # ── what the plan says happened ──
+
+    def _close_plan(self, plan: sizing.BatchPlan, *, atoms: Sequence[SemanticAtom],
+                    claims: Sequence[ClaimNode], considered: Set[str]) -> BatchPlanRecord:
+        """One disposition per atom, written onto the plan rather than into prose.
+
+        `orphan` and `used` are read off the output; `refused` is the decision the sizing made about
+        an atom no request could carry. An atom absent from this list is an atom the pass lost, and
+        `_outcome` refuses to call that `completed`.
+        """
+        used = {ref for claim in claims for ref in claim.atom_refs}
+        where = {ref: b.batch_id for b in plan.record.batches for ref in b.primary_refs}
+        unsendable = {ref for b in plan.record.unsendable_batches for ref in b.primary_refs}
+        dispositions: List[ItemDisposition] = []
+        for atom in atoms:
+            batch = where.get(atom.atom_id, "")
+            if atom.atom_id in unsendable:
+                dispositions.append(ItemDisposition(
+                    ref=atom.atom_id, disposition=ItemDispositionKind.REFUSED, batch_id=batch,
+                    reason="no request could carry this atom, so no architect call saw it"))
+            elif atom.atom_id in used:
+                dispositions.append(ItemDisposition(
+                    ref=atom.atom_id, disposition=ItemDispositionKind.USED, batch_id=batch))
+            elif atom.atom_id in considered:
+                dispositions.append(ItemDisposition(
+                    ref=atom.atom_id, disposition=ItemDispositionKind.ORPHAN, batch_id=batch))
+        return plan.record.model_copy(update={"dispositions": dispositions})
+
+    def _outcome(self, atoms: Sequence[SemanticAtom], claims: Sequence[ClaimNode],
+                 edges: Sequence[ClaimEdge], receipts: Sequence[PassReceipt],
+                 record: BatchPlanRecord, notes: List[str]) -> Tuple[PassOutcome, str]:
+        if not receipts:
+            return PassOutcome.EMPTY, "no architect request could be sent"
+        if all(r.outcome is PassOutcome.UNAVAILABLE for r in receipts):
+            return PassOutcome.UNAVAILABLE, "no batch reached the architect"
+        if any(r.truncated for r in receipts):
             return (PassOutcome.TRUNCATED,
-                    f"the architect hit its completion budget after {len(comp.claims)} claim(s)")
-        if not comp.claims:
+                    f"{sum(1 for r in receipts if r.truncated)} of {len(receipts)} architect "
+                    f"batch(es) hit the completion budget after {len(claims)} claim(s). One "
+                    f"truncated batch is a truncated pass: what it produced is a prefix.")
+        failed = [r for r in receipts if r.outcome is PassOutcome.ERROR]
+        if failed:
+            return (PassOutcome.ERROR,
+                    f"{len(failed)} of {len(receipts)} architect batch(es) failed: "
+                    f"{failed[0].detail}")
+        if not claims:
             return PassOutcome.EMPTY, "no claim survived anchoring to an atom"
 
-        orphans = orphaned_atoms(atoms, comp.claims)
+        # EVERY ATOM CONSIDERED, OR THE PASS DID NOT DO ITS JOB. Not a count of claims — an atom
+        # nothing looked at is a different failure from an atom nothing could be built from, and
+        # only the first means a request never happened.
+        unconsidered = [d for d in record.dispositions
+                        if d.disposition is ItemDispositionKind.REFUSED]
+        missing = len(atoms) - len(record.dispositions)
+        if missing:
+            return (PassOutcome.COVERAGE_FAILED,
+                    f"{missing} of {len(atoms)} atom(s) have no disposition in the batch plan. An "
+                    f"atom nothing accounted for is one the partition lost.")
+        if unconsidered:
+            return (PassOutcome.COVERAGE_FAILED,
+                    f"{len(unconsidered)} of {len(atoms)} atom(s) were too large for any request "
+                    f"and no architect call saw them")
+
+        orphans = [d.ref for d in record.dispositions
+                   if d.disposition is ItemDispositionKind.ORPHAN]
         if orphans:
-            comp.notes.append(
+            notes.append(
                 f"{len(orphans)} of {len(atoms)} atom(s) were not built into any claim. They are "
                 f"kept in the graph and reported: an atom with no claim is the dissector's work "
                 f"the architect did not use, which is a different fact from the dissector not "
@@ -505,7 +746,8 @@ class RelationArchitect(ModelPass):
                     f"{len(orphans)} of {len(atoms)} atom(s) reached no claim; more of the "
                     f"dissection was set aside than was used")
         return (PassOutcome.COMPLETED,
-                f"{len(comp.claims)} claim(s) and {len(edges)} relation(s) over {len(atoms)} atoms")
+                f"{len(claims)} claim(s) and {len(edges)} relation(s) over {len(atoms)} atoms in "
+                f"{len(record.batches)} batch(es)")
 
 
 def orphaned_atoms(atoms: Sequence[SemanticAtom],
@@ -516,24 +758,35 @@ def orphaned_atoms(atoms: Sequence[SemanticAtom],
 
 
 class FrozenRelationArchitect(RelationArchitect):
-    """The same parse and the same laws, over a frozen payload."""
+    """The same parse and the same laws, over frozen payloads — one per request.
 
-    def __init__(self, payload: Any, *, model: Optional[str] = None):
+    A SEQUENCE since HARNESS-003E, because a batched pass makes several calls and a single payload
+    would replay the first batch's answer to every batch. A fixture that runs out is `empty` rather
+    than repeated, for the reason `FrozenPass` gives: a batch answered by a response written for
+    different inputs is a replay proving nothing.
+    """
+
+    def __init__(self, payloads: Any, *, model: Optional[str] = None):
         super().__init__(client=None, model=model)
-        self._frozen = payload
+        self._frozen = list(payloads) if isinstance(payloads, (list, tuple)) else [payloads]
+        self._served = 0
 
     def is_available(self) -> bool:
         return True
 
     def invoke(self, user_prompt: str, *, inquiry_id: str, attempt: int = 1,
-               inputs: int = 0) -> PassResult:
+               inputs: int = 0, system_prompt: Optional[str] = None,
+               estimated_prompt_tokens: int = 0,
+               completion_tokens: Optional[int] = None) -> PassResult:
         from .passes import FrozenPass
-        through = FrozenPass([self._frozen], model=self._model)
+        through = FrozenPass(self._frozen[self._served:self._served + 1], model=self._model)
         through.role = self.role
         through.pass_name = self.pass_name
+        self._served += 1
         self.calls += 1
         return through.invoke(user_prompt, inquiry_id=inquiry_id, attempt=attempt, inputs=inputs)
 
 
-__all__ = ["ROLE", "PRODUCER", "DEFAULT_BUDGET", "MAX_CLAIMS", "SYSTEM_PROMPT", "build_prompt",
-           "atom_digest", "orphaned_atoms", "RelationArchitect", "FrozenRelationArchitect"]
+__all__ = ["ROLE", "PRODUCER", "DEFAULT_BUDGET", "ARCHITECT_COMPLETION", "RECONCILE_COMPLETION",
+           "MAX_CLAIMS", "SYSTEM_PROMPT", "build_prompt", "fixed_prompt_text", "atom_digest",
+           "orphaned_atoms", "RelationArchitect", "FrozenRelationArchitect"]

@@ -225,7 +225,8 @@ class ModelPass:
 
     def invoke(self, user_prompt: str, *, inquiry_id: str, attempt: int = 1,
                inputs: int = 0, system_prompt: Optional[str] = None,
-               estimated_prompt_tokens: int = 0) -> PassResult:
+               estimated_prompt_tokens: int = 0,
+               completion_tokens: Optional[int] = None) -> PassResult:
         """Exactly one SEMANTIC request. Returns a receipt in every branch, including the failures.
 
         The geometry scan runs on the RAW parsed payload, before anything is constructed. By the
@@ -250,6 +251,11 @@ class ModelPass:
         """
         pass_id = ids.pass_id(inquiry_id, self.pass_name, attempt)
         system = self.system_prompt if system_prompt is None else system_prompt
+        # NEVER ABOVE THE PASS'S OWN DECLARED BUDGET. `sizing` may reserve less for a small batch;
+        # it may not reserve more, because raising this is precisely what turned every one of Lane
+        # A's requests into a 413.
+        budget = (self.budget.max_completion_tokens if completion_tokens is None
+                  else min(self.budget.max_completion_tokens, max(1, int(completion_tokens))))
         prompt_hash = sha256_of(user_prompt)
 
         if not self.is_available():
@@ -271,7 +277,7 @@ class ModelPass:
                       {"role": "user", "content": user_prompt}],
             model=model,
             response_format={"type": "json_object"},
-            max_completion_tokens=self.budget.max_completion_tokens)
+            max_completion_tokens=budget)
 
         started = time.perf_counter()
         self.calls += 1
@@ -318,7 +324,7 @@ class ModelPass:
         if finish == "length":
             outcome = PassOutcome.TRUNCATED
             notes.append(
-                f"{self.role} ran out of its {self.budget.max_completion_tokens}-token completion "
+                f"{self.role} ran out of its {budget}-token completion "
                 f"budget. Whatever it produced is a PREFIX, and a short result here is not evidence "
                 f"that there was little to produce.")
 
@@ -478,18 +484,6 @@ def merge_receipts(pass_name: DissolutionPass, receipts: Sequence[PassReceipt], 
         capacity_waits=[w for r in receipts for w in r.capacity_waits],
         waited_ms=round(sum(waited), 3) if waited else None,
         batch_plan=batch_plan)
-
-
-def bounded(items: Sequence[Any], limit: int) -> Tuple[List[Any], List[Any]]:
-    """The first `limit` items, and the rest — for a pass that cannot be batched.
-
-    NO SILENT CAP. The caller reports the remainder, because a pass that quietly used half its
-    input and called itself complete is the shape this lane exists to make impossible. Used where
-    batching is not available: relations are what the architect is FOR, and a batch boundary is a
-    relation it was structurally unable to see.
-    """
-    step = max(1, int(limit))
-    return list(items[:step]), list(items[step:])
 
 
 def batched(items: Sequence[Any], size: int) -> List[List[Any]]:

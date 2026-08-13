@@ -379,9 +379,13 @@ def schedule_rounds(groups: Sequence[str], *, capacity: int) -> List[List[str]]:
     reconciliation request; with a capacity of four and six groups, `C(6,2) = 15` pairs are covered
     by far fewer than fifteen rounds because each round of four covers six of them at once.
 
-    Deterministic and greedy, in index order: take the first uncovered pair, seed a round with it,
-    then admit further groups while they fit. Every admitted group covers its pairs with everything
-    already in the round. It terminates because each round covers at least the pair that seeded it.
+    Deterministic and greedy: take the first uncovered pair, seed a round with it, then admit
+    whichever remaining group would cover the MOST still-uncovered pairs, ties broken by index. Each
+    round therefore carries as much new comparison as its capacity allows, which matters because
+    every round is a whole request against a per-minute allowance — a schedule that filled rounds in
+    index order covers the same pairs and pays for roughly twice as many of them.
+
+    It terminates because each round covers at least the pair that seeded it.
 
     NOT CAPPED HERE. A schedule that quietly stopped at N rounds would report `completed` over a
     comparison nobody made, which is the exact shape §3 forbids. Bounding the work is the caller's
@@ -394,22 +398,32 @@ def schedule_rounds(groups: Sequence[str], *, capacity: int) -> List[List[str]]:
     if len(unique) <= room:
         return [list(unique)]
 
+    rank = {name: i for i, name in enumerate(unique)}
+
+    def key(a: str, b: str) -> Tuple[str, str]:
+        return (a, b) if rank[a] < rank[b] else (b, a)
+
     covered: set = set()
     rounds: List[List[str]] = []
     for left in range(len(unique)):
         for right in range(left + 1, len(unique)):
-            if (unique[left], unique[right]) in covered:
+            if key(unique[left], unique[right]) in covered:
                 continue
             members = [unique[left], unique[right]]
-            for other in unique:
-                if len(members) >= room:
+            while len(members) < room:
+                best, best_gain = None, 0
+                for other in unique:
+                    if other in members:
+                        continue
+                    gain = sum(1 for m in members if key(other, m) not in covered)
+                    if gain > best_gain:
+                        best, best_gain = other, gain
+                if best is None:
                     break
-                if other not in members:
-                    members.append(other)
+                members.append(best)
             for i in range(len(members)):
                 for j in range(i + 1, len(members)):
-                    a, b = members[i], members[j]
-                    covered.add((a, b) if unique.index(a) < unique.index(b) else (b, a))
+                    covered.add(key(members[i], members[j]))
             rounds.append(members)
     return rounds
 

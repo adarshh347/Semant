@@ -185,6 +185,20 @@ def refs_by_text(payload_rows: Sequence[Any], produced: Sequence[Any], *,
     return out
 
 
+def _payload_list(data: Mapping[str, Any], singular: str) -> List[Any]:
+    """One frozen payload per REQUEST, whether the fixture wrote one or several.
+
+    HARNESS-003E batches the architect and the operationalizer, so a fixture that declares a single
+    payload is declaring a pass that fits in one request — which is true of the two fixtures written
+    before the batching and false of one written to cross a batch boundary. The plural key wins
+    where a fixture declares it; the singular stays readable for the ones that do not need it.
+    """
+    plural = data.get(f"{singular}s")
+    if isinstance(plural, list):
+        return list(plural)
+    return [data[singular]]
+
+
 def council_for(name: str, *, inquiry_id: str = FROZEN_INQUIRY) -> Council:
     """A `Council` whose three passes resolve their markers as the pipeline reaches them.
 
@@ -196,13 +210,17 @@ def council_for(name: str, *, inquiry_id: str = FROZEN_INQUIRY) -> Council:
     dissection_rows = [row for payload in data["dissector_payloads"]
                        for row in (payload.get("atoms") or [])]
 
+    architect_payloads = _payload_list(data, "architect_payload")
+
     class _LazyArchitect(FrozenRelationArchitect):
         def __init__(self):
-            super().__init__({})
+            super().__init__([])
 
         def assemble(self, atoms, units, *, inquiry_id, attempt=1):
-            self._frozen = resolve_refs(copy.deepcopy(data["architect_payload"]), ATOM_MARKER,
-                                        refs_by_text(dissection_rows, atoms, id_attr="atom_id"))
+            self._frozen = [resolve_refs(copy.deepcopy(p), ATOM_MARKER,
+                                         refs_by_text(dissection_rows, atoms, id_attr="atom_id"))
+                            for p in architect_payloads]
+            self._served = 0
             return super().assemble(atoms, units, inquiry_id=inquiry_id, attempt=attempt)
 
     class _LazyOperationalizer(FrozenEpistemicOperationalizer):

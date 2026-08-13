@@ -60,19 +60,25 @@ def test_the_completion_reservation_is_part_of_the_request_size():
 
 # ── the live refusal, caught by arithmetic ───────────────────────────────────
 
-def _live_shaped_request():
-    """The exact request shape HARNESS-003D's fold rehearsal was refused for.
+#: How many atoms the refused request actually carried. The architect used to cap one call at forty
+#: — `MAX_ATOMS_PER_CALL`, removed by this lane — so the live fold rehearsal sent FORTY, not the 182
+#: the 003D finding attributes those 9,827 tokens to. The cap was never a sizing rule; its own
+#: comment called forty "what fits under an 8000-token allowance", and the provider disagreed.
+LIVE_ATOMS_IN_THE_REFUSED_REQUEST = 40
 
-    `MAX_ATOMS_PER_CALL` is 40, so the architect sent FORTY atoms — not the 182 the 003D finding
-    attributes the 9,827 tokens to. The atoms come from the frozen fixture at the density the live
-    dissection produced, repeated to reach the cap the live run actually hit.
+
+def _live_shaped_request():
+    """The request shape HARNESS-003D's fold rehearsal was refused for.
+
+    The atoms come from the frozen fixture at the density the live dissection produced, repeated to
+    reach the count the live run actually sent.
     """
     graph = F.dissolve_fixture("fold-rehearsal")
     units = {u.source_unit_id: u for u in graph.source_units}
     atoms = list(graph.semantic_atoms)
-    while len(atoms) < architect.MAX_ATOMS_PER_CALL:
+    while len(atoms) < LIVE_ATOMS_IN_THE_REFUSED_REQUEST:
         atoms = atoms + atoms
-    atoms = atoms[:architect.MAX_ATOMS_PER_CALL]
+    atoms = atoms[:LIVE_ATOMS_IN_THE_REFUSED_REQUEST]
     return architect.build_prompt(atoms, units), atoms, units
 
 
@@ -88,6 +94,10 @@ def test_the_live_413_request_is_refused_before_transport():
     Two separate things are proved. The bound sits ABOVE what the provider actually counted, which
     is the direction the sizing must err in — an estimate under 9,827 would have called that request
     sendable. And the estimate is over the allowance, so no plan may emit it as one batch.
+
+    Measured against THIS lane's prompt, which is compact JSON and about a fifth smaller than the
+    one the live run sent. Forty atoms is still unsendable with the fifth taken off, which is the
+    fact worth having: the compaction buys room inside a batch, not a way back to one call.
     """
     prompt, _, _ = _live_shaped_request()
     estimate = sizing.estimate_request_tokens(architect.SYSTEM_PROMPT, prompt,
@@ -99,25 +109,19 @@ def test_the_live_413_request_is_refused_before_transport():
 
 
 def test_the_same_atoms_do_fit_once_they_are_planned():
-    """The negative control for the test above: refusing everything would also pass it."""
-    prompt, atoms, units = _live_shaped_request()
-    items = [sizing.SizedItem(ref=a.atom_id, text=str(architect.atom_digest([a], units)))
-             for a in atoms]
-    # De-duplicated, because the shape above repeats the fixture's atoms to reach the live cap and
-    # a plan refuses to make one item primary twice.
-    seen, unique = set(), []
-    for item in items:
-        if item.ref not in seen:
-            seen.add(item.ref)
-            unique.append(item)
-    plan = sizing.plan(unique, inquiry_id=INQUIRY, pass_name=PASS, unit="semantic_atom",
-                       fixed_text=architect.SYSTEM_PROMPT + prompt[:2000],
-                       completion=sizing.CompletionPolicy(reserved_tokens=1536, per_item_tokens=64,
-                                                          minimum_tokens=1024,
-                                                          maximum_tokens=4096))
+    """The negative control for the test above: refusing everything would also pass it.
+
+    Driven through the architect's own planner rather than a hand-built one, so what is proved is
+    that the production partition sends these atoms rather than that some partition could.
+    """
+    graph = F.dissolve_fixture("fold-rehearsal")
+    atoms = list(graph.semantic_atoms)
+    plan = architect.RelationArchitect().plan_batches(atoms, inquiry_id=INQUIRY)
     assert plan.batches
     assert all(b.sendable for b in plan.batches)
     assert plan.record.every_item_is_primary_once
+    for batch in plan.batches:
+        assert batch.assignment.estimated_total_tokens <= sizing.Allowance().usable_tokens
 
 
 # ── the plan ─────────────────────────────────────────────────────────────────

@@ -1148,6 +1148,7 @@
     ],
     "inquiry_id": "inq_77f871886f15",
     "notes": [
+      "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 80 per item for the answer (ceiling 4096); 4142 token(s) of room per request for 18 item(s)",
       "claim 1: typed 'interpretation' where its atoms default to 'attribute' with no reason given",
       "dissolution: completed — every pass completed and the ledger is whole"
     ],
@@ -1380,7 +1381,7 @@
         "call_count": 1,
         "capacity_waits": [],
         "completion_tokens": null,
-        "detail": "13 claim(s) and 7 relation(s) over 18 atoms",
+        "detail": "13 claim(s) and 7 relation(s) over 18 atoms in 1 batch(es)",
         "duration_ms": null,
         "finish_reasons": [],
         "inputs": 18,
@@ -2334,7 +2335,7 @@
     "created_at": "2026-08-09T00:00:00+00:00",
     "frame_hash": "064067c87bd5d7edb8267fa36e5b66ff59ee5c4e8c3147a81a48db9224edece9",
     "frame_producer": "inquiry/deterministic-v1",
-    "graph_hash": "sig_6be46eacb63afbd6",
+    "graph_hash": "sig_cd2360e8e78af57a",
     "mode": "auto",
     "notes": [],
     "producer": "inquiry_session/coordinator-v1",
@@ -2718,14 +2719,78 @@
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "relation_architect · completed · 13 claim(s) and 7 relation(s) over 18 atoms · 1 call(s)",
+          "detail": "18 atom(s), ~6595 token(s)",
+          "duration_ms": null,
+          "index": 1,
+          "label": "relating batch 1 of 1",
+          "outcome": "started",
+          "refs": [
+            "atm_af7111df9136",
+            "atm_e822b0b67164",
+            "atm_1e1cf91fa734",
+            "atm_5de911909832",
+            "atm_e1c3d4f7faca",
+            "atm_378497de8185",
+            "atm_b8f8a948f307",
+            "atm_e6e8611a588a",
+            "atm_5cbf64cd3d57",
+            "atm_c4a9ae0bcd1c",
+            "atm_7ce0e5c79f2f",
+            "atm_b3495142b425",
+            "atm_f70a94c25d03",
+            "atm_1a13b92ad308",
+            "atm_b891ea4c4191",
+            "atm_eb8c0a26b1fd",
+            "atm_f654faa57e5b",
+            "atm_e6f854d48467"
+          ],
+          "started_at": null,
+          "substage_id": "stg_8f637bb65b2b",
+          "total": 1
+        },
+        {
+          "at": "2026-08-09T00:00:00+00:00",
+          "completed_at": null,
+          "detail": "13 claim(s) from 18 atom(s)",
+          "duration_ms": null,
+          "index": 1,
+          "label": "relating batch 1 of 1",
+          "outcome": "completed",
+          "refs": [
+            "atm_af7111df9136",
+            "atm_e822b0b67164",
+            "atm_1e1cf91fa734",
+            "atm_5de911909832",
+            "atm_e1c3d4f7faca",
+            "atm_378497de8185",
+            "atm_b8f8a948f307",
+            "atm_e6e8611a588a",
+            "atm_5cbf64cd3d57",
+            "atm_c4a9ae0bcd1c",
+            "atm_7ce0e5c79f2f",
+            "atm_b3495142b425",
+            "atm_f70a94c25d03",
+            "atm_1a13b92ad308",
+            "atm_b891ea4c4191",
+            "atm_eb8c0a26b1fd",
+            "atm_f654faa57e5b",
+            "atm_e6f854d48467"
+          ],
+          "started_at": null,
+          "substage_id": "stg_ab9e25e6c0f1",
+          "total": 1
+        },
+        {
+          "at": "2026-08-09T00:00:00+00:00",
+          "completed_at": null,
+          "detail": "relation_architect · completed · 13 claim(s) and 7 relation(s) over 18 atoms in 1 batch(es) · 1 call(s)",
           "duration_ms": null,
           "index": 3,
           "label": "building claims and the relations between them",
           "outcome": "completed",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_8a4557a8ef4e",
+          "substage_id": "stg_f729fa58181b",
           "total": 6
         },
         {
@@ -2738,7 +2803,7 @@
           "outcome": "started",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_bc551fec61ce",
+          "substage_id": "stg_ae854fbb1796",
           "total": 6
         },
         {
@@ -2751,7 +2816,7 @@
           "outcome": "completed",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_47cd45f27820",
+          "substage_id": "stg_2676ef086257",
           "total": 6
         },
         {
@@ -2764,7 +2829,7 @@
           "outcome": "started",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_e12b3894e91c",
+          "substage_id": "stg_4897c0a6a269",
           "total": 6
         },
         {
@@ -2777,7 +2842,7 @@
           "outcome": "completed",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_569ea73f2fdd",
+          "substage_id": "stg_7f994f1db2e9",
           "total": 6
         }
       ],
