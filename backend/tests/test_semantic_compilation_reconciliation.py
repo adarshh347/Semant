@@ -376,7 +376,24 @@ def test_one_batch_needs_no_reconciliation_and_says_why():
     assert receipt.batch_plan.pairs == []
     assert edges
     assert any("nothing across" in n for n in notes)
+    assert any("1 of 1 batch(es) produced a claim" in n for n in notes)
     assert receipt.outcome is PassOutcome.COMPLETED
+
+
+def test_batches_that_returned_nothing_are_named_rather_than_counted_as_one_batch():
+    """The live control planned THREE batches, two were refused for capacity, and the note said
+    "one batch" three lines under a plan saying three — which reads as the plan contradicting
+    itself rather than as two requests having failed."""
+    atoms, units, plan = _two_batch_material()
+    # Only the first batch answers; the rest come back with nothing.
+    local = [{"claims": [claim_row("c0", plan.batches[0].assignment.primary_refs[:1],
+                                   text="the only claim anybody built")], "edges": []}]
+    _c, _e, _r, notes, receipt = _Council(local, []).assemble(atoms, units, inquiry_id=INQUIRY)
+
+    total = len(plan.batches)
+    assert receipt.batch_plan.pairs == []
+    assert any(f"1 of {total} batch(es) produced a claim" in n for n in notes), notes
+    assert any(f"the other {total - 1} returned none" in n for n in notes), notes
 
 
 # ── what a card carries ──────────────────────────────────────────────────────

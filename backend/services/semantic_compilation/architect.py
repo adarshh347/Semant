@@ -743,10 +743,19 @@ class RelationArchitect(ModelPass):
         groups = [b.batch_id for b in plan.batches if cards_by_group.get(b.batch_id)]
 
         if len(groups) < 2:
+            # WHY THERE IS NOTHING ACROSS, not just that there is. The live control planned THREE
+            # batches and two of them were refused for capacity, so one batch's claims were all
+            # there was to reconcile — and the note said "one batch" three lines under a plan
+            # saying three, which reads as the plan contradicting itself rather than as two
+            # requests having failed.
+            silent = len(plan.batches) - len(groups)
             notes.append(
-                "one batch produced claims, so every claim was already in front of the model "
-                "together and there is no pair to reconcile. The coverage matrix is empty because "
-                "there is nothing across, not because nothing was compared.")
+                f"{len(groups)} of {len(plan.batches)} batch(es) produced a claim"
+                + (f"; the other {silent} returned none, so there was no second group to compare "
+                   f"against" if silent else
+                   ", so every claim was already in front of the model together")
+                + ". The coverage matrix is empty because there is nothing across, not because "
+                  "nothing was compared.")
             return [], [], []
 
         fixed = reconciliation.fixed_prompt_text()
@@ -867,15 +876,21 @@ class RelationArchitect(ModelPass):
             return PassOutcome.EMPTY, "no architect request could be sent"
         if all(r.outcome is PassOutcome.UNAVAILABLE for r in receipts):
             return PassOutcome.UNAVAILABLE, "no batch reached the architect"
+        # REQUESTS, NOT BATCHES. `receipts` holds one entry per REQUEST, and the reconciliation
+        # rounds are requests too — the live fold rehearsal reported "12 of 27 architect batch(es)"
+        # over a plan that says ten, which sends a reader looking for seventeen batches that do not
+        # exist. The count is right; the noun was wrong.
         if any(r.truncated for r in receipts):
             return (PassOutcome.TRUNCATED,
                     f"{sum(1 for r in receipts if r.truncated)} of {len(receipts)} architect "
-                    f"batch(es) hit the completion budget after {len(claims)} claim(s). One "
-                    f"truncated batch is a truncated pass: what it produced is a prefix.")
+                    f"request(s) — {len(record.batches)} batch(es) plus {len(record.rounds)} "
+                    f"reconciliation round(s) — hit the completion budget after {len(claims)} "
+                    f"claim(s). One truncated request is a truncated pass: what it produced is a "
+                    f"prefix.")
         failed = [r for r in receipts if r.outcome is PassOutcome.ERROR]
         if failed:
             return (PassOutcome.ERROR,
-                    f"{len(failed)} of {len(receipts)} architect batch(es) failed: "
+                    f"{len(failed)} of {len(receipts)} architect request(s) failed: "
                     f"{failed[0].detail}")
         if not claims:
             return PassOutcome.EMPTY, "no claim survived anchoring to an atom"

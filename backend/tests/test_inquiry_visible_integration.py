@@ -243,6 +243,24 @@ def test_the_compiler_counts_line_names_the_dissolution(wired):
         assert noun in compiler["counts_line"], compiler["counts_line"]
 
 
+def test_the_counts_line_names_the_relations_the_architect_drew(wired):
+    """HARNESS-003E. The line declared source units, atoms, claims, observables and remainder — and
+    never the RELATIONS, which is the one object the relation architect exists to produce.
+
+    It went unnoticed because no live run had ever produced a claim, so the missing number was
+    always going to be zero beside five other zeroes. The fold rehearsal produced 105 claims and the
+    sentence a person reads to find out what happened still said nothing about how many edges had
+    been drawn between them.
+    """
+    session, *_ = _run(wired)
+    compiler = _stage(session, "compiler")
+    edges = len(session["graph"]["claim_edges"])
+
+    assert edges, "this fixture draws no relation, so the test proves nothing"
+    assert compiler["output_counts"]["relations"] == edges
+    assert f"{edges} relations" in compiler["counts_line"], compiler["counts_line"]
+
+
 def test_a_replay_reports_no_waiting_rather_than_zero(wired):
     """Nothing paced a replay. `waited_ms: 0` would say a pacer answered and reported no wait, and
     a rehearsal that could not tell those apart would report an unpaced run as one that never hit

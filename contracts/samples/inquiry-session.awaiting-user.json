@@ -1338,7 +1338,7 @@
       "call_topology": "replay",
       "calls": [],
       "completed_at": "2026-08-09T00:00:00+00:00",
-      "counts_line": "8 reading blocks in → 0 atoms · 11 claims · 6 observables · 2 remainder · 0 source units out",
+      "counts_line": "8 reading blocks in → 0 atoms · 11 claims · 6 observables · 8 relations · 2 remainder · 0 source units out",
       "detail": "11 claims · 1 causal_hypothesis · 1 comparison · 2 entity · 1 generative_rule · 1 hierarchy · 1 historical_or_sourced · 1 interpretation · 2 spatial_relation · 1 unknown · 6 observables requested, none run · 1 decision candidate · 2 meanings measurement will not exhaust",
       "duration_ms": 0.0,
       "event_id": "stg_71ed23e7fa79",
@@ -1354,6 +1354,7 @@
         "atoms": 0,
         "claims": 11,
         "observables": 6,
+        "relations": 8,
         "remainder": 2,
         "source units": 0
       },

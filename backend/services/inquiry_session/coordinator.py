@@ -481,9 +481,15 @@ def _compile(session: SemanticInquirySession, reading: Any, stages: Stages, ledg
                   # phase's central artifact — the coverage ledger — outside the sentence a person
                   # reads to find out what happened.
                   input_counts={"reading blocks": blocks},
+                  # RELATIONS ARE IN THE LINE SINCE HARNESS-003E, and their absence was invisible
+                  # only because no live run had ever produced a claim. The fold rehearsal produced
+                  # 105 of them and the sentence a person reads to find out what happened said
+                  # nothing at all about how many the RELATION architect had drawn between them —
+                  # which is the one number that pass exists to produce.
                   output_counts={"source units": len(graph.source_units),
                                  "atoms": len(graph.semantic_atoms),
                                  "claims": len(graph.claims),
+                                 "relations": len(graph.claim_edges),
                                  "observables": len(graph.observables),
                                  "remainder": len(graph.semantic_remainder)},
                   call_topology=(receipt.call_topology.value if receipt

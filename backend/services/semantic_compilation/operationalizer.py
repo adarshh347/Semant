@@ -741,8 +741,10 @@ class EpistemicOperationalizer(ModelPass):
         if any(r.truncated for r in receipts):
             return (PassOutcome.TRUNCATED,
                     f"{sum(1 for r in receipts if r.truncated)} of {len(receipts)} "
-                    f"operationalization request(s) hit the completion budget after "
-                    f"{len(observables)} observable(s). One truncated batch is a truncated pass.")
+                    f"operationalization request(s) — {len(record.batches)} batch(es) plus "
+                    f"{len(record.rounds)} cross-batch round(s) — hit the completion budget after "
+                    f"{len(observables)} observable(s). One truncated request is a truncated "
+                    f"pass.")
         failed = [r for r in receipts if r.outcome is PassOutcome.ERROR]
         if failed:
             return (PassOutcome.ERROR,

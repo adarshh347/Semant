@@ -1150,7 +1150,7 @@
     "notes": [
       "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 80 per item for the answer (ceiling 4096); 4142 token(s) of room per request for 18 item(s)",
       "claim 1: typed 'interpretation' where its atoms default to 'attribute' with no reason given",
-      "one batch produced claims, so every claim was already in front of the model together and there is no pair to reconcile. The coverage matrix is empty because there is nothing across, not because nothing was compared.",
+      "1 of 1 batch(es) produced a claim, so every claim was already in front of the model together. The coverage matrix is empty because there is nothing across, not because nothing was compared.",
       "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 160 per item for the answer (ceiling 4096); 4075 token(s) of room per request for 13 item(s)",
       "one batch answered for every claim, so every fork was already visible in one request. The coverage matrix is empty because there is nothing across, not because nothing was compared.",
       "dissolution: completed — every pass completed and the ledger is whole"
@@ -2385,7 +2385,7 @@
     "created_at": "2026-08-09T00:00:00+00:00",
     "frame_hash": "064067c87bd5d7edb8267fa36e5b66ff59ee5c4e8c3147a81a48db9224edece9",
     "frame_producer": "inquiry/deterministic-v1",
-    "graph_hash": "sig_c21e9bd55e12a5f6",
+    "graph_hash": "sig_6b365127e0c30125",
     "mode": "auto",
     "notes": [],
     "producer": "inquiry_session/coordinator-v1",
@@ -2517,7 +2517,7 @@
       "call_topology": "council_passes",
       "calls": [],
       "completed_at": "2026-08-09T00:00:00+00:00",
-      "counts_line": "7 reading blocks in → 18 atoms · 13 claims · 6 observables · 4 remainder · 11 source units out",
+      "counts_line": "7 reading blocks in → 18 atoms · 13 claims · 6 observables · 7 relations · 4 remainder · 11 source units out",
       "detail": "13 claims · 1 attribute · 2 causal_hypothesis · 3 comparison · 2 entity · 1 generative_rule · 1 historical_or_sourced · 2 interpretation · 1 spatial_relation · 6 observables requested, none run · 1 decision candidate · 4 meanings measurement will not exhaust",
       "duration_ms": 0.0,
       "event_id": "stg_6729440cbd98",
@@ -2533,6 +2533,7 @@
         "atoms": 18,
         "claims": 13,
         "observables": 6,
+        "relations": 7,
         "remainder": 4,
         "source units": 11
       },
