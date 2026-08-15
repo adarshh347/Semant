@@ -299,6 +299,61 @@ def capacity_wait_view(raw: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
+def batch_plan_view(raw: Any) -> Optional[Dict[str, Any]]:
+    """How a pass was cut into sendable requests, and what that cost in coverage. HARNESS-003E.
+
+    `None` on a pass that was never partitioned — the ledger and the audit make no request at all,
+    and an empty plan on them would say a partition happened and found one batch.
+
+    THE UNEXAMINED PAIRS TRAVEL IN FULL and the dispositions travel as counts. Opposite decisions
+    about the same kind of object, for one reason: a pair nobody compared is a relation nobody
+    looked for, and "these two were never put in front of the model because the budget stopped the
+    run" is a sentence a person can act on. One hundred and eighty `used` atoms is a number. The
+    graph itself carries every disposition for anyone who wants them.
+    """
+    if not isinstance(raw, Mapping):
+        return None
+    batches = [b for b in _list(raw.get("batches")) if isinstance(b, Mapping)]
+    pairs = [p for p in _list(raw.get("pairs")) if isinstance(p, Mapping)]
+    dispositions: Dict[str, int] = {}
+    for entry in _list(raw.get("dispositions")):
+        if isinstance(entry, Mapping):
+            key = _s(entry.get("disposition"))
+            dispositions[key] = dispositions.get(key, 0) + 1
+    sizes = [int(b.get("estimated_prompt_tokens") or 0)
+             + int(b.get("requested_completion_tokens") or 0) for b in batches]
+    return {
+        "plan_id": _s(raw.get("plan_id")),
+        "plan_version": _s(raw.get("plan_version")),
+        "unit": _s(raw.get("unit")),
+        "total_items": raw.get("total_items") if isinstance(raw.get("total_items"), int) else None,
+        "batches": len(batches),
+        "unsendable_batches": sum(1 for b in batches if b.get("sendable") is False),
+        "allowance_tokens": next((b.get("allowance_tokens") for b in batches
+                                  if isinstance(b.get("allowance_tokens"), int)), None),
+        "largest_request_tokens": max(sizes) if sizes else None,
+        "pairs_total": len(pairs),
+        "pairs_examined": sum(1 for p in pairs if p.get("examined") is True),
+        "unexamined_pairs": [{"left": _s(p.get("left_batch_id")),
+                              "right": _s(p.get("right_batch_id")),
+                              "reason": _s(p.get("reason"))}
+                             for p in pairs if p.get("examined") is not True],
+        "rounds": [{"round_id": _s(r.get("round_id")),
+                    "index": r.get("index"), "total": r.get("total"),
+                    "groups": len(_list(r.get("group_ids"))),
+                    "outcome": _s(r.get("outcome")),
+                    "added_edges": r.get("added_edges"),
+                    "added_claims": r.get("added_claims"),
+                    "duplicate_claims": r.get("duplicate_claims"),
+                    "detail": _s(r.get("detail"))}
+                   for r in _list(raw.get("rounds")) if isinstance(r, Mapping)],
+        "dispositions": dispositions,
+        "duplicates_merged": len([d for d in _list(raw.get("duplicate_map"))
+                                  if isinstance(d, Mapping)]),
+        "notes": [_s(n) for n in _list(raw.get("notes"))],
+    }
+
+
 def pass_view(raw: Mapping[str, Any]) -> Dict[str, Any]:
     """One pass of the council: which mind, what it cost, and how it ended IN ITS OWN WORD.
 
@@ -335,6 +390,7 @@ def pass_view(raw: Mapping[str, Any]) -> Dict[str, Any]:
         "outputs": raw.get("outputs") if isinstance(raw.get("outputs"), int) else None,
         "detail": _s(raw.get("detail")),
         "notes": [_s(n) for n in _list(raw.get("notes"))],
+        "batch_plan": batch_plan_view(raw.get("batch_plan")),
     }
 
 

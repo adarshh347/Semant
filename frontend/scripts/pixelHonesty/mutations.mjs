@@ -753,6 +753,58 @@ export const MUTATIONS = [
         expect: 'TestCoverageSummaryIsTheBackends prints the backend\'s own numbers, with lost as '
             + 'its own',
     },
+
+    // ── HARNESS-003E · the partition, and the pairs nobody compared ─────────
+    {
+        id: 'inquiry/short-pair-coverage-unmarked',
+        guarantee: 'a pass that compared only some of its batch pairs is MARKED as short, rather '
+            + 'than leaving a reader to notice that two numerals differ',
+        file: 'src/inquiryWorkbench/ArtifactLedger.jsx',
+        find: "                                className={pass.batch_plan.pairs_complete === false\n"
+            + "                                    ? 'iw-pass-pairs--short' : ''}",
+        replace: "                                className={''}",
+        suites: ['src/inquiryWorkbench/batchedCouncil.dom.test.jsx'],
+        expect: 'TestEveryPairOfBatchesIsAccountedFor marks short coverage rather than leaving it '
+            + 'to be read off two numerals',
+    },
+    {
+        id: 'inquiry/unexamined-pairs-counted-not-named',
+        guarantee: 'every pair nothing compared is named WITH ITS REASON — a relation nobody '
+            + 'looked for is a fact a person can act on, and a count of them is not',
+        file: 'src/inquiryWorkbench/ArtifactLedger.jsx',
+        find: '                                    {p.reason ? <span className="iw-quiet"> · {p.reason}</span>\n'
+            + '                                        : null}',
+        replace: '                                    {null}',
+        suites: ['src/inquiryWorkbench/batchedCouncil.dom.test.jsx'],
+        expect: 'TestEveryPairOfBatchesIsAccountedFor prints every unexamined pair with the reason '
+            + 'it was not examined',
+    },
+    {
+        id: 'inquiry/one-batch-reads-as-nothing-compared',
+        guarantee: 'one batch means there was nothing ACROSS, which is not a comparison that came '
+            + 'up short; `0 of 0` in the same place would report a whole pass as an empty one',
+        file: 'src/inquiryWorkbench/ArtifactLedger.jsx',
+        find: '                            <li data-fact="pairs-none" className="iw-quiet">\n'
+            + '                                one batch, so there was nothing across to compare\n'
+            + '                            </li>',
+        replace: '                            <li data-fact="pairs" className="iw-quiet">\n'
+            + '                                0 of 0 batch pairs compared across 0 rounds\n'
+            + '                            </li>',
+        suites: ['src/inquiryWorkbench/batchedCouncil.dom.test.jsx'],
+        expect: 'TestEveryPairOfBatchesIsAccountedFor says one batch had nothing across rather '
+            + 'than printing 0 of 0',
+    },
+    {
+        id: 'inquiry/a-plan-invented-for-an-unpartitioned-pass',
+        guarantee: 'a pass that was never partitioned carries NO plan; an empty one would report a '
+            + 'partition that never happened on the ledger and the audit, which make no request',
+        file: 'src/inquiryWorkbench/inquiryContract.js',
+        find: "    if (!raw || typeof raw !== 'object') return null;",
+        replace: "    if (!raw || typeof raw !== 'object') raw = {};",
+        suites: ['src/inquiryWorkbench/batchedCouncil.dom.test.jsx'],
+        expect: 'TestTheBatchPlanIsReadAsSent is null where the backend sent nothing, and null is '
+            + 'not an empty plan',
+    },
 ];
 
 // ── applying a lie ─────────────────────────────────────────────────────────

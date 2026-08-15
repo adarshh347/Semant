@@ -1378,4 +1378,99 @@ export function pacedOutFixture() {
     };
 }
 
+/**
+ * 18. The council with its passes BATCHED, and the coverage matrix that makes the batching honest.
+ *
+ * HARNESS-003E. One request over every atom could not be sent — 9,827 tokens against an 8,000
+ * allowance — so the architect works in batches. Batching alone would make every relation crossing
+ * a boundary structurally invisible, so the pass also compares every PAIR of batches, and the
+ * matrix is what says whether it did.
+ *
+ * The architect here is whole: four batches, all six pairs compared. The operationalizer is the
+ * case that matters — two of its three pairs were never put in front of the model, so it is `thin`
+ * and it names them. A surface that rendered `4 of 6` and `1 of 3` alike would turn a reported
+ * limit back into the silence this whole lane exists to remove.
+ */
+export function batchedCouncilFixture() {
+    const s = councilFixture();
+    const passes = s.graph.passes.map((p) => {
+        if (p.pass_name === 'relation_architect') {
+            return {
+                ...p,
+                call_count: 8, transport_attempts: 9,
+                finish_reasons: ['stop', 'stop', 'stop', 'stop', 'stop', 'stop', 'stop', 'stop'],
+                detail: '19 claim(s) and 11 relation(s) over 74 atoms in 4 batch(es), with 6 of 6 '
+                    + 'batch pair(s) compared across 4 reconciliation round(s)',
+                batch_plan: {
+                    plan_id: 'plan_arch01', plan_version: 'semantic-batch-plan.v1',
+                    unit: 'semantic_atom', total_items: 74,
+                    batches: 4, unsendable_batches: 0,
+                    allowance_tokens: 8000, largest_request_tokens: 7104,
+                    pairs_total: 6, pairs_examined: 6, unexamined_pairs: [],
+                    rounds: [
+                        {
+                            round_id: 'rnd_a1', index: 1, total: 4, groups: 2, outcome: 'completed',
+                            added_edges: 3, added_claims: 1, duplicate_claims: 1, detail: '',
+                        },
+                        {
+                            round_id: 'rnd_a2', index: 2, total: 4, groups: 2, outcome: 'completed',
+                            added_edges: 2, added_claims: 0, duplicate_claims: 0, detail: '',
+                        },
+                        {
+                            round_id: 'rnd_a3', index: 3, total: 4, groups: 2, outcome: 'completed',
+                            added_edges: 1, added_claims: 1, duplicate_claims: 0, detail: '',
+                        },
+                        {
+                            round_id: 'rnd_a4', index: 4, total: 4, groups: 2, outcome: 'completed',
+                            added_edges: 0, added_claims: 0, duplicate_claims: 0, detail: '',
+                        },
+                    ],
+                    dispositions: { used: 61, orphan: 13 },
+                    duplicates_merged: 1,
+                    notes: ['sized against a 8000-token allowance, holding back 800 as margin'],
+                },
+            };
+        }
+        if (p.pass_name === 'epistemic_operationalizer') {
+            return {
+                ...p,
+                outcome: 'thin', call_count: 4, transport_attempts: 4,
+                detail: '2 of 3 claim-group pair(s) were never compared, so any fork between them '
+                    + 'was invisible to this pass',
+                batch_plan: {
+                    plan_id: 'plan_ops01', plan_version: 'semantic-batch-plan.v1',
+                    unit: 'claim', total_items: 19,
+                    batches: 3, unsendable_batches: 0,
+                    allowance_tokens: 8000, largest_request_tokens: 6820,
+                    pairs_total: 3, pairs_examined: 1,
+                    unexamined_pairs: [
+                        {
+                            left: 'bat_o1', right: 'bat_o3',
+                            reason: 'the run stopped before this pair\'s round: the declared '
+                                + 'wall-clock budget or the transport attempt bound ended the pass',
+                        },
+                        {
+                            left: 'bat_o2', right: 'bat_o3',
+                            reason: 'the run stopped before this pair\'s round: the declared '
+                                + 'wall-clock budget or the transport attempt bound ended the pass',
+                        },
+                    ],
+                    rounds: [
+                        {
+                            round_id: 'rnd_o1', index: 1, total: 3, groups: 2, outcome: 'completed',
+                            added_edges: 0, added_claims: 0, duplicate_claims: 0, detail: '',
+                        },
+                    ],
+                    dispositions: { operationalized: 11, semantic_remainder: 5,
+                        not_investigated: 3 },
+                    duplicates_merged: 0,
+                    notes: [],
+                },
+            };
+        }
+        return p;
+    });
+    return { ...s, graph: { ...s.graph, passes } };
+}
+
 export default consultFixture;

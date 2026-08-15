@@ -53,6 +53,17 @@ FIXTURE_DIR = Path(__file__).resolve().parent / "semantic_dissolution"
 #: The rehearsal shape, and a control that shares no noun, no cue and no capability pattern with it.
 FIXTURES: Tuple[str, ...] = ("fold-rehearsal", "unrelated-weave")
 
+#: HARNESS-003E's fixture, kept OUT of `FIXTURES` deliberately. The two above are a matched pair —
+#: one rehearsal and one control, asserted against each other — and a third member would make
+#: "the two fixtures are genuinely different inquiries" a claim about something else. This one is
+#: driven by its own suite, and it earns its place there: it is the fixture whose one important
+#: relation lies between two batches rather than inside either.
+CROSS_BOUNDARY: str = "cross-boundary-rail"
+
+#: Every fixture on disk. What the generality scan reads — a subject a fixture names is a subject
+#: no production source may name, whichever suite the fixture belongs to.
+ALL_FIXTURES: Tuple[str, ...] = FIXTURES + (CROSS_BOUNDARY,)
+
 UNIT_MARKER = "$UNIT:"
 ATOM_MARKER = "$ATOM:"
 CLAIM_MARKER = "$CLAIM:"
@@ -70,9 +81,9 @@ def load(name: str) -> Dict[str, Any]:
 
 
 def topic_nouns() -> List[str]:
-    """Every topic noun both fixtures declare. The generality scan's input."""
+    """Every topic noun ANY fixture declares. The generality scan's input."""
     words: List[str] = []
-    for name in FIXTURES:
+    for name in ALL_FIXTURES:
         for word in load(name).get("topic_nouns") or ():
             if word not in words:
                 words.append(str(word))
@@ -185,6 +196,20 @@ def refs_by_text(payload_rows: Sequence[Any], produced: Sequence[Any], *,
     return out
 
 
+def _payload_list(data: Mapping[str, Any], singular: str) -> List[Any]:
+    """One frozen payload per REQUEST, whether the fixture wrote one or several.
+
+    HARNESS-003E batches the architect and the operationalizer, so a fixture that declares a single
+    payload is declaring a pass that fits in one request — which is true of the two fixtures written
+    before the batching and false of one written to cross a batch boundary. The plural key wins
+    where a fixture declares it; the singular stays readable for the ones that do not need it.
+    """
+    plural = data.get(f"{singular}s")
+    if isinstance(plural, list):
+        return list(plural)
+    return [data[singular]]
+
+
 def council_for(name: str, *, inquiry_id: str = FROZEN_INQUIRY) -> Council:
     """A `Council` whose three passes resolve their markers as the pipeline reaches them.
 
@@ -196,27 +221,168 @@ def council_for(name: str, *, inquiry_id: str = FROZEN_INQUIRY) -> Council:
     dissection_rows = [row for payload in data["dissector_payloads"]
                        for row in (payload.get("atoms") or [])]
 
+    architect_payloads = _payload_list(data, "architect_payload")
+    reconciliation_payloads = list(data.get("reconciliation_payloads") or [])
+
     class _LazyArchitect(FrozenRelationArchitect):
+        """One frozen answer, served to each batch as the part of it that batch could have given.
+
+        HARNESS-003E. A fixture author cannot know which atoms the sizing will put in which request
+        — the partition is content-derived and a fixture that guessed it would break the day a word
+        changed. So the whole answer is written once and FILTERED per request: a claim survives in a
+        batch only if every atom it names is in front of that batch.
+
+        Which is also the property under test. A claim whose atoms lie in two batches survives in
+        NEITHER, exactly as it would live: no local request ever saw both halves. Recovering it is
+        the reconciliation's job, and `reconciliation_payloads` is where the fixture says so.
+        """
+
         def __init__(self):
-            super().__init__({})
+            super().__init__([])
+            self._rounds = 0
 
         def assemble(self, atoms, units, *, inquiry_id, attempt=1):
-            self._frozen = resolve_refs(copy.deepcopy(data["architect_payload"]), ATOM_MARKER,
-                                        refs_by_text(dissection_rows, atoms, id_attr="atom_id"))
+            self._resolved = [resolve_refs(copy.deepcopy(p), ATOM_MARKER,
+                                           refs_by_text(dissection_rows, atoms, id_attr="atom_id"))
+                              for p in architect_payloads]
+            self._rounds = 0
             return super().assemble(atoms, units, inquiry_id=inquiry_id, attempt=attempt)
 
+        def invoke(self, user_prompt, *, inquiry_id, attempt=1, inputs=0, system_prompt=None,
+                   estimated_prompt_tokens=0, completion_tokens=None):
+            from backend.services.semantic_compilation import reconciliation as recon
+            if system_prompt == recon.SYSTEM_PROMPT:
+                served = (reconciliation_payloads[self._rounds]
+                          if self._rounds < len(reconciliation_payloads) else {})
+                self._rounds += 1
+                self._frozen = [resolve_refs(copy.deepcopy(served), CLAIM_MARKER,
+                                             _claim_ids_by_ref(architect_payloads, inquiry_id))]
+            else:
+                self._frozen = [_only_what_this_request_holds(p, user_prompt)
+                                for p in self._resolved]
+            self._served = 0
+            return super().invoke(user_prompt, inquiry_id=inquiry_id, attempt=attempt,
+                                  inputs=inputs, system_prompt=system_prompt,
+                                  estimated_prompt_tokens=estimated_prompt_tokens,
+                                  completion_tokens=completion_tokens)
+
+    operationalizer_payloads = _payload_list(data, "operationalizer_payload")
+    architect_claim_rows = [row for payload in architect_payloads
+                            for row in (payload.get("claims") or [])]
+
+    fork_payloads = list(data.get("fork_payloads") or [])
+
     class _LazyOperationalizer(FrozenEpistemicOperationalizer):
+        """The same arrangement: one answer, filtered to the claims each request answers for.
+
+        A fork whose `affects` span two batches survives in NEITHER local request — no batch saw
+        both claims — which is the point. `fork_payloads` is where a fixture says what the final
+        cross-batch round found, and the two together are the proof that a fork spanning batches is
+        still reachable after the pass was cut up.
+        """
+
         def __init__(self):
-            super().__init__({})
+            super().__init__([])
+            self._rounds = 0
 
         def operationalize(self, claims, edges, *, inquiry_id, attempt=1):
-            self._frozen = resolve_refs(
-                copy.deepcopy(data["operationalizer_payload"]), CLAIM_MARKER,
-                refs_by_text(data["architect_payload"].get("claims"), claims, id_attr="claim_id"))
+            self._resolved = [resolve_refs(copy.deepcopy(p), CLAIM_MARKER,
+                                           refs_by_text(architect_claim_rows, claims,
+                                                        id_attr="claim_id"))
+                              for p in operationalizer_payloads]
+            self._fork_payloads = [resolve_refs(copy.deepcopy(p), CLAIM_MARKER,
+                                        refs_by_text(architect_claim_rows, claims,
+                                                     id_attr="claim_id"))
+                           for p in fork_payloads]
+            self._rounds = 0
             return super().operationalize(claims, edges, inquiry_id=inquiry_id, attempt=attempt)
+
+        def invoke(self, user_prompt, *, inquiry_id, attempt=1, inputs=0, system_prompt=None,
+                   estimated_prompt_tokens=0, completion_tokens=None):
+            from backend.services.semantic_compilation import operationalizer as ops
+            if system_prompt == ops.FORK_SYSTEM_PROMPT:
+                served = (self._fork_payloads[self._rounds]
+                          if self._rounds < len(self._fork_payloads) else {})
+                self._rounds += 1
+                self._frozen = [_only_what_this_request_holds(served, user_prompt)]
+            else:
+                self._frozen = [_only_what_this_request_holds(p, user_prompt)
+                                for p in self._resolved]
+            self._served = 0
+            return super().invoke(user_prompt, inquiry_id=inquiry_id, attempt=attempt,
+                                  inputs=inputs, system_prompt=system_prompt,
+                                  estimated_prompt_tokens=estimated_prompt_tokens,
+                                  completion_tokens=completion_tokens)
 
     return Council(dissector=dissector, architect=_LazyArchitect(),
                    operationalizer=_LazyOperationalizer(), repairer=None)
+
+
+def _only_what_this_request_holds(payload: Any, user_prompt: str) -> Dict[str, Any]:
+    """The frozen answer, cut down to what the request in front of it actually carried.
+
+    A model cannot name an id it was not shown, so neither may a fixture. Rows are kept only when
+    every id they reference appears in the prompt, and rows that link two kept rows survive with
+    them — an edge or a decision whose ends are gone is not a smaller answer, it is a dangling one.
+    """
+    if not isinstance(payload, Mapping):
+        return {}
+
+    def shown(value: Any) -> bool:
+        return all(str(v) in user_prompt for v in value)
+
+    kept: Dict[str, Any] = {}
+    claims = [c for c in (payload.get("claims") or [])
+              if isinstance(c, Mapping) and shown(c.get("atom_ids") or [])
+              and shown(c.get("inferred_from") or [])]
+    refs = {str(c.get("ref")) for c in claims}
+    if "claims" in payload:
+        kept["claims"] = claims
+    if "edges" in payload:
+        kept["edges"] = [e for e in (payload.get("edges") or [])
+                         if isinstance(e, Mapping)
+                         and str(e.get("from")) in refs and str(e.get("to")) in refs]
+    observables = [o for o in (payload.get("observables") or [])
+                   if isinstance(o, Mapping) and str(o.get("claim") or "") in user_prompt]
+    if "observables" in payload:
+        kept["observables"] = observables
+    # EACH KEY FILTERED ON ITS OWN. Grouping them under "does this payload have observables" was
+    # the first shape and it silently emptied the fork round's answer, which carries decisions and
+    # remainder and no observables at all — a fixture that answered nothing, reported as a round
+    # that found nothing.
+    seen = {str(o.get("ref")) for o in observables}
+    if "decisions" in payload:
+        kept["decisions"] = [
+            d for d in (payload.get("decisions") or [])
+            if isinstance(d, Mapping)
+            and all(str(a) in user_prompt or str(a) in seen for a in (d.get("affects") or []))]
+    if "semantic_remainder" in payload:
+        kept["semantic_remainder"] = [
+            r for r in (payload.get("semantic_remainder") or [])
+            if isinstance(r, Mapping) and shown(r.get("claims") or [])]
+    if "duplicates" in payload:
+        kept["duplicates"] = list(payload.get("duplicates") or [])
+    return kept
+
+
+def _claim_ids_by_ref(payloads: Sequence[Any], inquiry_id: str) -> Dict[str, str]:
+    """`$CLAIM:<ref>` → the id the architect's parser mints for that row.
+
+    Computed rather than looked up, because a reconciliation round is handed CARDS and the fixture
+    has no other way to reach the ids inside one. It is the same key the parser uses — a divergence
+    would show up as a dangling reference, refused by name, rather than as a silent mismatch.
+    """
+    from backend.schemas.semantic_compilation import ClaimKind
+    out: Dict[str, str] = {}
+    for payload in payloads:
+        for row in (payload.get("claims") or ()):
+            if not isinstance(row, Mapping):
+                continue
+            ref, text = str(row.get("ref") or ""), str(row.get("text") or "")
+            raw = str(row.get("kind") or "")
+            if ref and text and raw in {k.value for k in ClaimKind}:
+                out[ref] = ids.claim_id(inquiry_id, ClaimKind(raw), text)
+    return out
 
 
 def request_for(name: str, *, inquiry_id: str = FROZEN_INQUIRY) -> CompilationRequest:
@@ -233,7 +399,7 @@ def dissolve_fixture(name: str, *, inquiry_id: str = FROZEN_INQUIRY):
                     council_for(name, inquiry_id=inquiry_id))
 
 
-__all__ = ["FIXTURE_DIR", "FIXTURES", "UNIT_MARKER", "ATOM_MARKER", "CLAIM_MARKER", "FROZEN_NOW",
+__all__ = ["FIXTURE_DIR", "FIXTURES", "CROSS_BOUNDARY", "ALL_FIXTURES", "UNIT_MARKER", "ATOM_MARKER", "CLAIM_MARKER", "FROZEN_NOW",
            "FROZEN_INQUIRY", "load", "topic_nouns", "prompt_for", "images_for", "reading_for",
            "ledger_for", "resolve_units", "resolve_refs", "refs_by_text", "council_for",
            "request_for", "dissolve_fixture"]

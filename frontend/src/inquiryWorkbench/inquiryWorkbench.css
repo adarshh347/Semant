@@ -744,6 +744,22 @@
 /* A refusal nothing waited on is the run STOPPING, not another pause. */
 .iw-wait--stopped { color: var(--accent-deep); font-weight: 600; }
 
+/* HARNESS-003E — the partition, and what it cost in coverage. */
+.iw-pass-plan { margin: .25rem 0 0; }
+
+/* Short pair coverage is not a smaller number of the same fact. It is a relation nobody looked
+   for, so it is marked rather than left to be read off two numerals side by side. */
+.iw-pass-pairs--short { color: var(--accent-deep); font-weight: 600; }
+
+.iw-pass-unexamined {
+    margin: .25rem 0 0;
+    padding-left: 1.25rem;
+    font-size: .8125rem;
+    color: var(--accent-deep);
+}
+
+.iw-pass-unexamined code { font-size: .75rem; color: var(--ink-subtle); }
+
 .iw-coverage-summary { margin: .25rem 0 .5rem; }
 
 .iw-session-prompt {

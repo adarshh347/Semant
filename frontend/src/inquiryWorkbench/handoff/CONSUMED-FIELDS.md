@@ -170,6 +170,33 @@ compiler made unanswerable.
 | `waited_ms` | number \| null | time queueing for the allowance rather than for a model. **null, never 0** — zero would say a pacer answered and reported no wait |
 | `capacity_waits[]` | array | see below |
 | `inputs`, `outputs`, `detail`, `notes[]` | | the pass's own account of itself |
+| `batch_plan` | object \| **null** | how the pass was cut into sendable requests — see below. **null, never `{}`**: the ledger and the audit make no request at all, and an empty plan on them would report a partition that never happened |
+
+### `batch_plan` — how the pass was cut up, and what that cost (HARNESS-003E)
+
+One request over every atom could not be sent: 9,827 tokens against an 8,000-token per-minute
+allowance. So the relation architect and the epistemic operationalizer work in batches — and
+batching alone would make every relation crossing a boundary **structurally invisible**, because the
+model is never shown both sides. `pairs_examined` against `pairs_total` is the number that says
+whether the pass looked.
+
+| field | shape | notes |
+|---|---|---|
+| `plan_id`, `plan_version` | string | `semantic-batch-plan.v1`. Its own version: the sizing rule is what a later lane is most likely to change |
+| `unit` | string | what was partitioned — `semantic_atom` or `claim` |
+| `total_items` | number \| null | every one of which is primary in exactly one batch |
+| `batches` | number | |
+| `unsendable_batches` | number | a single item no request could carry. **Refused before transport** rather than sent and refused by the provider |
+| `allowance_tokens`, `largest_request_tokens` | number \| null | what the account allows, and the largest request the plan actually built |
+| `pairs_total`, `pairs_examined` | number \| null | pairs of batches, and how many were put in front of the model together. `pairs_total: 0` means one batch held everything — nothing across, which is **not** a comparison that came up short |
+| `unexamined_pairs[]` | `{left, right, reason}` | **in full, with the reason.** A pair nobody compared is a relation nobody looked for, and "the budget stopped the run" and "nothing was found between these two" are opposite reports |
+| `rounds[]` | array | `{round_id, index, total, groups, outcome (enumerated), added_edges, added_claims, duplicate_claims, detail}` |
+| `dispositions` | `{kind: count}` | `used · orphan · refused · operationalized · semantic_remainder · not_investigated`. Counts here; the graph carries one entry per item for anyone who wants them |
+| `duplicates_merged` | number | claims two batches both built, merged into one carrying both sets of atoms |
+| `notes[]` | string[] | what the plan was sized against |
+
+`pairs_complete` is **derived here, tri-state**: `null` where there were no pairs at all, so a
+single batch and a comparison that never ran do not render alike.
 
 ## `deployment` — what produced this session (HARNESS-003D)
 
@@ -412,6 +439,7 @@ serialised — the realistic Phase-1 target.
 | `conflictSessionFixture` | 409 stale — decision still open |
 | `duplicateSessionFixture` | 409 duplicate — decision answered elsewhere |
 | `otherDomainFixture` | an unrelated domain through identical types |
+| `batchedCouncilFixture` | batched passes and the coverage matrix — one plan whole, one two pairs short |
 
 ## Not consumed
 

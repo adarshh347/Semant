@@ -26,6 +26,24 @@ with a satisfied observable and no residue reads downstream as a settled questio
 branches and a stated downstream consequence, and a candidate whose consequences point at nothing
 is dropped with the reason recorded — the reference that failed to resolve is usually an observable
 that was itself refused, which is the fact worth surfacing.
+
+## HARNESS-003E: batched, with the neighbours in view
+
+This pass used to make one call over the whole graph, and the comment above `EpistemicOperationalizer`
+gave the reason: what is observable about a claim depends on the other claims, so a batched
+operationalizer would propose the same observable twice from two halves. That reason is right and
+the arrangement it justified is unsendable — the graph does not fit under the account's per-minute
+allowance any more than the atoms did.
+
+Both are answered by the same distinction. Every claim is PRIMARY in exactly one batch and the model
+may emit observables only for primary ids; its neighbours arrive as CONTEXT, with the edges between
+them, so the dependence the old comment names is preserved without the same claim being
+operationalized from two neighbourhoods. `MAX_OBSERVABLES_PER_CLAIM` is counted across the whole
+pass rather than per batch, for the same reason.
+
+Batches follow the CLAIM GRAPH: claims joined by an edge go in one batch where they fit, because
+claims that relate are the ones whose forks are only visible together. What does not fit is
+reconciled afterwards, over compact cards, and the pairs that never met are named.
 """
 from __future__ import annotations
 
@@ -33,14 +51,17 @@ import json
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from backend.schemas.inquiry import DemandKind
-from backend.schemas.semantic_compilation import (CapabilityClass, ClaimEdge, ClaimKind, ClaimNode,
+from backend.schemas.semantic_compilation import (BatchPlanRecord, CapabilityClass, ClaimEdge,
+                                                  ClaimKind, ClaimNode, ComparisonPair,
                                                   CompilerRefusal, CompilerRefusalKind,
                                                   DecisionCandidate, DecisionKind, DissolutionPass,
-                                                  GroundForm, ImageScope, NON_MEASURING_CLASSES,
+                                                  GroundForm, ImageScope, ItemDisposition,
+                                                  ItemDispositionKind, NON_MEASURING_CLASSES,
                                                   ObservableSpec, OperationalAlternative,
-                                                  PassOutcome, PassReceipt, SemanticRemainderItem)
+                                                  PassOutcome, PassReceipt, ReconciliationRound,
+                                                  SemanticRemainderItem)
 
-from . import contracts, ids
+from . import contracts, ids, reconciliation, sizing
 from .base import refusal
 from .compiler import _alternatives, _enum_list
 from .passes import ModelPass, PassBudget, PassResult, merge_receipts
@@ -52,6 +73,21 @@ PRODUCER = "semantic_compilation/operationalizer-v1"
 #: `max_completion_tokens` against the per-minute allowance whether or not the model uses them, and
 #: this account's is 8000. A budget nearer that ceiling is a request that cannot be sent.
 DEFAULT_BUDGET = PassBudget(max_completion_tokens=4096, batch_size=0)
+
+#: What one operationalization request reserves for its answer. HARNESS-003E, replacing the flat
+#: 4096 this pass spent on every call — see `architect.ARCHITECT_COMPLETION` for why the reasoning
+#: headroom is a separate term from the per-item share.
+#:
+#: The per-item share is larger than the architect's because an observable is a bigger object than a
+#: claim: it carries success, ambiguity and refusal conditions, a residue sentence, capability
+#: classes and its alternatives.
+OPERATIONALIZE_COMPLETION = sizing.CompletionPolicy(
+    reserved_tokens=1536, per_item_tokens=160, minimum_tokens=1024, maximum_tokens=4096)
+
+#: What the final cross-batch round reserves. It emits forks and remainder over cards it was given
+#: rather than observables built from scratch, so its per-item share is small.
+FORK_COMPLETION = sizing.CompletionPolicy(
+    reserved_tokens=1536, per_item_tokens=24, minimum_tokens=1024, maximum_tokens=4096)
 
 MAX_OBSERVABLES_PER_CLAIM = 4
 
@@ -84,18 +120,36 @@ SYSTEM_PROMPT = (
 )
 
 
-def claim_digest(claims: Sequence[ClaimNode], edges: Sequence[ClaimEdge]) -> Dict[str, Any]:
-    return {
-        "claims": [{"claim_id": c.claim_id, "text": c.text, "kind": c.claim_kind.value,
-                    "subject": c.subject, "predicate": c.predicate, "object": c.object_,
-                    "image_scope": c.image_scope.value, "demand": c.epistemic_demand.value}
-                   for c in claims],
+#: See `architect._COMPACT`: the whitespace is a fifth of every request and nobody reads it.
+_COMPACT = dict(separators=(",", ":"), ensure_ascii=False)
+
+
+def claim_digest(claims: Sequence[ClaimNode], edges: Sequence[ClaimEdge],
+                 context: Sequence[ClaimNode] = ()) -> Dict[str, Any]:
+    """What one request sees: the claims it answers for, its neighbours, and the edges between.
+
+    `context` is a SEPARATE LIST rather than a flag on the claims, because the difference is what
+    the model is allowed to do with them and a flag inside a row is the kind of thing a model reads
+    past. An observable for a context claim is refused by the parser either way — but a prompt that
+    made the distinction structurally is one the model can follow.
+    """
+    def row(claim: ClaimNode) -> Dict[str, Any]:
+        return {"claim_id": claim.claim_id, "text": claim.text, "kind": claim.claim_kind.value,
+                "subject": claim.subject, "predicate": claim.predicate, "object": claim.object_,
+                "image_scope": claim.image_scope.value, "demand": claim.epistemic_demand.value}
+
+    digest: Dict[str, Any] = {
+        "claims": [row(c) for c in claims],
         "relations": [{"kind": e.kind.value, "from": e.from_claim, "to": e.to_claim, "why": e.why}
                       for e in edges],
     }
+    if context:
+        digest["context_claims"] = [row(c) for c in context]
+    return digest
 
 
-def build_prompt(claims: Sequence[ClaimNode], edges: Sequence[ClaimEdge]) -> str:
+def build_prompt(claims: Sequence[ClaimNode], edges: Sequence[ClaimEdge],
+                 context: Sequence[ClaimNode] = ()) -> str:
     contract = contracts.graph_contract()
     vocabulary = {
         "capability_classes": contract["capability_classes"],
@@ -103,10 +157,15 @@ def build_prompt(claims: Sequence[ClaimNode], edges: Sequence[ClaimEdge]) -> str
         "image_scopes": list(contracts.closed_set("image_scopes")),
         "decision_kinds": list(contracts.closed_set("decision_kinds")),
     }
+    neighbours = (
+        f"\nCONTEXT ONLY — these claims are here so you can see what the ones above stand next to. "
+        f"You may NOT propose an observable for any of them; another request answers for those. A "
+        f"fork or a remainder item may name them.\n" if context else "\n")
     return (
-        f"THE GRAPH — this is everything you may operationalize:\n"
-        f"{json.dumps(claim_digest(claims, edges), indent=2, ensure_ascii=False)}\n\n"
-        f"THE VOCABULARY — use only these:\n{json.dumps(vocabulary, indent=2)}\n\n"
+        f"THE CLAIMS YOU ANSWER FOR — an observable may name only these:\n"
+        f"{json.dumps(claim_digest(claims, edges, context), **_COMPACT)}\n"
+        f"{neighbours}\n"
+        f"THE VOCABULARY — use only these:\n{json.dumps(vocabulary, **_COMPACT)}\n\n"
         f"Return JSON of exactly this shape:\n"
         f'{{"observables": [{{"ref": "o1", "claim": "<a claim_id from above>", '
         f'"kind": "<what to observe>", "targets": ["<what to look at>"], '
@@ -117,6 +176,52 @@ def build_prompt(claims: Sequence[ClaimNode], edges: Sequence[ClaimEdge]) -> str
         f'"ground_forms": [], "recommended": false}}]}}], '
         f'"decisions": [{{"kind": "<decision kind>", "question": "", "why_now": "", '
         f'"affects": ["<a claim_id or o1>"], "blocking": false, '
+        f'"options": [{{"label": "", "consequence": "", "recommended": false}}]}}], '
+        f'"semantic_remainder": [{{"term": "", "why": "", '
+        f'"contributing_capability_classes": [], "claims": ["<a claim_id>"]}}]}}\n'
+        f"Return empty lists rather than inventing content."
+    )
+
+
+def fixed_prompt_text() -> str:
+    """Everything charged on every operationalization request, whatever claims it carries."""
+    return SYSTEM_PROMPT + build_prompt([], [])
+
+
+FORK_SYSTEM_PROMPT = (
+    "You are an epistemic operationalizer performing a FINAL CROSS-BATCH pass inside a visual "
+    "close-reading tool. The claims below were operationalized in several separate requests, each "
+    "of which saw only part of the graph. You are given compact cards for claims from two or more "
+    "of those groups. You output JSON and nothing else.\n\n"
+    "Your ONLY job is what the separate requests could not see, because it lies BETWEEN them.\n\n"
+    "1. A FORK THAT SPANS GROUPS. Raise a decision only where choosing changes the investigation "
+    "of claims in MORE THAN ONE group, and say what changes downstream in `why_now`. Two "
+    "alternatives leading to the same work are not a fork, and 'the system is uncertain' is not a "
+    "reason to interrupt somebody.\n"
+    "2. REMAINDER THAT SPANS GROUPS. What will no instrument reach, across the graph as a whole "
+    "rather than within any one group? Name the claims it bears on.\n\n"
+    "Hard rules:\n"
+    "- You may NOT propose an observable. Every claim has already been answered for.\n"
+    "- Never invent a claim id. Use only the ids on the cards.\n"
+    "- Never add content that is in no card. You have not seen the pictures or the source.\n"
+    "- Never output a mask, box, point, polygon, coordinate, pixel count, region id or confidence.\n"
+    "- Return empty lists rather than inventing content. Finding no fork between two groups is a "
+    "legitimate answer."
+)
+
+
+def fork_prompt(cards: Sequence[Mapping[str, Any]]) -> str:
+    vocabulary = {"decision_kinds": list(contracts.closed_set("decision_kinds")),
+                  "capability_classes": contracts.graph_contract()["capability_classes"]}
+    groups = sorted({str(c.get("group") or "") for c in cards})
+    return (
+        f"THE CLAIM CARDS — {len(cards)} claim(s) from {len(groups)} group(s). Every id you may "
+        f"name is here:\n{json.dumps(list(cards), **_COMPACT)}\n\n"
+        f"THE GROUPS in this round: {json.dumps(groups)}\n\n"
+        f"THE VOCABULARY — use only these:\n{json.dumps(vocabulary, **_COMPACT)}\n\n"
+        f"Return JSON of exactly this shape:\n"
+        f'{{"decisions": [{{"kind": "<decision kind>", "question": "", "why_now": "", '
+        f'"affects": ["<a claim_id>"], "blocking": false, '
         f'"options": [{{"label": "", "consequence": "", "recommended": false}}]}}], '
         f'"semantic_remainder": [{{"term": "", "why": "", '
         f'"contributing_capability_classes": [], "claims": ["<a claim_id>"]}}]}}\n'
@@ -139,13 +244,44 @@ class _Ops:
 
 
 class EpistemicOperationalizer(ModelPass):
-    """One call over the whole graph. What is observable about a claim depends on the other
-    claims — a batched operationalizer would propose the same observable twice from two halves."""
+    """Every claim primary in exactly one batch, with its neighbours in view. HARNESS-003E.
+
+    What is observable about a claim depends on the other claims — which is why this pass used to
+    make one call over the whole graph, and why the answer is not independent slices. The neighbours
+    travel as CONTEXT, and only primary ids may receive an observable, so the dependence survives
+    without the same claim being operationalized from two neighbourhoods.
+    """
 
     role = ROLE
     pass_name = DissolutionPass.EPISTEMIC_OPERATIONALIZER
     system_prompt = SYSTEM_PROMPT
     budget = DEFAULT_BUDGET
+
+    # ── the partition ──
+
+    def plan_batches(self, claims: Sequence[ClaimNode], edges: Sequence[ClaimEdge], *,
+                     inquiry_id: str) -> sizing.BatchPlan:
+        """Sized against the allowance, with the CLAIM GRAPH as the affinity.
+
+        Claims joined by an edge are the ones whose forks are only visible together, so a seam
+        between two connected claims is the expensive kind and a seam between two components costs
+        least. The component is keyed on its smallest member's id rather than on a counter, so the
+        same graph partitions the same way on a re-run.
+        """
+        component = _components(claims, edges)
+        neighbours = _neighbours(edges)
+        items = [sizing.SizedItem(
+            ref=c.claim_id,
+            text=json.dumps(claim_digest([c], [])["claims"][0], **_COMPACT),
+            affinity=component.get(c.claim_id, c.claim_id)) for c in claims]
+
+        def context_for(refs: Sequence[str]) -> List[str]:
+            mine = set(refs)
+            return sorted({n for r in refs for n in neighbours.get(r, ()) if n not in mine})
+
+        return sizing.plan(items, inquiry_id=inquiry_id, pass_name=self.pass_name, unit="claim",
+                           fixed_text=fixed_prompt_text(), completion=OPERATIONALIZE_COMPLETION,
+                           context_refs_for=context_for)
 
     def operationalize(self, claims: Sequence[ClaimNode], edges: Sequence[ClaimEdge], *,
                        inquiry_id: str, attempt: int = 1
@@ -159,33 +295,229 @@ class EpistemicOperationalizer(ModelPass):
                                      detail="no claim reached the operationalizer")
             return [], [], [], [], ["there was no claim to operationalize"], receipt
 
-        result = self.invoke(build_prompt(claims, edges), inquiry_id=inquiry_id, attempt=attempt,
-                             inputs=len(claims))
-        ops.refusals.extend(result.refusals)
-        if result.payload is None:
-            receipt = merge_receipts(self.pass_name, [result.receipt], inquiry_id=inquiry_id,
-                                     outcome=result.receipt.outcome, attempt=attempt,
-                                     detail=result.receipt.detail)
-            return [], [], [], ops.refusals, ops.notes, receipt
-
         by_id = {c.claim_id: c for c in claims}
-        observables, by_ref = self._observables(result.payload, by_id, ops)
-        decisions = self._decisions(result.payload, by_id, by_ref, ops)
-        remainder = self._remainder(result.payload, by_id, observables, claims, ops)
+        plan = self.plan_batches(claims, edges, inquiry_id=inquiry_id)
+        ops.notes.extend(plan.record.notes)
+        receipts: List[PassReceipt] = []
+        observables: List[ObservableSpec] = []
+        decisions: List[DecisionCandidate] = []
+        remainder: List[SemanticRemainderItem] = []
+        by_ref: Dict[str, str] = {}
+        #: SHARED ACROSS BATCHES, deliberately. `MAX_OBSERVABLES_PER_CLAIM` is a bound on how many
+        #: ways one claim may be investigated, and counting it per batch would let a claim that is
+        #: primary once and contextual twice collect three times the allowance.
+        per_claim: Dict[str, int] = {}
+        answered: Set[str] = set()
 
-        outcome, detail = self._outcome(claims, observables, remainder, result, ops)
-        receipt = merge_receipts(self.pass_name, [result.receipt], inquiry_id=inquiry_id,
-                                 outcome=outcome, attempt=attempt, outputs=len(observables),
-                                 detail=detail)
+        for batch in plan.batches:
+            primary = [by_id[r] for r in batch.assignment.primary_refs if r in by_id]
+            context = [by_id[r] for r in batch.assignment.context_refs if r in by_id]
+            incident = {c.claim_id for c in primary} | {c.claim_id for c in context}
+            local_edges = [e for e in edges
+                           if e.from_claim in incident and e.to_claim in incident]
+            number, total = batch.assignment.index, batch.assignment.total
+
+            if not batch.sendable:
+                for claim in primary:
+                    ops.refuse(CompilerRefusalKind.PASS_UNAVAILABLE, claim.claim_id,
+                               f"this claim alone estimates larger than one whole request may "
+                               f"carry, so no operationalization call could include it. Refused "
+                               f"before transport. {batch.assignment.note}")
+                self.observe(f"operationalizing batch {number} of {total}", index=number,
+                             total=total, outcome="refused",
+                             refs=list(batch.assignment.primary_refs),
+                             detail="too large to send; refused before transport")
+                continue
+
+            self.observe(f"operationalizing batch {number} of {total}", index=number, total=total,
+                         outcome="started", refs=list(batch.assignment.primary_refs),
+                         detail=f"{len(primary)} claim(s), {len(context)} in context")
+            result = self.invoke(
+                build_prompt(primary, local_edges, context), inquiry_id=inquiry_id, attempt=attempt,
+                inputs=len(primary),
+                estimated_prompt_tokens=batch.assignment.estimated_prompt_tokens,
+                completion_tokens=batch.assignment.requested_completion_tokens)
+            receipts.append(result.receipt)
+            ops.refusals.extend(result.refusals)
+            answered.update(c.claim_id for c in primary)
+
+            if result.payload is not None:
+                found, refs = self._observables(
+                    result.payload, by_id, ops, primary={c.claim_id for c in primary},
+                    per_claim=per_claim, seen={o.observable_id for o in observables})
+                observables.extend(found)
+                by_ref.update(refs)
+                decisions.extend(self._decisions(result.payload, by_id, by_ref, ops,
+                                                 seen={d.decision_id for d in decisions}))
+                remainder.extend(self._remainder(
+                    result.payload, by_id, observables, claims, ops,
+                    seen={r.term.lower() for r in remainder}))
+            self.observe(f"operationalizing batch {number} of {total}", index=number, total=total,
+                         outcome=result.receipt.outcome.value,
+                         refs=list(batch.assignment.primary_refs),
+                         detail=result.receipt.detail
+                                or f"{len(observables)} observable(s) so far")
+
+        rounds, pairs = self._forks(
+            plan, by_id, observables, claims, decisions, remainder, by_ref, ops,
+            inquiry_id=inquiry_id, attempt=attempt, receipts=receipts)
+
+        record = self._close_plan(plan, claims=claims, observables=observables,
+                                  remainder=remainder, answered=answered, rounds=rounds,
+                                  pairs=pairs)
+        outcome, detail = self._outcome(claims, observables, remainder, receipts, record, ops)
+        receipt = merge_receipts(self.pass_name, receipts, inquiry_id=inquiry_id, outcome=outcome,
+                                 attempt=attempt, outputs=len(observables), detail=detail,
+                                 batch_plan=record)
         return observables, decisions, remainder, ops.refusals, ops.notes, receipt
+
+    # ── the fork the separate batches could not see ──
+
+    def _forks(self, plan: sizing.BatchPlan, by_id: Mapping[str, ClaimNode],
+               observables: Sequence[ObservableSpec], claims: Sequence[ClaimNode],
+               decisions: List[DecisionCandidate], remainder: List[SemanticRemainderItem],
+               by_ref: Dict[str, str], ops: _Ops, *, inquiry_id: str, attempt: int,
+               receipts: List[PassReceipt]
+               ) -> Tuple[List[ReconciliationRound], List[ComparisonPair]]:
+        """One compact pass over the whole graph's cards, for forks and remainder that span batches.
+
+        NOT A SECOND READING. It may emit only decisions and remainder, both of which connect refs
+        that already exist; an observable here would be a claim operationalized twice, which is the
+        thing the primary/context split was built to make impossible.
+        """
+        groups = [b.batch_id for b in plan.batches if b.assignment.primary_refs and b.sendable]
+        if len(groups) < 2:
+            ops.notes.append(
+                "one batch answered for every claim, so every fork was already visible in one "
+                "request. The coverage matrix is empty because there is nothing across, not "
+                "because nothing was compared.")
+            return [], []
+
+        cards_by_group = {b.batch_id: [reconciliation.claim_card(by_id[r], group=b.batch_id)
+                                       for r in b.assignment.primary_refs if r in by_id]
+                          for b in plan.batches if b.batch_id in set(groups)}
+        fixed = FORK_SYSTEM_PROMPT + fork_prompt([])
+        room = FORK_COMPLETION.room(sizing.configured_allowance(), fixed)
+        sizes = {g: sum(sizing.estimate_tokens(json.dumps(c, **_COMPACT))
+                        + FORK_COMPLETION.per_item_tokens for c in cards_by_group[g])
+                 for g in groups}
+        capacity = reconciliation.group_capacity(sizes, room=room, share=0)
+        if capacity < 2:
+            ops.notes.append(
+                f"no two batches' claim cards fit in one cross-batch request ({room} token(s) of "
+                f"room), so no fork spanning them could be looked for. Every pair is reported "
+                f"unexamined rather than compared over a shortened set of cards.")
+            return [], reconciliation.matrix_for(groups, [], {})
+
+        schedule = sizing.schedule_rounds(groups, capacity=capacity)
+        outcomes: Dict[Tuple[str, ...], ReconciliationRound] = {}
+        rounds: List[ReconciliationRound] = []
+        stopped = ""
+        for number, members in enumerate(schedule, 1):
+            if stopped:
+                continue
+            round_id = ids.round_id(inquiry_id, self.pass_name, members)
+            cards = [c for g in members for c in cards_by_group[g]]
+            prompt = fork_prompt(cards)
+            estimate = (sizing.estimate_tokens(fixed) + sizing.estimate_tokens(prompt)
+                        - sizing.estimate_tokens(fork_prompt([])))
+            self.observe(f"cross-batch forks, round {number} of {len(schedule)}", index=number,
+                         total=len(schedule), outcome="started", refs=list(members),
+                         detail=f"{len(cards)} claim card(s) across {len(members)} batch(es)")
+            result = self.invoke(prompt, inquiry_id=inquiry_id, attempt=attempt, inputs=len(cards),
+                                 system_prompt=FORK_SYSTEM_PROMPT,
+                                 estimated_prompt_tokens=max(0, estimate),
+                                 completion_tokens=FORK_COMPLETION.for_batch(len(cards)))
+            receipts.append(result.receipt)
+            ops.refusals.extend(result.refusals)
+
+            before_d, before_r = len(decisions), len(remainder)
+            if result.payload is not None:
+                if result.payload.get("observables"):
+                    ops.refuse(CompilerRefusalKind.DANGLING_REFERENCE, "observables",
+                               "the cross-batch round proposed an observable. Every claim was "
+                               "already answered for by the batch it was primary in, and a second "
+                               "one here is one claim operationalized twice. Dropped.",
+                               detail=[round_id])
+                decisions.extend(self._decisions(result.payload, by_id, by_ref, ops,
+                                                 seen={d.decision_id for d in decisions}))
+                remainder.extend(self._remainder(
+                    result.payload, by_id, observables, claims, ops,
+                    seen={r.term.lower() for r in remainder}))
+
+            entry = ReconciliationRound(
+                round_id=round_id, index=number, total=len(schedule), group_ids=list(members),
+                estimated_prompt_tokens=max(0, estimate), outcome=result.receipt.outcome,
+                added_edges=0, added_claims=0, duplicate_claims=0,
+                detail=f"{len(decisions) - before_d} fork(s), "
+                       f"{len(remainder) - before_r} remainder item(s)")
+            rounds.append(entry)
+            outcomes[tuple(members)] = entry
+            self.observe(f"cross-batch forks, round {number} of {len(schedule)}", index=number,
+                         total=len(schedule), outcome=result.receipt.outcome.value,
+                         refs=list(members), detail=entry.detail)
+            if any(not w.taken for w in result.receipt.capacity_waits):
+                stopped = reconciliation.NOT_REACHED
+                ops.notes.append(
+                    f"the cross-batch fork pass stopped after round {number} of {len(schedule)}: "
+                    f"the provider refused capacity and the declared budget would not cover the "
+                    f"wait. The pairs the remaining rounds would have compared are named in the "
+                    f"coverage matrix.")
+
+        pairs = reconciliation.matrix_for(groups, [list(r.group_ids) for r in rounds], outcomes,
+                                          unscheduled_reason=stopped
+                                          or reconciliation.NOT_SCHEDULED)
+        return rounds, pairs
+
+    # ── what became of every claim ──
+
+    def _close_plan(self, plan: sizing.BatchPlan, *, claims: Sequence[ClaimNode],
+                    observables: Sequence[ObservableSpec],
+                    remainder: Sequence[SemanticRemainderItem], answered: Set[str],
+                    rounds: Sequence[ReconciliationRound],
+                    pairs: Sequence[ComparisonPair]) -> BatchPlanRecord:
+        """One disposition per claim. AN EMPTY OBSERVABLE LIST MAY BE CORRECT — a wholly
+        interpretive graph has nothing to measure — but silence is not a disposition, so a claim
+        nothing proposed and nothing set aside is `not_investigated` with the reason said out loud.
+        """
+        served = {o.claim_id for o in observables}
+        residual = {r for item in remainder for r in item.claim_refs}
+        where = {ref: b.batch_id for b in plan.record.batches for ref in b.primary_refs}
+        unsendable = {ref for b in plan.record.unsendable_batches for ref in b.primary_refs}
+        out: List[ItemDisposition] = []
+        for claim in claims:
+            batch = where.get(claim.claim_id, "")
+            if claim.claim_id in unsendable:
+                out.append(ItemDisposition(
+                    ref=claim.claim_id, disposition=ItemDispositionKind.REFUSED, batch_id=batch,
+                    reason="no request could carry this claim, so nothing was asked about it"))
+            elif claim.claim_id in served:
+                out.append(ItemDisposition(ref=claim.claim_id, batch_id=batch,
+                                           disposition=ItemDispositionKind.OPERATIONALIZED))
+            elif claim.claim_id in residual:
+                out.append(ItemDisposition(ref=claim.claim_id, batch_id=batch,
+                                           disposition=ItemDispositionKind.SEMANTIC_REMAINDER))
+            elif claim.claim_id in answered:
+                out.append(ItemDisposition(
+                    ref=claim.claim_id, disposition=ItemDispositionKind.NOT_INVESTIGATED,
+                    batch_id=batch,
+                    reason="the operationalizer was asked about this claim and proposed nothing "
+                           "for it. Not every claim can be investigated, and inventing an "
+                           "observable to fill the gap is worse than saying so."))
+        return plan.record.model_copy(update={
+            "dispositions": out, "rounds": list(rounds), "pairs": list(pairs)})
 
     # ── observables ──
 
     def _observables(self, payload: Mapping[str, Any], by_id: Mapping[str, ClaimNode],
-                     ops: _Ops) -> Tuple[List[ObservableSpec], Dict[str, str]]:
+                     ops: _Ops, *, primary: Optional[Set[str]] = None,
+                     per_claim: Optional[Dict[str, int]] = None,
+                     seen: Optional[Set[str]] = None
+                     ) -> Tuple[List[ObservableSpec], Dict[str, str]]:
         out: List[ObservableSpec] = []
         by_ref: Dict[str, str] = {}
-        per_claim: Dict[str, int] = {}
+        per_claim = {} if per_claim is None else per_claim
+        already = set() if seen is None else set(seen)
         rows = payload.get("observables")
         for index, row in enumerate(rows if isinstance(rows, list) else []):
             if not isinstance(row, Mapping):
@@ -201,6 +533,17 @@ class EpistemicOperationalizer(ModelPass):
             if claim_id not in by_id:
                 ops.refuse(CompilerRefusalKind.DANGLING_REFERENCE, claim_id or "(empty)",
                            "an observable for a claim that is not in this graph.", detail=[where])
+                continue
+            if primary is not None and claim_id not in primary:
+                # THE CONTEXTUAL CLAIM, ANSWERED FOR TWICE. Its own batch is where it gets an
+                # observable; one proposed from a neighbourhood would be the same claim
+                # operationalized again, and two requests each finding "one observable" would read
+                # downstream as two ways of investigating it rather than one, seen twice.
+                ops.refuse(CompilerRefusalKind.DANGLING_REFERENCE, claim_id,
+                           "an observable for a claim this request carries only as CONTEXT. The "
+                           "batch that claim is primary in answers for it; proposing one here "
+                           "would operationalize it from two neighbourhoods at once. Dropped.",
+                           detail=[where])
                 continue
             kind_text = str(row.get("kind") or row.get("observable_kind") or "").strip()
             if not kind_text:
@@ -243,8 +586,9 @@ class EpistemicOperationalizer(ModelPass):
 
             targets = [str(t).strip() for t in row.get("targets") or () if str(t).strip()]
             observable_id = ids.observable_id(ops.inquiry_id, claim_id, kind_text, targets)
-            if any(o.observable_id == observable_id for o in out):
+            if observable_id in already or any(o.observable_id == observable_id for o in out):
                 continue
+            already.add(observable_id)
             grounds = _enum_list(row.get("ground_forms"), GroundForm, "ground_forms",
                                  CompilerRefusalKind.UNKNOWN_GROUND_FORM, where,
                                  ops.inquiry_id, ops.refusals)
@@ -269,8 +613,18 @@ class EpistemicOperationalizer(ModelPass):
     # ── decisions ──
 
     def _decisions(self, payload: Mapping[str, Any], by_id: Mapping[str, ClaimNode],
-                   by_ref: Mapping[str, str], ops: _Ops) -> List[DecisionCandidate]:
+                   by_ref: Mapping[str, str], ops: _Ops,
+                   seen: Optional[Set[str]] = None) -> List[DecisionCandidate]:
+        """A fork may name any claim in the graph — including one this request held as CONTEXT.
+
+        The opposite rule to the one observables follow, and for a reason rather than by oversight:
+        an observable is WORK ASSIGNED to a claim and doing it twice is doing it twice, while a fork
+        is a question about what to do next and the whole point of showing a batch its neighbours is
+        that a fork may span them. Merged on the content-derived id, so two batches raising the same
+        question raise it once.
+        """
         out: List[DecisionCandidate] = []
+        already = set() if seen is None else set(seen)
         rows = payload.get("decisions")
         for index, row in enumerate(rows if isinstance(rows, list) else []):
             if not isinstance(row, Mapping):
@@ -291,6 +645,8 @@ class EpistemicOperationalizer(ModelPass):
                                  f"somebody.")
                 continue
             decision_id = ids.decision_id(ops.inquiry_id, kind, question)
+            if decision_id in already or any(d.decision_id == decision_id for d in out):
+                continue
             options = _alternatives(ops, [r for r in (row.get("options") or [])
                                           if isinstance(r, Mapping)], decision_id, where)
             if len(options) < 2 and kind is not DecisionKind.CONFIRM_AUTHOR_EXCLUSIVE_ACT:
@@ -324,14 +680,17 @@ class EpistemicOperationalizer(ModelPass):
 
     def _remainder(self, payload: Mapping[str, Any], by_id: Mapping[str, ClaimNode],
                    observables: Sequence[ObservableSpec], claims: Sequence[ClaimNode],
-                   ops: _Ops) -> List[SemanticRemainderItem]:
+                   ops: _Ops, seen_terms: Optional[Set[str]] = None,
+                   *, seen: Optional[Set[str]] = None) -> List[SemanticRemainderItem]:
         measurable_subjects = {c.subject.strip().lower() for c in claims
                                if c.epistemic_demand is DemandKind.MEASURABLE and c.subject.strip()}
         measurable_targets = {t.strip().lower() for o in observables for t in o.targets
                               if t.strip()
                               and not set(o.capability_classes) <= NON_MEASURING_CLASSES}
         out: List[SemanticRemainderItem] = []
-        seen: Set[str] = set()
+        # KEYED ON THE TERM, ACROSS BATCHES. Two batches naming the same residue name one residue,
+        # and a list carrying it twice would report the same unreachable thing as two of them.
+        seen: Set[str] = set(seen or seen_terms or ())
         rows = payload.get("semantic_remainder")
         for index, row in enumerate(rows if isinstance(rows, list) else []):
             if not isinstance(row, Mapping):
@@ -367,18 +726,53 @@ class EpistemicOperationalizer(ModelPass):
     # ── the outcome ──
 
     def _outcome(self, claims: Sequence[ClaimNode], observables: Sequence[ObservableSpec],
-                 remainder: Sequence[SemanticRemainderItem], result: PassResult,
-                 ops: _Ops) -> Tuple[PassOutcome, str]:
+                 remainder: Sequence[SemanticRemainderItem], receipts: Sequence[PassReceipt],
+                 record: BatchPlanRecord, ops: _Ops) -> Tuple[PassOutcome, str]:
         """`thin` is judged against what the CLAIMS implied, never padded to avoid.
 
         A graph full of measurable demands and no observable is thin. A wholly interpretive graph
         with no observable is complete — and telling those apart is the reason this looks at the
         demands rather than counting.
         """
-        if result.receipt.truncated:
+        if not receipts:
+            return PassOutcome.EMPTY, "no operationalization request could be sent"
+        if all(r.outcome is PassOutcome.UNAVAILABLE for r in receipts):
+            return PassOutcome.UNAVAILABLE, "no batch reached the operationalizer"
+        if any(r.truncated for r in receipts):
             return (PassOutcome.TRUNCATED,
-                    f"the operationalizer hit its completion budget after "
-                    f"{len(observables)} observable(s)")
+                    f"{sum(1 for r in receipts if r.truncated)} of {len(receipts)} "
+                    f"operationalization request(s) — {len(record.batches)} batch(es) plus "
+                    f"{len(record.rounds)} cross-batch round(s) — hit the completion budget after "
+                    f"{len(observables)} observable(s). One truncated request is a truncated "
+                    f"pass.")
+        failed = [r for r in receipts if r.outcome is PassOutcome.ERROR]
+        if failed:
+            return (PassOutcome.ERROR,
+                    f"{len(failed)} of {len(receipts)} operationalization request(s) failed: "
+                    f"{failed[0].detail}")
+
+        # EVERY CLAIM HAS AN EXPLICIT DISPOSITION, or the pass lost track of one. An empty
+        # observable list may be right for a wholly interpretive graph; silence about a claim
+        # never is.
+        missing = len(claims) - len(record.dispositions)
+        if missing:
+            return (PassOutcome.COVERAGE_FAILED,
+                    f"{missing} of {len(claims)} claim(s) have no disposition in the batch plan. A "
+                    f"claim nothing accounted for is one the partition lost.")
+        refused = [d for d in record.dispositions
+                   if d.disposition is ItemDispositionKind.REFUSED]
+        if refused:
+            return (PassOutcome.COVERAGE_FAILED,
+                    f"{len(refused)} of {len(claims)} claim(s) were too large for any request and "
+                    f"nothing was asked about them")
+        unexamined = record.unexamined_pairs
+        if unexamined:
+            named = ", ".join(f"{p.left_batch_id}/{p.right_batch_id}" for p in unexamined[:3])
+            return (PassOutcome.THIN,
+                    f"{len(unexamined)} of {len(record.pairs)} claim-group pair(s) were never "
+                    f"compared, so any fork between them was invisible to this pass: {named}"
+                    f"{'…' if len(unexamined) > 3 else ''}. {unexamined[0].reason}")
+
         investigable = [c for c in claims if c.epistemic_demand is DemandKind.MEASURABLE]
         interpretive = [c for c in claims if c.epistemic_demand in
                         (DemandKind.INTERPRETIVE, DemandKind.IMAGINED)]
@@ -396,29 +790,77 @@ class EpistemicOperationalizer(ModelPass):
                     f"cannot be recovered downstream.")
         return (PassOutcome.COMPLETED,
                 f"{len(observables)} observable(s) and {len(remainder)} remainder item(s) over "
-                f"{len(claims)} claim(s)")
+                f"{len(claims)} claim(s) in {len(record.batches)} batch(es), with "
+                f"{record.pairs_examined} of {len(record.pairs)} claim-group pair(s) compared")
+
+
+def _neighbours(edges: Sequence[ClaimEdge]) -> Dict[str, Set[str]]:
+    out: Dict[str, Set[str]] = {}
+    for edge in edges:
+        out.setdefault(edge.from_claim, set()).add(edge.to_claim)
+        out.setdefault(edge.to_claim, set()).add(edge.from_claim)
+    return out
+
+
+def _components(claims: Sequence[ClaimNode], edges: Sequence[ClaimEdge]) -> Dict[str, str]:
+    """Which connected piece of the claim graph each claim belongs to.
+
+    Keyed on the SMALLEST member's id rather than on a counter, so the same graph names the same
+    components on a re-run and a plan built from it is replay-stable. Claims joined by an edge, or
+    by an `inferred_from` link, are one component: those are the claims whose forks are only visible
+    together, so a batch seam between them is the expensive kind.
+    """
+    parent: Dict[str, str] = {c.claim_id: c.claim_id for c in claims}
+
+    def find(node: str) -> str:
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    def union(a: str, b: str) -> None:
+        if a in parent and b in parent:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[max(ra, rb)] = min(ra, rb)
+
+    for edge in edges:
+        union(edge.from_claim, edge.to_claim)
+    for claim in claims:
+        for parent_id in claim.inferred_from:
+            union(claim.claim_id, parent_id)
+    return {c.claim_id: find(c.claim_id) for c in claims}
 
 
 class FrozenEpistemicOperationalizer(EpistemicOperationalizer):
-    """The same parse and the same laws, over a frozen payload."""
+    """The same parse and the same laws, over frozen payloads — one per request.
 
-    def __init__(self, payload: Any, *, model: Optional[str] = None):
+    A SEQUENCE since HARNESS-003E, for the reason `FrozenPass` gives: a batched pass makes several
+    calls, and one payload replayed to every batch is a batch answered by a response written for
+    different claims.
+    """
+
+    def __init__(self, payloads: Any, *, model: Optional[str] = None):
         super().__init__(client=None, model=model)
-        self._frozen = payload
+        self._frozen = list(payloads) if isinstance(payloads, (list, tuple)) else [payloads]
+        self._served = 0
 
     def is_available(self) -> bool:
         return True
 
-    def invoke(self, user_prompt: str, *, inquiry_id: str, attempt: int = 1,
-               inputs: int = 0) -> PassResult:
+    def invoke(self, user_prompt: str, *, inquiry_id: str, attempt: int = 1, inputs: int = 0,
+               system_prompt: Optional[str] = None, estimated_prompt_tokens: int = 0,
+               completion_tokens: Optional[int] = None) -> PassResult:
         from .passes import FrozenPass
-        through = FrozenPass([self._frozen], model=self._model)
+        through = FrozenPass(self._frozen[self._served:self._served + 1], model=self._model)
         through.role = self.role
         through.pass_name = self.pass_name
+        self._served += 1
         self.calls += 1
         return through.invoke(user_prompt, inquiry_id=inquiry_id, attempt=attempt, inputs=inputs)
 
 
-__all__ = ["ROLE", "PRODUCER", "DEFAULT_BUDGET", "MAX_OBSERVABLES_PER_CLAIM", "SYSTEM_PROMPT",
-           "build_prompt", "claim_digest", "EpistemicOperationalizer",
+__all__ = ["ROLE", "PRODUCER", "DEFAULT_BUDGET", "OPERATIONALIZE_COMPLETION", "FORK_COMPLETION",
+           "MAX_OBSERVABLES_PER_CLAIM", "SYSTEM_PROMPT", "FORK_SYSTEM_PROMPT", "build_prompt",
+           "fork_prompt", "fixed_prompt_text", "claim_digest", "EpistemicOperationalizer",
            "FrozenEpistemicOperationalizer"]

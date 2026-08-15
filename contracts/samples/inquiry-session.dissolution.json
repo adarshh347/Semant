@@ -1148,7 +1148,11 @@
     ],
     "inquiry_id": "inq_77f871886f15",
     "notes": [
+      "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 80 per item for the answer (ceiling 4096); 4142 token(s) of room per request for 18 item(s)",
       "claim 1: typed 'interpretation' where its atoms default to 'attribute' with no reason given",
+      "1 of 1 batch(es) produced a claim, so every claim was already in front of the model together. The coverage matrix is empty because there is nothing across, not because nothing was compared.",
+      "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 160 per item for the answer (ceiling 4096); 4075 token(s) of room per request for 13 item(s)",
+      "one batch answered for every claim, so every fork was already visible in one request. The coverage matrix is empty because there is nothing across, not because nothing was compared.",
       "dissolution: completed — every pass completed and the ledger is whole"
     ],
     "observables": [
@@ -1336,6 +1340,7 @@
     ],
     "passes": [
       {
+        "batch_plan": null,
         "call_count": 0,
         "capacity_waits": [],
         "completion_tokens": null,
@@ -1355,6 +1360,7 @@
         "waited_ms": null
       },
       {
+        "batch_plan": null,
         "call_count": 4,
         "capacity_waits": [],
         "completion_tokens": null,
@@ -1377,10 +1383,31 @@
         "waited_ms": null
       },
       {
+        "batch_plan": {
+          "allowance_tokens": 8000,
+          "batches": 1,
+          "dispositions": {
+            "used": 18
+          },
+          "duplicates_merged": 0,
+          "largest_request_tokens": 6595,
+          "notes": [
+            "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 80 per item for the answer (ceiling 4096); 4142 token(s) of room per request for 18 item(s)"
+          ],
+          "pairs_examined": 0,
+          "pairs_total": 0,
+          "plan_id": "plan_242a536c2fd2",
+          "plan_version": "semantic-batch-plan.v1",
+          "rounds": [],
+          "total_items": 18,
+          "unexamined_pairs": [],
+          "unit": "semantic_atom",
+          "unsendable_batches": 0
+        },
         "call_count": 1,
         "capacity_waits": [],
         "completion_tokens": null,
-        "detail": "13 claim(s) and 7 relation(s) over 18 atoms",
+        "detail": "13 claim(s) and 7 relation(s) over 18 atoms in 1 batch(es), with 0 of 0 batch pair(s) compared across 0 reconciliation round(s)",
         "duration_ms": null,
         "finish_reasons": [],
         "inputs": 18,
@@ -1398,10 +1425,33 @@
         "waited_ms": null
       },
       {
+        "batch_plan": {
+          "allowance_tokens": 8000,
+          "batches": 1,
+          "dispositions": {
+            "not_investigated": 1,
+            "operationalized": 6,
+            "semantic_remainder": 6
+          },
+          "duplicates_merged": 0,
+          "largest_request_tokens": 6358,
+          "notes": [
+            "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 160 per item for the answer (ceiling 4096); 4075 token(s) of room per request for 13 item(s)"
+          ],
+          "pairs_examined": 0,
+          "pairs_total": 0,
+          "plan_id": "plan_bd011cbd636d",
+          "plan_version": "semantic-batch-plan.v1",
+          "rounds": [],
+          "total_items": 13,
+          "unexamined_pairs": [],
+          "unit": "claim",
+          "unsendable_batches": 0
+        },
         "call_count": 1,
         "capacity_waits": [],
         "completion_tokens": null,
-        "detail": "6 observable(s) and 4 remainder item(s) over 13 claim(s)",
+        "detail": "6 observable(s) and 4 remainder item(s) over 13 claim(s) in 1 batch(es), with 0 of 0 claim-group pair(s) compared",
         "duration_ms": null,
         "finish_reasons": [],
         "inputs": 13,
@@ -1419,6 +1469,7 @@
         "waited_ms": null
       },
       {
+        "batch_plan": null,
         "call_count": 0,
         "capacity_waits": [],
         "completion_tokens": null,
@@ -2334,7 +2385,7 @@
     "created_at": "2026-08-09T00:00:00+00:00",
     "frame_hash": "064067c87bd5d7edb8267fa36e5b66ff59ee5c4e8c3147a81a48db9224edece9",
     "frame_producer": "inquiry/deterministic-v1",
-    "graph_hash": "sig_7f6521730fb55687",
+    "graph_hash": "sig_6b365127e0c30125",
     "mode": "auto",
     "notes": [],
     "producer": "inquiry_session/coordinator-v1",
@@ -2466,7 +2517,7 @@
       "call_topology": "council_passes",
       "calls": [],
       "completed_at": "2026-08-09T00:00:00+00:00",
-      "counts_line": "7 reading blocks in → 18 atoms · 13 claims · 6 observables · 4 remainder · 11 source units out",
+      "counts_line": "7 reading blocks in → 18 atoms · 13 claims · 6 observables · 7 relations · 4 remainder · 11 source units out",
       "detail": "13 claims · 1 attribute · 2 causal_hypothesis · 3 comparison · 2 entity · 1 generative_rule · 1 historical_or_sourced · 2 interpretation · 1 spatial_relation · 6 observables requested, none run · 1 decision candidate · 4 meanings measurement will not exhaust",
       "duration_ms": 0.0,
       "event_id": "stg_6729440cbd98",
@@ -2482,6 +2533,7 @@
         "atoms": 18,
         "claims": 13,
         "observables": 6,
+        "relations": 7,
         "remainder": 4,
         "source units": 11
       },
@@ -2718,14 +2770,78 @@
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "relation_architect · completed · 13 claim(s) and 7 relation(s) over 18 atoms · 1 call(s)",
+          "detail": "18 atom(s), ~6595 token(s)",
+          "duration_ms": null,
+          "index": 1,
+          "label": "relating batch 1 of 1",
+          "outcome": "started",
+          "refs": [
+            "atm_af7111df9136",
+            "atm_e822b0b67164",
+            "atm_1e1cf91fa734",
+            "atm_5de911909832",
+            "atm_e1c3d4f7faca",
+            "atm_378497de8185",
+            "atm_b8f8a948f307",
+            "atm_e6e8611a588a",
+            "atm_5cbf64cd3d57",
+            "atm_c4a9ae0bcd1c",
+            "atm_7ce0e5c79f2f",
+            "atm_b3495142b425",
+            "atm_f70a94c25d03",
+            "atm_1a13b92ad308",
+            "atm_b891ea4c4191",
+            "atm_eb8c0a26b1fd",
+            "atm_f654faa57e5b",
+            "atm_e6f854d48467"
+          ],
+          "started_at": null,
+          "substage_id": "stg_8f637bb65b2b",
+          "total": 1
+        },
+        {
+          "at": "2026-08-09T00:00:00+00:00",
+          "completed_at": null,
+          "detail": "13 claim(s) from 18 atom(s)",
+          "duration_ms": null,
+          "index": 1,
+          "label": "relating batch 1 of 1",
+          "outcome": "completed",
+          "refs": [
+            "atm_af7111df9136",
+            "atm_e822b0b67164",
+            "atm_1e1cf91fa734",
+            "atm_5de911909832",
+            "atm_e1c3d4f7faca",
+            "atm_378497de8185",
+            "atm_b8f8a948f307",
+            "atm_e6e8611a588a",
+            "atm_5cbf64cd3d57",
+            "atm_c4a9ae0bcd1c",
+            "atm_7ce0e5c79f2f",
+            "atm_b3495142b425",
+            "atm_f70a94c25d03",
+            "atm_1a13b92ad308",
+            "atm_b891ea4c4191",
+            "atm_eb8c0a26b1fd",
+            "atm_f654faa57e5b",
+            "atm_e6f854d48467"
+          ],
+          "started_at": null,
+          "substage_id": "stg_ab9e25e6c0f1",
+          "total": 1
+        },
+        {
+          "at": "2026-08-09T00:00:00+00:00",
+          "completed_at": null,
+          "detail": "relation_architect · completed · 13 claim(s) and 7 relation(s) over 18 atoms in 1 batch(es), with 0 of 0 batch pair(s) compared across 0 reconciliation round(s) · 1 call(s)",
           "duration_ms": null,
           "index": 3,
           "label": "building claims and the relations between them",
           "outcome": "completed",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_8a4557a8ef4e",
+          "substage_id": "stg_f729fa58181b",
           "total": 6
         },
         {
@@ -2738,20 +2854,74 @@
           "outcome": "started",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_bc551fec61ce",
+          "substage_id": "stg_ae854fbb1796",
           "total": 6
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "epistemic_operationalizer · completed · 6 observable(s) and 4 remainder item(s) over 13 claim(s) · 1 call(s)",
+          "detail": "13 claim(s), 0 in context",
+          "duration_ms": null,
+          "index": 1,
+          "label": "operationalizing batch 1 of 1",
+          "outcome": "started",
+          "refs": [
+            "clm_5f23c8a2d932",
+            "clm_4057d7159b0c",
+            "clm_49e0d789c75f",
+            "clm_860ba087b46c",
+            "clm_d0fd1be23d65",
+            "clm_dd5433b794b3",
+            "clm_b21d6a63dc90",
+            "clm_4c013fd3263d",
+            "clm_610467506a77",
+            "clm_cf4fffa13dd2",
+            "clm_282a992640d9",
+            "clm_bd710b06f4cb",
+            "clm_62c753b2781f"
+          ],
+          "started_at": null,
+          "substage_id": "stg_f26a530a4da0",
+          "total": 1
+        },
+        {
+          "at": "2026-08-09T00:00:00+00:00",
+          "completed_at": null,
+          "detail": "6 observable(s) so far",
+          "duration_ms": null,
+          "index": 1,
+          "label": "operationalizing batch 1 of 1",
+          "outcome": "completed",
+          "refs": [
+            "clm_5f23c8a2d932",
+            "clm_4057d7159b0c",
+            "clm_49e0d789c75f",
+            "clm_860ba087b46c",
+            "clm_d0fd1be23d65",
+            "clm_dd5433b794b3",
+            "clm_b21d6a63dc90",
+            "clm_4c013fd3263d",
+            "clm_610467506a77",
+            "clm_cf4fffa13dd2",
+            "clm_282a992640d9",
+            "clm_bd710b06f4cb",
+            "clm_62c753b2781f"
+          ],
+          "started_at": null,
+          "substage_id": "stg_c67ed8d73e53",
+          "total": 1
+        },
+        {
+          "at": "2026-08-09T00:00:00+00:00",
+          "completed_at": null,
+          "detail": "epistemic_operationalizer · completed · 6 observable(s) and 4 remainder item(s) over 13 claim(s) in 1 batch(es), with 0 of 0 claim-group pair(s) compared · 1 call(s)",
           "duration_ms": null,
           "index": 4,
           "label": "deciding what could be observed, and what cannot",
           "outcome": "completed",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_47cd45f27820",
+          "substage_id": "stg_1475e35b8f97",
           "total": 6
         },
         {
@@ -2764,7 +2934,7 @@
           "outcome": "started",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_e12b3894e91c",
+          "substage_id": "stg_98b663770ce7",
           "total": 6
         },
         {
@@ -2777,7 +2947,7 @@
           "outcome": "completed",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_569ea73f2fdd",
+          "substage_id": "stg_967b0fc81687",
           "total": 6
         }
       ],

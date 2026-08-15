@@ -1,0 +1,640 @@
+{
+  "name": "cross-boundary-rail",
+  "prompt": "the uprights are doing different work in these two. in the first they are all one thickness and the rail sits flat across them, which is why the run reads as plain; in the second every third one swells at the middle and the rail follows that swell--a third run made for this stair would have to decide whether the swell carries load or only announces itself",
+  "images": [
+    {
+      "post_id": "img_plain",
+      "title": "A straight run, raking light"
+    },
+    {
+      "post_id": "img_swelled",
+      "title": "A shaped run, raking light"
+    }
+  ],
+  "theorist_payload": {
+    "reading": "two runs of ironwork, read one at a time and then together",
+    "blocks": [
+      {
+        "kind": "part",
+        "text": "the first run shows uprights of a single unvarying thickness along its whole length",
+        "images": [
+          "img_plain"
+        ]
+      },
+      {
+        "kind": "organization",
+        "text": "in the first run the top member meets every upright at the same height",
+        "images": [
+          "img_plain"
+        ]
+      },
+      {
+        "kind": "tension",
+        "text": "the metal of the first run carries an even dark finish with no highlight at the joins",
+        "images": [
+          "img_plain"
+        ]
+      },
+      {
+        "kind": "part",
+        "text": "the second run shows uprights that thicken at mid height and narrow again above and below",
+        "images": [
+          "img_swelled"
+        ]
+      },
+      {
+        "kind": "organization",
+        "text": "in the second run the top member rises and falls in step with the thickened uprights",
+        "images": [
+          "img_swelled"
+        ]
+      },
+      {
+        "kind": "tension",
+        "text": "the thickened uprights of the second run catch light along their widest point",
+        "images": [
+          "img_swelled"
+        ]
+      },
+      {
+        "kind": "hypothesis",
+        "text": "the shaping of the uprights in the second run may be answering a load rather than a taste",
+        "images": [
+          "img_swelled"
+        ]
+      }
+    ]
+  },
+  "dissector_payloads": [
+    {
+      "atoms": [
+        {
+          "ref": "a1",
+          "text": "the uprights do different work in the two runs",
+          "unit_kind": "comparison",
+          "source_unit_ids": [
+            "$UNIT:1"
+          ],
+          "quotes": [
+            "are doing different work in these two"
+          ],
+          "subject": "the uprights",
+          "predicate": "differ in",
+          "object": "their work",
+          "image_scope": "corpus"
+        },
+        {
+          "ref": "a2",
+          "text": "in the first run every upright is one thickness",
+          "unit_kind": "visual_quality",
+          "source_unit_ids": [
+            "$UNIT:2",
+            "$UNIT:5"
+          ],
+          "quotes": [
+            "they are all one thickness"
+          ],
+          "subject": "the uprights of the first run",
+          "predicate": "are",
+          "object": "one thickness",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a3",
+          "text": "in the first run the top member sits flat across the uprights",
+          "unit_kind": "relation",
+          "source_unit_ids": [
+            "$UNIT:2",
+            "$UNIT:6"
+          ],
+          "quotes": [
+            "the rail sits flat across them"
+          ],
+          "subject": "the top member",
+          "predicate": "sits flat across",
+          "object": "the uprights",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a4",
+          "text": "the even thickness is why the first run reads as plain",
+          "unit_kind": "causal_hypothesis",
+          "source_unit_ids": [
+            "$UNIT:2"
+          ],
+          "quotes": [
+            "which is why the run reads as plain"
+          ],
+          "subject": "the even thickness",
+          "predicate": "produces",
+          "object": "a plain reading",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a5",
+          "text": "the metal of the first run carries an even dark finish",
+          "unit_kind": "visual_quality",
+          "source_unit_ids": [
+            "$UNIT:7"
+          ],
+          "quotes": [
+            "an even dark finish with no highlight at the joins"
+          ],
+          "subject": "the metal",
+          "predicate": "carries",
+          "object": "an even dark finish",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "a6",
+          "text": "the first run is made of uprights and a top member",
+          "unit_kind": "entity",
+          "source_unit_ids": [
+            "$UNIT:5",
+            "$UNIT:6"
+          ],
+          "quotes": [
+            "uprights of a single unvarying thickness"
+          ],
+          "subject": "the first run",
+          "predicate": "is made of",
+          "object": "uprights and a top member",
+          "image_scope": "one_image"
+        }
+      ],
+      "coverage": []
+    },
+    {
+      "atoms": [
+        {
+          "ref": "b1",
+          "text": "in the second run every third upright swells at mid height",
+          "unit_kind": "visual_quality",
+          "source_unit_ids": [
+            "$UNIT:3",
+            "$UNIT:8"
+          ],
+          "quotes": [
+            "every third one swells at the middle"
+          ],
+          "subject": "the uprights of the second run",
+          "predicate": "swell at",
+          "object": "mid height",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b2",
+          "text": "in the second run the top member follows the swell of the uprights",
+          "unit_kind": "relation",
+          "source_unit_ids": [
+            "$UNIT:3",
+            "$UNIT:9"
+          ],
+          "quotes": [
+            "the rail follows that swell"
+          ],
+          "subject": "the top member",
+          "predicate": "follows",
+          "object": "the swell",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b3",
+          "text": "the swelled uprights catch light along their widest point",
+          "unit_kind": "visual_quality",
+          "source_unit_ids": [
+            "$UNIT:10"
+          ],
+          "quotes": [
+            "catch light along their widest point"
+          ],
+          "subject": "the swelled uprights",
+          "predicate": "catch",
+          "object": "light",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b4",
+          "text": "the shaping of the uprights may be answering a load rather than a taste",
+          "unit_kind": "causal_hypothesis",
+          "source_unit_ids": [
+            "$UNIT:11"
+          ],
+          "quotes": [
+            "may be answering a load rather than a taste"
+          ],
+          "subject": "the shaping",
+          "predicate": "answers",
+          "object": "a load",
+          "image_scope": "one_image"
+        },
+        {
+          "ref": "b5",
+          "text": "a third run would have to decide whether the swell carries load or announces itself",
+          "unit_kind": "generative_proposal",
+          "source_unit_ids": [
+            "$UNIT:4"
+          ],
+          "quotes": [
+            "would have to decide whether the swell carries load"
+          ],
+          "subject": "a third run",
+          "predicate": "must decide",
+          "object": "the role of the swell",
+          "image_scope": "corpus"
+        },
+        {
+          "ref": "b6",
+          "text": "the second run is made of uprights that thicken and a top member that follows them",
+          "unit_kind": "entity",
+          "source_unit_ids": [
+            "$UNIT:8",
+            "$UNIT:9"
+          ],
+          "quotes": [
+            "uprights that thicken at mid height"
+          ],
+          "subject": "the second run",
+          "predicate": "is made of",
+          "object": "shaped uprights and a following top member",
+          "image_scope": "one_image"
+        }
+      ],
+      "coverage": []
+    }
+  ],
+  "architect_payload": {
+    "claims": [
+      {
+        "ref": "d1",
+        "text": "in the first run the top member sits flat across the uprights",
+        "kind": "spatial_relation",
+        "atom_ids": [
+          "$ATOM:a3"
+        ],
+        "subject": "the top member",
+        "predicate": "sits flat across",
+        "object": "the uprights",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d2",
+        "text": "in the first run every upright is one thickness",
+        "kind": "attribute",
+        "atom_ids": [
+          "$ATOM:a2"
+        ],
+        "subject": "the uprights",
+        "predicate": "are",
+        "object": "one thickness",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d3",
+        "text": "the even thickness is what makes the first run read as plain",
+        "kind": "causal_hypothesis",
+        "atom_ids": [
+          "$ATOM:a4"
+        ],
+        "subject": "the even thickness",
+        "predicate": "produces",
+        "object": "a plain reading",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d4",
+        "text": "in the second run the top member follows the swell of the uprights",
+        "kind": "spatial_relation",
+        "atom_ids": [
+          "$ATOM:b2"
+        ],
+        "subject": "the top member",
+        "predicate": "follows",
+        "object": "the swell",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d5",
+        "text": "in the second run every third upright swells at mid height",
+        "kind": "attribute",
+        "atom_ids": [
+          "$ATOM:b1"
+        ],
+        "subject": "the uprights",
+        "predicate": "swell at",
+        "object": "mid height",
+        "image_scope": "one_image",
+        "demand": "measurable",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d6",
+        "text": "the shaping of the uprights may be answering a load rather than a taste",
+        "kind": "causal_hypothesis",
+        "atom_ids": [
+          "$ATOM:b4"
+        ],
+        "subject": "the shaping",
+        "predicate": "answers",
+        "object": "a load",
+        "image_scope": "one_image",
+        "demand": "interpretive",
+        "status": "interpretive"
+      },
+      {
+        "ref": "d7",
+        "text": "a third run must decide whether the swell carries load or only announces itself",
+        "kind": "generative_rule",
+        "atom_ids": [
+          "$ATOM:b5"
+        ],
+        "subject": "a third run",
+        "predicate": "must decide",
+        "object": "the role of the swell",
+        "image_scope": "corpus",
+        "demand": "imagined",
+        "status": "interpretive"
+      }
+    ],
+    "edges": [
+      {
+        "kind": "supports",
+        "from": "d2",
+        "to": "d3",
+        "why": "the one thickness is what the plain reading is read from"
+      },
+      {
+        "kind": "supports",
+        "from": "d5",
+        "to": "d4",
+        "why": "the swell is what the top member is following"
+      }
+    ]
+  },
+  "operationalizer_payload": {
+    "observables": [
+      {
+        "ref": "p1",
+        "claim": "$CLAIM:d2",
+        "kind": "thickness of each upright along its length",
+        "targets": [
+          "each upright"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "extent"
+        ],
+        "ground_forms": [
+          "region"
+        ],
+        "success_when": "every upright is located and its width is returned at several heights",
+        "ambiguous_when": "two uprights cannot be told apart where they cross the top member",
+        "refused_when": "no upright can be located",
+        "remains_interpretive": "whether an even thickness is what a viewer calls plain",
+        "alternatives": [
+          {
+            "label": "measure width at mid height only",
+            "consequence": "one figure per upright, and any taper is missed",
+            "capability_classes": [
+              "extent"
+            ],
+            "ground_forms": [
+              "region"
+            ],
+            "recommended": true
+          },
+          {
+            "label": "measure width at several heights",
+            "consequence": "a profile per upright, more cost, and taper becomes visible",
+            "capability_classes": [
+              "extent",
+              "pattern"
+            ],
+            "ground_forms": [
+              "region",
+              "field"
+            ],
+            "recommended": false
+          }
+        ]
+      },
+      {
+        "ref": "p2",
+        "claim": "$CLAIM:d5",
+        "kind": "width of each upright at mid height against its width above and below",
+        "targets": [
+          "each upright"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "extent",
+          "pattern"
+        ],
+        "ground_forms": [
+          "region",
+          "field"
+        ],
+        "success_when": "a profile is returned for each upright and the swell is a difference in it",
+        "ambiguous_when": "the swell is within the tolerance of the measurement",
+        "refused_when": "the uprights cannot be separated from the background",
+        "remains_interpretive": "whether a swell that measures small still reads as shaping",
+        "alternatives": [
+          {
+            "label": "compare mid height with the ends",
+            "consequence": "one ratio per upright, simple and coarse",
+            "capability_classes": [
+              "extent"
+            ],
+            "ground_forms": [
+              "region"
+            ],
+            "recommended": true
+          },
+          {
+            "label": "return the whole profile",
+            "consequence": "the shape of the swell, at more cost",
+            "capability_classes": [
+              "extent",
+              "pattern"
+            ],
+            "ground_forms": [
+              "field"
+            ],
+            "recommended": false
+          }
+        ]
+      },
+      {
+        "ref": "p3",
+        "claim": "$CLAIM:d1",
+        "kind": "height of the top member above each upright",
+        "targets": [
+          "the top member",
+          "each upright"
+        ],
+        "image_scope": "one_image",
+        "capability_classes": [
+          "geometry"
+        ],
+        "ground_forms": [
+          "path",
+          "relation"
+        ],
+        "success_when": "the top member is traced and its height is returned at every upright",
+        "ambiguous_when": "the top member is occluded at some uprights",
+        "refused_when": "the top member cannot be traced",
+        "remains_interpretive": "whether a flat line is what makes a run read as plain",
+        "alternatives": [
+          {
+            "label": "sample the height at each upright",
+            "consequence": "one figure per upright",
+            "capability_classes": [
+              "geometry"
+            ],
+            "ground_forms": [
+              "relation"
+            ],
+            "recommended": true
+          },
+          {
+            "label": "trace the whole line",
+            "consequence": "a path, and any curvature between uprights becomes visible",
+            "capability_classes": [
+              "geometry"
+            ],
+            "ground_forms": [
+              "path"
+            ],
+            "recommended": false
+          }
+        ]
+      }
+    ],
+    "decisions": [],
+    "semantic_remainder": [
+      {
+        "term": "reading as plain",
+        "why": "no instrument returns what a run reads as; an even thickness contributes to it and does not settle it",
+        "contributing_capability_classes": [
+          "extent",
+          "colour"
+        ],
+        "claims": [
+          "$CLAIM:d3"
+        ]
+      },
+      {
+        "term": "announcing itself",
+        "why": "whether shaping is decorative is a judgement about intent, and no measurement reaches an intention",
+        "contributing_capability_classes": [
+          "semantic_reading",
+          "external_source"
+        ],
+        "claims": [
+          "$CLAIM:d6",
+          "$CLAIM:d7"
+        ]
+      }
+    ]
+  },
+  "topic_nouns": [
+    "balustrade",
+    "spindle",
+    "newel",
+    "rivet",
+    "scroll",
+    "forge"
+  ],
+  "reconciliation_payloads": [
+    {
+      "edges": [
+        {
+          "kind": "complicates",
+          "from": "$CLAIM:d1",
+          "to": "$CLAIM:d4",
+          "why": "a top member that sits flat and one that follows the uprights are two answers to the same job"
+        }
+      ],
+      "duplicates": [],
+      "claims": [
+        {
+          "text": "the top member is straight in the first run and shaped in the second, and that is the difference the two runs turn on",
+          "kind": "comparison",
+          "inferred_from": [
+            "$CLAIM:d1",
+            "$CLAIM:d4"
+          ],
+          "subject": "the top member",
+          "predicate": "differs in",
+          "object": "whether it follows the uprights",
+          "image_scope": "corpus",
+          "demand": "measurable",
+          "status": "interpretive",
+          "note": "only visible with both runs' claims in view"
+        }
+      ]
+    }
+  ],
+  "fork_payloads": [
+    {
+      "decisions": [
+        {
+          "kind": "choose_operationalization",
+          "question": "Measure each upright at mid height only, or return its whole profile?",
+          "why_now": "one figure per upright makes the two runs directly comparable and hides the shape of the swell; a profile shows the shape and makes the comparison a set of curves rather than a number",
+          "affects": [
+            "$CLAIM:d2",
+            "$CLAIM:d5"
+          ],
+          "blocking": false,
+          "options": [
+            {
+              "label": "measure at mid height only",
+              "consequence": "one figure per upright, simple and coarse",
+              "recommended": true
+            },
+            {
+              "label": "return the whole profile",
+              "consequence": "the shape of the swell, at more cost",
+              "recommended": false
+            }
+          ]
+        }
+      ],
+      "semantic_remainder": [
+        {
+          "term": "the difference the two runs turn on",
+          "why": "which of the two answers is better is a judgement about what a run is for, and no measurement reaches a purpose",
+          "contributing_capability_classes": [
+            "semantic_reading",
+            "external_source"
+          ],
+          "claims": [
+            "$CLAIM:d1",
+            "$CLAIM:d4"
+          ]
+        }
+      ]
+    }
+  ],
+  "topic": "two runs of ironwork read one at a time, where the one relation that matters is between them rather than inside either",
+  "why_this_fixture": [
+    "HARNESS-003E's load-bearing frozen fixture. Every LOCAL batch succeeds and produces claims, and",
+    "the relation that matters connects two claims that were never in the same request: the sizing",
+    "puts the first run's atoms in one batch and the second run's in another, so no local call ever",
+    "saw both halves.",
+    "Delete the cross-batch reconciliation and the local batches still go green. That is exactly the",
+    "failure a batched architect reports as a successful relation search, and it is why this fixture",
+    "asserts on the EDGE and the comparison claim rather than on the pass's outcome alone.",
+    "The same holds one pass along: the fork spanning the two batches survives in neither local",
+    "operationalization request, and `fork_payloads` is what the final cross-batch round found."
+  ]
+}
