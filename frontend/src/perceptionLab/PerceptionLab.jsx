@@ -256,10 +256,17 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                             <PlanPreview
                                 plan={lab.plan}
                                 onRun={lab.runPlan}
+                                onCancel={lab.cancelRun}
                                 onReplay={lab.runs.length
                                     ? () => lab.replayRun(lab.runs[lab.runs.length - 1].run_id)
                                     : null}
+                                // Which wires this client actually has. Both are read off the one
+                                // `identity()` it declares, so there is no state in which the page
+                                // offers a run the client would have to refuse.
                                 canRunLive={lab.clientIdentity === 'LIVE'}
+                                canRunFixture={lab.clientIdentity !== 'LIVE'}
+                                runTicket={lab.runTicket}
+                                cancelNote={lab.cancelNote}
                                 busy={lab.busy} />
                             <RunStream
                                 run={lab.run}

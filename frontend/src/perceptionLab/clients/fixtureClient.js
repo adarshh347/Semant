@@ -379,6 +379,24 @@ export function createFixtureClient(options = {}) {
         },
 
         /**
+         * A ticket, pulled. It never reaches anything, and it says so.
+         *
+         * A fixture run is a synchronous loop over resolved steps: by the moment a cancel could be
+         * requested, there is nothing left to skip. So this answers `cancelled: false` — which is
+         * the SAME answer the live client gives for a run on another worker, and the same shape,
+         * which is the point of it being on the interface at all. A fixture that pretended to stop
+         * something would teach the surface a promise the real wire cannot keep.
+         */
+        cancel: async ({ session_id, run_ticket }) => {
+            worldOf(session_id);
+            return {
+                cancelled: false,
+                note: `nothing of ticket ${run_ticket} is in flight — a fixture run completes `
+                    + 'inside the call that started it, so there is no stage left to skip.',
+            };
+        },
+
+        /**
          * Re-open a recorded run. Nothing is called; the artifacts are the ones already in the
          * ledger, and `adapter_callable: false` is on the record for `validateRun` to check.
          */

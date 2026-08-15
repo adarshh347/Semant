@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
 import {
   Images, BookOpen, Palette, User, Home,
-  Microscope, Eye, ScanSearch, Sparkles,
+  Microscope, Eye, ScanSearch, Sparkles, Aperture,
   Upload, SunMoon, ArrowRight, Keyboard,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -28,6 +28,7 @@ const TOOLS = [
   { to: '/unconceal', label: 'Unconceal', hint: 'Aletheia queue', icon: <Eye size={16} /> },
   { to: '/anatomy', label: 'Anatomy', hint: 'Name parts of an image', icon: <ScanSearch size={16} /> },
   { to: '/motive', label: 'Motive', hint: 'The why behind the work', icon: <Sparkles size={16} /> },
+  { to: '/lab/perception', label: 'Perception lab', hint: 'Extent & Topology, one question at a time', icon: <Aperture size={16} /> },
 ];
 
 export default function CommandPalette() {
