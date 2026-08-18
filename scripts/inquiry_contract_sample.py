@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -33,11 +34,14 @@ AT = "2026-08-09T00:00:00+00:00"
 #: Fixed rather than minted: the session id is the one clock-derived value in the lane, and a
 #: sample whose id changed every run would make the diff useless.
 SESSION_IDS = {"awaiting-user": "inqs_sample000001", "complete": "inqs_sample000002",
-               "auto-complete": "inqs_sample000003", "dissolution": "inqs_sample000004"}
+               "auto-complete": "inqs_sample000003", "dissolution": "inqs_sample000004",
+               "scoped": "inqs_sample000005"}
 
 
 def _build():
     from backend.services.inquiry_session import coordinator, runtime, view
+    from backend.services.semantic_compilation import scope as scope_mod
+    from backend.services.semantic_compilation import sizing
     from backend.services.inquiry_session.capability import LockedFixtureCapability
     from backend.services.inquiry_session.composer import DeterministicComposer
     from backend.services.inquiry_session.judge import judge
@@ -96,6 +100,48 @@ def _build():
         council_stages())
     out["dissolution"] = view.session_view(dissolved, servable_classes=servable,
                                            deployment=runtime.deployment(council_stages()))
+
+    # ── the scoped sample (HARNESS-003F) ──────────────────────────────────────
+    #
+    # The four above are full-coverage runs, so every scope field on them is legitimately the
+    # unbounded answer. A parity suite reading only those would prove that the client tolerates an
+    # UNBOUNDED scope — which is the same shape of assurance that let the backend stop sending
+    # source units without anybody noticing. So this one is a declared vertical slice that actually
+    # bites: fewer relation requests than the partition needs, and a coverage matrix nobody reached.
+    #
+    # THE NUMBERS ARE DECLARED HERE rather than inherited from the box. A sample whose scope
+    # depended on an environment variable would differ between two machines and the drift check
+    # would fail for a reason that has nothing to do with the contract. The bounds are this lane's
+    # own defaults; the allowance is chosen as the one at which this fixture exercises ALL THREE
+    # kinds of exclusion at once — deferred source units, atoms no relation request reached, and a
+    # claim nothing was asked about — while still building a claim. A sample where only one kind
+    # appeared would let a client that mishandled the other two pass.
+    scoped_env = {
+        scope_mod.ENABLED_ENV: "1",
+        sizing.ALLOWANCE_ENV: "4500",
+        scope_mod.MAX_RELATION_BATCHES_ENV: str(scope_mod.DEFAULT_MAX_RELATION_BATCHES),
+        scope_mod.MAX_OPERATIONALIZER_BATCHES_ENV: str(
+            scope_mod.DEFAULT_MAX_OPERATIONALIZER_BATCHES),
+        scope_mod.MAX_RECONCILIATION_ROUNDS_ENV: str(
+            scope_mod.DEFAULT_MAX_RECONCILIATION_ROUNDS),
+    }
+    restore = {k: os.environ.get(k) for k in scoped_env}
+    os.environ.update(scoped_env)
+    try:
+        scoped = coordinator.begin(
+            coordinator.new_session(prompt=F.dissolution_prompt_for(council),
+                                    refs=F.dissolution_post_refs(council), mode="auto",
+                                    session_id=SESSION_IDS["scoped"], now=AT,
+                                    execution_scope="vertical_slice"),
+            council_stages())
+        out["scoped"] = view.session_view(scoped, servable_classes=servable,
+                                          deployment=runtime.deployment(council_stages()))
+    finally:
+        for key, value in restore.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
     return out
 
 

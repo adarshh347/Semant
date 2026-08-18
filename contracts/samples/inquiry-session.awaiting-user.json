@@ -63,6 +63,29 @@
   },
   "error": "",
   "evidence": [],
+  "execution_scope": {
+    "allowance_tokens": null,
+    "atoms_not_investigated": 0,
+    "claims_not_investigated": 0,
+    "deferred_source_units": 0,
+    "exclusions": [],
+    "full_coverage": true,
+    "mode": "full",
+    "notes": [],
+    "operationalizer_batches_allowed": null,
+    "operationalizer_batches_sent": null,
+    "purpose": "",
+    "reconciliation_rounds_allowed": null,
+    "reconciliation_rounds_sent": null,
+    "recorded": false,
+    "relation_batches_allowed": null,
+    "relation_batches_sent": null,
+    "scope_version": "",
+    "selected_atoms": 0,
+    "selected_claims": 0,
+    "selected_source_units": 0,
+    "selection_producer": ""
+  },
   "frame": {
     "attentions": [
       {
@@ -796,6 +819,7 @@
       "source_units": 0,
       "user_units": 0
     },
+    "execution_scope": null,
     "graph_id": "sig_84ea9e178b38",
     "image_refs": [
       {
