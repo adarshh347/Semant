@@ -347,6 +347,43 @@ class ItemDispositionKind(str, Enum):
     NOT_INVESTIGATED = "not_investigated"
 
 
+#: HARNESS-003F. The version stamped on every `ExecutionScopeRecord`. Its own version rather than
+#: the graph's, and for the reason `BATCH_PLAN_VERSION` gives one object along: the scope is a
+#: TEMPORARY contract, it is the thing most likely to be withdrawn or widened, and a reader has to
+#: be able to tell a run scoped under one rule from a run scoped under another without inferring it
+#: from the graph around it.
+EXECUTION_SCOPE_VERSION = "inquiry-execution-scope.v1"
+
+#: The one purpose this scope may be declared for. A string rather than a free field because a
+#: bounded run whose stated purpose could be anything is a bounded run nobody can audit — and this
+#: one exists to test that the vertical FLOWS, never to produce a better-looking answer.
+SCOPE_PURPOSE_VERTICAL_FLOW = "live_vertical_flow_rehearsal"
+
+
+class ExecutionScope(str, Enum):
+    """How much of the inquiry this run was allowed to investigate. HARNESS-003F.
+
+    `FULL` is the existing behaviour and the default, and nothing about it changes: no limit, no
+    selection, no record beyond the one that says so.
+
+    `VERTICAL_SLICE` is TEMPORARY. It exists because the account's per-minute allowance is an order
+    of magnitude under what one pass of this council needs at four-image scale (003E), so the whole
+    chain — prompt to answer — has never once run end to end on live models. A slice makes that
+    testable. It does not make the result a reading: `full_coverage` is False by law, every deferred
+    unit is on the record with a reason, and the badge follows the session into every terminal
+    state.
+    """
+    FULL = "full"
+    VERTICAL_SLICE = "vertical_slice"
+
+
+#: What a deferred source unit's `CoverageDisposition.reason` says, verbatim. One string, because a
+#: reason that varied by call site would let one of them drift into sounding like a finding about
+#: the images.
+SCOPE_DEFERRED_REASON = ("temporary vertical-slice rehearsal scope; not investigated and not "
+                         "evidence of absence")
+
+
 class CallTopology(str, Enum):
     """How the reading was actually obtained. Recorded because it changes what the reading IS:
     three separate per-image calls plus a synthesis is not a joint view of three pictures, and a
@@ -1001,6 +1038,13 @@ class BatchPlanRecord(_Strict):
     unit: str = ""
     total_items: int = Field(default=0, ge=0)
     batches: List[BatchAssignment] = Field(default_factory=list)
+    #: HARNESS-003F. How many of those batches were actually put in front of the model.
+    #:
+    #: `None` on a pass that did not track it, and it is NOT `len(batches)`: a declared scope may
+    #: permit fewer requests than the partition contains, and a plan whose only number was the
+    #: partition size would report a bounded pass as a complete one. The batches nobody sent are
+    #: still here, still primary for their items, and their items are `not_investigated` below.
+    batches_sent: Optional[int] = None
     pairs: List[ComparisonPair] = Field(default_factory=list)
     rounds: List[ReconciliationRound] = Field(default_factory=list)
     dispositions: List[ItemDisposition] = Field(default_factory=list)
@@ -1051,6 +1095,95 @@ class BatchPlanRecord(_Strict):
                     raise ValueError(
                         f"reconciliation round {entry.round_id} names group {group!r}, which is not "
                         f"a batch in this plan.")
+        return self
+
+
+class ScopeExclusion(_Strict):
+    """One thing the scope did not investigate, and why. HARNESS-003F.
+
+    A COUNT IS NOT A RECORD. 003E's whole argument about unexamined batch pairs applies here one
+    layer up: an excluded source unit reported as "17 deferred" is a gap whose size a reader knows
+    and whose location they do not. Every exclusion is named individually.
+    """
+    ref: str
+    #: `source_unit` | `semantic_atom` | `claim`. Not an enum: the scope may one day defer something
+    #: else, and inventing a closed set for three members would make that a schema change.
+    kind: str = ""
+    reason: str
+
+    @field_validator("reason")
+    @classmethod
+    def _an_exclusion_carries_its_reason(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError(
+                "an exclusion with no reason reads as an oversight rather than a declared bound, "
+                "which is the whole difference between a scoped run and a short one")
+        return value
+
+
+class ExecutionScopeRecord(_Strict):
+    """What this run was allowed to look at, what it therefore did not, and that it knows. 003F.
+
+    THE FIELD THIS OBJECT EXISTS FOR IS `full_coverage`, and the validator below is why it is an
+    object rather than a note. A slice that could report complete coverage would be a smaller
+    question wearing the larger question's answer — and every other honesty guard in this tree
+    (`_a_fixture_is_never_evidence`, `_a_length_stop_is_truncated`, `_a_disposition_carries_what_it_claims`)
+    is built the same way: the lie is made unrepresentable rather than merely discouraged.
+
+    The batch counts are `allowed` and `sent` as a PAIR, and `allowed=None` means unlimited. A
+    single "batches" number could not tell a run that was capped at one and sent one from a run that
+    was uncapped and had one to send.
+    """
+    scope_version: str = EXECUTION_SCOPE_VERSION
+    mode: ExecutionScope = ExecutionScope.FULL
+    purpose: str = ""
+    #: Which code chose. Named because the selection is the load-bearing act of a scoped run, and a
+    #: later lane that changes how the choosing works must be visible in the record it wrote.
+    selection_producer: str = ""
+    #: The allowance the selection was sized against, in the provider's own unit. A scoped run whose
+    #: record did not carry this could not be compared with the run that follows a tier change.
+    allowance_tokens: int = Field(default=0, ge=0)
+
+    selected_source_unit_ids: List[str] = Field(default_factory=list)
+    deferred_source_unit_ids: List[str] = Field(default_factory=list)
+    selected_atom_ids: List[str] = Field(default_factory=list)
+    atoms_not_investigated: List[str] = Field(default_factory=list)
+    selected_claim_ids: List[str] = Field(default_factory=list)
+    claims_not_investigated: List[str] = Field(default_factory=list)
+
+    #: `None` is unlimited, and it is not `0`. Zero permitted rounds is a real and deliberate
+    #: configuration in this lane, so the two had to stop being the same value.
+    relation_batches_allowed: Optional[int] = None
+    relation_batches_sent: int = Field(default=0, ge=0)
+    operationalizer_batches_allowed: Optional[int] = None
+    operationalizer_batches_sent: int = Field(default=0, ge=0)
+    reconciliation_rounds_allowed: Optional[int] = None
+    reconciliation_rounds_sent: int = Field(default=0, ge=0)
+
+    exclusions: List[ScopeExclusion] = Field(default_factory=list)
+    full_coverage: bool = True
+    notes: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _a_slice_never_reports_full_coverage(self) -> "ExecutionScopeRecord":
+        if self.mode is ExecutionScope.VERTICAL_SLICE:
+            if self.full_coverage:
+                raise ValueError(
+                    "a vertical-slice run declares full coverage. It investigated a declared "
+                    "subset; reporting that as a complete reading is the one thing this record "
+                    "exists to make impossible.")
+            if self.purpose != SCOPE_PURPOSE_VERTICAL_FLOW:
+                raise ValueError(
+                    f"a vertical-slice run declares purpose {self.purpose!r}. The only purpose "
+                    f"this scope may be used for is {SCOPE_PURPOSE_VERTICAL_FLOW!r} — a bounded "
+                    f"run whose stated purpose could be anything is one nobody can audit.")
+        named = {e.ref for e in self.exclusions}
+        missing = sorted(({*self.deferred_source_unit_ids, *self.atoms_not_investigated,
+                           *self.claims_not_investigated}) - named)
+        if missing:
+            raise ValueError(
+                f"{len(missing)} excluded item(s) carry no reason: {missing[:5]}. A count of what "
+                f"was left out tells a reader the size of the gap and not where it is.")
         return self
 
 
@@ -1156,6 +1289,12 @@ class SemanticInquiryGraph(_Strict):
     semantic_atoms: List[SemanticAtom] = Field(default_factory=list)
     coverage: List[CoverageDisposition] = Field(default_factory=list)
     passes: List[PassReceipt] = Field(default_factory=list)
+
+    #: HARNESS-003F. What this run was ALLOWED to investigate, and what it therefore did not.
+    #: `None` on every graph compiled before this lane and on every full-coverage run that predates
+    #: the record — and absent is not the same claim as `full`, which is why the projection mints a
+    #: full-coverage record rather than reading the absence as one.
+    execution_scope: Optional[ExecutionScopeRecord] = None
 
     claims: List[ClaimNode] = Field(default_factory=list)
     claim_edges: List[ClaimEdge] = Field(default_factory=list)
@@ -1434,5 +1573,9 @@ __all__ = [
     "ClaimEdge", "OperationalAlternative", "ObservableSpec", "DecisionCandidate",
     "SemanticRemainderItem", "CompilerRefusal", "GraphProvenance", "SemanticInquiryGraph",
     "SourceUnit", "SemanticAtom", "CoverageDisposition", "PassReceipt", "CapacityWaitRecord",
+    "BATCH_PLAN_VERSION", "BatchBoundaryReason", "ItemDispositionKind", "BatchAssignment",
+    "ComparisonPair", "ReconciliationRound", "DuplicateClaim", "ItemDisposition", "BatchPlanRecord",
+    "EXECUTION_SCOPE_VERSION", "SCOPE_PURPOSE_VERTICAL_FLOW", "SCOPE_DEFERRED_REASON",
+    "ExecutionScope", "ScopeExclusion", "ExecutionScopeRecord",
     "canonical",
 ]

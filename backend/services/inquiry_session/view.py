@@ -328,6 +328,11 @@ def batch_plan_view(raw: Any) -> Optional[Dict[str, Any]]:
         "unit": _s(raw.get("unit")),
         "total_items": raw.get("total_items") if isinstance(raw.get("total_items"), int) else None,
         "batches": len(batches),
+        # HARNESS-003F. How many of them were actually sent, apart from how many were planned. A
+        # declared scope may permit fewer requests than the partition contains, and one number for
+        # both would render a bounded pass as a complete one.
+        "batches_sent": (raw.get("batches_sent")
+                         if isinstance(raw.get("batches_sent"), int) else None),
         "unsendable_batches": sum(1 for b in batches if b.get("sendable") is False),
         "allowance_tokens": next((b.get("allowance_tokens") for b in batches
                                   if isinstance(b.get("allowance_tokens"), int)), None),
@@ -351,6 +356,57 @@ def batch_plan_view(raw: Any) -> Optional[Dict[str, Any]]:
         "duplicates_merged": len([d for d in _list(raw.get("duplicate_map"))
                                   if isinstance(d, Mapping)]),
         "notes": [_s(n) for n in _list(raw.get("notes"))],
+    }
+
+
+#: HARNESS-003F. The scope record, as the workbench reads it.
+#:
+#: EVERY SESSION HAS ONE, including a full-coverage one and including a session that died before the
+#: compiler ran. The banner is the whole reason: it has to survive onto a completed, exhausted,
+#: refused and errored session alike, and a projection that emitted the key only where a graph
+#: carried a record would leave a slice that failed in the theorist looking like a full reading.
+def execution_scope_view(raw: Any, *, declared_mode: str = "") -> Dict[str, Any]:
+    """One scope, from the graph's record where there is one and from the session's word where not.
+
+    THE TWO SOURCES ARE NOT THE SAME CLAIM and the projection says which it used. A record was
+    written by a compilation that actually ran and selected; a declared mode is what the request
+    asked for and nothing more. `recorded: false` is how a reader tells "this run was bounded and
+    here is what it left out" from "this run was ASKED to be bounded and got no further".
+    """
+    record = raw if isinstance(raw, Mapping) else {}
+    mode = _s(record.get("mode")) or _s(declared_mode) or "full"
+    exclusions = [e for e in _list(record.get("exclusions")) if isinstance(e, Mapping)]
+    slice_mode = mode == "vertical_slice"
+    return {
+        "mode": mode,
+        "recorded": bool(record),
+        "scope_version": _s(record.get("scope_version")),
+        "purpose": _s(record.get("purpose")),
+        "selection_producer": _s(record.get("selection_producer")),
+        "allowance_tokens": (record.get("allowance_tokens")
+                             if isinstance(record.get("allowance_tokens"), int) else None),
+        # THE FIELD THE BANNER IS KEYED ON, and it is False for an unrecorded slice too. A run that
+        # asked to be bounded has not produced a complete reading whatever became of it, and
+        # defaulting an unrecorded slice to `true` would be the one lie this object exists to stop.
+        "full_coverage": (bool(record.get("full_coverage")) if record else not slice_mode),
+        "selected_source_units": len(_list(record.get("selected_source_unit_ids"))),
+        "deferred_source_units": len(_list(record.get("deferred_source_unit_ids"))),
+        "selected_atoms": len(_list(record.get("selected_atom_ids"))),
+        "atoms_not_investigated": len(_list(record.get("atoms_not_investigated"))),
+        "selected_claims": len(_list(record.get("selected_claim_ids"))),
+        "claims_not_investigated": len(_list(record.get("claims_not_investigated"))),
+        "relation_batches_allowed": record.get("relation_batches_allowed"),
+        "relation_batches_sent": record.get("relation_batches_sent"),
+        "operationalizer_batches_allowed": record.get("operationalizer_batches_allowed"),
+        "operationalizer_batches_sent": record.get("operationalizer_batches_sent"),
+        "reconciliation_rounds_allowed": record.get("reconciliation_rounds_allowed"),
+        "reconciliation_rounds_sent": record.get("reconciliation_rounds_sent"),
+        # IN FULL, never as a count. The same decision `batch_plan_view` makes about unexamined
+        # pairs and for the same reason: a count tells a reader the size of the gap and not where
+        # it is, and where it is is the only thing they can act on.
+        "exclusions": [{"ref": _s(e.get("ref")), "kind": _s(e.get("kind")),
+                        "reason": _s(e.get("reason"))} for e in exclusions],
+        "notes": [_s(n) for n in _list(record.get("notes"))],
     }
 
 
@@ -427,6 +483,11 @@ def graph_view(graph: Mapping[str, Any], *, servable: Sequence[str] = ()) -> Dic
                      if isinstance(r, Mapping)],
         "notes": [_s(n) for n in _list(raw.get("notes"))],
         "provenance": _m(raw.get("provenance")),
+        # HARNESS-003F. What this compilation was allowed to investigate, and what it therefore did
+        # not. `null` on a graph compiled before the contract; the session-level projection is the
+        # one that is always present.
+        "execution_scope": (execution_scope_view(raw.get("execution_scope"))
+                            if isinstance(raw.get("execution_scope"), Mapping) else None),
         # The council's own verdict on its own coverage, computed from the ledger rather than
         # restated — see `coverage_summary`.
         "coverage_summary": coverage_summary(raw),
@@ -666,6 +727,17 @@ def session_view(session: SemanticInquirySession, *,
         # otherwise the same picture. Computed by the caller from the stages it bound — this module
         # cannot ask, and inventing an answer here would be the invention the badge exists to stop.
         "deployment": _deployment_view(deployment),
+        # BESIDE THE DEPLOYMENT BADGE, for the same argument one field up. A screenshot of a run
+        # that investigated a declared subset is otherwise the same picture as a screenshot of a
+        # complete reading, and the scope is the more dangerous of the two to lose: a replay at
+        # least produces the objects it claims to, and a slice produces FEWER of them and would
+        # read as a thin result rather than as a bounded one.
+        #
+        # ALWAYS PRESENT. It falls back to the session's own declared word, so a slice that never
+        # reached the compiler still says it was a slice.
+        "execution_scope": execution_scope_view(
+            (session.graph or {}).get("execution_scope") if isinstance(session.graph, Mapping)
+            else None, declared_mode=session.execution_scope),
         "prompt": session.prompt,
         "posts": [p.model_dump(mode="json") for p in session.posts],
         "graph": graph_view(session.graph, servable=servable_classes),
@@ -692,5 +764,6 @@ def session_view(session: SemanticInquirySession, *,
 
 
 __all__ = ["PRODUCER", "session_view", "graph_view", "claim_view", "observable_view",
+           "execution_scope_view",
            "alternative_view", "remainder_view", "refusal_view", "reading_view",
            "decision_request_view", "decision_record_view", "trace_view", "stage_view"]

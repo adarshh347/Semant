@@ -581,6 +581,10 @@ export function normalizeBatchPlan(raw) {
         unit: str(raw.unit),
         total_items: numOrNull(raw.total_items),
         batches: numOrNull(raw.batches),
+        // Apart from `batches`, which is the PARTITION. A declared scope may permit fewer requests
+        // than the partition contains, and one number for both renders a bounded pass as a
+        // complete one.
+        batches_sent: numOrNull(raw.batches_sent),
         unsendable_batches: numOrNull(raw.unsendable_batches),
         allowance_tokens: numOrNull(raw.allowance_tokens),
         largest_request_tokens: numOrNull(raw.largest_request_tokens),
@@ -1312,6 +1316,111 @@ export function normalizeDeployment(raw) {
     };
 }
 
+
+// ── the declared execution scope (HARNESS-003F) ─────────────────────────────
+//
+// A TEMPORARY CONTRACT, and the surface treats it as one. 003E's two live runs spent 91.5% and
+// nearly all of their running time waiting for an 8,000 TPM allowance and produced no observable,
+// no fork and no answer between them. A vertical slice runs the whole chain over a declared subset
+// so the chain becomes testable — and it is not a reading, cannot report one, and says so where a
+// person reads rather than in a record three panels down.
+
+export const EXECUTION_SCOPES = ['full', 'vertical_slice'];
+
+export const SCOPE_LABEL = {
+    full: 'FULL',
+    vertical_slice: 'SCOPED LIVE REHEARSAL',
+};
+
+//: The banner, verbatim. Two sentences, both of them facts about what the reader is looking at.
+export const SCOPE_BANNER = 'This run investigated a declared subset. It is not a complete reading.';
+
+export const SCOPE_COPY = {
+    full: 'Nothing bounded this run. Every source unit reached the dissector and no pass was '
+        + 'capped.',
+    vertical_slice: SCOPE_BANNER,
+};
+
+/** One thing the scope did not investigate. The reason travels; a count would not be actionable. */
+export function normalizeScopeExclusion(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    return { ref: str(v.ref), kind: str(v.kind), reason: str(v.reason) };
+}
+
+/**
+ * The scope, as the banner and the mechanism panel read it.
+ *
+ * `full_coverage` is READ, never derived. The backend's schema refuses a slice that claims complete
+ * coverage, and a client that recomputed the answer from the mode would be a second opinion about
+ * the one field the whole record exists to carry — free to disagree with it on any render site that
+ * forgot. What IS derived here is arithmetic the backend does not send as a single number
+ * (`atoms_investigated`), and deriving a subtraction is reading rather than second-guessing.
+ *
+ * `recorded: false` is its own state. A run asked for as a slice that never reached the compiler
+ * has no record and is still a slice — and `bounded` stays true for it, because what a person must
+ * not conclude from that session is that they are looking at a complete reading.
+ */
+export function normalizeExecutionScope(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    const mode = enumField(str(v.mode) || 'full', EXECUTION_SCOPES);
+    const scope = {
+        mode,
+        recorded: v.recorded === true,
+        scope_version: str(v.scope_version),
+        purpose: str(v.purpose),
+        selection_producer: str(v.selection_producer),
+        allowance_tokens: numOrNull(v.allowance_tokens),
+        full_coverage: boolOrNull(v.full_coverage),
+        selected_source_units: numOrNull(v.selected_source_units),
+        deferred_source_units: numOrNull(v.deferred_source_units),
+        selected_atoms: numOrNull(v.selected_atoms),
+        atoms_not_investigated: numOrNull(v.atoms_not_investigated),
+        selected_claims: numOrNull(v.selected_claims),
+        claims_not_investigated: numOrNull(v.claims_not_investigated),
+        relation_batches_allowed: numOrNull(v.relation_batches_allowed),
+        relation_batches_sent: numOrNull(v.relation_batches_sent),
+        operationalizer_batches_allowed: numOrNull(v.operationalizer_batches_allowed),
+        operationalizer_batches_sent: numOrNull(v.operationalizer_batches_sent),
+        reconciliation_rounds_allowed: numOrNull(v.reconciliation_rounds_allowed),
+        reconciliation_rounds_sent: numOrNull(v.reconciliation_rounds_sent),
+        exclusions: arr(v.exclusions).map(normalizeScopeExclusion),
+        notes: arr(v.notes).map(String),
+    };
+    // BOUNDED IS KEYED ON THE MODE, NOT ON `full_coverage`, and the two are separate on purpose. An
+    // UNRECOGNISED mode is treated as bounded as well: a client older than the server must not
+    // render a scope it cannot place as an unbounded reading, which is the same conservative
+    // direction `SHOULD_KEEP_WATCHING` takes for an unknown state.
+    scope.bounded = !(scope.mode.known && scope.mode.value === 'full');
+    scope.total_source_units = scope.selected_source_units === null
+        ? null : scope.selected_source_units + (scope.deferred_source_units || 0);
+    scope.atoms_investigated = scope.selected_atoms === null
+        ? null : scope.selected_atoms - (scope.atoms_not_investigated || 0);
+    scope.claims_investigated = scope.selected_claims === null
+        ? null : scope.selected_claims - (scope.claims_not_investigated || 0);
+    return scope;
+}
+
+/**
+ * What the deployment says it will serve, read from the listing route.
+ *
+ * `available` is FALSE unless the backend said true. A control the surface offers and the server
+ * then refuses is a control that lies about what it does, and the absence of a declaration — an
+ * unreachable API, an older server — is not a declaration.
+ */
+export function normalizeFeatures(raw) {
+    const v = raw && typeof raw === 'object' ? raw : {};
+    const scoped = v.scoped_rehearsal && typeof v.scoped_rehearsal === 'object'
+        ? v.scoped_rehearsal : {};
+    return {
+        scoped_rehearsal: {
+            available: scoped.available === true,
+            scopes: arr(scoped.scopes).map(String),
+            flag: str(scoped.flag),
+            detail: str(scoped.detail),
+        },
+    };
+}
+
 // ── the session ──────────────────────────────────────────────────────────────
 
 export function normalizeSession(raw) {
@@ -1327,6 +1436,9 @@ export function normalizeSession(raw) {
         mode: enumField(v.mode, INTERACTION_MODES),
         // Beside the state, because that is where it is rendered and where a reader looks.
         deployment: normalizeDeployment(v.deployment),
+        // Beside the deployment badge, because that is where it is rendered and where a reader
+        // looks — and because the two answer the same question about different things.
+        execution_scope: normalizeExecutionScope(v.execution_scope),
         graph: normalizeGraph(v.graph),
         decision_requests: arr(v.decision_requests).map(normalizeDecisionRequest),
         decision_records: arr(v.decision_records).map(normalizeDecisionRecord),
@@ -1433,11 +1545,19 @@ export function canStartInquiry({ imageIds = [], prompt = '' } = {}) {
     return arr(imageIds).length > 0 && str(prompt).trim().length > 0;
 }
 
-export function startInquiryBody({ imageIds = [], prompt = '', mode = DEFAULT_MODE } = {}) {
+export function startInquiryBody({
+    imageIds = [], prompt = '', mode = DEFAULT_MODE, executionScope = 'full',
+} = {}) {
     return {
         prompt: str(prompt).trim(),
         image_ids: arr(imageIds).map(String),
         mode: INTERACTION_MODES.includes(mode) ? mode : DEFAULT_MODE,
+        // SENT ALWAYS, including `full`. The server's default is `full` either way, and sending it
+        // means the request says what it wants rather than relying on both sides agreeing about an
+        // omission — which is what a temporary contract is least able to promise. An unrecognised
+        // value is NOT coerced: the server refuses it visibly, and quietly rewriting it here would
+        // put the fallback this whole contract forbids inside the client instead.
+        execution_scope: str(executionScope) || 'full',
     };
 }
 

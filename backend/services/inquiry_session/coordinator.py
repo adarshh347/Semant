@@ -218,19 +218,24 @@ class _Ledger:
 
 
 def new_session(*, prompt: str, refs: Sequence[PostRef], mode: str,
-                session_id: Optional[str] = None, now: Optional[str] = None
-                ) -> SemanticInquirySession:
+                session_id: Optional[str] = None, now: Optional[str] = None,
+                execution_scope: str = "full") -> SemanticInquirySession:
     """The session as it is persisted BEFORE anything runs.
 
     It already carries the prompt byte for byte and the fingerprint of every post it will read. A
     session that failed during its first model call therefore still proves the corpus was untouched,
     which is the one guarantee that has to hold whether or not anything else did.
+
+    `execution_scope` is DECLARED here and carried unchanged. This function does not validate it —
+    `scope.parse` does, at the route, before a session exists — because a coordinator that quietly
+    corrected an unserved scope would be the silent fallback the whole contract forbids.
     """
     stamp = now or utc_now()
     return SemanticInquirySession(
         session_id=session_id or ids.session_id(prompt, [r.post_id for r in refs]),
         prompt=prompt,
         mode=mode,
+        execution_scope=execution_scope,
         posts=list(refs),
         provenance=SessionProvenance(producer=PRODUCER, mode=mode, prompt_sha256=sha256_of(prompt),
                                      created_at=stamp, updated_at=stamp),
@@ -455,6 +460,9 @@ def _compile(session: SemanticInquirySession, reading: Any, stages: Stages, ledg
         reading=reading.reading if reading is not None else None,
         images=tuple(to_image_refs(corpus.image_refs_for(session.posts))),
         corpus=corpus.corpus_context_for(session.posts), now=at,
+        # HARNESS-003F. Carried, never decided here: the coordinator owns the stage order and the
+        # budget, and what a run is allowed to investigate is a property of the request.
+        execution_scope=session.execution_scope,
         inherited_refusals=reading.refusals if reading is not None else (),
         inherited_notes=reading.notes if reading is not None else ())
     graph = _compile_with_observer(stages, request, ledger, at)

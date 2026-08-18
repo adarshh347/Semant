@@ -24,8 +24,8 @@
  * it, which is documented there and not repeated here.
  */
 import { API_URL } from '../config/api';
-import { normalizeSession, startInquiryBody, decisionResponseBody, SHOULD_KEEP_WATCHING }
-    from './inquiryContract';
+import { normalizeSession, normalizeFeatures, startInquiryBody, decisionResponseBody,
+    SHOULD_KEEP_WATCHING } from './inquiryContract';
 
 const BASE = `${API_URL}/api/v1/inquiries`;
 
@@ -82,6 +82,22 @@ export function createInquiryClient({ fetchImpl = null } = {}) {
 
     async function get(sessionId) {
         return normalizeSession(await asJson(await f(`${BASE}/${sessionId}`)));
+    }
+
+    /**
+     * What this deployment will serve, from the LISTING route rather than a route of its own.
+     *
+     * The entry form has to know before a session exists whether the temporary scoped rehearsal is
+     * available — a checkbox that is always shown and 422s half the time is a control that lies
+     * about what it does — and the listing is the one route a client can call with nothing in hand.
+     *
+     * It THROWS rather than returning a default, and the caller shows no control. An unreachable
+     * API and an older server both mean nobody declared the feature, and the absence of a
+     * declaration is not a declaration.
+     */
+    async function features() {
+        const data = await asJson(await f(`${BASE}?limit=1`));
+        return normalizeFeatures(data && data.features);
     }
 
     /**
@@ -155,7 +171,7 @@ export function createInquiryClient({ fetchImpl = null } = {}) {
         return stop;
     }
 
-    return { start, get, respond, watch, live: true };
+    return { start, get, respond, watch, features, live: true };
 }
 
 /**
@@ -168,11 +184,13 @@ export function createInquiryClient({ fetchImpl = null } = {}) {
  */
 export function createMockInquiryClient({
     script = [], afterResponse = null, conflictOnce = false, conflictSession = null,
+    features: declaredFeatures = null,
 } = {}) {
     let i = 0;
     let responded = false;
     let conflicted = false;
     const responses = [];
+    const starts = [];
 
     // Once answered the session HAS moved on, so every later read returns the resumed view rather
     // than replaying the open decision under the person. Same faithfulness fix `createMockRunClient`
@@ -180,9 +198,12 @@ export function createMockInquiryClient({
     const sessionAt = (n) => normalizeSession(
         (responded && afterResponse) ? afterResponse : script[Math.min(n, script.length - 1)]);
 
-    async function start() {
+    async function start(input) {
         i = 0;
         responded = false;
+        // KEPT, not ignored. A mock that dropped its input would let a test assert the surface
+        // sends `execution_scope` while the body it built went nowhere.
+        starts.push(startInquiryBody(input || {}));
         return sessionAt(0);
     }
 
@@ -226,9 +247,17 @@ export function createMockInquiryClient({
         return () => { stopped = true; };
     }
 
+    /** Undeclared by default, so a test that says nothing gets a surface offering nothing. */
+    async function features() {
+        if (declaredFeatures === null) throw new InquiryRequestError('no feature declaration',
+            { status: 404 });
+        return normalizeFeatures(declaredFeatures);
+    }
+
     return {
-        start, get, respond, watch, live: false,
+        start, get, respond, watch, features, live: false,
         _responses: responses,
+        _starts: starts,
         _responded: () => responded,
     };
 }

@@ -1473,4 +1473,146 @@ export function batchedCouncilFixture() {
     return { ...s, graph: { ...s.graph, passes } };
 }
 
+/**
+ * A declared vertical slice that actually BITES. HARNESS-003F.
+ *
+ * Built on the batched council rather than beside it, because the fact under test is what a BOUND
+ * does to a pass that would otherwise have run whole: this is the same four-batch relation
+ * partition with one request permitted, so the numbers a reader compares — 4 planned, 1 sent — are
+ * the same numbers in both fixtures and only the bound has moved.
+ *
+ * Every kind of exclusion is present at once. A fixture with only deferred source units would let a
+ * surface that ignored uninvestigated atoms and claims pass, and those are the two a person is most
+ * likely to mistake for a finding about the images: an atom nothing related and a claim nothing
+ * proposed an observable for look, from outside, exactly like an atom nothing COULD be built from.
+ */
+export function scopedFixture() {
+    const s = batchedCouncilFixture();
+    const passes = s.graph.passes.map((p) => {
+        if (p.pass_name === 'relation_architect') {
+            return {
+                ...p,
+                outcome: 'thin',
+                detail: '5 claim(s) over 74 atoms in 1 of 4 permitted batch(es)',
+                batch_plan: {
+                    ...p.batch_plan,
+                    batches_sent: 1,
+                    // THE MATRIX IS EMPTY AND THE REASON IS NOT "nothing across". One batch was
+                    // sent, so there is no second group — and the three that were not sent are the
+                    // reason, which the note has to say or the plan reads as contradicting itself.
+                    pairs_total: 0, pairs_examined: 0, unexamined_pairs: [], rounds: [],
+                    dispositions: { used: 14, orphan: 4, not_investigated: 56 },
+                    notes: [
+                        '1 of 4 batch(es) produced a claim; 3 was/were not sent at all under a '
+                        + 'declared execution scope. There was no second group to compare '
+                        + 'against.',
+                    ],
+                },
+            };
+        }
+        if (p.pass_name === 'epistemic_operationalizer') {
+            return {
+                ...p,
+                batch_plan: {
+                    ...p.batch_plan,
+                    batches_sent: 2,
+                    dispositions: { operationalized: 2, not_investigated: 17 },
+                },
+            };
+        }
+        return p;
+    });
+    return {
+        ...s,
+        // A STAGE LEDGER, because a real session always has one and the panel reads it for the
+        // longest stage. The compiler is the long one here for the reason it is long in every live
+        // run of this chain: the council is inside it.
+        stages: [
+            { attempt_id: 'stg_framer', stage: 'framer', outcome: 'completed', sequence: 1,
+              duration_ms: 70, actor: { execution_mode: 'none' } },
+            { attempt_id: 'stg_theorist', stage: 'theorist', outcome: 'completed', sequence: 2,
+              duration_ms: 90800, actor: { role: 'scene_theorist', model: 'openai/gpt-oss-120b',
+                  provider: 'groq', execution_mode: 'live' } },
+            { attempt_id: 'stg_compiler', stage: 'compiler', outcome: 'thin', sequence: 3,
+              duration_ms: 114400, actor: { role: 'council', model: 'openai/gpt-oss-120b',
+                  provider: 'groq', execution_mode: 'live' } },
+        ],
+        execution_scope: {
+            mode: 'vertical_slice',
+            recorded: true,
+            scope_version: 'inquiry-execution-scope.v1',
+            purpose: 'live_vertical_flow_rehearsal',
+            selection_producer: 'semantic_compilation/scope-v1',
+            allowance_tokens: 8000,
+            full_coverage: false,
+            selected_source_units: 9,
+            deferred_source_units: 26,
+            selected_atoms: 74,
+            atoms_not_investigated: 56,
+            selected_claims: 5,
+            claims_not_investigated: 3,
+            relation_batches_allowed: 1,
+            relation_batches_sent: 1,
+            operationalizer_batches_allowed: 2,
+            operationalizer_batches_sent: 2,
+            reconciliation_rounds_allowed: 0,
+            reconciliation_rounds_sent: 0,
+            exclusions: [
+                {
+                    ref: 'su_deferred_1', kind: 'source_unit',
+                    reason: 'temporary vertical-slice rehearsal scope; not investigated and not '
+                        + 'evidence of absence. Its atoms are projected at 148 token(s) and 12 of '
+                        + 'the 4142-token relation request remained when it was reached.',
+                },
+                {
+                    ref: 'atom_skipped_1', kind: 'semantic_atom',
+                    reason: 'a declared execution scope permitted fewer relation requests than '
+                        + 'this partition needed, so no architect call saw this atom. It was not '
+                        + 'refused and nothing was found to be absent from it.',
+                },
+                {
+                    ref: 'clm_skipped_1', kind: 'claim',
+                    reason: 'a declared execution scope permitted fewer operationalization '
+                        + 'requests than this partition needed, so nothing was asked about this '
+                        + 'claim. It is not that nothing could be observed about it — nobody asked.',
+                },
+            ],
+            notes: [
+                'the vertical-slice scope selected 9 of 35 source unit(s) — 4 of 4 from the '
+                + 'person — across 3 of 4 image group(s).',
+                'every deferred unit is still in the ledger with its own id and is disposed '
+                + '`refused` with the scope\'s reason.',
+            ],
+        },
+        graph: { ...s.graph, passes },
+    };
+}
+
+/**
+ * A scope that was ASKED FOR and never recorded: the session died before the compiler ran.
+ *
+ * The state the badge most has to survive, and the one a projection keyed on the graph would lose.
+ * `recorded: false` with `full_coverage: false` is a run nobody bounded in practice and nobody may
+ * read as complete either.
+ */
+export function unrecordedScopeFixture() {
+    const s = scopedFixture();
+    return {
+        ...s,
+        state: 'exhausted',
+        stop_reason: 'the theorist stage came back unavailable, so there was nothing to compile.',
+        execution_scope: {
+            mode: 'vertical_slice', recorded: false, scope_version: '', purpose: '',
+            selection_producer: '', allowance_tokens: null, full_coverage: false,
+            selected_source_units: 0, deferred_source_units: 0,
+            selected_atoms: 0, atoms_not_investigated: 0,
+            selected_claims: 0, claims_not_investigated: 0,
+            relation_batches_allowed: null, relation_batches_sent: null,
+            operationalizer_batches_allowed: null, operationalizer_batches_sent: null,
+            reconciliation_rounds_allowed: null, reconciliation_rounds_sent: null,
+            exclusions: [], notes: [],
+        },
+    };
+}
+
 export default consultFixture;

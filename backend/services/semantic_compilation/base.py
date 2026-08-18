@@ -98,6 +98,13 @@ class CompilationRequest:
     reading: Optional[SceneReading] = None
     images: Tuple[ImageRef, ...] = ()
     corpus: Dict[str, Any] = field(default_factory=dict)
+    #: HARNESS-003F. `full` — the default and the existing behaviour — or `vertical_slice`.
+    #:
+    #: A STRING rather than the enum, deliberately, because this dataclass is the seam a route, a
+    #: script and a test all construct: it already takes a loose sequence of post ids and a mapping
+    #: for the frame, and the one place the value is turned into a decision (`scope.parse`) is the
+    #: one place that should be able to refuse it.
+    execution_scope: str = "full"
     #: Handed in. This package owns no clock — see the module docstring.
     now: Optional[str] = None
     #: Refusals produced upstream (by the theorist) that belong on the finished graph.

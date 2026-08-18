@@ -62,6 +62,9 @@ from backend.schemas.semantic_compilation import (BatchPlanRecord, CapabilityCla
                                                   SemanticRemainderItem)
 
 from . import contracts, ids, reconciliation, sizing
+# HARNESS-003F. Imported rather than re-spelled: the architect and this pass report the same fact
+# about the same declared bound, and two copies of that sentence would drift apart.
+from .architect import SCOPE_UNREACHED
 from .base import refusal
 from .compiler import _alternatives, _enum_list
 from .passes import ModelPass, PassBudget, PassResult, merge_receipts
@@ -284,10 +287,20 @@ class EpistemicOperationalizer(ModelPass):
                            context_refs_for=context_for)
 
     def operationalize(self, claims: Sequence[ClaimNode], edges: Sequence[ClaimEdge], *,
-                       inquiry_id: str, attempt: int = 1
+                       inquiry_id: str, attempt: int = 1, max_batches: Optional[int] = None,
+                       max_rounds: Optional[int] = None
                        ) -> Tuple[List[ObservableSpec], List[DecisionCandidate],
                                   List[SemanticRemainderItem], List[CompilerRefusal], List[str],
                                   PassReceipt]:
+        """Every claim primary exactly once — unless a declared scope permits fewer requests.
+
+        `max_batches` is HARNESS-003F and `None` is unlimited, which is what every caller before
+        that lane passes. EVERY CLAIM IS PRESERVED. A claim in a batch nobody sent is
+        `not_investigated` with the reason, exactly as a claim the model was asked about and had
+        nothing to say for is — the two reasons differ and the disposition is the same word,
+        because from a reader's side both mean "nobody proposed a way to observe this and here is
+        why".
+        """
         ops = _Ops(inquiry_id)
         if not claims:
             receipt = merge_receipts(self.pass_name, [], inquiry_id=inquiry_id,
@@ -309,6 +322,9 @@ class EpistemicOperationalizer(ModelPass):
         per_claim: Dict[str, int] = {}
         answered: Set[str] = set()
 
+        sent = 0
+        skipped: Set[str] = set()
+        unsent: Set[str] = set()
         for batch in plan.batches:
             primary = [by_id[r] for r in batch.assignment.primary_refs if r in by_id]
             context = [by_id[r] for r in batch.assignment.context_refs if r in by_id]
@@ -317,6 +333,15 @@ class EpistemicOperationalizer(ModelPass):
                            if e.from_claim in incident and e.to_claim in incident]
             number, total = batch.assignment.index, batch.assignment.total
 
+            if max_batches is not None and sent >= max_batches and batch.sendable:
+                skipped.update(c.claim_id for c in primary)
+                unsent.add(batch.batch_id)
+                self.observe(f"operationalizing batch {number} of {total}", index=number,
+                             total=total, outcome="skipped",
+                             refs=list(batch.assignment.primary_refs),
+                             detail=f"a declared execution scope permits {max_batches} "
+                                    f"operationalization request(s); this batch was not sent")
+                continue
             if not batch.sendable:
                 for claim in primary:
                     ops.refuse(CompilerRefusalKind.PASS_UNAVAILABLE, claim.claim_id,
@@ -332,6 +357,7 @@ class EpistemicOperationalizer(ModelPass):
             self.observe(f"operationalizing batch {number} of {total}", index=number, total=total,
                          outcome="started", refs=list(batch.assignment.primary_refs),
                          detail=f"{len(primary)} claim(s), {len(context)} in context")
+            sent += 1
             result = self.invoke(
                 build_prompt(primary, local_edges, context), inquiry_id=inquiry_id, attempt=attempt,
                 inputs=len(primary),
@@ -360,11 +386,19 @@ class EpistemicOperationalizer(ModelPass):
 
         rounds, pairs = self._forks(
             plan, by_id, observables, claims, decisions, remainder, by_ref, ops,
-            inquiry_id=inquiry_id, attempt=attempt, receipts=receipts)
+            inquiry_id=inquiry_id, attempt=attempt, receipts=receipts, max_rounds=max_rounds,
+            unsent=unsent)
 
+        if skipped:
+            ops.notes.append(
+                f"a declared execution scope permitted {max_batches} of {len(plan.batches)} "
+                f"operationalization request(s), so {len(skipped)} claim(s) were never put in front "
+                f"of the operationalizer. Every one of them is `not_investigated` in the plan with "
+                f"that reason. None was deleted and none is evidence that nothing could be "
+                f"observed about it.")
         record = self._close_plan(plan, claims=claims, observables=observables,
                                   remainder=remainder, answered=answered, rounds=rounds,
-                                  pairs=pairs)
+                                  pairs=pairs, skipped=skipped, batches_sent=sent)
         outcome, detail = self._outcome(claims, observables, remainder, receipts, record, ops)
         receipt = merge_receipts(self.pass_name, receipts, inquiry_id=inquiry_id, outcome=outcome,
                                  attempt=attempt, outputs=len(observables), detail=detail,
@@ -377,20 +411,33 @@ class EpistemicOperationalizer(ModelPass):
                observables: Sequence[ObservableSpec], claims: Sequence[ClaimNode],
                decisions: List[DecisionCandidate], remainder: List[SemanticRemainderItem],
                by_ref: Dict[str, str], ops: _Ops, *, inquiry_id: str, attempt: int,
-               receipts: List[PassReceipt]
+               receipts: List[PassReceipt], max_rounds: Optional[int] = None,
+               unsent: Optional[Set[str]] = None
                ) -> Tuple[List[ReconciliationRound], List[ComparisonPair]]:
         """One compact pass over the whole graph's cards, for forks and remainder that span batches.
 
         NOT A SECOND READING. It may emit only decisions and remainder, both of which connect refs
         that already exist; an observable here would be a claim operationalized twice, which is the
         thing the primary/context split was built to make impossible.
+
+        `max_rounds` is HARNESS-003F's reconciliation bound, applied HERE TOO, and that is a
+        decision worth naming: this is a cross-batch request by any other name, and a scope that
+        capped the architect's rounds while letting this one spend the same allowance freely would
+        be bookkeeping rather than a bound. A fork this round would have found is reported as an
+        unexamined pair, which is what a person reads before concluding there was no fork.
         """
-        groups = [b.batch_id for b in plan.batches if b.assignment.primary_refs and b.sendable]
+        groups = [b.batch_id for b in plan.batches if b.assignment.primary_refs and b.sendable
+                  and b.batch_id not in (unsent or ())]
         if len(groups) < 2:
+            never_sent = len(unsent or ())
             ops.notes.append(
-                "one batch answered for every claim, so every fork was already visible in one "
-                "request. The coverage matrix is empty because there is nothing across, not "
-                "because nothing was compared.")
+                ("one batch answered for every claim, so every fork was already visible in one "
+                 "request. The coverage matrix is empty because there is nothing across, not "
+                 "because nothing was compared.") if not never_sent else
+                (f"{len(groups)} batch(es) were sent and {never_sent} were not, under a declared "
+                 f"execution scope, so there was no second group to look for a cross-batch fork "
+                 f"against. The claims in the unsent batch(es) are `not_investigated` in the plan. "
+                 f"A fork spanning them was not looked for."))
             return [], []
 
         cards_by_group = {b.batch_id: [reconciliation.claim_card(by_id[r], group=b.batch_id)
@@ -413,7 +460,16 @@ class EpistemicOperationalizer(ModelPass):
         outcomes: Dict[Tuple[str, ...], ReconciliationRound] = {}
         rounds: List[ReconciliationRound] = []
         stopped = ""
+        if max_rounds is not None and len(schedule) > max_rounds:
+            ops.notes.append(
+                f"a declared execution scope permitted {max_rounds} of {len(schedule)} cross-batch "
+                f"fork round(s). The pairs the remaining rounds would have compared are named "
+                f"unexamined. A fork spanning them was not looked for, which is not the same as "
+                f"there not being one.")
         for number, members in enumerate(schedule, 1):
+            if max_rounds is not None and len(rounds) >= max_rounds:
+                stopped = stopped or SCOPE_UNREACHED
+                continue
             if stopped:
                 continue
             round_id = ids.round_id(inquiry_id, self.pass_name, members)
@@ -475,7 +531,8 @@ class EpistemicOperationalizer(ModelPass):
                     observables: Sequence[ObservableSpec],
                     remainder: Sequence[SemanticRemainderItem], answered: Set[str],
                     rounds: Sequence[ReconciliationRound],
-                    pairs: Sequence[ComparisonPair]) -> BatchPlanRecord:
+                    pairs: Sequence[ComparisonPair], skipped: Optional[Set[str]] = None,
+                    batches_sent: Optional[int] = None) -> BatchPlanRecord:
         """One disposition per claim. AN EMPTY OBSERVABLE LIST MAY BE CORRECT — a wholly
         interpretive graph has nothing to measure — but silence is not a disposition, so a claim
         nothing proposed and nothing set aside is `not_investigated` with the reason said out loud.
@@ -504,8 +561,28 @@ class EpistemicOperationalizer(ModelPass):
                     reason="the operationalizer was asked about this claim and proposed nothing "
                            "for it. Not every claim can be investigated, and inventing an "
                            "observable to fill the gap is worse than saying so."))
+            elif claim.claim_id in (skipped or ()):
+                out.append(ItemDisposition(
+                    ref=claim.claim_id, disposition=ItemDispositionKind.NOT_INVESTIGATED,
+                    batch_id=batch,
+                    reason="a declared execution scope permitted fewer operationalization requests "
+                           "than this partition needed, so nothing was asked about this claim. It "
+                           "is not that nothing could be observed about it — nobody asked."))
+            else:
+                # THE BRANCH THAT WAS MISSING, and it predates the scope. Before a batch could be
+                # skipped, the only unsent batch was `sendable=False` and the first branch caught
+                # it — so a claim reaching here was unreachable and nothing noticed that it would
+                # have vanished from the list entirely. `_outcome` would have refused to call the
+                # pass complete and no reader could have said which claim it meant.
+                out.append(ItemDisposition(
+                    ref=claim.claim_id, disposition=ItemDispositionKind.NOT_INVESTIGATED,
+                    batch_id=batch,
+                    reason="this claim was in the partition and no request carried it, for a "
+                           "reason this pass did not record. It is named rather than dropped: a "
+                           "claim missing from this list is one the pass lost."))
         return plan.record.model_copy(update={
-            "dispositions": out, "rounds": list(rounds), "pairs": list(pairs)})
+            "dispositions": out, "rounds": list(rounds), "pairs": list(pairs),
+            "batches_sent": batches_sent})
 
     # ── observables ──
 

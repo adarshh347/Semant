@@ -32,6 +32,9 @@ describe('the live client', () => {
         expect(init.method).toBe('POST');
         expect(JSON.parse(init.body)).toEqual({
             prompt: 'how does it gather?', image_ids: ['p1', 'p2'], mode: 'consult',
+            // Sent on every start, including the default one. See `startInquiryBody`: a request
+            // that says what it wants does not depend on both sides agreeing about an omission.
+            execution_scope: 'full',
         });
         expect(session.session_id).toBe('inqs_fixture_1');
         expect(session.state.value).toBe('awaiting_user');

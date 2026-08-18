@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { INTERACTION_MODES, DEFAULT_MODE, MODE_COPY, canStartInquiry } from './inquiryContract';
+import { INTERACTION_MODES, DEFAULT_MODE, MODE_COPY, SCOPE_BANNER, canStartInquiry }
+    from './inquiryContract';
 import CorpusPicker from '../inquiryCorpus/CorpusPicker.jsx';
 import UploadAndInclude from '../inquiryCorpus/UploadAndInclude.jsx';
 import { createCorpusClient } from '../inquiryCorpus/corpusClient.js';
@@ -48,6 +49,10 @@ export default function InquiryEntry({
     initialPrompt = '',
     initialMode = DEFAULT_MODE,
     openUpload = null,
+    //: What the backend declared it will serve. `null` — nobody said — shows no scope control at
+    //: all, which is the same rule the deployment badge follows: the absence of a declaration is
+    //: not a declaration, and a control the server would refuse is a control that lies.
+    features = null,
 }) {
     // POSTS, not ids. An id-only selection cannot render a tray for an image whose page is no
     // longer loaded, and after HARNESS-003C the corpus is paged — so a person who picked on page
@@ -56,6 +61,9 @@ export default function InquiryEntry({
     const [uploaded, setUploaded] = useState([]);
     const [prompt, setPrompt] = useState(initialPrompt);
     const [mode, setMode] = useState(initialMode);
+    const [scoped, setScoped] = useState(false);
+
+    const scopeOffered = features?.scoped_rehearsal?.available === true;
 
     const imageIds = useMemo(() => selected.map((p) => p.id), [selected]);
 
@@ -90,7 +98,14 @@ export default function InquiryEntry({
     const submit = (e) => {
         e.preventDefault();
         if (!ready || busy) return;
-        onStart?.({ imageIds, prompt: prompt.trim(), mode, posts: selected });
+        onStart?.({
+            imageIds, prompt: prompt.trim(), mode, posts: selected,
+            // ONLY WHERE THE BACKEND DECLARED IT. A checkbox left checked while the declaration
+            // went away would otherwise send a scope the server refuses — and this form's whole
+            // rule is that `canStartInquiry` decides what may start, so nothing else may make a
+            // start fail.
+            executionScope: (scopeOffered && scoped) ? 'vertical_slice' : 'full',
+        });
     };
 
     return (
@@ -171,6 +186,34 @@ export default function InquiryEntry({
                     ))}
                 </div>
             </fieldset>
+
+            {/* THE TEMPORARY CONTROL, and it says what it is rather than what it saves.
+                HARNESS-003F. It is shown only where the deployment declared the feature, it is
+                unchecked by default, and its label is the sentence a person needs BEFORE they
+                start rather than an explanation offered afterwards. */}
+            {scopeOffered ? (
+                <fieldset className="iw-field iw-scope-field">
+                    <legend className="iw-legend">Temporary</legend>
+                    <label className="iw-scope-toggle" data-scope-toggle="vertical_slice">
+                        <input
+                            type="checkbox"
+                            checked={scoped}
+                            disabled={busy}
+                            onChange={(e) => setScoped(e.target.checked)}
+                        />
+                        <span className="iw-scope-name">Scoped live rehearsal</span>
+                        <span className="iw-scope-hint">
+                            tests the whole chain on a declared subset
+                        </span>
+                    </label>
+                    {scoped ? (
+                        <p className="iw-scope-warning" role="status" data-scope-warning="true">
+                            {SCOPE_BANNER} Every source unit, atom and claim it does not investigate
+                            will be listed with the reason.
+                        </p>
+                    ) : null}
+                </fieldset>
+            ) : null}
 
             {error ? <p className="iw-error" role="alert">{error}</p> : null}
 

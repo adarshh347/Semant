@@ -1528,3 +1528,155 @@
 .iw-truncation--receipt_note { border-style: dotted; color: var(--ink-muted); }
 .iw-truncation--unknown { border-style: dashed; border-color: var(--accent); color: var(--accent-deep); }
 .iw-truncation--unrecognised { border-color: var(--accent); color: var(--accent); }
+
+/* ── the declared execution scope (HARNESS-003F) ─────────────────────────────
+ *
+ * A SCOPED RUN MUST NOT BE READABLE AS A COMPLETE ONE, and colour carries none of that. The badge
+ * prints the words `SCOPED LIVE REHEARSAL` and the banner sentence beside them, so a screenshot, a
+ * greyscale print and a screen reader all deliver the same fact. The rules below are emphasis on
+ * top of a message that is already in the text.
+ *
+ * The badge is deliberately NOT a variant of `.iw-deployment`: live/replay/fixture answers "was
+ * this read or replayed", and this answers "was all of it looked at". Sharing a class would let a
+ * stylesheet change to one silently restyle the other, and the two are not degrees of each other.
+ */
+
+.iw-scope {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .375rem;
+    flex-wrap: wrap;
+    font-size: .6875rem;
+    letter-spacing: .06em;
+    padding: .0625rem .375rem;
+    border-radius: .1875rem;
+    background: var(--accent-soft);
+    color: var(--ink);
+    border: 1px solid var(--accent-deep);
+}
+
+.iw-scope-kind { font-weight: 700; }
+
+/* THE SENTENCE, NOT A TOOLTIP. `title=` would put the load-bearing half of this badge behind a
+ * hover a touchscreen does not have and a screenshot never shows. */
+.iw-scope-line {
+    letter-spacing: 0;
+    font-size: .75rem;
+}
+
+/* A mode this client does not recognise is its own treatment, and it is not the softer one: an
+ * older client meeting a newer scope must not render it as anything a reader could mistake for
+ * unbounded. */
+.iw-scope--unknown {
+    background: transparent;
+    border: 1px dashed var(--accent-deep);
+    color: var(--accent-deep);
+}
+
+.iw-scope-panel { border-left: 3px solid var(--accent-deep); }
+
+.iw-scope-verdict {
+    font-size: .9375rem;
+    margin: 0 0 .75rem;
+}
+
+.iw-scope-unrecorded {
+    font-size: .8125rem;
+    color: var(--ink-muted);
+    margin: 0 0 .75rem;
+}
+
+.iw-scope-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: .5rem 1rem;
+    margin: 0 0 .75rem;
+}
+
+.iw-scope-stat dt {
+    font-size: .6875rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+}
+
+.iw-scope-stat dd { margin: 0; font-size: .875rem; }
+
+.iw-scope-timing { border-top: 1px solid var(--rule); padding-top: .5rem; }
+
+.iw-scope-stop {
+    font-size: .8125rem;
+    margin: 0 0 .75rem;
+}
+
+.iw-scope-excluded summary {
+    cursor: pointer;
+    font-size: .8125rem;
+    font-weight: 600;
+}
+
+.iw-scope-exclusions {
+    list-style: none;
+    padding: 0;
+    margin: .5rem 0 0;
+    display: grid;
+    gap: .375rem;
+}
+
+.iw-scope-exclusions li {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: .5rem;
+    align-items: baseline;
+    font-size: .8125rem;
+}
+
+.iw-scope-ref {
+    font-family: ui-monospace, monospace;
+    font-size: .75rem;
+    color: var(--ink-muted);
+}
+
+.iw-scope-kind-tag {
+    font-size: .625rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+}
+
+.iw-scope-reason { color: var(--ink); }
+
+.iw-scope-notes {
+    margin: .75rem 0 0;
+    padding-left: 1rem;
+    font-size: .8125rem;
+    color: var(--ink-muted);
+}
+
+/* ── the entry control ── */
+
+.iw-scope-toggle {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: .25rem .5rem;
+    align-items: baseline;
+    cursor: pointer;
+}
+
+.iw-scope-toggle input { grid-row: span 2; }
+
+.iw-scope-name { font-weight: 600; }
+
+.iw-scope-hint {
+    grid-column: 2;
+    font-size: .8125rem;
+    color: var(--ink-muted);
+}
+
+.iw-scope-warning {
+    margin: .5rem 0 0;
+    font-size: .8125rem;
+    color: var(--ink);
+    border-left: 3px solid var(--accent-deep);
+    padding-left: .5rem;
+}

@@ -63,6 +63,29 @@
   },
   "error": "",
   "evidence": [],
+  "execution_scope": {
+    "allowance_tokens": null,
+    "atoms_not_investigated": 0,
+    "claims_not_investigated": 0,
+    "deferred_source_units": 0,
+    "exclusions": [],
+    "full_coverage": true,
+    "mode": "full",
+    "notes": [],
+    "operationalizer_batches_allowed": null,
+    "operationalizer_batches_sent": null,
+    "purpose": "",
+    "reconciliation_rounds_allowed": null,
+    "reconciliation_rounds_sent": null,
+    "recorded": false,
+    "relation_batches_allowed": null,
+    "relation_batches_sent": null,
+    "scope_version": "",
+    "selected_atoms": 0,
+    "selected_claims": 0,
+    "selected_source_units": 0,
+    "selection_producer": ""
+  },
   "frame": {
     "attentions": [
       {
@@ -796,6 +819,7 @@
       "source_units": 0,
       "user_units": 0
     },
+    "execution_scope": null,
     "graph_id": "sig_84ea9e178b38",
     "image_refs": [
       {
@@ -1209,7 +1233,7 @@
     "created_at": "2026-08-09T00:00:00+00:00",
     "frame_hash": "51329579cc62d45b78b078b2cf947b88f5ed340f07cb2a5cefdc0c920886c197",
     "frame_producer": "inquiry/deterministic-v1",
-    "graph_hash": "sig_73837a226e841c0f",
+    "graph_hash": "sig_47a37035e45519c4",
     "mode": "consult",
     "notes": [],
     "producer": "inquiry_session/coordinator-v1",

@@ -43,6 +43,7 @@ from backend.services.inquiry_session import (coordinator, corpus, driver, runti
                                               view)
 from backend.services.inquiry_interaction import InteractionConflict, WrongSession
 from backend.services.movement_kernel import PostsMutated
+from backend.services.semantic_compilation import scope as scope_mod
 
 router = APIRouter()
 
@@ -75,6 +76,11 @@ class StartInquiry(BaseModel):
     image_ids: List[str] = Field(default_factory=list)
     post_ids: List[str] = Field(default_factory=list)
     mode: str = Field(default="consult")
+    #: HARNESS-003F. `full` — the default and the existing behaviour — or `vertical_slice`, the
+    #: temporary bounded rehearsal scope. A request that asks for the slice while the deployment has
+    #: not enabled it is REFUSED (422); it is never quietly served as `full`, and `full` is never
+    #: quietly upgraded. See `semantic_compilation.scope`.
+    execution_scope: str = Field(default="full")
 
     def selected(self) -> List[str]:
         seen: List[str] = []
@@ -208,6 +214,20 @@ async def start_inquiry(request: StartInquiry) -> Dict[str, Any]:
             detail=f"mode must be one of {[m.value for m in InteractionMode]}, "
                    f"got {request.mode!r}") from None
 
+    try:
+        execution_scope = scope_mod.parse(request.execution_scope)
+    except scope_mod.ScopeRefused as exc:
+        # VISIBLY, AND WITH THE REQUEST'S OWN WORD ECHOED BACK. The same shape every other refusal
+        # on this route uses, for the same reason: a person who asked for a bounded run has to be
+        # able to see that they did not get one, and a client has to be able to tell "you may not
+        # ask for that here" from "the network failed" without reading prose.
+        raise HTTPException(status_code=422, detail={
+            "error": exc.code, "detail": exc.detail, "recoverable": False,
+            "requested_execution_scope": exc.requested,
+            "execution_scopes": [s.value for s in scope_mod.ExecutionScope],
+            "feature_flag": scope_mod.ENABLED_ENV,
+        }) from None
+
     refs, _ = await corpus.resolve(selected)
     if not any(r.readable for r in refs):
         raise HTTPException(
@@ -217,7 +237,8 @@ async def start_inquiry(request: StartInquiry) -> Dict[str, Any]:
                               "scene for anything to read",
                     "posts": [r.model_dump(mode="json") for r in refs]})
 
-    session = coordinator.new_session(prompt=prompt, refs=refs, mode=mode)
+    session = coordinator.new_session(prompt=prompt, refs=refs, mode=mode,
+                                      execution_scope=execution_scope.value)
     await corpus.assert_unchanged(session.posts)
     await store.create(session)
 
@@ -242,13 +263,36 @@ async def read_inquiry(session_id: str) -> Dict[str, Any]:
 async def list_inquiries(limit: int = 20) -> Dict[str, Any]:
     """The newest sessions, thin. Discriminated on `kind`, so no Director run can appear here."""
     docs = await store.list_sessions(limit=max(1, min(int(limit or 20), 100)))
-    return {"sessions": [{
+    return {"features": _features(), "sessions": [{
         "session_id": str(d.get("_id") or ""),
         "state": str((d.get("session") or {}).get("interaction", {}).get("state") or "framing"),
         "prompt": str((d.get("session") or {}).get("prompt") or ""),
         "revision": (d.get("session") or {}).get("revision"),
         "created_at": d.get("created_at"), "updated_at": d.get("updated_at"),
     } for d in docs]}
+
+
+def _features() -> Dict[str, Any]:
+    """What this deployment will serve, so a surface can offer it rather than guess.
+
+    ON THE LISTING RATHER THAN A NEW ROUTE, and additively. The entry form has to know BEFORE a
+    session exists whether the scoped rehearsal is available — a checkbox that is always shown and
+    422s half the time is a control that lies about what it does — and this is the one route a
+    client can already call with no session in hand.
+
+    A client that cannot reach this gets nothing rather than a default, and shows no control. The
+    absence of a declaration is not a declaration, which is the same rule the deployment badge
+    applies one object along.
+    """
+    return {
+        "scoped_rehearsal": {
+            "available": scope_mod.feature_enabled(),
+            "scopes": [s.value for s in scope_mod.ExecutionScope],
+            "flag": scope_mod.ENABLED_ENV,
+            "detail": ("a temporary bounded rehearsal that runs the whole chain over a declared "
+                       "subset. It is not a complete reading and cannot report one."),
+        },
+    }
 
 
 # ── answer ───────────────────────────────────────────────────────────────────

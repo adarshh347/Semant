@@ -18,6 +18,11 @@ import awaitingUser from '../../../contracts/samples/inquiry-session.awaiting-us
 import complete from '../../../contracts/samples/inquiry-session.complete.json';
 import autoComplete from '../../../contracts/samples/inquiry-session.auto-complete.json';
 import dissolution from '../../../contracts/samples/inquiry-session.dissolution.json';
+// HARNESS-003F. The four above are full-coverage runs, so every scope field on them is the
+// unbounded answer — and a parity suite reading only those would prove the client tolerates an
+// UNBOUNDED scope, which is the same shape of assurance that let the backend stop sending source
+// units without anybody noticing. This one is a slice that bites.
+import scoped from '../../../contracts/samples/inquiry-session.scoped.json';
 import {
     normalizeSession, openDecision, isEvidenceGrade, hasMeasuredEvidence, supportingEvidence,
     outcomeCounts, SHOULD_KEEP_WATCHING, IS_TERMINAL_STATE, receiptOutcome,
@@ -30,6 +35,7 @@ const SAMPLES = [
     ['complete', complete],
     ['auto-complete', autoComplete],
     ['dissolution', dissolution],
+    ['scoped', scoped],
 ];
 
 /** Every `{value, known}` pair anywhere in a normalised session, with the path that produced it. */
@@ -366,5 +372,57 @@ describe('the deployment badge', () => {
         expect(s.deployment.declared).toBe(false);
         expect(s.deployment.kind.value).toBe('undeclared');
         expect(s.deployment.kind.value).not.toBe('live');
+    });
+});
+
+
+// ── the declared scope, as the backend actually sends it (HARNESS-003F) ──────
+
+describe('the scope record survives the wire', () => {
+    it('is present on every sample, including the four that are unbounded', () => {
+        for (const [name, body] of SAMPLES) {
+            const session = normalizeSession(body);
+            expect([name, session.execution_scope.mode.known]).toEqual([name, true]);
+            // ABSENT IS NOT `full`. Every response carries the answer, so a reader never has to
+            // infer an unbounded run from a missing key.
+            expect([name, typeof body.execution_scope]).toEqual([name, 'object']);
+        }
+    });
+
+    it('reads the slice sample as bounded, with every exclusion carrying its reason', () => {
+        const session = normalizeSession(scoped);
+        const scope = session.execution_scope;
+        expect(scope.mode.value).toBe('vertical_slice');
+        expect(scope.bounded).toBe(true);
+        expect(scope.full_coverage).toBe(false);
+        expect(scope.recorded).toBe(true);
+        expect(scope.exclusions.length).toBeGreaterThan(0);
+        for (const e of scope.exclusions) {
+            expect(e.ref).toBeTruthy();
+            expect(e.reason.length).toBeGreaterThan(40);
+        }
+        // The two kinds this sample can exercise — see the sample script for why a claim exclusion
+        // is not reachable at one permitted relation request.
+        expect([...new Set(scope.exclusions.map((e) => e.kind))].sort())
+            .toEqual(['semantic_atom', 'source_unit']);
+    });
+
+    it('reads a bound as spent, apart from the partition it was spent against', () => {
+        const session = normalizeSession(scoped);
+        const plan = session.graph.passes
+            .find((p) => p.pass_name.value === 'relation_architect').batch_plan;
+        expect(plan.batches_sent).toBe(session.execution_scope.relation_batches_sent);
+        expect(plan.batches).toBeGreaterThanOrEqual(plan.batches_sent);
+    });
+
+    it('reads the four unbounded samples as unbounded', () => {
+        for (const [name, body] of SAMPLES.filter(([n]) => n !== 'scoped')) {
+            const scope = normalizeSession(body).execution_scope;
+            expect([name, scope.mode.value]).toEqual([name, 'full']);
+            expect([name, scope.bounded]).toEqual([name, false]);
+            expect([name, scope.full_coverage]).toEqual([name, true]);
+            expect([name, scope.exclusions]).toEqual([name, []]);
+            expect([name, scope.relation_batches_allowed]).toEqual([name, null]);
+        }
     });
 });

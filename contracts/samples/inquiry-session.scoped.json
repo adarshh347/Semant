@@ -1,148 +1,9 @@
 {
   "amendments": [],
-  "capability_receipts": [
-    {
-      "attempted": true,
-      "capability": "locate_phrase",
-      "detail": "SIMULATED — not evidence. Produced by a stand-in with no access to any image. Every coordinate below is derived from a hash of this request's text; nothing was measured, nothing was seen, and this receipt cannot support any claim.",
-      "execution_mode": "fixture",
-      "latency_ms": 0.0,
-      "payload": {
-        "notice": "SIMULATED — not evidence. Produced by a stand-in with no access to any image. Every coordinate below is derived from a hash of this request's text; nothing was measured, nothing was seen, and this receipt cannot support any claim.",
-        "proposals": [
-          {
-            "confidence": null,
-            "ground_form": "path",
-            "image_refs": [
-              "img_seated",
-              "img_veiled",
-              "img_recumbent",
-              "img_modern"
-            ],
-            "phrase": "the edges where the drapery facets meet",
-            "proposal_id": "prop_0",
-            "region": {
-              "derived_from": "sha256 of this request's text — not from any image",
-              "h": 0.2072,
-              "kind": "normalised_box",
-              "measured": false,
-              "w": 0.3247,
-              "x": 0.1546,
-              "y": 0.4719
-            },
-            "simulated": true
-          }
-        ],
-        "what_a_real_instrument_would_do": "A real phrase-localization instrument would read the target phrase against the pixels and return the extents it found, with a confidence per proposal and an explicit empty when it found none. Phase 2 replaces this adapter with one; the shape below is what the rest of the chain is already written against."
-      },
-      "provenance": {
-        "adapter": "locked_fixture",
-        "attempts_allowed": 1,
-        "chosen_alternative": "alt_02d4130f33df",
-        "chosen_label": "measure one representative boundary",
-        "no_actuator_or_organ_was_called": true,
-        "no_image_was_read": true,
-        "notice": "SIMULATED — not evidence. Produced by a stand-in with no access to any image. Every coordinate below is derived from a hash of this request's text; nothing was measured, nothing was seen, and this receipt cannot support any claim.",
-        "observable_ref": "obs_7080a8a9c82a",
-        "producer": "inquiry_session/capability-v1",
-        "requested_at": "2026-08-09T00:00:00+00:00",
-        "servable_classes": [
-          "extent",
-          "geometry"
-        ]
-      },
-      "receipt_id": "capr_826d7c6622b7",
-      "request_ref": "obs_7080a8a9c82a",
-      "status": "simulated",
-      "usable_as_evidence": false
-    }
-  ],
-  "changed_refs": [
-    {
-      "at": "2026-08-09T00:00:00+00:00",
-      "by": "policy",
-      "decision_id": "dec_d1f19eae3367",
-      "option_id": "alt_e8bfbbfe296a",
-      "outcome": "auto_resolved",
-      "ref": "clm_5f23c8a2d932"
-    },
-    {
-      "at": "2026-08-09T00:00:00+00:00",
-      "by": "policy",
-      "decision_id": "dec_d1f19eae3367",
-      "option_id": "alt_e8bfbbfe296a",
-      "outcome": "auto_resolved",
-      "ref": "obs_7080a8a9c82a"
-    }
-  ],
-  "decision_records": [
-    {
-      "action": "select_option",
-      "affected_refs": [
-        "clm_5f23c8a2d932",
-        "obs_7080a8a9c82a"
-      ],
-      "at": "2026-08-09T00:00:00+00:00",
-      "decider": "policy",
-      "decision_id": "dec_d1f19eae3367",
-      "free_text": "",
-      "outcome": "auto_resolved",
-      "question": "Measure every facet boundary, or one representative boundary?",
-      "rationale": "auto mode took it without asking: option 'alt_e8bfbbfe296a' is the single recommended option, declares itself reversible, is not author-exclusive and accepts nothing into the ledger",
-      "record_id": "rec_dec_d1f19eae3367",
-      "revision": 2,
-      "selected_label": "measure one representative boundary",
-      "selected_option_id": "alt_e8bfbbfe296a"
-    }
-  ],
-  "decision_requests": [
-    {
-      "affected_refs": [
-        "clm_5f23c8a2d932",
-        "obs_7080a8a9c82a"
-      ],
-      "allow_free_text": true,
-      "answered": true,
-      "blocking": false,
-      "decision_id": "dec_d1f19eae3367",
-      "formatter": "deterministic",
-      "kind": "choose_operationalization",
-      "options": [
-        {
-          "accepts_to_ledger": false,
-          "authorial": false,
-          "consequence": "several paths, more cost, and the variation within one figure becomes visible",
-          "detail": "",
-          "label": "measure the sharpness of every facet boundary and summarise",
-          "option_id": "alt_8e8a34b34398",
-          "recommended": false,
-          "reversible": true
-        },
-        {
-          "accepts_to_ledger": false,
-          "authorial": false,
-          "consequence": "one path, quickly, with the variation assumed away",
-          "detail": "",
-          "label": "measure one representative boundary",
-          "option_id": "alt_e8bfbbfe296a",
-          "recommended": true,
-          "reversible": true
-        }
-      ],
-      "provenance": {
-        "candidate_id": "dec_9cd6e8c0bd2e",
-        "compiler_kind": "choose_operationalization",
-        "kind_translated": false,
-        "mode": "auto",
-        "producer": "inquiry_session/candidates-v1",
-        "reversible_declared_by": "inquiry_session/candidates-v1",
-        "reversible_why": "declared reversible by the Phase 1 integration, not by the compiler: the whole downstream consequence of this choice is one locked fixture capability producing a simulated receipt. Nothing is written, nothing is accepted, and no post changes."
-      },
-      "question": "Measure every facet boundary, or one representative boundary?",
-      "session_id": "inqs_sample000004",
-      "why_now": "measuring all of them makes the variation within a single figure visible and costs more; measuring one assumes the variation away, which is part of what the comparison is about"
-    }
-  ],
+  "capability_receipts": [],
+  "changed_refs": [],
+  "decision_records": [],
+  "decision_requests": [],
   "deployment": {
     "declared": true,
     "detail": "at least one model stage replays a frozen payload through the production parser. Nothing on this session was read from a provider on this run.",
@@ -156,27 +17,106 @@
   "error": "",
   "evidence": [],
   "execution_scope": {
-    "allowance_tokens": 8000,
-    "atoms_not_investigated": 0,
+    "allowance_tokens": 4500,
+    "atoms_not_investigated": 12,
     "claims_not_investigated": 0,
-    "deferred_source_units": 0,
-    "exclusions": [],
-    "full_coverage": true,
-    "mode": "full",
-    "notes": [],
-    "operationalizer_batches_allowed": null,
+    "deferred_source_units": 3,
+    "exclusions": [
+      {
+        "kind": "source_unit",
+        "reason": "temporary vertical-slice rehearsal scope; not investigated and not evidence of absence. Its atoms are projected at 64 token(s) and 22 of the 642-token relation request remained when it was reached.",
+        "ref": "su_9b97a686831a"
+      },
+      {
+        "kind": "source_unit",
+        "reason": "temporary vertical-slice rehearsal scope; not investigated and not evidence of absence. Its atoms are projected at 66 token(s) and 22 of the 642-token relation request remained when it was reached.",
+        "ref": "su_d5ee66b81eb7"
+      },
+      {
+        "kind": "source_unit",
+        "reason": "temporary vertical-slice rehearsal scope; not investigated and not evidence of absence. Its atoms are projected at 64 token(s) and 22 of the 642-token relation request remained when it was reached.",
+        "ref": "su_f1793e4f9b49"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_5de911909832"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_e1c3d4f7faca"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_378497de8185"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_b8f8a948f307"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_e6e8611a588a"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_5cbf64cd3d57"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_c4a9ae0bcd1c"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_7ce0e5c79f2f"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_b3495142b425"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_f70a94c25d03"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_1a13b92ad308"
+      },
+      {
+        "kind": "semantic_atom",
+        "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+        "ref": "atm_05421975f7f7"
+      }
+    ],
+    "full_coverage": false,
+    "mode": "vertical_slice",
+    "notes": [
+      "the vertical-slice scope selected 8 of 11 source unit(s) — 4 of 4 from the person — across 4 of 4 image group(s), projecting 620 of 642 token(s) of room in one relation request at a declared 2.0x expansion from prose to atoms.",
+      "every deferred unit is still in the ledger with its own id and is disposed `refused` with the scope's reason. It is not `semantic_remainder`: remainder is content nothing measures, and this is content nothing was asked about."
+    ],
+    "operationalizer_batches_allowed": 2,
     "operationalizer_batches_sent": 1,
-    "purpose": "",
-    "reconciliation_rounds_allowed": null,
+    "purpose": "live_vertical_flow_rehearsal",
+    "reconciliation_rounds_allowed": 0,
     "reconciliation_rounds_sent": 0,
     "recorded": true,
-    "relation_batches_allowed": null,
+    "relation_batches_allowed": 1,
     "relation_batches_sent": 1,
     "scope_version": "inquiry-execution-scope.v1",
-    "selected_atoms": 18,
-    "selected_claims": 13,
-    "selected_source_units": 0,
-    "selection_producer": ""
+    "selected_atoms": 15,
+    "selected_claims": 1,
+    "selected_source_units": 8,
+    "selection_producer": "semantic_compilation/scope-v1"
   },
   "frame": {
     "attentions": [
@@ -488,142 +428,8 @@
   },
   "gaps": [],
   "graph": {
-    "claim_edges": [
-      {
-        "edge_id": "cle_53550c02bc84",
-        "from_claim": "clm_5f23c8a2d932",
-        "kind": "supports",
-        "note": "the abrupt edge is what the impression of bluntness is read from",
-        "relation": "supports",
-        "to_claim": "clm_4057d7159b0c"
-      },
-      {
-        "edge_id": "cle_134b24526f24",
-        "from_claim": "clm_5f23c8a2d932",
-        "kind": "supports",
-        "note": "the hypothesis names edge abruptness as the cause",
-        "relation": "supports",
-        "to_claim": "clm_49e0d789c75f"
-      },
-      {
-        "edge_id": "cle_be8ecba617b5",
-        "from_claim": "clm_cf4fffa13dd2",
-        "kind": "complicates",
-        "note": "the veil reading as stone at the same time qualifies the transparency effect",
-        "relation": "complicates",
-        "to_claim": "clm_610467506a77"
-      },
-      {
-        "edge_id": "cle_e2e728a29ebf",
-        "from_claim": "clm_860ba087b46c",
-        "kind": "composes_from",
-        "note": "the shared treatment is the same abruptness, seen across two figures",
-        "relation": "composes_from",
-        "to_claim": "clm_5f23c8a2d932"
-      },
-      {
-        "edge_id": "cle_43c64a522810",
-        "from_claim": "clm_d0fd1be23d65",
-        "kind": "challenges",
-        "note": "the recumbent figure is grouped with the veiled one here and with the seated one there",
-        "relation": "challenges",
-        "to_claim": "clm_860ba087b46c"
-      },
-      {
-        "edge_id": "cle_2ac5bbfa2ca3",
-        "from_claim": "clm_dd5433b794b3",
-        "kind": "generalizes",
-        "note": "the corpus-wide difference generalises the pairwise one",
-        "relation": "generalizes",
-        "to_claim": "clm_860ba087b46c"
-      },
-      {
-        "edge_id": "cle_59957e1cf496",
-        "from_claim": "clm_b21d6a63dc90",
-        "kind": "composes_from",
-        "note": "the edges are the edges of these facets",
-        "relation": "composes_from",
-        "to_claim": "clm_5f23c8a2d932"
-      }
-    ],
+    "claim_edges": [],
     "claims": [
-      {
-        "author": "model",
-        "claim_id": "clm_5f23c8a2d932",
-        "claim_kind": "attribute",
-        "confidence": null,
-        "epistemic_demand": "measurable",
-        "image_scope": [
-          "one_image"
-        ],
-        "inferred_from": [],
-        "kind": "attribute",
-        "note": "",
-        "object": "abrupt",
-        "predicate": "are",
-        "source_span": {
-          "end": 407,
-          "origin": "prompt",
-          "source_id": "prompt",
-          "start": 123,
-          "text": "the the buddha statue it feels so metallic somehow very blunt, very sharp edges of the folds, whereas in the woman whose face is covered with the the created fold, that is a damn different art, the artist has carved the fold in such a manner that it creates the effect of transparency"
-        },
-        "source_spans": [
-          {
-            "end": 407,
-            "origin": "prompt",
-            "source_id": "prompt",
-            "start": 123,
-            "text": "the the buddha statue it feels so metallic somehow very blunt, very sharp edges of the folds, whereas in the woman whose face is covered with the the created fold, that is a damn different art, the artist has carved the fold in such a manner that it creates the effect of transparency"
-          },
-          {
-            "end": null,
-            "origin": "scene_reading",
-            "source_id": "rb_bd9f4612028f",
-            "start": null,
-            "text": "the seated figure's drapery breaks into facets that meet at abrupt edges"
-          }
-        ],
-        "status": "interpretive",
-        "subject": "the edges of the seated figure's drapery",
-        "text": "the edges where the seated figure's drapery facets meet are abrupt",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_4057d7159b0c",
-        "claim_kind": "interpretation",
-        "confidence": null,
-        "epistemic_demand": "interpretive",
-        "image_scope": [
-          "one_image"
-        ],
-        "inferred_from": [],
-        "kind": "interpretation",
-        "note": "",
-        "object": "blunt and metallic",
-        "predicate": "reads as",
-        "source_span": {
-          "end": 407,
-          "origin": "prompt",
-          "source_id": "prompt",
-          "start": 123,
-          "text": "the the buddha statue it feels so metallic somehow very blunt, very sharp edges of the folds, whereas in the woman whose face is covered with the the created fold, that is a damn different art, the artist has carved the fold in such a manner that it creates the effect of transparency"
-        },
-        "source_spans": [
-          {
-            "end": 407,
-            "origin": "prompt",
-            "source_id": "prompt",
-            "start": 123,
-            "text": "the the buddha statue it feels so metallic somehow very blunt, very sharp edges of the folds, whereas in the woman whose face is covered with the the created fold, that is a damn different art, the artist has carved the fold in such a manner that it creates the effect of transparency"
-          }
-        ],
-        "status": "interpretive",
-        "subject": "the seated figure's cloth",
-        "text": "the seated figure's cloth reads as blunt and metallic",
-        "vocabulary": ""
-      },
       {
         "author": "model",
         "claim_id": "clm_49e0d789c75f",
@@ -657,363 +463,6 @@
         "status": "uncertain",
         "subject": "edge abruptness",
         "text": "the abruptness of the edges is what makes the cloth read as hard",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_4c013fd3263d",
-        "claim_kind": "entity",
-        "confidence": null,
-        "epistemic_demand": "measurable",
-        "image_scope": [
-          "one_image"
-        ],
-        "inferred_from": [],
-        "kind": "entity",
-        "note": "",
-        "object": "the face",
-        "predicate": "covers",
-        "source_span": {
-          "end": null,
-          "origin": "scene_reading",
-          "source_id": "rb_8fb79265dcb8",
-          "start": null,
-          "text": "the standing figure's face is covered by a carved veil whose weave is cut through"
-        },
-        "source_spans": [
-          {
-            "end": null,
-            "origin": "scene_reading",
-            "source_id": "rb_8fb79265dcb8",
-            "start": null,
-            "text": "the standing figure's face is covered by a carved veil whose weave is cut through"
-          }
-        ],
-        "status": "interpretive",
-        "subject": "a carved veil",
-        "text": "a carved veil covers the standing figure's face",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_610467506a77",
-        "claim_kind": "causal_hypothesis",
-        "confidence": null,
-        "epistemic_demand": "interpretive",
-        "image_scope": [
-          "one_image"
-        ],
-        "inferred_from": [],
-        "kind": "causal_hypothesis",
-        "note": "",
-        "object": "an effect of transparency",
-        "predicate": "produces",
-        "source_span": {
-          "end": 407,
-          "origin": "prompt",
-          "source_id": "prompt",
-          "start": 123,
-          "text": "the the buddha statue it feels so metallic somehow very blunt, very sharp edges of the folds, whereas in the woman whose face is covered with the the created fold, that is a damn different art, the artist has carved the fold in such a manner that it creates the effect of transparency"
-        },
-        "source_spans": [
-          {
-            "end": 407,
-            "origin": "prompt",
-            "source_id": "prompt",
-            "start": 123,
-            "text": "the the buddha statue it feels so metallic somehow very blunt, very sharp edges of the folds, whereas in the woman whose face is covered with the the created fold, that is a damn different art, the artist has carved the fold in such a manner that it creates the effect of transparency"
-          }
-        ],
-        "status": "uncertain",
-        "subject": "the veil's carving",
-        "text": "the veil's carving produces an effect of transparency",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_cf4fffa13dd2",
-        "claim_kind": "interpretation",
-        "confidence": null,
-        "epistemic_demand": "interpretive",
-        "image_scope": [
-          "one_image"
-        ],
-        "inferred_from": [],
-        "kind": "interpretation",
-        "note": "",
-        "object": "cloth and stone at once",
-        "predicate": "reads as",
-        "source_span": {
-          "end": null,
-          "origin": "scene_reading",
-          "source_id": "rb_43303ca2508c",
-          "start": null,
-          "text": "the veil reads as thin cloth while remaining continuous stone, and the two readings do not resolve"
-        },
-        "source_spans": [
-          {
-            "end": null,
-            "origin": "scene_reading",
-            "source_id": "rb_43303ca2508c",
-            "start": null,
-            "text": "the veil reads as thin cloth while remaining continuous stone, and the two readings do not resolve"
-          }
-        ],
-        "status": "interpretive",
-        "subject": "the veil",
-        "text": "the veil reads as thin cloth while remaining continuous stone",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_860ba087b46c",
-        "claim_kind": "comparison",
-        "confidence": null,
-        "epistemic_demand": "measurable",
-        "image_scope": [
-          "corpus"
-        ],
-        "inferred_from": [],
-        "kind": "comparison",
-        "note": "",
-        "object": "an edge treatment",
-        "predicate": "share",
-        "source_span": {
-          "end": null,
-          "origin": "scene_reading",
-          "source_id": "rb_48fd6980b74a",
-          "start": null,
-          "text": "the seated and recumbent figures share an abruptness at the edge that the veiled figure does not"
-        },
-        "source_spans": [
-          {
-            "end": null,
-            "origin": "scene_reading",
-            "source_id": "rb_48fd6980b74a",
-            "start": null,
-            "text": "the seated and recumbent figures share an abruptness at the edge that the veiled figure does not"
-          },
-          {
-            "end": 541,
-            "origin": "prompt",
-            "source_id": "prompt",
-            "start": 409,
-            "text": "a bit similar is of the dead bed man the folds on his chest are somewhat looking similar but yeah share slight bluntness with buddha"
-          }
-        ],
-        "status": "uncertain",
-        "subject": "the seated and recumbent figures",
-        "text": "the seated and recumbent figures share an edge treatment the veiled figure does not",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_d0fd1be23d65",
-        "claim_kind": "comparison",
-        "confidence": null,
-        "epistemic_demand": "interpretive",
-        "image_scope": [
-          "image_pair"
-        ],
-        "inferred_from": [],
-        "kind": "comparison",
-        "note": "",
-        "object": "the veiled figure's handling",
-        "predicate": "resembles",
-        "source_span": {
-          "end": 541,
-          "origin": "prompt",
-          "source_id": "prompt",
-          "start": 409,
-          "text": "a bit similar is of the dead bed man the folds on his chest are somewhat looking similar but yeah share slight bluntness with buddha"
-        },
-        "source_spans": [
-          {
-            "end": 541,
-            "origin": "prompt",
-            "source_id": "prompt",
-            "start": 409,
-            "text": "a bit similar is of the dead bed man the folds on his chest are somewhat looking similar but yeah share slight bluntness with buddha"
-          }
-        ],
-        "status": "uncertain",
-        "subject": "the recumbent figure's chest cloth",
-        "text": "the recumbent figure's chest cloth resembles the veiled figure's handling",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_282a992640d9",
-        "claim_kind": "spatial_relation",
-        "confidence": null,
-        "epistemic_demand": "measurable",
-        "image_scope": [
-          "one_image"
-        ],
-        "inferred_from": [],
-        "kind": "spatial_relation",
-        "note": "",
-        "object": "the chest",
-        "predicate": "gathers across",
-        "source_span": {
-          "end": null,
-          "origin": "scene_reading",
-          "source_id": "rb_a7fc1b43c4e0",
-          "start": null,
-          "text": "on the recumbent figure the cloth gathers across the chest in long parallel troughs"
-        },
-        "source_spans": [
-          {
-            "end": null,
-            "origin": "scene_reading",
-            "source_id": "rb_a7fc1b43c4e0",
-            "start": null,
-            "text": "on the recumbent figure the cloth gathers across the chest in long parallel troughs"
-          }
-        ],
-        "status": "interpretive",
-        "subject": "the cloth",
-        "text": "the recumbent figure's cloth gathers in long parallel troughs across the chest",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_dd5433b794b3",
-        "claim_kind": "comparison",
-        "confidence": null,
-        "epistemic_demand": "interpretive",
-        "image_scope": [
-          "corpus"
-        ],
-        "inferred_from": [],
-        "kind": "comparison",
-        "note": "",
-        "object": "the handling of carved cloth",
-        "predicate": "differ in",
-        "source_span": {
-          "end": 121,
-          "origin": "prompt",
-          "source_id": "prompt",
-          "start": 0,
-          "text": "even folding through the statues can have different styles the way they affect the perception and make us view the statue"
-        },
-        "source_spans": [
-          {
-            "end": 121,
-            "origin": "prompt",
-            "source_id": "prompt",
-            "start": 0,
-            "text": "even folding through the statues can have different styles the way they affect the perception and make us view the statue"
-          }
-        ],
-        "status": "interpretive",
-        "subject": "the four figures",
-        "text": "the four figures handle carved cloth in different styles",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_bd710b06f4cb",
-        "claim_kind": "historical_or_sourced",
-        "confidence": null,
-        "epistemic_demand": "sourced",
-        "image_scope": [
-          "not_an_image_question"
-        ],
-        "inferred_from": [],
-        "kind": "historical_or_sourced",
-        "note": "",
-        "object": "a workshop practice",
-        "predicate": "is associated with",
-        "source_span": {
-          "end": null,
-          "origin": "scene_reading",
-          "source_id": "rb_86e79b74ea3d",
-          "start": null,
-          "text": "carving cloth to read as translucent is associated with a nineteenth-century workshop practice"
-        },
-        "source_spans": [
-          {
-            "end": null,
-            "origin": "scene_reading",
-            "source_id": "rb_86e79b74ea3d",
-            "start": null,
-            "text": "carving cloth to read as translucent is associated with a nineteenth-century workshop practice"
-          }
-        ],
-        "status": "sourced",
-        "subject": "translucent carving",
-        "text": "carving cloth to read as translucent is associated with a nineteenth-century workshop practice",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_62c753b2781f",
-        "claim_kind": "generative_rule",
-        "confidence": null,
-        "epistemic_demand": "imagined",
-        "image_scope": [
-          "corpus"
-        ],
-        "inferred_from": [],
-        "kind": "generative_rule",
-        "note": "",
-        "object": "cloth into fewer planes",
-        "predicate": "would resolve",
-        "source_span": {
-          "end": null,
-          "origin": "scene_reading",
-          "source_id": "rb_f3e3ac167324",
-          "start": null,
-          "text": "the modern figure's cloth may be resolving into fewer, larger planes than any of the other three"
-        },
-        "source_spans": [
-          {
-            "end": null,
-            "origin": "scene_reading",
-            "source_id": "rb_f3e3ac167324",
-            "start": null,
-            "text": "the modern figure's cloth may be resolving into fewer, larger planes than any of the other three"
-          }
-        ],
-        "status": "interpretive",
-        "subject": "a further figure",
-        "text": "a fourth figure in this family would resolve its cloth into fewer, larger planes",
-        "vocabulary": ""
-      },
-      {
-        "author": "model",
-        "claim_id": "clm_b21d6a63dc90",
-        "claim_kind": "entity",
-        "confidence": null,
-        "epistemic_demand": "measurable",
-        "image_scope": [
-          "one_image"
-        ],
-        "inferred_from": [],
-        "kind": "entity",
-        "note": "",
-        "object": "facets",
-        "predicate": "breaks into",
-        "source_span": {
-          "end": null,
-          "origin": "scene_reading",
-          "source_id": "rb_bd9f4612028f",
-          "start": null,
-          "text": "the seated figure's drapery breaks into facets that meet at abrupt edges"
-        },
-        "source_spans": [
-          {
-            "end": null,
-            "origin": "scene_reading",
-            "source_id": "rb_bd9f4612028f",
-            "start": null,
-            "text": "the seated figure's drapery breaks into facets that meet at abrupt edges"
-          }
-        ],
-        "status": "interpretive",
-        "subject": "the drapery",
-        "text": "the seated figure's drapery breaks into facets",
         "vocabulary": ""
       }
     ],
@@ -1089,77 +538,151 @@
         "source_unit_id": "su_d5611304aa0d"
       },
       {
-        "coverage_id": "cov_d39c06057041",
-        "disposition": "represented_by",
-        "reason": "derived from the atoms anchored to this unit, not restated by the model",
-        "refs": [
-          "atm_b891ea4c4191"
-        ],
-        "source_unit_id": "su_9b97a686831a"
-      },
-      {
-        "coverage_id": "cov_2f5c54afb443",
-        "disposition": "represented_by",
-        "reason": "derived from the atoms anchored to this unit, not restated by the model",
-        "refs": [
-          "atm_eb8c0a26b1fd"
-        ],
-        "source_unit_id": "su_d5ee66b81eb7"
-      },
-      {
-        "coverage_id": "cov_4043321b5d4e",
-        "disposition": "represented_by",
-        "reason": "derived from the atoms anchored to this unit, not restated by the model",
-        "refs": [
-          "atm_f654faa57e5b"
-        ],
-        "source_unit_id": "su_f1793e4f9b49"
-      },
-      {
         "coverage_id": "cov_50f6d013ead4",
         "disposition": "represented_by",
         "reason": "derived from the atoms anchored to this unit, not restated by the model",
         "refs": [
-          "atm_e6f854d48467"
+          "atm_05421975f7f7"
         ],
         "source_unit_id": "su_efe91ebd0341"
+      },
+      {
+        "coverage_id": "cov_d39c06057041",
+        "disposition": "refused",
+        "reason": "temporary vertical-slice rehearsal scope; not investigated and not evidence of absence. Its atoms are projected at 64 token(s) and 22 of the 642-token relation request remained when it was reached.",
+        "refs": [],
+        "source_unit_id": "su_9b97a686831a"
+      },
+      {
+        "coverage_id": "cov_2f5c54afb443",
+        "disposition": "refused",
+        "reason": "temporary vertical-slice rehearsal scope; not investigated and not evidence of absence. Its atoms are projected at 66 token(s) and 22 of the 642-token relation request remained when it was reached.",
+        "refs": [],
+        "source_unit_id": "su_d5ee66b81eb7"
+      },
+      {
+        "coverage_id": "cov_4043321b5d4e",
+        "disposition": "refused",
+        "reason": "temporary vertical-slice rehearsal scope; not investigated and not evidence of absence. Its atoms are projected at 64 token(s) and 22 of the 642-token relation request remained when it was reached.",
+        "refs": [],
+        "source_unit_id": "su_f1793e4f9b49"
       }
     ],
     "coverage_summary": {
       "by_disposition": {
-        "represented_by": 11
+        "refused": 3,
+        "represented_by": 8
       },
       "complete": true,
       "disposed": 11,
       "lost": [],
       "lost_count": 0,
       "reading_units": 7,
-      "represented": 11,
+      "represented": 8,
       "source_units": 11,
       "user_units": 4
     },
     "execution_scope": {
-      "allowance_tokens": 8000,
-      "atoms_not_investigated": 0,
+      "allowance_tokens": 4500,
+      "atoms_not_investigated": 12,
       "claims_not_investigated": 0,
-      "deferred_source_units": 0,
-      "exclusions": [],
-      "full_coverage": true,
-      "mode": "full",
-      "notes": [],
-      "operationalizer_batches_allowed": null,
+      "deferred_source_units": 3,
+      "exclusions": [
+        {
+          "kind": "source_unit",
+          "reason": "temporary vertical-slice rehearsal scope; not investigated and not evidence of absence. Its atoms are projected at 64 token(s) and 22 of the 642-token relation request remained when it was reached.",
+          "ref": "su_9b97a686831a"
+        },
+        {
+          "kind": "source_unit",
+          "reason": "temporary vertical-slice rehearsal scope; not investigated and not evidence of absence. Its atoms are projected at 66 token(s) and 22 of the 642-token relation request remained when it was reached.",
+          "ref": "su_d5ee66b81eb7"
+        },
+        {
+          "kind": "source_unit",
+          "reason": "temporary vertical-slice rehearsal scope; not investigated and not evidence of absence. Its atoms are projected at 64 token(s) and 22 of the 642-token relation request remained when it was reached.",
+          "ref": "su_f1793e4f9b49"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_5de911909832"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_e1c3d4f7faca"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_378497de8185"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_b8f8a948f307"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_e6e8611a588a"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_5cbf64cd3d57"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_c4a9ae0bcd1c"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_7ce0e5c79f2f"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_b3495142b425"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_f70a94c25d03"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_1a13b92ad308"
+        },
+        {
+          "kind": "semantic_atom",
+          "reason": "a declared execution scope permitted fewer relation requests than this partition needed, so no architect call saw this atom. It was not refused and nothing was found to be absent from it.",
+          "ref": "atm_05421975f7f7"
+        }
+      ],
+      "full_coverage": false,
+      "mode": "vertical_slice",
+      "notes": [
+        "the vertical-slice scope selected 8 of 11 source unit(s) — 4 of 4 from the person — across 4 of 4 image group(s), projecting 620 of 642 token(s) of room in one relation request at a declared 2.0x expansion from prose to atoms.",
+        "every deferred unit is still in the ledger with its own id and is disposed `refused` with the scope's reason. It is not `semantic_remainder`: remainder is content nothing measures, and this is content nothing was asked about."
+      ],
+      "operationalizer_batches_allowed": 2,
       "operationalizer_batches_sent": 1,
-      "purpose": "",
-      "reconciliation_rounds_allowed": null,
+      "purpose": "live_vertical_flow_rehearsal",
+      "reconciliation_rounds_allowed": 0,
       "reconciliation_rounds_sent": 0,
       "recorded": true,
-      "relation_batches_allowed": null,
+      "relation_batches_allowed": 1,
       "relation_batches_sent": 1,
       "scope_version": "inquiry-execution-scope.v1",
-      "selected_atoms": 18,
-      "selected_claims": 13,
-      "selected_source_units": 0,
-      "selection_producer": ""
+      "selected_atoms": 15,
+      "selected_claims": 1,
+      "selected_source_units": 8,
+      "selection_producer": "semantic_compilation/scope-v1"
     },
     "graph_id": "sig_cf8a5d365161",
     "image_refs": [
@@ -1194,203 +717,25 @@
     ],
     "inquiry_id": "inq_77f871886f15",
     "notes": [
-      "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 80 per item for the answer (ceiling 4096); 4142 token(s) of room per request for 18 item(s)",
-      "claim 1: typed 'interpretation' where its atoms default to 'attribute' with no reason given",
-      "1 of 1 batch(es) produced a claim, so every claim was already in front of the model together. The coverage matrix is empty because there is nothing across, not because nothing was compared.",
-      "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 160 per item for the answer (ceiling 4096); 4075 token(s) of room per request for 13 item(s)",
+      "the vertical-slice scope selected 8 of 11 source unit(s) — 4 of 4 from the person — across 4 of 4 image group(s), projecting 620 of 642 token(s) of room in one relation request at a declared 2.0x expansion from prose to atoms.",
+      "every deferred unit is still in the ledger with its own id and is disposed `refused` with the scope's reason. It is not `semantic_remainder`: remainder is content nothing measures, and this is content nothing was asked about.",
+      "3 source unit(s) were deferred by the declared scope and are disposed `refused` with that reason. They were NOT dissolved, no repair was aimed at them, and their absence from the claims is not evidence that there was nothing in them.",
+      "sized against a 4500-token allowance, holding back 800 as margin and reserving 1536 plus 80 per item for the answer (ceiling 4096); 642 token(s) of room per request for 15 item(s)",
+      "1 of 5 batch(es) produced a claim; 4 was/were not sent at all under a declared execution scope. There was no second group to compare against. The coverage matrix is empty because there is nothing across, not because nothing was compared — and the atoms in the unsent batch(es) are `not_investigated` in the plan.",
+      "a declared execution scope permitted 1 of 5 relation request(s), so 12 atom(s) were never put in front of the architect. They are `not_investigated` in the plan, not absent from it, and their absence from the claims is not evidence that there was nothing to build.",
+      "2 of 15 atom(s) were not built into any claim. They are kept in the graph and reported: an atom with no claim is the dissector's work the architect did not use, which is a different fact from the dissector not having done it.",
+      "sized against a 4500-token allowance, holding back 800 as margin and reserving 1536 plus 160 per item for the answer (ceiling 4096); 575 token(s) of room per request for 1 item(s)",
       "one batch answered for every claim, so every fork was already visible in one request. The coverage matrix is empty because there is nothing across, not because nothing was compared.",
-      "dissolution: completed — every pass completed and the ledger is whole"
+      "dissolution: thin — relation_architect: 9 atom(s) name a relation, a comparison or a cause and the architect drew no edge between any claims. The relations are the part of this pass that is not also the dissector's work."
     ],
-    "observables": [
-      {
-        "alternatives": [
-          {
-            "alternative_id": "alt_ccff747cccd8",
-            "available": true,
-            "capability_class": "geometry",
-            "capability_classes": [
-              "geometry"
-            ],
-            "consequence": "several paths, more cost, and the variation within one figure becomes visible",
-            "label": "measure the sharpness of every facet boundary and summarise",
-            "recommended": false
-          },
-          {
-            "alternative_id": "alt_02d4130f33df",
-            "available": true,
-            "capability_class": "geometry",
-            "capability_classes": [
-              "geometry"
-            ],
-            "consequence": "one path, quickly, with the variation assumed away",
-            "label": "measure one representative boundary",
-            "recommended": true
-          }
-        ],
-        "ambiguity_condition": "the boundary cannot be separated from the surface either side of it",
-        "availability": "available",
-        "capability_classes": [
-          "geometry"
-        ],
-        "claim_ref": "clm_5f23c8a2d932",
-        "gap_reason": "",
-        "ground_forms": [
-          "path",
-          "region"
-        ],
-        "image_scope": [
-          "one_image"
-        ],
-        "note": "",
-        "observable_id": "obs_7080a8a9c82a",
-        "observable_kind": "edge_profile_across_a_named_boundary",
-        "refusal_condition": "no boundary can be located at all",
-        "residual_interpretation": "whether an abrupt profile is what makes a viewer call the surface blunt",
-        "success_condition": "a profile is returned along each named boundary",
-        "target": "the edges where the drapery facets meet",
-        "targets": [
-          "the edges where the drapery facets meet"
-        ]
-      },
-      {
-        "alternatives": [],
-        "ambiguity_condition": "the veil cannot be separated from the face beneath it",
-        "availability": "available",
-        "capability_classes": [
-          "extent"
-        ],
-        "claim_ref": "clm_4c013fd3263d",
-        "gap_reason": "",
-        "ground_forms": [
-          "region"
-        ],
-        "image_scope": [
-          "one_image"
-        ],
-        "note": "",
-        "observable_id": "obs_194c0157a554",
-        "observable_kind": "extent_of_a_named_thing",
-        "refusal_condition": "nothing matching the phrase is located",
-        "residual_interpretation": "",
-        "success_condition": "one region covering the veil is returned",
-        "target": "the carved veil",
-        "targets": [
-          "the carved veil"
-        ]
-      },
-      {
-        "alternatives": [],
-        "ambiguity_condition": "the troughs are too shallow to give a stable direction",
-        "availability": "capability_gap",
-        "capability_classes": [
-          "vector_field"
-        ],
-        "claim_ref": "clm_282a992640d9",
-        "gap_reason": "nothing bound here can produce: vector_field",
-        "ground_forms": [
-          "field"
-        ],
-        "image_scope": [
-          "one_image"
-        ],
-        "note": "",
-        "observable_id": "obs_8ca43e4769e4",
-        "observable_kind": "orientation_field_over_a_region",
-        "refusal_condition": "the region cannot be established",
-        "residual_interpretation": "",
-        "success_condition": "a direction is returned per location across the region",
-        "target": "the cloth across the chest",
-        "targets": [
-          "the cloth across the chest"
-        ]
-      },
-      {
-        "alternatives": [],
-        "ambiguity_condition": "the figures are lit differently enough that the profiles are not comparable",
-        "availability": "capability_gap",
-        "capability_classes": [
-          "geometry",
-          "pattern"
-        ],
-        "claim_ref": "clm_860ba087b46c",
-        "gap_reason": "nothing bound here can produce: pattern",
-        "ground_forms": [
-          "path"
-        ],
-        "image_scope": [
-          "corpus"
-        ],
-        "note": "",
-        "observable_id": "obs_a61c227e283f",
-        "observable_kind": "comparison_of_edge_profiles_across_images",
-        "refusal_condition": "one figure yields no boundary",
-        "residual_interpretation": "whether two comparable profiles amount to a shared treatment",
-        "success_condition": "each figure yields a comparable profile",
-        "target": "the edge treatment of each figure",
-        "targets": [
-          "the edge treatment of each figure"
-        ]
-      },
-      {
-        "alternatives": [],
-        "ambiguity_condition": "the sources disagree",
-        "availability": "capability_gap",
-        "capability_classes": [
-          "external_source"
-        ],
-        "claim_ref": "clm_bd710b06f4cb",
-        "gap_reason": "nothing bound here can produce: external_source",
-        "ground_forms": [
-          "frame"
-        ],
-        "image_scope": [
-          "not_an_image_question"
-        ],
-        "note": "",
-        "observable_id": "obs_37be2b933e03",
-        "observable_kind": "citation_for_a_workshop_practice",
-        "refusal_condition": "nothing is found",
-        "residual_interpretation": "",
-        "success_condition": "a citation is returned",
-        "target": "the association with a nineteenth-century practice",
-        "targets": [
-          "the association with a nineteenth-century practice"
-        ]
-      },
-      {
-        "alternatives": [],
-        "ambiguity_condition": "the facets are not separable",
-        "availability": "available",
-        "capability_classes": [
-          "extent"
-        ],
-        "claim_ref": "clm_b21d6a63dc90",
-        "gap_reason": "",
-        "ground_forms": [
-          "region"
-        ],
-        "image_scope": [
-          "one_image"
-        ],
-        "note": "",
-        "observable_id": "obs_f56378bf4d9d",
-        "observable_kind": "extent_of_a_named_thing",
-        "refusal_condition": "nothing matching the phrase is located",
-        "residual_interpretation": "",
-        "success_condition": "one region per facet is returned",
-        "target": "the drapery facets",
-        "targets": [
-          "the drapery facets"
-        ]
-      }
-    ],
+    "observables": [],
     "passes": [
       {
         "batch_plan": null,
         "call_count": 0,
         "capacity_waits": [],
         "completion_tokens": null,
-        "detail": "11 source unit(s): 4 from the person, 7 from the reading",
+        "detail": "11 source unit(s): 4 from the person, 7 from the reading · a declared vertical-slice scope selected 8 of them for dissolution and deferred 3",
         "duration_ms": null,
         "finish_reasons": [],
         "inputs": 8,
@@ -1407,20 +752,20 @@
       },
       {
         "batch_plan": null,
-        "call_count": 4,
+        "call_count": 3,
         "capacity_waits": [],
         "completion_tokens": null,
-        "detail": "18 atom(s) over 11 source unit(s)",
+        "detail": "15 atom(s) over 8 source unit(s)",
         "duration_ms": null,
         "finish_reasons": [],
-        "inputs": 11,
+        "inputs": 8,
         "model": "openai/gpt-oss-120b",
         "notes": [
           "replayed from a frozen payload; no network call was made",
           "replayed from a frozen payload; no network call was made"
         ],
         "outcome": "completed",
-        "outputs": 18,
+        "outputs": 15,
         "pass_id": "pas_193206b661d0",
         "pass_name": "semantic_dissector",
         "prompt_tokens": null,
@@ -1430,23 +775,25 @@
       },
       {
         "batch_plan": {
-          "allowance_tokens": 8000,
-          "batches": 1,
+          "allowance_tokens": 4500,
+          "batches": 5,
           "batches_sent": 1,
           "dispositions": {
-            "used": 18
+            "not_investigated": 12,
+            "orphan": 2,
+            "used": 1
           },
           "duplicates_merged": 0,
-          "largest_request_tokens": 6595,
+          "largest_request_tokens": 3676,
           "notes": [
-            "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 80 per item for the answer (ceiling 4096); 4142 token(s) of room per request for 18 item(s)"
+            "sized against a 4500-token allowance, holding back 800 as margin and reserving 1536 plus 80 per item for the answer (ceiling 4096); 642 token(s) of room per request for 15 item(s)"
           ],
           "pairs_examined": 0,
           "pairs_total": 0,
-          "plan_id": "plan_242a536c2fd2",
+          "plan_id": "plan_856c5217fb1c",
           "plan_version": "semantic-batch-plan.v1",
           "rounds": [],
-          "total_items": 18,
+          "total_items": 15,
           "unexamined_pairs": [],
           "unit": "semantic_atom",
           "unsendable_batches": 0
@@ -1454,16 +801,16 @@
         "call_count": 1,
         "capacity_waits": [],
         "completion_tokens": null,
-        "detail": "13 claim(s) and 7 relation(s) over 18 atoms in 1 batch(es), with 0 of 0 batch pair(s) compared across 0 reconciliation round(s)",
+        "detail": "9 atom(s) name a relation, a comparison or a cause and the architect drew no edge between any claims. The relations are the part of this pass that is not also the dissector's work.",
         "duration_ms": null,
         "finish_reasons": [],
-        "inputs": 18,
+        "inputs": 3,
         "model": "openai/gpt-oss-120b",
         "notes": [
           "replayed from a frozen payload; no network call was made"
         ],
-        "outcome": "completed",
-        "outputs": 13,
+        "outcome": "thin",
+        "outputs": 1,
         "pass_id": "pas_5170c8cc77a4",
         "pass_name": "relation_architect",
         "prompt_tokens": null,
@@ -1473,25 +820,23 @@
       },
       {
         "batch_plan": {
-          "allowance_tokens": 8000,
+          "allowance_tokens": 4500,
           "batches": 1,
           "batches_sent": 1,
           "dispositions": {
-            "not_investigated": 1,
-            "operationalized": 6,
-            "semantic_remainder": 6
+            "not_investigated": 1
           },
           "duplicates_merged": 0,
-          "largest_request_tokens": 6358,
+          "largest_request_tokens": 3374,
           "notes": [
-            "sized against a 8000-token allowance, holding back 800 as margin and reserving 1536 plus 160 per item for the answer (ceiling 4096); 4075 token(s) of room per request for 13 item(s)"
+            "sized against a 4500-token allowance, holding back 800 as margin and reserving 1536 plus 160 per item for the answer (ceiling 4096); 575 token(s) of room per request for 1 item(s)"
           ],
           "pairs_examined": 0,
           "pairs_total": 0,
-          "plan_id": "plan_bd011cbd636d",
+          "plan_id": "plan_781dbfa54c04",
           "plan_version": "semantic-batch-plan.v1",
           "rounds": [],
-          "total_items": 13,
+          "total_items": 1,
           "unexamined_pairs": [],
           "unit": "claim",
           "unsendable_batches": 0
@@ -1499,16 +844,16 @@
         "call_count": 1,
         "capacity_waits": [],
         "completion_tokens": null,
-        "detail": "6 observable(s) and 4 remainder item(s) over 13 claim(s) in 1 batch(es), with 0 of 0 claim-group pair(s) compared",
+        "detail": "the operationalizer produced neither an observable nor a remainder item",
         "duration_ms": null,
         "finish_reasons": [],
-        "inputs": 13,
+        "inputs": 1,
         "model": "openai/gpt-oss-120b",
         "notes": [
           "replayed from a frozen payload; no network call was made"
         ],
-        "outcome": "completed",
-        "outputs": 6,
+        "outcome": "empty",
+        "outputs": 0,
         "pass_id": "pas_799ad20ebdaf",
         "pass_name": "epistemic_operationalizer",
         "prompt_tokens": null,
@@ -1526,7 +871,9 @@
         "finish_reasons": [],
         "inputs": 11,
         "model": "",
-        "notes": [],
+        "notes": [
+          "14 atom(s) reached no claim"
+        ],
         "outcome": "completed",
         "outputs": 0,
         "pass_id": "pas_35438fa267bf",
@@ -1664,7 +1011,68 @@
       "status": "interpretive",
       "text": "Four carved figures, each resolving cloth differently, and the difference is legible in the edges rather than in the subject."
     },
-    "refusals": [],
+    "refusals": [
+      {
+        "detail": "the dissector anchored an atom to a source unit that is not in the ledger. The anchor is the only thing separating what it found from what it wrote. · atom 2 · the veil reads as thin cloth while remaining continuous stone",
+        "kind": "atom_source_not_in_ledger",
+        "reason": "atom_source_not_in_ledger",
+        "refs": [
+          "$UNIT:9"
+        ],
+        "refusal_id": "cref_089c1bc15db7",
+        "what": "$UNIT:9"
+      },
+      {
+        "detail": "an atom with no anchor in the ledger. It reads exactly like one that was found, so it is dropped rather than kept with an empty pointer. · atom 2",
+        "kind": "unanchored_atom",
+        "reason": "unanchored_atom",
+        "refs": [
+          "the veil reads as thin cloth while remaining continuous stone"
+        ],
+        "refusal_id": "cref_2dc81f6077f5",
+        "what": "the veil reads as thin cloth while remaining continuous stone"
+      },
+      {
+        "detail": "the dissector anchored an atom to a source unit that is not in the ledger. The anchor is the only thing separating what it found from what it wrote. · atom 3 · carving cloth to read as translucent is associated with a nineteenth-century workshop practice",
+        "kind": "atom_source_not_in_ledger",
+        "reason": "atom_source_not_in_ledger",
+        "refs": [
+          "$UNIT:10"
+        ],
+        "refusal_id": "cref_f077f2c99c1b",
+        "what": "$UNIT:10"
+      },
+      {
+        "detail": "an atom with no anchor in the ledger. It reads exactly like one that was found, so it is dropped rather than kept with an empty pointer. · atom 3",
+        "kind": "unanchored_atom",
+        "reason": "unanchored_atom",
+        "refs": [
+          "carving cloth to read as translucent is associated with a nineteenth-century workshop practice"
+        ],
+        "refusal_id": "cref_12da9eebca8d",
+        "what": "carving cloth to read as translucent is associated with a nineteenth-century workshop practice"
+      },
+      {
+        "detail": "the dissector anchored an atom to a source unit that is not in the ledger. The anchor is the only thing separating what it found from what it wrote. · atom 4 · the modern figure's cloth may resolve into fewer and larger planes than the others",
+        "kind": "atom_source_not_in_ledger",
+        "reason": "atom_source_not_in_ledger",
+        "refs": [
+          "$UNIT:11"
+        ],
+        "refusal_id": "cref_9762bc1a9827",
+        "what": "$UNIT:11"
+      },
+      {
+        "detail": "an atom with no anchor in the ledger. It reads exactly like one that was found, so it is dropped rather than kept with an empty pointer. · atom 4",
+        "kind": "unanchored_atom",
+        "reason": "unanchored_atom",
+        "refs": [
+          "the modern figure's cloth may resolve into fewer and larger planes than the others"
+        ],
+        "refusal_id": "cref_fa83ed5bee17",
+        "what": "the modern figure's cloth may resolve into fewer and larger planes than the others"
+      }
+    ],
     "schema_version": "semantic-inquiry-graph.v2",
     "semantic_atoms": [
       {
@@ -2031,93 +1439,7 @@
         "unit_kind": "relation"
       },
       {
-        "atom_id": "atm_b891ea4c4191",
-        "author": "semantic_dissector",
-        "epistemic_ceiling": "interpretive",
-        "image_refs": [
-          "img_recumbent",
-          "img_seated",
-          "img_veiled"
-        ],
-        "image_scope": [
-          "corpus"
-        ],
-        "note": "",
-        "object": "an abruptness at the edge",
-        "predicate": "share",
-        "provenance": {
-          "producer": "semantic_compilation/dissector-v1",
-          "role": "semantic_dissector",
-          "spans_batches": true
-        },
-        "quotes": [
-          "share an abruptness at the edge that the veiled figure does not"
-        ],
-        "source_unit_ids": [
-          "su_9b97a686831a"
-        ],
-        "subject": "the seated and recumbent figures",
-        "text": "the seated and recumbent figures share an edge abruptness the veiled figure lacks",
-        "unit_kind": "comparison"
-      },
-      {
-        "atom_id": "atm_eb8c0a26b1fd",
-        "author": "semantic_dissector",
-        "epistemic_ceiling": "interpretive",
-        "image_refs": [
-          "img_veiled"
-        ],
-        "image_scope": [
-          "one_image"
-        ],
-        "note": "",
-        "object": "thin cloth and continuous stone at once",
-        "predicate": "reads as",
-        "provenance": {
-          "producer": "semantic_compilation/dissector-v1",
-          "role": "semantic_dissector",
-          "spans_batches": true
-        },
-        "quotes": [
-          "reads as thin cloth while remaining continuous stone"
-        ],
-        "source_unit_ids": [
-          "su_d5ee66b81eb7"
-        ],
-        "subject": "the veil",
-        "text": "the veil reads as thin cloth while remaining continuous stone",
-        "unit_kind": "interpretation"
-      },
-      {
-        "atom_id": "atm_f654faa57e5b",
-        "author": "semantic_dissector",
-        "epistemic_ceiling": "interpretive",
-        "image_refs": [
-          "img_veiled"
-        ],
-        "image_scope": [
-          "not_an_image_question"
-        ],
-        "note": "",
-        "object": "a nineteenth-century workshop practice",
-        "predicate": "is associated with",
-        "provenance": {
-          "producer": "semantic_compilation/dissector-v1",
-          "role": "semantic_dissector",
-          "spans_batches": true
-        },
-        "quotes": [
-          "associated with a nineteenth-century workshop practice"
-        ],
-        "source_unit_ids": [
-          "su_f1793e4f9b49"
-        ],
-        "subject": "carving cloth to read as translucent",
-        "text": "carving cloth to read as translucent is associated with a nineteenth-century workshop practice",
-        "unit_kind": "historical_or_sourced"
-      },
-      {
-        "atom_id": "atm_e6f854d48467",
+        "atom_id": "atm_05421975f7f7",
         "author": "semantic_dissector",
         "epistemic_ceiling": "interpretive",
         "image_refs": [
@@ -2127,73 +1449,28 @@
           "corpus"
         ],
         "note": "",
-        "object": "fewer, larger planes",
-        "predicate": "may resolve into",
+        "object": "an abruptness at the edge",
+        "predicate": "share",
         "provenance": {
           "producer": "semantic_compilation/dissector-v1",
+          "quotes_not_found": [
+            "share an abruptness at the edge that the veiled figure does not"
+          ],
           "role": "semantic_dissector",
           "spans_batches": true
         },
         "quotes": [
-          "may be resolving into fewer, larger planes"
+          "share an abruptness at the edge that the veiled figure does not"
         ],
         "source_unit_ids": [
           "su_efe91ebd0341"
         ],
-        "subject": "the modern figure's cloth",
-        "text": "the modern figure's cloth may resolve into fewer and larger planes than the others",
-        "unit_kind": "generative_proposal"
+        "subject": "the seated and recumbent figures",
+        "text": "the seated and recumbent figures share an edge abruptness the veiled figure lacks",
+        "unit_kind": "comparison"
       }
     ],
-    "semantic_remainder": [
-      {
-        "claim_refs": [
-          "clm_4057d7159b0c"
-        ],
-        "contributing_capability_classes": [
-          "geometry",
-          "colour"
-        ],
-        "remainder_id": "rem_d6ffeaa0146e",
-        "text": "reading a surface as metallic",
-        "why_unresolved": "no instrument returns the impression a material makes; an edge profile contributes to it and does not settle it"
-      },
-      {
-        "claim_refs": [
-          "clm_610467506a77",
-          "clm_cf4fffa13dd2"
-        ],
-        "contributing_capability_classes": [
-          "geometry"
-        ],
-        "remainder_id": "rem_fd6f88459f0f",
-        "text": "the effect of transparency",
-        "why_unresolved": "transparency here is something the carving produces in a viewer, not a property of the stone that could be measured"
-      },
-      {
-        "claim_refs": [
-          "clm_860ba087b46c",
-          "clm_d0fd1be23d65",
-          "clm_dd5433b794b3"
-        ],
-        "contributing_capability_classes": [
-          "geometry",
-          "pattern"
-        ],
-        "remainder_id": "rem_375bf2b68e3f",
-        "text": "whether two figures belong to one manner",
-        "why_unresolved": "comparable measurements may support the grouping and cannot establish that it is the right grouping"
-      },
-      {
-        "claim_refs": [
-          "clm_62c753b2781f"
-        ],
-        "contributing_capability_classes": [],
-        "remainder_id": "rem_4c483735579d",
-        "text": "what a further figure in this family would have to do",
-        "why_unresolved": "a rule for making something that does not exist has nothing to measure and nothing to cite"
-      }
-    ],
+    "semantic_remainder": [],
     "source_units": [
       {
         "author": "user",
@@ -2433,7 +1710,7 @@
     "created_at": "2026-08-09T00:00:00+00:00",
     "frame_hash": "064067c87bd5d7edb8267fa36e5b66ff59ee5c4e8c3147a81a48db9224edece9",
     "frame_producer": "inquiry/deterministic-v1",
-    "graph_hash": "sig_2c66f0739fe5c5ca",
+    "graph_hash": "sig_ff621660f8a7fccf",
     "mode": "auto",
     "notes": [],
     "producer": "inquiry_session/coordinator-v1",
@@ -2441,22 +1718,83 @@
     "theorist_model": null,
     "updated_at": "2026-08-09T00:00:00+00:00"
   },
-  "refusals": [],
-  "revision": 7,
+  "refusals": [
+    {
+      "detail": "the dissector anchored an atom to a source unit that is not in the ledger. The anchor is the only thing separating what it found from what it wrote. · atom 2 · the veil reads as thin cloth while remaining continuous stone",
+      "kind": "atom_source_not_in_ledger",
+      "reason": "atom_source_not_in_ledger",
+      "refs": [
+        "$UNIT:9"
+      ],
+      "refusal_id": "cref_089c1bc15db7",
+      "what": "$UNIT:9"
+    },
+    {
+      "detail": "an atom with no anchor in the ledger. It reads exactly like one that was found, so it is dropped rather than kept with an empty pointer. · atom 2",
+      "kind": "unanchored_atom",
+      "reason": "unanchored_atom",
+      "refs": [
+        "the veil reads as thin cloth while remaining continuous stone"
+      ],
+      "refusal_id": "cref_2dc81f6077f5",
+      "what": "the veil reads as thin cloth while remaining continuous stone"
+    },
+    {
+      "detail": "the dissector anchored an atom to a source unit that is not in the ledger. The anchor is the only thing separating what it found from what it wrote. · atom 3 · carving cloth to read as translucent is associated with a nineteenth-century workshop practice",
+      "kind": "atom_source_not_in_ledger",
+      "reason": "atom_source_not_in_ledger",
+      "refs": [
+        "$UNIT:10"
+      ],
+      "refusal_id": "cref_f077f2c99c1b",
+      "what": "$UNIT:10"
+    },
+    {
+      "detail": "an atom with no anchor in the ledger. It reads exactly like one that was found, so it is dropped rather than kept with an empty pointer. · atom 3",
+      "kind": "unanchored_atom",
+      "reason": "unanchored_atom",
+      "refs": [
+        "carving cloth to read as translucent is associated with a nineteenth-century workshop practice"
+      ],
+      "refusal_id": "cref_12da9eebca8d",
+      "what": "carving cloth to read as translucent is associated with a nineteenth-century workshop practice"
+    },
+    {
+      "detail": "the dissector anchored an atom to a source unit that is not in the ledger. The anchor is the only thing separating what it found from what it wrote. · atom 4 · the modern figure's cloth may resolve into fewer and larger planes than the others",
+      "kind": "atom_source_not_in_ledger",
+      "reason": "atom_source_not_in_ledger",
+      "refs": [
+        "$UNIT:11"
+      ],
+      "refusal_id": "cref_9762bc1a9827",
+      "what": "$UNIT:11"
+    },
+    {
+      "detail": "an atom with no anchor in the ledger. It reads exactly like one that was found, so it is dropped rather than kept with an empty pointer. · atom 4",
+      "kind": "unanchored_atom",
+      "reason": "unanchored_atom",
+      "refs": [
+        "the modern figure's cloth may resolve into fewer and larger planes than the others"
+      ],
+      "refusal_id": "cref_fa83ed5bee17",
+      "what": "the modern figure's cloth may resolve into fewer and larger planes than the others"
+    }
+  ],
+  "revision": 6,
   "schema_version": "semantic-inquiry-session.v2",
-  "session_id": "inqs_sample000004",
+  "session_id": "inqs_sample000005",
   "stages": [
     {
       "actual_calls": null,
       "at": "2026-08-09T00:00:00+00:00",
-      "attempt_id": "stg_f9e09ade49ab",
+      "attempt_id": "stg_202c9a05da04",
       "call_topology": "",
       "calls": [],
       "completed_at": "2026-08-09T00:00:00+00:00",
       "counts_line": "",
       "detail": "5 attentions · demands 1 interpretive · 2 measurable · 1 sourced · 4 proposed acts, none run · 12 terms nothing can serve · 1 meaning measurement will not exhaust",
       "duration_ms": 0.0,
-      "event_id": "stg_f9e09ade49ab",
+      "event_id": "stg_202c9a05da04",
       "execution_mode": "none",
       "gap_refs": [],
       "input_counts": {},
@@ -2487,14 +1825,14 @@
     {
       "actual_calls": 0,
       "at": "2026-08-09T00:00:00+00:00",
-      "attempt_id": "stg_7a48d1794d0c",
+      "attempt_id": "stg_4cc01d808c2f",
       "call_topology": "replay",
       "calls": [],
       "completed_at": "2026-08-09T00:00:00+00:00",
       "counts_line": "4 images in → 7 reading blocks out",
       "detail": "replay · 0 call(s)",
       "duration_ms": 0.0,
-      "event_id": "stg_7a48d1794d0c",
+      "event_id": "stg_4cc01d808c2f",
       "execution_mode": "live",
       "gap_refs": [],
       "input_counts": {
@@ -2549,7 +1887,7 @@
             "img_modern"
           ],
           "started_at": null,
-          "substage_id": "stg_103f713b2465",
+          "substage_id": "stg_6a6baa76533c",
           "total": 4
         }
       ],
@@ -2559,16 +1897,16 @@
       "underperformed": false
     },
     {
-      "actual_calls": 6,
+      "actual_calls": 5,
       "at": "2026-08-09T00:00:00+00:00",
-      "attempt_id": "stg_6729440cbd98",
+      "attempt_id": "stg_4e6639ed4105",
       "call_topology": "council_passes",
       "calls": [],
       "completed_at": "2026-08-09T00:00:00+00:00",
-      "counts_line": "7 reading blocks in → 18 atoms · 13 claims · 6 observables · 7 relations · 4 remainder · 11 source units out",
-      "detail": "13 claims · 1 attribute · 2 causal_hypothesis · 3 comparison · 2 entity · 1 generative_rule · 1 historical_or_sourced · 2 interpretation · 1 spatial_relation · 6 observables requested, none run · 1 decision candidate · 4 meanings measurement will not exhaust",
+      "counts_line": "7 reading blocks in → 15 atoms · 1 claims · 0 observables · 0 relations · 0 remainder · 11 source units out",
+      "detail": "1 claim · 1 causal_hypothesis · 0 observables requested, none run · 6 refused",
       "duration_ms": 0.0,
-      "event_id": "stg_6729440cbd98",
+      "event_id": "stg_4e6639ed4105",
       "execution_mode": "live",
       "gap_refs": [],
       "input_counts": {
@@ -2576,29 +1914,17 @@
       },
       "input_refs": [],
       "model": "openai/gpt-oss-120b",
-      "outcome": "completed",
+      "outcome": "thin",
       "output_counts": {
-        "atoms": 18,
-        "claims": 13,
-        "observables": 6,
-        "relations": 7,
-        "remainder": 4,
+        "atoms": 15,
+        "claims": 1,
+        "observables": 0,
+        "relations": 0,
+        "remainder": 0,
         "source units": 11
       },
       "output_refs": [
-        "clm_5f23c8a2d932",
-        "clm_4057d7159b0c",
-        "clm_49e0d789c75f",
-        "clm_4c013fd3263d",
-        "clm_610467506a77",
-        "clm_cf4fffa13dd2",
-        "clm_860ba087b46c",
-        "clm_d0fd1be23d65",
-        "clm_282a992640d9",
-        "clm_dd5433b794b3",
-        "clm_bd710b06f4cb",
-        "clm_62c753b2781f",
-        "clm_b21d6a63dc90"
+        "clm_49e0d789c75f"
       ],
       "planned_calls": null,
       "provenance": {
@@ -2609,7 +1935,14 @@
       "provider": null,
       "queued_at": "2026-08-09T00:00:00+00:00",
       "receipt_refs": [],
-      "refusal_refs": [],
+      "refusal_refs": [
+        "$UNIT:9",
+        "the veil reads as thin cloth while remaining continuous stone",
+        "$UNIT:10",
+        "carving cloth to read as translucent is associated with a nineteenth-century workshop practice",
+        "$UNIT:11",
+        "the modern figure's cloth may resolve into fewer and larger planes than the others"
+      ],
       "revision": 0,
       "role": "semantic_compiler",
       "sequence": 3,
@@ -2626,33 +1959,33 @@
           "outcome": "started",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_40c93b156fe3",
+          "substage_id": "stg_765cde88ad13",
           "total": 6
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "source_ledger · completed · 11 source unit(s): 4 from the person, 7 from the reading",
+          "detail": "source_ledger · completed · 11 source unit(s): 4 from the person, 7 from the reading · a declared vertical-slice scope selected 8 of them for dissolution and deferred 3",
           "duration_ms": null,
           "index": 1,
           "label": "splitting the question and the reading into source units",
           "outcome": "completed",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_feb886a4b219",
+          "substage_id": "stg_333cf3b1c924",
           "total": 6
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "semantic_dissector · 11 input(s)",
+          "detail": "semantic_dissector · 8 input(s)",
           "duration_ms": null,
           "index": 2,
           "label": "dissolving source units into semantic atoms",
           "outcome": "started",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_084ed96e6960",
+          "substage_id": "stg_287025af6b2f",
           "total": 6
         },
         {
@@ -2661,7 +1994,7 @@
           "detail": "3 source unit(s)",
           "duration_ms": null,
           "index": 1,
-          "label": "dissolving batch 1 of 4",
+          "label": "dissolving batch 1 of 3",
           "outcome": "started",
           "refs": [
             "su_63768180b7f4",
@@ -2669,8 +2002,8 @@
             "su_c41c1bbba4ca"
           ],
           "started_at": null,
-          "substage_id": "stg_68125788c777",
-          "total": 4
+          "substage_id": "stg_d29f64f46b01",
+          "total": 3
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
@@ -2678,7 +2011,7 @@
           "detail": "3 source unit(s)",
           "duration_ms": null,
           "index": 1,
-          "label": "dissolving batch 1 of 4",
+          "label": "dissolving batch 1 of 3",
           "outcome": "completed",
           "refs": [
             "su_63768180b7f4",
@@ -2686,8 +2019,8 @@
             "su_c41c1bbba4ca"
           ],
           "started_at": null,
-          "substage_id": "stg_5f21cb1b7b35",
-          "total": 4
+          "substage_id": "stg_f271a6791eed",
+          "total": 3
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
@@ -2695,7 +2028,7 @@
           "detail": "3 source unit(s)",
           "duration_ms": null,
           "index": 2,
-          "label": "dissolving batch 2 of 4",
+          "label": "dissolving batch 2 of 3",
           "outcome": "started",
           "refs": [
             "su_6289751c5239",
@@ -2703,8 +2036,8 @@
             "su_f4113975b7bf"
           ],
           "started_at": null,
-          "substage_id": "stg_13f6fccc93cb",
-          "total": 4
+          "substage_id": "stg_c31450d3c1c8",
+          "total": 3
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
@@ -2712,7 +2045,7 @@
           "detail": "3 source unit(s)",
           "duration_ms": null,
           "index": 2,
-          "label": "dissolving batch 2 of 4",
+          "label": "dissolving batch 2 of 3",
           "outcome": "completed",
           "refs": [
             "su_6289751c5239",
@@ -2720,256 +2053,236 @@
             "su_f4113975b7bf"
           ],
           "started_at": null,
-          "substage_id": "stg_43f465673550",
-          "total": 4
-        },
-        {
-          "at": "2026-08-09T00:00:00+00:00",
-          "completed_at": null,
-          "detail": "3 source unit(s)",
-          "duration_ms": null,
-          "index": 3,
-          "label": "dissolving batch 3 of 4",
-          "outcome": "started",
-          "refs": [
-            "su_9b97a686831a",
-            "su_d5611304aa0d",
-            "su_d5ee66b81eb7"
-          ],
-          "started_at": null,
-          "substage_id": "stg_80ae77e11328",
-          "total": 4
-        },
-        {
-          "at": "2026-08-09T00:00:00+00:00",
-          "completed_at": null,
-          "detail": "the frozen payload list is exhausted; this batch was not replayed",
-          "duration_ms": null,
-          "index": 3,
-          "label": "dissolving batch 3 of 4",
-          "outcome": "empty",
-          "refs": [
-            "su_9b97a686831a",
-            "su_d5611304aa0d",
-            "su_d5ee66b81eb7"
-          ],
-          "started_at": null,
-          "substage_id": "stg_819f2cd89045",
-          "total": 4
+          "substage_id": "stg_ded860fd59e6",
+          "total": 3
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
           "detail": "2 source unit(s)",
           "duration_ms": null,
-          "index": 4,
-          "label": "dissolving batch 4 of 4",
+          "index": 3,
+          "label": "dissolving batch 3 of 3",
           "outcome": "started",
           "refs": [
-            "su_efe91ebd0341",
-            "su_f1793e4f9b49"
+            "su_d5611304aa0d",
+            "su_efe91ebd0341"
           ],
           "started_at": null,
-          "substage_id": "stg_55f12a38a481",
-          "total": 4
+          "substage_id": "stg_d13836ac30fc",
+          "total": 3
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
           "detail": "the frozen payload list is exhausted; this batch was not replayed",
           "duration_ms": null,
-          "index": 4,
-          "label": "dissolving batch 4 of 4",
+          "index": 3,
+          "label": "dissolving batch 3 of 3",
           "outcome": "empty",
           "refs": [
-            "su_efe91ebd0341",
-            "su_f1793e4f9b49"
+            "su_d5611304aa0d",
+            "su_efe91ebd0341"
           ],
           "started_at": null,
-          "substage_id": "stg_50ebb2625864",
-          "total": 4
+          "substage_id": "stg_b349c4b1f560",
+          "total": 3
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "semantic_dissector · completed · 18 atom(s) over 11 source unit(s) · 4 call(s)",
+          "detail": "semantic_dissector · completed · 15 atom(s) over 8 source unit(s) · 3 call(s)",
           "duration_ms": null,
           "index": 2,
           "label": "dissolving source units into semantic atoms",
           "outcome": "completed",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_7bed11c5b93a",
+          "substage_id": "stg_b285bae85b23",
           "total": 6
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "relation_architect · 18 input(s)",
+          "detail": "relation_architect · 15 input(s)",
           "duration_ms": null,
           "index": 3,
           "label": "building claims and the relations between them",
           "outcome": "started",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_ec65e31e5f91",
+          "substage_id": "stg_a6191099de7c",
           "total": 6
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "18 atom(s), ~6595 token(s)",
+          "detail": "3 atom(s), ~3620 token(s)",
           "duration_ms": null,
           "index": 1,
-          "label": "relating batch 1 of 1",
+          "label": "relating batch 1 of 5",
           "outcome": "started",
           "refs": [
             "atm_af7111df9136",
             "atm_e822b0b67164",
-            "atm_1e1cf91fa734",
-            "atm_5de911909832",
-            "atm_e1c3d4f7faca",
-            "atm_378497de8185",
-            "atm_b8f8a948f307",
-            "atm_e6e8611a588a",
-            "atm_5cbf64cd3d57",
-            "atm_c4a9ae0bcd1c",
-            "atm_7ce0e5c79f2f",
-            "atm_b3495142b425",
-            "atm_f70a94c25d03",
-            "atm_1a13b92ad308",
-            "atm_b891ea4c4191",
-            "atm_eb8c0a26b1fd",
-            "atm_f654faa57e5b",
-            "atm_e6f854d48467"
+            "atm_1e1cf91fa734"
           ],
           "started_at": null,
-          "substage_id": "stg_8f637bb65b2b",
-          "total": 1
+          "substage_id": "stg_3506a4f82bcd",
+          "total": 5
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "13 claim(s) from 18 atom(s)",
+          "detail": "1 claim(s) from 3 atom(s)",
           "duration_ms": null,
           "index": 1,
-          "label": "relating batch 1 of 1",
+          "label": "relating batch 1 of 5",
           "outcome": "completed",
           "refs": [
             "atm_af7111df9136",
             "atm_e822b0b67164",
-            "atm_1e1cf91fa734",
-            "atm_5de911909832",
-            "atm_e1c3d4f7faca",
-            "atm_378497de8185",
-            "atm_b8f8a948f307",
-            "atm_e6e8611a588a",
-            "atm_5cbf64cd3d57",
-            "atm_c4a9ae0bcd1c",
-            "atm_7ce0e5c79f2f",
-            "atm_b3495142b425",
-            "atm_f70a94c25d03",
-            "atm_1a13b92ad308",
-            "atm_b891ea4c4191",
-            "atm_eb8c0a26b1fd",
-            "atm_f654faa57e5b",
-            "atm_e6f854d48467"
+            "atm_1e1cf91fa734"
           ],
           "started_at": null,
-          "substage_id": "stg_ab9e25e6c0f1",
-          "total": 1
+          "substage_id": "stg_a7820fff4ee1",
+          "total": 5
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "relation_architect · completed · 13 claim(s) and 7 relation(s) over 18 atoms in 1 batch(es), with 0 of 0 batch pair(s) compared across 0 reconciliation round(s) · 1 call(s)",
+          "detail": "a declared execution scope permits 1 relation request(s); this batch was not sent",
+          "duration_ms": null,
+          "index": 2,
+          "label": "relating batch 2 of 5",
+          "outcome": "skipped",
+          "refs": [
+            "atm_5de911909832",
+            "atm_e1c3d4f7faca",
+            "atm_378497de8185"
+          ],
+          "started_at": null,
+          "substage_id": "stg_58a6a7caab3b",
+          "total": 5
+        },
+        {
+          "at": "2026-08-09T00:00:00+00:00",
+          "completed_at": null,
+          "detail": "a declared execution scope permits 1 relation request(s); this batch was not sent",
+          "duration_ms": null,
+          "index": 3,
+          "label": "relating batch 3 of 5",
+          "outcome": "skipped",
+          "refs": [
+            "atm_b8f8a948f307",
+            "atm_e6e8611a588a",
+            "atm_5cbf64cd3d57"
+          ],
+          "started_at": null,
+          "substage_id": "stg_5e98325e4ea9",
+          "total": 5
+        },
+        {
+          "at": "2026-08-09T00:00:00+00:00",
+          "completed_at": null,
+          "detail": "a declared execution scope permits 1 relation request(s); this batch was not sent",
+          "duration_ms": null,
+          "index": 4,
+          "label": "relating batch 4 of 5",
+          "outcome": "skipped",
+          "refs": [
+            "atm_c4a9ae0bcd1c",
+            "atm_7ce0e5c79f2f",
+            "atm_b3495142b425"
+          ],
+          "started_at": null,
+          "substage_id": "stg_aa4bdc2a02c7",
+          "total": 5
+        },
+        {
+          "at": "2026-08-09T00:00:00+00:00",
+          "completed_at": null,
+          "detail": "a declared execution scope permits 1 relation request(s); this batch was not sent",
+          "duration_ms": null,
+          "index": 5,
+          "label": "relating batch 5 of 5",
+          "outcome": "skipped",
+          "refs": [
+            "atm_f70a94c25d03",
+            "atm_1a13b92ad308",
+            "atm_05421975f7f7"
+          ],
+          "started_at": null,
+          "substage_id": "stg_bc730763ca82",
+          "total": 5
+        },
+        {
+          "at": "2026-08-09T00:00:00+00:00",
+          "completed_at": null,
+          "detail": "relation_architect · thin · 9 atom(s) name a relation, a comparison or a cause and the architect drew no edge between any claims. The relations are the part of this pass that is not also the dissector's work. · 1 call(s)",
           "duration_ms": null,
           "index": 3,
           "label": "building claims and the relations between them",
-          "outcome": "completed",
+          "outcome": "thin",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_f729fa58181b",
+          "substage_id": "stg_8a93cb3389a0",
           "total": 6
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "epistemic_operationalizer · 13 input(s)",
+          "detail": "epistemic_operationalizer · 1 input(s)",
           "duration_ms": null,
           "index": 4,
           "label": "deciding what could be observed, and what cannot",
           "outcome": "started",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_ae854fbb1796",
+          "substage_id": "stg_43c0b9b9880c",
           "total": 6
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "13 claim(s), 0 in context",
+          "detail": "1 claim(s), 0 in context",
           "duration_ms": null,
           "index": 1,
           "label": "operationalizing batch 1 of 1",
           "outcome": "started",
           "refs": [
-            "clm_5f23c8a2d932",
-            "clm_4057d7159b0c",
-            "clm_49e0d789c75f",
-            "clm_860ba087b46c",
-            "clm_d0fd1be23d65",
-            "clm_dd5433b794b3",
-            "clm_b21d6a63dc90",
-            "clm_4c013fd3263d",
-            "clm_610467506a77",
-            "clm_cf4fffa13dd2",
-            "clm_282a992640d9",
-            "clm_bd710b06f4cb",
-            "clm_62c753b2781f"
+            "clm_49e0d789c75f"
           ],
           "started_at": null,
-          "substage_id": "stg_f26a530a4da0",
+          "substage_id": "stg_7eb56bbf483c",
           "total": 1
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "6 observable(s) so far",
+          "detail": "0 observable(s) so far",
           "duration_ms": null,
           "index": 1,
           "label": "operationalizing batch 1 of 1",
           "outcome": "completed",
           "refs": [
-            "clm_5f23c8a2d932",
-            "clm_4057d7159b0c",
-            "clm_49e0d789c75f",
-            "clm_860ba087b46c",
-            "clm_d0fd1be23d65",
-            "clm_dd5433b794b3",
-            "clm_b21d6a63dc90",
-            "clm_4c013fd3263d",
-            "clm_610467506a77",
-            "clm_cf4fffa13dd2",
-            "clm_282a992640d9",
-            "clm_bd710b06f4cb",
-            "clm_62c753b2781f"
+            "clm_49e0d789c75f"
           ],
           "started_at": null,
-          "substage_id": "stg_c67ed8d73e53",
+          "substage_id": "stg_268ebb67cebf",
           "total": 1
         },
         {
           "at": "2026-08-09T00:00:00+00:00",
           "completed_at": null,
-          "detail": "epistemic_operationalizer · completed · 6 observable(s) and 4 remainder item(s) over 13 claim(s) in 1 batch(es), with 0 of 0 claim-group pair(s) compared · 1 call(s)",
+          "detail": "epistemic_operationalizer · empty · the operationalizer produced neither an observable nor a remainder item · 1 call(s)",
           "duration_ms": null,
           "index": 4,
           "label": "deciding what could be observed, and what cannot",
-          "outcome": "completed",
+          "outcome": "empty",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_1475e35b8f97",
+          "substage_id": "stg_4bbfb98aff9f",
           "total": 6
         },
         {
@@ -2982,7 +2295,7 @@
           "outcome": "started",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_98b663770ce7",
+          "substage_id": "stg_d69a54483fba",
           "total": 6
         },
         {
@@ -2995,74 +2308,70 @@
           "outcome": "completed",
           "refs": [],
           "started_at": null,
-          "substage_id": "stg_967b0fc81687",
+          "substage_id": "stg_3b542a0b0e28",
           "total": 6
         }
       ],
-      "summary": "13 claims · 1 attribute · 2 causal_hypothesis · 3 comparison · 2 entity · 1 generative_rule · 1 historical_or_sourced · 2 interpretation · 1 spatial_relation · 6 observables requested, none run · 1 decision candidate · 4 meanings measurement will not exhaust",
+      "summary": "1 claim · 1 causal_hypothesis · 0 observables requested, none run · 6 refused",
       "terminal": true,
       "truncation_source": "producer_attribute",
-      "underperformed": false
+      "underperformed": true
     },
     {
       "actual_calls": null,
       "at": "2026-08-09T00:00:00+00:00",
-      "attempt_id": "stg_7ca29121ee12",
+      "attempt_id": "stg_035fbab9df09",
       "call_topology": "",
       "calls": [],
       "completed_at": "2026-08-09T00:00:00+00:00",
       "counts_line": "",
-      "detail": "every fork was settled without asking",
+      "detail": "the compiler declared no fork; nothing needed deciding",
       "duration_ms": 0.0,
-      "event_id": "stg_7ca29121ee12",
+      "event_id": "stg_035fbab9df09",
       "execution_mode": "none",
       "gap_refs": [],
       "input_counts": {},
       "input_refs": [],
       "model": null,
-      "outcome": "completed",
+      "outcome": "empty",
       "output_counts": {},
-      "output_refs": [
-        "dec_d1f19eae3367"
-      ],
+      "output_refs": [],
       "planned_calls": null,
       "provenance": {},
       "provider": null,
       "queued_at": "2026-08-09T00:00:00+00:00",
       "receipt_refs": [],
       "refusal_refs": [],
-      "revision": 2,
+      "revision": 0,
       "role": "",
       "sequence": 4,
       "stage": "steward",
       "started_at": "2026-08-09T00:00:00+00:00",
       "substages": [],
-      "summary": "every fork was settled without asking",
+      "summary": "the compiler declared no fork; nothing needed deciding",
       "terminal": true,
       "truncation_source": "unknown",
-      "underperformed": false
+      "underperformed": true
     },
     {
       "actual_calls": null,
       "at": "2026-08-09T00:00:00+00:00",
-      "attempt_id": "stg_61121fa03f37",
+      "attempt_id": "stg_2f0b31196212",
       "call_topology": "",
       "calls": [],
       "completed_at": "2026-08-09T00:00:00+00:00",
       "counts_line": "",
-      "detail": "locate_phrase · fixture · simulated",
+      "detail": "no fork was settled on an operational route, so nothing was commissioned. Nothing was chosen on anybody's behalf.",
       "duration_ms": 0.0,
-      "event_id": "stg_61121fa03f37",
+      "event_id": "stg_2f0b31196212",
       "execution_mode": "none",
       "gap_refs": [],
       "input_counts": {},
       "input_refs": [],
       "model": null,
-      "outcome": "completed",
+      "outcome": "skipped",
       "output_counts": {},
-      "output_refs": [
-        "capr_826d7c6622b7"
-      ],
+      "output_refs": [],
       "planned_calls": null,
       "provenance": {},
       "provider": null,
@@ -3075,7 +2384,7 @@
       "stage": "capability",
       "started_at": "2026-08-09T00:00:00+00:00",
       "substages": [],
-      "summary": "locate_phrase · fixture · simulated",
+      "summary": "no fork was settled on an operational route, so nothing was commissioned. Nothing was chosen on anybody's behalf.",
       "terminal": true,
       "truncation_source": "unknown",
       "underperformed": false
@@ -3083,14 +2392,14 @@
     {
       "actual_calls": null,
       "at": "2026-08-09T00:00:00+00:00",
-      "attempt_id": "stg_2d07a98cac2f",
+      "attempt_id": "stg_53dd30d3e7eb",
       "call_topology": "",
       "calls": [],
       "completed_at": "2026-08-09T00:00:00+00:00",
       "counts_line": "",
-      "detail": "interpretive_only 7 · not_investigated 5 · unresolved 1",
+      "detail": "interpretive_only 1",
       "duration_ms": 0.0,
-      "event_id": "stg_2d07a98cac2f",
+      "event_id": "stg_53dd30d3e7eb",
       "execution_mode": "none",
       "gap_refs": [],
       "input_counts": {},
@@ -3099,19 +2408,7 @@
       "outcome": "completed",
       "output_counts": {},
       "output_refs": [
-        "vrd_d8e075cd9e73",
-        "vrd_1433a5496c76",
-        "vrd_9e6e4c903f1f",
-        "vrd_90afd7419717",
-        "vrd_d9dde194223f",
-        "vrd_2c4efe58372a",
-        "vrd_b30596804041",
-        "vrd_5f3c7f3efe94",
-        "vrd_bee86e98af6c",
-        "vrd_ad1e0220b63b",
-        "vrd_b1ab7a24266e",
-        "vrd_78096beecc8b",
-        "vrd_1a7248a3f31a"
+        "vrd_6d8660e472d7"
       ],
       "planned_calls": null,
       "provenance": {},
@@ -3125,7 +2422,7 @@
       "stage": "judge",
       "started_at": "2026-08-09T00:00:00+00:00",
       "substages": [],
-      "summary": "interpretive_only 7 · not_investigated 5 · unresolved 1",
+      "summary": "interpretive_only 1",
       "terminal": true,
       "truncation_source": "unknown",
       "underperformed": false
@@ -3133,14 +2430,14 @@
     {
       "actual_calls": null,
       "at": "2026-08-09T00:00:00+00:00",
-      "attempt_id": "stg_f411842b5d14",
+      "attempt_id": "stg_e70b00b2d60a",
       "call_topology": "",
       "calls": [],
       "completed_at": "2026-08-09T00:00:00+00:00",
       "counts_line": "",
-      "detail": "6 section(s)",
+      "detail": "2 section(s)",
       "duration_ms": 0.0,
-      "event_id": "stg_f411842b5d14",
+      "event_id": "stg_e70b00b2d60a",
       "execution_mode": "none",
       "gap_refs": [],
       "input_counts": {},
@@ -3149,12 +2446,8 @@
       "outcome": "completed",
       "output_counts": {},
       "output_refs": [
-        "sec_7ffb18af5ca0",
-        "sec_786a8683d5f6",
-        "sec_4f1080ce0e10",
-        "sec_8d85b60b12e0",
-        "sec_c0d167cc8377",
-        "sec_3c709ac09647"
+        "sec_3d62b8ed35b8",
+        "sec_030f73501fdf"
       ],
       "planned_calls": null,
       "provenance": {},
@@ -3168,7 +2461,7 @@
       "stage": "composer",
       "started_at": "2026-08-09T00:00:00+00:00",
       "substages": [],
-      "summary": "6 section(s)",
+      "summary": "2 section(s)",
       "terminal": true,
       "truncation_source": "unknown",
       "underperformed": false
@@ -3185,108 +2478,43 @@
       "model": null,
       "producer": "inquiry_session/composer-v1",
       "prompt_sha256": "5c6389bd83c85c6a30ef8621c748dd5550a13a57f6ee6540a8bd8bce33b0067a",
-      "simulated_capability": true
+      "simulated_capability": false
     },
-    "remainder_refs": [
-      "rem_d6ffeaa0146e",
-      "rem_fd6f88459f0f",
-      "rem_375bf2b68e3f",
-      "rem_4c483735579d"
-    ],
+    "remainder_refs": [],
     "sections": [
       {
         "claim_refs": [
-          "clm_4057d7159b0c",
-          "clm_49e0d789c75f",
-          "clm_610467506a77",
-          "clm_cf4fffa13dd2",
-          "clm_d0fd1be23d65",
-          "clm_dd5433b794b3"
+          "clm_49e0d789c75f"
         ],
         "decision_refs": [],
         "evidence_refs": [],
         "heading": "What can be said, as a reading",
         "refusal_refs": [],
-        "section_id": "sec_7ffb18af5ca0",
+        "section_id": "sec_3d62b8ed35b8",
         "status": "interpretive",
-        "text": "These are readings of the pictures rather than measurements of them, and they are not the weaker for it — nothing measurable would settle them. · the seated figure's cloth reads as blunt and metallic · the abruptness of the edges is what makes the cloth read as hard · the veil's carving produces an effect of transparency · the veil reads as thin cloth while remaining continuous stone · the recumbent figure's chest cloth resembles the veiled figure's handling · the four figures handle carved cloth in different styles",
-        "user_authored": false
-      },
-      {
-        "claim_refs": [
-          "clm_bd710b06f4cb"
-        ],
-        "decision_refs": [],
-        "evidence_refs": [],
-        "heading": "What is attributed to something outside the pictures",
-        "refusal_refs": [],
-        "section_id": "sec_786a8683d5f6",
-        "status": "sourced",
-        "text": "Nothing in this session consulted a source, so each of these stands as an attribution awaiting one, not as an established fact. · carving cloth to read as translucent is associated with a nineteenth-century workshop practice",
-        "user_authored": false
-      },
-      {
-        "claim_refs": [
-          "clm_62c753b2781f"
-        ],
-        "decision_refs": [],
-        "evidence_refs": [],
-        "heading": "What is proposed rather than found",
-        "refusal_refs": [],
-        "section_id": "sec_4f1080ce0e10",
-        "status": "imagined",
-        "text": "Put forward by the compilation as something that could follow. Nothing tested any of it, and nothing in the pictures asserts it. · a fourth figure in this family would resolve its cloth into fewer, larger planes",
-        "user_authored": false
-      },
-      {
-        "claim_refs": [
-          "clm_5f23c8a2d932",
-          "clm_4c013fd3263d",
-          "clm_860ba087b46c",
-          "clm_282a992640d9",
-          "clm_bd710b06f4cb",
-          "clm_b21d6a63dc90"
-        ],
-        "decision_refs": [],
-        "evidence_refs": [],
-        "heading": "What nothing here settled",
-        "refusal_refs": [],
-        "section_id": "sec_8d85b60b12e0",
-        "status": "unresolved",
-        "text": "One operational route was selected and invoked, and what came back was a declared simulation — it proves the route ran and nothing else. Each of the following is open, and none of it is reported as absent: · the edges where the seated figure's drapery facets meet are abrupt · a carved veil covers the standing figure's face · the seated and recumbent figures share an edge treatment the veiled figure does not · the recumbent figure's cloth gathers in long parallel troughs across the chest · carving cloth to read as translucent is associated with a nineteenth-century workshop practice · the seated figure's drapery breaks into facets",
-        "user_authored": false
-      },
-      {
-        "claim_refs": [],
-        "decision_refs": [
-          "dec_d1f19eae3367"
-        ],
-        "evidence_refs": [],
-        "heading": "What your decision changed",
-        "refusal_refs": [],
-        "section_id": "sec_c0d167cc8377",
-        "status": "unresolved",
-        "text": "A choice was made about how this inquiry proceeded. It changed which investigation was commissioned; it is not itself a finding about the pictures. · Measure every facet boundary, or one representative boundary? — Semant, without asking: auto mode took it without asking: option 'alt_e8bfbbfe296a' is the single recommended option, declares itself reversible, is not author-exclusive and accepts nothing into the ledger",
+        "text": "These are readings of the pictures rather than measurements of them, and they are not the weaker for it — nothing measurable would settle them. · the abruptness of the edges is what makes the cloth read as hard",
         "user_authored": false
       },
       {
         "claim_refs": [],
         "decision_refs": [],
         "evidence_refs": [],
-        "heading": "What measurement would not exhaust",
+        "heading": "What was refused on the way here",
         "refusal_refs": [
-          "rem_d6ffeaa0146e",
-          "rem_fd6f88459f0f",
-          "rem_375bf2b68e3f",
-          "rem_4c483735579d"
+          "cref_089c1bc15db7",
+          "cref_2dc81f6077f5",
+          "cref_f077f2c99c1b",
+          "cref_12da9eebca8d",
+          "cref_9762bc1a9827",
+          "cref_fa83ed5bee17"
         ],
-        "section_id": "sec_3c709ac09647",
-        "status": "interpretive",
-        "text": "What would still not be settled even if every requested measurement succeeded. · reading a surface as metallic — no instrument returns the impression a material makes; an edge profile contributes to it and does not settle it · the effect of transparency — transparency here is something the carving produces in a viewer, not a property of the stone that could be measured · whether two figures belong to one manner — comparable measurements may support the grouping and cannot establish that it is the right grouping · what a further figure in this family would have to do — a rule for making something that does not exist has nothing to measure and nothing to cite",
+        "section_id": "sec_030f73501fdf",
+        "status": "unresolved",
+        "text": "Produced and not kept. A refusal is a decision with grounds, and the count is the only observable that says whether a producer can be trusted. · atom_source_not_in_ledger: the dissector anchored an atom to a source unit that is not in the ledger. The anchor is the only thing separating what it found from what it wrote. · unanchored_atom: an atom with no anchor in the ledger. It reads exactly like one that was found, so it is dropped rather than kept with an empty pointer. · atom_source_not_in_ledger: the dissector anchored an atom to a source unit that is not in the ledger. The anchor is the only thing separating what it found from what it wrote. · unanchored_atom: an atom with no anchor in the ledger. It reads exactly like one that was found, so it is dropped rather than kept with an empty pointer. · atom_source_not_in_ledger: the dissector anchored an atom to a source unit that is not in the ledger. The anchor is the only thing separating what it found from what it wrote. · unanchored_atom: an atom with no anchor in the ledger. It reads exactly like one that was found, so it is dropped rather than kept with an empty pointer.",
         "user_authored": false
       }
     ],
-    "synthesis_id": "syn_ed8b88b0dde7"
+    "synthesis_id": "syn_0c483462e643"
   },
   "trace": [
     {
@@ -3313,46 +2541,18 @@
       "actor": "engine",
       "actor_kind": "engine",
       "at": "2026-08-09T00:00:00+00:00",
-      "event_id": "candidate_offered#2",
-      "reason": "1 candidate(s) offered",
+      "event_id": "phase_advanced#2",
+      "reason": "every fork is settled; work may be commissioned",
       "refs": [],
       "revision": 2,
-      "transition": "candidate_offered"
-    },
-    {
-      "actor": "steward",
-      "actor_kind": "steward",
-      "at": "2026-08-09T00:00:00+00:00",
-      "event_id": "decision_requested#3",
-      "reason": "auto mode took it without asking: option 'alt_e8bfbbfe296a' is the single recommended option, declares itself reversible, is not author-exclusive and accepts nothing into the ledger",
-      "refs": [
-        "clm_5f23c8a2d932",
-        "obs_7080a8a9c82a",
-        "dec_d1f19eae3367"
-      ],
-      "revision": 2,
-      "transition": "decision_requested"
-    },
-    {
-      "actor": "policy",
-      "actor_kind": "policy",
-      "at": "2026-08-09T00:00:00+00:00",
-      "event_id": "decision_auto_resolved#4",
-      "reason": "auto mode took it without asking: option 'alt_e8bfbbfe296a' is the single recommended option, declares itself reversible, is not author-exclusive and accepts nothing into the ledger",
-      "refs": [
-        "clm_5f23c8a2d932",
-        "obs_7080a8a9c82a",
-        "dec_d1f19eae3367"
-      ],
-      "revision": 2,
-      "transition": "decision_auto_resolved"
+      "transition": "phase_advanced"
     },
     {
       "actor": "engine",
       "actor_kind": "engine",
       "at": "2026-08-09T00:00:00+00:00",
-      "event_id": "phase_advanced#5",
-      "reason": "every fork is settled; work may be commissioned",
+      "event_id": "phase_advanced#3",
+      "reason": "commissioning at most one capability request",
       "refs": [],
       "revision": 3,
       "transition": "phase_advanced"
@@ -3361,8 +2561,8 @@
       "actor": "engine",
       "actor_kind": "engine",
       "at": "2026-08-09T00:00:00+00:00",
-      "event_id": "phase_advanced#6",
-      "reason": "commissioning at most one capability request",
+      "event_id": "phase_advanced#4",
+      "reason": "deciding what each claim now rests on",
       "refs": [],
       "revision": 4,
       "transition": "phase_advanced"
@@ -3371,8 +2571,8 @@
       "actor": "engine",
       "actor_kind": "engine",
       "at": "2026-08-09T00:00:00+00:00",
-      "event_id": "phase_advanced#7",
-      "reason": "deciding what each claim now rests on",
+      "event_id": "phase_advanced#5",
+      "reason": "binding an answer to the claims it rests on",
       "refs": [],
       "revision": 5,
       "transition": "phase_advanced"
@@ -3381,129 +2581,21 @@
       "actor": "engine",
       "actor_kind": "engine",
       "at": "2026-08-09T00:00:00+00:00",
-      "event_id": "phase_advanced#8",
-      "reason": "binding an answer to the claims it rests on",
-      "refs": [],
-      "revision": 6,
-      "transition": "phase_advanced"
-    },
-    {
-      "actor": "engine",
-      "actor_kind": "engine",
-      "at": "2026-08-09T00:00:00+00:00",
-      "event_id": "session_closed#9",
+      "event_id": "session_closed#6",
       "reason": "the chain closed: every claim carries a verdict and every sentence of the answer names what it rests on.",
       "refs": [],
-      "revision": 7,
+      "revision": 6,
       "transition": "session_closed"
     }
   ],
   "verdicts": [
     {
-      "claim_ref": "clm_5f23c8a2d932",
-      "evidence_refs": [],
-      "outcome": "unresolved",
-      "receipt_refs": [
-        "capr_826d7c6622b7"
-      ],
-      "verdict_id": "vrd_d8e075cd9e73",
-      "why": "an operational route was selected and invoked, and what came back does not bear on the claim — the receipt is a declared simulation, which proves the route ran and nothing else"
-    },
-    {
-      "claim_ref": "clm_4057d7159b0c",
-      "evidence_refs": [],
-      "outcome": "interpretive_only",
-      "receipt_refs": [],
-      "verdict_id": "vrd_1433a5496c76",
-      "why": "this claim asks to be interpretive, not measured. No instrument settles it, and it is not the weaker for that — it is a different kind of claim."
-    },
-    {
       "claim_ref": "clm_49e0d789c75f",
       "evidence_refs": [],
       "outcome": "interpretive_only",
       "receipt_refs": [],
-      "verdict_id": "vrd_9e6e4c903f1f",
+      "verdict_id": "vrd_6d8660e472d7",
       "why": "this claim asks to be interpretive, not measured. No instrument settles it, and it is not the weaker for that — it is a different kind of claim."
-    },
-    {
-      "claim_ref": "clm_4c013fd3263d",
-      "evidence_refs": [],
-      "outcome": "not_investigated",
-      "receipt_refs": [],
-      "verdict_id": "vrd_90afd7419717",
-      "why": "1 observable(s) were declared for this claim and none was invoked. Phase 1 spends its one capability attempt on the fork a person settled."
-    },
-    {
-      "claim_ref": "clm_610467506a77",
-      "evidence_refs": [],
-      "outcome": "interpretive_only",
-      "receipt_refs": [],
-      "verdict_id": "vrd_d9dde194223f",
-      "why": "this claim asks to be interpretive, not measured. No instrument settles it, and it is not the weaker for that — it is a different kind of claim."
-    },
-    {
-      "claim_ref": "clm_cf4fffa13dd2",
-      "evidence_refs": [],
-      "outcome": "interpretive_only",
-      "receipt_refs": [],
-      "verdict_id": "vrd_2c4efe58372a",
-      "why": "this claim asks to be interpretive, not measured. No instrument settles it, and it is not the weaker for that — it is a different kind of claim."
-    },
-    {
-      "claim_ref": "clm_860ba087b46c",
-      "evidence_refs": [],
-      "outcome": "not_investigated",
-      "receipt_refs": [],
-      "verdict_id": "vrd_b30596804041",
-      "why": "1 observable(s) were declared for this claim and none was invoked. Phase 1 spends its one capability attempt on the fork a person settled."
-    },
-    {
-      "claim_ref": "clm_d0fd1be23d65",
-      "evidence_refs": [],
-      "outcome": "interpretive_only",
-      "receipt_refs": [],
-      "verdict_id": "vrd_5f3c7f3efe94",
-      "why": "this claim asks to be interpretive, not measured. No instrument settles it, and it is not the weaker for that — it is a different kind of claim."
-    },
-    {
-      "claim_ref": "clm_282a992640d9",
-      "evidence_refs": [],
-      "outcome": "not_investigated",
-      "receipt_refs": [],
-      "verdict_id": "vrd_bee86e98af6c",
-      "why": "1 observable(s) were declared for this claim and none was invoked. Phase 1 spends its one capability attempt on the fork a person settled."
-    },
-    {
-      "claim_ref": "clm_dd5433b794b3",
-      "evidence_refs": [],
-      "outcome": "interpretive_only",
-      "receipt_refs": [],
-      "verdict_id": "vrd_ad1e0220b63b",
-      "why": "this claim asks to be interpretive, not measured. No instrument settles it, and it is not the weaker for that — it is a different kind of claim."
-    },
-    {
-      "claim_ref": "clm_bd710b06f4cb",
-      "evidence_refs": [],
-      "outcome": "not_investigated",
-      "receipt_refs": [],
-      "verdict_id": "vrd_b1ab7a24266e",
-      "why": "1 observable(s) were declared for this claim and none was invoked. Phase 1 spends its one capability attempt on the fork a person settled."
-    },
-    {
-      "claim_ref": "clm_62c753b2781f",
-      "evidence_refs": [],
-      "outcome": "interpretive_only",
-      "receipt_refs": [],
-      "verdict_id": "vrd_78096beecc8b",
-      "why": "this claim asks to be imagined, not measured. No instrument settles it, and it is not the weaker for that — it is a different kind of claim."
-    },
-    {
-      "claim_ref": "clm_b21d6a63dc90",
-      "evidence_refs": [],
-      "outcome": "not_investigated",
-      "receipt_refs": [],
-      "verdict_id": "vrd_1a7248a3f31a",
-      "why": "1 observable(s) were declared for this claim and none was invoked. Phase 1 spends its one capability attempt on the fork a person settled."
     }
   ],
   "why_paused": {}
