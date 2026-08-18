@@ -158,15 +158,9 @@
   "execution_scope": {
     "allowance_tokens": 8000,
     "atoms_not_investigated": 0,
-    "claims_not_investigated": 1,
+    "claims_not_investigated": 0,
     "deferred_source_units": 0,
-    "exclusions": [
-      {
-        "kind": "claim",
-        "reason": "the operationalizer was asked about this claim and proposed nothing for it. Not every claim can be investigated, and inventing an observable to fill the gap is worse than saying so.",
-        "ref": "clm_49e0d789c75f"
-      }
-    ],
+    "exclusions": [],
     "full_coverage": true,
     "mode": "full",
     "notes": [],
@@ -1147,15 +1141,9 @@
     "execution_scope": {
       "allowance_tokens": 8000,
       "atoms_not_investigated": 0,
-      "claims_not_investigated": 1,
+      "claims_not_investigated": 0,
       "deferred_source_units": 0,
-      "exclusions": [
-        {
-          "kind": "claim",
-          "reason": "the operationalizer was asked about this claim and proposed nothing for it. Not every claim can be investigated, and inventing an observable to fill the gap is worse than saying so.",
-          "ref": "clm_49e0d789c75f"
-        }
-      ],
+      "exclusions": [],
       "full_coverage": true,
       "mode": "full",
       "notes": [],
@@ -2445,7 +2433,7 @@
     "created_at": "2026-08-09T00:00:00+00:00",
     "frame_hash": "064067c87bd5d7edb8267fa36e5b66ff59ee5c4e8c3147a81a48db9224edece9",
     "frame_producer": "inquiry/deterministic-v1",
-    "graph_hash": "sig_f04eddbcb676e33c",
+    "graph_hash": "sig_2c66f0739fe5c5ca",
     "mode": "auto",
     "notes": [],
     "producer": "inquiry_session/coordinator-v1",

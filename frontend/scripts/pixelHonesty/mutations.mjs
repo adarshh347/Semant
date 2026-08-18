@@ -805,6 +805,98 @@ export const MUTATIONS = [
         expect: 'TestTheBatchPlanIsReadAsSent is null where the backend sent nothing, and null is '
             + 'not an empty plan',
     },
+    // ── the declared execution scope (HARNESS-003F) ────────────────────────
+    //
+    // A slice produces FEWER claims and observables than a full run, so an unbadged one does not
+    // read as bounded — it reads as THIN, and a thin result is evidence about the images. Every lie
+    // below is a way that could happen without anybody editing a word of prose.
+    {
+        id: 'inquiry/scoped-run-loses-its-badge',
+        guarantee: 'a run that investigated a declared subset says so beside the state, on every '
+            + 'session, in words',
+        file: 'src/inquiryWorkbench/ScopePanel.jsx',
+        find: '    if (!scope || !scope.bounded) return null;\n    const kind = scope.mode.known',
+        replace: '    if (!scope || !scope.recorded) return null;\n    const kind = scope.mode.known',
+        suites: ['src/inquiryWorkbench/scopedRehearsal.dom.test.jsx'],
+        expect: 'the badge says what a screenshot would otherwise hide survives onto a session '
+            + 'that never reached the compiler',
+    },
+    {
+        id: 'inquiry/scope-banner-becomes-a-tooltip',
+        guarantee: 'the banner sentence is IN the badge, not behind a hover a touchscreen does '
+            + 'not have and a screenshot never shows',
+        file: 'src/inquiryWorkbench/ScopePanel.jsx',
+        find: '            <span className="iw-scope-line">{SCOPE_BANNER}</span>',
+        replace: '            <span className="iw-scope-line" title={SCOPE_BANNER} />',
+        suites: ['src/inquiryWorkbench/scopedRehearsal.dom.test.jsx'],
+        expect: 'the badge says what a screenshot would otherwise hide prints SCOPED LIVE '
+            + 'REHEARSAL and the banner as WORDS',
+    },
+    {
+        id: 'inquiry/unknown-scope-reads-as-unbounded',
+        guarantee: 'a scope this client cannot place is treated as BOUNDED — an older client must '
+            + 'not render a newer scope as a complete reading',
+        file: 'src/inquiryWorkbench/inquiryContract.js',
+        find: "    scope.bounded = !(scope.mode.known && scope.mode.value === 'full');",
+        replace: "    scope.bounded = scope.mode.value === 'vertical_slice';",
+        suites: ['src/inquiryWorkbench/scopedRehearsal.dom.test.jsx'],
+        expect: 'the badge says what a screenshot would otherwise hide treats a mode this client '
+            + 'cannot place as bounded, never as unbounded',
+    },
+    {
+        id: 'inquiry/full-coverage-recomputed-from-the-mode',
+        guarantee: '`full_coverage` is READ from the record the backend refuses to let lie, never '
+            + 'recomputed from the mode by a client free to disagree with it',
+        file: 'src/inquiryWorkbench/inquiryContract.js',
+        find: '        full_coverage: boolOrNull(v.full_coverage),',
+        replace: "        full_coverage: str(v.mode) !== 'vertical_slice',",
+        suites: ['src/inquiryWorkbench/scopedRehearsal.dom.test.jsx'],
+        expect: 'the badge says what a screenshot would otherwise hide reads full_coverage rather '
+            + 'than recomputing it from the mode',
+    },
+    {
+        id: 'inquiry/exclusions-counted-not-named',
+        guarantee: 'every excluded source unit, atom and claim is named with its reason — a count '
+            + 'tells a reader the size of the gap and not where it is',
+        file: 'src/inquiryWorkbench/ScopePanel.jsx',
+        find: '                        {scope.exclusions.map((e) => (',
+        replace: '                        {scope.exclusions.slice(0, 0).map((e) => (',
+        suites: ['src/inquiryWorkbench/scopedRehearsal.dom.test.jsx'],
+        expect: 'the mechanism panel names every excluded item with its reason, never as a count '
+            + 'alone',
+    },
+    {
+        id: 'inquiry/a-bound-reads-as-the-partition',
+        guarantee: 'how many requests were SENT is its own number — a plan reporting only the '
+            + 'partition size renders a bounded pass as a complete one',
+        file: 'src/inquiryWorkbench/inquiryContract.js',
+        find: '        batches_sent: numOrNull(raw.batches_sent),',
+        replace: '        batches_sent: numOrNull(raw.batches_sent ?? raw.batches),',
+        suites: ['src/inquiryWorkbench/scopedRehearsal.dom.test.jsx'],
+        expect: 'the batch plan tells the partition from what was sent carries batches_sent apart '
+            + 'from batches',
+    },
+    {
+        id: 'inquiry/scope-control-offered-without-a-declaration',
+        guarantee: 'the temporary scope is offered only where the backend declared it — the '
+            + 'absence of a declaration is not a declaration',
+        file: 'src/inquiryWorkbench/InquiryEntry.jsx',
+        find: '    const scopeOffered = features?.scoped_rehearsal?.available === true;',
+        replace: '    const scopeOffered = features?.scoped_rehearsal?.available !== false;',
+        suites: ['src/inquiryWorkbench/scopedRehearsal.dom.test.jsx'],
+        expect: 'the entry control is absent until the backend declares the feature',
+    },
+    {
+        id: 'inquiry/scope-badge-wears-the-deployment-treatment',
+        guarantee: '"was this read or replayed" and "was all of it looked at" are two questions '
+            + 'and neither is a degree of the other',
+        file: 'src/inquiryWorkbench/inquiryWorkbench.css',
+        cssRule: 'iw-scope--unknown',
+        copyRuleFrom: 'iw-scope',
+        suites: ['src/inquiryWorkbench/scopedRehearsal.dom.test.jsx'],
+        expect: 'the stylesheet carries none of the meaning gives an unrecognised scope its own '
+            + 'treatment rather than the softer one',
+    },
 ];
 
 // ── applying a lie ─────────────────────────────────────────────────────────

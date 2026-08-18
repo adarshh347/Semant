@@ -112,10 +112,15 @@ def _build():
     # THE NUMBERS ARE DECLARED HERE rather than inherited from the box. A sample whose scope
     # depended on an environment variable would differ between two machines and the drift check
     # would fail for a reason that has nothing to do with the contract. The bounds are this lane's
-    # own defaults; the allowance is chosen as the one at which this fixture exercises ALL THREE
-    # kinds of exclusion at once — deferred source units, atoms no relation request reached, and a
-    # claim nothing was asked about — while still building a claim. A sample where only one kind
-    # appeared would let a client that mishandled the other two pass.
+    # own defaults; the allowance is the one at which this fixture's slice actually BITES — source
+    # units deferred and atoms no relation request reached — while still building a claim.
+    #
+    # WHAT IT CANNOT EXERCISE, and the reason is arithmetic rather than an oversight: with one
+    # relation request permitted, few enough claims survive that the operationalizer never needs
+    # more than the two requests it is allowed, so no claim is excluded BY THE BOUND here. Raising
+    # the sample's operationalizer cap to force one would mean shipping a sample that declares a
+    # configuration this lane does not use. The claim-exclusion shape is covered by
+    # `scopedFixture` on the frontend and by the backend suite instead.
     scoped_env = {
         scope_mod.ENABLED_ENV: "1",
         sizing.ALLOWANCE_ENV: "4500",

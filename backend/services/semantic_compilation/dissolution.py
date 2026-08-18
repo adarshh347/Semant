@@ -369,17 +369,33 @@ def _plan_for(passes: Sequence[PassReceipt], name: DissolutionPass):
 
 
 def _uninvestigated(plan) -> List[ScopeExclusion]:
-    """The refs a batched pass could not get to, lifted off its own plan rather than recounted.
+    """The refs THE SCOPE kept from a batched pass — not everything the pass left uninvestigated.
 
-    READ, NEVER RE-DERIVED. The pass already wrote one disposition per item with the reason it had;
-    a scope record that computed its own version of that list would be a second opinion about what
-    happened inside a pass it did not run, and the two would disagree the first time either changed.
+    THE DISTINCTION IS THE WHOLE FUNCTION, and getting it wrong the first time is what this comment
+    is for. `not_investigated` has two causes: the model was asked about an item and proposed
+    nothing for it, and a declared bound meant nobody asked. Both are honest dispositions and both
+    belong on the PASS's plan — but only the second is something the SCOPE did, and a record that
+    listed the first would report a model's silence as a bound this run imposed. That is the same
+    laundering, in the opposite direction, that `SCOPE_DEFERRED_REASON` exists to prevent.
+
+    SEPARATED STRUCTURALLY RATHER THAN BY READING THE REASON. A prefix match would work today and
+    break the first time somebody improved a sentence. `batches_sent` says how many requests went;
+    the sendable batches after that are the ones nobody sent, and an item primary in one of those is
+    an item the bound reached.
+
+    Read off the plan rather than recounted either way: the pass already wrote one disposition per
+    item with the reason it had, and a second opinion here would disagree the first time it changed.
     """
-    if plan is None:
+    if plan is None or plan.batches_sent is None:
+        return []
+    sendable = [b for b in plan.batches if b.sendable]
+    unsent = {b.batch_id for b in sendable[plan.batches_sent:]}
+    if not unsent:
         return []
     return [ScopeExclusion(ref=d.ref, kind=str(plan.unit or ""), reason=d.reason)
             for d in plan.dispositions
-            if d.disposition is ItemDispositionKind.NOT_INVESTIGATED and d.reason]
+            if d.disposition is ItemDispositionKind.NOT_INVESTIGATED
+            and d.batch_id in unsent and d.reason]
 
 
 def _scope_record(mode: ExecutionScope, selection: Optional[scope_mod.UnitSelection],

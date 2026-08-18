@@ -82,6 +82,23 @@ describe('the badge says what a screenshot would otherwise hide', () => {
         expect($('[data-full-coverage="false"]')).toBeTruthy();
     });
 
+    it('reads full_coverage rather than recomputing it from the mode', () => {
+        // THE CLIENT DOES NOT GET A SECOND OPINION. The backend's schema already refuses a slice
+        // that claims complete coverage, so the only thing recomputing this here could ever do is
+        // DISAGREE with the record — and the disagreement would be invisible, on the one field the
+        // whole object exists to carry.
+        //
+        // The disagreement is representable in one direction: a run whose mode is `full` and whose
+        // coverage is not, which is what a later lane bounding one pass and not another produces.
+        // A client deriving the answer would render that as a complete reading.
+        expect(normalizeExecutionScope({ mode: 'full', full_coverage: false }).full_coverage)
+            .toBe(false);
+        expect(normalizeExecutionScope({ mode: 'full', full_coverage: true }).full_coverage)
+            .toBe(true);
+        // And an absent field is `null`, not `true`. A response that did not say has not said yes.
+        expect(normalizeExecutionScope({ mode: 'full' }).full_coverage).toBeNull();
+    });
+
     it('treats a mode this client cannot place as bounded, never as unbounded', () => {
         // An older client meeting a newer scope must not render it as a complete reading. Same
         // conservative direction `SHOULD_KEEP_WATCHING` takes for an unknown state.
