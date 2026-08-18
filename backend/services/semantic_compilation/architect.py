@@ -77,6 +77,13 @@ PRODUCER = "semantic_compilation/architect-v1"
 #: 4096, for the reason the dissector's comment gives at length: a provider counts
 #: `max_completion_tokens` against the per-minute allowance whether or not the model uses them, and
 #: this account's is 8000. A budget nearer that ceiling is a request that cannot be sent.
+#: HARNESS-003F. Why a pair nobody compared was not compared, when the reason is a declared bound
+#: rather than the provider. Its own sentence, because "the budget ran out" and "we said one round"
+#: send a reader to opposite places: one is an account, the other is a decision this run made.
+SCOPE_UNREACHED = ("a declared execution scope permitted fewer reconciliation rounds than the "
+                   "schedule contains, so no round compared this pair. Nothing was found to be "
+                   "absent between them; nothing looked.")
+
 DEFAULT_BUDGET = PassBudget(max_completion_tokens=4096, batch_size=0)
 
 MAX_CLAIMS = 80
@@ -630,9 +637,21 @@ class RelationArchitect(ModelPass):
                            completion=ARCHITECT_COMPLETION)
 
     def assemble(self, atoms: Sequence[SemanticAtom], units: Sequence[SourceUnit], *,
-                 inquiry_id: str, attempt: int = 1
+                 inquiry_id: str, attempt: int = 1, max_batches: Optional[int] = None,
+                 max_rounds: Optional[int] = None
                  ) -> Tuple[List[ClaimNode], List[ClaimEdge], List[CompilerRefusal], List[str],
                             PassReceipt]:
+        """Every atom locally considered — unless a declared scope permits fewer requests.
+
+        `max_batches` and `max_rounds` are HARNESS-003F, `None` is unlimited, and unlimited is what
+        every caller before that lane passes. A bound does not shorten the partition and does not
+        shorten the schedule: the batches nobody sent are still in the plan, still primary for their
+        atoms, and those atoms are `not_investigated` with the reason said out loud. The pairs no
+        round reached are still in the coverage matrix, unexamined, with theirs.
+
+        That is the same rule 003E wrote for `schedule_rounds` — *bounding the work is done by
+        REPORTING what was not done, never by shortening the list* — applied one caller along.
+        """
         by_unit = {u.source_unit_id: u for u in units}
         by_atom = {a.atom_id: a for a in atoms}
         if not atoms:
@@ -648,9 +667,24 @@ class RelationArchitect(ModelPass):
         receipts: List[PassReceipt] = []
         considered: Set[str] = set()
 
+        sent = 0
+        skipped: Set[str] = set()
+        unsent: Set[str] = set()
         for batch in plan.batches:
             picked = [by_atom[r] for r in batch.assignment.primary_refs if r in by_atom]
             number, total = batch.assignment.index, batch.assignment.total
+            if max_batches is not None and sent >= max_batches and batch.sendable:
+                # THE DECLARED BOUND, and it is not a failure. Nothing is deleted: every atom in
+                # this batch is named `not_investigated` in the plan below with the reason, which is
+                # a decision a reader can point at — as against silence, which is a pass that lost
+                # track of its input.
+                skipped.update(a.atom_id for a in picked)
+                unsent.add(batch.batch_id)
+                self.observe(f"relating batch {number} of {total}", index=number, total=total,
+                             outcome="skipped", refs=list(batch.assignment.primary_refs),
+                             detail=f"a declared execution scope permits {max_batches} relation "
+                                    f"request(s); this batch was not sent")
+                continue
             if not batch.sendable:
                 # THE 413, CAUGHT BY ARITHMETIC. Refused by name, at no cost to the allowance.
                 for atom in picked:
@@ -669,6 +703,7 @@ class RelationArchitect(ModelPass):
                          detail=f"{len(picked)} atom(s), "
                                 f"~{batch.assignment.estimated_total_tokens} token(s)")
             comp = _Assembly(inquiry_id, picked, by_unit)
+            sent += 1
             result = self.invoke(
                 build_prompt(picked, by_unit), inquiry_id=inquiry_id, attempt=attempt,
                 inputs=len(picked),
@@ -706,12 +741,19 @@ class RelationArchitect(ModelPass):
         # reports a relation search it never performed across any boundary.
         rounds, pairs, duplicate_map = self._reconcile(
             merged, inquiry_id=inquiry_id, attempt=attempt, plan=plan, receipts=receipts,
-            refusals=refusals, notes=notes)
+            refusals=refusals, notes=notes, max_rounds=max_rounds, unsent=unsent)
 
         claims = merged.live()
         edges = merged.edge_list()
+        if skipped:
+            notes.append(
+                f"a declared execution scope permitted {max_batches} of {len(plan.batches)} "
+                f"relation request(s), so {len(skipped)} atom(s) were never put in front of the "
+                f"architect. They are `not_investigated` in the plan, not absent from it, and their "
+                f"absence from the claims is not evidence that there was nothing to build.")
         record = self._close_plan(plan, atoms=atoms, claims=claims, considered=considered,
-                                  rounds=rounds, pairs=pairs, duplicate_map=duplicate_map)
+                                  rounds=rounds, pairs=pairs, duplicate_map=duplicate_map,
+                                  skipped=skipped, batches_sent=sent)
         outcome, detail = self._outcome(atoms, claims, edges, receipts, record, notes)
         receipt = merge_receipts(self.pass_name, receipts, inquiry_id=inquiry_id, outcome=outcome,
                                  attempt=attempt, outputs=len(claims), detail=detail,
@@ -722,7 +764,8 @@ class RelationArchitect(ModelPass):
 
     def _reconcile(self, merged: "_Merged", *, inquiry_id: str, attempt: int,
                    plan: sizing.BatchPlan, receipts: List[PassReceipt],
-                   refusals: List[CompilerRefusal], notes: List[str]
+                   refusals: List[CompilerRefusal], notes: List[str],
+                   max_rounds: Optional[int] = None, unsent: Optional[Set[str]] = None
                    ) -> Tuple[List[ReconciliationRound], List[ComparisonPair],
                               List[DuplicateClaim]]:
         """Every pair of batches put in front of the model at least once, or named as unexamined.
@@ -748,14 +791,29 @@ class RelationArchitect(ModelPass):
             # there was to reconcile — and the note said "one batch" three lines under a plan
             # saying three, which reads as the plan contradicting itself rather than as two
             # requests having failed.
-            silent = len(plan.batches) - len(groups)
-            notes.append(
-                f"{len(groups)} of {len(plan.batches)} batch(es) produced a claim"
-                + (f"; the other {silent} returned none, so there was no second group to compare "
-                   f"against" if silent else
-                   ", so every claim was already in front of the model together")
-                + ". The coverage matrix is empty because there is nothing across, not because "
-                  "nothing was compared.")
+            # THREE DIFFERENT FACTS, where 003E's version of this note could say two. A batch that
+            # returned no claim, a batch a DECLARED SCOPE never sent, and a plan whose every claim
+            # was already together are three reports — and the middle one did not exist until
+            # HARNESS-003F. Folding it into "returned none" would report a decision this run made
+            # as a silence the model produced.
+            never_sent = len(unsent or ())
+            silent = len(plan.batches) - len(groups) - never_sent
+            if never_sent:
+                notes.append(
+                    f"{len(groups)} of {len(plan.batches)} batch(es) produced a claim; "
+                    f"{never_sent} was/were not sent at all under a declared execution scope"
+                    + (f" and {silent} returned none" if silent > 0 else "")
+                    + ". There was no second group to compare against. The coverage matrix is empty "
+                      "because there is nothing across, not because nothing was compared — and the "
+                      "atoms in the unsent batch(es) are `not_investigated` in the plan.")
+            else:
+                notes.append(
+                    f"{len(groups)} of {len(plan.batches)} batch(es) produced a claim"
+                    + (f"; the other {silent} returned none, so there was no second group to "
+                       f"compare against" if silent else
+                       ", so every claim was already in front of the model together")
+                    + ". The coverage matrix is empty because there is nothing across, not because "
+                      "nothing was compared.")
             return [], [], []
 
         fixed = reconciliation.fixed_prompt_text()
@@ -775,8 +833,21 @@ class RelationArchitect(ModelPass):
         outcomes: Dict[Tuple[str, ...], ReconciliationRound] = {}
         rounds: List[ReconciliationRound] = []
         stopped = ""
+        if max_rounds is not None and len(schedule) > max_rounds:
+            # THE SCHEDULE IS NOT SHORTENED. It is computed in full, so `pairs_total` still counts
+            # every pair a complete reconciliation would have compared, and the ones no permitted
+            # round reaches are reported unexamined with the scope as their reason. A schedule
+            # truncated instead would make a bounded run report the coverage of a smaller graph.
+            notes.append(
+                f"a declared execution scope permitted {max_rounds} of {len(schedule)} "
+                f"reconciliation round(s). The remaining rounds were not run and every pair they "
+                f"would have compared is named unexamined below. A relation across those "
+                f"boundaries was not looked for, which is not the same as not being there.")
         for number, members in enumerate(schedule, 1):
             round_id = ids.round_id(inquiry_id, self.pass_name, members)
+            if max_rounds is not None and len(rounds) >= max_rounds:
+                stopped = stopped or SCOPE_UNREACHED
+                continue
             if stopped:
                 continue
             cards = [c for g in members for c in cards_by_group[g]]
@@ -842,7 +913,9 @@ class RelationArchitect(ModelPass):
                     claims: Sequence[ClaimNode], considered: Set[str],
                     rounds: Sequence[ReconciliationRound] = (),
                     pairs: Sequence[ComparisonPair] = (),
-                    duplicate_map: Sequence[DuplicateClaim] = ()) -> BatchPlanRecord:
+                    duplicate_map: Sequence[DuplicateClaim] = (),
+                    skipped: Optional[Set[str]] = None,
+                    batches_sent: Optional[int] = None) -> BatchPlanRecord:
         """One disposition per atom, written onto the plan rather than into prose.
 
         `orphan` and `used` are read off the output; `refused` is the decision the sizing made about
@@ -859,6 +932,16 @@ class RelationArchitect(ModelPass):
                 dispositions.append(ItemDisposition(
                     ref=atom.atom_id, disposition=ItemDispositionKind.REFUSED, batch_id=batch,
                     reason="no request could carry this atom, so no architect call saw it"))
+            elif atom.atom_id in (skipped or ()):
+                # NOT `refused`. A refusal is a fact about the atom — no request could carry it —
+                # and this is a fact about the RUN: the atom was sendable and the scope permitted
+                # fewer requests than the partition needed. Two different repairs, so two words.
+                dispositions.append(ItemDisposition(
+                    ref=atom.atom_id, disposition=ItemDispositionKind.NOT_INVESTIGATED,
+                    batch_id=batch,
+                    reason="a declared execution scope permitted fewer relation requests than this "
+                           "partition needed, so no architect call saw this atom. It was not "
+                           "refused and nothing was found to be absent from it."))
             elif atom.atom_id in used:
                 dispositions.append(ItemDisposition(
                     ref=atom.atom_id, disposition=ItemDispositionKind.USED, batch_id=batch))
@@ -867,7 +950,7 @@ class RelationArchitect(ModelPass):
                     ref=atom.atom_id, disposition=ItemDispositionKind.ORPHAN, batch_id=batch))
         return plan.record.model_copy(update={
             "dispositions": dispositions, "rounds": list(rounds), "pairs": list(pairs),
-            "duplicate_map": list(duplicate_map)})
+            "duplicate_map": list(duplicate_map), "batches_sent": batches_sent})
 
     def _outcome(self, atoms: Sequence[SemanticAtom], claims: Sequence[ClaimNode],
                  edges: Sequence[ClaimEdge], receipts: Sequence[PassReceipt],

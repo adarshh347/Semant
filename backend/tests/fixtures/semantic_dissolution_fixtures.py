@@ -241,12 +241,15 @@ def council_for(name: str, *, inquiry_id: str = FROZEN_INQUIRY) -> Council:
             super().__init__([])
             self._rounds = 0
 
-        def assemble(self, atoms, units, *, inquiry_id, attempt=1):
+        def assemble(self, atoms, units, *, inquiry_id, attempt=1, **bounds):
+            # `**bounds` — HARNESS-003F's `max_batches` / `max_rounds`, forwarded rather than
+            # absorbed. A double that swallowed them would let a scoped test pass over a pass that
+            # was never actually bounded, which is the one thing a scope test has to prove.
             self._resolved = [resolve_refs(copy.deepcopy(p), ATOM_MARKER,
                                            refs_by_text(dissection_rows, atoms, id_attr="atom_id"))
                               for p in architect_payloads]
             self._rounds = 0
-            return super().assemble(atoms, units, inquiry_id=inquiry_id, attempt=attempt)
+            return super().assemble(atoms, units, inquiry_id=inquiry_id, attempt=attempt, **bounds)
 
         def invoke(self, user_prompt, *, inquiry_id, attempt=1, inputs=0, system_prompt=None,
                    estimated_prompt_tokens=0, completion_tokens=None):
@@ -285,7 +288,7 @@ def council_for(name: str, *, inquiry_id: str = FROZEN_INQUIRY) -> Council:
             super().__init__([])
             self._rounds = 0
 
-        def operationalize(self, claims, edges, *, inquiry_id, attempt=1):
+        def operationalize(self, claims, edges, *, inquiry_id, attempt=1, **bounds):
             self._resolved = [resolve_refs(copy.deepcopy(p), CLAIM_MARKER,
                                            refs_by_text(architect_claim_rows, claims,
                                                         id_attr="claim_id"))
@@ -295,7 +298,8 @@ def council_for(name: str, *, inquiry_id: str = FROZEN_INQUIRY) -> Council:
                                                      id_attr="claim_id"))
                            for p in fork_payloads]
             self._rounds = 0
-            return super().operationalize(claims, edges, inquiry_id=inquiry_id, attempt=attempt)
+            return super().operationalize(claims, edges, inquiry_id=inquiry_id, attempt=attempt,
+                                          **bounds)
 
         def invoke(self, user_prompt, *, inquiry_id, attempt=1, inputs=0, system_prompt=None,
                    estimated_prompt_tokens=0, completion_tokens=None):

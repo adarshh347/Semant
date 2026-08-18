@@ -1038,6 +1038,13 @@ class BatchPlanRecord(_Strict):
     unit: str = ""
     total_items: int = Field(default=0, ge=0)
     batches: List[BatchAssignment] = Field(default_factory=list)
+    #: HARNESS-003F. How many of those batches were actually put in front of the model.
+    #:
+    #: `None` on a pass that did not track it, and it is NOT `len(batches)`: a declared scope may
+    #: permit fewer requests than the partition contains, and a plan whose only number was the
+    #: partition size would report a bounded pass as a complete one. The batches nobody sent are
+    #: still here, still primary for their items, and their items are `not_investigated` below.
+    batches_sent: Optional[int] = None
     pairs: List[ComparisonPair] = Field(default_factory=list)
     rounds: List[ReconciliationRound] = Field(default_factory=list)
     dispositions: List[ItemDisposition] = Field(default_factory=list)

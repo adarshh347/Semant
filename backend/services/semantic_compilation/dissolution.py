@@ -53,7 +53,8 @@ from backend.schemas.semantic_compilation import (SCHEMA_VERSION_V2, SCOPE_DEFER
                                                   DissolutionPass, ExecutionScope,
                                                   ExecutionScopeRecord, GraphProvenance,
                                                   ModelReceipt, ObservableSpec, PassOutcome,
-                                                  PassReceipt, ScopeExclusion, SemanticAtom,
+                                                  ItemDispositionKind, PassReceipt,
+                                                  ScopeExclusion, SemanticAtom,
                                                   SemanticInquiryGraph, SemanticRemainderItem,
                                                   SourceUnit)
 
@@ -276,7 +277,7 @@ def _dissolve(request: CompilationRequest, council: Council,
     say.entering(DissolutionPass.RELATION_ARCHITECT, inputs=len(atoms))
     if council.architect is not None:
         claims, edges, pass_refusals, pass_notes, receipt = council.architect.assemble(
-            atoms, units, inquiry_id=inquiry_id)
+            atoms, units, inquiry_id=inquiry_id, **_bounds(limits, rounds=True))
         refusals.extend(pass_refusals)
         notes.extend(pass_notes)
         passes.append(receipt)
@@ -294,7 +295,9 @@ def _dissolve(request: CompilationRequest, council: Council,
     say.entering(DissolutionPass.EPISTEMIC_OPERATIONALIZER, inputs=len(claims))
     if council.operationalizer is not None:
         observables, decisions, remainder, pass_refusals, pass_notes, receipt = \
-            council.operationalizer.operationalize(claims, edges, inquiry_id=inquiry_id)
+            council.operationalizer.operationalize(
+                claims, edges, inquiry_id=inquiry_id,
+                **_bounds(limits, rounds=True, batches=limits.operationalizer_batches))
         refusals.extend(pass_refusals)
         notes.extend(pass_notes)
         passes.append(receipt)
@@ -341,6 +344,44 @@ def _dissolve(request: CompilationRequest, council: Council,
                                                    atoms=atoms, claims=claims, passes=passes))
 
 
+def _bounds(limits: scope_mod.ScopeLimits, *, rounds: bool = False,
+            batches: Optional[int] = None) -> Dict[str, Any]:
+    """The bound keywords a pass is called with — and NOTHING at all where nothing is bounded.
+
+    AN UNBOUNDED RUN MAKES THE SAME CALL IT ALWAYS MADE, argument for argument. Passing
+    `max_batches=None` would be equivalent for the two production passes and would break every
+    other object that satisfies this seam: the frozen councils the fixtures bind, a replay adapter,
+    anything a later lane writes against the signature these passes had before this one. A temporary
+    contract that widened a stable seam for every caller would be a poor trade for one keyword.
+    """
+    out: Dict[str, Any] = {}
+    permitted = limits.relation_batches if batches is None else batches
+    if permitted is not None:
+        out["max_batches"] = permitted
+    if rounds and limits.reconciliation_rounds is not None:
+        out["max_rounds"] = limits.reconciliation_rounds
+    return out
+
+
+def _plan_for(passes: Sequence[PassReceipt], name: DissolutionPass):
+    receipt = next((p for p in passes if p.pass_name is name), None)
+    return receipt.batch_plan if receipt is not None else None
+
+
+def _uninvestigated(plan) -> List[ScopeExclusion]:
+    """The refs a batched pass could not get to, lifted off its own plan rather than recounted.
+
+    READ, NEVER RE-DERIVED. The pass already wrote one disposition per item with the reason it had;
+    a scope record that computed its own version of that list would be a second opinion about what
+    happened inside a pass it did not run, and the two would disagree the first time either changed.
+    """
+    if plan is None:
+        return []
+    return [ScopeExclusion(ref=d.ref, kind=str(plan.unit or ""), reason=d.reason)
+            for d in plan.dispositions
+            if d.disposition is ItemDispositionKind.NOT_INVESTIGATED and d.reason]
+
+
 def _scope_record(mode: ExecutionScope, selection: Optional[scope_mod.UnitSelection],
                   limits: scope_mod.ScopeLimits, allowance: sizing.Allowance, *,
                   atoms: Sequence[SemanticAtom] = (), claims: Sequence[ClaimNode] = (),
@@ -352,7 +393,11 @@ def _scope_record(mode: ExecutionScope, selection: Optional[scope_mod.UnitSelect
     true` means "this ran unbounded, and something checked". A reader who cannot tell those apart
     cannot use either.
     """
-    excluded = list(selection.exclusions) if selection is not None else []
+    relation = _plan_for(passes, DissolutionPass.RELATION_ARCHITECT)
+    operational = _plan_for(passes, DissolutionPass.EPISTEMIC_OPERATIONALIZER)
+    atoms_out = _uninvestigated(relation)
+    claims_out = _uninvestigated(operational)
+    excluded = [*(selection.exclusions if selection is not None else ()), *atoms_out, *claims_out]
     return ExecutionScopeRecord(
         mode=mode,
         purpose=SCOPE_PURPOSE_VERTICAL_FLOW if mode is ExecutionScope.VERTICAL_SLICE else "",
@@ -363,10 +408,19 @@ def _scope_record(mode: ExecutionScope, selection: Optional[scope_mod.UnitSelect
         deferred_source_unit_ids=[u.source_unit_id for u in (selection.deferred
                                                              if selection is not None else ())],
         selected_atom_ids=[a.atom_id for a in atoms],
+        atoms_not_investigated=[e.ref for e in atoms_out],
         selected_claim_ids=[c.claim_id for c in claims],
+        claims_not_investigated=[e.ref for e in claims_out],
         relation_batches_allowed=limits.relation_batches,
+        relation_batches_sent=int(getattr(relation, "batches_sent", 0) or 0),
         operationalizer_batches_allowed=limits.operationalizer_batches,
+        operationalizer_batches_sent=int(getattr(operational, "batches_sent", 0) or 0),
         reconciliation_rounds_allowed=limits.reconciliation_rounds,
+        # BOTH cross-batch passes, added. The architect's reconciliation and the operationalizer's
+        # fork round are the same kind of request against the same allowance and the same bound
+        # governs them, so a record that counted one of them would under-report what was spent.
+        reconciliation_rounds_sent=(len(relation.rounds) if relation is not None else 0)
+                                   + (len(operational.rounds) if operational is not None else 0),
         exclusions=excluded,
         # THE FIELD THE WHOLE RECORD IS FOR. False for a slice by law — the schema refuses the
         # other value — and true for a full run only because nothing bounded it.
