@@ -38,17 +38,20 @@ remainder is content nothing MEASURES, and this is content nothing was ASKED abo
 
 ## What is NOT here
 
-No prompt, no model call, no threshold. The selector that lands next to this gate is a pure
-function of the units, their metadata and a declared allowance — which is what makes a scoped run
-replayable, and what makes "the same input selects the same ids" a test rather than an assurance.
+No prompt, no model call, no threshold. `select_units` is a pure function of the units, their
+metadata and one declared number — which is what makes a scoped run replayable, and what makes "the
+same input selects the same ids" a test rather than an assurance.
 """
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, List, Optional, Sequence, Tuple
 
-from backend.schemas.semantic_compilation import ExecutionScope
+from backend.schemas.semantic_compilation import (SCOPE_DEFERRED_REASON, ExecutionScope,
+                                                  ScopeExclusion, SourceUnit, SourceUnitKind)
+
+from . import sizing
 
 PRODUCER = "semantic_compilation/scope-v1"
 
@@ -197,9 +200,162 @@ def configured_limits(mode: ExecutionScope) -> ScopeLimits:
     )
 
 
+# ── the selector ─────────────────────────────────────────────────────────────
+
+#: A reading block that named no image. Its own group rather than folded into the first picture's,
+#: because a block nobody attributed is not evidence about that picture and giving it that picture's
+#: turn in the rotation would spend one image's share on material from none.
+UNATTRIBUTED_GROUP = ""
+
+
+def group_of(unit: SourceUnit) -> str:
+    """Which rotation this unit takes its turn in. STRUCTURE ONLY — authorship and image ref.
+
+    A prompt clause belongs to the QUESTION rather than to any one picture, so it gets its own key.
+    Folding the person's own words into the first image's group would let the round-robin spend
+    their share as if it were that picture's, and the person's clauses are the one thing §3 says to
+    retain first.
+    """
+    if unit.kind is SourceUnitKind.PROMPT_CLAUSE:
+        return PROMPT_GROUP
+    return str(unit.image_refs[0]) if unit.image_refs else UNATTRIBUTED_GROUP
+
+
+def projected_tokens(unit: SourceUnit, expansion: float = ATOM_EXPANSION) -> int:
+    """What this unit's ATOMS are expected to cost in one relation request.
+
+    Not what the unit costs. The architect batches atoms, the atoms do not exist yet, and sizing the
+    prose instead of the atoms would plan a request a third the size of the one that gets sent. See
+    `ATOM_EXPANSION`: declared, conservative in the direction that costs a unit rather than a 413,
+    and checked against the real atoms afterwards.
+    """
+    return max(1, int(sizing.estimate_tokens(unit.exact_quote) * max(1.0, float(expansion))))
+
+
+@dataclass(frozen=True)
+class UnitSelection:
+    """What the scope chose, what it left, and the arithmetic that decided.
+
+    `deferred` holds the SourceUnits themselves rather than their ids, because the caller has to
+    dispose of each one in the coverage ledger and a list of ids would make it look them back up in
+    the object it just handed in.
+    """
+    selected: Tuple[SourceUnit, ...] = ()
+    deferred: Tuple[SourceUnit, ...] = ()
+    exclusions: Tuple[ScopeExclusion, ...] = ()
+    room_tokens: int = 0
+    projected_tokens: int = 0
+    notes: Tuple[str, ...] = ()
+
+    @property
+    def group_count(self) -> int:
+        return len({group_of(u) for u in self.selected})
+
+
+def select_units(units: Sequence[SourceUnit], *, room_tokens: int,
+                 expansion: float = ATOM_EXPANSION) -> UnitSelection:
+    """The declared subset, chosen deterministically and without reading a single word for meaning.
+
+    The priority order is §3's, and each step is here for a reason the live runs paid for:
+
+      1. **Every prompt clause that fits, first.** The person's own words are the one thing in the
+         ledger nothing else can supply. 003D and 003E both report four user units surviving into
+         the ledger and attributed to the person; a scope that spent its room on the reading and
+         deferred the question would be a rehearsal of the model talking to itself.
+
+      2. **Then a ROUND-ROBIN over images, one unit at a time.** Not the ledger in order: the ledger
+         is the prompt followed by image 1's blocks, then image 2's, and a budget filled in that
+         order is a budget spent entirely on the first picture. Every relation this council exists
+         to find is a comparison, and a comparison needs two pictures in the same request.
+
+      3. **Whole units or nothing.** A unit that does not fit is DEFERRED, never cut down. Half a
+         source unit is a sentence the person did not write and the model did not produce, and the
+         coverage ledger has no word for it.
+
+    Deterministic: no clock, no randomness, no counter. The result is a function of the units' ids,
+    texts, kinds and image refs and of one declared number — so the same input selects the same ids,
+    which is what makes a scoped run replayable rather than merely repeatable.
+    """
+    room = max(0, int(room_tokens))
+    costs: Dict[str, int] = {u.source_unit_id: projected_tokens(u, expansion) for u in units}
+
+    groups: List[str] = []
+    queues: Dict[str, List[SourceUnit]] = {}
+    for unit in units:
+        key = group_of(unit)
+        if key not in queues:
+            queues[key] = []
+            groups.append(key)
+        queues[key].append(unit)
+
+    taken: List[SourceUnit] = []
+    spent = 0
+
+    def fits(unit: SourceUnit) -> bool:
+        return spent + costs[unit.source_unit_id] <= room
+
+    # ── 1. the person's own words ──
+    for unit in queues.get(PROMPT_GROUP, []):
+        if fits(unit):
+            taken.append(unit)
+            spent += costs[unit.source_unit_id]
+
+    # ── 2. the rotation, over everything else ──
+    rotation = [g for g in groups if g != PROMPT_GROUP]
+    remaining = {g: list(queues[g]) for g in rotation}
+    chosen = {u.source_unit_id for u in taken}
+    moved = True
+    while moved:
+        moved = False
+        for key in rotation:
+            queue = remaining[key]
+            # THE FIRST ONE THAT FITS, scanning forward rather than stopping at the head. A long
+            # opening block would otherwise close its whole image out of the rotation, and losing a
+            # picture entirely is the failure this step exists to prevent.
+            for index, unit in enumerate(queue):
+                if fits(unit):
+                    taken.append(unit)
+                    chosen.add(unit.source_unit_id)
+                    spent += costs[unit.source_unit_id]
+                    queue.pop(index)
+                    moved = True
+                    break
+
+    # ── 3. what was left, named individually ──
+    order = {u.source_unit_id: i for i, u in enumerate(units)}
+    selected = tuple(sorted(taken, key=lambda u: order[u.source_unit_id]))
+    deferred = tuple(u for u in units if u.source_unit_id not in chosen)
+    exclusions = tuple(ScopeExclusion(
+        ref=u.source_unit_id, kind="source_unit",
+        reason=f"{SCOPE_DEFERRED_REASON}. Its atoms are projected at "
+               f"{costs[u.source_unit_id]} token(s) and {max(0, room - spent)} of the "
+               f"{room}-token relation request remained when it was reached.") for u in deferred)
+
+    notes = [
+        f"the vertical-slice scope selected {len(selected)} of {len(units)} source unit(s) — "
+        f"{sum(1 for u in selected if u.kind is SourceUnitKind.PROMPT_CLAUSE)} of "
+        f"{sum(1 for u in units if u.kind is SourceUnitKind.PROMPT_CLAUSE)} from the person — "
+        f"across {len({group_of(u) for u in selected if group_of(u) != PROMPT_GROUP})} of "
+        f"{len([g for g in groups if g != PROMPT_GROUP])} image group(s), projecting {spent} of "
+        f"{room} token(s) of room in one relation request at a declared {expansion}x expansion from "
+        f"prose to atoms.",
+        "every deferred unit is still in the ledger with its own id and is disposed `refused` with "
+        "the scope's reason. It is not `semantic_remainder`: remainder is content nothing measures, "
+        "and this is content nothing was asked about.",
+    ]
+    if not selected:
+        notes.append(
+            f"nothing fitted. The smallest source unit projects at "
+            f"{min(costs.values()) if costs else 0} token(s) against {room} of room, so the scope "
+            f"selected no material and the run stops here rather than sending an empty request.")
+    return UnitSelection(selected=selected, deferred=deferred, exclusions=exclusions,
+                         room_tokens=room, projected_tokens=spent, notes=tuple(notes))
+
+
 __all__ = ["PRODUCER", "ENABLED_ENV", "MAX_RELATION_BATCHES_ENV",
            "MAX_OPERATIONALIZER_BATCHES_ENV", "MAX_RECONCILIATION_ROUNDS_ENV",
            "DEFAULT_MAX_RELATION_BATCHES", "DEFAULT_MAX_OPERATIONALIZER_BATCHES",
            "DEFAULT_MAX_RECONCILIATION_ROUNDS", "ATOM_EXPANSION", "PROMPT_GROUP",
-           "ExecutionScope", "ScopeRefused", "feature_enabled", "parse", "ScopeLimits",
-           "UNBOUNDED", "configured_limits"]
+           "UNATTRIBUTED_GROUP", "ExecutionScope", "ScopeRefused", "feature_enabled", "parse",
+           "ScopeLimits", "UNBOUNDED", "configured_limits", "group_of", "projected_tokens",
+           "UnitSelection", "select_units"]

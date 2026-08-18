@@ -46,17 +46,22 @@ import contextlib
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Tuple
 
-from backend.schemas.semantic_compilation import (SCHEMA_VERSION_V2, ClaimEdge, ClaimNode,
-                                                  CompilerRefusal, CoverageDisposition,
+from backend.schemas.semantic_compilation import (SCHEMA_VERSION_V2, SCOPE_DEFERRED_REASON,
+                                                  SCOPE_PURPOSE_VERTICAL_FLOW, ClaimEdge,
+                                                  ClaimNode, CompilerRefusal, CoverageDisposition,
                                                   DecisionCandidate, DispositionKind,
-                                                  DissolutionPass, GraphProvenance, ModelReceipt,
-                                                  ObservableSpec, PassOutcome, PassReceipt,
-                                                  SemanticAtom, SemanticInquiryGraph,
-                                                  SemanticRemainderItem, SourceUnit)
+                                                  DissolutionPass, ExecutionScope,
+                                                  ExecutionScopeRecord, GraphProvenance,
+                                                  ModelReceipt, ObservableSpec, PassOutcome,
+                                                  PassReceipt, ScopeExclusion, SemanticAtom,
+                                                  SemanticInquiryGraph, SemanticRemainderItem,
+                                                  SourceUnit)
 
 from . import audit as audit_mod
 from . import contracts, ids, ledger as ledger_mod
-from .architect import RelationArchitect
+from . import scope as scope_mod
+from . import sizing
+from .architect import ARCHITECT_COMPLETION, RelationArchitect, fixed_prompt_text
 from .base import CompilationRequest, sha256_of
 from .dissector import SemanticDissector
 from .operationalizer import EpistemicOperationalizer
@@ -185,6 +190,31 @@ def _dissolve(request: CompilationRequest, council: Council,
                  inputs=1 + len(request.reading.blocks if request.reading else ()))
     units, ledger_notes = ledger_mod.build(request.prompt, request.reading, inquiry_id=inquiry_id)
     notes.extend(ledger_notes)
+
+    # ── the declared scope, between the ledger and the dissector ──
+    #
+    # HERE, AND NOWHERE LATER. The ledger is the object every pass is audited against, so a scope
+    # applied further downstream would be a scope the coverage audit could not see: units would go
+    # missing between two passes with nothing disposing of them, which is the exact shape
+    # `_close_the_ledger` exists to catch and would then be blamed for.
+    #
+    # ALL the units stay on the graph. What the scope decides is which of them the DISSECTOR is
+    # given; the deferred ones are disposed `refused` a few lines down, before the first audit runs,
+    # so no targeted repair is ever aimed at a unit that was deliberately not investigated.
+    scope_mode = scope_mod.parse(request.execution_scope)
+    limits = scope_mod.configured_limits(scope_mode)
+    allowance = sizing.configured_allowance()
+    selection = None
+    working = list(units)
+    if scope_mode is ExecutionScope.VERTICAL_SLICE:
+        # SIZED AGAINST THE RELATION REQUEST, because that is the pass the whole slice is for. One
+        # architect request is what has to hold the person's clauses and material from more than one
+        # image at once, and everything upstream of it is cheaper per token than it is.
+        selection = scope_mod.select_units(
+            units, room_tokens=ARCHITECT_COMPLETION.room(allowance, fixed_prompt_text()))
+        working = list(selection.selected)
+        notes.extend(selection.notes)
+
     passes.append(PassReceipt(
         pass_id=ids.pass_id(inquiry_id, DissolutionPass.SOURCE_LEDGER),
         pass_name=DissolutionPass.SOURCE_LEDGER,
@@ -193,17 +223,20 @@ def _dissolve(request: CompilationRequest, council: Council,
         outputs=len(units),
         detail=f"{len(units)} source unit(s): "
                f"{sum(1 for u in units if u.is_user_authored)} from the person, "
-               f"{sum(1 for u in units if not u.is_user_authored)} from the reading"))
+               f"{sum(1 for u in units if not u.is_user_authored)} from the reading"
+               + (f" · a declared vertical-slice scope selected {len(working)} of them for "
+                  f"dissolution and deferred {len(units) - len(working)}"
+                  if selection is not None else "")))
     say.left(passes[-1])
 
     # ── dissection ──
     atoms: List[SemanticAtom] = []
     coverage: List[CoverageDisposition] = []
     dissector_ran = False
-    say.entering(DissolutionPass.SEMANTIC_DISSECTOR, inputs=len(units))
-    if council.dissector is not None and units:
+    say.entering(DissolutionPass.SEMANTIC_DISSECTOR, inputs=len(working))
+    if council.dissector is not None and working:
         atoms, coverage, pass_refusals, receipt = council.dissector.dissolve(
-            units, prompt=request.prompt, inquiry_id=inquiry_id)
+            working, prompt=request.prompt, inquiry_id=inquiry_id)
         refusals.extend(pass_refusals)
         passes.append(receipt)
         dissector_ran = receipt.outcome is not PassOutcome.UNAVAILABLE
@@ -211,10 +244,15 @@ def _dissolve(request: CompilationRequest, council: Council,
         passes.append(PassReceipt(
             pass_id=ids.pass_id(inquiry_id, DissolutionPass.SEMANTIC_DISSECTOR),
             pass_name=DissolutionPass.SEMANTIC_DISSECTOR, outcome=PassOutcome.UNAVAILABLE,
-            inputs=len(units),
+            inputs=len(working),
             detail="no dissector was bound" if council.dissector is None
-                   else "the ledger was empty, so there was nothing to dissolve"))
+                   else ("the declared scope selected no source unit, so there was nothing to "
+                         "dissolve" if selection is not None
+                         else "the ledger was empty, so there was nothing to dissolve")))
     say.left(passes[-1])
+
+    # ── the deferred units, disposed BEFORE the audit ──
+    coverage = _defer(selection, coverage, notes, inquiry_id=inquiry_id)
 
     # ── the audit, and the one repair it may ask for ──
     report = audit_mod.audit(units, atoms, coverage, [], inquiry_id=inquiry_id,
@@ -298,7 +336,76 @@ def _dissolve(request: CompilationRequest, council: Council,
 
     return _assemble(request, units=units, atoms=atoms, coverage=coverage, claims=claims,
                      edges=edges, observables=observables, decisions=decisions,
-                     remainder=remainder, refusals=refusals, notes=notes, passes=passes)
+                     remainder=remainder, refusals=refusals, notes=notes, passes=passes,
+                     execution_scope=_scope_record(scope_mode, selection, limits, allowance,
+                                                   atoms=atoms, claims=claims, passes=passes))
+
+
+def _scope_record(mode: ExecutionScope, selection: Optional[scope_mod.UnitSelection],
+                  limits: scope_mod.ScopeLimits, allowance: sizing.Allowance, *,
+                  atoms: Sequence[SemanticAtom] = (), claims: Sequence[ClaimNode] = (),
+                  passes: Sequence[PassReceipt] = ()) -> ExecutionScopeRecord:
+    """What this run was allowed to look at, assembled from what actually happened.
+
+    A FULL RUN GETS A RECORD TOO, and it is not the absence of one. `execution_scope: null` on a
+    graph means "compiled before this contract existed"; a record saying `full` / `full_coverage:
+    true` means "this ran unbounded, and something checked". A reader who cannot tell those apart
+    cannot use either.
+    """
+    excluded = list(selection.exclusions) if selection is not None else []
+    return ExecutionScopeRecord(
+        mode=mode,
+        purpose=SCOPE_PURPOSE_VERTICAL_FLOW if mode is ExecutionScope.VERTICAL_SLICE else "",
+        selection_producer=scope_mod.PRODUCER if selection is not None else "",
+        allowance_tokens=allowance.tokens,
+        selected_source_unit_ids=[u.source_unit_id for u in (selection.selected
+                                                             if selection is not None else ())],
+        deferred_source_unit_ids=[u.source_unit_id for u in (selection.deferred
+                                                             if selection is not None else ())],
+        selected_atom_ids=[a.atom_id for a in atoms],
+        selected_claim_ids=[c.claim_id for c in claims],
+        relation_batches_allowed=limits.relation_batches,
+        operationalizer_batches_allowed=limits.operationalizer_batches,
+        reconciliation_rounds_allowed=limits.reconciliation_rounds,
+        exclusions=excluded,
+        # THE FIELD THE WHOLE RECORD IS FOR. False for a slice by law — the schema refuses the
+        # other value — and true for a full run only because nothing bounded it.
+        full_coverage=mode is not ExecutionScope.VERTICAL_SLICE,
+        notes=list(selection.notes) if selection is not None else [],
+    )
+
+
+def _defer(selection: Optional[scope_mod.UnitSelection], coverage: List[CoverageDisposition],
+           notes: List[str], *, inquiry_id: str) -> List[CoverageDisposition]:
+    """Dispose of every unit the scope did not send, before anything audits the ledger.
+
+    `REFUSED`, and the word is chosen against the other three. `SEMANTIC_REMAINDER` is content
+    nothing MEASURES — an epistemic limit, discovered — and a deferred unit is content nothing was
+    ASKED about. Calling this remainder would report a declared bound as a finding about the images,
+    which is the most flattering possible mistake and therefore the one to make impossible.
+
+    BEFORE THE AUDIT, and that ordering is the whole function. The audit's `repairable` list is
+    units nothing accounted for, and a targeted repair aimed at a unit the scope deliberately left
+    out would spend the allowance re-asking a question the run had already declared it was not
+    asking. Disposing them first makes the repair unable to see them.
+    """
+    if selection is None or not selection.deferred:
+        return coverage
+    known = {c.source_unit_id for c in coverage}
+    for unit in selection.deferred:
+        if unit.source_unit_id in known:
+            continue
+        reason = next((e.reason for e in selection.exclusions
+                       if e.ref == unit.source_unit_id), SCOPE_DEFERRED_REASON)
+        coverage.append(CoverageDisposition(
+            coverage_id=ids.coverage_id(inquiry_id, unit.source_unit_id),
+            source_unit_id=unit.source_unit_id, disposition=DispositionKind.REFUSED, refs=[],
+            reason=reason))
+    notes.append(
+        f"{len(selection.deferred)} source unit(s) were deferred by the declared scope and are "
+        f"disposed `refused` with that reason. They were NOT dissolved, no repair was aimed at "
+        f"them, and their absence from the claims is not evidence that there was nothing in them.")
+    return coverage
 
 
 def _close_the_ledger(units: Sequence[SourceUnit], coverage: List[CoverageDisposition],
@@ -384,7 +491,8 @@ def _repair(repairer: SemanticDissector, report: audit_mod.AuditReport,
 
 
 def _assemble(request: CompilationRequest, *, units, atoms, coverage, claims, edges, observables,
-              decisions, remainder, refusals, notes, passes) -> SemanticInquiryGraph:
+              decisions, remainder, refusals, notes, passes,
+              execution_scope=None) -> SemanticInquiryGraph:
     frame = dict(request.inquiry_frame or {})
     dissector_receipt = next((p for p in passes
                               if p.pass_name is DissolutionPass.SEMANTIC_DISSECTOR), None)
@@ -405,6 +513,7 @@ def _assemble(request: CompilationRequest, *, units, atoms, coverage, claims, ed
         observables=list(observables),
         decision_candidates=list(decisions),
         semantic_remainder=list(remainder),
+        execution_scope=execution_scope,
         refusals=list(refusals),
         provenance=GraphProvenance(
             producer=PRODUCER, compiler_kind="council",
