@@ -322,8 +322,23 @@ def select_units(units: Sequence[SourceUnit], *, room_tokens: int,
                     break
 
     # ── 3. what was left, named individually ──
-    order = {u.source_unit_id: i for i, u in enumerate(units)}
-    selected = tuple(sorted(taken, key=lambda u: order[u.source_unit_id]))
+    #
+    # THE SELECTION KEEPS THE ORDER IT WAS TAKEN IN, and that is not a detail. This returned the
+    # units re-sorted into ledger order at first, which is tidier and quietly threw away the whole
+    # point of step 2: the ledger is the prompt, then image 1's blocks, then image 2's, so a
+    # re-sorted selection hands the dissector all the prompt clauses, then all of one picture, then
+    # all of the next — and the architect, batching a bounded pass, fills its ONE permitted request
+    # from the front.
+    #
+    # The first live rehearsal of this lane proved it: 21 of 167 atoms reached the architect and
+    # every one of them came from the PROMPT. Not a single image atom was in front of the model, so
+    # no cross-image relation was structurally possible — the exact failure §4 asks the selector to
+    # prevent, produced by re-sorting the answer after finding it.
+    #
+    # In take order the sequence is: every prompt clause, then one unit from each image in turn. A
+    # batch filled from the front therefore spans the question and several pictures. Just as
+    # deterministic; a different order, and the right one.
+    selected = tuple(taken)
     deferred = tuple(u for u in units if u.source_unit_id not in chosen)
     exclusions = tuple(ScopeExclusion(
         ref=u.source_unit_id, kind="source_unit",

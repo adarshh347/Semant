@@ -29,6 +29,7 @@ request text, and no evidence object exists anywhere in Phase 1.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import sys
 import time
@@ -66,11 +67,42 @@ def build(args) -> coordinator.Stages:
     return runtime.build_stages(**common)
 
 
+#: One event loop for the whole process, and it is not an optimisation.
+#:
+#: `motor` binds its client to the loop it first runs in, so a second `asyncio.run` — which builds
+#: and closes a fresh loop each time — raises `RuntimeError: Event loop is closed` from inside the
+#: driver, several frames from the call that caused it. This script reads the archive twice, before
+#: and after, which is exactly the shape that trips it.
+_LOOP: Optional[Any] = None
+
+
+def _await(coro):
+    global _LOOP
+    if _LOOP is None:
+        _LOOP = asyncio.new_event_loop()
+    return _LOOP.run_until_complete(coro)
+
+
 def posts_for(args):
+    """The images this rehearsal reads.
+
+    THREE SOURCES, and the third is the one HARNESS-003F added. `--post` resolves REAL post ids
+    through the same `corpus.resolve` the route uses, so the refs carry the repository's own
+    fingerprints — which is what makes "no post moved" a comparison this script can perform rather
+    than a sentence it prints. `--image` keeps working for a URL nobody has archived, and its refs
+    carry no fingerprint because there is no document to take one over.
+
+    003E's finding had to record its four post ids in prose because the rehearsal held its session
+    in process and read URLs; this is the repair for that, one lane later.
+    """
     from backend.schemas.inquiry_session import PostRef
     if not args.live:
         return F.post_refs(args.fixture)
     refs = []
+    if args.post:
+        from backend.services.inquiry_session import corpus
+        resolved, _docs = _await(corpus.resolve(args.post))
+        refs.extend(resolved)
     for index, spec in enumerate(args.image):
         url, _, title = spec.partition("|")
         refs.append(PostRef(post_id=f"img_{index}", title=title.strip(),
@@ -78,11 +110,27 @@ def posts_for(args):
     return refs
 
 
+def fingerprints(refs) -> Dict[str, str]:
+    """Every selected post's fingerprint, read from the archive RIGHT NOW.
+
+    Taken before and after the run and compared, because §8 asks for both and because the one
+    guarantee that has to hold whether or not anything else did is that nothing moved. A ref with no
+    fingerprint (a bare `--image` URL) is not in this map: there is no document behind it to move.
+    """
+    ids = [r.post_id for r in refs if r.fingerprint]
+    if not ids:
+        return {}
+    from backend.services.inquiry_session import corpus
+    fresh, _docs = _await(corpus.resolve(ids))
+    return {r.post_id: r.fingerprint for r in fresh}
+
+
 def drive(args, stages, *, session_id: Optional[str] = None):
     """One session, from the prompt to wherever it honestly stops."""
     prompt = args.prompt or F.prompt_for(args.fixture)
     session = coordinator.new_session(prompt=prompt, refs=posts_for(args), mode=args.mode,
-                                      session_id=session_id, now=AT if not args.live else None)
+                                      session_id=session_id, now=AT if not args.live else None,
+                                      execution_scope=args.scope)
     session = coordinator.begin(session, stages)
     if not session.awaiting_user:
         return session, None
@@ -225,6 +273,57 @@ def _show_council(session, out) -> None:
               file=out)
 
 
+def _show_scope(session, out) -> None:
+    """What this run was ALLOWED to investigate. HARNESS-003F.
+
+    Printed beside the deployment badge and above everything the run produced, for the reason the
+    surface prints it there: a bounded run produces FEWER claims and observables, so a reader who
+    meets the result before the bound reads a short transcript as a finding about the images.
+
+    NOTHING AT ALL on a full-coverage run — an unbounded run has nothing to declare and a block
+    saying so on every transcript would be noise that trains a reader to skip the one that matters.
+    """
+    record = (session.graph or {}).get("execution_scope") or {}
+    mode = str(record.get("mode") or session.execution_scope or "full")
+    if mode == "full":
+        return
+    print(f"\nscope     SCOPED LIVE REHEARSAL — this run investigated a declared subset. "
+          f"It is not a complete reading.", file=out)
+    if not record:
+        print("          the run did not reach a compilation, so nothing recorded what it "
+              "selected. It is still a slice.", file=out)
+        return
+    print(f"          full_coverage {record.get('full_coverage')} · purpose "
+          f"{record.get('purpose')} · sized against {record.get('allowance_tokens')} tokens/min "
+          f"by {record.get('selection_producer')}", file=out)
+    sel, dfr = record.get("selected_source_unit_ids", []), record.get("deferred_source_unit_ids", [])
+    atoms, atoms_out = record.get("selected_atom_ids", []), record.get("atoms_not_investigated", [])
+    claims, claims_out = record.get("selected_claim_ids", []), record.get("claims_not_investigated", [])
+    print(f"          units  {len(sel):3} selected, {len(dfr):3} deferred", file=out)
+    print(f"          atoms  {len(atoms) - len(atoms_out):3} investigated of {len(atoms):3}",
+          file=out)
+    print(f"          claims {len(claims) - len(claims_out):3} investigated of {len(claims):3}",
+          file=out)
+    for label, sent, allowed in (
+            ("relation requests   ", record.get("relation_batches_sent"),
+             record.get("relation_batches_allowed")),
+            ("operationalization  ", record.get("operationalizer_batches_sent"),
+             record.get("operationalizer_batches_allowed")),
+            ("cross-batch rounds  ", record.get("reconciliation_rounds_sent"),
+             record.get("reconciliation_rounds_allowed"))):
+        cap = "no limit" if allowed is None else f"{allowed} permitted"
+        print(f"          {label} {sent} sent, {cap}", file=out)
+    # IN FULL. A count is the size of the gap; this is where it is, and it is the half of the
+    # record a person actually reads before concluding that nothing was there.
+    exclusions = record.get("exclusions") or []
+    print(f"          {len(exclusions)} thing(s) not investigated:", file=out)
+    for entry in exclusions:
+        print(f"            · {str(entry.get('kind')):14} {str(entry.get('ref')):22} "
+              f"{str(entry.get('reason'))[:110]}", file=out)
+    for note in (record.get("notes") or []):
+        print(f"          note: {note}", file=out)
+
+
 def show(session, request, args, *, stages=None) -> None:
     out = sys.stdout
     print(f"\nsession   {session.session_id}   {session.mode} mode", file=out)
@@ -236,6 +335,8 @@ def show(session, request, args, *, stages=None) -> None:
     if stages is not None:
         badge = runtime.deployment(stages)
         print(f"deployed  {badge['kind'].upper()}   {badge['detail']}", file=out)
+
+    _show_scope(session, out)
 
     # TWO CLOCKS, SAID OUT LOUD. A stage's duration is the difference between the timestamps it was
     # handed; `wall` below is the process's monotonic clock. On a host that suspends mid-run they
@@ -360,6 +461,12 @@ def main() -> int:
     parser.add_argument("--prompt", default="")
     parser.add_argument("--image", action="append", default=[],
                         help="live only: an image URL, optionally 'URL|title'")
+    parser.add_argument("--post", action="append", default=[],
+                        help="live only: a real post id, resolved through the archive so the run "
+                             "carries the repository's own fingerprints")
+    parser.add_argument("--scope", default="full", choices=["full", "vertical_slice"],
+                        help="HARNESS-003F: the declared execution scope. `vertical_slice` also "
+                             "needs SEMANT_INQUIRY_SCOPED_REHEARSAL_ENABLED=1")
     parser.add_argument("--answer", type=int, default=1, help="which option to choose (1-based)")
     parser.add_argument("--reject", action="store_true", help="decline every option")
     parser.add_argument("--redirect", default="", help="answer in your own words instead")
@@ -370,15 +477,20 @@ def main() -> int:
                         help="also write the wire body here, keeping the transcript on stdout")
     args = parser.parse_args()
 
-    if args.live and not args.image:
-        parser.error("--live needs at least one --image URL")
+    if args.live and not (args.image or args.post):
+        parser.error("--live needs at least one --image URL or --post id")
     if args.replay_check:
         return replay_check(args)
 
     stages = build(args)
+    # BEFORE AND AFTER, over the archive rather than over the session's own copy. The session's
+    # refs were read at the start; re-reading the documents is what makes this a comparison against
+    # the world instead of against a number the run is carrying around with it.
+    before = fingerprints(posts_for(args)) if args.live else {}
     began = time.monotonic()
     session, request = drive(args, stages)
     elapsed = time.monotonic() - began
+    after = fingerprints(session.posts) if args.live else {}
 
     # BOTH, WHEN ASKED FOR BOTH. `--json` REPLACED the transcript, which meant a live rehearsal that
     # wanted the readable account and the canonical record had to be run twice — and at an 8000 TPM
@@ -404,6 +516,13 @@ def main() -> int:
         print(f"wall      {elapsed:.1f}s end to end, on the process's MONOTONIC clock — which does "
               f"not tick while the host is suspended, so a stage duration above it is not a "
               f"contradiction", file=sys.stdout)
+        if before or after:
+            moved = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+            print(f"\nposts     {len(before)} fingerprinted before, {len(after)} after — "
+                  f"{'NOTHING MOVED' if not moved else f'{len(moved)} CHANGED: {moved}'}",
+                  file=sys.stdout)
+            for post_id in sorted(before):
+                print(f"            {post_id}  {before[post_id]}", file=sys.stdout)
     return 0
 
 

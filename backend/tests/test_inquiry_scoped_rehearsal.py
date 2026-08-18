@@ -226,6 +226,39 @@ def test_selected_material_spans_the_images_where_capacity_permits():
     assert len(groups) >= len(naive_groups)
 
 
+def test_the_selection_is_returned_interleaved_rather_than_in_ledger_order():
+    """§4's "place prompt-anchored and cross-image atoms together in the one relation batch".
+
+    THE DEFECT THE FIRST LIVE REHEARSAL FOUND, and it was in this function's return statement. The
+    selector round-robins across images and then used to re-sort the answer into ledger order —
+    tidier, and it threw away the whole point: the ledger is the prompt, then image 1's blocks, then
+    image 2's, so a re-sorted selection hands the dissector the prompt, then one picture, then the
+    next, and a bounded architect fills its ONE permitted request from the front.
+
+    Live, that produced 21 atoms in front of the model and every one of them from the PROMPT. No
+    image atom reached the architect at all, so no cross-image relation was structurally possible.
+
+    So the order is asserted, not the membership: prompt clauses first, then the images ROTATING.
+    """
+    units = _ledger(PROMPT_A, ["img_a", "img_b", "img_c"])
+    picked = scope.select_units(units, room_tokens=500)
+    groups = [scope.group_of(u) for u in picked.selected]
+    prompt_run = [g for g in groups if g == scope.PROMPT_GROUP]
+    assert groups[:len(prompt_run)] == prompt_run, groups
+
+    images = groups[len(prompt_run):]
+    assert len(set(images)) >= 2, images
+    # NO IMAGE APPEARS TWICE BEFORE ANOTHER HAS APPEARED ONCE. That is the rotation, and it is what
+    # makes a batch filled from the front span more than one picture.
+    seen = []
+    for index, key in enumerate(images):
+        if key in seen:
+            assert set(images[:index]) == set(seen), images
+            break
+        seen.append(key)
+    assert len(seen) >= 2, images
+
+
 def test_a_unit_is_deferred_whole_and_never_truncated():
     units = _ledger(PROMPT_A, ["img_a", "img_b"])
     picked = scope.select_units(units, room_tokens=300)
