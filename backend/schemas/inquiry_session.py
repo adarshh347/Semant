@@ -282,6 +282,14 @@ class SemanticInquirySession(_Strict):
     #: Byte for byte. Every source span in the graph indexes into THIS string.
     prompt: str
     mode: str = "consult"
+    #: HARNESS-003F. `full` or `vertical_slice`, DECLARED at creation and never inferred.
+    #:
+    #: It lives on the envelope rather than only on the compiled graph because the badge has to
+    #: survive a session that never reached the compiler. A run that was asked for as a slice and
+    #: died in the theorist is still a slice, and a surface that could only learn the scope from the
+    #: graph would show a full-coverage page for it — which is the exact shape of the failure the
+    #: LIVE/REPLAY badge one field up exists to prevent.
+    execution_scope: str = "full"
     posts: List[PostRef] = Field(default_factory=list)
 
     frame: Dict[str, Any] = Field(default_factory=dict)
