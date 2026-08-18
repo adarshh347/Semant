@@ -186,6 +186,7 @@ whether the pass looked.
 | `unit` | string | what was partitioned — `semantic_atom` or `claim` |
 | `total_items` | number \| null | every one of which is primary in exactly one batch |
 | `batches` | number | |
+| `batches_sent` | number \| null | how many of them were SENT. A declared scope may permit fewer requests than the partition contains, and one number for both renders a bounded pass as a complete one |
 | `unsendable_batches` | number | a single item no request could carry. **Refused before transport** rather than sent and refused by the provider |
 | `allowance_tokens`, `largest_request_tokens` | number \| null | what the account allows, and the largest request the plan actually built |
 | `pairs_total`, `pairs_examined` | number \| null | pairs of batches, and how many were put in front of the model together. `pairs_total: 0` means one batch held everything — nothing across, which is **not** a comparison that came up short |
@@ -420,6 +421,55 @@ denominator and an ETA a rate.
 | `refs[]` | string[] | causal references |
 | `revision` | number \| null | |
 
+## `execution_scope` — the declared bound (HARNESS-003F)
+
+Present on **every** session, including a full-coverage one and including a session that never
+reached the compiler. `recorded: false` says the run was ASKED to be bounded and no compilation
+recorded what it selected; it is still bounded, and the surface still refuses to present it as a
+complete reading.
+
+| field | type | notes |
+|---|---|---|
+| `mode` | **enumerated** | `full · vertical_slice`. An unrecognised mode is treated as BOUNDED — an older client must not render a scope it cannot place as an unbounded reading |
+| `recorded` | boolean | whether a compilation wrote a selection record, as against the request merely asking |
+| `scope_version` | string | its own version, not the graph's |
+| `purpose` | string | `live_vertical_flow_rehearsal` is the only value a slice may declare |
+| `selection_producer` | string | which code chose |
+| `allowance_tokens` | number \| null | the provider allowance the selection was sized against |
+| `full_coverage` | boolean \| null | **read, never derived.** The backend's schema refuses a slice that claims complete coverage; recomputing it here would be a second opinion free to disagree |
+| `selected_source_units` | number \| null | |
+| `deferred_source_units` | number \| null | still in the ledger, disposed `refused` with the scope's reason |
+| `selected_atoms` | number \| null | |
+| `atoms_not_investigated` | number \| null | no relation request reached them |
+| `selected_claims` | number \| null | |
+| `claims_not_investigated` | number \| null | nothing was asked about them |
+| `relation_batches_allowed` | number \| null | **null is unlimited and is not `0`** — zero permitted is a real configuration |
+| `relation_batches_sent` | number \| null | |
+| `operationalizer_batches_allowed` | number \| null | |
+| `operationalizer_batches_sent` | number \| null | |
+| `reconciliation_rounds_allowed` | number \| null | |
+| `reconciliation_rounds_sent` | number \| null | the architect's rounds and the operationalizer's fork rounds, added |
+| `exclusions[]` | object[] | **in full, never as a count** — a count is the size of the gap, not where it is |
+| `notes[]` | string[] | the selector's own account of what it chose |
+
+### one exclusion
+
+| field | type | notes |
+|---|---|---|
+| `ref` | string | the source unit, atom or claim id |
+| `kind` | string | `source_unit · semantic_atom · claim`. Open, not an enum |
+| `reason` | string | required by the backend schema; a bound with no reason reads as an oversight |
+
+## `features` — what the deployment will serve
+
+From `GET /api/v1/inquiries`, not a route of its own. The entry form needs it before a session
+exists, and a control the server would refuse is a control that lies about what it does.
+
+| field | type | notes |
+|---|---|---|
+| `scoped_rehearsal` | object | `{available, scopes[], flag, detail}` |
+| `available` | boolean | **false unless the backend said true.** The absence of a declaration is not a declaration |
+
 ## Fixtures, and what each is for
 
 All exported from `../inquiryFixtures.js`. `canonical-session.json` is `completedFixture()`,
@@ -440,6 +490,7 @@ serialised — the realistic Phase-1 target.
 | `duplicateSessionFixture` | 409 duplicate — decision answered elsewhere |
 | `otherDomainFixture` | an unrelated domain through identical types |
 | `batchedCouncilFixture` | batched passes and the coverage matrix — one plan whole, one two pairs short |
+| `scopedFixture` | a declared vertical slice that bites — deferred units, uninvestigated atoms and claims, bounds reached |
 
 ## Not consumed
 

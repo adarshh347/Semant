@@ -13,6 +13,7 @@ import StageActivity from './StageActivity.jsx';
 import ArtifactLedger from './ArtifactLedger.jsx';
 import DiagnosisCard from './DiagnosisCard.jsx';
 import SessionExport from './SessionExport.jsx';
+import ScopePanel, { ScopeBadge } from './ScopePanel.jsx';
 import { createInquiryClient } from './inquiryClient.js';
 import {
     openDecision, outcomeCounts, STATE_LABEL, MODE_COPY,
@@ -53,6 +54,9 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
     const [error, setError] = useState('');
     const [conflict, setConflict] = useState(null);
     const [unavailable, setUnavailable] = useState('');
+    //: What the backend declared it will serve. `null` until it answers, and `null` FOREVER if it
+    //: cannot — a surface that defaulted to "available" would offer a control the server refuses.
+    const [features, setFeatures] = useState(null);
     const unwatch = useRef(null);
 
     // THE CORPUS IS NO LONGER FETCHED HERE. It used to be one call — page 1, limit 24 — and that
@@ -61,6 +65,18 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
     // TanStack keys the Gallery uses rather than holding a second copy of the archive.
 
     useEffect(() => () => { unwatch.current?.(); }, []);
+
+    // ONE PROBE, AND ITS FAILURE IS SILENT. This asks the listing route what this deployment
+    // serves; a deployment that has not enabled the temporary scoped rehearsal, an older server
+    // and an unreachable API all answer the same way — no control is offered — and none of them is
+    // an error worth putting in front of a person who came here to ask a question.
+    useEffect(() => {
+        let alive = true;
+        inquiryClient.features?.()
+            .then((f) => { if (alive) setFeatures(f); })
+            .catch(() => { /* nobody declared it; the entry offers nothing */ });
+        return () => { alive = false; };
+    }, [inquiryClient]);
 
     const listen = useCallback((sessionId) => {
         unwatch.current?.();
@@ -147,6 +163,7 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
                     error={error}
                     unavailable={unavailable}
                     onStart={start}
+                    features={features}
                 />
             </main>
         );
@@ -201,6 +218,12 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
                 nobody reads, and the 002R rehearsal ended EXHAUSTED with a perceptive VLM
                 paragraph on screen and no way to see that nothing had been compiled from it. */}
             <DiagnosisCard session={session} />
+
+            {/* ABOVE THE PROSE, and for the diagnosis card's own reason. A bounded run produces
+                FEWER claims and observables than an unbounded one, so a reader who meets the
+                result before the bound reads a short answer as a finding about the images. This
+                renders nothing at all on a full-coverage run. */}
+            <ScopePanel session={session} />
 
             <ProvisionalReading reading={session.graph.reading} />
             <ClaimBlocks
@@ -282,6 +305,10 @@ export function SessionHeader({ session, working = false }) {
                         : (STATE_LABEL[state] || state)}
                 </span>
                 <DeploymentBadge deployment={session.deployment} />
+                {/* BESIDE THE DEPLOYMENT BADGE, and it survives every terminal state because it is
+                    keyed on the session's declared scope rather than on anything a compilation
+                    produced. See `ScopePanel`. */}
+                <ScopeBadge scope={session.execution_scope} />
                 {mode ? (
                     <span className="iw-mode-chip" data-mode={mode} title={MODE_COPY[mode].hint}>
                         {MODE_COPY[mode].title} mode

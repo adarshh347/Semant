@@ -289,7 +289,8 @@ describe('what the surface asks of the user', () => {
 
     it('builds the start body with the mode, defaulting an unknown one', () => {
         expect(startInquiryBody({ imageIds: ['p1', 'p2'], prompt: '  q  ', mode: 'step' }))
-            .toEqual({ prompt: 'q', image_ids: ['p1', 'p2'], mode: 'step' });
+            .toEqual({ prompt: 'q', image_ids: ['p1', 'p2'], mode: 'step',
+                execution_scope: 'full' });
         expect(startInquiryBody({ imageIds: ['p1'], prompt: 'q', mode: 'telepathy' }).mode)
             .toBe(DEFAULT_MODE);
         expect(INTERACTION_MODES).toEqual(['auto', 'consult', 'step']);
