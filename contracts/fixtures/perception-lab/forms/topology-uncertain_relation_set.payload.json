@@ -1,0 +1,66 @@
+{
+  "variant": "topology_uncertain_relations",
+  "pairs_examined": 2,
+  "hypotheses": [
+    {
+      "hypothesis_id": "alt_one_object",
+      "artifact_id": "art_hypotheses_1",
+      "weight": 0.62
+    },
+    {
+      "hypothesis_id": "alt_two_objects",
+      "artifact_id": "art_hypotheses_1",
+      "weight": 0.29
+    }
+  ],
+  "relations": [
+    {
+      "relation_id": "crel_1",
+      "kind": "overlaps",
+      "source": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_form",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "target": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_plane",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "directed": false,
+      "basis": "mask",
+      "epistemic_status": "interpretive",
+      "conditioned_on": "alt_one_object",
+      "measurements": {
+        "intersection_area": 0.11
+      }
+    },
+    {
+      "relation_id": "crel_2",
+      "kind": "in_front_of",
+      "source": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_plane",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "target": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_form_lower",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "directed": true,
+      "basis": "declared",
+      "epistemic_status": "uncertain",
+      "conditioned_on": "alt_two_objects",
+      "measurements": {}
+    }
+  ]
+}

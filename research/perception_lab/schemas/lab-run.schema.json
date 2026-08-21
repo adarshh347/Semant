@@ -27,7 +27,7 @@
       "type": "string"
     },
     "RefusalCode": {
-      "description": "Nine, and not one of them means 'nothing was found'.",
+      "description": "Eleven, and not one of them means 'nothing was found'.",
       "enum": [
         "missing_extent_inputs",
         "missing_depth_artifact",
@@ -37,7 +37,9 @@
         "capability_unavailable",
         "unknown_reference",
         "replay_cannot_recompute",
-        "source_mutated"
+        "source_mutated",
+        "unsupported_form",
+        "form_not_producible"
       ],
       "title": "RefusalCode",
       "type": "string"

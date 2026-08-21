@@ -16,6 +16,39 @@
     "session_modes": "both — isolation and chain",
     "review_verdicts": "correct and wrong, with corrections on the second"
   },
+  "form_payloads": {
+    "what_this_is": [
+      "PERCEPTUAL-FORMS-001A. One committed payload per registered perceptual form, under",
+      "`forms/`, validated by BOTH runtimes against the model the form registry names.",
+      "THESE ARE PAYLOADS, NOT ARTIFACTS, and the distinction is load-bearing. Sixteen of the",
+      "nineteen forms have an empty `produced_by_operations`, so no artifact of them can exist",
+      "yet — an artifact names the operation that produced it. A full artifact fixture for those",
+      "sixteen would have to name an operation that never ran, and a fixture that lies about its",
+      "provenance is worse than no fixture. The payload alone claims nothing about who made it,",
+      "and it is the part the next lane must not reinvent."
+    ],
+    "by_form": {
+      "extent.hard_mask": { "variant": "extent_set", "file": "forms/extent-hard_mask.payload.json" },
+      "extent.boundary_rings": { "variant": "extent_boundary", "file": "forms/extent-boundary_rings.payload.json" },
+      "extent.hole_set": { "variant": "extent_hole_set", "file": "forms/extent-hole_set.payload.json" },
+      "extent.soft_field": { "variant": "extent_soft_field", "file": "forms/extent-soft_field.payload.json" },
+      "extent.fragment_set": { "variant": "extent_fragment_set", "file": "forms/extent-fragment_set.payload.json" },
+      "extent.fused_hypothesis": { "variant": "extent_fusion_hypothesis", "file": "forms/extent-fused_hypothesis.payload.json" },
+      "extent.visible_inferred_partition": { "variant": "extent_partition", "file": "forms/extent-visible_inferred_partition.payload.json" },
+      "extent.hierarchy": { "variant": "extent_hierarchy", "file": "forms/extent-hierarchy.payload.json" },
+      "extent.density_field": { "variant": "extent_density_field", "file": "forms/extent-density_field.payload.json" },
+      "extent.hypothesis_set": { "variant": "extent_hypothesis_set", "file": "forms/extent-hypothesis_set.payload.json" },
+      "topology.pair_relation": { "variant": "topology_relation_set", "file": "forms/topology-pair_relation.payload.json" },
+      "topology.contact_locus": { "variant": "topology_contact_locus", "file": "forms/topology-contact_locus.payload.json" },
+      "topology.intersection_area": { "variant": "topology_intersection", "file": "forms/topology-intersection_area.payload.json" },
+      "topology.clearance_path": { "variant": "topology_clearance_path", "file": "forms/topology-clearance_path.payload.json" },
+      "topology.containment_tree": { "variant": "topology_containment_tree", "file": "forms/topology-containment_tree.payload.json" },
+      "topology.adjacency_graph": { "variant": "topology_adjacency_graph", "file": "forms/topology-adjacency_graph.payload.json" },
+      "topology.negative_space_field": { "variant": "negative_space_field", "file": "forms/topology-negative_space_field.payload.json" },
+      "topology.transition": { "variant": "topology_transition", "file": "forms/topology-transition.payload.json" },
+      "topology.uncertain_relation_set": { "variant": "topology_uncertain_relations", "file": "forms/topology-uncertain_relation_set.payload.json" }
+    }
+  },
   "records": {
     "LabSession": [
       "session.extent-isolation.json",

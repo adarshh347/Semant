@@ -1,0 +1,47 @@
+{
+  "variant": "extent_set",
+  "searched": "every separable instance in the whole image",
+  "instances": [
+    {
+      "instance_id": "inst_1",
+      "mask_rle": {
+        "size": [8, 8],
+        "counts": [10, 4, 4, 4, 4, 4, 30]
+      },
+      "box": {
+        "x": 0.2,
+        "y": 0.2,
+        "w": 0.6,
+        "h": 0.6
+      },
+      "area": 0.24,
+      "confidence": null,
+      "naming": {
+        "text": "the lit interior",
+        "source": "prompt",
+        "epistemic_status": "interpretive",
+        "confidence": 0.71
+      },
+      "region_id": null,
+      "geometry_rev": null
+    },
+    {
+      "instance_id": "inst_2",
+      "mask_rle": null,
+      "box": {
+        "x": 0.05,
+        "y": 0.6,
+        "w": 0.2,
+        "h": 0.3
+      },
+      "area": 0.06,
+      "confidence": null,
+      "naming": null,
+      "region_id": null,
+      "geometry_rev": null
+    }
+  ],
+  "dropped_below_min_area": 1,
+  "duplicates": [],
+  "comparison": null
+}

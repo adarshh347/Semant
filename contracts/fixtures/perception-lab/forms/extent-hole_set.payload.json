@@ -1,0 +1,33 @@
+{
+  "variant": "extent_hole_set",
+  "candidates_examined": 3,
+  "holes": [
+    {
+      "hole_id": "hole_1",
+      "outer": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_1"
+      },
+      "enclosed": true,
+      "mask_rle": {
+        "size": [8, 8],
+        "counts": [27, 2, 6, 2, 27]
+      },
+      "rings": [
+        {
+          "ring_id": "ring_void",
+          "winding": "inner",
+          "points": [
+            [0.4, 0.4],
+            [0.6, 0.4],
+            [0.6, 0.6],
+            [0.4, 0.6]
+          ],
+          "closed": true,
+          "length": null
+        }
+      ],
+      "area": 0.04
+    }
+  ]
+}

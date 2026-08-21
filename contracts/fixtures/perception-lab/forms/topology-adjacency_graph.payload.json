@@ -1,0 +1,77 @@
+{
+  "variant": "topology_adjacency_graph",
+  "pairs_examined": 6,
+  "nodes": [
+    {
+      "node_id": "pier_1",
+      "endpoint": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_pier_1",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      }
+    },
+    {
+      "node_id": "pier_2",
+      "endpoint": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_pier_2",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      }
+    },
+    {
+      "node_id": "pier_3",
+      "endpoint": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_pier_3",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      }
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "edge_1_2",
+      "source_node_id": "pier_1",
+      "target_node_id": "pier_2",
+      "kind": "meets",
+      "directed": false,
+      "basis": "mask",
+      "epistemic_status": "measured",
+      "measurements": {
+        "contact_pixels": 214.0
+      },
+      "locus_artifact_id": "art_locus_1"
+    },
+    {
+      "edge_id": "edge_2_3",
+      "source_node_id": "pier_2",
+      "target_node_id": "pier_3",
+      "kind": "meets",
+      "directed": false,
+      "basis": "mask",
+      "epistemic_status": "measured",
+      "measurements": {
+        "contact_pixels": 209.0
+      },
+      "locus_artifact_id": null
+    },
+    {
+      "edge_id": "edge_1_3",
+      "source_node_id": "pier_1",
+      "target_node_id": "pier_3",
+      "kind": "disjoint",
+      "directed": false,
+      "basis": "mask",
+      "epistemic_status": "measured",
+      "measurements": {
+        "separation": 0.22
+      },
+      "locus_artifact_id": null
+    }
+  ]
+}

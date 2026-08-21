@@ -1,0 +1,52 @@
+{
+  "variant": "extent_partition",
+  "cells_partitioned": 64,
+  "of": {
+    "artifact_id": "art_extent_1",
+    "instance_id": "inst_1"
+  },
+  "regions": [
+    {
+      "part": "visible",
+      "epistemic_status": "measured",
+      "coverage": 0.55,
+      "mask_rle": {
+        "size": [8, 8],
+        "counts": [10, 4, 4, 4, 4, 4, 30]
+      },
+      "field": null
+    },
+    {
+      "part": "inferred",
+      "epistemic_status": "uncertain",
+      "coverage": 0.3,
+      "mask_rle": {
+        "size": [8, 8],
+        "counts": [27, 2, 6, 2, 27]
+      },
+      "field": null
+    },
+    {
+      "part": "unknown",
+      "epistemic_status": "uncertain",
+      "coverage": 0.15,
+      "mask_rle": null,
+      "field": {
+        "field_shape": [2, 2],
+        "coordinate_system": "mask_rle_hw",
+        "value_range": [0.0, 1.0],
+        "derivation": "manual_paint",
+        "calibration": {
+          "state": "nominal",
+          "method": null,
+          "reference": null,
+          "units": "ordered occupancy, comparable within this field and across none"
+        },
+        "data_ref": null,
+        "inline_values": [0.0, 0.4, 0.6, 1.0],
+        "statistics": {}
+      }
+    }
+  ],
+  "conditioned_on": "hyp_tree"
+}

@@ -1,0 +1,48 @@
+{
+  "variant": "extent_fusion_hypothesis",
+  "fragments_considered": 3,
+  "hypotheses": [
+    {
+      "hypothesis_id": "hyp_tree",
+      "members": [
+        {
+          "artifact_id": "art_fragments_1",
+          "instance_id": "frag_1"
+        },
+        {
+          "artifact_id": "art_fragments_1",
+          "instance_id": "frag_2"
+        },
+        {
+          "artifact_id": "art_fragments_1",
+          "instance_id": "frag_3"
+        }
+      ],
+      "grounds": [
+        {
+          "kind": "appearance_continuity",
+          "detail": "the three patches share a hue and a texture the fence does not",
+          "cites": [],
+          "strength": 0.7
+        },
+        {
+          "kind": "shape_continuity",
+          "detail": "the severed edges meet the fence rails at the angle they leave them",
+          "cites": [],
+          "strength": 0.8
+        },
+        {
+          "kind": "occlusion_hypothesis",
+          "detail": "the fence is in front, so the gaps are where it is, not where the tree is not",
+          "cites": [],
+          "strength": null
+        }
+      ],
+      "partition": "inferred_completion",
+      "epistemic_status": "uncertain",
+      "weight": 0.62,
+      "asserts_hidden_extent": true
+    }
+  ],
+  "alternatives_retained": true
+}
