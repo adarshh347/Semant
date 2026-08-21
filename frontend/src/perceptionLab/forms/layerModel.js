@@ -203,7 +203,15 @@ export function assertLayer(l) {
             throw new Error(`${at} is absent and carries a drawing. It is one or the other`);
         }
     }
-    if (l.evidence === 'hypothetical' && !l.hypothesis_id) {
+    // A HYPOTHESIS MUST BE NAMEABLE, because the point of drawing one is that a person can accept
+    // it, reject it, or tell it from its rivals — and none of those is possible for a shape with
+    // no id.
+    //
+    // The `unknown` part of a partition is the one exception, and it is a real distinction rather
+    // than a let-out. `unknown` does not compete with anything: it is the region whose status was
+    // not determined, and there is no rival reading to choose it over. It still gets the dotted
+    // treatment, because it is still not something that was seen.
+    if (l.evidence === 'hypothetical' && !l.hypothesis_id && l.part !== 'unknown') {
         throw new Error(`${at} is a hypothesis and names no hypothesis_id. An alternative that `
             + 'cannot be named cannot be accepted, rejected, or told from its rivals');
     }

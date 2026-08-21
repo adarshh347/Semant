@@ -295,16 +295,43 @@ export const SCENARIOS = Object.freeze(Object.fromEntries(
         const scenarios = { contract: payload, empty: emptied(payload) };
         if (DENSE_COUNT[key]) scenarios.dense = densify(payload, DENSE_COUNT[key]);
         if (HAS_FIELD.has(key)) scenarios.withheld = withheld(payload);
+        if (key === 'topology.negative_space_field') scenarios.resolvable = resolvableFigures(payload);
         return [key, Object.freeze(scenarios)];
     })));
 
+/**
+ * The negative-space payload, pointed at figures this fixture set can actually resolve.
+ *
+ * WHY THIS SCENARIO HAD TO BE INVENTED, which is a finding rather than a convenience. The
+ * `negative_space_field` variant has no inline-values escape hatch: the field lives behind
+ * `field_ref` and nowhere else. So its declared `scalar_wash` projection is UNDRAWABLE by any
+ * runtime that cannot fetch that ref, which this one cannot — the committed payload's wash view
+ * is permanently absent, correctly and uselessly.
+ *
+ * The only honest picture available is the one Lane E's `deriveNegativeSpaceField` already
+ * computes: a distance transform run in this browser over the figure masks, truncated at the same
+ * `max_distance_used` the record declared, and stamped `derived`. That needs figures the set can
+ * resolve, and the committed payload names two buildings it cannot. So this scenario renames them
+ * to the two instances `extent.hard_mask` does carry — and every layer it produces is `derived`,
+ * beside the measured one that is still absent. That side-by-side IS the demonstration.
+ */
+function resolvableFigures(payload) {
+    const out = clone(payload);
+    out.figure_instance_ids = ['inst_1', 'inst_2'];
+    out.field_shape = [8, 8];
+    return out;
+}
+
 /** The scenario keys a form offers, in a fixed order, for the picker and for the tests. */
-export const ORDER = Object.freeze(['contract', 'empty', 'dense', 'withheld']);
+export const ORDER = Object.freeze(['contract', 'resolvable', 'empty', 'dense', 'withheld']);
 export const scenariosFor = (formKey) => ORDER.filter((k) => SCENARIOS[formKey]?.[k]);
 export const payloadFor = (formKey, scenario = 'contract') => SCENARIOS[formKey]?.[scenario] ?? null;
 
 export const SCENARIO_NOTE = Object.freeze({
     contract: 'the payload committed at contracts/fixtures/perception-lab/forms/, unchanged',
+    resolvable: 'the same record, pointed at the two instances this fixture set carries geometry '
+        + 'for, so the browser-derived field can be computed and shown beside the measured one '
+        + 'that is not on this page',
     empty: 'the collection emptied and the examination counter kept — this form looked and found '
         + 'nothing, which is a measurement and not a failure',
     dense: 'enough members to break a layout that was only tested with two',
