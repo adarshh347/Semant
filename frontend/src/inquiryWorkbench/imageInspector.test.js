@@ -136,6 +136,26 @@ describe('citations are read, never inferred', () => {
         expect(rot).toContain('rdb_2');
     });
 
+    it('counts one object naming the same image twice as one citation', () => {
+        // The count is the first thing a reader trusts. A producer emitting `['a', 'a']` would
+        // otherwise report two citing objects where there is one — and this is not inference, it
+        // is refusing to count a thing twice for being named twice.
+        const f = dissolvedFixture();
+        f.graph.source_units[2].image_refs = ['post_altes_front', 'post_altes_front'];
+        const cited = entry(load(f), 'post_altes_front').citations;
+        expect(cited.source_units.filter((c) => c.id === 'su_3')).toHaveLength(1);
+    });
+
+    it('still counts the same object under each DIFFERENT image it names', () => {
+        // The dedup is per (image, surface, object) — not per object. `rdb_2` names two images
+        // and must appear under both.
+        const session = load(dissolvedFixture());
+        expect(entry(session, 'post_altes_front').citations.reading_blocks
+            .filter((c) => c.id === 'rdb_2')).toHaveLength(1);
+        expect(entry(session, 'post_altes_rotunda').citations.reading_blocks
+            .filter((c) => c.id === 'rdb_2')).toHaveLength(1);
+    });
+
     it('counts nothing twice within one surface', () => {
         const cited = entry(load(dissolvedFixture()), 'post_altes_front').citations;
         for (const surface of CITATION_SURFACES) {

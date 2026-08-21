@@ -109,6 +109,20 @@ describe('opening a reference', () => {
         expect(front().getAttribute('aria-pressed')).toBe('true');
     });
 
+    it('closes when the open reference is clicked again', async () => {
+        // It carries `aria-pressed`, so it says it is a toggle. A control that says that and then
+        // does not un-press has told a screen reader something untrue about the next click.
+        await mountLedger(dissolvedFixture());
+        await click($('[data-artifact="posts"] .iw-expand'));
+        const chip = () => $('button[data-image-ref="post_altes_front"]');
+        await click(chip());
+        expect(panel()).not.toBe(null);
+        expect(chip().getAttribute('title')).toContain('Close');
+        await click(chip());
+        expect(panel()).toBe(null);
+        expect(chip().getAttribute('aria-pressed')).toBe('false');
+    });
+
     it('switches to another reference without closing', async () => {
         await mountLedger(dissolvedFixture());
         await click($('[data-artifact="posts"] .iw-expand'));

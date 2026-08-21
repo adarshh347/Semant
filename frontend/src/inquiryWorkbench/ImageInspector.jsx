@@ -93,14 +93,18 @@ export function ImageRef({ refId, children = null, className = '', title = '' })
     if (!ctx || !ref) {
         return <span className={`iw-imgref is-inert ${className}`.trim()}>{body}</span>;
     }
+    const open = ctx.openRef === ref;
     return (
         <button
             type="button"
             className={`iw-imgref ${className}`.trim()}
             data-image-ref={ref}
-            aria-pressed={ctx.openRef === ref}
-            title={title || `What rests on ${ref}`}
-            onClick={() => ctx.inspect(ref)}
+            // A TOGGLE, because it says it is one. `aria-pressed` on a control that never
+            // un-presses tells a screen reader the second click will close this and then does
+            // not — so the second click closes it.
+            aria-pressed={open}
+            title={open ? `Close ${ref}` : (title || `What rests on ${ref}`)}
+            onClick={() => (open ? ctx.close() : ctx.inspect(ref))}
         >
             {body}
         </button>
@@ -113,7 +117,7 @@ export function ImageRefList({ refs = [], className = '' }) {
     return (
         <span className={`iw-imgref-list ${className}`.trim()}>
             {refs.map((r, i) => (
-                <React.Fragment key={r}>
+                <React.Fragment key={`${r}-${i}`}>
                     {i ? ', ' : ''}
                     <ImageRef refId={r} />
                 </React.Fragment>

@@ -141,9 +141,17 @@ export function countCitations(citations) {
  */
 export function citationIndex(session) {
     const index = new Map();
+    // ONE OBJECT DECLARING THE SAME IMAGE TWICE IS ONE CITATION. A producer that emitted
+    // `image_refs: ['a', 'a']` would otherwise make this panel report two citing objects where
+    // there is one — and the count is the first thing a reader trusts. Deduplicating on the
+    // OBJECT is not inference: it is refusing to count a thing twice for being named twice.
+    const seen = new Set();
     const add = (ref, surface, entry) => {
         const key = String(ref || '');
         if (!key) return;
+        const once = `${key}\u0000${surface}\u0000${entry.id}`;
+        if (seen.has(once)) return;
+        seen.add(once);
         if (!index.has(key)) index.set(key, emptyCitations());
         index.get(key)[surface].push(entry);
     };
@@ -188,6 +196,8 @@ export function citationIndex(session) {
  * `post_id` first, `image_ref` second, and nothing else — no prefix stripping, no case folding, no
  * "ends with" match. A near-miss resolved by a fuzzy rule would show a person one picture while
  * the run reasoned about another, which is the single worst thing this panel could do.
+ *
+ * Takes a session OR an already-built catalogue, so a caller holding one does not rebuild it.
  */
 export function resolveRef(session, ref) {
     const key = String(ref || '');
