@@ -696,10 +696,24 @@ def test_the_fixtures_cover_every_execution_identity():
     assert identities == {m.value for m in S.ExecutionIdentity}
 
 
-def test_the_fixtures_cover_every_payload_variant():
+def test_the_fixtures_cover_every_variant_a_producer_may_write():
+    """Every variant that CAN be written has a committed example; the deferred ones cannot.
+
+    PERCEPTUAL-FORMS-001A widened `payload_variants` from four to twenty, and the corpus is not
+    expected to cover the nine `deferred` forms — an artifact declaring one does not validate, so
+    a fixture of it could not exist. The set this asserts against is therefore what the form
+    registry says is producible, which is the same test with the registry's own answer in it.
+    """
     variants = {_fixture(n)["measurement"]["payload_variant"]
                 for n in MANIFEST["records"]["PerceptualArtifact"]}
-    assert variants == set(C["closed_sets"]["payload_variants"])
+    enabled = {f["payload_variant"] for f in C["perceptual_forms"] if f["state"] == "enabled"}
+    assert enabled <= variants, (
+        f"no committed fixture for {sorted(enabled - variants)}. A form a producer writes today "
+        f"and no example anywhere is a shape two lanes will implement differently.")
+    deferred = {f["payload_variant"] for f in C["perceptual_forms"] if f["state"] == "deferred"}
+    assert not (variants & deferred), (
+        f"a fixture claims the deferred form(s) {sorted(variants & deferred)}, which nothing in "
+        f"this phase produces")
 
 
 def test_the_fixtures_cover_every_planner_identity():

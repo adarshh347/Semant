@@ -58,6 +58,20 @@ ENFORCED_LAWS: Tuple[str, ...] = (
     "empty_is_not_refused_is_not_unavailable",
     "references_resolve_through_ids",
     "an_instance_is_named_with_its_artifact",
+    # PERCEPTUAL-FORMS-001A — the form grammar
+    "forms_and_operations_are_two_registries",
+    "every_form_declares_what_it_needs",
+    "form_state_gates_what_may_be_written",
+    "partition_caps_the_status_independently_of_basis",
+    "inference_is_never_visible",
+    "a_form_is_never_its_renderer",
+    "every_form_can_say_it_looked",
+    "grouping_is_not_fusion",
+    "a_hypothesis_is_not_curated_by_confidence",
+    "a_transition_cites_both_revisions",
+    "a_conditional_relation_keeps_its_condition",
+    "a_pointed_at_raster_carries_its_digest",
+    "old_records_remain_readable",
 )
 
 
@@ -524,6 +538,274 @@ def check_capability(op_key: str, *, adapter: Optional[str],
         detail={"adapters": list(candidates)})
 
 
+# ── PERCEPTUAL-FORMS-001A: the form registry, and its two gates ──────────────
+#
+# A FORM IS WHAT WAS PERCEIVED. AN OPERATION IS WHAT WAS ASKED FOR. Two registries, because they
+# have different arities in both directions: one operation may produce several forms, several
+# operations may produce one form, and — the case this phase depends on — a form may be registered
+# with NO operation producing it, so that a payload shape can be frozen and reviewed a phase
+# before anything computes it.
+#
+# THE TWO GATES ARE SEPARATE FUNCTIONS for the same reason the other four are: they refuse for two
+# different reasons and a person needs to be told which.
+#
+#     check_input_forms       the artifact resolved; it is the wrong ANSWER  → unsupported_form
+#     check_form_producible   the form is real, declared, and deferred       → form_not_producible
+
+
+@dataclass(frozen=True)
+class RendererProjection:
+    """One drawing a form supports, and whether the payload contains it.
+
+    `mode` is the whole point. `direct` means the record holds the shape and a reader draws what
+    was measured; `derived` means the reader must COMPUTE it, and therefore must stamp it as its
+    own work. A renderer is never the measurement, and this field is where a runtime finds out
+    which of the two it is holding.
+    """
+    kind: str
+    mode: str
+    note: str = ""
+
+    @property
+    def is_direct(self) -> bool:
+        return self.mode == "direct"
+
+
+@dataclass(frozen=True)
+class FormAbsence:
+    """What an empty answer in this form means, and the field that proves something looked."""
+    examined_field: str
+    empty_means: str
+    may_not_be_confused_with: Tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class FormDefinition:
+    """One canonical perceptual form — everything a runtime needs before it may write one."""
+    key: str
+    organ: str
+    label: str
+    question: str
+    state: str
+    artifact_kind: str
+    payload_variant: str
+    accepted_input_forms: Tuple[str, ...]
+    producer_classes: Tuple[str, ...]
+    admissible_bases: Tuple[str, ...]
+    admissible_partitions: Tuple[str, ...]
+    epistemic_ceiling: str
+    carries_hypothesis: bool
+    renderer_projections: Tuple[RendererProjection, ...]
+    manual_tools: Tuple[str, ...]
+    comparison_methods: Tuple[str, ...]
+    required_provenance: Tuple[str, ...]
+    absence: FormAbsence
+    test_obligations: Tuple[str, ...]
+    notes: Tuple[str, ...] = ()
+
+    @property
+    def producible(self) -> bool:
+        """`deferred` forms are designed and unwritable. That is not a bug; it is the state."""
+        return self.state != "deferred"
+
+    @property
+    def promotable(self) -> bool:
+        """Only an `enabled` form may leave the laboratory."""
+        return self.state == "enabled"
+
+    def projection(self, kind: str) -> Optional[RendererProjection]:
+        return next((p for p in self.renderer_projections if p.kind == kind), None)
+
+    def accepts(self, form_key: str) -> bool:
+        return form_key in self.accepted_input_forms
+
+
+class UnknownForm(KeyError):
+    """A form key nobody registered. There is no fallback form."""
+
+
+def _form(raw: Mapping[str, Any]) -> FormDefinition:
+    absence = raw["absence"]
+    return FormDefinition(
+        key=str(raw["key"]), organ=str(raw["organ"]), label=str(raw["label"]),
+        question=str(raw["question"]), state=str(raw["state"]),
+        artifact_kind=str(raw["artifact_kind"]), payload_variant=str(raw["payload_variant"]),
+        accepted_input_forms=tuple(str(v) for v in raw.get("accepted_input_forms", ())),
+        producer_classes=tuple(str(v) for v in raw["producer_classes"]),
+        admissible_bases=tuple(str(v) for v in raw["admissible_bases"]),
+        admissible_partitions=tuple(str(v) for v in raw["admissible_partitions"]),
+        epistemic_ceiling=str(raw["epistemic_ceiling"]),
+        carries_hypothesis=bool(raw["carries_hypothesis"]),
+        renderer_projections=tuple(
+            RendererProjection(kind=str(p["kind"]), mode=str(p["mode"]), note=str(p.get("note", "")))
+            for p in raw["renderer_projections"]),
+        manual_tools=tuple(str(v) for v in raw.get("manual_tools", ())),
+        comparison_methods=tuple(str(v) for v in raw.get("comparison_methods", ())),
+        required_provenance=tuple(str(v) for v in raw["required_provenance"]),
+        absence=FormAbsence(
+            examined_field=str(absence["examined_field"]),
+            empty_means=str(absence["empty_means"]),
+            may_not_be_confused_with=tuple(
+                str(v) for v in absence.get("may_not_be_confused_with", ()))),
+        test_obligations=tuple(str(v) for v in raw["test_obligations"]),
+        notes=tuple(str(v) for v in raw.get("notes", ())))
+
+
+@lru_cache(maxsize=None)
+def _form_registry() -> Dict[str, FormDefinition]:
+    out: Dict[str, FormDefinition] = {}
+    for raw in lab_contract()["perceptual_forms"]:
+        definition = _form(raw)
+        if definition.key in out:
+            raise ContractError(f"form {definition.key!r} is declared twice")
+        if not definition.producer_classes:
+            raise ContractError(
+                f"form {definition.key!r} declares no producer class. A form nothing could ever "
+                f"write is a word in a registry.")
+        if not definition.renderer_projections:
+            raise ContractError(
+                f"form {definition.key!r} declares no renderer projection. A measurement nobody "
+                f"can look at cannot be reviewed, and an unreviewable measurement is a rumour.")
+        if not definition.test_obligations:
+            raise ContractError(
+                f"form {definition.key!r} declares no test obligation. A law nothing fails on is "
+                f"a comment.")
+        out[definition.key] = definition
+    for definition in out.values():
+        for accepted in definition.accepted_input_forms:
+            if accepted not in out:
+                raise ContractError(
+                    f"form {definition.key!r} accepts {accepted!r}, which is not a registered "
+                    f"form.")
+    return out
+
+
+def forms() -> Mapping[str, FormDefinition]:
+    """All nineteen, in contract order. Nine of them are registered and deferred."""
+    return _form_registry()
+
+
+def form(key: str) -> FormDefinition:
+    """FAIL CLOSED. An unknown key raises rather than returning a stub, for the same reason
+    `operation()` does: a caller that got an object back might render a control for it."""
+    try:
+        return _form_registry()[str(key)]
+    except KeyError:
+        raise UnknownForm(
+            f"{key!r} is not a registered perceptual form. The nineteen are "
+            f"{sorted(_form_registry())}, and there is no fallback.") from None
+
+
+def forms_for(family: str) -> Tuple[FormDefinition, ...]:
+    """Every form of one organ, deferred ones included — they are the point of the registry."""
+    organ(family)                       # raises UnknownOrgan on a family nobody registered
+    return tuple(f for f in _form_registry().values() if f.organ == family)
+
+
+def producible_forms() -> Tuple[FormDefinition, ...]:
+    return tuple(f for f in _form_registry().values() if f.producible)
+
+
+def form_for_artifact_kind(kind: str) -> Optional[FormDefinition]:
+    """The form a kind carries, or None for `refusal` and `depth_field`, which carry none."""
+    return next((f for f in _form_registry().values() if f.artifact_kind == str(kind)), None)
+
+
+#: How the four obtainable statuses order, read from the records module's single declaration
+#: rather than retyped. A second ordering here would be a second chance to disagree.
+def _rank(status: str) -> int:
+    from backend.schemas.perception_lab import STATUS_ORDER, EpistemicStatus  # local: cycle
+    return STATUS_ORDER[EpistemicStatus(status)]
+
+
+def derived_ceiling(form_key: str, *, basis: str, partition: str,
+                    input_statuses: Sequence[str] = ()) -> str:
+    """The strongest status a claim in this form may carry, given everything that caps it.
+
+    THREE CAPS, AND THE THIRD IS WHY THIS FUNCTION EXISTS. The basis ceiling and the partition
+    ceiling are both properties of the record and are enforced by the schema. The third — that an
+    `exact_derivation` is never stronger than the weakest artifact it derived FROM — needs the
+    inputs in hand, which a validator looking at one record does not have. So the composing
+    runtime asks here, and records the answer.
+
+    Passing no input statuses is not the same as passing strong ones: it means the caller is not
+    composing, and only the two record-local ceilings apply.
+    """
+    definition = form(form_key)
+    if basis not in definition.admissible_bases:
+        raise ContractError(
+            f"form {form_key!r} is measured from {list(definition.admissible_bases)}, not from "
+            f"{basis!r}")
+    if partition not in definition.admissible_partitions:
+        raise ContractError(
+            f"form {form_key!r} admits the partitions {list(definition.admissible_partitions)}, "
+            f"not {partition!r}")
+    grammar = lab_contract()["form_grammar"]
+    caps = [lab_contract()["epistemics"]["basis_ceilings"][basis],
+            grammar["epistemic_partitions"]["ceilings"][partition],
+            definition.epistemic_ceiling]
+    if partition in ("exact_derivation", "interpretive_grouping"):
+        caps.extend(input_statuses)
+    return min(caps, key=_rank)
+
+
+# ── gate 5: the input form ───────────────────────────────────────────────────
+
+
+def check_input_forms(form_key: str, supplied: Sequence[str], *,
+                      operation_key: Optional[str] = None) -> Optional[RefusalRecord]:
+    """Refuse a supplied artifact whose FORM the consuming form does not read.
+
+    This is not `unknown_reference`. The artifact resolved perfectly well — it is simply the wrong
+    kind of answer, and telling a person "no such artifact" when what they supplied was a soft
+    field where a hard mask was wanted would send them looking for a selection bug that is not
+    there.
+
+    A form that accepts nothing accepts nothing: it is a direct measurement of the image, and
+    handing it an artifact is a request nobody can satisfy.
+    """
+    definition = form(form_key)
+    wrong = [s for s in supplied if not definition.accepts(str(s))]
+    if not wrong:
+        return None
+    return RefusalRecord(
+        code=RefusalCode.UNSUPPORTED_FORM, organ=OrganFamily(definition.organ),
+        operation=operation_key,
+        message=_message("unsupported_form",
+                         operation=operation_key or definition.key,
+                         form=", ".join(str(w) for w in wrong),
+                         accepted=", ".join(definition.accepted_input_forms) or "no artifact"),
+        missing=list(definition.accepted_input_forms),
+        remedy="supply one of the declared input forms, or ask the question the supplied form "
+               "can answer",
+        detail={"form": definition.key, "supplied": [str(w) for w in wrong],
+                "accepted": list(definition.accepted_input_forms)})
+
+
+# ── gate 6: may this form be written at all ──────────────────────────────────
+
+
+def check_form_producible(form_key: str, *,
+                          operation_key: Optional[str] = None) -> Optional[RefusalRecord]:
+    """Refuse an attempt to WRITE a form that is registered and deferred.
+
+    The same discipline `depth_field` is held to. A payload shape agreed in advance is what stops
+    the lane that finally implements fog from inventing its own field record; a state that let it
+    be written today would make the registry claim the laboratory can already see something it
+    cannot.
+    """
+    definition = form(form_key)
+    if definition.producible:
+        return None
+    return RefusalRecord(
+        code=RefusalCode.FORM_NOT_PRODUCIBLE, organ=OrganFamily(definition.organ),
+        operation=operation_key,
+        message=_message("form_not_producible", form=definition.key),
+        missing=[definition.key],
+        remedy="wait for the phase that enables it, or produce a form that exists",
+        detail={"form": definition.key, "state": definition.state})
+
+
 # ── messages ─────────────────────────────────────────────────────────────────
 
 
@@ -545,4 +827,8 @@ __all__ = [
     "organs", "operations", "organ", "operation", "enabled_organs", "is_enabled",
     "producible_artifact_kinds", "operations_for", "check_organ_lock", "resolve_parameters",
     "check_inputs", "check_capability",
+    # PERCEPTUAL-FORMS-001A
+    "UnknownForm", "RendererProjection", "FormAbsence", "FormDefinition", "forms", "form",
+    "forms_for", "producible_forms", "form_for_artifact_kind", "derived_ceiling",
+    "check_input_forms", "check_form_producible",
 ]

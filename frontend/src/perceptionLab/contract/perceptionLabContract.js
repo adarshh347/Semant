@@ -69,6 +69,22 @@ export const PROJECTION_HINT_KEYS = set('projection_hint_keys');
 export const MANUAL_TOOL_KINDS = set('manual_tool_kinds');
 export const RELATION_KINDS = set('relation_kinds');
 
+// PERCEPTUAL-FORMS-001A — the perceptual-form grammar. A form is what was PERCEIVED; an operation
+// is what was ASKED FOR, and the two registries have different arities in both directions. Nine of
+// the nineteen forms are `deferred`: designed, validated, and unwritable.
+export const PERCEPTUAL_FORMS = set('perceptual_forms');
+export const FORM_STATES = set('form_states');
+export const PRODUCER_CLASSES = set('producer_classes');
+export const EPISTEMIC_PARTITIONS = set('epistemic_partitions');
+export const RENDERER_MODES = set('renderer_modes');
+export const COMPARISON_METHODS = set('comparison_methods');
+export const FIELD_DERIVATIONS = set('field_derivations');
+export const CALIBRATION_STATES = set('calibration_states');
+export const GROUND_KINDS = set('ground_kinds');
+export const RING_WINDINGS = set('ring_windings');
+export const PARTITION_PARTS = set('partition_parts');
+export const TRANSITION_CHANGES = set('transition_changes');
+
 export const BASIS_CEILINGS = Object.freeze({ ...CONTRACT.epistemics.basis_ceilings });
 export const REFUSALS = Object.freeze({ ...CONTRACT.refusals });
 export const ABSENCE_SEMANTICS = Object.freeze(CONTRACT.absence_semantics);
@@ -102,6 +118,20 @@ export const ENFORCED_LAWS = Object.freeze([
     'empty_is_not_refused_is_not_unavailable',
     'references_resolve_through_ids',
     'an_instance_is_named_with_its_artifact',
+    // PERCEPTUAL-FORMS-001A — the form grammar
+    'forms_and_operations_are_two_registries',
+    'every_form_declares_what_it_needs',
+    'form_state_gates_what_may_be_written',
+    'partition_caps_the_status_independently_of_basis',
+    'inference_is_never_visible',
+    'a_form_is_never_its_renderer',
+    'every_form_can_say_it_looked',
+    'grouping_is_not_fusion',
+    'a_hypothesis_is_not_curated_by_confidence',
+    'a_transition_cites_both_revisions',
+    'a_conditional_relation_keeps_its_condition',
+    'a_pointed_at_raster_carries_its_digest',
+    'old_records_remain_readable',
 ]);
 
 // ── the registry ────────────────────────────────────────────────────────────
@@ -144,6 +174,122 @@ export const operationsFor = (family) => organ(family).operations || [];
 export function producibleArtifactKinds() {
     return Object.freeze([...new Set(
         enabledOrgans().flatMap((o) => o.produces_artifact_kinds || []))]);
+}
+
+// ── PERCEPTUAL-FORMS-001A: the form registry ────────────────────────────────
+
+const FORMS_BY_KEY = Object.freeze(Object.fromEntries(
+    CONTRACT.perceptual_forms.map((f) => [f.key, Object.freeze(f)])));
+
+/** `{artifact_kind: form}` for the three kinds that predate the grammar. */
+const LEGACY_FORM_FOR_KIND = Object.freeze({
+    ...CONTRACT.form_grammar.compatibility.legacy_form_for_kind,
+});
+
+export const FORMS = FORMS_BY_KEY;
+export const PARTITION_CEILINGS = Object.freeze({
+    ...CONTRACT.form_grammar.epistemic_partitions.ceilings,
+});
+export const FORM_GRAMMAR = Object.freeze(CONTRACT.form_grammar);
+
+/** FAIL CLOSED, exactly as `operation()` does. A caller handed a stub might render a control. */
+export function form(key) {
+    const found = FORMS_BY_KEY[key];
+    if (!found) {
+        throw new Error(
+            `"${key}" is not a registered perceptual form. The nineteen are `
+            + `${PERCEPTUAL_FORMS.join(', ')}, and there is no fallback.`);
+    }
+    return found;
+}
+
+export const formsFor = (family) => CONTRACT.perceptual_forms.filter((f) => f.organ === family);
+export const producibleForms = () => CONTRACT.perceptual_forms.filter(
+    (f) => f.state !== 'deferred');
+export const isFormProducible = (key) => form(key).state !== 'deferred';
+export const isFormPromotable = (key) => form(key).state === 'enabled';
+export const formForArtifactKind = (kind) => CONTRACT.perceptual_forms.find(
+    (f) => f.artifact_kind === kind) || null;
+
+/**
+ * The form an artifact is in, whether or not it says so.
+ *
+ * A record written before this grammar existed carries no `identity.form`, and it still means
+ * exactly what it meant — `legacy_form_for_kind` is the table that says which form that is. This
+ * is the ONE place that lookup happens in this runtime, so "old records remain readable" is a
+ * line rather than a convention repeated in six components. Returns null for a `refusal`, which
+ * is the record of a question NOT answered and is therefore in no perceptual form at all.
+ */
+export function effectiveForm(artifact) {
+    const declared = artifact?.identity?.form;
+    if (declared) return declared;
+    return LEGACY_FORM_FOR_KIND[artifact?.identity?.artifact_kind] ?? null;
+}
+
+const STATUS_ORDER = Object.freeze({ uncertain: 0, interpretive: 1, visible: 2, measured: 3 });
+
+/**
+ * The strongest status a claim in this form may carry, given everything that caps it.
+ *
+ * THREE CAPS, AND THE THIRD IS WHY THIS EXISTS. The basis ceiling and the partition ceiling are
+ * properties of one record and are checked by `validateArtifact`. The third — that a derivation is
+ * never stronger than the weakest artifact it derived FROM — needs the inputs in hand, which a
+ * validator looking at one record does not have. Passing no input statuses is not the same as
+ * passing strong ones: it means the caller is not composing.
+ */
+export function derivedCeiling(formKey, { basis, partition, inputStatuses = [] }) {
+    const declaration = form(formKey);
+    const caps = [BASIS_CEILINGS[basis], PARTITION_CEILINGS[partition],
+        declaration.epistemic_ceiling];
+    if (partition === 'exact_derivation' || partition === 'interpretive_grouping') {
+        caps.push(...inputStatuses);
+    }
+    return caps.reduce((weakest, c) => (STATUS_ORDER[c] < STATUS_ORDER[weakest] ? c : weakest));
+}
+
+// ── gate 5: the input form ──────────────────────────────────────────────────
+
+/**
+ * Refuse a supplied artifact whose FORM the consuming form does not read.
+ *
+ * This is NOT `unknown_reference`. The artifact resolved perfectly well; it is the wrong kind of
+ * answer. Telling a person "no such artifact" when they supplied a soft field where a hard mask
+ * was wanted sends them looking for a selection bug that is not there.
+ */
+export function checkInputForms(formKey, supplied = [], { operation: opKey = null } = {}) {
+    const declaration = form(formKey);
+    const accepted = declaration.accepted_input_forms || [];
+    const wrong = supplied.filter((s) => !accepted.includes(s));
+    if (!wrong.length) return null;
+    return refusal('unsupported_form', {
+        organ: declaration.organ,
+        operation: opKey,
+        message: message('unsupported_form', {
+            operation: opKey || declaration.key,
+            form: wrong.join(', '),
+            accepted: accepted.join(', ') || 'no artifact',
+        }),
+        missing: [...accepted],
+        remedy: 'supply one of the declared input forms, or ask the question the supplied form '
+            + 'can answer',
+        detail: { form: declaration.key, supplied: wrong, accepted: [...accepted] },
+    });
+}
+
+// ── gate 6: may this form be written at all ─────────────────────────────────
+
+/** Refuse an attempt to WRITE a form that is registered and deferred. */
+export function checkFormProducible(formKey, { operation: opKey = null } = {}) {
+    const declaration = form(formKey);
+    if (declaration.state !== 'deferred') return null;
+    return refusal('form_not_producible', {
+        organ: declaration.organ,
+        operation: opKey,
+        message: message('form_not_producible', { form: declaration.key }),
+        missing: [declaration.key],
+        remedy: 'wait for the phase that enables it, or produce a form that exists',
+        detail: { form: declaration.key, state: declaration.state },
+    });
 }
 
 // ── messages ────────────────────────────────────────────────────────────────
@@ -397,8 +543,24 @@ export function readPath(record, path) {
 }
 
 /** Which declared paths a record is missing. Empty means the backend still speaks this contract. */
+/**
+ * The paths this record type's UI reads and must be able to find ABSENT.
+ *
+ * PERCEPTUAL-FORMS-001A. `identity.form` and `measurement.partition` are read by the Lab and are
+ * optional on the wire: a record written before the form grammar existed carries neither key, and
+ * it is still a record that has to render. Declaring the two facts separately is what lets every
+ * fixture committed before this phase stay byte-identical instead of being back-filled with nulls
+ * to satisfy a test — and deleting either field still breaks parity, because they remain consumed.
+ */
+export function optionalConsumedFields(recordType) {
+    const declared = CONTRACT.form_grammar.compatibility.frontend_optional_fields || {};
+    return Object.freeze([...(declared[recordType] || [])]);
+}
+
 export function missingConsumedFields(recordType, record) {
-    return consumedFields(recordType).filter((p) => readPath(record, p) === undefined);
+    const optional = new Set(optionalConsumedFields(recordType));
+    return consumedFields(recordType).filter(
+        (p) => !optional.has(p) && readPath(record, p) === undefined);
 }
 
 // ── validators: the same laws, said in JavaScript ───────────────────────────
@@ -565,6 +727,78 @@ export function validateArtifact(artifact) {
     if (!LIFECYCLE_STATES.includes(lifecycle.status)) {
         fail(out, `unknown lifecycle state "${lifecycle.status}"`);
     }
+
+    // ── PERCEPTUAL-FORMS-001A ──────────────────────────────────────────────
+    //
+    // Everything below runs only once a form is in play. A `refusal` has none — it is the record
+    // of a question NOT answered — so `effectiveForm` returns null for it and these are skipped.
+    if (identity.form && !PERCEPTUAL_FORMS.includes(identity.form)) {
+        fail(out, `unknown perceptual form "${identity.form}"`);
+    } else {
+        const formKey = effectiveForm(artifact);
+        if (!identity.form && identity.artifact_kind !== 'refusal' && !formKey) {
+            fail(out, `an artifact of kind "${identity.artifact_kind}" must declare its `
+                + 'identity.form; only the three kinds that predate the form grammar may omit it');
+        }
+        const declaration = formKey ? FORMS_BY_KEY[formKey] : null;
+        if (declaration) {
+            if (identity.form && declaration.artifact_kind !== identity.artifact_kind) {
+                fail(out, `form "${formKey}" is carried by artifact kind `
+                    + `"${declaration.artifact_kind}", not "${identity.artifact_kind}"`);
+            }
+            if (identity.form && declaration.organ !== identity.organ_family) {
+                fail(out, `form "${formKey}" belongs to the ${declaration.organ} organ`);
+            }
+            if (declaration.state === 'deferred') {
+                fail(out, `${formKey} is registered and deferred; nothing in this phase writes one`);
+            }
+            if (declaration.state === 'experimental' && lifecycle.status === 'promoted') {
+                fail(out, `${formKey} is experimental and may be kept inside the laboratory, `
+                    + 'never promoted into Semant');
+            }
+            if (declaration.carries_hypothesis
+                && (lifecycle.status === 'kept' || lifecycle.status === 'promoted')) {
+                fail(out, `${formKey} carries a hypothesis and may not be ${lifecycle.status}; `
+                    + 'resolving it produces a new artifact of a resolved form');
+            }
+            if (!(declaration.admissible_bases || []).includes(measurement.epistemic_basis)) {
+                fail(out, `${formKey} is measured from `
+                    + `${(declaration.admissible_bases || []).join(', ')}, not from `
+                    + `"${measurement.epistemic_basis}"`);
+            }
+            if (STATUS_ORDER[measurement.epistemic_status]
+                > STATUS_ORDER[declaration.epistemic_ceiling]) {
+                fail(out, `the ${formKey} form reaches ${declaration.epistemic_ceiling}, not `
+                    + `${measurement.epistemic_status}`);
+            }
+            const drawable = (declaration.renderer_projections || []).map((p) => p.kind);
+            if (projection.projection_kind !== 'none'
+                && !drawable.includes(projection.projection_kind)) {
+                fail(out, `${formKey} declares the projections ${drawable.join(', ')}; `
+                    + `"${projection.projection_kind}" is not one of them, and a drawing nobody `
+                    + 'declared is a drawing nobody can say is faithful');
+            }
+        }
+    }
+    if (measurement.partition !== null && measurement.partition !== undefined) {
+        if (!EPISTEMIC_PARTITIONS.includes(measurement.partition)) {
+            fail(out, `unknown epistemic partition "${measurement.partition}"`);
+        } else {
+            const ceiling = PARTITION_CEILINGS[measurement.partition];
+            if (STATUS_ORDER[measurement.epistemic_status] > STATUS_ORDER[ceiling]) {
+                fail(out, `a ${measurement.partition} measurement may claim at most ${ceiling}, `
+                    + `not ${measurement.epistemic_status} — citing measured inputs does not `
+                    + 'raise it');
+            }
+            const derives = measurement.partition === 'exact_derivation'
+                || measurement.partition === 'interpretive_grouping';
+            if (derives && !(identity.input_refs || []).length) {
+                fail(out, `a ${measurement.partition} cites no input. It rests on records already `
+                    + 'made, and a record it cannot name is a record nobody can check it against');
+            }
+        }
+    }
+
     if ('review' in artifact || 'reviews' in artifact || 'verdict' in artifact) {
         fail(out, 'a verdict is a separate record — an artifact that carries one is an artifact '
             + 'whose measurement will be read as having been judged correct');

@@ -88,6 +88,28 @@ def operation_index() -> Dict[str, str]:
 
 
 @lru_cache(maxsize=None)
+def form_index() -> Dict[str, Dict[str, Any]]:
+    """`{form_key: declaration}` for the nineteen registered perceptual forms, in contract order.
+
+    Sits here rather than in `definitions.py` for the same reason `operation_index` does: the
+    record schemas need to ask "is this a real form, and what may it carry?" in order to fail
+    closed, and importing the typed registry would import the thing that imports them.
+    """
+    return {str(f["key"]): f for f in lab_contract()["perceptual_forms"]}
+
+
+@lru_cache(maxsize=None)
+def legacy_form_index() -> Dict[str, str]:
+    """`{artifact_kind: form_key}` for the three kinds that existed before the grammar did.
+
+    A record written before `identity.form` existed carries none, and it still means exactly what
+    it meant. This table is where that is written down, rather than guessed at in a validator.
+    """
+    declared = lab_contract()["form_grammar"]["compatibility"]["legacy_form_for_kind"]
+    return {str(k): str(v) for k, v in declared.items()}
+
+
+@lru_cache(maxsize=None)
 def closed_set(name: str) -> Tuple[str, ...]:
     """One closed set, as a tuple. Raises rather than returning () for an undeclared name."""
     sets = lab_contract()["closed_sets"]
