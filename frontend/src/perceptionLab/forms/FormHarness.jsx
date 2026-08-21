@@ -54,6 +54,7 @@ export default function FormHarness({ initialCase = 0 }) {
                                 key={scene.key}
                                 initialForm={scene.form}
                                 initialView={scene.view}
+                                initialScenario={scene.scenario ?? 'contract'}
                                 now={scene.at}
                             />
                         </div>

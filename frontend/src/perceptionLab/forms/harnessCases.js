@@ -60,6 +60,12 @@ export const HARNESS_CASES = Object.freeze([
         label: 'Negative space',
         form: 'topology.negative_space_field',
         view: 'wash',
+        // The `resolvable` scenario, because the committed one has BOTH layers absent — its
+        // field is behind a ref and its figures are not in the fixture set. That is an honest
+        // picture and a useless one to photograph; this scenario keeps the measured field absent
+        // and gives the browser figures it can actually run a distance transform over, so the
+        // pairing the view exists for is visible.
+        scenario: 'resolvable',
         at: '2026-08-22T00:00:00Z',
         why: 'the measured field absent because it lives behind a ref this page cannot read, and '
             + 'the browser-computed field beside it, stamped as the browser\'s own work',

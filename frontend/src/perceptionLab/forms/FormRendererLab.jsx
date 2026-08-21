@@ -42,13 +42,14 @@ import './forms.css';
 const FIRST_FORM = 'extent.hard_mask';
 
 export default function FormRendererLab({
-    initialForm = FIRST_FORM, initialView = null, now = null, onProposal = null,
+    initialForm = FIRST_FORM, initialView = null, initialScenario = 'contract', now = null,
+    onProposal = null,
 }) {
     const rootRef = useRef(null);
     const { band } = useContainerWidth(rootRef);
 
     const [formKey, setFormKey] = useState(initialForm);
-    const [scenario, setScenario] = useState('contract');
+    const [scenario, setScenario] = useState(initialScenario);
     const [viewKey, setViewKey] = useState(initialView);
     const [focusId, setFocusId] = useState(null);
     const [hidden, setHidden] = useState(() => new Set());
