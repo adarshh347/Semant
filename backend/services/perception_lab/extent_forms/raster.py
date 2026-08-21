@@ -275,34 +275,39 @@ def foreground_components(raster: Raster) -> Tuple[PixelSet, ...]:
     return _components(raster.bits, raster.h, raster.w, FOREGROUND_CONNECTIVITY)
 
 
+def complement_of(piece: PixelSet) -> Tuple[PixelSet, ...]:
+    """The voids of ONE piece, 8-connected: every pixel of its raster that is not it.
+
+    THE PIECE, NOT THE MASK, AND THAT IS NOT AN OPTIMISATION. The void inside a ring is a void OF
+    the ring, and asking the question of the whole mask gets a different answer the moment a
+    second, separate shape is sitting inside that void: globally those pixels are foreground, so
+    the ring's opening comes back split, or missing, depending on where the second shape sat.
+    Asked of the ring alone every pixel outside the ring is void — which is exactly what the
+    ring's own inner boundary encloses, and it is why a hole and an inner ring come out of this
+    package one-to-one.
+    """
+    members = piece.members
+    inside = bytes(0 if p in members else 1 for p in range(piece.h * piece.w))
+    return _components(inside, piece.h, piece.w, BACKGROUND_CONNECTIVITY)
+
+
 def complement_components(raster: Raster, *, of: Optional[PixelSet] = None
                           ) -> Tuple[PixelSet, ...]:
-    """The voids, 8-connected — of the whole mask, or of ONE piece of it.
-
-    `of` IS THE LOAD-BEARING ARGUMENT AND IT IS NOT AN OPTIMISATION. The void inside a ring is a
-    void OF the ring, and asking the question of the whole mask gets a different answer the moment
-    a second, separate shape is sitting inside that void: globally those pixels are foreground, so
-    the ring's opening would come back split, or missing, depending on where the second shape sat.
-    Asking it of the ring alone treats every pixel outside the ring as void — which is exactly
-    what the ring's own inner boundary encloses, and it is why a hole and an inner ring come out
-    of this package one-to-one.
-    """
-    h, w = raster.h, raster.w
-    if of is None:
-        inside = bytes(1 - b for b in raster.bits)
-    else:
+    """The voids of a whole mask, 8-connected — or, with `of`, of one piece measured on it."""
+    if of is not None:
         if of.shape != raster.shape:
             refuse(RefusalCode.INVALID_PARAMETERS,
                    f"a piece measured on a {of.h}x{of.w} raster cannot be complemented against a "
-                   f"{h}x{w} one",
-                   detail={"piece_raster": [of.h, of.w], "mask_raster": [h, w]})
-        members = of.members
-        inside = bytes(0 if p in members else 1 for p in range(h * w))
-    return _components(inside, h, w, BACKGROUND_CONNECTIVITY)
+                   f"{raster.h}x{raster.w} one",
+                   detail={"piece_raster": [of.h, of.w], "mask_raster": [raster.h, raster.w]})
+        return complement_of(of)
+    inside = bytes(1 - b for b in raster.bits)
+    return _components(inside, raster.h, raster.w, BACKGROUND_CONNECTIVITY)
 
 
 __all__ = [
     "BACKGROUND_CONNECTIVITY", "DIGEST_CHARS", "ExtentFormRefusal", "FOREGROUND_CONNECTIVITY",
-    "ORGAN", "PixelSet", "Raster", "canonical_rle", "complement_components", "digest_of",
+    "ORGAN", "PixelSet", "Raster", "canonical_rle", "complement_components",
+    "complement_of", "digest_of",
     "foreground_components", "raster_of", "refuse",
 ]

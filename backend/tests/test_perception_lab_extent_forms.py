@@ -31,6 +31,7 @@ from backend.schemas.perception_lab import (ExtentInstance, ExtentSetPayload, Pe
 from backend.services.mask_geometry import polygons_to_bits, rle_encode
 from backend.services.perception_lab import definitions as D
 from backend.services.perception_lab.extent_forms import boundary as B
+from backend.services.perception_lab.extent_forms import holes as H
 from backend.services.perception_lab.extent_forms import inputs as I
 from backend.services.perception_lab.extent_forms import measure as M
 from backend.services.perception_lab.extent_forms import raster as R
@@ -291,3 +292,121 @@ def test_the_producible_form_this_lane_writes_is_the_one_the_registry_declares()
         "a payload and a receipt rather than an artifact naming an operation that never ran")
     assert derived.provenance.partition.value in definition.admissible_partitions
     assert derived.provenance.epistemic_basis.value in definition.admissible_bases
+
+
+# ── extent.hole_set ──────────────────────────────────────────────────────────
+
+
+def test_a_solid_shape_is_examined_for_voids_and_reports_none():
+    """`holes: []` from a solid shape and `holes: []` from an extent nobody examined are the same
+    empty list. `candidates_examined` is the whole difference."""
+    derived = H.hole_set([extent(SOLID)], source_image_digest=DIGEST)
+    assert derived.payload.holes == []
+    assert derived.payload.candidates_examined == 1, "the outside was looked at and rejected"
+
+
+def test_a_donut_has_one_enclosed_hole_and_it_names_the_extent_it_is_a_hole_of():
+    derived = H.hole_set([extent(DONUT, instance_id="inst_4")], source_image_digest=DIGEST)
+    hole, = derived.payload.holes
+    assert hole.enclosed is True
+    assert str(hole.outer) == "art_1#inst_4"
+    assert derived.measurements["area_px"][hole.hole_id] == 9
+    assert hole.area == round(9 / 25, 6)
+
+
+def test_a_void_that_reaches_the_edge_of_the_picture_is_examined_and_is_not_a_hole():
+    """A bay open at one side is a concavity. Whether a wider crop would close it is not knowable
+    from this frame, so it is counted as examined and left out of `holes`."""
+    bay = ["####", "#..#", "#..#", "#..#"]
+    derived = H.hole_set([extent(bay)], source_image_digest=DIGEST)
+    assert derived.payload.holes == []
+    assert derived.payload.candidates_examined == 1
+    assert derived.measurements["voids_open_to_the_frame"]["art_1#inst_1"] == 1
+
+
+def test_this_producer_never_writes_enclosed_false_and_that_is_a_fact_about_the_producer():
+    """The field is real and a person marking a hole by hand may need it. Nothing computed from
+    one frame can honestly say "this is a void of that thing and I cannot see whether it closes",
+    so this package does not."""
+    for rows in (SOLID, DONUT, TWO_ISLANDS, NESTED, PINCHED, ["####", "#..#", "#..#", "#..#"]):
+        derived = H.hole_set([extent(rows)], source_image_digest=DIGEST)
+        assert all(hole.enclosed for hole in derived.payload.holes), rows
+
+
+def test_a_hole_carries_the_very_ring_the_tracer_gave_it_and_not_a_second_tracing():
+    """One curve, one record. Two tracings of one boundary is two things that could disagree."""
+    holes = H.hole_set([extent(NESTED)], source_image_digest=DIGEST)
+    rings = B.boundary_rings([extent(NESTED)], source_image_digest=DIGEST)
+    hole, = holes.payload.holes
+    hole_ring, = hole.rings
+    inner = [r for r in rings.payload.boundaries[0].rings if r.winding is RingWinding.INNER]
+    assert [hole_ring.ring_id] == [r.ring_id for r in inner]
+    assert hole_ring.winding is RingWinding.INNER
+
+
+def test_every_bounded_void_matches_exactly_one_inner_ring_across_every_control():
+    """The one-to-one claim, checked on all seven controls rather than asserted once."""
+    for rows in (SOLID, DONUT, TWO_ISLANDS, CORNER_TOUCH, EDGE_TOUCH, NESTED, PINCHED,
+                 ["#####", "#.#.#", "#####"], ["######", "#.##.#", "#.##.#", "######"]):
+        raster = R.raster_of(mask(rows), what="control")
+        for piece in R.foreground_components(raster):
+            traced = B.trace(piece)
+            voids = H.voids_of(piece, traced)
+            bounded = [v for v in voids if v.enclosed]
+            inner = [r for r in traced if not r.is_outer]
+            assert len(bounded) == len(inner), rows
+            assert len({v.ring.ring_id for v in bounded}) == len(inner), rows
+
+
+def test_a_hole_of_a_ring_is_the_whole_void_including_a_separate_shape_sitting_in_it():
+    """Asked of the whole mask the island is foreground and the arch's opening comes back split.
+    Asked of the arch, the opening is the opening — and it is what the arch's inner ring bounds."""
+    derived = H.hole_set([extent(NESTED)], source_image_digest=DIGEST)
+    hole, = derived.payload.holes
+    assert derived.measurements["area_px"][hole.hole_id] == 9
+    whole_mask_voids = R.complement_components(R.raster_of(mask(NESTED), what="n"))
+    assert sum(v.area_px for v in whole_mask_voids if not v.touches_border) == 8
+
+
+def test_two_voids_of_one_extent_get_two_ids_and_neither_is_the_other():
+    two = ["######", "#.##.#", "#.##.#", "######"]
+    derived = H.hole_set([extent(two)], source_image_digest=DIGEST)
+    assert len(derived.payload.holes) == 2
+    assert len({h.hole_id for h in derived.payload.holes}) == 2
+    assert derived.payload.candidates_examined == 2, (
+        "this shape fills the frame, so there is no outside to examine and reject — two voids "
+        "looked at, two holes found")
+
+
+def test_a_void_pinched_to_a_single_corner_is_one_hole_and_not_two():
+    """The declared pairing, in the form. An 8-connected void is one void; under a 4-connected
+    one this would be two holes of one pixel each, and the pinch would look like a wall."""
+    derived = H.hole_set([extent(PINCHED)], source_image_digest=DIGEST)
+    hole, = derived.payload.holes
+    assert derived.measurements["area_px"][hole.hole_id] == 2
+
+
+def test_the_same_mask_examined_twice_produces_the_same_holes():
+    one = H.hole_set([extent(NESTED)], source_image_digest=DIGEST)
+    two = H.hole_set([extent(NESTED)], source_image_digest=DIGEST)
+    assert one.payload.model_dump() == two.payload.model_dump()
+
+
+def test_two_holes_of_one_payload_never_share_an_id():
+    """`ExtentHoleSetPayload` refuses a repeated `hole_id`, and content-addressing makes that
+    structural: two holes with the same id would have to be the same pixels of the same raster,
+    which would make them one hole."""
+    two = ["######", "#.##.#", "#.##.#", "######"]
+    derived = H.hole_set([extent(two)], source_image_digest=DIGEST)
+    clashed = derived.payload.model_dump()
+    clashed["holes"][1]["hole_id"] = clashed["holes"][0]["hole_id"]
+    with pytest.raises(ValidationError):
+        type(derived.payload).model_validate(clashed)
+
+
+def test_the_hole_form_this_lane_writes_is_the_one_the_registry_declares():
+    definition = D.form(PerceptualForm.EXTENT_HOLE_SET.value)
+    derived = H.hole_set([extent(DONUT)], source_image_digest=DIGEST)
+    assert derived.payload.variant == definition.payload_variant
+    assert definition.absence.examined_field == "candidates_examined"
+    assert derived.provenance.partition.value in definition.admissible_partitions
