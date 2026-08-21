@@ -1,0 +1,591 @@
+/* PERCEPTUAL-FORMS-001E — the form renderer laboratory.
+ *
+ * Every colour, space, radius and type size here is a `var(--…)` from `src/index.css`. No hex, no
+ * new global token, nothing outside `.pl-fm`. Dark mode needs no separate block: the tokens swap
+ * under `[data-theme='dark']`, so anything written in tokens is already correct in both. Where the
+ * palette does not name a colour, `color-mix(in srgb, var(--…) …)` follows the theme for the same
+ * reason.
+ *
+ * ── THE ONE RULE THIS SHEET EXISTS TO ENFORCE ───────────────────────────────
+ *
+ * FOUR EVIDENCE CLASSES, AND COLOUR IS NOT ONE OF THE CHANNELS THAT TELLS THEM APART.
+ *
+ *     measured      solid rule, no fill pattern, full ink
+ *     derived       dashed rule, a dot pattern
+ *     inferred      long-dashed rule, hatching at 45°
+ *     hypothetical  dotted rule, hatching at 135°
+ *
+ * The dash arrays are set in the markup, from `layerModel.EVIDENCE_TREATMENT`, so this sheet does
+ * not get a second opinion about them. What it does is the pattern fills and the ink weight — and
+ * neither of those is a hue either. Delete every colour rule in this file and a person can still
+ * tell an inferred completion from a measured mask, which is the property the responsive suite
+ * asserts by reading this file as text.
+ *
+ * COLOUR IS FOR IDENTITY. `[data-hue]` rotates the six-hue family across sibling layers so
+ * instance 3 is distinguishable from instance 4. That is the only job colour has here.
+ *
+ * ── RESPONSIVE ─────────────────────────────────────────────────────────────
+ *
+ * Keyed to `data-w` on the root, set by `useContainerWidth` from the element's own width — the
+ * lab responds to its container, not to the window, because Lane H will mount it in a route that
+ * may itself sit inside a pane.
+ */
+
+.pl-fm {
+    --pl-fm-gap: var(--space-4);
+    --pl-fm-rail: 224px;
+    --pl-fm-side: 340px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+    color: var(--ink);
+    background: var(--bg);
+    font-family: var(--font-sans);
+    font-size: var(--fs-small);
+    line-height: 1.5;
+    container-type: inline-size;
+}
+
+/* ── layout ───────────────────────────────────────────────────────────────── */
+
+.pl-fm-body {
+    display: grid;
+    grid-template-columns: var(--pl-fm-rail) minmax(0, 1fr) var(--pl-fm-side);
+    gap: var(--pl-fm-gap);
+    padding: var(--pl-fm-gap);
+    align-items: start;
+}
+
+.pl-fm[data-w='mid'] .pl-fm-body { grid-template-columns: var(--pl-fm-rail) minmax(0, 1fr); }
+.pl-fm[data-w='narrow'] .pl-fm-body,
+.pl-fm[data-w='tight'] .pl-fm-body { grid-template-columns: minmax(0, 1fr); }
+.pl-fm[data-w='tight'] { --pl-fm-gap: var(--space-2); }
+
+/* One DOM, one reading order, reordered rather than duplicated — so the keyboard path and the
+   visual path stay the same path at every width. */
+.pl-fm[data-w='mid'] .pl-fm-side,
+.pl-fm[data-w='narrow'] .pl-fm-side,
+.pl-fm[data-w='tight'] .pl-fm-side { grid-column: 1 / -1; order: 4; }
+.pl-fm[data-w='narrow'] .pl-fm-rail,
+.pl-fm[data-w='tight'] .pl-fm-rail { order: 1; }
+.pl-fm[data-w='narrow'] .pl-fm-main,
+.pl-fm[data-w='tight'] .pl-fm-main { order: 2; }
+
+.pl-fm-rail,
+.pl-fm-main,
+.pl-fm-side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pl-fm-gap);
+    min-width: 0;
+}
+
+.pl-fm-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+}
+
+.pl-fm-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-h3);
+    letter-spacing: var(--tracking-tight);
+    margin: 0;
+}
+
+.pl-fm-kicker {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+}
+
+.pl-fm-question {
+    font-family: var(--font-display);
+    font-size: var(--fs-small);
+    color: var(--ink-muted);
+    margin: 0;
+    max-width: 60ch;
+}
+
+.pl-fm-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    padding: var(--space-3);
+    min-width: 0;
+}
+
+.pl-fm-panel > h3,
+.pl-fm-panel > h4 {
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--fs-small);
+    letter-spacing: var(--tracking-tight);
+}
+
+/* ── the stage ────────────────────────────────────────────────────────────── */
+
+.pl-fm-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--surface-2);
+}
+
+.pl-fm-stage[data-compact='true'] { aspect-ratio: 4 / 3; }
+
+.pl-fm-svg { display: block; width: 100%; height: 100%; }
+
+.pl-fm-ground { fill: var(--surface-2); }
+.pl-fm-grid { stroke: var(--line); stroke-width: 1; opacity: 0.55; }
+
+/* The identity hues. Applied to a wrapping <g>, inherited by everything inside via
+   `currentColor`, which is why no shape rule below names a colour. */
+.pl-fm-hue { color: var(--plum); }
+.pl-fm-hue[data-hue='plum'] { color: var(--plum); }
+.pl-fm-hue[data-hue='amethyst'] { color: var(--amethyst); }
+.pl-fm-hue[data-hue='clay'] { color: var(--clay); }
+.pl-fm-hue[data-hue='indigo'] { color: var(--indigo); }
+.pl-fm-hue[data-hue='mulberry'] { color: var(--mulberry); }
+.pl-fm-hue[data-hue='lilac'] { color: var(--lilac); }
+
+.pl-fm-shape { cursor: pointer; }
+.pl-fm-shape[data-dimmed='true'] { opacity: 0.28; }
+.pl-fm-shape[data-focused='true'] { opacity: 1; }
+
+.pl-fm-ring {
+    fill: currentColor;
+    stroke: currentColor;
+}
+.pl-fm-ring[data-filled='false'] { fill: none; }
+
+.pl-fm-pattern { stroke: currentColor; fill: currentColor; stroke-width: 1.4; }
+.pl-fm-hatch { opacity: 0.5; }
+
+.pl-fm-cell { fill: currentColor; stroke: none; }
+/* EVERY CELL BOUNDARY. The grid is the measurement's resolution; a wash without it claims a
+   precision the field does not have. */
+.pl-fm-cellrule { fill: none; stroke: var(--ink-subtle); stroke-width: 1; opacity: 0.7; }
+
+.pl-fm-point { fill: var(--surface); stroke: currentColor; stroke-width: 2; }
+.pl-fm-cross { stroke: currentColor; stroke-width: 1.5; }
+
+.pl-fm-polyline { stroke: currentColor; }
+.pl-fm-arrow { fill: currentColor; stroke: none; }
+.pl-fm-draft { stroke: var(--ink); stroke-width: 2; stroke-dasharray: 4 4; opacity: 0.7; }
+
+/* The three notes that report a rule being enforced rather than a measurement. Legible, never
+   alarming — a red panel would teach people to avoid the state the laboratory exists to show. */
+.pl-fm-refused,
+.pl-fm-why {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-2);
+    border-left: 2px solid var(--line-strong);
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    max-width: 68ch;
+}
+.pl-fm-refused { border-left-color: var(--clay); }
+
+.pl-fm-note {
+    margin: var(--space-2) 0 0;
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+    max-width: 68ch;
+}
+
+/* ── the legend ───────────────────────────────────────────────────────────── */
+
+.pl-fm-legend {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    padding: var(--space-3);
+    margin-top: var(--space-3);
+}
+
+.pl-fm-legendtitle {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--fs-small);
+}
+
+.pl-fm-legendcount {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+    margin-left: auto;
+}
+
+.pl-fm-legendlist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+
+.pl-fm-legendrow {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+}
+.pl-fm-legendrow[data-focused='true'] { border-color: var(--accent); background: var(--accent-soft); }
+.pl-fm-legendrow[data-hidden='true'] { opacity: 0.55; }
+
+.pl-fm-legendbtn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.pl-fm-legendbtn:focus-visible,
+.pl-fm-legendtoggle:focus-visible,
+.pl-fm-btn:focus-visible,
+.pl-fm-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.pl-fm-legendname { font-family: var(--font-mono); font-size: var(--fs-caption); }
+
+/* The printed word — the channel that survives being read aloud, printed in one colour, or
+   looked at by someone who cannot distinguish two hues. */
+.pl-fm-evidence {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    padding: 0 var(--space-1);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line-strong);
+    color: var(--ink-muted);
+}
+/* Ink WEIGHT, not hue: the strongest claim also looks strongest, and never the reverse. */
+.pl-fm-evidence[data-evidence-word='measured'] { color: var(--ink); border-color: var(--ink); }
+.pl-fm-evidence[data-evidence-word='derived'] { border-style: dashed; }
+.pl-fm-evidence[data-evidence-word='inferred'] { border-style: dashed; font-style: italic; }
+.pl-fm-evidence[data-evidence-word='hypothetical'] { border-style: dotted; font-style: italic; }
+.pl-fm-evidence[data-evidence-word='absent'] { border-style: none; text-decoration: line-through; }
+
+.pl-fm-swatch { flex: 0 0 auto; }
+.pl-fm-swatch-fill { fill: var(--ink-muted); }
+.pl-fm-swatch-rule { stroke: var(--ink); fill: none; }
+.pl-fm-swatch[data-evidence='absent'] .pl-fm-swatch-rule { stroke: var(--line-strong); }
+
+.pl-fm-legendtoggle {
+    justify-self: start;
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    padding: 0 var(--space-1);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink-muted);
+    cursor: pointer;
+}
+.pl-fm-legendtoggle[aria-pressed='false'] { border-style: dashed; }
+
+.pl-fm-decl,
+.pl-fm-measure,
+.pl-fm-readingrows {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0 var(--space-2);
+    margin: 0;
+    font-size: var(--fs-caption);
+}
+.pl-fm-decl dt,
+.pl-fm-measure dt,
+.pl-fm-readingrows dt {
+    font-family: var(--font-mono);
+    color: var(--ink-subtle);
+    letter-spacing: var(--tracking-wide);
+}
+.pl-fm-decl dd,
+.pl-fm-measure dd,
+.pl-fm-readingrows dd { margin: 0; color: var(--ink-muted); overflow-wrap: anywhere; }
+
+/* A disagreement is stated as a disagreement, in weight rather than in alarm. */
+.pl-fm-measure dd[data-agreement='disagrees'] {
+    color: var(--ink);
+    font-weight: 600;
+    border-left: 2px solid var(--clay);
+    padding-left: var(--space-1);
+}
+
+.pl-fm-sentence {
+    margin: 0;
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+    max-width: 68ch;
+}
+
+.pl-fm-strength,
+.pl-fm-rowdetail {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+}
+.pl-fm-strength[data-strength='unweighed'] { font-style: italic; }
+
+/* ── compare, sheet ───────────────────────────────────────────────────────── */
+
+.pl-fm-compare {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-3);
+}
+.pl-fm[data-w='tight'] .pl-fm-compare { grid-template-columns: minmax(0, 1fr); }
+
+.pl-fm-pane { margin: 0; display: grid; gap: var(--space-1); }
+.pl-fm-panecap {
+    order: -1;
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-muted);
+    letter-spacing: var(--tracking-wide);
+}
+
+.pl-fm-sheet {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--space-3);
+}
+.pl-fm-thumb { margin: 0; display: grid; gap: var(--space-1); }
+.pl-fm-thumbcap { font-size: var(--fs-caption); color: var(--ink-muted); }
+.pl-fm-thumbscale {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    color: var(--ink-subtle);
+}
+
+/* ── diagrams ─────────────────────────────────────────────────────────────── */
+
+.pl-fm-diagram { display: grid; gap: var(--space-3); }
+
+.pl-fm-diagramsvg {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+}
+
+.pl-fm-nodedot { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.pl-fm-node[data-resolved='false'] .pl-fm-nodedot { fill: none; stroke: var(--ink-subtle); }
+.pl-fm-node[data-focused='true'] .pl-fm-nodedot { stroke: var(--accent); stroke-width: 3; }
+.pl-fm-node { cursor: pointer; }
+.pl-fm-nodelabel { font-family: var(--font-mono); font-size: 5px; fill: var(--ink); }
+
+.pl-fm-edgeline { stroke: var(--ink-muted); stroke-width: 1.5; }
+.pl-fm-edge[data-kind='disjoint'] .pl-fm-edgeline { stroke: var(--ink-subtle); }
+.pl-fm-edge[data-stale='true'] .pl-fm-edgeline { stroke: var(--clay); }
+
+.pl-fm-edgetable,
+.pl-fm-matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-caption);
+}
+.pl-fm-edgetable caption,
+.pl-fm-matrix caption {
+    text-align: left;
+    color: var(--ink-subtle);
+    font-family: var(--font-mono);
+    padding-bottom: var(--space-1);
+}
+.pl-fm-edgetable th,
+.pl-fm-matrix th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    color: var(--ink-subtle);
+    letter-spacing: var(--tracking-wide);
+    border-bottom: 1px solid var(--line);
+    padding: var(--space-1);
+}
+.pl-fm-edgetable td,
+.pl-fm-matrix td {
+    padding: var(--space-1);
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-muted);
+    vertical-align: top;
+}
+.pl-fm-matrix td[data-self='true'] { color: var(--ink-subtle); background: var(--surface-2); }
+.pl-fm-matrix td[data-edge-kind='none'] { color: var(--ink-subtle); }
+
+/* Wide content scrolls inside its own box; the page body never scrolls sideways. */
+.pl-fm-matrixwrap,
+.pl-fm-tablewrap { overflow-x: auto; max-width: 100%; }
+
+/* ── controls ─────────────────────────────────────────────────────────────── */
+
+.pl-fm-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pl-fm-tab,
+.pl-fm-btn {
+    font: inherit;
+    font-size: var(--fs-caption);
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: transform 120ms var(--ease), background 120ms var(--ease);
+}
+.pl-fm-tab:hover:not(:disabled),
+.pl-fm-btn:hover:not(:disabled) { background: var(--surface-hover); transform: translateY(-1px); }
+.pl-fm-tab[aria-selected='true'],
+.pl-fm-tab[aria-pressed='true'],
+.pl-fm-btn[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--ink);
+}
+.pl-fm-tab:disabled,
+.pl-fm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pl-fm-btn--primary { background: var(--fill); color: var(--on-fill); border-color: var(--fill); }
+
+.pl-fm-formlist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+
+.pl-fm-formbtn {
+    display: grid;
+    gap: 2px;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    padding: var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: inherit;
+    cursor: pointer;
+}
+.pl-fm-formbtn:hover { background: var(--surface-hover); }
+.pl-fm-formbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pl-fm-formbtn[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); }
+.pl-fm-formkey { font-family: var(--font-mono); font-size: var(--fs-caption); }
+.pl-fm-formq { font-size: var(--fs-caption); color: var(--ink-muted); }
+
+/* A form's readiness, in an outlined pill that is never filled — the same treatment lifecycle
+   gets in the Perception Lab, for the same reason: a state is not a severity. */
+.pl-fm-state {
+    justify-self: start;
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    padding: 0 var(--space-1);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    color: var(--ink-subtle);
+    background: none;
+}
+.pl-fm-state[data-state='enabled'] { border-color: var(--ink-muted); color: var(--ink-muted); }
+.pl-fm-state[data-state='experimental'] { border-style: dashed; }
+.pl-fm-state[data-state='deferred'] { border-style: dotted; }
+
+.pl-fm-input {
+    font: inherit;
+    font-size: var(--fs-caption);
+    width: 100%;
+    padding: var(--space-1);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--ink);
+}
+.pl-fm-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.pl-fm-sweep { display: grid; gap: var(--space-1); }
+.pl-fm-sweep input[type='range'] { width: 100%; accent-color: var(--accent); }
+.pl-fm-sweepvalue { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--ink); }
+
+.pl-fm-proposals { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.pl-fm-proposal {
+    display: grid;
+    gap: 2px;
+    padding: var(--space-2);
+    /* UNSAVED, and it looks unsaved. A dashed edge is the same language a draft carries
+       everywhere else in this application. */
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    font-size: var(--fs-caption);
+}
+.pl-fm-proposalhead { font-family: var(--font-mono); color: var(--ink); }
+.pl-fm-proposalnote { color: var(--ink-subtle); }
+
+.pl-fm-vh {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── the harness ──────────────────────────────────────────────────────────── */
+
+.pl-fm-harness { padding: var(--space-4); background: var(--bg); }
+.pl-fm-harnessgrid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-4);
+}
+.pl-fm-harnessfig { margin: 0; display: grid; gap: var(--space-2); }
+.pl-fm-harnesscap { order: -1; font-family: var(--font-mono); font-size: var(--fs-caption); }
+.pl-fm-harnesspane {
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    resize: horizontal;
+    max-width: 100%;
+}
+.pl-fm-harnesspane[data-harness-width='1100'] { width: 1100px; }
+.pl-fm-harnesspane[data-harness-width='720'] { width: 720px; }
+.pl-fm-harnesspane[data-harness-width='430'] { width: 430px; }
+.pl-fm-harnesspane[data-harness-width='320'] { width: 320px; }
+
+/* ── motion ───────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .pl-fm-tab,
+    .pl-fm-btn { transition: none; }
+    .pl-fm-tab:hover:not(:disabled),
+    .pl-fm-btn:hover:not(:disabled) { transform: none; }
+}

@@ -1,0 +1,1057 @@
+{
+  "extent.hard_mask": {
+    "variant": "extent_set",
+    "searched": "every separable instance in the whole image",
+    "instances": [
+      {
+        "instance_id": "inst_1",
+        "mask_rle": {
+          "size": [
+            8,
+            8
+          ],
+          "counts": [
+            10,
+            4,
+            4,
+            4,
+            4,
+            4,
+            30
+          ]
+        },
+        "box": {
+          "x": 0.2,
+          "y": 0.2,
+          "w": 0.6,
+          "h": 0.6
+        },
+        "area": 0.24,
+        "confidence": null,
+        "naming": {
+          "text": "the lit interior",
+          "source": "prompt",
+          "epistemic_status": "interpretive",
+          "confidence": 0.71
+        },
+        "region_id": null,
+        "geometry_rev": null
+      },
+      {
+        "instance_id": "inst_2",
+        "mask_rle": null,
+        "box": {
+          "x": 0.05,
+          "y": 0.6,
+          "w": 0.2,
+          "h": 0.3
+        },
+        "area": 0.06,
+        "confidence": null,
+        "naming": null,
+        "region_id": null,
+        "geometry_rev": null
+      }
+    ],
+    "dropped_below_min_area": 1,
+    "duplicates": [],
+    "comparison": null
+  },
+  "extent.boundary_rings": {
+    "variant": "extent_boundary",
+    "rings_traced": 2,
+    "boundaries": [
+      {
+        "of": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_1"
+        },
+        "rings": [
+          {
+            "ring_id": "ring_outer",
+            "winding": "outer",
+            "points": [
+              [
+                0.2,
+                0.2
+              ],
+              [
+                0.8,
+                0.2
+              ],
+              [
+                0.8,
+                0.8
+              ],
+              [
+                0.2,
+                0.8
+              ]
+            ],
+            "closed": true,
+            "length": null
+          },
+          {
+            "ring_id": "ring_void",
+            "winding": "inner",
+            "points": [
+              [
+                0.4,
+                0.4
+              ],
+              [
+                0.6,
+                0.4
+              ],
+              [
+                0.6,
+                0.6
+              ],
+              [
+                0.4,
+                0.6
+              ]
+            ],
+            "closed": true,
+            "length": null
+          }
+        ],
+        "raster_shape": [
+          8,
+          8
+        ]
+      }
+    ]
+  },
+  "extent.hole_set": {
+    "variant": "extent_hole_set",
+    "candidates_examined": 3,
+    "holes": [
+      {
+        "hole_id": "hole_1",
+        "outer": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_1"
+        },
+        "enclosed": true,
+        "mask_rle": {
+          "size": [
+            8,
+            8
+          ],
+          "counts": [
+            27,
+            2,
+            6,
+            2,
+            27
+          ]
+        },
+        "rings": [
+          {
+            "ring_id": "ring_void",
+            "winding": "inner",
+            "points": [
+              [
+                0.4,
+                0.4
+              ],
+              [
+                0.6,
+                0.4
+              ],
+              [
+                0.6,
+                0.6
+              ],
+              [
+                0.4,
+                0.6
+              ]
+            ],
+            "closed": true,
+            "length": null
+          }
+        ],
+        "area": 0.04
+      }
+    ]
+  },
+  "extent.soft_field": {
+    "variant": "extent_soft_field",
+    "cells_evaluated": 16,
+    "searched": "the fog, whose edge the picture does not contain",
+    "field": {
+      "field_shape": [
+        4,
+        4
+      ],
+      "coordinate_system": "mask_rle_hw",
+      "value_range": [
+        0,
+        1
+      ],
+      "derivation": "direct_probability",
+      "calibration": {
+        "state": "calibrated",
+        "method": "isotonic regression against hand-painted opacity",
+        "reference": "research/perception_lab/fixtures/soft_field/held_out.json",
+        "units": "probability that this cell is fog"
+      },
+      "data_ref": null,
+      "inline_values": [
+        1,
+        1,
+        0.9,
+        0.6,
+        1,
+        0.9,
+        0.7,
+        0.4,
+        0.8,
+        0.6,
+        0.4,
+        0.2,
+        0.5,
+        0.3,
+        0.1,
+        0
+      ],
+      "statistics": {
+        "mean": 0.58,
+        "max": 1
+      }
+    },
+    "of_instance": {
+      "artifact_id": "art_extent_1",
+      "instance_id": "inst_1"
+    },
+    "threshold_would_be": 0.5
+  },
+  "extent.fragment_set": {
+    "variant": "extent_fragment_set",
+    "regions_examined": 7,
+    "unity_asserted": false,
+    "fragments": [
+      {
+        "fragment_id": "frag_1",
+        "mask_rle": {
+          "size": [
+            8,
+            8
+          ],
+          "counts": [
+            10,
+            4,
+            4,
+            4,
+            4,
+            4,
+            30
+          ]
+        },
+        "box": null,
+        "area": 0.24,
+        "naming": null
+      },
+      {
+        "fragment_id": "frag_2",
+        "mask_rle": null,
+        "box": {
+          "x": 0.1,
+          "y": 0.1,
+          "w": 0.1,
+          "h": 0.1
+        },
+        "area": 0.01,
+        "naming": null
+      },
+      {
+        "fragment_id": "frag_3",
+        "mask_rle": null,
+        "box": {
+          "x": 0.7,
+          "y": 0.1,
+          "w": 0.1,
+          "h": 0.1
+        },
+        "area": 0.01,
+        "naming": null
+      }
+    ]
+  },
+  "extent.fused_hypothesis": {
+    "variant": "extent_fusion_hypothesis",
+    "fragments_considered": 3,
+    "hypotheses": [
+      {
+        "hypothesis_id": "hyp_tree",
+        "members": [
+          {
+            "artifact_id": "art_fragments_1",
+            "instance_id": "frag_1"
+          },
+          {
+            "artifact_id": "art_fragments_1",
+            "instance_id": "frag_2"
+          },
+          {
+            "artifact_id": "art_fragments_1",
+            "instance_id": "frag_3"
+          }
+        ],
+        "grounds": [
+          {
+            "kind": "appearance_continuity",
+            "detail": "the three patches share a hue and a texture the fence does not",
+            "cites": [],
+            "strength": 0.7
+          },
+          {
+            "kind": "shape_continuity",
+            "detail": "the severed edges meet the fence rails at the angle they leave them",
+            "cites": [],
+            "strength": 0.8
+          },
+          {
+            "kind": "occlusion_hypothesis",
+            "detail": "the fence is in front, so the gaps are where it is, not where the tree is not",
+            "cites": [],
+            "strength": null
+          }
+        ],
+        "partition": "inferred_completion",
+        "epistemic_status": "uncertain",
+        "weight": 0.62,
+        "asserts_hidden_extent": true
+      }
+    ],
+    "alternatives_retained": true
+  },
+  "extent.visible_inferred_partition": {
+    "variant": "extent_partition",
+    "cells_partitioned": 64,
+    "of": {
+      "artifact_id": "art_extent_1",
+      "instance_id": "inst_1"
+    },
+    "regions": [
+      {
+        "part": "visible",
+        "epistemic_status": "measured",
+        "coverage": 0.55,
+        "mask_rle": {
+          "size": [
+            8,
+            8
+          ],
+          "counts": [
+            10,
+            4,
+            4,
+            4,
+            4,
+            4,
+            30
+          ]
+        },
+        "field": null
+      },
+      {
+        "part": "inferred",
+        "epistemic_status": "uncertain",
+        "coverage": 0.3,
+        "mask_rle": {
+          "size": [
+            8,
+            8
+          ],
+          "counts": [
+            27,
+            2,
+            6,
+            2,
+            27
+          ]
+        },
+        "field": null
+      },
+      {
+        "part": "unknown",
+        "epistemic_status": "uncertain",
+        "coverage": 0.15,
+        "mask_rle": null,
+        "field": {
+          "field_shape": [
+            2,
+            2
+          ],
+          "coordinate_system": "mask_rle_hw",
+          "value_range": [
+            0,
+            1
+          ],
+          "derivation": "manual_paint",
+          "calibration": {
+            "state": "nominal",
+            "method": null,
+            "reference": null,
+            "units": "ordered occupancy, comparable within this field and across none"
+          },
+          "data_ref": null,
+          "inline_values": [
+            0,
+            0.4,
+            0.6,
+            1
+          ],
+          "statistics": {}
+        }
+      }
+    ],
+    "conditioned_on": "hyp_tree"
+  },
+  "extent.hierarchy": {
+    "variant": "extent_hierarchy",
+    "pairs_examined": 6,
+    "nodes": [
+      {
+        "node_id": "palace",
+        "instance": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_palace",
+          "geometry_rev": 0
+        },
+        "region": null,
+        "parent_node_id": null,
+        "occupancy_of_parent": null,
+        "basis": "mask"
+      },
+      {
+        "node_id": "courtyard",
+        "instance": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_court",
+          "geometry_rev": 0
+        },
+        "region": null,
+        "parent_node_id": "palace",
+        "occupancy_of_parent": 0.42,
+        "basis": "mask"
+      },
+      {
+        "node_id": "garden",
+        "instance": null,
+        "region": {
+          "region_id": "reg_7",
+          "geometry_rev": 3,
+          "scope": "canonical"
+        },
+        "parent_node_id": "courtyard",
+        "occupancy_of_parent": 0.61,
+        "basis": "mask"
+      },
+      {
+        "node_id": "fountain",
+        "instance": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_fountain",
+          "geometry_rev": 1
+        },
+        "region": null,
+        "parent_node_id": "garden",
+        "occupancy_of_parent": 0.08,
+        "basis": "box"
+      }
+    ],
+    "root_node_ids": [
+      "palace"
+    ]
+  },
+  "extent.density_field": {
+    "variant": "extent_density_field",
+    "members_counted": 3,
+    "samples_taken": 3,
+    "counts_are_exact": true,
+    "members": [
+      {
+        "artifact_id": "art_extent_crowd",
+        "instance_id": "inst_1"
+      },
+      {
+        "artifact_id": "art_extent_crowd",
+        "instance_id": "inst_2"
+      },
+      {
+        "artifact_id": "art_extent_crowd",
+        "instance_id": "inst_3"
+      }
+    ],
+    "field": {
+      "field_shape": [
+        2,
+        3
+      ],
+      "coordinate_system": "mask_rle_hw",
+      "value_range": [
+        0,
+        3
+      ],
+      "derivation": "kernel_density",
+      "calibration": {
+        "state": "nominal",
+        "method": null,
+        "reference": null,
+        "units": "ordered occupancy, comparable within this field and across none"
+      },
+      "data_ref": null,
+      "inline_values": [
+        0,
+        0.4,
+        1.8,
+        0.1,
+        0.9,
+        2.6
+      ],
+      "statistics": {
+        "peak": 2.6,
+        "eastern_half_share": 0.78
+      }
+    },
+    "smoothing": {
+      "applied": true,
+      "method": "gaussian",
+      "bandwidth": 0.05
+    }
+  },
+  "extent.hypothesis_set": {
+    "variant": "extent_hypothesis_set",
+    "alternatives_considered": 3,
+    "question": "is the fragmented form one object, two overlapping objects, or an object and a plane?",
+    "weights_are_probabilities": false,
+    "alternatives": [
+      {
+        "alternative_id": "alt_one_object",
+        "weight": 0.62,
+        "artifact_id": "art_fusion_1",
+        "instances": [],
+        "grounds": [
+          {
+            "kind": "shape_continuity",
+            "detail": "the contour resumes at the same angle",
+            "cites": [],
+            "strength": null
+          }
+        ]
+      },
+      {
+        "alternative_id": "alt_two_objects",
+        "weight": 0.29,
+        "artifact_id": null,
+        "instances": [
+          {
+            "artifact_id": "art_fragments_1",
+            "instance_id": "frag_1"
+          },
+          {
+            "artifact_id": "art_fragments_1",
+            "instance_id": "frag_2"
+          }
+        ],
+        "grounds": [
+          {
+            "kind": "depth_continuity",
+            "detail": "the two halves sit at different depths",
+            "cites": [],
+            "strength": null
+          }
+        ]
+      },
+      {
+        "alternative_id": "alt_object_and_plane",
+        "weight": 0.09,
+        "artifact_id": null,
+        "instances": [
+          {
+            "artifact_id": "art_fragments_1",
+            "instance_id": "frag_3"
+          }
+        ],
+        "grounds": [
+          {
+            "kind": "relative_position",
+            "detail": "the lower band aligns with the wall, not with the figure",
+            "cites": [],
+            "strength": null
+          }
+        ]
+      }
+    ]
+  },
+  "topology.pair_relation": {
+    "variant": "topology_relation_set",
+    "pairs_examined": 3,
+    "relations": [
+      {
+        "relation_id": "rel_1",
+        "kind": "contains",
+        "source": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_court",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "target": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_fountain",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "directed": true,
+        "basis": "mask",
+        "epistemic_status": "measured",
+        "measurements": {
+          "containment_fraction": 1,
+          "clearance": 0.031
+        },
+        "stale": false
+      },
+      {
+        "relation_id": "rel_2",
+        "kind": "disjoint",
+        "source": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_fountain",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "target": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_1",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "directed": false,
+        "basis": "mask",
+        "epistemic_status": "measured",
+        "measurements": {
+          "separation": 0.114
+        },
+        "stale": false
+      }
+    ],
+    "bounded_to": null
+  },
+  "topology.contact_locus": {
+    "variant": "topology_contact_locus",
+    "pairs_examined": 2,
+    "loci": [
+      {
+        "locus_id": "locus_1",
+        "source": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_1",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "target": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_2",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "raster_shape": [
+          8,
+          8
+        ],
+        "contact_pixels": 812,
+        "basis": "mask",
+        "epistemic_status": "measured",
+        "mask_rle": {
+          "size": [
+            8,
+            8
+          ],
+          "counts": [
+            27,
+            2,
+            6,
+            2,
+            27
+          ]
+        },
+        "points": [
+          [
+            0.31,
+            0.44
+          ],
+          [
+            0.33,
+            0.46
+          ],
+          [
+            0.35,
+            0.48
+          ]
+        ]
+      }
+    ]
+  },
+  "topology.intersection_area": {
+    "variant": "topology_intersection",
+    "pairs_examined": 2,
+    "intersections": [
+      {
+        "intersection_id": "isect_1",
+        "source": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_tree",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "target": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_facade",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "raster_shape": [
+          8,
+          8
+        ],
+        "intersection_area": 0.14,
+        "fraction_of_source": 0.83,
+        "fraction_of_target": 0.21,
+        "basis": "mask",
+        "epistemic_status": "measured",
+        "mask_rle": {
+          "size": [
+            8,
+            8
+          ],
+          "counts": [
+            27,
+            2,
+            6,
+            2,
+            27
+          ]
+        }
+      }
+    ]
+  },
+  "topology.clearance_path": {
+    "variant": "topology_clearance_path",
+    "pairs_examined": 1,
+    "paths": [
+      {
+        "path_id": "path_1",
+        "source": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_fountain",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "target": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_1",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "raster_shape": [
+          8,
+          8
+        ],
+        "separation": 0.114,
+        "from_point": [
+          0.48,
+          0.52
+        ],
+        "to_point": [
+          0.55,
+          0.61
+        ],
+        "path": [
+          [
+            0.48,
+            0.52
+          ],
+          [
+            0.52,
+            0.57
+          ],
+          [
+            0.55,
+            0.61
+          ]
+        ],
+        "basis": "mask",
+        "epistemic_status": "measured"
+      }
+    ]
+  },
+  "topology.containment_tree": {
+    "variant": "topology_containment_tree",
+    "pairs_examined": 6,
+    "nodes": [
+      {
+        "node_id": "piazza",
+        "endpoint": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_piazza",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "parent_node_id": null,
+        "occupancy_of_parent": null,
+        "basis": "mask",
+        "epistemic_status": "measured"
+      },
+      {
+        "node_id": "fountain",
+        "endpoint": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_fountain",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "parent_node_id": "piazza",
+        "occupancy_of_parent": 0.04,
+        "basis": "mask",
+        "epistemic_status": "measured"
+      },
+      {
+        "node_id": "figures",
+        "endpoint": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_figures",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "parent_node_id": "piazza",
+        "occupancy_of_parent": 0.01,
+        "basis": "box",
+        "epistemic_status": "interpretive"
+      }
+    ],
+    "root_node_ids": [
+      "piazza"
+    ]
+  },
+  "topology.adjacency_graph": {
+    "variant": "topology_adjacency_graph",
+    "pairs_examined": 6,
+    "nodes": [
+      {
+        "node_id": "pier_1",
+        "endpoint": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_pier_1",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        }
+      },
+      {
+        "node_id": "pier_2",
+        "endpoint": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_pier_2",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        }
+      },
+      {
+        "node_id": "pier_3",
+        "endpoint": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_pier_3",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        }
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "edge_1_2",
+        "source_node_id": "pier_1",
+        "target_node_id": "pier_2",
+        "kind": "meets",
+        "directed": false,
+        "basis": "mask",
+        "epistemic_status": "measured",
+        "measurements": {
+          "contact_pixels": 214
+        },
+        "locus_artifact_id": "art_locus_1"
+      },
+      {
+        "edge_id": "edge_2_3",
+        "source_node_id": "pier_2",
+        "target_node_id": "pier_3",
+        "kind": "meets",
+        "directed": false,
+        "basis": "mask",
+        "epistemic_status": "measured",
+        "measurements": {
+          "contact_pixels": 209
+        },
+        "locus_artifact_id": null
+      },
+      {
+        "edge_id": "edge_1_3",
+        "source_node_id": "pier_1",
+        "target_node_id": "pier_3",
+        "kind": "disjoint",
+        "directed": false,
+        "basis": "mask",
+        "epistemic_status": "measured",
+        "measurements": {
+          "separation": 0.22
+        },
+        "locus_artifact_id": null
+      }
+    ]
+  },
+  "topology.negative_space_field": {
+    "variant": "negative_space_field",
+    "figure_instance_ids": [
+      "inst_left_building",
+      "inst_right_building"
+    ],
+    "max_distance_used": 0.25,
+    "field_shape": [
+      8,
+      8
+    ],
+    "field_ref": null,
+    "statistics": {
+      "mean_distance": 0.09,
+      "max_distance": 0.25,
+      "covered_fraction": 0.61
+    }
+  },
+  "topology.transition": {
+    "variant": "topology_transition",
+    "revisions_compared": 2,
+    "transitions": [
+      {
+        "transition_id": "trans_1",
+        "before": {
+          "source": {
+            "artifact_id": "art_extent_1",
+            "instance_id": "inst_1",
+            "geometry_rev": 0
+          },
+          "target": {
+            "artifact_id": "art_extent_1",
+            "instance_id": "inst_2",
+            "geometry_rev": 0
+          },
+          "kind": "meets",
+          "measurements": {
+            "contact_pixels": 812
+          }
+        },
+        "after": {
+          "source": {
+            "artifact_id": "art_extent_1",
+            "instance_id": "inst_1",
+            "geometry_rev": 1
+          },
+          "target": {
+            "artifact_id": "art_extent_1",
+            "instance_id": "inst_2",
+            "geometry_rev": 0
+          },
+          "kind": "overlaps",
+          "measurements": {
+            "intersection_area": 0.03
+          }
+        },
+        "change": "changed"
+      }
+    ]
+  },
+  "topology.uncertain_relation_set": {
+    "variant": "topology_uncertain_relations",
+    "pairs_examined": 2,
+    "hypotheses": [
+      {
+        "hypothesis_id": "alt_one_object",
+        "artifact_id": "art_hypotheses_1",
+        "weight": 0.62
+      },
+      {
+        "hypothesis_id": "alt_two_objects",
+        "artifact_id": "art_hypotheses_1",
+        "weight": 0.29
+      }
+    ],
+    "relations": [
+      {
+        "relation_id": "crel_1",
+        "kind": "overlaps",
+        "source": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_form",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "target": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_plane",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "directed": false,
+        "basis": "mask",
+        "epistemic_status": "interpretive",
+        "conditioned_on": "alt_one_object",
+        "measurements": {
+          "intersection_area": 0.11
+        }
+      },
+      {
+        "relation_id": "crel_2",
+        "kind": "in_front_of",
+        "source": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_plane",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "target": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_form_lower",
+          "scope": "session",
+          "region_id": null,
+          "geometry_rev": null
+        },
+        "directed": true,
+        "basis": "declared",
+        "epistemic_status": "uncertain",
+        "conditioned_on": "alt_two_objects",
+        "measurements": {}
+      }
+    ]
+  }
+}
