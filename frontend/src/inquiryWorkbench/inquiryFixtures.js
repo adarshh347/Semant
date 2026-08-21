@@ -1615,4 +1615,55 @@ export function unrecordedScopeFixture() {
     };
 }
 
+/**
+ * 27. A CITATION THAT NAMES A PICTURE THE SESSION DOES NOT CARRY — and one nobody cited.
+ *
+ * Both of the image panel's absences, in one session, because they arrive together in practice: a
+ * chain that dropped an image from the catalogue leaves the citations to it behind, and the image
+ * that WAS carried goes unmentioned. Neither is a rendering problem. `post_altes_missing` is cited
+ * by a source unit and an atom and appears in no `image_refs` entry, which is an upstream defect
+ * the surface has to be able to say out loud; `post_altes_rotunda` is handed to the run and cited
+ * by nothing, which is the quieter of the two and the one more likely to be read as "fine".
+ */
+export function danglingImageFixture() {
+    const s = dissolvedFixture();
+    return {
+        ...s,
+        graph: {
+            ...s.graph,
+            // BOTH are carried, and that is the point of the second absence: the rotunda was
+            // handed to the run and read, and every citation to it is stripped below. An image
+            // missing from the catalogue would be a different bug; this one is present and idle.
+            image_refs: clone(IMAGES),
+            reading: { ...s.graph.reading, blocks: s.graph.reading.blocks.map(
+                (b) => ({ ...b, image_refs: b.image_refs.filter((r) => r !== 'post_altes_rotunda') }),
+            ) },
+            source_units: [
+                ...s.graph.source_units.map(
+                    (u) => ({ ...u, image_refs: u.image_refs.filter((r) => r !== 'post_altes_rotunda') }),
+                ),
+                {
+                    source_unit_id: 'su_9', source_type: 'reading_block', source_ref: 'rdb_4',
+                    exact_quote: 'the stair converts a lateral approach into a vertical one',
+                    image_refs: ['post_altes_missing'],
+                },
+            ],
+            semantic_atoms: [
+                ...s.graph.semantic_atoms,
+                {
+                    atom_id: 'atm_9', source_unit_ids: ['su_9'],
+                    text: 'the stair converts the approach',
+                    unit_kind: 'causal_hypothesis', subject: 'stair', predicate: 'converts',
+                    object: 'approach',
+                    image_scope: ['post_altes_missing'], epistemic_ceiling: 'interpretive',
+                    author: 'model', provenance: { role: 'semantic_dissector' },
+                },
+            ],
+            claims: s.graph.claims.map(
+                (c) => ({ ...c, image_scope: c.image_scope.filter((r) => r !== 'post_altes_rotunda') }),
+            ),
+        },
+    };
+}
+
 export default consultFixture;

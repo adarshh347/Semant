@@ -1,0 +1,113 @@
+{
+  "trial_id": "dinov2_affinity.fence-tree",
+  "recorded_at": "2026-08-22T01:03:18+0530",
+  "candidate": {
+    "key": "dinov2_affinity",
+    "label": "DINOv2 ViT-S/14 — patch-feature affinity",
+    "forms": [
+      "extent.fused_hypothesis"
+    ],
+    "source": "https://huggingface.co/facebook/dinov2-small",
+    "checkpoint": "facebook/dinov2-small",
+    "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
+    "license": "Apache-2.0",
+    "acquisition": "already resident — weights.manifest.json entry `dinov2_vits14`",
+    "size_mb": 85.0,
+    "expected_vram_gb": 0.4,
+    "produces": "a cosine between pooled patch features: how alike two fragments LOOK",
+    "cannot_produce": "unity, geometry, or any hidden extent",
+    "claim": "derived"
+  },
+  "control": "fence-tree",
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13",
+    "torch": "2.13.0",
+    "device": "mps",
+    "budget_vram_gb": 10.0
+  },
+  "fidelity": {
+    "control": "fence-tree",
+    "checked": false
+  },
+  "outcome": "ready",
+  "source_image_digest": "sha256:199fa16bfa95802de96d37f6e9cdb318a168d459028de03283e735a8b4e7b62b",
+  "cold_load_s": 2.8415,
+  "warm_run_s": 0.2199,
+  "peak_process_rss_mb": 462.0,
+  "accelerator_allocated_mb": 106.7,
+  "measurements": {
+    "patch_grid": [
+      16,
+      16
+    ],
+    "feature_dim": 384,
+    "fragments_compared": 5,
+    "pairwise_cosine": [
+      [
+        0,
+        1,
+        0.976625
+      ],
+      [
+        0,
+        2,
+        0.922352
+      ],
+      [
+        0,
+        3,
+        0.938076
+      ],
+      [
+        0,
+        4,
+        0.946696
+      ],
+      [
+        1,
+        2,
+        0.971516
+      ],
+      [
+        1,
+        3,
+        0.958883
+      ],
+      [
+        1,
+        4,
+        0.911149
+      ],
+      [
+        2,
+        3,
+        0.96995
+      ],
+      [
+        2,
+        4,
+        0.883575
+      ],
+      [
+        3,
+        4,
+        0.941711
+      ]
+    ],
+    "mean_cosine": 0.942053,
+    "min_cosine": 0.883575,
+    "one_entity_truth": true,
+    "deterministic": true,
+    "raw_output_digest": "sha256:2c73b5b8427040e40b11b4a6269540b85db5eaf89ced9004f19f4ef3f2355d8e",
+    "preview": "research/perception_lab/model_trials/previews/dinov2_affinity.fence-tree.png"
+  },
+  "form_contract": {
+    "form": "extent.fused_hypothesis",
+    "attempted": true,
+    "satisfies": true,
+    "payload_variant": "extent_fusion_hypothesis",
+    "why": "the model fills a GROUND, never the grouping. The claim is `interpretive` by partition and the model's number is one strength among several"
+  }
+}

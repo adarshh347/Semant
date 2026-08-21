@@ -34,7 +34,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -110,19 +110,33 @@ def posts_for(args):
     return refs
 
 
-def fingerprints(refs) -> Dict[str, str]:
-    """Every selected post's fingerprint, read from the archive RIGHT NOW.
+def fingerprints(refs) -> Tuple[Dict[str, str], str]:
+    """Every selected post's fingerprint, read from the archive RIGHT NOW — or why it could not be.
 
     Taken before and after the run and compared, because §8 asks for both and because the one
     guarantee that has to hold whether or not anything else did is that nothing moved. A ref with no
     fingerprint (a bare `--image` URL) is not in this map: there is no document behind it to move.
+
+    IT FAILS SOFT, AND THAT IS THE POINT. This used to raise, and a transient Atlas timeout in the
+    CLOSING read destroyed the entire record of a twenty-four-minute live run — the transcript, the
+    canonical session, the stage ledger, the council receipts, all of it, because a check performed
+    after the work could not reach the database. The check is not more important than the run it is
+    checking.
+
+    So a failure returns the reason instead, the transcript prints `COULD NOT BE RE-READ` with the
+    error, and nothing claims the posts were unchanged. An unperformed check reported as unperformed
+    is worth incomparably more than a lost run, and it is the same distinction the whole tree draws
+    between `unavailable` and `empty`.
     """
     ids = [r.post_id for r in refs if r.fingerprint]
     if not ids:
-        return {}
+        return {}, ""
     from backend.services.inquiry_session import corpus
-    fresh, _docs = _await(corpus.resolve(ids))
-    return {r.post_id: r.fingerprint for r in fresh}
+    try:
+        fresh, _docs = _await(corpus.resolve(ids))
+    except Exception as exc:                                     # noqa: BLE001
+        return {}, f"{type(exc).__name__}: {exc}"
+    return {r.post_id: r.fingerprint for r in fresh}, ""
 
 
 def drive(args, stages, *, session_id: Optional[str] = None):
@@ -486,22 +500,28 @@ def main() -> int:
     # BEFORE AND AFTER, over the archive rather than over the session's own copy. The session's
     # refs were read at the start; re-reading the documents is what makes this a comparison against
     # the world instead of against a number the run is carrying around with it.
-    before = fingerprints(posts_for(args)) if args.live else {}
+    before, before_error = fingerprints(posts_for(args)) if args.live else ({}, "")
     began = time.monotonic()
     session, request = drive(args, stages)
     elapsed = time.monotonic() - began
-    after = fingerprints(session.posts) if args.live else {}
 
     # BOTH, WHEN ASKED FOR BOTH. `--json` REPLACED the transcript, which meant a live rehearsal that
     # wanted the readable account and the canonical record had to be run twice — and at an 8000 TPM
     # allowance a second run of a four-image inquiry is half an hour of waiting to produce bytes the
     # first run already held. HARNESS-003E, and it cost this lane the fold run's own record to
     # notice.
+    #
+    # AND IT IS WRITTEN THE MOMENT THE SESSION EXISTS, before anything else this function does.
+    # Every line below it is a courtesy — a closing check, some formatting — and none of them is
+    # worth the record of a run that has already happened. HARNESS-003F, after a transient database
+    # timeout in the closing fingerprint read took a twenty-four-minute live run with it.
     if args.json_out:
         Path(args.json_out).write_text(json.dumps(view.session_view(
             session, servable_classes=coordinator.servable_classes(stages),
             deployment=runtime.deployment(stages)), indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"canonical session written to {args.json_out}", file=sys.stderr)
+
+    after, after_error = fingerprints(session.posts) if args.live else ({}, "")
 
     if args.json:
         # The SAME body the route serves, deployment badge included. A rehearsal transcript that
@@ -516,11 +536,21 @@ def main() -> int:
         print(f"wall      {elapsed:.1f}s end to end, on the process's MONOTONIC clock — which does "
               f"not tick while the host is suspended, so a stage duration above it is not a "
               f"contradiction", file=sys.stdout)
-        if before or after:
-            moved = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
-            print(f"\nposts     {len(before)} fingerprinted before, {len(after)} after — "
-                  f"{'NOTHING MOVED' if not moved else f'{len(moved)} CHANGED: {moved}'}",
-                  file=sys.stdout)
+        if before or after or before_error or after_error:
+            if before_error or after_error:
+                # NOT "nothing moved". Nobody looked, and saying so is the only honest report.
+                print(f"\nposts     THE INVARIANCE CHECK COULD NOT BE PERFORMED — the archive was "
+                      f"unreachable, so this run makes NO claim about whether its posts moved.",
+                      file=sys.stdout)
+                for label, err in (("before", before_error), ("after", after_error)):
+                    if err:
+                        print(f"            {label}: {err[:200]}", file=sys.stdout)
+            else:
+                moved = sorted(k for k in set(before) | set(after)
+                               if before.get(k) != after.get(k))
+                print(f"\nposts     {len(before)} fingerprinted before, {len(after)} after — "
+                      f"{'NOTHING MOVED' if not moved else f'{len(moved)} CHANGED: {moved}'}",
+                      file=sys.stdout)
             for post_id in sorted(before):
                 print(f"            {post_id}  {before[post_id]}", file=sys.stdout)
     return 0

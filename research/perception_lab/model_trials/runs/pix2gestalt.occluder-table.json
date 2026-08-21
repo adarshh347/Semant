@@ -1,0 +1,38 @@
+{
+  "trial_id": "pix2gestalt.occluder-table",
+  "recorded_at": "2026-08-22T00:58:27+0530",
+  "candidate": {
+    "key": "pix2gestalt",
+    "label": "pix2gestalt — amodal completion by synthesis",
+    "forms": [
+      "extent.visible_inferred_partition"
+    ],
+    "source": "https://github.com/cvlab-columbia/pix2gestalt",
+    "checkpoint": "pix2gestalt (Stable Diffusion 1.5 fine-tune)",
+    "revision": "not resolved — not fetched",
+    "license": "see upstream repository; the SD-1.5 lineage carries CreativeML OpenRAIL-M",
+    "acquisition": "NOT ATTEMPTED",
+    "size_mb": null,
+    "expected_vram_gb": 24.0,
+    "produces": "a synthesized whole object, from which an amodal mask can be cut",
+    "cannot_produce": "anything on this machine",
+    "claim": "inferred"
+  },
+  "control": "occluder-table",
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13",
+    "torch": "2.13.0",
+    "device": "mps",
+    "budget_vram_gb": 10.0
+  },
+  "outcome": "unavailable",
+  "unavailable_reason": "The published demo requires roughly 22-28 GB of VRAM against a 10 GB budget. Not downloaded, not run, not integrated — DEFERRED on resources rather than rejected on merit. The form stays valid and producible by hand in the meantime.",
+  "form_contract": {
+    "form": "extent.visible_inferred_partition",
+    "attempted": false,
+    "satisfies": false,
+    "why": "nothing ran, so nothing is claimed"
+  }
+}
