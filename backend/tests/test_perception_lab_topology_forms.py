@@ -40,13 +40,16 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import pytest
 
-from backend.schemas.perception_lab import (BASIS_CEILINGS, STATUS_ORDER, EpistemicBasis,
-                                            EpistemicStatus, PerceptualArtifact, RefusalCode,
-                                            RelationKind, TopologyContactLocusPayload,
-                                            TopologyContainmentTreePayload)
+from backend.schemas.perception_lab import (BASIS_CEILINGS, PARTITION_CEILINGS, STATUS_ORDER,
+                                            EpistemicBasis, EpistemicPartition, EpistemicStatus,
+                                            ExtentHypothesisSetPayload, PerceptualArtifact,
+                                            RefusalCode, RelationKind, TopologyContactLocusPayload,
+                                            TopologyContainmentTreePayload, TransitionChange)
 from backend.services.perception_lab import definitions as D
 from backend.services.perception_lab.topology_forms import adjacency as A
 from backend.services.perception_lab.topology_forms import containment as C
+from backend.services.perception_lab.topology_forms import transition as X
+from backend.services.perception_lab.topology_forms import uncertain as U
 from backend.services.perception_lab.topology_forms.sources import Roster, endpoint_key
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -661,3 +664,304 @@ def test_assembling_the_same_scene_twice_gives_the_same_graph():
     second = graph(fixture("relations.piers.json"), roster=piers_roster())
     assert first.payload.model_dump_json() == second.payload.model_dump_json()
     assert first.contact_components == second.contact_components
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# the transition: what changed between two revisions of one pair
+# ════════════════════════════════════════════════════════════════════════════
+
+REVISION = "art_forms_revision"
+ONE_PIXEL = "art_forms_one_pixel"
+
+
+def transitions(before: str, after: str, **kw: Any) -> X.TransitionReading:
+    return X.produce_transition([fixture(before)], [fixture(after)], **kw)
+
+
+def only_transition(reading: X.TransitionReading) -> Any:
+    assert len(reading.payload.transitions) == 1, \
+        [t.transition_id for t in reading.payload.transitions]
+    return reading.payload.transitions[0]
+
+
+def test_the_gap_closing_reads_as_disjoint_becoming_meets():
+    reading = transitions("relations.revision-0.json", "relations.revision-1.json")
+    change = only_transition(reading)
+    assert change.before.kind is RelationKind.DISJOINT
+    assert change.after.kind is RelationKind.MEETS
+    assert change.change is TransitionChange.CHANGED
+
+
+def test_a_transition_cites_four_revision_pinned_references():
+    """`transition_cites_both_revisions` is one of this form's declared test obligations.
+
+    Both endpoints before and both after, and one of the four differs — `bar` was revised and
+    `post` was not, which is what makes this a transition rather than a re-measurement.
+    """
+    change = only_transition(transitions("relations.revision-0.json", "relations.revision-1.json"))
+    assert str(change.before.source) == f"{REVISION}#bar@0"
+    assert str(change.before.target) == f"{REVISION}#post@0"
+    assert str(change.after.source) == f"{REVISION}#bar@1"
+    assert str(change.after.target) == f"{REVISION}#post@0"
+    assert change.before.source.instance.key == change.after.source.instance.key
+
+
+def test_the_clearance_and_the_contact_locus_are_recorded_as_the_numbers_that_moved():
+    """`TransitionChange` has four words and none of them is "the band moved".
+
+    So the movement is recorded as the measurements it actually consists of, beside the transition
+    rather than inside it.
+    """
+    reading = transitions("relations.revision-0.json", "relations.revision-1.json")
+    change = only_transition(reading)
+    moved = {d.measurement: (d.before, d.after) for d in reading.deltas_for(change.transition_id)}
+    assert moved["clearance_px"] == (3.0, 1.0), "two columns of gap became one pixel of contact"
+    assert moved["contact_pixels"] == (0.0, 20.0)
+    assert moved["contact_locus_x"][0] is None and moved["contact_locus_x"][1] is not None, \
+        "a band that did not exist has no position, and reporting 0 would be a measurement"
+    assert all(d.moved for d in reading.deltas)
+
+
+def test_one_pixel_across_the_threshold_loses_the_nesting_and_not_the_object():
+    """THE CONTROL THIS FORM EXISTS FOR. `MIN_CONTAINMENT` is 0.95.
+
+    At revision 0 the inner shape's containment is 90/94 = 0.957447 and it is nested. At revision 1
+    the nub is one pixel longer, 90/95 = 0.947368, and it is not. What disappears is the RELATION.
+    The instance is the same instance at both revisions, and nothing in this producer mints an
+    identity, so there is no mechanism by which a moved pixel could become a new object.
+    """
+    reading = transitions("relations.one-pixel-0.json", "relations.one-pixel-1.json")
+    change = only_transition(reading)
+    assert change.change is TransitionChange.DISAPPEARED
+    assert change.before.kind is RelationKind.NESTED_WITHIN
+    assert change.after.kind is None
+    assert change.before.measurements["containment"] == pytest.approx(90 / 94, abs=1e-6)
+    assert change.before.source.instance_id == change.after.source.instance_id == "inner"
+    assert (change.before.source.geometry_rev, change.after.source.geometry_rev) == (0, 1)
+    assert change.before.target.geometry_rev == change.after.target.geometry_rev == 0, \
+        "the outer shape was not revised, and the record says so"
+
+
+def test_a_pair_holding_two_kinds_of_one_family_reports_nothing_for_that_family():
+    """The one-pixel control is `meets` AND `overlaps` at both revisions.
+
+    `RelationState` carries one kind, so there is no arrangement of this record that can say so.
+    Naming a main one would be this module deciding which measurement counted — and the OTHER
+    families still report, which is why the nesting finding above survives.
+    """
+    reading = transitions("relations.one-pixel-0.json", "relations.one-pixel-1.json")
+    ambiguous = reading.omissions_for("ambiguous_state")
+    assert ambiguous, "the planarity family holds two kinds at once"
+    assert all("planarity" in o.what for o in ambiguous)
+    assert all("meets" in o.detail and "overlaps" in o.detail for o in ambiguous)
+    assert {t.before.kind for t in reading.payload.transitions} == {RelationKind.NESTED_WITHIN}
+
+
+def test_a_pair_measured_twice_at_one_revision_is_not_a_transition():
+    """Lane A refuses two identical revision pairs outright, so a producer that emitted one could
+    not build a payload at all. It is reported as what it is instead."""
+    reading = X.produce_transition([fixture("relations.revision-0.json")],
+                                   [fixture("relations.revision-0.json")])
+    assert reading.payload.transitions == []
+    assert [o.reason for o in reading.omissions_for("revision_unchanged")] == ["revision_unchanged"]
+    assert reading.unchanged_pairs
+
+
+def test_an_endpoint_with_no_revision_cannot_be_one_end_of_a_transition():
+    """`RelationEndpoint.geometry_rev` is optional — a session-scope relation legitimately carries
+    none — so this is a refusal rather than a validation error. The relation is perfectly good and
+    it cannot be the subject of a statement about revisions."""
+    loose = relation_artifact([relation("meets", "a", "b", directed=False)], pairs_examined=1)
+    reading = X.produce_transition([loose], [loose])
+    codes = {r.code for r in reading.refusals}
+    assert RefusalCode.UNKNOWN_REFERENCE in codes
+    assert reading.payload.transitions == []
+    assert {o.reason for o in reading.omitted} >= {"revision_missing"}
+
+
+def test_the_transition_is_deferred_and_says_so_while_still_settling_its_shape():
+    """`topology.transition` is registered, designed and unwritable in the merged contract.
+
+    The payload is assembled — that is the whole reason a deferred form is registered a phase
+    early — and the verdict travels with it so a caller cannot mint an artifact without stepping
+    over a typed no it can see.
+    """
+    reading = transitions("relations.revision-0.json", "relations.revision-1.json")
+    assert reading.producible is False
+    assert reading.writable_payload is None
+    assert reading.payload is not None
+    refusal, = [r for r in reading.refusals if r.code is RefusalCode.FORM_NOT_PRODUCIBLE]
+    assert "deferred" in refusal.message
+    assert D.form(X.FORM).state == "deferred"
+
+
+def test_the_count_says_two_states_were_compared():
+    """`revisions_compared` is the field that proves something looked. Counting distinct revision
+    NUMBERS instead would add revisions of different instances together, which is arithmetic on
+    incomparable things."""
+    assert transitions("relations.revision-0.json",
+                       "relations.revision-1.json").payload.revisions_compared == 2
+
+
+def test_comparing_the_same_pair_twice_gives_the_same_transition_ids():
+    first = transitions("relations.revision-0.json", "relations.revision-1.json")
+    second = transitions("relations.revision-0.json", "relations.revision-1.json")
+    assert first.payload.model_dump_json() == second.payload.model_dump_json()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# the conditional set: what would be true, if that reading were right
+# ════════════════════════════════════════════════════════════════════════════
+
+CUBIST = "art_forms_cubist"
+ONE_OBJECT = "alt_one_object"
+TWO_OBJECTS = "alt_two_objects"
+
+
+def hypothesis_set(*, weights: Tuple[float, float] = (0.62, 0.29)
+                   ) -> ExtentHypothesisSetPayload:
+    """The two readings of the cubist scene, over ONE extent set.
+
+    Competing readings select different SUBSETS of the same identities — which is what
+    `ExtentAlternative.instances` is for, and the only arrangement in which a relation can be found
+    to hold under both. Two artifacts would give the same column two node keys.
+    """
+    def alt(alt_id: str, weight: float, names: Sequence[str]) -> Dict[str, Any]:
+        return {"alternative_id": alt_id, "weight": weight, "artifact_id": CUBIST,
+                "instances": [{"artifact_id": CUBIST, "instance_id": n} for n in names],
+                "grounds": []}
+    return ExtentHypothesisSetPayload.model_validate({
+        "variant": "extent_hypothesis_set", "alternatives_considered": 2,
+        "question": "one form or two, beside the plane?", "weights_are_probabilities": False,
+        "alternatives": [alt(ONE_OBJECT, weights[0], ("form", "plane", "column")),
+                         alt(TWO_OBJECTS, weights[1],
+                             ("form_upper", "form_lower", "plane", "column"))]})
+
+
+def conditional(readings: Optional[Dict[str, Sequence[Any]]] = None,
+                **kw: Any) -> U.HypothesisReading:
+    if readings is None:
+        readings = {ONE_OBJECT: [fixture("relations.cubist-one.json")],
+                    TWO_OBJECTS: [fixture("relations.cubist-two.json")]}
+    return U.produce_uncertain_relations(("art_forms_hyp", hypothesis_set()), readings, **kw)
+
+
+def test_each_hypothesis_is_evaluated_separately_and_keeps_its_own_relations():
+    reading = conditional()
+    assert reading.evaluated == (ONE_OBJECT, TWO_OBJECTS)
+    one = {(r.kind.value, r.source.instance_id, r.target.instance_id)
+           for r in reading.relations_for(ONE_OBJECT)}
+    two = {(r.kind.value, r.source.instance_id, r.target.instance_id)
+           for r in reading.relations_for(TWO_OBJECTS)}
+    assert ("overlaps", "form", "plane") in one
+    assert ("disjoint", "form_lower", "plane") in two
+    assert ("overlaps", "form", "plane") not in two
+
+
+def test_every_relation_keeps_the_condition_it_hangs_on():
+    """`conditional_relation_retains_its_hypothesis`, and Lane A refuses a payload whose condition
+    it does not declare. A dropped condition reads exactly like a measurement."""
+    reading = conditional()
+    declared = {h.hypothesis_id for h in reading.payload.hypotheses}
+    assert declared == {ONE_OBJECT, TWO_OBJECTS}
+    for relation in reading.payload.relations:
+        assert relation.conditioned_on in declared
+
+
+def test_incompatible_kinds_are_two_relations_and_never_one_average():
+    """Under one reading the form overlaps the plane; under the other its lower half stands clear.
+
+    There is no scale on which `overlaps` and `disjoint` are near each other, so there is no scale
+    on which to average them — and there is no arithmetic in the producer that could.
+    """
+    reading = conditional()
+    about_the_plane = [r for r in reading.payload.relations
+                       if r.target.instance_id == "plane" or r.source.instance_id == "plane"]
+    kinds = {(r.conditioned_on, r.kind.value) for r in about_the_plane}
+    assert (ONE_OBJECT, "overlaps") in kinds
+    assert (TWO_OBJECTS, "disjoint") in kinds
+    assert len({r.relation_id for r in about_the_plane}) == len(about_the_plane), \
+        "every conditional relation has its own id; nothing was merged"
+
+
+def test_what_survives_every_reading_is_reported_apart_from_what_does_not():
+    """The column stands clear of the plane whichever way the ambiguity resolves. That is a
+    different kind of fact from a relation that holds under one reading."""
+    reading = conditional()
+    assert reading.stable == (f"disjoint|{CUBIST}#column|{CUBIST}#plane",)
+    assert f"overlaps|{CUBIST}#form|{CUBIST}#plane" in reading.dependent
+    assert f"disjoint|{CUBIST}#form_lower|{CUBIST}#plane" in reading.dependent
+
+
+def test_a_stable_relation_still_carries_its_condition_in_the_payload():
+    """The split is a reading OF the payload, never a part of it.
+
+    A relation that dropped its condition on the grounds of being stable would read exactly like a
+    measured one, which is the substitution this form exists to make impossible.
+    """
+    reading = conditional()
+    stable_pairs = [r for r in reading.payload.relations
+                    if {r.source.instance_id, r.target.instance_id} == {"column", "plane"}]
+    assert {r.conditioned_on for r in stable_pairs} == {ONE_OBJECT, TWO_OBJECTS}
+    assert len(stable_pairs) == 2, "one per reading, each naming its own"
+
+
+def test_no_reading_is_dropped_for_being_unlikely():
+    """`a_hypothesis_is_not_curated_by_confidence`. The low-weight reading is the one a person most
+    needs to see before they choose."""
+    faint = U.produce_uncertain_relations(
+        ("art_forms_hyp", hypothesis_set(weights=(0.99, 0.01))),
+        {ONE_OBJECT: [fixture("relations.cubist-one.json")],
+         TWO_OBJECTS: [fixture("relations.cubist-two.json")]})
+    weights = {h.hypothesis_id: h.weight for h in faint.payload.hypotheses}
+    assert weights == {ONE_OBJECT: 0.99, TWO_OBJECTS: 0.01}
+    assert faint.relations_for(TWO_OBJECTS), "the unlikely reading was evaluated and kept"
+
+
+def test_an_alternative_nothing_was_measured_under_is_still_declared():
+    """It was considered. Dropping the citation would shrink the space of readings a later person
+    can see was open — and that is a silent resolution of the ambiguity."""
+    reading = conditional({ONE_OBJECT: [fixture("relations.cubist-one.json")]})
+    assert reading.unevaluated == (TWO_OBJECTS,)
+    assert {h.hypothesis_id for h in reading.payload.hypotheses} == {ONE_OBJECT, TWO_OBJECTS}
+    assert reading.relations_for(TWO_OBJECTS) == ()
+    assert reading.stable and not reading.dependent, \
+        "one evaluated reading contradicts nothing, so everything it found stands under it"
+
+
+def test_relations_supplied_under_an_undeclared_reading_are_refused():
+    """A condition nobody can look up is a condition that has been dropped."""
+    reading = conditional({ONE_OBJECT: [fixture("relations.cubist-one.json")],
+                           "alt_invented": [fixture("relations.cubist-two.json")]})
+    refusal, = [r for r in reading.refusals if "alt_invented" in r.message]
+    assert refusal.code is RefusalCode.UNKNOWN_REFERENCE
+    assert all(r.conditioned_on != "alt_invented" for r in reading.payload.relations)
+
+
+def test_a_conditional_relation_is_never_measured_however_it_was_computed():
+    """The masks were measured. The relation between things that may not be those things was not.
+
+    Both ceilings apply: the basis's, and the partition's. `unresolved_alternative` caps at
+    `uncertain` independently of a perfect mask basis, and no confidence lifts it.
+    """
+    reading = conditional()
+    source = fixture("relations.cubist-one.json")["measurement"]["payload"]["relations"]
+    assert {r["epistemic_status"] for r in source} == {"measured"}, \
+        "the relations underneath were measured; the control is only a control if they were"
+    for relation in reading.payload.relations:
+        assert relation.epistemic_status not in (EpistemicStatus.MEASURED, EpistemicStatus.VISIBLE)
+        assert STATUS_ORDER[relation.epistemic_status] <= STATUS_ORDER[U.CONDITIONAL_CEILING]
+    assert reading.ceiling is EpistemicStatus.UNCERTAIN
+    assert PARTITION_CEILINGS[EpistemicPartition.UNRESOLVED_ALTERNATIVE] is EpistemicStatus.UNCERTAIN
+
+
+def test_the_conditional_set_is_deferred_and_says_so():
+    reading = conditional()
+    assert reading.producible is False
+    assert reading.writable_payload is None
+    assert any(r.code is RefusalCode.FORM_NOT_PRODUCIBLE for r in reading.refusals)
+    assert D.form(U.FORM).state == "deferred"
+
+
+def test_assembling_the_same_readings_twice_gives_the_same_conditional_set():
+    assert conditional().payload.model_dump_json() == conditional().payload.model_dump_json()

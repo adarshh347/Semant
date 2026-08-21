@@ -16,6 +16,7 @@ read the second.
 | `ambiguous` | one shape inside two overlapping shapes that contain neither |
 | `revision-0` / `revision-1` | the same pair two columns apart, then touching: one endpoint revised |
 | `one-pixel-0` / `one-pixel-1` | containment 0.957447 → 0.947368 across `MIN_CONTAINMENT` = 0.95 |
+| `cubist` | one form or two beside a plane, and a column that stands apart under both readings |
 
 The rectangles are half-open `(x0, x1, y0, y1)` on a 40x60 raster, so every answer is known before
 the organ runs.

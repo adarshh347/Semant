@@ -38,15 +38,31 @@ from backend.services.perception_lab.topology_forms.production import (OMISSION_
                                                                        check_producible, dangling,
                                                                        minted, not_a_revision,
                                                                        weaker_basis, weakest)
-from backend.services.perception_lab.topology_forms.sources import (HypothesisSet, NotARelationSet,
-                                                                    Reading, RelationSet, Supplied,
-                                                                    as_artifact, endpoint_key,
-                                                                    revision_key)
+from backend.services.perception_lab.topology_forms.adjacency import (AdjacencyReading,
+                                                                      produce_adjacency_graph)
+from backend.services.perception_lab.topology_forms.containment import (ContainmentConflict,
+                                                                        ContainmentReading,
+                                                                        produce_containment_tree)
+from backend.services.perception_lab.topology_forms.sources import (NO_ROSTER, Carried,
+                                                                    HypothesisSet, NotARelationSet,
+                                                                    Reading, RelationSet, Roster,
+                                                                    Supplied, as_artifact, carried,
+                                                                    endpoint_key, revision_key)
+from backend.services.perception_lab.topology_forms.transition import (MeasurementDelta,
+                                                                       TransitionReading,
+                                                                       produce_transition)
+from backend.services.perception_lab.topology_forms.uncertain import (HypothesisReading,
+                                                                      produce_uncertain_relations)
 
 __all__ = [
     "ORGAN", "PRODUCER", "PARTITION", "OMISSION_REASONS", "Omission", "FormProduction",
     "check_producible", "check_inputs_are_read", "ceiling_for", "weakest", "weaker_basis",
     "dangling", "not_a_revision", "minted",
-    "Supplied", "NotARelationSet", "as_artifact", "endpoint_key", "revision_key",
-    "RelationSet", "HypothesisSet", "Reading",
+    "Supplied", "Carried", "carried", "NotARelationSet", "as_artifact", "endpoint_key",
+    "revision_key", "RelationSet", "HypothesisSet", "Roster", "NO_ROSTER", "Reading",
+    # the four producers
+    "produce_containment_tree", "ContainmentReading", "ContainmentConflict",
+    "produce_adjacency_graph", "AdjacencyReading",
+    "produce_transition", "TransitionReading", "MeasurementDelta",
+    "produce_uncertain_relations", "HypothesisReading",
 ]

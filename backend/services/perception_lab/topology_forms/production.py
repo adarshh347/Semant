@@ -67,6 +67,7 @@ OMISSION_REASONS: Tuple[str, ...] = (
     "revision_missing",        # a transition needs a pinned revision and this endpoint has none
     "revision_unchanged",      # the pair was re-measured, not revised
     "not_a_structural_kind",   # the relation kind is not one this form assembles
+    "ambiguous_state",         # one pair held two kinds of one family at once; see `transition.py`
     "self_pair",               # source and target are the same identity
     "duplicate",               # the same finding arrived twice
 )

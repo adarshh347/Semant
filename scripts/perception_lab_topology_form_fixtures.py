@@ -196,6 +196,25 @@ REVISION_B: Dict[str, Tuple[int, int, int, int]] = {
 #: `nestedness_organ.MIN_CONTAINMENT` is 0.95, so one pixel moves the verdict across it. The
 #: instance is the same instance at both revisions, and a transition that treated the crossing as
 #: an identity change would be inventing an object.
+#: THE CUBIST CONTROL. Five instances in ONE extent set, because competing readings of a scene
+#: select different SUBSETS of the same identities — that is what `ExtentAlternative.instances` is
+#: for, and it is the only arrangement in which a relation can be found to hold under both
+#: readings. Two artifacts would give the same column two node keys and no relation could ever be
+#: stable across the pair.
+#:
+#:   alt_one_object    form, plane, column          — `form` is one L-shaped object
+#:   alt_two_objects   form_upper, form_lower, plane, column
+#:
+#: `form` is the union of `form_upper` and `form_lower`, so under the first reading it OVERLAPS the
+#: plane and under the second only the upper half does while the lower half is DISJOINT from it.
+#: `column` stands apart from the plane under both, which is the stable relation.
+CUBIST: Dict[str, Tuple[int, int, int, int]] = {
+    "plane": (34, 56, 6, 34),
+    "column": (2, 10, 6, 34),
+    "form_upper": (18, 40, 8, 18),
+    "form_lower": (18, 30, 20, 30),
+}
+
 ONE_PIXEL_OUTER = (10, 40, 10, 30)
 ONE_PIXEL_CORE = (20, 30, 20, 29)
 ONE_PIXEL_NUB_4 = (20, 24, 30, 31)
@@ -253,6 +272,15 @@ def scenes() -> Dict[str, Dict[str, Any]]:
                             region_id="reg_inner", geometry_rev=1),
                    instance("outer", [ONE_PIXEL_OUTER], region_id="reg_outer", geometry_rev=0)],
         scope="canonical")
+
+    out["extent-set.cubist.json"] = extent_set(
+        "art_forms_cubist",
+        searched="a control: one form or two, beside a plane, with a column that stands apart",
+        instances=[instance("plane", [CUBIST["plane"]]),
+                   instance("column", [CUBIST["column"]]),
+                   instance("form", [CUBIST["form_upper"], CUBIST["form_lower"]]),
+                   instance("form_upper", [CUBIST["form_upper"]]),
+                   instance("form_lower", [CUBIST["form_lower"]])])
     return out
 
 
@@ -306,6 +334,14 @@ def relation_sets(built: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]
         "relations.one-pixel-1.json": relation_set(
             built["extent-set.one-pixel-1.json"], ["inner", "outer"],
             run_id="run_px_1", artifact_id="art_forms_rel_px_1"),
+        # The two readings of the cubist scene. Same artifact, different member subsets — so the
+        # relations that survive both readings are relations over the SAME identities.
+        "relations.cubist-one.json": relation_set(
+            built["extent-set.cubist.json"], ["form", "plane", "column"],
+            run_id="run_cubist_one", artifact_id="art_forms_rel_cubist_one"),
+        "relations.cubist-two.json": relation_set(
+            built["extent-set.cubist.json"], ["form_upper", "form_lower", "plane", "column"],
+            run_id="run_cubist_two", artifact_id="art_forms_rel_cubist_two"),
     }
 
 
@@ -328,6 +364,7 @@ read the second.
 | `ambiguous` | one shape inside two overlapping shapes that contain neither |
 | `revision-0` / `revision-1` | the same pair two columns apart, then touching: one endpoint revised |
 | `one-pixel-0` / `one-pixel-1` | containment 0.957447 → 0.947368 across `MIN_CONTAINMENT` = 0.95 |
+| `cubist` | one form or two beside a plane, and a column that stands apart under both readings |
 
 The rectangles are half-open `(x0, x1, y0, y1)` on a 40x60 raster, so every answer is known before
 the organ runs.
