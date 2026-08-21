@@ -1,0 +1,43 @@
+{
+  "variant": "extent_density_field",
+  "members_counted": 3,
+  "samples_taken": 3,
+  "counts_are_exact": true,
+  "members": [
+    {
+      "artifact_id": "art_extent_crowd",
+      "instance_id": "inst_1"
+    },
+    {
+      "artifact_id": "art_extent_crowd",
+      "instance_id": "inst_2"
+    },
+    {
+      "artifact_id": "art_extent_crowd",
+      "instance_id": "inst_3"
+    }
+  ],
+  "field": {
+    "field_shape": [2, 3],
+    "coordinate_system": "mask_rle_hw",
+    "value_range": [0.0, 3.0],
+    "derivation": "kernel_density",
+    "calibration": {
+      "state": "nominal",
+      "method": null,
+      "reference": null,
+      "units": "ordered occupancy, comparable within this field and across none"
+    },
+    "data_ref": null,
+    "inline_values": [0.0, 0.4, 1.8, 0.1, 0.9, 2.6],
+    "statistics": {
+      "peak": 2.6,
+      "eastern_half_share": 0.78
+    }
+  },
+  "smoothing": {
+    "applied": true,
+    "method": "gaussian",
+    "bandwidth": 0.05
+  }
+}

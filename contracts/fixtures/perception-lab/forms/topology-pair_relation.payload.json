@@ -1,0 +1,58 @@
+{
+  "variant": "topology_relation_set",
+  "pairs_examined": 3,
+  "relations": [
+    {
+      "relation_id": "rel_1",
+      "kind": "contains",
+      "source": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_court",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "target": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_fountain",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "directed": true,
+      "basis": "mask",
+      "epistemic_status": "measured",
+      "measurements": {
+        "containment_fraction": 1.0,
+        "clearance": 0.031
+      },
+      "stale": false
+    },
+    {
+      "relation_id": "rel_2",
+      "kind": "disjoint",
+      "source": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_fountain",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "target": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_1",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "directed": false,
+      "basis": "mask",
+      "epistemic_status": "measured",
+      "measurements": {
+        "separation": 0.114
+      },
+      "stale": false
+    }
+  ],
+  "bounded_to": null
+}

@@ -1,0 +1,33 @@
+{
+  "variant": "topology_intersection",
+  "pairs_examined": 2,
+  "intersections": [
+    {
+      "intersection_id": "isect_1",
+      "source": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_tree",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "target": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_facade",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "raster_shape": [8, 8],
+      "intersection_area": 0.14,
+      "fraction_of_source": 0.83,
+      "fraction_of_target": 0.21,
+      "basis": "mask",
+      "epistemic_status": "measured",
+      "mask_rle": {
+        "size": [8, 8],
+        "counts": [27, 2, 6, 2, 27]
+      }
+    }
+  ]
+}

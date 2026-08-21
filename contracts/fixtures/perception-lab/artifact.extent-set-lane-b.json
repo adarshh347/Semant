@@ -6,6 +6,7 @@
     "step_id": "step_find_all",
     "organ_family": "extent",
     "artifact_kind": "extent_set",
+    "form": null,
     "operation": "extent.find_all",
     "identity_scope": "session",
     "identity_refs": [],
@@ -81,6 +82,7 @@
     "coordinate_system": "normalized_xy_topleft",
     "epistemic_status": "measured",
     "epistemic_basis": "mask",
+    "partition": null,
     "basis_detail": "fake per-pixel masks"
   },
   "projection": {
