@@ -70,8 +70,10 @@ export const MANUAL_TOOL_KINDS = set('manual_tool_kinds');
 export const RELATION_KINDS = set('relation_kinds');
 
 // PERCEPTUAL-FORMS-001A — the perceptual-form grammar. A form is what was PERCEIVED; an operation
-// is what was ASKED FOR, and the two registries have different arities in both directions. Nine of
-// the nineteen forms are `deferred`: designed, validated, and unwritable.
+// is what was ASKED FOR, and the two registries have different arities in both directions.
+// Sixteen of the nineteen forms have an empty `produced_by_operations`, so no artifact of them
+// exists yet — their payloads are frozen and validated here so the lane that finally writes one
+// does not invent a second shape for it.
 export const PERCEPTUAL_FORMS = set('perceptual_forms');
 export const FORM_STATES = set('form_states');
 export const PRODUCER_CLASSES = set('producer_classes');
@@ -207,7 +209,14 @@ export const formsFor = (family) => CONTRACT.perceptual_forms.filter((f) => f.or
 export const producibleForms = () => CONTRACT.perceptual_forms.filter(
     (f) => f.state !== 'deferred');
 export const isFormProducible = (key) => form(key).state !== 'deferred';
-export const isFormPromotable = (key) => form(key).state === 'enabled';
+/**
+ * Whether any operation declares this form's kind — which is what decides today.
+ *
+ * Sixteen of the nineteen answer false, and that is the real gate: an artifact names the operation
+ * that produced it, so a form no operation declares has no artifact whatever its state says.
+ * `isFormProducible` is the further question of whether it ever could.
+ */
+export const formHasProducer = (key) => (form(key).produced_by_operations || []).length > 0;
 export const formForArtifactKind = (kind) => CONTRACT.perceptual_forms.find(
     (f) => f.artifact_kind === kind) || null;
 
@@ -752,9 +761,12 @@ export function validateArtifact(artifact) {
             if (declaration.state === 'deferred') {
                 fail(out, `${formKey} is registered and deferred; nothing in this phase writes one`);
             }
-            if (declaration.state === 'experimental' && lifecycle.status === 'promoted') {
-                fail(out, `${formKey} is experimental and may be kept inside the laboratory, `
-                    + 'never promoted into Semant');
+            const producers = declaration.produced_by_operations || [];
+            if (!producers.includes(identity.operation)) {
+                fail(out, `${formKey} is produced by `
+                    + `${producers.join(', ') || 'no operation yet'}, and this artifact names `
+                    + `"${identity.operation}". An operation that does not declare the kind did `
+                    + 'not produce it');
             }
             if (declaration.carries_hypothesis
                 && (lifecycle.status === 'kept' || lifecycle.status === 'promoted')) {
@@ -802,6 +814,153 @@ export function validateArtifact(artifact) {
     if ('review' in artifact || 'reviews' in artifact || 'verdict' in artifact) {
         fail(out, 'a verdict is a separate record — an artifact that carries one is an artifact '
             + 'whose measurement will be read as having been judged correct');
+    }
+    return out;
+}
+
+/**
+ * Validate a form PAYLOAD on its own — PERCEPTUAL-FORMS-001A.
+ *
+ * WHY A SEPARATE ENTRY POINT. Sixteen of the nineteen forms have no artifact yet, because no
+ * operation declares their kind. Their payload shapes are nevertheless frozen, and a shape only
+ * one runtime has ever instantiated is a shape two lanes will read differently — so the committed
+ * corpus under `fixtures/perception-lab/forms/` is payloads, and this is what reads it.
+ *
+ * IT IS NOT A SECOND SCHEMA. Pydantic owns the full shape. This checks the laws a rendering
+ * runtime would otherwise get wrong on its own: the ones about what a payload may CLAIM, which
+ * are exactly the ones a component reads and acts on.
+ */
+export function validateFormPayload(formKey, payload) {
+    const out = [];
+    const declaration = form(formKey);
+    if (!payload || typeof payload !== 'object') return fail(out, 'not an object');
+    if (payload.variant !== declaration.payload_variant) {
+        fail(out, `${formKey} carries a "${declaration.payload_variant}" payload, and this one `
+            + `says "${payload.variant}"`);
+    }
+    const examined = declaration.absence.examined_field;
+    if (payload[examined] === undefined || payload[examined] === null) {
+        fail(out, `${formKey} names "${examined}" as the field that proves something looked, and `
+            + 'this payload does not carry it — which makes an empty answer indistinguishable '
+            + 'from an absent one');
+    }
+    for (const key of PROJECTION_HINT_KEYS) {
+        if (key in payload) {
+            fail(out, `a payload may not carry the projection hint "${key}" — a renderer is never `
+                + 'the measurement');
+        }
+    }
+
+    // A fragment set has no field in which unity could be claimed.
+    if (payload.variant === 'extent_fragment_set' && payload.unity_asserted !== false) {
+        fail(out, 'a fragment set asserts no unity; that claim belongs to extent.fused_hypothesis, '
+            + 'where the grounds are enumerated and the status is capped below measured');
+    }
+    // Inferred pixels are never visible or measured, at any confidence.
+    for (const region of payload.regions || []) {
+        const allowed = {
+            visible: ['measured', 'visible'],
+            inferred: ['interpretive', 'uncertain'],
+            unknown: ['uncertain'],
+        }[region.part] || [];
+        if (!allowed.includes(region.epistemic_status)) {
+            fail(out, `the ${region.part} part may be ${allowed.join(', ')}, not `
+                + `"${region.epistemic_status}" — pixels nobody saw do not become visible by `
+                + 'being drawn in the same colour as the ones who were');
+        }
+    }
+    // A blurred mask is a picture of an edge's uncertainty, never a probability.
+    for (const scalar of [payload.field, ...(payload.regions || []).map((r) => r.field)]) {
+        if (!scalar) continue;
+        if (scalar.derivation === 'blur_of_binary_mask'
+            && scalar.calibration?.state === 'calibrated') {
+            fail(out, 'a field blurred out of a binary mask may not declare itself calibrated');
+        }
+        if (scalar.calibration?.state === 'calibrated'
+            && !(scalar.calibration.method && scalar.calibration.reference)) {
+            fail(out, 'a calibrated field names the method it was calibrated by and the reference '
+                + 'it was calibrated against');
+        }
+        const carriers = [scalar.inline_values, scalar.data_ref].filter(
+            (c) => c !== null && c !== undefined);
+        if (carriers.length !== 1) {
+            fail(out, 'a field carries exactly one of inline_values / data_ref');
+        }
+        if (scalar.data_ref && !scalar.data_ref.digest) {
+            fail(out, 'a raster held behind a pointer carries a digest, or it points at whatever '
+                + 'is there now');
+        }
+        if (!COORDINATE_SYSTEMS.includes(scalar.coordinate_system)) {
+            fail(out, `unknown coordinate system "${scalar.coordinate_system}"`);
+        }
+    }
+    // Every boundary encloses something, and every ring says which side is inside.
+    for (const boundary of payload.boundaries || []) {
+        if (!(boundary.rings || []).some((r) => r.winding === 'outer')) {
+            fail(out, 'a boundary with no outer ring encloses nothing');
+        }
+        for (const ringRecord of boundary.rings || []) {
+            if (!RING_WINDINGS.includes(ringRecord.winding)) {
+                fail(out, `a ring declares outer or inner, not "${ringRecord.winding}"`);
+            }
+        }
+    }
+    // Every hole names the extent it is a hole OF.
+    for (const hole of payload.holes || []) {
+        if (!hole.outer?.artifact_id || !hole.outer?.instance_id) {
+            fail(out, `hole "${hole.hole_id}" names no outer extent; a void is not a `
+                + 'free-standing shape');
+        }
+    }
+    // A hypothesis never claims more than its partition allows, and never with no ground.
+    for (const hypothesis of payload.hypotheses || []) {
+        if (!hypothesis.partition) continue;         // a citation, not a hypothesis record
+        const ceiling = PARTITION_CEILINGS[hypothesis.partition];
+        if (STATUS_ORDER[hypothesis.epistemic_status] > STATUS_ORDER[ceiling]) {
+            fail(out, `a ${hypothesis.partition} hypothesis may claim at most ${ceiling}, not `
+                + `${hypothesis.epistemic_status}`);
+        }
+        if (!(hypothesis.grounds || []).length) {
+            fail(out, `hypothesis "${hypothesis.hypothesis_id}" cites no ground; a confidence `
+                + 'with no ground is a number about nothing');
+        }
+    }
+    // Every edge names two nodes the record holds.
+    if (payload.nodes && payload.edges) {
+        const held = new Set(payload.nodes.map((n) => n.node_id));
+        for (const edge of payload.edges) {
+            if (!held.has(edge.source_node_id) || !held.has(edge.target_node_id)) {
+                fail(out, `edge "${edge.edge_id}" names a node this graph does not hold`);
+            }
+        }
+    }
+    // A transition cites both endpoints, before and after.
+    for (const transition of payload.transitions || []) {
+        for (const side of ['before', 'after']) {
+            for (const role of ['source', 'target']) {
+                const ref = transition[side]?.[role];
+                if (!ref || ref.geometry_rev === undefined || ref.geometry_rev === null) {
+                    fail(out, `transition "${transition.transition_id}" does not pin the ${side} `
+                        + `${role} to a revision, so nobody can see what it changed from`);
+                }
+            }
+        }
+    }
+    // Every conditional relation keeps the hypothesis that conditions it.
+    if (payload.variant === 'topology_uncertain_relations') {
+        const declared = new Set((payload.hypotheses || []).map((h) => h.hypothesis_id));
+        for (const relation of payload.relations || []) {
+            if (!declared.has(relation.conditioned_on)) {
+                fail(out, `relation "${relation.relation_id}" is conditioned on `
+                    + `"${relation.conditioned_on}", which this record does not declare — a `
+                    + 'dropped condition reads as a measurement');
+            }
+            if (relation.epistemic_status === 'measured'
+                || relation.epistemic_status === 'visible') {
+                fail(out, `relation "${relation.relation_id}" holds only under a hypothesis and `
+                    + `may not be ${relation.epistemic_status}`);
+            }
+        }
     }
     return out;
 }

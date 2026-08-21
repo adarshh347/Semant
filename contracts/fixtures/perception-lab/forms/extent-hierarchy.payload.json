@@ -1,0 +1,57 @@
+{
+  "variant": "extent_hierarchy",
+  "pairs_examined": 6,
+  "nodes": [
+    {
+      "node_id": "palace",
+      "instance": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_palace",
+        "geometry_rev": 0
+      },
+      "region": null,
+      "parent_node_id": null,
+      "occupancy_of_parent": null,
+      "basis": "mask"
+    },
+    {
+      "node_id": "courtyard",
+      "instance": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_court",
+        "geometry_rev": 0
+      },
+      "region": null,
+      "parent_node_id": "palace",
+      "occupancy_of_parent": 0.42,
+      "basis": "mask"
+    },
+    {
+      "node_id": "garden",
+      "instance": null,
+      "region": {
+        "region_id": "reg_7",
+        "geometry_rev": 3,
+        "scope": "canonical"
+      },
+      "parent_node_id": "courtyard",
+      "occupancy_of_parent": 0.61,
+      "basis": "mask"
+    },
+    {
+      "node_id": "fountain",
+      "instance": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_fountain",
+        "geometry_rev": 1
+      },
+      "region": null,
+      "parent_node_id": "garden",
+      "occupancy_of_parent": 0.08,
+      "basis": "box"
+    }
+  ],
+  "root_node_ids": [
+    "palace"
+  ]
+}

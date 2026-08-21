@@ -731,6 +731,34 @@ def test_the_manifest_lists_every_fixture_file_on_disk():
     assert listed == on_disk
 
 
+# ── the form payload corpus ──────────────────────────────────────────────────
+#
+# PERCEPTUAL-FORMS-001A. One committed payload per registered form. THESE ARE PAYLOADS, NOT
+# ARTIFACTS: sixteen of the nineteen forms have an empty `produced_by_operations`, so no artifact
+# of them can exist yet, and a full fixture for those sixteen would have to name an operation that
+# never ran. The payload alone claims nothing about who made it, and it is the part the next lane
+# must not reinvent.
+
+FORM_PAYLOADS = MANIFEST["form_payloads"]["by_form"]
+
+
+@pytest.mark.parametrize("form_key,entry", sorted(FORM_PAYLOADS.items()))
+def test_every_committed_form_payload_validates_against_its_model(form_key, entry):
+    model = S.FORM_PAYLOAD_MODELS[entry["variant"]]
+    payload = model.model_validate(_fixture(entry["file"]))
+    assert payload.variant == entry["variant"]
+    examined = D.form(form_key).absence.examined_field
+    assert getattr(payload, examined) is not None, (
+        f"{entry['file']} does not carry {examined!r}, which is what tells an empty answer from "
+        f"an absent one")
+
+
+def test_the_payload_corpus_covers_every_registered_form():
+    assert list(FORM_PAYLOADS) == list(C["closed_sets"]["perceptual_forms"]), (
+        "a form with no committed payload is a shape two lanes will read differently, and a "
+        "payload for something that is not a form is a shape nothing names")
+
+
 # ── the fields the frontend reads ────────────────────────────────────────────
 
 def _resolve(model: type, path: str):

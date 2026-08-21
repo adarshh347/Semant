@@ -2406,27 +2406,32 @@ class PerceptualArtifact(_Base):
 
     @model_validator(mode="after")
     def _a_registered_form_is_not_a_producer(self) -> "PerceptualArtifact":
-        """`deferred` cannot be written; `experimental` cannot leave the laboratory.
+        """An artifact names the operation that produced its form. Two gates, and they differ.
 
-        The same discipline `depth_field` is held to, for the same reason: a payload shape agreed
-        in advance is what stops the lane that finally implements fog from inventing its own field
-        record, and a state that let it be written today would make this file claim the laboratory
-        can already see something it cannot.
+        THE FIRST IS ABOUT TODAY. Sixteen of the nineteen forms have an empty
+        `produced_by_operations`, so no artifact of them can exist — an operation that does not
+        declare the kind did not produce it, and an artifact naming one that did not is exactly
+        the invented provenance this contract is built to make unsayable. This gate opens by
+        itself the moment an operation declares the kind, which is what `experimental` means.
+
+        THE SECOND STAYS SHUT AFTER THAT. A `deferred` form has no artifact even once an
+        operation declares it, because enabling it takes a bounded strategy nobody has built and
+        the declaration alone would be the lie. That is the discipline `depth_field` is held to.
         """
         declaration = self.form_declaration
         if declaration is None:
             return self
-        state = FormState(declaration["state"])
-        if state is FormState.DEFERRED:
+        if FormState(declaration["state"]) is FormState.DEFERRED:
             raise ValueError(
                 f"{declaration['key']} is registered and deferred. Its payload is designed and "
                 f"validated and nothing in this phase produces one — the refusal for trying is "
                 f"`form_not_producible`")
-        if state is FormState.EXPERIMENTAL and self.lifecycle.status is LifecycleState.PROMOTED:
+        producers = declaration["produced_by_operations"]
+        if self.identity.operation not in producers:
             raise ValueError(
-                f"{declaration['key']} is experimental. It may be kept inside the laboratory and "
-                f"it may not be promoted into Semant, because promotion is the point at which a "
-                f"shape nobody has reviewed becomes something the rest of the system reads")
+                f"{declaration['key']} is produced by {producers or 'no operation yet'}, and this "
+                f"artifact names {self.identity.operation!r}. An operation that does not declare "
+                f"the kind did not produce it")
         return self
 
     @model_validator(mode="after")
@@ -2752,8 +2757,25 @@ def _assert_form_parity() -> None:
             f"the contract declares payload variants {sorted(variants)} and FORM_PAYLOAD_MODELS "
             f"holds {sorted(FORM_PAYLOAD_MODELS)}. A variant with no model is a form nothing can "
             f"carry; a model with no variant is a shape nothing can name.")
+    declared_producers: Dict[str, List[str]] = {}
+    for organ in lab_contract()["organs"]:
+        for op in organ.get("operations", ()):
+            for kind in op["produces"]:
+                declared_producers.setdefault(kind, []).append(op["key"])
     for key, form in form_index().items():
         variant = form["payload_variant"]
+        derived = declared_producers.get(form["artifact_kind"], [])
+        if list(form["produced_by_operations"]) != derived:
+            raise ContractError(
+                f"form {key!r} says it is produced by {form['produced_by_operations']} and the "
+                f"operations declaring {form['artifact_kind']!r} are {derived}. The two tables "
+                f"are written out separately so that adding an operation is a visible decision, "
+                f"and they may not disagree.")
+        if derived and form["state"] != "enabled":
+            raise ContractError(
+                f"form {key!r} is produced by {derived} and its state is {form['state']!r}. A "
+                f"form an operation declares is `enabled`; the state is not where readiness gets "
+                f"to disagree with the operation table.")
         if variant != form["artifact_kind"]:
             raise ContractError(
                 f"form {key!r} declares artifact kind {form['artifact_kind']!r} and payload "

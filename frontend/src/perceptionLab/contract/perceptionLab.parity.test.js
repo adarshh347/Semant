@@ -46,6 +46,9 @@ import {
     consumedFields, missingConsumedFields, readPath,
     validateArtifact, validateRun, validatePlan, validateReview, validateSession,
     validateInputRef, referenceOf, sessionKnows, declaredReferences,
+    PERCEPTUAL_FORMS, PARTITION_CEILINGS, form, formsFor, formHasProducer, effectiveForm,
+    derivedCeiling, checkInputForms, checkFormProducible, validateFormPayload,
+    optionalConsumedFields,
 } from './perceptionLabContract';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -386,6 +389,146 @@ describe('the isolation lock, in a plan', () => {
         expect(validateSession(s)).toEqual([]);
         expect(validateSession({ ...s, selected_organ: 'depth' }).join(' '))
             .toMatch(/nothing behind the glass/);
+    });
+});
+
+describe('the perceptual form grammar, in JavaScript', () => {
+    const forms = CONTRACT.perceptual_forms;
+
+    it('registers exactly the forms the closed set names, and fails closed on anything else', () => {
+        expect(forms.map((f) => f.key)).toEqual([...PERCEPTUAL_FORMS]);
+        expect(() => form('extent.fog')).toThrow(/not a registered perceptual form/);
+        expect(formsFor('extent').length + formsFor('topology').length).toBe(forms.length);
+    });
+
+    it.each(forms.map((f) => [f.key]))(
+        '%s declares a producer, a renderer, a receipt and a test obligation', (key) => {
+            const f = form(key);
+            expect(f.producer_classes.length, 'a form nothing could write is a word').toBeGreaterThan(0);
+            expect(f.renderer_projections.length,
+                   'a measurement nobody can look at cannot be reviewed').toBeGreaterThan(0);
+            expect(f.required_provenance.length).toBeGreaterThan(0);
+            expect(f.test_obligations.length, 'a law nothing fails on is a comment').toBeGreaterThan(0);
+            expect(f.absence.examined_field, 'every form can say it looked').toBeTruthy();
+            for (const p of f.renderer_projections) {
+                expect(['direct', 'derived']).toContain(p.mode);
+            }
+        });
+
+    it('only the forms an operation declares are enabled, and only they reach an artifact', () => {
+        for (const f of forms) {
+            const declared = f.produced_by_operations.length > 0;
+            expect(declared, `${f.key} state/operation disagreement`)
+                .toBe(f.state === 'enabled');
+            expect(formHasProducer(f.key)).toBe(declared);
+        }
+        expect(forms.filter((f) => f.state === 'enabled').length).toBe(3);
+    });
+
+    it('every operation draws only what its form declares it can', () => {
+        for (const organRecord of CONTRACT.organs) {
+            for (const op of organRecord.operations || []) {
+                for (const kind of op.produces) {
+                    const f = forms.find((x) => x.artifact_kind === kind);
+                    if (!f) continue;
+                    const drawable = f.renderer_projections.map((p) => p.kind);
+                    for (const projection of op.render_projections || []) {
+                        expect(drawable, `${op.key} draws ${projection}, ${f.key} does not declare it`)
+                            .toContain(projection);
+                    }
+                }
+            }
+        }
+    });
+
+    it('the partition caps the claim, and no confidence lifts it', () => {
+        expect(PARTITION_CEILINGS.inferred_completion).toBe('uncertain');
+        expect(PARTITION_CEILINGS.unresolved_alternative).toBe('uncertain');
+        // A perfect mask basis, and still an assertion about pixels nobody saw.
+        expect(derivedCeiling('extent.visible_inferred_partition', {
+            basis: 'mask', partition: 'inferred_completion',
+        })).toBe('uncertain');
+        // A derivation is never stronger than the weakest thing it derived from.
+        expect(derivedCeiling('topology.containment_tree', {
+            basis: 'mask', partition: 'exact_derivation', inputStatuses: ['interpretive'],
+        })).toBe('interpretive');
+    });
+
+    it('refuses the wrong input form, and refuses to write a deferred one', () => {
+        expect(checkInputForms('extent.boundary_rings', ['extent.hard_mask'])).toBeNull();
+        const wrong = checkInputForms('extent.boundary_rings', ['extent.soft_field'],
+                                      { operation: 'extent.refine' });
+        expect(wrong.code).toBe('unsupported_form');
+        expect(wrong.message).toMatch(/does not accept extent\.soft_field/);
+        expect(checkFormProducible('topology.pair_relation')).toBeNull();
+        expect(checkFormProducible('extent.soft_field').code).toBe('form_not_producible');
+    });
+
+    it('reads a record written before the grammar existed', () => {
+        const legacy = fixture('artifact.extent-set.json');
+        expect(legacy.identity.form, 'the witness must actually predate the field')
+            .toBeUndefined();
+        expect(effectiveForm(legacy)).toBe('extent.hard_mask');
+        expect(validateArtifact(legacy)).toEqual([]);
+        expect(effectiveForm(fixture('artifact.refusal-missing-depth.json')))
+            .toBeNull();
+        expect(optionalConsumedFields('PerceptualArtifact'))
+            .toEqual(['identity.form', 'measurement.partition']);
+    });
+});
+
+describe('every committed form payload, through the JavaScript law', () => {
+    const cases = Object.entries(MANIFEST.form_payloads.by_form);
+
+    it.each(cases.map(([key, entry]) => [key, entry]))('%s validates', (key, entry) => {
+        const payload = fixture(entry.file);
+        expect(payload.variant).toBe(entry.variant);
+        expect(validateFormPayload(key, payload),
+               `${entry.file} does not satisfy the JS form law`).toEqual([]);
+    });
+
+    it('covers every registered form, and nothing that is not one', () => {
+        expect(Object.keys(MANIFEST.form_payloads.by_form)).toEqual([...PERCEPTUAL_FORMS]);
+    });
+
+    it('catches a dropped condition, an inferred pixel claiming to be visible, and a blur', () => {
+        const conditional = fixture(MANIFEST.form_payloads.by_form[
+            'topology.uncertain_relation_set'].file);
+        const orphaned = structuredClone(conditional);
+        orphaned.relations[0].conditioned_on = 'alt_nobody_declared';
+        expect(validateFormPayload('topology.uncertain_relation_set', orphaned).join(' '))
+            .toMatch(/dropped condition reads as a measurement/);
+
+        const promoted = structuredClone(conditional);
+        promoted.relations[0].epistemic_status = 'measured';
+        expect(validateFormPayload('topology.uncertain_relation_set', promoted).join(' '))
+            .toMatch(/may not be measured/);
+
+        const partition = structuredClone(fixture(MANIFEST.form_payloads.by_form[
+            'extent.visible_inferred_partition'].file));
+        partition.regions[1].epistemic_status = 'measured';
+        expect(validateFormPayload('extent.visible_inferred_partition', partition).join(' '))
+            .toMatch(/pixels nobody saw/);
+
+        const soft = structuredClone(fixture(MANIFEST.form_payloads.by_form[
+            'extent.soft_field'].file));
+        soft.field.derivation = 'blur_of_binary_mask';
+        expect(validateFormPayload('extent.soft_field', soft).join(' '))
+            .toMatch(/may not declare itself calibrated/);
+
+        const fragments = structuredClone(fixture(MANIFEST.form_payloads.by_form[
+            'extent.fragment_set'].file));
+        fragments.unity_asserted = true;
+        expect(validateFormPayload('extent.fragment_set', fragments).join(' '))
+            .toMatch(/asserts no unity/);
+    });
+
+    it('an empty payload that counted nothing cannot pass for a measurement', () => {
+        const graph = structuredClone(fixture(MANIFEST.form_payloads.by_form[
+            'topology.adjacency_graph'].file));
+        delete graph.pairs_examined;
+        expect(validateFormPayload('topology.adjacency_graph', graph).join(' '))
+            .toMatch(/proves something looked/);
     });
 });
 

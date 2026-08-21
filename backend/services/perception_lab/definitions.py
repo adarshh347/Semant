@@ -589,6 +589,7 @@ class FormDefinition:
     state: str
     artifact_kind: str
     payload_variant: str
+    produced_by_operations: Tuple[str, ...]
     accepted_input_forms: Tuple[str, ...]
     producer_classes: Tuple[str, ...]
     admissible_bases: Tuple[str, ...]
@@ -609,9 +610,14 @@ class FormDefinition:
         return self.state != "deferred"
 
     @property
-    def promotable(self) -> bool:
-        """Only an `enabled` form may leave the laboratory."""
-        return self.state == "enabled"
+    def has_producer(self) -> bool:
+        """Whether any operation declares this form's kind — which is what decides today.
+
+        Sixteen of the nineteen answer False, and that is the real gate: an artifact names the
+        operation that produced it, so a form no operation declares has no artifact whatever its
+        state says. `producible` is the further question of whether it ever could.
+        """
+        return bool(self.produced_by_operations)
 
     def projection(self, kind: str) -> Optional[RendererProjection]:
         return next((p for p in self.renderer_projections if p.kind == kind), None)
@@ -630,6 +636,7 @@ def _form(raw: Mapping[str, Any]) -> FormDefinition:
         key=str(raw["key"]), organ=str(raw["organ"]), label=str(raw["label"]),
         question=str(raw["question"]), state=str(raw["state"]),
         artifact_kind=str(raw["artifact_kind"]), payload_variant=str(raw["payload_variant"]),
+        produced_by_operations=tuple(str(v) for v in raw.get("produced_by_operations", ())),
         accepted_input_forms=tuple(str(v) for v in raw.get("accepted_input_forms", ())),
         producer_classes=tuple(str(v) for v in raw["producer_classes"]),
         admissible_bases=tuple(str(v) for v in raw["admissible_bases"]),
