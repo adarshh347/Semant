@@ -1,0 +1,68 @@
+{
+  "trial_id": "dinov2_affinity.lit-floor",
+  "recorded_at": "2026-08-22T01:03:18+0530",
+  "candidate": {
+    "key": "dinov2_affinity",
+    "label": "DINOv2 ViT-S/14 — patch-feature affinity",
+    "forms": [
+      "extent.fused_hypothesis"
+    ],
+    "source": "https://huggingface.co/facebook/dinov2-small",
+    "checkpoint": "facebook/dinov2-small",
+    "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
+    "license": "Apache-2.0",
+    "acquisition": "already resident — weights.manifest.json entry `dinov2_vits14`",
+    "size_mb": 85.0,
+    "expected_vram_gb": 0.4,
+    "produces": "a cosine between pooled patch features: how alike two fragments LOOK",
+    "cannot_produce": "unity, geometry, or any hidden extent",
+    "claim": "derived"
+  },
+  "control": "lit-floor",
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13",
+    "torch": "2.13.0",
+    "device": "mps",
+    "budget_vram_gb": 10.0
+  },
+  "fidelity": {
+    "control": "lit-floor",
+    "checked": false
+  },
+  "outcome": "ready",
+  "source_image_digest": "sha256:0febaa9c371e39b80000be89ac5f152868787b0b2078adb859be43fdfe3510b6",
+  "cold_load_s": 0.7714,
+  "warm_run_s": 0.0169,
+  "peak_process_rss_mb": 474.2,
+  "accelerator_allocated_mb": 106.7,
+  "measurements": {
+    "patch_grid": [
+      16,
+      16
+    ],
+    "feature_dim": 384,
+    "fragments_compared": 2,
+    "pairwise_cosine": [
+      [
+        0,
+        1,
+        0.925045
+      ]
+    ],
+    "mean_cosine": 0.925045,
+    "min_cosine": 0.925045,
+    "one_entity_truth": true,
+    "deterministic": true,
+    "raw_output_digest": "sha256:0cf2b8ebef75592ffa701478ac6c9bc148ec3cfb9a08f79d07e07911d77084eb",
+    "preview": "research/perception_lab/model_trials/previews/dinov2_affinity.lit-floor.png"
+  },
+  "form_contract": {
+    "form": "extent.fused_hypothesis",
+    "attempted": true,
+    "satisfies": true,
+    "payload_variant": "extent_fusion_hypothesis",
+    "why": "the model fills a GROUND, never the grouping. The claim is `interpretive` by partition and the model's number is one strength among several"
+  }
+}

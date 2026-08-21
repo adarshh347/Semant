@@ -3,6 +3,7 @@ import {
     DISPOSITION_COPY, VERDICT_COPY, STATUS_COPY, uncoveredSourceUnits,
     PASS_LABEL, PASS_OUTCOME_COPY, WAIT_SOURCE_COPY, formatDuration,
 } from './inquiryContract';
+import { ImageRef, ImageRefList } from './ImageInspector.jsx';
 
 /**
  * INQUIRY WORKBENCH — the whole chain, as objects rather than paragraphs.
@@ -73,7 +74,7 @@ function Row({ id, label, count, schema, children, note = '', tone = '' }) {
  * it, how is it held, what does it hang off, and what does the record actually say.
  */
 export function WhyHere({ id, sources = [], producer = '', model = '', status = null,
-    parents = [], raw = null }) {
+    parents = [], imageRefs = [], raw = null }) {
     const [open, setOpen] = useState(false);
     return (
         <div className="iw-why">
@@ -94,6 +95,16 @@ export function WhyHere({ id, sources = [], producer = '', model = '', status = 
                             <dt>from</dt>
                             <dd>{sources.map((s) => <code key={s}>{s}</code>)
                                 .reduce((a, el, i) => (i ? [...a, ', ', el] : [el]), [])}</dd>
+                        </div>
+                    ) : null}
+                    {/* SEPARATE FROM `from`, and openable. An image reference is the one source
+                        pointer on this panel that resolves to something a person can look at, and
+                        it used to print in the same comma list as `prompt#0:62` — where it read as
+                        one more opaque token. */}
+                    {imageRefs.length ? (
+                        <div>
+                            <dt>rests on</dt>
+                            <dd><ImageRefList refs={imageRefs} /></dd>
                         </div>
                     ) : null}
                     {parents.length ? (
@@ -355,7 +366,7 @@ export default function ArtifactLedger({ session }) {
                         {session.posts.map((p) => (
                             <li key={p.post_id} data-post-ref={p.post_id}>
                                 <span className="iw-led-item-head">
-                                    <code>{p.post_id}</code>
+                                    <ImageRef refId={p.post_id} />
                                     {p.title ? <span>{p.title}</span> : null}
                                     {p.readable === false ? (
                                         <span className="iw-led-flag" data-unreadable="true">
@@ -406,7 +417,7 @@ export default function ArtifactLedger({ session }) {
                                 <p className="iw-led-text">{b.text}</p>
                                 <WhyHere
                                     id={b.block_id}
-                                    sources={b.image_refs}
+                                    imageRefs={b.image_refs}
                                     producer={g.reading.source || 'scene_theorist'}
                                     model={g.reading.model}
                                     status={{ value: g.reading.status, known: true }}
@@ -459,7 +470,8 @@ export default function ArtifactLedger({ session }) {
                                 <q className="iw-led-quote">{u.exact_quote}</q>
                                 <WhyHere
                                     id={u.source_unit_id}
-                                    sources={[u.source_ref, ...u.image_refs].filter(Boolean)}
+                                    sources={[u.source_ref].filter(Boolean)}
+                                    imageRefs={u.image_refs}
                                     producer="semantic_dissector"
                                     raw={u.raw}
                                 />
@@ -553,6 +565,7 @@ export default function ArtifactLedger({ session }) {
                                 <WhyHere
                                     id={a.atom_id}
                                     sources={a.source_unit_ids}
+                                    imageRefs={a.image_scope}
                                     producer={producerOf(a.provenance) || 'semantic_dissector'}
                                     model={modelOf(a.provenance)}
                                     status={a.epistemic_ceiling}
@@ -575,7 +588,7 @@ export default function ArtifactLedger({ session }) {
                                     id={c.claim_id}
                                     sources={c.source_span
                                         ? [`${c.source_span.origin}: “${c.source_span.text}”`] : []}
-                                    parents={c.image_scope}
+                                    imageRefs={c.image_scope}
                                     producer="semantic_compiler"
                                     status={c.status}
                                 />

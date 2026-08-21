@@ -31,6 +31,11 @@ runs/
 !research/rehearsals/foundry/runs/**
 !research/rehearsals/labs/runs/
 !research/rehearsals/labs/runs/**
+# PERCEPTUAL-FORMS-001C — the specialist-model trial records are EVIDENCE, not run artifacts.
+# Each is a few KB of JSON recording a checkpoint, a licence, a latency, a digest and a verdict;
+# the weights they describe are never written here. Same two-line shape as the negations above.
+!research/perception_lab/model_trials/runs/
+!research/perception_lab/model_trials/runs/**
 .ds-sync/
 ds-bundle/
 .design-sync/.cache/
