@@ -38,6 +38,9 @@ from __future__ import annotations
 
 from backend.services.perception_lab.extent_forms.boundary import (TracedRing, boundary_rings,
                                                                     instance_boundary, trace)
+from backend.services.perception_lab.extent_forms.fragments import (fragment_id,
+                                                                     fragment_model, fragment_set,
+                                                                     separations)
 from backend.services.perception_lab.extent_forms.holes import Void, hole_set, voids_of
 from backend.services.perception_lab.extent_forms.inputs import (DERIVATION_REVISION, Derived,
                                                                  DerivationProvenance, PRODUCER,
@@ -45,12 +48,14 @@ from backend.services.perception_lab.extent_forms.inputs import (DERIVATION_REVI
                                                                  source_extents)
 from backend.services.perception_lab.extent_forms.raster import (
     BACKGROUND_CONNECTIVITY, ExtentFormRefusal, FOREGROUND_CONNECTIVITY, PixelSet, Raster,
-    canonical_rle, complement_components, digest_of, foreground_components, raster_of)
+    canonical_rle, complement_components, complement_of, digest_of, foreground_components,
+    raster_of)
 
 __all__ = [
     "BACKGROUND_CONNECTIVITY", "DERIVATION_REVISION", "DerivationProvenance", "Derived",
     "ExtentFormRefusal", "FOREGROUND_CONNECTIVITY", "PRODUCER", "PixelSet", "Raster",
     "SourceExtent", "TracedRing", "Void", "boundary_rings", "canonical_rle",
-    "complement_components", "complement_of", "digest_of", "foreground_components", "hole_set",
-    "instance_boundary", "raster_of", "source_extent", "source_extents", "trace", "voids_of",
+    "complement_components", "complement_of", "digest_of", "foreground_components",
+    "fragment_id", "fragment_model", "fragment_set", "hole_set", "instance_boundary", "raster_of",
+    "separations", "source_extent", "source_extents", "trace", "voids_of",
 ]

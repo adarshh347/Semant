@@ -31,6 +31,7 @@ from backend.schemas.perception_lab import (ExtentInstance, ExtentSetPayload, Pe
 from backend.services.mask_geometry import polygons_to_bits, rle_encode
 from backend.services.perception_lab import definitions as D
 from backend.services.perception_lab.extent_forms import boundary as B
+from backend.services.perception_lab.extent_forms import fragments as F
 from backend.services.perception_lab.extent_forms import holes as H
 from backend.services.perception_lab.extent_forms import inputs as I
 from backend.services.perception_lab.extent_forms import measure as M
@@ -410,3 +411,140 @@ def test_the_hole_form_this_lane_writes_is_the_one_the_registry_declares():
     assert derived.payload.variant == definition.payload_variant
     assert definition.absence.examined_field == "candidates_examined"
     assert derived.provenance.partition.value in definition.admissible_partitions
+
+
+# ── extent.fragment_set ──────────────────────────────────────────────────────
+
+
+def test_two_separated_islands_are_two_fragments_with_their_own_areas_and_centroids():
+    derived = F.fragment_set([extent(TWO_ISLANDS)], source_image_digest=DIGEST)
+    assert derived.payload.regions_examined == 2
+    left, right = derived.payload.fragments
+    assert [f.area for f in (left, right)] == [round(2 / 12, 6)] * 2
+    assert derived.measurements["centroid"][left.fragment_id] == (0.125, round(1 / 3, 6))
+    assert derived.measurements["area_px"][right.fragment_id] == 2
+
+
+def test_pieces_that_touch_at_a_corner_stay_two_and_pieces_that_share_an_edge_are_one():
+    corner = F.fragment_set([extent(CORNER_TOUCH)], source_image_digest=DIGEST)
+    edge = F.fragment_set([extent(EDGE_TOUCH)], source_image_digest=DIGEST)
+    assert len(corner.payload.fragments) == 2
+    assert len(edge.payload.fragments) == 1
+
+
+def test_a_fragment_set_asserts_no_unity_and_has_nowhere_to_put_one():
+    derived = F.fragment_set([extent(TWO_ISLANDS)], source_image_digest=DIGEST)
+    assert derived.payload.unity_asserted is False
+    lying = derived.payload.model_dump()
+    lying["unity_asserted"] = True
+    with pytest.raises(ValidationError):
+        type(derived.payload).model_validate(lying)
+    grouped = derived.payload.model_dump()
+    grouped["members"] = ["frag_1", "frag_2"]
+    with pytest.raises(ValidationError):
+        type(derived.payload).model_validate(grouped)
+
+
+def test_the_name_of_an_extent_is_not_copied_onto_its_pieces():
+    """Three separated patches of a tree, each labelled "the tree", is the unity claim wearing a
+    different field. It belongs in `extent.fused_hypothesis` with grounds and a capped status."""
+    named = I.source_extent("art_1", {
+        "instance_id": "inst_1", "mask_rle": mask(TWO_ISLANDS), "geometry_rev": 1,
+        "naming": {"text": "the tree", "source": "prompt", "epistemic_status": "interpretive",
+                   "confidence": 0.8}})
+    derived = F.fragment_set([named], source_image_digest=DIGEST)
+    assert all(f.naming is None for f in derived.payload.fragments)
+
+
+def test_a_hole_is_not_a_fragment():
+    """The two forms are computed from different pixel sets by different functions: fragments come
+    from the components of the mask, holes from the bounded components of a PIECE's complement.
+    A donut has one fragment and one hole, and neither list holds the other's pixels."""
+    frags = F.fragment_set([extent(DONUT)], source_image_digest=DIGEST)
+    holes = H.hole_set([extent(DONUT)], source_image_digest=DIGEST)
+    fragment, = frags.payload.fragments
+    hole, = holes.payload.holes
+    assert fragment.mask_rle != hole.mask_rle
+    assert frags.measurements["area_px"][fragment.fragment_id] == 16
+    assert holes.measurements["area_px"][hole.hole_id] == 9
+
+
+def test_a_shape_inside_a_hole_is_its_own_fragment_and_the_hole_is_still_a_hole():
+    frags = F.fragment_set([extent(NESTED)], source_image_digest=DIGEST)
+    holes = H.hole_set([extent(NESTED)], source_image_digest=DIGEST)
+    assert len(frags.payload.fragments) == 2
+    assert len(holes.payload.holes) == 1
+    island = frags.payload.fragments[1]
+    assert frags.measurements["area_px"][island.fragment_id] == 1
+
+
+def test_the_gap_between_two_pieces_is_integer_steps_and_a_corner_touch_is_one():
+    pieces = R.foreground_components(R.raster_of(mask(CORNER_TOUCH), what="c"))
+    touch, = F.separations(pieces)
+    assert touch["gap_px"] == 1 and touch["touching"] is True
+    apart = F.separations(R.foreground_components(R.raster_of(mask(TWO_ISLANDS), what="t")))
+    assert apart[0]["gap_px"] == 3 and apart[0]["touching"] is False
+
+
+def test_separations_come_back_closest_first_and_can_be_declined():
+    rows = ["#.#....#", "........", "........", "........"]
+    derived = F.fragment_set([extent(rows)], source_image_digest=DIGEST)
+    gaps = [row["gap_px"] for row in derived.measurements["separations"]]
+    assert gaps == sorted(gaps) and gaps == [2, 5, 7]
+    declined = F.fragment_set([extent(rows)], source_image_digest=DIGEST,
+                              measure_separation=False)
+    assert declined.measurements["separations"] is None
+
+
+def test_a_fragment_id_is_the_piece_and_not_its_position():
+    """Adding an island in the corner must not renumber the pieces on the other side."""
+    before = F.fragment_set([extent(["...#", "....", "....", "...#"])],
+                            source_image_digest=DIGEST)
+    after = F.fragment_set([extent(["#..#", "....", "....", "...#"])],
+                           source_image_digest=DIGEST)
+    assert {f.fragment_id for f in before.payload.fragments} < \
+           {f.fragment_id for f in after.payload.fragments}
+
+
+def test_one_island_in_two_overlapping_instances_is_one_fragment_and_two_examinations():
+    twin = [extent(TWO_ISLANDS), extent(TWO_ISLANDS, instance_id="inst_2")]
+    derived = F.fragment_set(twin, source_image_digest=DIGEST)
+    assert derived.payload.regions_examined == 4
+    assert len(derived.payload.fragments) == 2
+    found = derived.measurements["found_in"][derived.payload.fragments[0].fragment_id]
+    assert found == ["art_1#inst_1", "art_1#inst_2"], "the collapse is visible, not silent"
+
+
+def test_a_fragment_set_over_two_rasters_is_refused_rather_than_reported_as_one_image():
+    small = extent(["#.", ".."])
+    large = extent(["#...", "....", "....", "...."], instance_id="inst_2")
+    with pytest.raises(R.ExtentFormRefusal) as caught:
+        F.fragment_set([small, large], source_image_digest=DIGEST)
+    assert caught.value.refusal.code is RefusalCode.INVALID_PARAMETERS
+    assert caught.value.refusal.remedy == "derive one fragment set per raster"
+
+
+def test_boundaries_and_holes_do_not_need_one_raster_because_they_carry_their_own():
+    """The refusal above is about the ONE form with nowhere to name a second raster. Making the
+    other two refuse as well would be a rule applied where it buys nothing."""
+    small = extent(["##", "##"])
+    large = extent(["####", "#..#", "#..#", "####"], instance_id="inst_2")
+    rings = B.boundary_rings([small, large], source_image_digest=DIGEST)
+    holes = H.hole_set([small, large], source_image_digest=DIGEST)
+    assert [b.raster_shape for b in rings.payload.boundaries] == [[2, 2], [4, 4]]
+    assert holes.payload.holes[0].mask_rle["size"] == [4, 4]
+
+
+def test_the_same_mask_split_twice_produces_the_same_fragments():
+    one = F.fragment_set([extent(NESTED)], source_image_digest=DIGEST)
+    two = F.fragment_set([extent(NESTED)], source_image_digest=DIGEST)
+    assert one.payload.model_dump() == two.payload.model_dump()
+    assert one.measurements == two.measurements
+
+
+def test_the_fragment_form_this_lane_writes_is_the_one_the_registry_declares():
+    definition = D.form(PerceptualForm.EXTENT_FRAGMENT_SET.value)
+    derived = F.fragment_set([extent(TWO_ISLANDS)], source_image_digest=DIGEST)
+    assert derived.payload.variant == definition.payload_variant
+    assert definition.absence.examined_field == "regions_examined"
+    assert "fragment_set_asserts_no_unity" in definition.test_obligations
