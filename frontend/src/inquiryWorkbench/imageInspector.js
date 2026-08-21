@@ -2,7 +2,7 @@
  * INQUIRY WORKBENCH — what rests on one picture.
  *
  * Every image reference in this surface is currently an inert string. `WhyHere` prints
- * `from: post_altes_front`, the source-unit row prints the same token, and the header renders a
+ * `from: post_7f21`, the source-unit row prints the same token, and the header renders a
  * thumbnail that does nothing. A reader who wants the obvious thing — *which picture is that, and
  * what did the run actually say about it?* — has to match an id by eye across four panels.
  *
