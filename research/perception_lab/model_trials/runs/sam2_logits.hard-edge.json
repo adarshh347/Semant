@@ -1,0 +1,78 @@
+{
+  "trial_id": "sam2_logits.hard-edge",
+  "recorded_at": "2026-08-22T01:03:18+0530",
+  "candidate": {
+    "key": "sam2_logits",
+    "label": "SAM 2.1 hiera-tiny — raw mask logits",
+    "forms": [
+      "extent.soft_field"
+    ],
+    "source": "https://github.com/facebookresearch/sam2",
+    "checkpoint": "sam2.1_hiera_tiny.pt",
+    "revision": "sam2.1 release checkpoint (local, models/)",
+    "license": "Apache-2.0",
+    "acquisition": "already resident — weights.manifest.json entry `sam21_hiera_tiny`",
+    "size_mb": 148.8,
+    "expected_vram_gb": 1.0,
+    "produces": "a per-pixel logit field and a scalar IoU prediction",
+    "cannot_produce": "a calibrated occupancy; the scalar is mask-level quality, not per-pixel",
+    "claim": "proposal"
+  },
+  "control": "hard-edge",
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13",
+    "torch": "2.13.0",
+    "device": "mps",
+    "budget_vram_gb": 10.0
+  },
+  "fidelity": {
+    "control": "hard-edge",
+    "checked": true,
+    "true_soft_fraction": 0.0,
+    "observed_soft_fraction": 0.009033,
+    "invented_soft_fraction": 0.009033,
+    "tracks_truth": true,
+    "why": "the control's alpha is 0 or 1 everywhere; a soft fringe here is the producer's resolution, not the picture's"
+  },
+  "outcome": "ready",
+  "source_image_digest": "sha256:f41462d352a00ee87c273733be9e8d37c26901b613e36a8f0ae7db388fc9240d",
+  "cold_load_s": 0.3293,
+  "warm_run_s": 0.3961,
+  "peak_process_rss_mb": 842.2,
+  "accelerator_allocated_mb": 1206.1,
+  "measurements": {
+    "iou_prediction": [
+      0.63743,
+      0.784306,
+      0.992079
+    ],
+    "best_index": 2,
+    "logit_range": [
+      -18.36,
+      13.7987
+    ],
+    "sigmoid_range": [
+      0.0,
+      0.999999
+    ],
+    "soft_pixel_fraction": 0.009033,
+    "transition_width_px": 3.116,
+    "output_shape": [
+      256,
+      256
+    ],
+    "deterministic": true,
+    "raw_output_digest": "sha256:009354e88b594e3156fe5632569a85d9d997697f515025e62bc5489e1ff1a9e4",
+    "preview": "research/perception_lab/model_trials/previews/sam2_logits.hard-edge.png"
+  },
+  "form_contract": {
+    "form": "extent.soft_field",
+    "attempted": true,
+    "satisfies": true,
+    "payload_variant": "extent_soft_field",
+    "may_declare_calibrated": false,
+    "why": "the payload validates; `calibration.state` is `uncalibrated` because nothing in this trial measured a correspondence between the numbers and anything else"
+  }
+}
