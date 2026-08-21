@@ -515,6 +515,18 @@
 .pl-fm-state[data-state='experimental'] { border-style: dashed; }
 .pl-fm-state[data-state='deferred'] { border-style: dotted; }
 
+.pl-fm-input {
+    font: inherit;
+    font-size: var(--fs-caption);
+    width: 100%;
+    padding: var(--space-1);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--ink);
+}
+.pl-fm-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 .pl-fm-sweep { display: grid; gap: var(--space-1); }
 .pl-fm-sweep input[type='range'] { width: 100%; accent-color: var(--accent); }
 .pl-fm-sweepvalue { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--ink); }

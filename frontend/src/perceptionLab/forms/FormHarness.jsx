@@ -45,7 +45,13 @@ export default function FormHarness({ initialCase = 0 }) {
                             {width}px
                         </figcaption>
                         <div className="pl-fm-harnesspane" data-harness-width={width}>
+                            {/* KEYED BY THE CASE. `initialForm` and `initialView` are initial
+                                state, so without a key React would keep the pane's own state and
+                                switching case would change the caption and nothing else — which
+                                is exactly the bug where a screenshot index and its captions
+                                describe different pictures. */}
                             <FormRendererLab
+                                key={scene.key}
                                 initialForm={scene.form}
                                 initialView={scene.view}
                                 now={scene.at}
