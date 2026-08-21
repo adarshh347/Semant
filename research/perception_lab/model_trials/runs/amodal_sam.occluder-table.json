@@ -1,0 +1,38 @@
+{
+  "trial_id": "amodal_sam.occluder-table",
+  "recorded_at": "2026-08-22T00:58:27+0530",
+  "candidate": {
+    "key": "amodal_sam",
+    "label": "Amodal SAM — SAM with a spatial completion adapter",
+    "forms": [
+      "extent.visible_inferred_partition"
+    ],
+    "source": "https://arxiv.org/abs/2604.20748",
+    "checkpoint": "no public checkpoint located as of 2026-08-22",
+    "revision": null,
+    "license": "unknown — no released weights to carry one",
+    "acquisition": "NOT ATTEMPTED — nothing to acquire",
+    "size_mb": null,
+    "expected_vram_gb": null,
+    "produces": "an amodal mask, on paper",
+    "cannot_produce": "anything until weights exist",
+    "claim": "inferred"
+  },
+  "control": "occluder-table",
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13",
+    "torch": "2.13.0",
+    "device": "mps",
+    "budget_vram_gb": 10.0
+  },
+  "outcome": "unavailable",
+  "unavailable_reason": "Published April 2026 as a SAM adapter, which would sit inside the budget if released. No public checkpoint was found at the time of this trial, so there is nothing to measure. Re-check before Lane G rather than adopting on the strength of a paper.",
+  "form_contract": {
+    "form": "extent.visible_inferred_partition",
+    "attempted": false,
+    "satisfies": false,
+    "why": "nothing ran, so nothing is claimed"
+  }
+}

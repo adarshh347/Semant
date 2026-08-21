@@ -1,0 +1,208 @@
+{
+  "identity": {
+    "artifact_id": "art_forms_one_pixel",
+    "session_id": "labs_topology_forms",
+    "run_id": "run_fixture_topology_forms",
+    "step_id": "step_extent",
+    "organ_family": "extent",
+    "artifact_kind": "extent_set",
+    "operation": "extent.reuse",
+    "identity_scope": "canonical",
+    "identity_refs": [
+      {
+        "region_id": "reg_inner",
+        "geometry_rev": 0,
+        "scope": "canonical"
+      },
+      {
+        "region_id": "reg_outer",
+        "geometry_rev": 0,
+        "scope": "canonical"
+      }
+    ],
+    "input_refs": [],
+    "derived_from": []
+  },
+  "measurement": {
+    "payload_variant": "extent_set",
+    "payload": {
+      "variant": "extent_set",
+      "searched": "a control: containment at 0.9574, four pixels outside, revision 0",
+      "instances": [
+        {
+          "instance_id": "inner",
+          "mask_rle": {
+            "size": [
+              40,
+              60
+            ],
+            "counts": [
+              820,
+              9,
+              1,
+              1,
+              29,
+              9,
+              1,
+              1,
+              29,
+              9,
+              1,
+              1,
+              29,
+              9,
+              1,
+              1,
+              29,
+              9,
+              31,
+              9,
+              31,
+              9,
+              31,
+              9,
+              31,
+              9,
+              31,
+              9,
+              1211
+            ]
+          },
+          "box": {
+            "x": 0.333333,
+            "y": 0.5,
+            "w": 0.166667,
+            "h": 0.275
+          },
+          "area": 0.039167,
+          "confidence": null,
+          "naming": null,
+          "region_id": "reg_inner",
+          "geometry_rev": 0
+        },
+        {
+          "instance_id": "outer",
+          "mask_rle": {
+            "size": [
+              40,
+              60
+            ],
+            "counts": [
+              410,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              20,
+              810
+            ]
+          },
+          "box": {
+            "x": 0.166667,
+            "y": 0.25,
+            "w": 0.5,
+            "h": 0.5
+          },
+          "area": 0.25,
+          "confidence": null,
+          "naming": null,
+          "region_id": "reg_outer",
+          "geometry_rev": 0
+        }
+      ],
+      "dropped_below_min_area": null,
+      "duplicates": [],
+      "comparison": null
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "measured",
+    "epistemic_basis": "mask",
+    "basis_detail": "synthetic control geometry on a 40x60 raster"
+  },
+  "projection": {
+    "projection_kind": "mask_fill",
+    "hints": {
+      "opacity": 0.35,
+      "palette_role": "figure"
+    }
+  },
+  "interpretation": {
+    "label": null,
+    "label_source": "none",
+    "epistemic_status": "uncertain",
+    "notes": "a control scene: rectangles, and no claim about any picture"
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "changed_at": "2026-08-10T12:00:00Z",
+    "changed_by": "perception_lab_fixture"
+  },
+  "provenance": {
+    "producer_kind": "fixture",
+    "producer": "perception_lab_topology_form_fixtures",
+    "adapter": null,
+    "model": null,
+    "revision": null,
+    "source_image_digest": "sha256:70909a17c0d5e4b2",
+    "started_at": null,
+    "completed_at": null,
+    "duration_ms": null,
+    "device": null,
+    "peak_memory_mb": null
+  }
+}
