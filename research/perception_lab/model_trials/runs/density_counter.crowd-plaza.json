@@ -1,0 +1,38 @@
+{
+  "trial_id": "density_counter.crowd-plaza",
+  "recorded_at": "2026-08-22T00:58:27+0530",
+  "candidate": {
+    "key": "density_counter",
+    "label": "A low-shot density/counting model (DAVE / GeCo family)",
+    "forms": [
+      "extent.density_field"
+    ],
+    "source": "https://github.com/jerpelhan/GeCo",
+    "checkpoint": "not resolved — not fetched",
+    "revision": null,
+    "license": "research-use terms upstream; verify before any commercial use",
+    "acquisition": "NOT ATTEMPTED",
+    "size_mb": null,
+    "expected_vram_gb": null,
+    "produces": "a count, and in the density families a density map",
+    "cannot_produce": "a calibrated occupancy field, and nothing at all without exemplars",
+    "claim": "proposal"
+  },
+  "control": "crowd-plaza",
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13",
+    "torch": "2.13.0",
+    "device": "mps",
+    "budget_vram_gb": 10.0
+  },
+  "outcome": "unavailable",
+  "unavailable_reason": "The low-shot counters need exemplar boxes or a text prompt, which makes them operations rather than producers of a standing field; and their published terms are research-use. `extent.density_field` also does not need a model to be well formed: its counts come from an existing extent set, and only the smoothing needs deciding. Measured rather than modelled is the cheaper and more honest route, so no weights were fetched.",
+  "form_contract": {
+    "form": "extent.density_field",
+    "attempted": false,
+    "satisfies": false,
+    "why": "nothing ran, so nothing is claimed"
+  }
+}

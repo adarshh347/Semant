@@ -1,0 +1,72 @@
+{
+  "trial_id": "vitmatte_small.hard-edge",
+  "recorded_at": "2026-08-22T01:03:18+0530",
+  "candidate": {
+    "key": "vitmatte_small",
+    "label": "ViTMatte small (composition-1k)",
+    "forms": [
+      "extent.soft_field"
+    ],
+    "source": "https://huggingface.co/hustvl/vitmatte-small-composition-1k",
+    "checkpoint": "hustvl/vitmatte-small-composition-1k",
+    "revision": "pin at integration time; this trial records the resolved commit",
+    "license": "Apache-2.0",
+    "acquisition": "huggingface_hub, ~103 MB, 25.8M params",
+    "size_mb": 103.0,
+    "expected_vram_gb": 0.8,
+    "produces": "an alpha matte: the fraction of each pixel the thing covers",
+    "cannot_produce": "uncertainty, a class probability, or a mask where it was given no trimap",
+    "claim": "measured"
+  },
+  "control": "hard-edge",
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13",
+    "torch": "2.13.0",
+    "device": "mps",
+    "budget_vram_gb": 10.0
+  },
+  "fidelity": {
+    "control": "hard-edge",
+    "checked": true,
+    "true_soft_fraction": 0.0,
+    "observed_soft_fraction": 0.005798,
+    "invented_soft_fraction": 0.005798,
+    "tracks_truth": true,
+    "why": "the control's alpha is 0 or 1 everywhere; a soft fringe here is the producer's resolution, not the picture's"
+  },
+  "outcome": "ready",
+  "source_image_digest": "sha256:f41462d352a00ee87c273733be9e8d37c26901b613e36a8f0ae7db388fc9240d",
+  "cold_load_s": 1.5792,
+  "warm_run_s": 0.1342,
+  "peak_process_rss_mb": 843.1,
+  "accelerator_allocated_mb": 1181.7,
+  "measurements": {
+    "output_shape": [
+      256,
+      256
+    ],
+    "output_range": [
+      0.0,
+      1.0
+    ],
+    "soft_pixel_fraction": 0.005798,
+    "transition_width_px": 2.923,
+    "alpha_mean": 0.250173,
+    "trimap_band_radius_px": 10,
+    "trimap_unknown_fraction": 0.150146,
+    "deterministic": true,
+    "raw_output_digest": "sha256:ab48c7774aba396a92ba7bd9ffc20ac1cca5ccbc0eb5bd6c2de846232b132b44",
+    "preview": "research/perception_lab/model_trials/previews/vitmatte.hard-edge.png",
+    "invented_fringe_fraction": 0.005798
+  },
+  "form_contract": {
+    "form": "extent.soft_field",
+    "attempted": true,
+    "satisfies": true,
+    "payload_variant": "extent_soft_field",
+    "may_declare_calibrated": false,
+    "why": "the payload validates; `calibration.state` is `uncalibrated` because nothing in this trial measured a correspondence between the numbers and anything else"
+  }
+}
