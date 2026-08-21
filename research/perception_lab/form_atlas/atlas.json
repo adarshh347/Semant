@@ -1,0 +1,542 @@
+{
+  "what_this_is": [
+    "PERCEPTUAL-FORMS-001F. The reference corpus for the perceptual-form benchmark: six real",
+    "works and four adversarial controls, each resolved to an institution and an accession",
+    "number where one exists, with its rights status recorded rather than assumed.",
+    "NO IMAGE BYTES ARE COMMITTED BY THIS LANE, for any entry, including the ones whose licence",
+    "would permit it. A manifest points at a lawful source and records what a fetched copy must",
+    "hash to; a checkout carries no painting. That keeps a public repository free of a rights",
+    "question nobody has to answer, and it keeps the corpus verifiable — `digest` is the promise,",
+    "and a copy that does not match it is a different picture.",
+    "TWO OF THE SIX NAMED WORKS ARE IN COPYRIGHT until the 2040s, and two more are public-domain",
+    "paintings whose only published reproductions are not freely licensed. Those four are",
+    "recorded as `reference_only`: identity resolved, rights stated, bytes not fetchable by this",
+    "lane. Where a freely licensed work of the same perceptual structure exists, it is named in",
+    "`open_access_alternate` — a stand-in for the measurement, never a substitute for the",
+    "identity. See RIGHTS.md for the full findings and the four unresolved questions.",
+    "THE ADVERSARIAL CONTROLS ARE ALREADY IN THE REPOSITORY. Lane C's model laboratory drew fog,",
+    "a tree behind a fence, a figure behind a table and a crowded plaza as synthetic images with",
+    "known alpha. They are referenced here by path and digest rather than redrawn, so the two",
+    "lanes cannot drift into testing different pictures."
+  ],
+  "retrieved": "2026-08-22",
+  "retrieval_method": [
+    "Institutional collection pages and public collection APIs, read on the retrieval date.",
+    "Every accession number below was read from the holding institution's own record or its",
+    "public API, not from an aggregator. Where no institution holds a work under the title the",
+    "build named, `identity.resolved` is false and `identity_notes` says what was found instead."
+  ],
+  "entries": [
+    {
+      "slot": "van-steenwyck-courtyard",
+      "role": "primary",
+      "why_this_work": [
+        "Deep architectural perspective with a receding courtyard: many nested extents (arcade,",
+        "bay, arch, doorway) whose containment is unambiguous to a person and whose boundaries",
+        "are long, straight and mostly unoccluded. It is the easiest honest test of",
+        "extent.hierarchy and topology.containment_tree — if a producer cannot build a tree here,",
+        "the failure is not the picture's fault."
+      ],
+      "tests_forms": ["extent.hard_mask", "extent.hierarchy", "topology.containment_tree"],
+      "identity": {
+        "title": "A Man kneels before a Woman in the Courtyard of a Renaissance Palace",
+        "also_known_as": "The Courtyard of a Renaissance Palace",
+        "artist": "Hendrick van Steenwyck the Younger",
+        "artist_dates": "c. 1580–1649",
+        "date": "1610",
+        "institution": "The National Gallery, London",
+        "accession": "NG141",
+        "object_url": "https://www.nationalgallery.org.uk/paintings/hendrick-van-steenwyck-the-younger-the-courtyard-of-a-renaissance-palace",
+        "wikidata": "Q26706569",
+        "acquisition": "Bequeathed by Lieutenant-Colonel J. H. Ollney, 1837",
+        "resolved": true,
+        "identity_notes": [
+          "The build names the short title. The National Gallery's current catalogue title is the",
+          "longer one recorded above; both refer to NG141 and there is no ambiguity.",
+          "The figures are probably not by Steenwyck — he painted architecture and collaborated",
+          "on staffage. Irrelevant to the geometry, recorded so an attribution question later",
+          "does not read as a corpus error."
+        ]
+      },
+      "rights": {
+        "artwork_status": "public_domain_by_age",
+        "artwork_expires": "expired; the painter died in 1649",
+        "reproduction_status": "not_freely_licensed",
+        "licence": null,
+        "licence_notes": [
+          "The National Gallery publishes low-resolution collection images under CC BY-NC-ND 4.0",
+          "and licenses high-resolution files commercially through its picture library. NC blocks",
+          "the commercial half of a research corpus and ND is a direct problem for a benchmark,",
+          "whose entire product is derivative: an annotation mask over an image is an adaptation."
+        ],
+        "rights_holder": "The National Gallery, London (reproduction)",
+        "may_commit_bytes": false,
+        "why_not": "the artwork is out of copyright and no freely licensed reproduction of it was found; the gallery's own images are CC BY-NC-ND at low resolution and all-rights-reserved at high",
+        "attribution": "Hendrick van Steenwyck the Younger, NG141, The National Gallery, London",
+        "retrieved": "2026-08-22",
+        "resolved": true
+      },
+      "access": {
+        "how": "reference_only",
+        "source_url": "https://www.nationalgallery.org.uk/paintings/hendrick-van-steenwyck-the-younger-the-courtyard-of-a-renaissance-palace",
+        "digest": null,
+        "digest_note": "no digest: this lane fetched no copy. A user who supplies one under their own licence records its digest here"
+      },
+      "open_access_alternate": {
+        "title": "A Renaissance Portico with Elegant Figures",
+        "artist": "Hendrick van Steenwijck II",
+        "date": "ca. 1615",
+        "institution": "The Metropolitan Museum of Art",
+        "accession": "45.94.2",
+        "object_url": "https://www.metmuseum.org/art/collection/search/437750",
+        "licence": "CC0 / Met Open Access",
+        "may_commit_bytes": true,
+        "caveat": "a 11.1 cm tondo on copper, and the Met's published file is a black-and-white plate. Same painter, same architecture, and a poor substrate for boundary work — usable for hierarchy, not for edge quality"
+      }
+    },
+    {
+      "slot": "de-chirico-piazza",
+      "role": "primary",
+      "why_this_work": [
+        "Flat, hard-edged, unmodelled forms with long cast shadows and an arcade receding to a",
+        "vanishing point: relations between things are stark and their SHADOWS are the reason",
+        "this slot exists. Asked where the tower is, a person may include or exclude the shadow",
+        "it throws — the competing-extent problem in its most legible form, and the reason the",
+        "matrix points topology.pair_relation here rather than at a busier picture."
+      ],
+      "tests_forms": ["topology.pair_relation", "topology.clearance_path", "extent.hypothesis_set"],
+      "identity": {
+        "title": "Piazza d'Italia",
+        "artist": "Giorgio de Chirico",
+        "artist_dates": "1888–1978",
+        "date": "1953",
+        "medium": "oil on canvas",
+        "dimensions": "50.0 × 40.2 cm",
+        "institution": "National Gallery of Victoria, Melbourne",
+        "accession": "2022.854",
+        "object_url": "https://www.ngv.vic.gov.au/explore/collection/work/149613/",
+        "acquisition": "Purchased with funds donated by John and Cecily Adams and Dr Peter Chu and Robert Morrow, 2022",
+        "resolved": true,
+        "identity_notes": [
+          "De Chirico painted Piazza d'Italia many times across five decades and the title alone",
+          "identifies nothing. This entry pins ONE canvas: the 1953 version at the NGV. Any other",
+          "is a different picture with different geometry, and a benchmark that said only",
+          "'de Chirico, Piazza d'Italia' would be unreproducible by construction."
+        ]
+      },
+      "rights": {
+        "artwork_status": "in_copyright",
+        "artwork_expires": "1 January 2049 in life+70 jurisdictions; the painter died 20 November 1978",
+        "reproduction_status": "not_freely_licensed",
+        "licence": null,
+        "licence_notes": [
+          "Both layers are encumbered: the painting itself is in copyright for another two",
+          "decades, and any photograph of it carries the institution's terms on top. Neither a",
+          "fetched copy nor an annotation derived from one can be published by this lane."
+        ],
+        "rights_holder": "Fondazione Giorgio e Isa de Chirico / SIAE, Rome (ARS in the United States)",
+        "may_commit_bytes": false,
+        "why_not": "the artwork is in copyright until 2049 and the rights are actively administered; nothing here may fetch, store or derive from it without a licence nobody in this lane has sought",
+        "attribution": "Giorgio de Chirico, Piazza d'Italia, 1953, National Gallery of Victoria (2022.854). © Giorgio de Chirico Estate / SIAE, Rome",
+        "retrieved": "2026-08-22",
+        "resolved": true
+      },
+      "access": {
+        "how": "reference_only",
+        "source_url": "https://www.ngv.vic.gov.au/explore/collection/work/149613/",
+        "digest": null,
+        "digest_note": "no digest: this lane fetched no copy, and may not. A licensed user records theirs here"
+      },
+      "open_access_alternate": {
+        "title": "unresolved",
+        "why": "the perceptual property this slot tests — flat unmodelled masses with long detached cast shadows — is characteristic of a movement whose principal figures all died after 1955. No public-domain substitute was identified. The synthetic control `competing-extents` covers the same failure exactly and is what the matrix actually scores against.",
+        "may_commit_bytes": false
+      }
+    },
+    {
+      "slot": "wells-nave",
+      "role": "primary",
+      "why_this_work": [
+        "A photograph, not a painting, and that is the point: the corpus needs one entry where",
+        "the geometry is real rather than depicted, so a producer cannot pass by learning what",
+        "paint looks like. Repeating bays, a scissor arch, and a nave arcade whose members touch",
+        "along long shared edges — the cleanest available test of adjacency at scale."
+      ],
+      "tests_forms": ["topology.adjacency_graph", "topology.contact_locus", "extent.hole_set"],
+      "identity": {
+        "title": "Wells Cathedral, Nave, looking east",
+        "artist": "David Iliff (photographer)",
+        "date": "2014-07-09",
+        "medium": "digital photograph",
+        "dimensions": "5850 × 7000 px",
+        "institution": "Wikimedia Commons",
+        "accession": "File:Wells Cathedral Nave 1, Somerset, UK - Diliff.jpg",
+        "object_url": "https://commons.wikimedia.org/wiki/File:Wells_Cathedral_Nave_1,_Somerset,_UK_-_Diliff.jpg",
+        "subject": "Cathedral Church of St Andrew, Wells, Somerset — nave begun c. 1175",
+        "resolved": true,
+        "identity_notes": [
+          "The building is centuries out of copyright; the PHOTOGRAPH is a 2014 work with a",
+          "living author, and it is the photograph this corpus uses. Conflating the two is the",
+          "commonest rights error in image corpora and it is why this entry names the",
+          "photographer in `artist` rather than the architect."
+        ]
+      },
+      "rights": {
+        "artwork_status": "public_domain_by_age",
+        "artwork_expires": "the building; expired",
+        "reproduction_status": "freely_licensed",
+        "licence": "CC BY-SA 3.0 (also offered under GFDL 1.2+)",
+        "licence_notes": [
+          "SHARE-ALIKE IS A REAL OBLIGATION, not a formality. Annotations traced over this image",
+          "are adaptations, so any published mask set derived from it must itself be CC BY-SA.",
+          "That is compatible with a research corpus and incompatible with a proprietary one, and",
+          "a lane that used it without noticing would have licensed its own annotations by",
+          "accident."
+        ],
+        "rights_holder": "David Iliff",
+        "may_commit_bytes": true,
+        "attribution": "Photo by DAVID ILIFF. License: CC BY-SA 3.0",
+        "retrieved": "2026-08-22",
+        "resolved": true
+      },
+      "access": {
+        "how": "manifest_pointer",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Wells_Cathedral_Nave_1,_Somerset,_UK_-_Diliff.jpg",
+        "digest": null,
+        "digest_note": "the licence would permit committed bytes; this lane commits none for any entry. A fetched copy's digest is recorded here by whoever fetches it, and Commons re-encodes derivatives, so the digest must be of the ORIGINAL file rather than of a thumbnail"
+      }
+    },
+    {
+      "slot": "gris-cubist-interior",
+      "role": "primary",
+      "why_this_work": [
+        "A Cubist interior is in the corpus because it breaks the assumption every other entry",
+        "shares: that an object has ONE extent. A guitar shown simultaneously from two angles has",
+        "two legitimate outlines and a person asked to segment it must choose an ontology before",
+        "they can draw. That is what extent.hypothesis_set and topology.uncertain_relation_set",
+        "exist for, and no naturalistic picture tests it honestly."
+      ],
+      "tests_forms": ["extent.hypothesis_set", "topology.uncertain_relation_set", "extent.fragment_set"],
+      "identity": {
+        "title": "The Architect's Table",
+        "artist": "Pablo Picasso",
+        "artist_dates": "1881–1973",
+        "date": "Paris, early 1912",
+        "medium": "oil on canvas mounted on panel",
+        "dimensions": "72.6 × 59.7 cm",
+        "institution": "The Museum of Modern Art, New York",
+        "accession": "unresolved",
+        "object_url": "https://www.moma.org/collection/works/80280",
+        "acquisition": "Gift of William S. Paley (the Sidney and Harriet Janis Collection), 1975",
+        "provenance_note": "Gertrude Stein, 1914–1946, acquired from Galerie Kahnweiler",
+        "resolved": false,
+        "identity_notes": [
+          "The WORK is pinned unambiguously by MoMA's object id 80280. Its accession number was",
+          "not resolved from the public record on the retrieval date and is recorded as",
+          "unresolved rather than guessed — a plausible-looking accession number is worse than",
+          "none, because it will be copied."
+        ]
+      },
+      "rights": {
+        "artwork_status": "in_copyright",
+        "artwork_expires": "1 January 2044 in life+70 jurisdictions; the painter died 8 April 1973",
+        "reproduction_status": "not_freely_licensed",
+        "licence": null,
+        "rights_holder": "Succession Picasso (DACS in the United Kingdom, ARS in the United States)",
+        "may_commit_bytes": false,
+        "why_not": "the artwork is in copyright until 2044 and the estate licenses actively; no byte of it may be fetched, stored or derived from by this lane",
+        "attribution": "Pablo Picasso, The Architect's Table, 1912, The Museum of Modern Art, New York. © Succession Picasso / DACS",
+        "retrieved": "2026-08-22",
+        "resolved": true
+      },
+      "access": {
+        "how": "reference_only",
+        "source_url": "https://www.moma.org/collection/works/80280",
+        "digest": null,
+        "digest_note": "no digest: this lane fetched no copy, and may not"
+      },
+      "open_access_alternate": {
+        "title": "Still Life before an Open Window, Place Ravignan",
+        "artist": "Juan Gris",
+        "artist_dates": "1887–1927",
+        "date": "1915",
+        "institution": "Philadelphia Museum of Art (Louise and Walter Arensberg Collection)",
+        "accession": "unresolved",
+        "object_url": "https://commons.wikimedia.org/wiki/File:Juan_Gris_(Jos%C3%A9_Victoriano_Gonz%C3%A1lez_P%C3%A9rez),_Spanish_-_Still_Life_before_an_Open_Window,_Place_Ravignan_-_Google_Art_Project.jpg",
+        "licence": "PD-Art (PD-old-auto-expired); the painter died in 1927",
+        "may_commit_bytes": true,
+        "caveat": "Gris is the one major Cubist whose work is out of copyright by age, and the perceptual structure is right — a tabletop, a window, a balcony, severe planar fragmentation. Two caveats travel with it: PD-Art rests on the doctrine that a faithful photograph of a two-dimensional public-domain work carries no new copyright, which is settled in the United States and contested in several EU states; and the Met's own records flag its Gris holdings `isPublicDomain: false` with no published image, so the Met is not a byte source for this artist even though the artist is out of copyright. See RIGHTS.md."
+      }
+    },
+    {
+      "slot": "van-delen-gallery",
+      "role": "primary",
+      "why_this_work": [
+        "A painted architectural fantasy: perfectly regular, sharply lit, and constructed rather",
+        "than observed, so the boundaries are the crispest in the corpus. It is where boundary",
+        "ring reconstruction should be near-exact — which makes it the right place to catch a",
+        "producer that smooths, because here there is nothing to smooth away."
+      ],
+      "tests_forms": ["extent.boundary_rings", "topology.contact_locus", "extent.hard_mask"],
+      "identity": {
+        "title": "Gallery of a Palace with Ornamental Architecture and Columns",
+        "also_known_as": "A Seven-Part Decorative Sequence: A Gallery",
+        "artist": "Dirck van Delen",
+        "artist_dates": "1605–1671",
+        "date": "1630–1632",
+        "medium": "oil on canvas",
+        "dimensions": "309 × 350 cm",
+        "institution": "Rijksmuseum, Amsterdam",
+        "accession": "SK-A-3937",
+        "object_url": "https://www.rijksmuseum.nl/en/collection/SK-A-3937",
+        "acquisition": "Purchased with the support of the Stichting tot Bevordering van de Belangen van het Rijksmuseum, 1958",
+        "resolved": false,
+        "identity_notes": [
+          "THE BUILD'S TITLE DOES NOT RESOLVE. 'Perspective Fantasy of a Palace' appears on",
+          "print-reproduction and replica-selling sites and on no museum record found on the",
+          "retrieval date. Two candidates were considered and one chosen:",
+          "  · The National Gallery NG1010, 'An Architectural Fantasy', 1634 — closest to the",
+          "    build's title, and its reproductions are CC BY-NC-ND at low resolution only.",
+          "  · Rijksmuseum SK-A-3937, recorded above — a palace gallery rather than a square, and",
+          "    freely licensed at full resolution.",
+          "SK-A-3937 is the entry because a benchmark needs a picture it can lawfully use more",
+          "than it needs a title match. `resolved` is false to keep the discrepancy visible: this",
+          "is not the work the build named, and somebody should confirm the substitution."
+        ]
+      },
+      "rights": {
+        "artwork_status": "public_domain_by_age",
+        "artwork_expires": "expired; the painter died in 1671",
+        "reproduction_status": "freely_licensed",
+        "licence": "Public Domain Mark 1.0 (Rijksmuseum open access, full-resolution download)",
+        "rights_holder": null,
+        "may_commit_bytes": true,
+        "attribution": "Dirck van Delen, Gallery of a Palace with Ornamental Architecture and Columns, Rijksmuseum, Amsterdam (SK-A-3937)",
+        "retrieved": "2026-08-22",
+        "resolved": true
+      },
+      "access": {
+        "how": "manifest_pointer",
+        "source_url": "https://www.rijksmuseum.nl/en/collection/SK-A-3937",
+        "digest": null,
+        "digest_note": "the licence would permit committed bytes; this lane commits none. A fetcher records the digest of the full-resolution file, not of a web-sized rendition"
+      }
+    },
+    {
+      "slot": "van-schooten-still-life",
+      "role": "primary",
+      "why_this_work": [
+        "A laid table: many small objects at a single scale, overlapping, on a plain ground. The",
+        "negative space between them is legible and bounded, which is what topology.negative_",
+        "space_field needs and what an architectural interior cannot provide — in a nave the",
+        "space between piers is the space you stand in and has no edge."
+      ],
+      "tests_forms": ["topology.negative_space_field", "topology.transition", "extent.hard_mask"],
+      "identity": {
+        "title": "Still Life with Fruit and Vegetables, with Christ at Emmaus in the Background",
+        "artist": "Floris Gerritsz van Schooten",
+        "artist_dates": "c. 1585/88–1656",
+        "date": "c. 1630",
+        "medium": "oil on canvas",
+        "dimensions": "113 × 200 cm",
+        "institution": "Rijksmuseum, Amsterdam",
+        "accession": "SK-A-2058",
+        "object_url": "https://www.rijksmuseum.nl/en/collection/SK-A-2058",
+        "resolved": true,
+        "identity_notes": [
+          "The build allows 'Floris van Schooten or a precisely identified Dutch still life'.",
+          "This is van Schooten, precisely identified, and freely licensed — so the alternative",
+          "branch of that instruction was not needed."
+        ]
+      },
+      "rights": {
+        "artwork_status": "public_domain_by_age",
+        "artwork_expires": "expired; the painter was buried in 1656",
+        "reproduction_status": "freely_licensed",
+        "licence": "Public Domain Mark 1.0 (Rijksmuseum open access, full-resolution download)",
+        "rights_holder": null,
+        "may_commit_bytes": true,
+        "attribution": "Floris Gerritsz van Schooten, Still Life with Fruit and Vegetables, with Christ at Emmaus in the Background, Rijksmuseum, Amsterdam (SK-A-2058)",
+        "retrieved": "2026-08-22",
+        "resolved": true
+      },
+      "access": {
+        "how": "manifest_pointer",
+        "source_url": "https://www.rijksmuseum.nl/en/collection/SK-A-2058",
+        "digest": null,
+        "digest_note": "the licence would permit committed bytes; this lane commits none"
+      }
+    },
+
+    {
+      "slot": "adversarial-fog",
+      "role": "adversarial",
+      "why_this_work": [
+        "The required fog/veil/smoke control. An extent whose edge the picture does not contain:",
+        "a producer must return a graded field or refuse, and the failure to catch is a hard",
+        "mask returned with a confident boundary that nothing measured."
+      ],
+      "tests_forms": ["extent.soft_field", "extent.visible_inferred_partition"],
+      "identity": {
+        "title": "soft-fog and hair-veil",
+        "artist": "synthetic, drawn by scripts/perception_lab_model_trials.py",
+        "date": "2026-08-22",
+        "institution": "this repository",
+        "accession": "research/perception_lab/model_trials/controls/soft-fog.png",
+        "resolved": true,
+        "identity_notes": [
+          "Two images, and the pair is the test. `soft-fog` is genuine fractional occupancy and",
+          "`hair-veil` is fractional COVERAGE by sub-pixel filaments — the model is not unsure",
+          "where the hair is. A producer that reports its own doubt scores the same on both, and",
+          "that is the discrimination the pair exists to make."
+        ]
+      },
+      "rights": {
+        "artwork_status": "not_applicable_synthetic",
+        "artwork_expires": null,
+        "reproduction_status": "freely_licensed",
+        "licence": "same terms as this repository",
+        "rights_holder": null,
+        "may_commit_bytes": true,
+        "attribution": "synthetic control, PERCEPTUAL-FORMS-001C",
+        "retrieved": "2026-08-22",
+        "resolved": true
+      },
+      "access": {
+        "how": "in_repository",
+        "source_url": "research/perception_lab/model_trials/controls/soft-fog.png",
+        "digest": "sha256:592d40f613db1c7475eaa3c159968806c64e644ef707f90bfc79950b3057fbd0",
+        "digest_note": "checked against Lane C's own manifest by `perception_lab_form_benchmark.py atlas`, so the two lanes cannot drift into testing different pictures",
+        "companion": "research/perception_lab/model_trials/controls/hair-veil.png"
+      }
+    },
+    {
+      "slot": "adversarial-fence-tree",
+      "role": "adversarial",
+      "why_this_work": [
+        "The required tree-behind-fence / river-behind-bridge control. One entity cut into five",
+        "by an occluder, so `extent.fragment_set` must find five pieces and refuse to say they",
+        "are one, and `extent.fused_hypothesis` must propose the grouping as a hypothesis with",
+        "grounds rather than as a measurement."
+      ],
+      "tests_forms": ["extent.fragment_set", "extent.fused_hypothesis", "topology.intersection_area"],
+      "identity": {
+        "title": "fence-tree",
+        "artist": "synthetic, drawn by scripts/perception_lab_model_trials.py",
+        "date": "2026-08-22",
+        "institution": "this repository",
+        "accession": "research/perception_lab/model_trials/controls/fence-tree.png",
+        "resolved": true,
+        "identity_notes": [
+          "Paired with `false-twins` in Lane C's corpus and with `false-similarity` here: one",
+          "scene where fragments ARE one entity and one where identical-looking fragments are",
+          "not. A producer that groups on appearance passes the first and fails the second, and",
+          "either alone is a test it can pass by having one bias."
+        ]
+      },
+      "rights": {
+        "artwork_status": "not_applicable_synthetic",
+        "artwork_expires": null,
+        "reproduction_status": "freely_licensed",
+        "licence": "same terms as this repository",
+        "rights_holder": null,
+        "may_commit_bytes": true,
+        "attribution": "synthetic control, PERCEPTUAL-FORMS-001C",
+        "retrieved": "2026-08-22",
+        "resolved": true
+      },
+      "access": {
+        "how": "in_repository",
+        "source_url": "research/perception_lab/model_trials/controls/fence-tree.png",
+        "digest": "sha256:07d2b343eae2f83baeacc60d9ed12ca363f23fa15aa0b57d429a909a7fb96585",
+        "digest_note": "checked against Lane C's own manifest",
+        "companion": "research/perception_lab/model_trials/controls/false-twins.png"
+      }
+    },
+    {
+      "slot": "adversarial-person-behind-table",
+      "role": "adversarial",
+      "why_this_work": [
+        "The required person-behind-table control. The hidden pixels are known EXACTLY, because",
+        "the figure was drawn before the bar covered it — which makes this the only place an",
+        "amodal completion can be scored against a fact rather than against another opinion."
+      ],
+      "tests_forms": ["extent.visible_inferred_partition", "extent.fused_hypothesis"],
+      "identity": {
+        "title": "occluder-table",
+        "artist": "synthetic, drawn by scripts/perception_lab_model_trials.py",
+        "date": "2026-08-22",
+        "institution": "this repository",
+        "accession": "research/perception_lab/model_trials/controls/occluder-table.png",
+        "resolved": true,
+        "identity_notes": [
+          "The synthetic control has no `unknown` part: the figure is entirely within the frame,",
+          "so every pixel is either seen or hidden. This benchmark's own `partition` control adds",
+          "a figure that runs off the frame edge, because a partition with only two parts cannot",
+          "catch a producer that has nowhere to put what nothing settles."
+        ]
+      },
+      "rights": {
+        "artwork_status": "not_applicable_synthetic",
+        "artwork_expires": null,
+        "reproduction_status": "freely_licensed",
+        "licence": "same terms as this repository",
+        "rights_holder": null,
+        "may_commit_bytes": true,
+        "attribution": "synthetic control, PERCEPTUAL-FORMS-001C",
+        "retrieved": "2026-08-22",
+        "resolved": true
+      },
+      "access": {
+        "how": "in_repository",
+        "source_url": "research/perception_lab/model_trials/controls/occluder-table.png",
+        "digest": "sha256:77127245f25e6566420d5cf3148706c3174ea50128e8cbd22dc109f59f64b2d7",
+        "digest_note": "checked against Lane C's own manifest"
+      }
+    },
+    {
+      "slot": "adversarial-crowd-plaza",
+      "role": "adversarial",
+      "why_this_work": [
+        "The required crowd/plaza control. Sixty marks with a known east/west split: there is no",
+        "single object to outline, so a producer must answer with a density field and a count,",
+        "and the two can fail independently."
+      ],
+      "tests_forms": ["extent.density_field", "topology.negative_space_field"],
+      "identity": {
+        "title": "crowd-plaza",
+        "artist": "synthetic, drawn by scripts/perception_lab_model_trials.py",
+        "date": "2026-08-22",
+        "institution": "this repository",
+        "accession": "research/perception_lab/model_trials/controls/crowd-plaza.png",
+        "resolved": true,
+        "identity_notes": [
+          "Lane C pairs it with `windows-facade` (a regular grid) and `sparse-objects` (three",
+          "well-separated blobs). The three together separate 'can count' from 'can count when",
+          "the spacing is regular' from 'can count when there is nothing to count'."
+        ]
+      },
+      "rights": {
+        "artwork_status": "not_applicable_synthetic",
+        "artwork_expires": null,
+        "reproduction_status": "freely_licensed",
+        "licence": "same terms as this repository",
+        "rights_holder": null,
+        "may_commit_bytes": true,
+        "attribution": "synthetic control, PERCEPTUAL-FORMS-001C",
+        "retrieved": "2026-08-22",
+        "resolved": true
+      },
+      "access": {
+        "how": "in_repository",
+        "source_url": "research/perception_lab/model_trials/controls/crowd-plaza.png",
+        "digest": "sha256:9393dce861f3eb06d4e0ec2dc19401c35f431cdf41edeba505e786397a8ed532",
+        "digest_note": "checked against Lane C's own manifest",
+        "companions": [
+          "research/perception_lab/model_trials/controls/windows-facade.png",
+          "research/perception_lab/model_trials/controls/sparse-objects.png"
+        ]
+      }
+    }
+  ]
+}

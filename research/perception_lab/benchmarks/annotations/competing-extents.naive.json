@@ -1,0 +1,194 @@
+{
+  "annotation_id": "ann-competing-extents-naive-01",
+  "form": "extent.hypothesis_set",
+  "subject": {
+    "kind": "control",
+    "ref": "competing-extents",
+    "digest": null,
+    "raster": [
+      64,
+      64
+    ]
+  },
+  "annotator": {
+    "id": "annotator-b",
+    "expertise": "naive",
+    "minutes_spent": 2
+  },
+  "annotated_on": "2026-08-22",
+  "legitimate_readings": [
+    {
+      "reading_id": "body_and_shadow",
+      "label": "the figure and what it casts",
+      "why": "in a scene read as light and dark, the shadow is the figure's own mark on the ground and belongs to it. Excluding it leaves the figure floating.",
+      "mask_rle": {
+        "size": [
+          64,
+          64
+        ],
+        "counts": [
+          1366,
+          1,
+          59,
+          9,
+          54,
+          11,
+          52,
+          13,
+          50,
+          15,
+          48,
+          36,
+          28,
+          36,
+          28,
+          36,
+          28,
+          36,
+          27,
+          37,
+          28,
+          36,
+          28,
+          36,
+          28,
+          36,
+          28,
+          17,
+          15,
+          4,
+          29,
+          15,
+          16,
+          4,
+          30,
+          13,
+          17,
+          4,
+          31,
+          11,
+          18,
+          4,
+          32,
+          9,
+          19,
+          4,
+          36,
+          1,
+          23,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          654
+        ]
+      },
+      "instance_refs": [
+        "body",
+        "shadow"
+      ],
+      "preferred_by_annotator": true
+    },
+    {
+      "reading_id": "body_only",
+      "label": "the figure itself",
+      "why": "a shadow is cast BY a figure and is not part of where the figure is. Asked to outline the figure I outline what could be touched.",
+      "mask_rle": {
+        "size": [
+          64,
+          64
+        ],
+        "counts": [
+          1366,
+          1,
+          59,
+          9,
+          54,
+          11,
+          52,
+          13,
+          50,
+          15,
+          48,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          31,
+          33,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          17,
+          48,
+          15,
+          50,
+          13,
+          52,
+          11,
+          54,
+          9,
+          59,
+          1,
+          1577
+        ]
+      },
+      "instance_refs": [
+        "body"
+      ],
+      "preferred_by_annotator": false
+    }
+  ],
+  "single_correct_answer": false,
+  "ambiguity": {
+    "level": "slight",
+    "sources": [
+      "shadow_or_reflection"
+    ],
+    "confidence": 0.6,
+    "note": "It did not occur to me that the shadow might be excluded until I was asked."
+  },
+  "utility_verdicts": [
+    {
+      "verdict": "partial",
+      "why": "the body-only outline is right about the figure and drops something I would have wanted selected.",
+      "about": "body_only"
+    }
+  ],
+  "notes": "I would have drawn the shadow in without thinking about it. Recording the other reading because the trained annotator's reason for excluding it is a good one, not because I now prefer it — this is the systematic split the `expertise` field exists to make visible rather than to average away.",
+  "disagrees_with": [
+    "ann-competing-extents-trained-01"
+  ]
+}

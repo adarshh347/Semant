@@ -1,0 +1,271 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://semant.local/schemas/perception-lab/form-annotation.schema.json",
+  "title": "Perceptual form annotation",
+  "what_this_is": [
+    "PERCEPTUAL-FORMS-001F. What a person records when they annotate one image for one form.",
+    "",
+    "THE ONE THING THIS SCHEMA IS BUILT AROUND. There is no `ground_truth` field and there is no",
+    "`correct_mask` field, and their absence is the design rather than an omission. Asked to",
+    "outline 'the figure', a person may lawfully return the body alone or the body with the",
+    "shadow it casts; asked to outline 'the table', they may include or exclude what is on it.",
+    "Those are ONTOLOGIES, not errors, and a schema with one correct-answer slot forces the",
+    "annotator to pick one and forces the scorer to mark the rest wrong — which measures the",
+    "tie-break and not the producer.",
+    "",
+    "So the shape is `legitimate_readings`: a LIST, each with the reason it is legitimate, and a",
+    "`single_correct_answer` flag that must be explicitly false whenever there is more than one.",
+    "`perception_lab_form_benchmark.py annotations` refuses a record that declares several",
+    "readings and leaves the flag unset, because a scorer reading that record would take the",
+    "first one and never know it had chosen.",
+    "",
+    "AMBIGUITY IS RECORDED AS ITSELF. `ambiguity` says WHY a picture is hard — the edge is not",
+    "in the picture, the two things are the same colour, the thing continues off the frame — and",
+    "`confidence` says how sure this annotator is. Neither is a defect in the annotation; both",
+    "are measurements of the image, and an item every annotator found hard is a finding about",
+    "the corpus rather than noise to be averaged out.",
+    "",
+    "VISIBLE, INFERRED AND UNKNOWN ARE THREE, NOT TWO. `partition` carries all three parts from",
+    "the contract's `partition_parts`, because a figure that runs off the frame edge is neither",
+    "seen nor asserted — nothing settles it — and an annotator with only two boxes to tick will",
+    "put those pixels in one of them.",
+    "",
+    "THE VERDICT IS A PERSON, NOT A MEASUREMENT. `utility_verdicts` uses the contract's own",
+    "`review_verdicts` closed set, so a mark made here is one the record could hold, and several",
+    "annotators may disagree without the schema resolving them."
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "annotation_id",
+    "form",
+    "subject",
+    "annotator",
+    "annotated_on",
+    "legitimate_readings",
+    "single_correct_answer",
+    "ambiguity",
+    "notes"
+  ],
+  "properties": {
+    "annotation_id": {
+      "type": "string",
+      "description": "Stable id for this annotation of this subject by this annotator."
+    },
+    "form": {
+      "type": "string",
+      "description": "One of the nineteen registered perceptual forms. Validated against the contract's closed set rather than against a list here."
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref"],
+      "description": "What was annotated. An atlas slot, a synthetic control, or a user-supplied image the annotator holds rights to.",
+      "properties": {
+        "kind": {"enum": ["atlas_slot", "control", "user_supplied"]},
+        "ref": {"type": "string"},
+        "digest": {
+          "type": ["string", "null"],
+          "description": "What the annotated copy hashed to. Null for a control, whose truth travels with it; required in practice for a user-supplied image, or nobody can tell which picture was annotated."
+        },
+        "raster": {
+          "type": ["array", "null"],
+          "items": {"type": "integer"},
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "The [h, w] every mask in this record is on. Masks on two rasters cannot be compared and the scorer refuses rather than resampling."
+        }
+      }
+    },
+    "annotator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "expertise"],
+      "properties": {
+        "id": {"type": "string"},
+        "expertise": {
+          "enum": ["naive", "trained", "domain_expert"],
+          "description": "Recorded because it predicts disagreement. A trained annotator and a naive one will differ systematically about where a shadow belongs, and pooling them without the label makes that look like noise."
+        },
+        "minutes_spent": {"type": ["number", "null"]}
+      }
+    },
+    "annotated_on": {"type": "string", "description": "ISO date."},
+
+    "legitimate_readings": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Every reading this annotator considers defensible. NOT a ranked list of one right answer and some near-misses — each entry stands on its own reason.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reading_id", "why"],
+        "properties": {
+          "reading_id": {"type": "string"},
+          "label": {"type": ["string", "null"], "description": "What this reading calls the thing."},
+          "why": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The ontology, in a sentence. REQUIRED: a reading nobody explained cannot be argued with, and an annotator who cannot say why has not made a choice, only a mark."
+          },
+          "mask_rle": {"type": ["object", "null"], "description": "COCO RLE, on the subject's raster."},
+          "instance_refs": {"type": "array", "items": {"type": "string"}},
+          "preferred_by_annotator": {
+            "type": ["boolean", "null"],
+            "description": "Which one THIS annotator would choose if forced. A preference, recorded as a preference — the scorer never reads it as truth."
+          },
+          "rings": {"type": ["array", "null"], "description": "Explicit boundary rings, where the form records them."},
+          "holes": {"type": ["array", "null"]},
+          "field": {"type": ["object", "null"], "description": "A ScalarField, where the form carries one."}
+        }
+      }
+    },
+    "single_correct_answer": {
+      "type": "boolean",
+      "description": "Must be false whenever `legitimate_readings` has more than one entry. The validator enforces it: a record with three readings and this left true tells a scorer it may pick one."
+    },
+
+    "ambiguity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "sources"],
+      "description": "How hard this was, and why. A measurement of the image, not a defect in the annotation.",
+      "properties": {
+        "level": {"enum": ["none", "slight", "substantial", "irreducible"]},
+        "sources": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "edge_not_in_picture",
+              "occluded",
+              "runs_off_frame",
+              "same_colour_as_neighbour",
+              "depicted_from_two_angles",
+              "shadow_or_reflection",
+              "scale_too_small_to_resolve",
+              "category_boundary_disputed",
+              "conservation_or_damage"
+            ]
+          }
+        },
+        "confidence": {
+          "type": ["number", "null"],
+          "minimum": 0, "maximum": 1,
+          "description": "This annotator's confidence in their own readings. Never combined with a producer's confidence — one is a person and the other is a number a model emitted."
+        },
+        "note": {"type": ["string", "null"]}
+      }
+    },
+
+    "partition": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "For forms that partition an extent. All three parts, and `unknown` is not optional decoration — it is where the pixels nothing settles must go.",
+      "properties": {
+        "visible": {"type": ["object", "null"]},
+        "inferred": {"type": ["object", "null"]},
+        "unknown": {"type": ["object", "null"]},
+        "conditioned_on": {
+          "type": ["string", "null"],
+          "description": "The reading this partition holds under, where it holds under one. Read without it, a conditional claim becomes unconditional."
+        }
+      }
+    },
+
+    "fragment_membership": {
+      "type": ["array", "null"],
+      "description": "How the pieces group. A LIST of groupings, because two annotators may group the same fragments differently and both be right.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["grouping_id", "groups", "why"],
+        "properties": {
+          "grouping_id": {"type": "string"},
+          "groups": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}},
+          "why": {"type": "string", "minLength": 1},
+          "asserts_hidden_extent": {
+            "type": ["boolean", "null"],
+            "description": "Whether this grouping claims pixels behind an occluder. A strictly larger claim than grouping what is visible, and it must be said."
+          },
+          "grounds": {
+            "type": "array",
+            "description": "From the contract's `ground_kinds`. Validated against it, so a ground nobody registered fails rather than passing as prose.",
+            "items": {
+              "type": "object",
+              "required": ["kind", "detail"],
+              "properties": {
+                "kind": {"type": "string"},
+                "detail": {"type": "string"},
+                "strength": {"type": ["number", "null"]}
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "hierarchy": {
+      "type": ["array", "null"],
+      "description": "Parent links. A FOREST is allowed: a node contained by nothing is a measurement, and forcing a single root invents a container.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node_id"],
+        "properties": {
+          "node_id": {"type": "string"},
+          "parent_node_id": {"type": ["string", "null"]},
+          "occupancy_of_parent": {"type": ["number", "null"]},
+          "basis": {"type": ["string", "null"]},
+          "disputed": {
+            "type": ["boolean", "null"],
+            "description": "The annotator is not sure this nesting holds. Kept rather than dropped: a disputed edge is different from an absent one."
+          }
+        }
+      }
+    },
+
+    "relations": {
+      "type": ["array", "null"],
+      "description": "Typed relations, with direction. `directed` is part of the claim, not presentation — `a contains b` and `b contains a` are two different measurements.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "target", "kind", "directed"],
+        "properties": {
+          "source": {"type": "string"},
+          "target": {"type": "string"},
+          "kind": {"type": "string", "description": "From the contract's `relation_kinds`."},
+          "directed": {"type": "boolean"},
+          "conditioned_on": {"type": ["string", "null"], "description": "The reading this holds under."},
+          "confidence": {"type": ["number", "null"]}
+        }
+      }
+    },
+
+    "utility_verdicts": {
+      "type": ["array", "null"],
+      "description": "Was the form's answer USEFUL to a person looking at this picture? Separate from whether it was geometrically close — a mask can score 0.9 IoU and answer the wrong question.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["verdict", "why"],
+        "properties": {
+          "verdict": {"type": "string", "description": "From the contract's `review_verdicts`: correct, partial, wrong, unclear."},
+          "why": {"type": "string", "minLength": 1, "description": "REQUIRED. A bare verdict is a feeling."},
+          "about": {"type": ["string", "null"], "description": "Which reading or which claim this verdict is about."}
+        }
+      }
+    },
+
+    "notes": {
+      "type": "string",
+      "description": "The ontology in prose: what the annotator took the question to mean, what they excluded and why. REQUIRED even when empty of surprises, because the commonest cause of two annotators disagreeing is that they answered two different questions and neither wrote down which."
+    },
+
+    "disagrees_with": {
+      "type": ["array", "null"],
+      "items": {"type": "string"},
+      "description": "Annotation ids this one knowingly contradicts. A recorded disagreement is evidence; an unrecorded one is noise."
+    }
+  }
+}
