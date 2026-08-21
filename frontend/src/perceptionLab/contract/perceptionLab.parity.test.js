@@ -46,10 +46,11 @@ import {
     consumedFields, missingConsumedFields, readPath,
     validateArtifact, validateRun, validatePlan, validateReview, validateSession,
     validateInputRef, referenceOf, sessionKnows, declaredReferences,
-    PERCEPTUAL_FORMS, PARTITION_CEILINGS, form, formsFor, formHasProducer, effectiveForm,
-    derivedCeiling, checkInputForms, checkFormProducible, validateFormPayload,
+    PERCEPTUAL_FORMS, PARTITION_CEILINGS, RELATION_KINDS, form, formsFor, formHasProducer,
+    effectiveForm, derivedCeiling, checkInputForms, checkFormProducible, validateFormPayload,
     optionalConsumedFields,
 } from './perceptionLabContract';
+import { PROJECTION_FOR_KIND } from '../topologyView';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '../../../..');
@@ -462,6 +463,30 @@ describe('the perceptual form grammar, in JavaScript', () => {
         expect(wrong.message).toMatch(/does not accept extent\.soft_field/);
         expect(checkFormProducible('topology.pair_relation')).toBeNull();
         expect(checkFormProducible('extent.soft_field').code).toBe('form_not_producible');
+    });
+
+    it('reconciles with the renderer registry Lane E already ships', () => {
+        // Lane E maps each relation kind to the drawing it asks for, and every one of those
+        // drawings has to be something `topology.pair_relation` declares — otherwise the form
+        // registry and the renderer registry are two answers to one question, which is the exact
+        // failure the grammar was written to end.
+        const declared = new Map(
+            form('topology.pair_relation').renderer_projections.map((p) => [p.kind, p.mode]));
+        for (const [relationKind, projection] of Object.entries(PROJECTION_FOR_KIND)) {
+            expect(RELATION_KINDS, `${relationKind} is not a relation kind`)
+                .toContain(relationKind);
+            expect([...declared.keys()],
+                   `Lane E draws ${projection} for ${relationKind}; the form does not declare it`)
+                .toContain(projection);
+            // and every one of them is DERIVED today, which is why the browser stamps them
+            expect(declared.get(projection),
+                   `${projection} is drawn from a payload that does not carry it`).toBe('derived');
+        }
+        // the forms that would make those same drawings direct, once something writes them
+        expect(form('topology.contact_locus').renderer_projections
+            .find((p) => p.kind === 'contact_band').mode).toBe('direct');
+        expect(form('topology.intersection_area').renderer_projections
+            .find((p) => p.kind === 'intersection_area').mode).toBe('direct');
     });
 
     it('reads a record written before the grammar existed', () => {
