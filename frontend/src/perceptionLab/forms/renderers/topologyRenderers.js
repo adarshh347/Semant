@@ -584,7 +584,14 @@ const containmentTree = (formKey) => {
                         formKey,
                         kind: 'hierarchy_tree',
                         nodes: t.nodes,
-                        edges: t.edges,
+                        // THE SENTENCE, not only the arrowhead. "contains" is not symmetric, an
+                        // arrowhead is small, and the direction IS the measurement.
+                        edges: t.edges.map((e) => ({
+                            ...e,
+                            sentence: `${e.source_node_id} contains ${e.target_node_id}`
+                                + (e.occupancy_of_parent !== null
+                                    ? `, filling ${e.occupancy_of_parent} of it` : ''),
+                        })),
                         dangling: t.dangling,
                         unreached: t.unreached,
                         basis: 'mask',

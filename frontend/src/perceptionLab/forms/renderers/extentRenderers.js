@@ -1139,7 +1139,14 @@ const hierarchy = (formKey) => [
                             : `${n.region?.region_id} (rev ${n.region?.geometry_rev}, ${n.region?.scope})`,
                         basis: n.basis,
                     })),
-                    edges: t.edges,
+                    // THE SENTENCE, not only the arrowhead. An arrowhead is small, and "which
+                    // one is inside the other" is the entire measurement.
+                    edges: t.edges.map((e) => ({
+                        ...e,
+                        sentence: `${e.source_node_id} contains ${e.target_node_id}`
+                            + (e.occupancy_of_parent !== null
+                                ? `, filling ${e.occupancy_of_parent} of it` : ''),
+                    })),
                     dangling: t.dangling,
                     unreached: t.unreached,
                     basis: 'mask',
@@ -1294,6 +1301,9 @@ const hypothesisSet = (formKey) => {
                 label: `${alt.alternative_id} — weight ${alt.weight}`,
                 form: formKey,
                 source: { artifact_id: alt.artifact_id, alternative_id: alt.alternative_id },
+                // NAMED EVEN THOUGH IT IS NOT DRAWN. A layered view whose absent members were
+                // anonymous would report two alternatives where the record holds three.
+                hypothesisId: alt.alternative_id,
                 why: alt.artifact_id
                     ? `this alternative points at the whole artifact ${alt.artifact_id} rather `
                       + 'than at instances, and that artifact is not on this page'
@@ -1306,6 +1316,7 @@ const hypothesisSet = (formKey) => {
             if (!r.resolved) {
                 return absent({
                     layer_id: id, label: m.instance_id, form: formKey, source: m, why: r.why,
+                    hypothesisId: alt.alternative_id,
                 });
             }
             return ringLayer({

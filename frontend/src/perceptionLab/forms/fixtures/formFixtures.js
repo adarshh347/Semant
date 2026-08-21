@@ -296,8 +296,72 @@ export const SCENARIOS = Object.freeze(Object.fromEntries(
         if (DENSE_COUNT[key]) scenarios.dense = densify(payload, DENSE_COUNT[key]);
         if (HAS_FIELD.has(key)) scenarios.withheld = withheld(payload);
         if (key === 'topology.negative_space_field') scenarios.resolvable = resolvableFigures(payload);
+        if (key === 'topology.pair_relation') scenarios.resolvable = resolvableRelations(payload);
         return [key, Object.freeze(scenarios)];
     })));
+
+/**
+ * Pair relations between endpoints this fixture set can actually resolve.
+ *
+ * WHY IT IS NEEDED. Every projection `topology.pair_relation` declares is `derived` — a relation
+ * record carries numbers and no geometry, so every picture of one is computed in this browser from
+ * the endpoint masks. The committed payload names `inst_court`, `inst_fountain` and `inst_1`, and
+ * two of those three are not in any fixture, so the whole apparatus for comparing a derived
+ * drawing against a recorded number never runs on it. It refuses, correctly and uselessly.
+ *
+ * THE RECORDED NUMBERS HERE DISAGREE WITH THE BROWSER'S, ON PURPOSE. `contact_pixels: 214` is the
+ * kind of figure a producer reports from a full-resolution measurement; the browser is dilating an
+ * 8×8 raster and will count something quite different. That disagreement is not a defect in either
+ * — it is the ordinary situation, it is what `agreement()` exists to surface, and a fixture that
+ * quietly agreed would leave the most useful column on the page untested.
+ *
+ * THREE RELATIONS, THREE OUTCOMES. Mask-to-mask draws. Mask-to-box refuses, because an endpoint
+ * with no mask cannot be dilated and resampling its box would invent the contact. Box-to-box
+ * refuses for both halves at once.
+ */
+function resolvableRelations(payload) {
+    const out = clone(payload);
+    const ref = (artifact_id, instance_id) => ({
+        artifact_id, instance_id, scope: 'session', region_id: null, geometry_rev: null,
+    });
+    out.relations = [
+        {
+            relation_id: 'rel_masks',
+            kind: 'meets',
+            source: ref('art_extent_1', 'inst_1'),
+            target: ref('art_fragments_1', 'frag_1'),
+            directed: false,
+            basis: 'mask',
+            epistemic_status: 'measured',
+            measurements: { contact_pixels: 214, contact_tolerance_px: 1 },
+            stale: false,
+        },
+        {
+            relation_id: 'rel_mask_box',
+            kind: 'contains',
+            source: ref('art_extent_1', 'inst_1'),
+            target: ref('art_extent_1', 'inst_2'),
+            directed: true,
+            basis: 'box',
+            epistemic_status: 'interpretive',
+            measurements: { containment_fraction: 0.62 },
+            stale: false,
+        },
+        {
+            relation_id: 'rel_boxes',
+            kind: 'disjoint',
+            source: ref('art_fragments_1', 'frag_2'),
+            target: ref('art_fragments_1', 'frag_3'),
+            directed: false,
+            basis: 'box',
+            epistemic_status: 'interpretive',
+            measurements: { separation: 0.5 },
+            stale: true,
+        },
+    ];
+    out.pairs_examined = 6;
+    return out;
+}
 
 /**
  * The negative-space payload, pointed at figures this fixture set can actually resolve.
@@ -329,9 +393,9 @@ export const payloadFor = (formKey, scenario = 'contract') => SCENARIOS[formKey]
 
 export const SCENARIO_NOTE = Object.freeze({
     contract: 'the payload committed at contracts/fixtures/perception-lab/forms/, unchanged',
-    resolvable: 'the same record, pointed at the two instances this fixture set carries geometry '
-        + 'for, so the browser-derived field can be computed and shown beside the measured one '
-        + 'that is not on this page',
+    resolvable: 'the same kind of record, pointed at endpoints this fixture set carries geometry '
+        + 'for — so the browser-derived drawing can actually be computed and set beside the '
+        + 'number the producer recorded',
     empty: 'the collection emptied and the examination counter kept — this form looked and found '
         + 'nothing, which is a measurement and not a failure',
     dense: 'enough members to break a layout that was only tested with two',

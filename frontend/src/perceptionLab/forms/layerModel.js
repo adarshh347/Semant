@@ -245,9 +245,20 @@ export function assertLayer(l) {
     return l;
 }
 
-/** A layer that could not be drawn. The only constructor for an honest empty stage. */
-export const absentLayer = ({ layer_id, label, form = null, source = null, why }) => layer({
+/**
+ * A layer that could not be drawn. The only constructor for an honest empty stage.
+ *
+ * It takes a `hypothesisId` for a reason worth stating: when an alternative cannot be drawn, the
+ * legend must still be able to say WHICH alternative. "One of the three readings is not on this
+ * page" is a different and much weaker sentence than "alt_one_object points at an artifact that
+ * is not here" — and a layered view whose absent members were anonymous would silently report two
+ * alternatives where the record holds three.
+ */
+export const absentLayer = ({
+    layer_id, label, form = null, source = null, why, hypothesisId = null, part = null,
+}) => layer({
     layer_id, label, form, source,
+    hypothesis_id: hypothesisId, part,
     evidence: 'absent', coordinate_system: 'none', why_absent: why,
 });
 
