@@ -14,6 +14,7 @@ import ArtifactLedger from './ArtifactLedger.jsx';
 import DiagnosisCard from './DiagnosisCard.jsx';
 import SessionExport from './SessionExport.jsx';
 import ScopePanel, { ScopeBadge } from './ScopePanel.jsx';
+import { ImageInspectorProvider, ImageRef, ImageAbsences } from './ImageInspector.jsx';
 import { createInquiryClient } from './inquiryClient.js';
 import {
     openDecision, outcomeCounts, STATE_LABEL, MODE_COPY,
@@ -174,6 +175,10 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
     const working = !awaiting && !IS_TERMINAL_STATE(session.state.value);
 
     return (
+        // THE PROVIDER WRAPS THE SESSION VIEW ONLY. Nothing on the entry screen has an image
+        // reference to open, and a provider spanning both would keep a sidebar alive across
+        // `reset()` — pointing at a picture from an inquiry that is no longer on screen.
+        <ImageInspectorProvider session={session}>
         <main className="iw-shell iw-shell--session">
             <SessionHeader session={session} working={working} />
 
@@ -238,6 +243,11 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
             <CapabilityActivity receipts={session.capability_receipts} />
             <NextActions session={session} onRestart={reset} />
             <ArtifactLedger session={session} />
+            {/* Renders nothing on a session whose images and references line up, which is the
+                ordinary case. It is here rather than inside the sidebar because both facts are
+                properties of the SESSION — a reader who never opens a chip would otherwise never
+                meet them. */}
+            <ImageAbsences session={session} />
             <EvidencePanel session={session} />
             <SynthesisView session={session} />
             <TraceView trace={session.trace} />
@@ -247,6 +257,7 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
                 Ask something else
             </button>
         </main>
+        </ImageInspectorProvider>
     );
 }
 
@@ -326,9 +337,17 @@ export function SessionHeader({ session, working = false }) {
                 <ul className="iw-session-images">
                     {session.graph.image_refs.map((img) => (
                         <li key={img.post_id} data-post-id={img.post_id}>
-                            {img.image_url
-                                ? <img src={img.image_url} alt="" loading="lazy" />
-                                : <span className="iw-thumb-blank" aria-hidden="true" />}
+                            {/* The thumbnails were the one place a person could already SEE the
+                                pictures and the one place they could do nothing with them. */}
+                            <ImageRef
+                                refId={img.post_id}
+                                className="iw-imgref--thumb"
+                                title={`What rests on ${img.title || img.post_id}`}
+                            >
+                                {img.image_url
+                                    ? <img src={img.image_url} alt="" loading="lazy" />
+                                    : <span className="iw-thumb-blank" aria-hidden="true" />}
+                            </ImageRef>
                             <span className="iw-thumb-title">{img.title || img.post_id}</span>
                         </li>
                     ))}

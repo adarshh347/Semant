@@ -1,0 +1,51 @@
+{
+  "variant": "topology_containment_tree",
+  "pairs_examined": 6,
+  "nodes": [
+    {
+      "node_id": "piazza",
+      "endpoint": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_piazza",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "parent_node_id": null,
+      "occupancy_of_parent": null,
+      "basis": "mask",
+      "epistemic_status": "measured"
+    },
+    {
+      "node_id": "fountain",
+      "endpoint": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_fountain",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "parent_node_id": "piazza",
+      "occupancy_of_parent": 0.04,
+      "basis": "mask",
+      "epistemic_status": "measured"
+    },
+    {
+      "node_id": "figures",
+      "endpoint": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_figures",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "parent_node_id": "piazza",
+      "occupancy_of_parent": 0.01,
+      "basis": "box",
+      "epistemic_status": "interpretive"
+    }
+  ],
+  "root_node_ids": [
+    "piazza"
+  ]
+}

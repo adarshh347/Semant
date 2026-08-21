@@ -60,15 +60,47 @@
     "epistemic_bases": ["mask", "box", "depth_artifact", "manual", "declared"],
     "artifact_kinds": [
       "extent_set",
+      "extent_boundary",
+      "extent_hole_set",
+      "extent_soft_field",
+      "extent_fragment_set",
+      "extent_fusion_hypothesis",
+      "extent_partition",
+      "extent_hierarchy",
+      "extent_density_field",
+      "extent_hypothesis_set",
       "topology_relation_set",
+      "topology_contact_locus",
+      "topology_intersection",
+      "topology_clearance_path",
+      "topology_containment_tree",
+      "topology_adjacency_graph",
       "negative_space_field",
+      "topology_transition",
+      "topology_uncertain_relations",
       "refusal",
       "depth_field"
     ],
     "payload_variants": [
       "extent_set",
+      "extent_boundary",
+      "extent_hole_set",
+      "extent_soft_field",
+      "extent_fragment_set",
+      "extent_fusion_hypothesis",
+      "extent_partition",
+      "extent_hierarchy",
+      "extent_density_field",
+      "extent_hypothesis_set",
       "topology_relation_set",
+      "topology_contact_locus",
+      "topology_intersection",
+      "topology_clearance_path",
+      "topology_containment_tree",
+      "topology_adjacency_graph",
       "negative_space_field",
+      "topology_transition",
+      "topology_uncertain_relations",
       "refusal"
     ],
     "identity_scopes": ["session", "canonical"],
@@ -97,7 +129,9 @@
       "capability_unavailable",
       "unknown_reference",
       "replay_cannot_recompute",
-      "source_mutated"
+      "source_mutated",
+      "unsupported_form",
+      "form_not_producible"
     ],
     "projection_kinds": [
       "none",
@@ -116,7 +150,15 @@
       "contact_sheet",
       "before_after",
       "ab_overlay",
-      "difference_overlay"
+      "difference_overlay",
+      "ring_outline",
+      "hole_fill",
+      "fragment_cluster",
+      "partition_tricolor",
+      "hierarchy_tree",
+      "density_contours",
+      "hypothesis_stack",
+      "transition_diff"
     ],
     "projection_hint_keys": [
       "opacity",
@@ -136,7 +178,14 @@
       "pair_picker",
       "region_set_picker",
       "endpoint_correct",
-      "relation_reject"
+      "relation_reject",
+      "ring_edit",
+      "hole_mark",
+      "fragment_group",
+      "fragment_split",
+      "partition_paint",
+      "hierarchy_link",
+      "hypothesis_choose"
     ],
     "relation_kinds": [
       "nested_within",
@@ -146,18 +195,95 @@
       "disjoint",
       "in_front_of",
       "coplanar"
-    ]
+    ],
+    "perceptual_forms": [
+      "extent.hard_mask",
+      "extent.boundary_rings",
+      "extent.hole_set",
+      "extent.soft_field",
+      "extent.fragment_set",
+      "extent.fused_hypothesis",
+      "extent.visible_inferred_partition",
+      "extent.hierarchy",
+      "extent.density_field",
+      "extent.hypothesis_set",
+      "topology.pair_relation",
+      "topology.contact_locus",
+      "topology.intersection_area",
+      "topology.clearance_path",
+      "topology.containment_tree",
+      "topology.adjacency_graph",
+      "topology.negative_space_field",
+      "topology.transition",
+      "topology.uncertain_relation_set"
+    ],
+    "form_states": ["enabled", "experimental", "deferred"],
+    "producer_classes": [
+      "direct_measurement",
+      "exact_derivation",
+      "deterministic_composition",
+      "manual_authoring",
+      "bounded_strategy",
+      "import_declared"
+    ],
+    "epistemic_partitions": [
+      "visible_measured",
+      "exact_derivation",
+      "interpretive_grouping",
+      "inferred_completion",
+      "unresolved_alternative"
+    ],
+    "renderer_modes": ["direct", "derived"],
+    "comparison_methods": [
+      "iou",
+      "boundary_f1",
+      "chamfer",
+      "hausdorff",
+      "set_overlap",
+      "tree_edit",
+      "graph_edit",
+      "field_l1",
+      "field_correlation",
+      "rank_agreement"
+    ],
+    "field_derivations": [
+      "direct_probability",
+      "model_logit",
+      "distance_transform",
+      "blur_of_binary_mask",
+      "kernel_density",
+      "sample_histogram",
+      "manual_paint"
+    ],
+    "calibration_states": ["calibrated", "nominal", "uncalibrated"],
+    "ground_kinds": [
+      "appearance_continuity",
+      "shape_continuity",
+      "depth_continuity",
+      "relative_position",
+      "occlusion_hypothesis",
+      "flow_continuity",
+      "scale_consistency",
+      "human_assertion"
+    ],
+    "ring_windings": ["outer", "inner"],
+    "partition_parts": ["visible", "inferred", "unknown"],
+    "transition_changes": ["appeared", "disappeared", "changed", "unchanged"]
   },
 
   "set_notes": {
     "enabled_organ_families": "A DERIVED-LOOKING SET THAT IS DECLARED ON PURPOSE. Both runtimes assert it equals the families whose definition says `enabled: true`, so enabling a seventh organ by editing one line fails until the phase that means to enable it edits both.",
-    "artifact_kinds": "`depth_field` is here so `topology.occlusion` can NAME its dependency. No enabled organ produces it — it can only be SUPPLIED. That is the difference between declaring a dependency and pretending to satisfy it.",
-    "payload_variants": "The four typed measurements v1 actually implements. `depth_field` is deliberately absent: a kind that can be referenced is not a kind that can be built.",
     "epistemic_statuses": "Read from `backend.services.epistemics.EpistemicStatus`. Not re-decided here.",
     "epistemic_bases": "`mask` and `box` are the substrates `epistemics.SUBSTRATE_CEILING` already rules on, and their ceilings are asserted equal to it. `depth_artifact`, `manual` and `declared` are lab-local and are ruled on below.",
     "relation_kinds": "`nested_within`, `meets`, `in_front_of` and `coplanar` are the exact strings `nestedness_organ`, `adjacency_organ` and `occlusion_organ` already emit. Reused verbatim rather than renamed, because a relation the lab calls `containment` and the organ calls `nested_within` is two vocabularies pretending to be one.",
     "projection_hint_keys": "A CLAMP, not a suggestion. No geometry key may appear here. A projection that could carry `mask_rle` is a projection that can replace the evidence it is supposed to depict.",
-    "refusal_codes": "Nine, and none of them means 'nothing was found'. Emptiness is an OUTCOME, not a refusal — see `absence_semantics`."
+    "refusal_codes": "Eleven, and none of them means 'nothing was found'. Emptiness is an OUTCOME, not a refusal — see `absence_semantics`.",
+    "perceptual_forms": "The nineteen canonical answers, in registry order. NOT the operation list: a form may be registered with nothing producing it, and one operation may produce several forms. See `form_grammar`.",
+    "artifact_kinds": "One kind per registered form, plus `refusal` and `depth_field`. `depth_field` is still here so `topology.occlusion` can NAME its dependency and no enabled organ produces it — the same discipline the nine `deferred` forms are held to.",
+    "payload_variants": "One variant per registered form, plus `refusal`. A variant being declared is not a variant being written: `form_states` says which may appear on an artifact.",
+    "epistemic_partitions": "What KIND OF ACT produced a claim, orthogonal to the basis it was computed from. Both cap the status; see `form_grammar.epistemic_partitions`.",
+    "producer_classes": "Which kind of machinery may write a form. `bounded_strategy` is declared and unused in this phase, on purpose.",
+    "comparison_methods": "How two artifacts of one form are compared. A tree is not compared by IoU and a field is not compared by boundary F1, so the method is declared per form rather than assumed."
   },
 
   "absence_semantics": {
@@ -243,8 +369,15 @@
       "enabled": true,
       "availability": "available",
       "epistemic_ceiling": "measured",
-      "produces_artifact_kinds": ["extent_set", "refusal"],
-      "consumes_artifact_kinds": ["extent_set"],
+      "produces_artifact_kinds": [
+        "extent_set",
+        "extent_boundary",
+        "extent_hole_set",
+        "extent_fragment_set",
+        "extent_hierarchy",
+        "refusal"
+      ],
+      "consumes_artifact_kinds": ["extent_set", "extent_boundary"],
       "render_projections": [
         "mask_fill",
         "mask_outline",
@@ -442,8 +575,17 @@
       "enabled": true,
       "availability": "available",
       "epistemic_ceiling": "measured",
-      "produces_artifact_kinds": ["topology_relation_set", "negative_space_field", "refusal"],
-      "consumes_artifact_kinds": ["extent_set", "depth_field"],
+      "produces_artifact_kinds": [
+        "topology_relation_set",
+        "topology_contact_locus",
+        "topology_intersection",
+        "topology_clearance_path",
+        "topology_containment_tree",
+        "topology_adjacency_graph",
+        "negative_space_field",
+        "refusal"
+      ],
+      "consumes_artifact_kinds": ["extent_set", "topology_relation_set", "topology_contact_locus", "depth_field"],
       "render_projections": [
         "contact_band",
         "intersection_area",
@@ -766,6 +908,1209 @@
     }
   ],
 
+  "form_grammar": {
+    "why": [
+      "PERCEPTUAL-FORMS-001A. Before this block the laboratory had operations and artifact kinds and nothing between them, so `extent_set` was doing the work of ten different perceptual answers at once: a hard mask, a boundary, a fragment collection and a guess about hidden extent all arrived as the same record and were told apart, if at all, by reading the prose in a label.",
+      "A FORM IS WHAT WAS PERCEIVED. An OPERATION is what a person asked for. They are two registries because they have different arities in both directions: one operation may produce several forms, several operations may produce one form, and a form may be registered with no operation at all — which is how a payload shape gets frozen and reviewed a phase before anything computes it.",
+      "SO NOT EVERY FORM IS A BUTTON. Sixteen of the nineteen have an EMPTY `produced_by_operations`, which is the same as saying no artifact of them can exist yet — an artifact names the operation that produced it, and an operation that does not declare the kind did not produce it. Their payloads are nevertheless designed, validated in both runtimes against committed examples, and frozen. That is the deliverable: a payload agreed in advance is what stops the lane that finally implements fog from inventing its own field record.",
+      "THE EXAMPLES ARE PAYLOADS, NOT ARTIFACTS, and that distinction is load-bearing. `contracts/fixtures/perception-lab/forms/` holds one committed payload per form, validated by BOTH runtimes against the model named in the registry. A full artifact could not be committed for the sixteen without naming an operation that never ran, and a fixture that lies about its provenance is worse than no fixture.",
+      "THE ORGANISING DIRECTION, and the states follow it: perceptible form → direct producer → human rendering → deterministic composition → later bounded strategy. Everything a direct producer or an exact derivation can reach is `enabled` or `experimental` today. Everything that needs a bounded strategy — fusion, completion, alternatives, calibrated fields — is `deferred`, because those are the ones where a fabrication would be indistinguishable from a measurement."
+    ],
+    "the_nine_things_kept_apart": {
+      "source_measurement": "`measurement.epistemic_basis` — what the claim was computed FROM.",
+      "canonical_perceptual_form": "`identity.form` — which of the nineteen answers this is.",
+      "visible_projection": "`projection` — how it is drawn, carrying no geometry, ever.",
+      "interpretation": "`interpretation` — the label, which is a reading.",
+      "hypothesis": "`measurement.partition` = `inferred_completion` / `unresolved_alternative`, plus the form's `carries_hypothesis` flag.",
+      "evidence_grounds": "`identity.input_refs` and, inside hypothesis payloads, enumerated `grounds` naming what supports the claim.",
+      "human_review": "`LabReview`, a separate record keyed by artifact id. Still not a field here, and still not even a list of ids here.",
+      "lifecycle": "`lifecycle.status` — a curation state, on its own closed set.",
+      "provenance": "`provenance` — the receipt, plus each form's `required_provenance`."
+    },
+    "epistemic_partitions": {
+      "why": "A basis says what a claim was computed FROM. A partition says what KIND OF ACT produced it. They are independent, and the status is capped by both — which is the whole answer to 'a hypothesis may cite measurements but may not inherit `measured` merely because its inputs were measured'.",
+      "ceilings": {
+        "visible_measured": "measured",
+        "exact_derivation": "measured",
+        "interpretive_grouping": "interpretive",
+        "inferred_completion": "uncertain",
+        "unresolved_alternative": "uncertain"
+      },
+      "meanings": {
+        "visible_measured": "obtained by looking at this image, on this raster.",
+        "exact_derivation": "a deterministic function of records already made — a boundary traced from a mask, an intersection of two masks, a tree assembled from measured edges. It adds no evidence, so it is capped by its weakest input as well as by its basis.",
+        "interpretive_grouping": "a decision that these things go together — fragments into an object, extents into a hierarchy. The members are measured; the grouping is a reading.",
+        "inferred_completion": "extent or relation asserted where nothing was seen. The legs behind the table. Never `visible`, never `measured`, at any confidence.",
+        "unresolved_alternative": "several readings held at once, none chosen. The claim is that the picture supports all of them, and that claim is `uncertain` by construction."
+      },
+      "laws": [
+        "`measurement.epistemic_status` is at or below BOTH `BASIS_CEILINGS[basis]` and `PARTITION_CEILINGS[partition]`.",
+        "A partition must be one the form declares in `admissible_partitions`.",
+        "`inferred_completion` and `unresolved_alternative` can never reach `visible` or `measured`, whatever the basis and whatever the confidence.",
+        "An `exact_derivation` is additionally capped by the statuses of the artifacts it cites. That clamp needs the inputs in hand, so it is applied by the composing runtime through `definitions.derived_ceiling`, and the artifact records the result."
+      ]
+    },
+    "producer_classes": {
+      "direct_measurement": "reads the image, or a raster derived from it, and reports what is there.",
+      "exact_derivation": "a deterministic function of recorded artifacts. Adds no evidence.",
+      "deterministic_composition": "assembles recorded artifacts into a structure — a tree, a graph — adding ordering and nothing else.",
+      "manual_authoring": "a person, using a declared manual tool.",
+      "bounded_strategy": "a declared, bounded search or model step. NOTHING declares one in this phase; the class exists so that the forms which will need one can say so now.",
+      "import_declared": "a canonical Region asserting its own geometry, carried and not re-measured."
+    },
+    "form_states": {
+      "why": "THE STATE IS ABOUT READINESS, NOT ABOUT PERMISSION, and the permission question is settled elsewhere: `produced_by_operations` is what decides whether an artifact of a form can exist at all, because an artifact names the operation that produced it and an operation that does not declare the kind did not produce it. Sixteen of the nineteen forms have an empty list, so sixteen cannot be written today no matter what their state says. The state says what it would TAKE to change that.",
+      "enabled": "an operation declares it, so artifacts of it exist. Three forms.",
+      "experimental": "no operation declares it yet, and none is needed beyond the declaration: a direct producer or an exact derivation already reaches this shape, so the lane that enables it adds an operation and nothing else. Its payload is frozen here so that lane does not invent a second one.",
+      "deferred": "no operation declares it, and enabling it takes more than a declaration — a bounded strategy that does not exist. An artifact declaring it does not validate even if an operation appeared, which is the same discipline `depth_field` is held to: declaring a dependency is not pretending to satisfy it."
+    },
+    "payload_designs": {
+      "why": "The twelve shapes the brief names, and the field in each that makes the distinction structural rather than remembered.",
+      "canonical_multi_ring_boundaries": "`ExtentBoundaryPayload.rings[].winding` is declared `outer` or `inner`, never inferred from point order.",
+      "explicit_holes": "`ExtentHoleSetPayload.holes[].outer` names the instance the void is a void OF, and `enclosed` separates a hole from a concavity.",
+      "raster_scalar_fields": "`ScalarFieldSpec` requires `field_shape`, `coordinate_system`, `value_range` and a `calibration` declaration, and requires a `DataRef` with a digest whenever the raster is not inline.",
+      "fragment_collections": "`ExtentFragmentSetPayload.unity_asserted` is the literal false, and `extra: forbid` means there is nowhere else to put a claim.",
+      "hypotheses_with_grounds": "`FusionHypothesis.members` are `InstanceRef` pairs and `grounds` is a non-empty list of typed `Ground` records.",
+      "visible_inferred_partitions": "`ExtentPartitionPayload` carries three named parts, each with its own status, and the inferred part's status is range-checked.",
+      "hierarchy_nodes": "`HierarchyNode.ref` is an `InstanceRef` or a `RegionRef`, and a canonical node carries `geometry_rev`.",
+      "density_fields": "`ExtentDensityFieldPayload` separates `members_counted`, `samples_taken` and `smoothing`, so a bandwidth cannot read as a population.",
+      "alternative_hypothesis_sets": "`ExtentHypothesisSetPayload.alternatives[].weight`, with no `chosen` field anywhere in the record.",
+      "containment_and_adjacency_graphs": "`nodes` are references and every edge names two of them; an edge to an unlisted node does not validate.",
+      "topology_transitions": "`TopologyTransitionPayload` carries four `RevisionRef`s and refuses an identical before and after.",
+      "conditional_relations": "`ConditionalRelation.conditioned_on` names a hypothesis the payload declared, checked at validation."
+    },
+    "compatibility": {
+      "extent_set": "unchanged, and claimed by `extent.hard_mask`.",
+      "topology_relation_set": "unchanged, and claimed by `topology.pair_relation`.",
+      "negative_space_field": "unchanged, and claimed by `topology.negative_space_field`.",
+      "legacy_form_for_kind": {
+        "extent_set": "extent.hard_mask",
+        "topology_relation_set": "topology.pair_relation",
+        "negative_space_field": "topology.negative_space_field"
+      },
+      "identity": "No second Region, Ground, identity or review ontology. New payloads reference extents through the SAME `InstanceRef` / `RegionRef` / `InputRef` shapes the contract already declares.",
+      "revisions": "`RevisionRef` is `InstanceRef` with a required `geometry_rev`. It is a third DEPTH of the one reference type — artifact, instance, revision — declared in the `references` block beside the other two rather than invented in a payload.",
+      "form_is_optional": "`identity.form` and `measurement.partition` default to null. A record written before this block validates unchanged, and its form is read from `legacy_form_for_kind`.",
+      "frontend_optional_fields": {
+        "why": "The two paths the grammar adds to `frontend_consumed_fields` are OPTIONAL ON THE WIRE, and this is where that is said rather than left to whoever writes the next fixture. A record predating the grammar carries neither key at all, and it is still a record the Lab must render — so the frontend READS them (which is why they are consumed fields, and why deleting either still breaks a test in both languages) and must HANDLE THEIR ABSENCE. `missingConsumedFields` honours this list, which is what lets every fixture committed before this phase stay byte-identical instead of being quietly back-filled with nulls.",
+        "PerceptualArtifact": ["identity.form", "measurement.partition"]
+      },
+      "frontend_mirror": "The mirror mechanism is unchanged: `scripts/contracts_sync.py` copies this file byte-for-byte into `frontend/src/contracts/`, and `perceptionLabContract.js` reads the copy."
+    },
+    "test_obligations": {
+      "form_registry_is_closed": "An unknown form key raises rather than returning a stub, in both runtimes. There is no fallback form.",
+      "form_declares_producers_renderers_tests": "Every registered form declares at least one producer class, at least one renderer projection, and at least one test obligation. A form that declares none of these is a word, not a capability.",
+      "absence_examined_field_is_required": "Every form names an `examined_field` that exists on its payload model and has no default, so an empty payload can always be told from a payload nobody filled.",
+      "payload_matches_declared_variant": "An artifact's form, artifact kind and payload variant agree, and a payload of another variant does not validate.",
+      "renderer_is_never_the_measurement": "A form's payload carries no projection field and no projection-hint key, and every renderer projection declares whether it is drawn from the payload (`direct`) or computed by the reader (`derived`).",
+      "parity_across_runtimes": "The form registry, its closed sets and its laws are identical in Python, in the JSON contract and in the JavaScript mirror.",
+      "legacy_records_remain_readable": "Every record written before this grammar existed validates unchanged, with no form and no partition, and continues to mean what it meant.",
+      "scalar_field_is_not_a_binary_mask": "A scalar field cannot be supplied where a hard mask is declared, and no field on an extent instance will hold one.",
+      "blurred_mask_is_not_calibrated": "A field derived by blurring a binary mask may not declare `calibrated` calibration, and a calibrated field must name its method and its reference.",
+      "inferred_pixels_are_not_visible": "The inferred part of a partition may be `interpretive` or `uncertain` and may never be `visible` or `measured`.",
+      "fragment_set_asserts_no_unity": "A fragment set has no field in which unity could be claimed; `unity_asserted` is the literal false.",
+      "hypothesis_is_not_kept_by_confidence": "A hypothesis-carrying form may not reach lifecycle `kept` or `promoted`, at any confidence. Resolution produces a new artifact.",
+      "transition_cites_both_revisions": "A transition cites revision-pinned references for both endpoints, before and after, and refuses a before and after that are identical.",
+      "conditional_relation_retains_its_hypothesis": "Every conditional relation names a hypothesis the payload declared, and a relation whose condition was dropped does not validate.",
+      "derivation_declares_its_inputs": "An artifact whose partition is `exact_derivation` or `interpretive_grouping` declares at least one input ref. A derivation from nothing derived nothing.",
+      "partition_ceiling_caps_the_status": "A measurement's epistemic status is at or below BOTH its basis ceiling and its partition ceiling. Citing measured inputs does not raise it.",
+      "rings_declare_their_winding": "Every boundary ring declares `outer` or `inner` explicitly, and a ring set with no outer ring does not validate.",
+      "holes_are_tied_to_an_outer_extent": "Every hole names the instance it is a hole of, and declares whether it is enclosed.",
+      "large_raster_carries_digest_and_coordinates": "A raster held behind a pointer carries a digest, a shape and a declared coordinate system. A pointer without a digest points at whatever is there now.",
+      "hierarchy_nodes_cite_revisions": "Every hierarchy node cites an identity and a geometry revision, and a parent chain may not reach itself.",
+      "graph_edges_cite_endpoints": "Every edge names two endpoints the record holds, and an edge to an unlisted node does not validate.",
+      "an_artifact_names_the_operation_that_produces_its_form": "An artifact's operation is one of its form's `produced_by_operations`. A form with an empty list has no artifact, whatever its state, because an operation that does not declare the kind did not produce it.",
+      "a_deferred_form_is_never_written": "An artifact declaring a `deferred` form does not validate even if an operation declared it. A registered payload shape is not a producer, and this is the gate that stays shut after the operation table changes.",
+      "every_form_payload_has_a_committed_example": "Every registered form has a payload fixture that validates in both runtimes against the model the registry names. A shape nobody has instantiated is a shape two lanes will read differently.",
+      "unknown_projection_fails_closed": "A projection kind outside the closed set, or outside the form's declared list, is refused rather than drawn."
+    }
+  },
+
+  "perceptual_forms": [
+    {
+      "key": "extent.hard_mask",
+      "organ": "extent",
+      "label": "Hard mask",
+      "question": "Which pixels are it?",
+      "state": "enabled",
+      "artifact_kind": "extent_set",
+      "payload_variant": "extent_set",
+      "produced_by_operations": [
+        "extent.find_all",
+        "extent.find_named",
+        "extent.refine",
+        "extent.draw",
+        "extent.reuse",
+        "extent.compare"
+      ],
+      "accepted_input_forms": [],
+      "producer_classes": ["direct_measurement", "manual_authoring", "import_declared"],
+      "admissible_bases": ["mask", "box", "manual", "declared"],
+      "admissible_partitions": ["visible_measured"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "mask_fill",
+          "mode": "direct",
+          "note": "the decoded RLE, drawn"
+        },
+        {
+          "kind": "mask_outline",
+          "mode": "derived",
+          "note": "the boundary is traced in the browser; the payload carries no ring, which is what extent.boundary_rings exists to change"
+        },
+        {
+          "kind": "box_outline",
+          "mode": "direct",
+          "note": "the declared box, which is a projection of the mask and not the mask"
+        },
+        {
+          "kind": "point_markers",
+          "mode": "direct",
+          "note": "the refinement points a person placed"
+        },
+        {
+          "kind": "contact_sheet",
+          "mode": "derived",
+          "note": "one thumbnail per instance"
+        },
+        {
+          "kind": "before_after",
+          "mode": "derived",
+          "note": "a refinement against the geometry it replaced"
+        },
+        {
+          "kind": "ab_overlay",
+          "mode": "derived",
+          "note": "two sets compared, from extent.compare"
+        },
+        {
+          "kind": "difference_overlay",
+          "mode": "derived",
+          "note": "what only one of the two sets saw"
+        }
+      ],
+      "manual_tools": [
+        "mask_brush",
+        "polygon",
+        "foreground_background_points",
+        "refinement_box",
+        "region_picker"
+      ],
+      "comparison_methods": ["iou", "boundary_f1", "set_overlap"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest"],
+      "absence": {
+        "examined_field": "searched",
+        "empty_means": "something looked for the named thing over this image and found no instance of it",
+        "may_not_be_confused_with": ["missing_extent_inputs", "capability_unavailable"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "legacy_records_remain_readable",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "scalar_field_is_not_a_binary_mask",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "THE FORM THE LAB ALREADY WRITES. `extent_set` is not renamed and not reshaped; it is claimed by a form key so that the other nine extent forms are additions to a grammar rather than exceptions to a single hard-coded kind.",
+        "Mask RLE is authoritative. A box-only instance stays interpretive, and no reader may rasterize the box into a mask to make it look per-pixel."
+      ]
+    },
+    {
+      "key": "extent.boundary_rings",
+      "organ": "extent",
+      "label": "Boundary rings",
+      "question": "Where exactly does its edge run, as curves rather than pixels?",
+      "state": "experimental",
+      "artifact_kind": "extent_boundary",
+      "payload_variant": "extent_boundary",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask"],
+      "producer_classes": ["exact_derivation", "manual_authoring"],
+      "admissible_bases": ["mask", "manual"],
+      "admissible_partitions": ["exact_derivation", "visible_measured"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "ring_outline",
+          "mode": "direct",
+          "note": "the rings, drawn as authored"
+        },
+        {
+          "kind": "mask_outline",
+          "mode": "direct",
+          "note": "the same rings under the older name"
+        }
+      ],
+      "manual_tools": ["ring_edit", "polygon"],
+      "comparison_methods": ["boundary_f1", "chamfer", "hausdorff"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "rings_traced",
+        "empty_means": "the mask was traced and it enclosed nothing — an empty mask has no boundary",
+        "may_not_be_confused_with": ["a mask that was never traced"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "an_artifact_names_the_operation_that_produces_its_form",
+        "derivation_declares_its_inputs",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "parity_across_runtimes",
+        "partition_ceiling_caps_the_status",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "rings_declare_their_winding",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "MULTI-RING BY CONSTRUCTION. One ring per connected boundary, each declaring its winding as `outer` or `inner` rather than leaving a reader to infer it from point order. A shape with two outer rings and three inner ones is the normal case for a grille, an arch or a leaf, and a single-polygon field would have forced a choice between them.",
+        "A ring is a DERIVATION of a mask, not a second measurement of the image. Its partition is `exact_derivation` and its status is capped by the mask it came from."
+      ]
+    },
+    {
+      "key": "extent.hole_set",
+      "organ": "extent",
+      "label": "Holes",
+      "question": "What voids are inside it, and are they enclosed?",
+      "state": "experimental",
+      "artifact_kind": "extent_hole_set",
+      "payload_variant": "extent_hole_set",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask", "extent.boundary_rings"],
+      "producer_classes": ["exact_derivation", "manual_authoring"],
+      "admissible_bases": ["mask", "manual"],
+      "admissible_partitions": ["exact_derivation", "visible_measured"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "hole_fill",
+          "mode": "direct",
+          "note": "the voids, drawn as their own shapes"
+        },
+        {
+          "kind": "mask_outline",
+          "mode": "derived",
+          "note": "outer boundary and holes together"
+        }
+      ],
+      "manual_tools": ["hole_mark", "polygon"],
+      "comparison_methods": ["iou", "set_overlap"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "candidates_examined",
+        "empty_means": "the extent was examined for enclosed voids and is solid",
+        "may_not_be_confused_with": ["an extent nobody examined for holes"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "an_artifact_names_the_operation_that_produces_its_form",
+        "derivation_declares_its_inputs",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "holes_are_tied_to_an_outer_extent",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "EVERY HOLE NAMES ITS OUTER EXTENT. A void is not a free-standing shape: the arch's opening is only a hole OF the arch, and a hole record that did not say whose would be a second extent set wearing a different word.",
+        "`enclosed` is declared per hole. A bay open at one side is a concavity, not a hole, and calling both the same thing is how a courtyard becomes a window."
+      ]
+    },
+    {
+      "key": "extent.soft_field",
+      "organ": "extent",
+      "label": "Soft field",
+      "question": "How much of it is here, where the edge is not a line?",
+      "state": "deferred",
+      "artifact_kind": "extent_soft_field",
+      "payload_variant": "extent_soft_field",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask"],
+      "producer_classes": ["direct_measurement", "bounded_strategy", "manual_authoring"],
+      "admissible_bases": ["mask", "manual"],
+      "admissible_partitions": ["visible_measured", "exact_derivation", "inferred_completion"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "scalar_wash",
+          "mode": "direct",
+          "note": "the field, mapped to opacity"
+        },
+        {
+          "kind": "density_contours",
+          "mode": "derived",
+          "note": "iso-lines computed from the field"
+        }
+      ],
+      "manual_tools": ["partition_paint"],
+      "comparison_methods": ["field_l1", "field_correlation"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "cells_evaluated",
+        "empty_means": "the raster was evaluated and every cell is zero — the thing is not here",
+        "may_not_be_confused_with": ["a field nobody computed", "a hard mask with soft edges drawn on it"]
+      },
+      "test_obligations": [
+        "a_deferred_form_is_never_written",
+        "absence_examined_field_is_required",
+        "blurred_mask_is_not_calibrated",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "large_raster_carries_digest_and_coordinates",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "scalar_field_is_not_a_binary_mask",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "FOG IS THE CASE. A binary mask answers 'where does it end' with a line the picture does not have. This form answers with a value per cell and a declared statement of what that value MEANS.",
+        "CALIBRATION IS DECLARED, NEVER ASSUMED. A field blurred out of a binary mask is a picture of an edge's uncertainty, not a probability, and it may not declare itself `calibrated`. That is the one substitution this form exists to prevent.",
+        "The raster lives behind a `data_ref` whose digest and coordinate system are mandatory. A pointer without a digest points at whatever is there now."
+      ]
+    },
+    {
+      "key": "extent.fragment_set",
+      "organ": "extent",
+      "label": "Fragments",
+      "question": "What separate pieces are visible, without saying yet whether they are one thing?",
+      "state": "experimental",
+      "artifact_kind": "extent_fragment_set",
+      "payload_variant": "extent_fragment_set",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask"],
+      "producer_classes": ["direct_measurement", "exact_derivation", "manual_authoring"],
+      "admissible_bases": ["mask", "box", "manual"],
+      "admissible_partitions": ["visible_measured", "exact_derivation"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "fragment_cluster",
+          "mode": "direct",
+          "note": "each piece drawn in its own key, unfused"
+        },
+        {
+          "kind": "mask_fill",
+          "mode": "direct",
+          "note": "the pieces, drawn separately"
+        }
+      ],
+      "manual_tools": ["fragment_group", "fragment_split", "mask_brush"],
+      "comparison_methods": ["set_overlap", "iou"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest"],
+      "absence": {
+        "examined_field": "regions_examined",
+        "empty_means": "the image was examined for separable pieces of this kind and none were found",
+        "may_not_be_confused_with": ["a fused extent whose members were dissolved"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "an_artifact_names_the_operation_that_produces_its_form",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "fragment_set_asserts_no_unity",
+        "legacy_records_remain_readable",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "THE POINT IS WHAT IT CANNOT SAY. `unity_asserted` is the literal `false` and there is no other field in which membership could be claimed, so a producer that believes three green patches are one tree has to say so somewhere else — in `extent.fused_hypothesis`, which carries grounds and a status that is not `measured`.",
+        "A fragment set is therefore SAFE to compute eagerly. Nothing downstream can read unity out of it, so producing one commits to nothing."
+      ]
+    },
+    {
+      "key": "extent.fused_hypothesis",
+      "organ": "extent",
+      "label": "Fusion hypothesis",
+      "question": "Are these pieces one thing, and on what evidence?",
+      "state": "deferred",
+      "artifact_kind": "extent_fusion_hypothesis",
+      "payload_variant": "extent_fusion_hypothesis",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.fragment_set", "extent.hard_mask"],
+      "producer_classes": ["bounded_strategy", "manual_authoring"],
+      "admissible_bases": ["mask", "manual", "declared"],
+      "admissible_partitions": ["interpretive_grouping", "inferred_completion"],
+      "epistemic_ceiling": "interpretive",
+      "carries_hypothesis": true,
+      "renderer_projections": [
+        {
+          "kind": "fragment_cluster",
+          "mode": "direct",
+          "note": "members drawn in one key, with the claim named"
+        },
+        {
+          "kind": "hypothesis_stack",
+          "mode": "direct",
+          "note": "the hypothesis beside its alternatives"
+        }
+      ],
+      "manual_tools": ["fragment_group", "hypothesis_choose"],
+      "comparison_methods": ["set_overlap"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "fragments_considered",
+        "empty_means": "the fragments were considered and no grouping was supportable",
+        "may_not_be_confused_with": ["a fragment set", "a hard mask of the union"]
+      },
+      "test_obligations": [
+        "a_deferred_form_is_never_written",
+        "absence_examined_field_is_required",
+        "derivation_declares_its_inputs",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "hypothesis_is_not_kept_by_confidence",
+        "parity_across_runtimes",
+        "partition_ceiling_caps_the_status",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "A HYPOTHESIS CITES MEASUREMENTS AND DOES NOT INHERIT THEIR STATUS. Every member is a measured mask; the claim that they are one tree is not measured, and its partition caps it at `interpretive` — or at `uncertain` when it also asserts hidden extent.",
+        "GROUNDS ARE ENUMERATED, not scored into a single number. `confidence: 0.94` with no ground is a number about nothing; a reviewer needs to know it was shape continuity rather than colour before they can disagree with it.",
+        "It cannot be `kept` or `promoted`. Resolving an alternative produces a NEW artifact of a resolved form; it does not re-badge the guess."
+      ]
+    },
+    {
+      "key": "extent.visible_inferred_partition",
+      "organ": "extent",
+      "label": "Visible / inferred partition",
+      "question": "Which of this did we see, which did we infer, and which do we not know?",
+      "state": "deferred",
+      "artifact_kind": "extent_partition",
+      "payload_variant": "extent_partition",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask", "extent.soft_field", "extent.fused_hypothesis"],
+      "producer_classes": ["bounded_strategy", "manual_authoring", "exact_derivation"],
+      "admissible_bases": ["mask", "manual"],
+      "admissible_partitions": ["inferred_completion", "visible_measured"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": true,
+      "renderer_projections": [
+        {
+          "kind": "partition_tricolor",
+          "mode": "direct",
+          "note": "three regions in three keys, never one shape"
+        },
+        {
+          "kind": "scalar_wash",
+          "mode": "direct",
+          "note": "confidence per cell where the partition is graded"
+        }
+      ],
+      "manual_tools": ["partition_paint"],
+      "comparison_methods": ["iou", "field_l1"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "cells_partitioned",
+        "empty_means": "the extent was partitioned and nothing fell outside the visible part",
+        "may_not_be_confused_with": ["a hard mask of visible plus inferred"]
+      },
+      "test_obligations": [
+        "a_deferred_form_is_never_written",
+        "absence_examined_field_is_required",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "inferred_pixels_are_not_visible",
+        "large_raster_carries_digest_and_coordinates",
+        "parity_across_runtimes",
+        "partition_ceiling_caps_the_status",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "THE PERSON BEHIND THE TABLE. The head and torso were seen; the legs were not. A single mask covering both is a claim the picture does not support, and a mask covering only the torso throws away a reading worth keeping.",
+        "THE THREE PARTS CARRY THREE STATUSES AND THE SCHEMA ENFORCES IT. The inferred part may be `interpretive` or `uncertain` and may never be `visible` or `measured`. Hallucinated pixels that validate as measured are the failure this form exists for.",
+        "`unknown` is a real third part. Not-seen and not-inferred is not the same as absent."
+      ]
+    },
+    {
+      "key": "extent.hierarchy",
+      "organ": "extent",
+      "label": "Extent hierarchy",
+      "question": "What contains what, and how much of the parent does the child occupy?",
+      "state": "experimental",
+      "artifact_kind": "extent_hierarchy",
+      "payload_variant": "extent_hierarchy",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask", "extent.boundary_rings"],
+      "producer_classes": ["deterministic_composition", "manual_authoring"],
+      "admissible_bases": ["mask", "box", "manual"],
+      "admissible_partitions": ["exact_derivation", "interpretive_grouping"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "hierarchy_tree",
+          "mode": "direct",
+          "note": "the nesting, as a tree beside the image"
+        },
+        {
+          "kind": "mask_fill",
+          "mode": "derived",
+          "note": "one level at a time, drawn from the cited extents"
+        }
+      ],
+      "manual_tools": ["hierarchy_link", "region_set_picker"],
+      "comparison_methods": ["tree_edit", "set_overlap"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "pairs_examined",
+        "empty_means": "the extents were compared for nesting and none contained another",
+        "may_not_be_confused_with": ["a flat extent set", "a containment relation set"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "an_artifact_names_the_operation_that_produces_its_form",
+        "derivation_declares_its_inputs",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "hierarchy_nodes_cite_revisions",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "PALACE → COURTYARD → GARDEN → FOUNTAIN. Every level is a real extent with a real identity, and flattening them loses the only interesting question: how much of the courtyard IS garden.",
+        "EVERY NODE CITES AN IDENTITY AND A REVISION. A tree built over `reg_7` without saying which revision of `reg_7` cannot be told it has gone stale, and a stale hierarchy is worse than none.",
+        "Acyclicity is asserted structurally: a node's parent chain may not reach itself."
+      ]
+    },
+    {
+      "key": "extent.density_field",
+      "organ": "extent",
+      "label": "Density field",
+      "question": "Where is the collection, when there is no single object to outline?",
+      "state": "deferred",
+      "artifact_kind": "extent_density_field",
+      "payload_variant": "extent_density_field",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask", "extent.fragment_set"],
+      "producer_classes": ["exact_derivation", "bounded_strategy"],
+      "admissible_bases": ["mask", "box"],
+      "admissible_partitions": ["exact_derivation", "interpretive_grouping"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "density_contours",
+          "mode": "direct",
+          "note": "iso-lines over the declared field"
+        },
+        {
+          "kind": "scalar_wash",
+          "mode": "direct",
+          "note": "the field, mapped to opacity"
+        }
+      ],
+      "manual_tools": ["region_set_picker"],
+      "comparison_methods": ["field_l1", "field_correlation", "rank_agreement"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "members_counted",
+        "empty_means": "the members were counted and the field is everywhere zero",
+        "may_not_be_confused_with": ["a soft field", "a hard mask of the convex hull"]
+      },
+      "test_obligations": [
+        "a_deferred_form_is_never_written",
+        "absence_examined_field_is_required",
+        "blurred_mask_is_not_calibrated",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "large_raster_carries_digest_and_coordinates",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "scalar_field_is_not_a_binary_mask",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "FIVE HUNDRED PEOPLE IN A PLAZA. There is no object called `crowd`, and yet 'the crowd occupies the eastern half' is a true and useful sentence. This form is how it is said without inventing an entity.",
+        "COUNTS, SAMPLES AND SMOOTHING ARE THREE SEPARATE DECLARATIONS. `members_counted` is how many entities entered; `samples_taken` is how many points were placed; `smoothing` is what was applied afterwards. A smoothed field that reported itself as counts would let a bandwidth choice read as a population."
+      ]
+    },
+    {
+      "key": "extent.hypothesis_set",
+      "organ": "extent",
+      "label": "Alternative extents",
+      "question": "What are the competing readings of where this thing is?",
+      "state": "deferred",
+      "artifact_kind": "extent_hypothesis_set",
+      "payload_variant": "extent_hypothesis_set",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask", "extent.fragment_set", "extent.fused_hypothesis"],
+      "producer_classes": ["bounded_strategy", "manual_authoring"],
+      "admissible_bases": ["mask", "box", "manual", "declared"],
+      "admissible_partitions": ["unresolved_alternative"],
+      "epistemic_ceiling": "uncertain",
+      "carries_hypothesis": true,
+      "renderer_projections": [
+        {
+          "kind": "hypothesis_stack",
+          "mode": "direct",
+          "note": "the alternatives, stacked and switchable"
+        },
+        {
+          "kind": "ab_overlay",
+          "mode": "derived",
+          "note": "two alternatives compared directly"
+        }
+      ],
+      "manual_tools": ["hypothesis_choose"],
+      "comparison_methods": ["iou", "rank_agreement"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "alternatives_considered",
+        "empty_means": "alternatives were considered and only one reading survived — which is not this form",
+        "may_not_be_confused_with": ["a single extent with low confidence"]
+      },
+      "test_obligations": [
+        "a_deferred_form_is_never_written",
+        "absence_examined_field_is_required",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "hypothesis_is_not_kept_by_confidence",
+        "parity_across_runtimes",
+        "partition_ceiling_caps_the_status",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "THE CUBIST CASE. One continuous object, two overlapping objects, or an object and an architectural plane — the honest answer is that the picture supports three readings, and forcing one is a fabrication dressed as a measurement.",
+        "IT CANNOT RESOLVE ITSELF. There is no `chosen` field. Resolution is a separate act that produces a separate artifact, so the alternatives survive the choice and a later reader can see what was set aside.",
+        "Weights are declared as weights, not as probabilities, unless a calibration is declared alongside them."
+      ]
+    },
+    {
+      "key": "topology.pair_relation",
+      "organ": "topology",
+      "label": "Pair relation",
+      "question": "How do these two stand to each other?",
+      "state": "enabled",
+      "artifact_kind": "topology_relation_set",
+      "payload_variant": "topology_relation_set",
+      "produced_by_operations": [
+        "topology.containment",
+        "topology.adjacency",
+        "topology.overlap",
+        "topology.disjoint",
+        "topology.all_pairs",
+        "topology.occlusion"
+      ],
+      "accepted_input_forms": ["extent.hard_mask"],
+      "producer_classes": ["direct_measurement", "exact_derivation"],
+      "admissible_bases": ["mask", "box", "depth_artifact"],
+      "admissible_partitions": ["visible_measured", "exact_derivation"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "endpoint_pair",
+          "mode": "derived",
+          "note": "the two endpoints, resolved and drawn"
+        },
+        {
+          "kind": "relation_graph",
+          "mode": "derived",
+          "note": "the set as a graph, laid out in the browser"
+        },
+        {
+          "kind": "contact_band",
+          "mode": "derived",
+          "note": "the browser recomputes the band; see topology.contact_locus"
+        },
+        {
+          "kind": "intersection_area",
+          "mode": "derived",
+          "note": "the browser recomputes the shared region; see topology.intersection_area"
+        },
+        {
+          "kind": "mask_outline",
+          "mode": "derived",
+          "note": "the endpoints' own boundaries, traced for a containment reading"
+        }
+      ],
+      "manual_tools": ["pair_picker", "endpoint_correct", "relation_reject"],
+      "comparison_methods": ["set_overlap", "graph_edit"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest"],
+      "absence": {
+        "examined_field": "pairs_examined",
+        "empty_means": "the pairs were compared and none stood in any of the asked-for relations",
+        "may_not_be_confused_with": ["a disjoint relation, which is a finding", "missing_extent_inputs"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "legacy_records_remain_readable",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "THE FORM THE LAB ALREADY WRITES, claimed by a key. `topology_relation_set` keeps its name, its shape and its `pairs_examined` guard.",
+        "It carries NO geometry. `contact_pixels: 812` and no band — which is exactly the gap `topology.contact_locus` was registered to close."
+      ]
+    },
+    {
+      "key": "topology.contact_locus",
+      "organ": "topology",
+      "label": "Contact locus",
+      "question": "Where exactly do they touch?",
+      "state": "experimental",
+      "artifact_kind": "topology_contact_locus",
+      "payload_variant": "topology_contact_locus",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask", "topology.pair_relation"],
+      "producer_classes": ["direct_measurement", "exact_derivation"],
+      "admissible_bases": ["mask"],
+      "admissible_partitions": ["visible_measured", "exact_derivation"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "contact_band",
+          "mode": "direct",
+          "note": "the recorded band, drawn as measured"
+        },
+        {
+          "kind": "point_markers",
+          "mode": "direct",
+          "note": "the recorded contact points"
+        }
+      ],
+      "manual_tools": ["pair_picker"],
+      "comparison_methods": ["iou", "chamfer", "boundary_f1"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "pairs_examined",
+        "empty_means": "the pairs were examined for contact and none of them touch",
+        "may_not_be_confused_with": ["a `meets` relation with no locus recorded"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "an_artifact_names_the_operation_that_produces_its_form",
+        "derivation_declares_its_inputs",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "graph_edges_cite_endpoints",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "THE FORM THAT MOVES A DRAWING BACK INTO THE EVIDENCE. Today the band a person sees is computed in their browser and stamped `derived: true, computed_by: lab_browser`, because the relation carries a pixel count and no shape. That stamp is honest and it is also a gap: nobody can review a band that was never recorded.",
+        "When a producer writes this form the same projection becomes `direct`, and the browser's derived band becomes a CHECK against it rather than a substitute for it."
+      ]
+    },
+    {
+      "key": "topology.intersection_area",
+      "organ": "topology",
+      "label": "Intersection",
+      "question": "What region do they share, and how much of each is it?",
+      "state": "experimental",
+      "artifact_kind": "topology_intersection",
+      "payload_variant": "topology_intersection",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask", "topology.pair_relation"],
+      "producer_classes": ["direct_measurement", "exact_derivation"],
+      "admissible_bases": ["mask"],
+      "admissible_partitions": ["visible_measured", "exact_derivation"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "intersection_area",
+          "mode": "direct",
+          "note": "the shared region, drawn as measured"
+        },
+        {
+          "kind": "mask_fill",
+          "mode": "direct",
+          "note": "the same region under the older name"
+        }
+      ],
+      "manual_tools": ["pair_picker"],
+      "comparison_methods": ["iou", "set_overlap"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "pairs_examined",
+        "empty_means": "the pairs were intersected and every intersection is empty",
+        "may_not_be_confused_with": ["an `overlaps` relation with only a ratio recorded"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "an_artifact_names_the_operation_that_produces_its_form",
+        "derivation_declares_its_inputs",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "graph_edges_cite_endpoints",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "THE TREE ACROSS THE FAÇADE. `overlaps` is true and uninteresting; 'the tree crosses seventy per cent of the façade's width' is the sentence a person wanted, and it needs the shared region and both denominators, not one ratio.",
+        "Both fractions are recorded because they are different numbers. A small thing entirely inside a large one covers all of itself and little of the other."
+      ]
+    },
+    {
+      "key": "topology.clearance_path",
+      "organ": "topology",
+      "label": "Clearance",
+      "question": "How far apart are they, and along which line?",
+      "state": "experimental",
+      "artifact_kind": "topology_clearance_path",
+      "payload_variant": "topology_clearance_path",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hard_mask", "topology.pair_relation"],
+      "producer_classes": ["direct_measurement", "exact_derivation"],
+      "admissible_bases": ["mask"],
+      "admissible_partitions": ["visible_measured", "exact_derivation"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "path_overlay",
+          "mode": "direct",
+          "note": "the recorded shortest path between the two"
+        },
+        {
+          "kind": "point_markers",
+          "mode": "direct",
+          "note": "the two nearest points"
+        }
+      ],
+      "manual_tools": ["pair_picker"],
+      "comparison_methods": ["chamfer", "hausdorff"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "pairs_examined",
+        "empty_means": "the pairs were measured and every one of them touches, so no clearance exists",
+        "may_not_be_confused_with": ["a `disjoint` relation with only a distance recorded"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "an_artifact_names_the_operation_that_produces_its_form",
+        "derivation_declares_its_inputs",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "graph_edges_cite_endpoints",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "A DISTANCE WITHOUT A PATH CANNOT BE CHECKED. `separation: 0.11` is unfalsifiable on the screen; the two endpoints and the segment between them can be looked at and disagreed with.",
+        "The path is in the raster the measurement was taken on, and the raster is named. Two extents on different rasters have no clearance and this form refuses rather than resampling."
+      ]
+    },
+    {
+      "key": "topology.containment_tree",
+      "organ": "topology",
+      "label": "Containment tree",
+      "question": "What is nested inside what, all the way down?",
+      "state": "experimental",
+      "artifact_kind": "topology_containment_tree",
+      "payload_variant": "topology_containment_tree",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["topology.pair_relation", "extent.hard_mask"],
+      "producer_classes": ["deterministic_composition"],
+      "admissible_bases": ["mask", "box"],
+      "admissible_partitions": ["exact_derivation"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "hierarchy_tree",
+          "mode": "direct",
+          "note": "the nesting, as a tree"
+        },
+        {
+          "kind": "relation_graph",
+          "mode": "direct",
+          "note": "the same edges, as a graph"
+        }
+      ],
+      "manual_tools": ["region_set_picker"],
+      "comparison_methods": ["tree_edit", "graph_edit"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "pairs_examined",
+        "empty_means": "the pairs were compared for nesting and nothing contained anything",
+        "may_not_be_confused_with": ["a flat list of `contains` relations"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "an_artifact_names_the_operation_that_produces_its_form",
+        "derivation_declares_its_inputs",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "graph_edges_cite_endpoints",
+        "hierarchy_nodes_cite_revisions",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "A COMPOSITION, NOT A NEW MEASUREMENT. Every edge is a relation that was already measured; the tree adds ordering and transitivity and nothing else, so its partition is `exact_derivation` and it may claim no more than the weakest edge in it.",
+        "Cycles are refused rather than broken. A containment cycle means the relations disagree, and silently dropping one edge would hide the disagreement."
+      ]
+    },
+    {
+      "key": "topology.adjacency_graph",
+      "organ": "topology",
+      "label": "Adjacency graph",
+      "question": "What touches what, across the whole scene?",
+      "state": "experimental",
+      "artifact_kind": "topology_adjacency_graph",
+      "payload_variant": "topology_adjacency_graph",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["topology.pair_relation", "topology.contact_locus", "extent.hard_mask"],
+      "producer_classes": ["deterministic_composition"],
+      "admissible_bases": ["mask", "box"],
+      "admissible_partitions": ["exact_derivation"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "relation_graph",
+          "mode": "direct",
+          "note": "nodes and edges, laid out beside the image"
+        },
+        {
+          "kind": "contact_band",
+          "mode": "derived",
+          "note": "one edge's locus, when a locus was recorded"
+        }
+      ],
+      "manual_tools": ["region_set_picker", "relation_reject"],
+      "comparison_methods": ["graph_edit", "set_overlap"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "pairs_examined",
+        "empty_means": "every pair was compared and nothing touches anything",
+        "may_not_be_confused_with": ["a relation set that happened to contain `meets` edges"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "an_artifact_names_the_operation_that_produces_its_form",
+        "derivation_declares_its_inputs",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "graph_edges_cite_endpoints",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "THE NAVE AT WELLS. Pier, arch, pier, arch, receding — the interesting object is the repeated structure, and it only exists once the pairwise relations are assembled into one graph whose nodes are identities rather than positions.",
+        "Every node is a reference and every edge names two nodes that are in the node list. An edge to an unlisted node is a relation about something the graph does not hold."
+      ]
+    },
+    {
+      "key": "topology.negative_space_field",
+      "organ": "topology",
+      "label": "Negative space",
+      "question": "What is NOT the figure, and how far from it?",
+      "state": "enabled",
+      "artifact_kind": "negative_space_field",
+      "payload_variant": "negative_space_field",
+      "produced_by_operations": ["topology.negative_space"],
+      "accepted_input_forms": ["extent.hard_mask"],
+      "producer_classes": ["direct_measurement", "exact_derivation"],
+      "admissible_bases": ["mask"],
+      "admissible_partitions": ["visible_measured", "exact_derivation"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "scalar_wash",
+          "mode": "direct",
+          "note": "the distance field, mapped to opacity"
+        },
+        {
+          "kind": "density_contours",
+          "mode": "derived",
+          "note": "iso-distance lines computed in the browser"
+        }
+      ],
+      "manual_tools": ["region_set_picker"],
+      "comparison_methods": ["field_l1", "field_correlation"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest"],
+      "absence": {
+        "examined_field": "figure_instance_ids",
+        "empty_means": "the figures were named and the field around them is everywhere zero",
+        "may_not_be_confused_with": ["a field nobody computed", "an extent of the background as an object"]
+      },
+      "test_obligations": [
+        "absence_examined_field_is_required",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "large_raster_carries_digest_and_coordinates",
+        "legacy_records_remain_readable",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "THE FORM THE LAB ALREADY WRITES. `negative_space_field` keeps its name and its shape.",
+        "DE CHIRICO'S PIAZZA. The empty square is the subject, and it is not an object with a mask — it is what is left, with a distance attached."
+      ]
+    },
+    {
+      "key": "topology.transition",
+      "organ": "topology",
+      "label": "Transition",
+      "question": "What changed between these two revisions?",
+      "state": "deferred",
+      "artifact_kind": "topology_transition",
+      "payload_variant": "topology_transition",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["topology.pair_relation", "topology.adjacency_graph"],
+      "producer_classes": ["exact_derivation", "deterministic_composition"],
+      "admissible_bases": ["mask", "box", "depth_artifact"],
+      "admissible_partitions": ["exact_derivation"],
+      "epistemic_ceiling": "measured",
+      "carries_hypothesis": false,
+      "renderer_projections": [
+        {
+          "kind": "transition_diff",
+          "mode": "direct",
+          "note": "before and after, with the change named"
+        },
+        {
+          "kind": "before_after",
+          "mode": "direct",
+          "note": "the two states, side by side"
+        }
+      ],
+      "manual_tools": ["pair_picker"],
+      "comparison_methods": ["graph_edit", "set_overlap"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "revisions_compared",
+        "empty_means": "the revisions were compared and no relation changed",
+        "may_not_be_confused_with": ["a stale relation", "a relation measured twice"]
+      },
+      "test_obligations": [
+        "a_deferred_form_is_never_written",
+        "absence_examined_field_is_required",
+        "derivation_declares_its_inputs",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "parity_across_runtimes",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "transition_cites_both_revisions",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "A REFINEMENT CHANGES A MASK, AND THE RELATIONS THAT RESTED ON IT ARE NOW ABOUT SOMETHING ELSE. `stale: true` says a relation is out of date. This form says WHAT the change was — meets became overlaps, or disjoint became meets.",
+        "IT CITES FOUR REVISION-PINNED REFERENCES: both endpoints before, both endpoints after. A transition that named only the new revisions could not be checked, and one that named only the pair could not be told which change it described.",
+        "`before` and `after` must differ somewhere. Two identical states are not a transition, they are a re-measurement."
+      ]
+    },
+    {
+      "key": "topology.uncertain_relation_set",
+      "organ": "topology",
+      "label": "Conditional relations",
+      "question": "What would be true, if that reading of the extents were right?",
+      "state": "deferred",
+      "artifact_kind": "topology_uncertain_relations",
+      "payload_variant": "topology_uncertain_relations",
+      "produced_by_operations": [],
+      "accepted_input_forms": ["extent.hypothesis_set", "extent.fused_hypothesis", "topology.pair_relation"],
+      "producer_classes": ["bounded_strategy", "deterministic_composition"],
+      "admissible_bases": ["mask", "box", "declared"],
+      "admissible_partitions": ["unresolved_alternative", "interpretive_grouping"],
+      "epistemic_ceiling": "interpretive",
+      "carries_hypothesis": true,
+      "renderer_projections": [
+        {
+          "kind": "hypothesis_stack",
+          "mode": "direct",
+          "note": "one relation set per hypothesis, switchable"
+        },
+        {
+          "kind": "relation_graph",
+          "mode": "derived",
+          "note": "the graph under one selected hypothesis"
+        }
+      ],
+      "manual_tools": ["hypothesis_choose", "relation_reject"],
+      "comparison_methods": ["graph_edit", "rank_agreement"],
+      "required_provenance": ["producer_kind", "producer", "source_image_digest", "revision"],
+      "absence": {
+        "examined_field": "pairs_examined",
+        "empty_means": "the pairs were compared under every hypothesis and none stood in a relation",
+        "may_not_be_confused_with": ["a measured relation set", "a relation set with low confidence"]
+      },
+      "test_obligations": [
+        "a_deferred_form_is_never_written",
+        "absence_examined_field_is_required",
+        "conditional_relation_retains_its_hypothesis",
+        "every_form_payload_has_a_committed_example",
+        "form_declares_producers_renderers_tests",
+        "form_registry_is_closed",
+        "hypothesis_is_not_kept_by_confidence",
+        "parity_across_runtimes",
+        "partition_ceiling_caps_the_status",
+        "payload_matches_declared_variant",
+        "renderer_is_never_the_measurement",
+        "unknown_projection_fails_closed"
+      ],
+      "notes": [
+        "IF THE FRAGMENTS ARE ONE OBJECT THEN IT OVERLAPS THE PLANE; IF THEY ARE TWO THEN ONE OF THEM IS BEHIND IT. Both are worth recording, and neither is a measurement.",
+        "EVERY RELATION NAMES THE HYPOTHESIS IT HANGS ON, and that hypothesis must be one the payload declared. A conditional relation whose condition was dropped reads exactly like a measured one, which is the failure this form exists to prevent.",
+        "The set may not collapse itself. Choosing a hypothesis produces a new artifact of `topology.pair_relation`, with input refs back to here."
+      ]
+    }
+  ],
+
   "refusals": {
     "missing_extent_inputs": {
       "label": "No extents supplied",
@@ -829,6 +2174,20 @@
       "distinguished_from": "a failed run — the machinery worked; the ground moved",
       "remedy": "re-open the session against the current source",
       "raised_by": ["extent", "topology"]
+    },
+    "unsupported_form": {
+      "label": "Not a form this accepts",
+      "means": "A step supplied an artifact whose perceptual form is not in the consuming form's `accepted_input_forms`.",
+      "distinguished_from": "unknown_reference — the artifact resolved perfectly well; it is the wrong KIND of answer",
+      "remedy": "supply one of the declared input forms, or ask the question the supplied form can answer",
+      "raised_by": ["extent", "topology"]
+    },
+    "form_not_producible": {
+      "label": "That form is registered, not built",
+      "means": "Something tried to write an artifact in a form whose state is `deferred`.",
+      "distinguished_from": "unsupported_operation — the form is real and declared; nothing in this phase produces it",
+      "remedy": "wait for the phase that enables it, or produce a form that exists",
+      "raised_by": ["extent", "topology"]
     }
   },
 
@@ -854,6 +2213,14 @@
         "A session's `selected_instance_refs` are PAIRS, never a list of bare ids. A flat list would be ambiguous the moment two artifacts held instances with the same local id — which is the normal case, because every extent set numbers its own from 1.",
         "An instance ref whose artifact is neither selected nor active is not a reference. Selecting an instance selects its artifact."
       ]
+    },
+    "RevisionRef": {
+      "fields": ["artifact_id", "instance_id", "geometry_rev"],
+      "laws": [
+        "ALL THREE FIELDS ARE REQUIRED. This is `InstanceRef` reaching one depth further, not a fourth reference record: artifact → instance → revision, the same identity all the way down.",
+        "It exists because a transition is a statement ABOUT two revisions. `stale: true` says a relation is out of date; only a pair of pinned references can say what it changed from.",
+        "A revision ref is never used where an instance ref would do. Pinning a revision on a reference that merely selects something would freeze a selection to a geometry the person did not choose."
+      ]
     }
   },
 
@@ -861,8 +2228,8 @@
     "why_blocks": "The five things a lab artifact must never let collapse into each other are given their own OBJECTS, not their own prefixes. A prefix convention is broken by one careless field; a nested model is broken only by moving a field on purpose, in a diff a reviewer can see.",
     "PerceptualArtifact": {
       "blocks": {
-        "identity": ["artifact_id", "session_id", "run_id", "step_id", "organ_family", "artifact_kind", "operation", "identity_scope", "identity_refs", "input_refs", "derived_from"],
-        "measurement": ["payload_variant", "payload", "data_ref", "coordinate_system", "epistemic_status", "epistemic_basis", "basis_detail"],
+        "identity": ["artifact_id", "session_id", "run_id", "step_id", "organ_family", "artifact_kind", "form", "operation", "identity_scope", "identity_refs", "input_refs", "derived_from"],
+        "measurement": ["payload_variant", "payload", "data_ref", "coordinate_system", "epistemic_status", "epistemic_basis", "partition", "basis_detail"],
         "projection": ["projection_kind", "hints"],
         "interpretation": ["label", "label_source", "epistemic_status", "notes"],
         "lifecycle": ["status", "changed_at", "changed_by"],
@@ -930,9 +2297,9 @@
       "refusals", "duration_ms", "replay"
     ],
     "PerceptualArtifact": [
-      "identity.artifact_id", "identity.organ_family", "identity.artifact_kind",
+      "identity.artifact_id", "identity.organ_family", "identity.artifact_kind", "identity.form",
       "identity.identity_scope", "identity.input_refs",
-      "measurement.payload_variant", "measurement.coordinate_system",
+      "measurement.payload_variant", "measurement.partition", "measurement.coordinate_system",
       "measurement.epistemic_status", "measurement.epistemic_basis",
       "projection.projection_kind", "projection.hints",
       "interpretation.label", "interpretation.label_source", "interpretation.epistemic_status",
@@ -960,6 +2327,19 @@
     {"id": "replay_cannot_recompute", "statement": "Only a LIVE run may invoke an adapter. A REPLAY run declares `adapter_callable: false` and carries its source run; a FIXTURE run reads committed data. No stage attempt on either may be `invoked`."},
     {"id": "empty_is_not_refused_is_not_unavailable", "statement": "The five nothings in `absence_semantics` are carried by distinct outcome/refusal combinations and none may stand in for another."},
     {"id": "references_resolve_through_ids", "statement": "A step may cite only ids declared active or selected on the session. An id from nowhere is `unknown_reference`."},
+    {"id": "forms_and_operations_are_two_registries", "statement": "A form is what was perceived; an operation is what was asked for. Neither table is derived from the other, and a form may be registered with no operation producing it."},
+    {"id": "every_form_declares_what_it_needs", "statement": "Every registered form declares an organ, a perceptual question, a payload variant, its accepted input forms, its permitted producer classes, its admissible bases and partitions, its epistemic ceiling, its renderer projections, its manual tools, its comparison methods, its required provenance, its absence semantics, its test obligations and its state."},
+    {"id": "form_state_gates_what_may_be_written", "statement": "An artifact's operation is one of its form's `produced_by_operations`, so a form no operation declares has no artifact. A `deferred` form has no artifact even once one does. A registered payload shape is not a producer."},
+    {"id": "partition_caps_the_status_independently_of_basis", "statement": "A measurement's epistemic status is at or below both its basis ceiling and its partition ceiling. A hypothesis may cite measured inputs and may not inherit `measured` from them."},
+    {"id": "inference_is_never_visible", "statement": "The `inferred_completion` and `unresolved_alternative` partitions cap at `uncertain`. Inferred pixels may never validate as visible or measured, at any confidence."},
+    {"id": "a_form_is_never_its_renderer", "statement": "No form payload carries a projection kind or a projection hint key, and every declared renderer projection says whether it is drawn from the payload or computed by the reader."},
+    {"id": "every_form_can_say_it_looked", "statement": "Every form names an `examined_field` that exists on its payload and has no default, so an empty answer can always be told from an absent one."},
+    {"id": "grouping_is_not_fusion", "statement": "A fragment set has no field in which unity could be claimed, and a fusion hypothesis enumerates its grounds and its members. Neither can become the other by relabelling."},
+    {"id": "a_hypothesis_is_not_curated_by_confidence", "statement": "A hypothesis-carrying form may not reach lifecycle `kept` or `promoted`. Resolving an alternative produces a new artifact citing it."},
+    {"id": "a_transition_cites_both_revisions", "statement": "A topology transition carries revision-pinned references for both endpoints before and after, and a before identical to its after is not a transition."},
+    {"id": "a_conditional_relation_keeps_its_condition", "statement": "Every relation in an uncertain relation set names a hypothesis the payload declared. A condition that was dropped would make the relation read as measured."},
+    {"id": "a_pointed_at_raster_carries_its_digest", "statement": "Every scalar or density field declares its shape, its coordinate system, its value range and its calibration, and any raster held behind a pointer carries a digest."},
+    {"id": "old_records_remain_readable", "statement": "`identity.form` and `measurement.partition` are optional and default to null. Every record written before this grammar validates unchanged and keeps its meaning through `legacy_form_for_kind`."},
     {"id": "an_instance_is_named_with_its_artifact", "statement": "`instance_id` appears only beside `artifact_id`, never beside `region_id`, and never alone. One reference type reaches both depths; there is no second one."}
   ],
 
@@ -972,6 +2352,8 @@
     "invalid_parameters": "{operation} refused the supplied parameters: {detail}.",
     "unknown_reference": "{reference} is not a selected or active reference in this session.",
     "replay_cannot_recompute": "This run is a replay. It has no adapter to call.",
-    "source_mutated": "The source changed while the run was in flight."
+    "source_mutated": "The source changed while the run was in flight.",
+    "unsupported_form": "{operation} does not accept {form}; it reads {accepted}.",
+    "form_not_producible": "{form} is registered and deferred. No producer in this phase writes one."
   }
 }

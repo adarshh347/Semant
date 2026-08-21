@@ -1,0 +1,34 @@
+{
+  "variant": "topology_clearance_path",
+  "pairs_examined": 1,
+  "paths": [
+    {
+      "path_id": "path_1",
+      "source": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_fountain",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "target": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_1",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "raster_shape": [8, 8],
+      "separation": 0.114,
+      "from_point": [0.48, 0.52],
+      "to_point": [0.55, 0.61],
+      "path": [
+        [0.48, 0.52],
+        [0.52, 0.57],
+        [0.55, 0.61]
+      ],
+      "basis": "mask",
+      "epistemic_status": "measured"
+    }
+  ]
+}

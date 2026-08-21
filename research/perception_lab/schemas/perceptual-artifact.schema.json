@@ -32,6 +32,17 @@
         "artifact_kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
+        "form": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PerceptualForm"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "operation": {
           "minLength": 1,
           "title": "Operation",
@@ -118,10 +129,27 @@
       "type": "object"
     },
     "ArtifactKind": {
+      "description": "One kind per registered form, plus `refusal` and `depth_field`.\n\n`depth_field` is still declarable and produced by nothing \u2014 the same discipline the nine\n`deferred` forms are held to, and for the same reason.",
       "enum": [
         "extent_set",
+        "extent_boundary",
+        "extent_hole_set",
+        "extent_soft_field",
+        "extent_fragment_set",
+        "extent_fusion_hypothesis",
+        "extent_partition",
+        "extent_hierarchy",
+        "extent_density_field",
+        "extent_hypothesis_set",
         "topology_relation_set",
+        "topology_contact_locus",
+        "topology_intersection",
+        "topology_clearance_path",
+        "topology_containment_tree",
+        "topology_adjacency_graph",
         "negative_space_field",
+        "topology_transition",
+        "topology_uncertain_relations",
         "refusal",
         "depth_field"
       ],
@@ -158,24 +186,33 @@
       "description": "The number, and what kind of knowing it is. Never the colour it is drawn in.\n\nExactly one of `payload` / `data_ref`: a measurement is either small enough to carry or big\nenough to point at, and carrying both would create two truths one of which is stale.",
       "properties": {
         "payload_variant": {
-          "enum": [
-            "extent_set",
-            "topology_relation_set",
-            "negative_space_field",
-            "refusal"
-          ],
-          "title": "Payload Variant",
-          "type": "string"
+          "$ref": "#/$defs/PayloadVariant"
         },
         "payload": {
           "anyOf": [
             {
               "discriminator": {
                 "mapping": {
+                  "extent_boundary": "#/$defs/ExtentBoundaryPayload",
+                  "extent_density_field": "#/$defs/ExtentDensityFieldPayload",
+                  "extent_fragment_set": "#/$defs/ExtentFragmentSetPayload",
+                  "extent_fusion_hypothesis": "#/$defs/ExtentFusionHypothesisPayload",
+                  "extent_hierarchy": "#/$defs/ExtentHierarchyPayload",
+                  "extent_hole_set": "#/$defs/ExtentHoleSetPayload",
+                  "extent_hypothesis_set": "#/$defs/ExtentHypothesisSetPayload",
+                  "extent_partition": "#/$defs/ExtentPartitionPayload",
                   "extent_set": "#/$defs/ExtentSetPayload",
+                  "extent_soft_field": "#/$defs/ExtentSoftFieldPayload",
                   "negative_space_field": "#/$defs/NegativeSpaceFieldPayload",
                   "refusal": "#/$defs/RefusalPayload",
-                  "topology_relation_set": "#/$defs/TopologyRelationSetPayload"
+                  "topology_adjacency_graph": "#/$defs/TopologyAdjacencyGraphPayload",
+                  "topology_clearance_path": "#/$defs/TopologyClearancePathPayload",
+                  "topology_contact_locus": "#/$defs/TopologyContactLocusPayload",
+                  "topology_containment_tree": "#/$defs/TopologyContainmentTreePayload",
+                  "topology_intersection": "#/$defs/TopologyIntersectionPayload",
+                  "topology_relation_set": "#/$defs/TopologyRelationSetPayload",
+                  "topology_transition": "#/$defs/TopologyTransitionPayload",
+                  "topology_uncertain_relations": "#/$defs/TopologyUncertainRelationsPayload"
                 },
                 "propertyName": "variant"
               },
@@ -191,6 +228,54 @@
                 },
                 {
                   "$ref": "#/$defs/RefusalPayload"
+                },
+                {
+                  "$ref": "#/$defs/ExtentBoundaryPayload"
+                },
+                {
+                  "$ref": "#/$defs/ExtentHoleSetPayload"
+                },
+                {
+                  "$ref": "#/$defs/ExtentSoftFieldPayload"
+                },
+                {
+                  "$ref": "#/$defs/ExtentFragmentSetPayload"
+                },
+                {
+                  "$ref": "#/$defs/ExtentFusionHypothesisPayload"
+                },
+                {
+                  "$ref": "#/$defs/ExtentPartitionPayload"
+                },
+                {
+                  "$ref": "#/$defs/ExtentHierarchyPayload"
+                },
+                {
+                  "$ref": "#/$defs/ExtentDensityFieldPayload"
+                },
+                {
+                  "$ref": "#/$defs/ExtentHypothesisSetPayload"
+                },
+                {
+                  "$ref": "#/$defs/TopologyContactLocusPayload"
+                },
+                {
+                  "$ref": "#/$defs/TopologyIntersectionPayload"
+                },
+                {
+                  "$ref": "#/$defs/TopologyClearancePathPayload"
+                },
+                {
+                  "$ref": "#/$defs/TopologyContainmentTreePayload"
+                },
+                {
+                  "$ref": "#/$defs/TopologyAdjacencyGraphPayload"
+                },
+                {
+                  "$ref": "#/$defs/TopologyTransitionPayload"
+                },
+                {
+                  "$ref": "#/$defs/TopologyUncertainRelationsPayload"
                 }
               ]
             },
@@ -220,6 +305,17 @@
         },
         "epistemic_basis": {
           "$ref": "#/$defs/EpistemicBasis"
+        },
+        "partition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EpistemicPartition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "basis_detail": {
           "anyOf": [
@@ -386,6 +482,56 @@
       "title": "ArtifactProvenance",
       "type": "object"
     },
+    "BoundaryRing": {
+      "additionalProperties": false,
+      "description": "One closed curve of an extent's edge, declaring which side of it is inside.\n\n`winding` IS DECLARED, NEVER INFERRED FROM POINT ORDER. Half the renderers in the world read\nclockwise as outer and half read it as inner, and a boundary whose meaning depends on which\none is looking is not a measurement.",
+      "properties": {
+        "ring_id": {
+          "minLength": 1,
+          "title": "Ring Id",
+          "type": "string"
+        },
+        "winding": {
+          "$ref": "#/$defs/RingWinding"
+        },
+        "points": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "minItems": 3,
+          "title": "Points",
+          "type": "array"
+        },
+        "closed": {
+          "default": true,
+          "title": "Closed",
+          "type": "boolean"
+        },
+        "length": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Length"
+        }
+      },
+      "required": [
+        "ring_id",
+        "winding",
+        "points"
+      ],
+      "title": "BoundaryRing",
+      "type": "object"
+    },
     "Box": {
       "additionalProperties": false,
       "description": "`normalized_xy_topleft`, the same convention `Region.box` uses.",
@@ -422,6 +568,322 @@
         "h"
       ],
       "title": "Box",
+      "type": "object"
+    },
+    "CalibrationDeclaration": {
+      "additionalProperties": false,
+      "description": "What a field's numbers MEAN, said out loud rather than assumed by whoever reads them.\n\nTHE ONE RULE THIS RECORD EXISTS FOR. A field produced by blurring a binary mask is a picture\nof an edge's uncertainty. It is NOT a probability, and calling it one lets a Gaussian radius\nread downstream as a confidence. So `calibrated` requires both a method and the reference it\nwas calibrated against, and `ScalarFieldSpec` refuses the combination outright for a blurred\nmask. `nominal` is the honest word for \"ordered and comparable\"; `uncalibrated` is the honest\nword for \"these numbers only have an order\".",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/CalibrationState"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method"
+        },
+        "reference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "CalibrationDeclaration",
+      "type": "object"
+    },
+    "CalibrationState": {
+      "enum": [
+        "calibrated",
+        "nominal",
+        "uncalibrated"
+      ],
+      "title": "CalibrationState",
+      "type": "string"
+    },
+    "ClearancePath": {
+      "additionalProperties": false,
+      "description": "The gap, and the line it was measured along.",
+      "properties": {
+        "path_id": {
+          "minLength": 1,
+          "title": "Path Id",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "target": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "raster_shape": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Raster Shape",
+          "type": "array"
+        },
+        "separation": {
+          "minimum": 0.0,
+          "title": "Separation",
+          "type": "number"
+        },
+        "from_point": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "From Point",
+          "type": "array"
+        },
+        "to_point": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "To Point",
+          "type": "array"
+        },
+        "path": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "title": "Path",
+          "type": "array"
+        },
+        "basis": {
+          "$ref": "#/$defs/EpistemicBasis"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        }
+      },
+      "required": [
+        "path_id",
+        "source",
+        "target",
+        "raster_shape",
+        "separation",
+        "from_point",
+        "to_point",
+        "basis",
+        "epistemic_status"
+      ],
+      "title": "ClearancePath",
+      "type": "object"
+    },
+    "ConditionalRelation": {
+      "additionalProperties": false,
+      "description": "A relation that is only true IF a reading of the extents is right.",
+      "properties": {
+        "relation_id": {
+          "minLength": 1,
+          "title": "Relation Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RelationKind"
+        },
+        "source": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "target": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "directed": {
+          "title": "Directed",
+          "type": "boolean"
+        },
+        "basis": {
+          "$ref": "#/$defs/EpistemicBasis"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        },
+        "conditioned_on": {
+          "minLength": 1,
+          "title": "Conditioned On",
+          "type": "string"
+        },
+        "measurements": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Measurements",
+          "type": "object"
+        }
+      },
+      "required": [
+        "relation_id",
+        "kind",
+        "source",
+        "target",
+        "directed",
+        "basis",
+        "epistemic_status",
+        "conditioned_on"
+      ],
+      "title": "ConditionalRelation",
+      "type": "object"
+    },
+    "ContactLocus": {
+      "additionalProperties": false,
+      "description": "WHERE two extents touch, not merely THAT they do.",
+      "properties": {
+        "locus_id": {
+          "minLength": 1,
+          "title": "Locus Id",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "target": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "raster_shape": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Raster Shape",
+          "type": "array"
+        },
+        "contact_pixels": {
+          "minimum": 0,
+          "title": "Contact Pixels",
+          "type": "integer"
+        },
+        "basis": {
+          "$ref": "#/$defs/EpistemicBasis"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        },
+        "mask_rle": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Rle"
+        },
+        "points": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "locus_id",
+        "source",
+        "target",
+        "raster_shape",
+        "contact_pixels",
+        "basis",
+        "epistemic_status"
+      ],
+      "title": "ContactLocus",
+      "type": "object"
+    },
+    "ContainmentNode": {
+      "additionalProperties": false,
+      "description": "One level of a containment, as a reference rather than a shape.",
+      "properties": {
+        "node_id": {
+          "minLength": 1,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "endpoint": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "parent_node_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Node Id"
+        },
+        "occupancy_of_parent": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Occupancy Of Parent"
+        },
+        "basis": {
+          "$ref": "#/$defs/EpistemicBasis"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        }
+      },
+      "required": [
+        "node_id",
+        "endpoint",
+        "basis",
+        "epistemic_status"
+      ],
+      "title": "ContainmentNode",
       "type": "object"
     },
     "CoordinateSystem": {
@@ -486,6 +948,18 @@
       "title": "EpistemicBasis",
       "type": "string"
     },
+    "EpistemicPartition": {
+      "description": "What KIND OF ACT produced a claim \u2014 orthogonal to the basis it was computed from.\n\nA basis says what a number came FROM. A partition says what was DONE with it. Both cap the\nstatus, and that is the whole answer to \"a hypothesis may cite measurements and may not\ninherit `measured` merely because its inputs were measured\".",
+      "enum": [
+        "visible_measured",
+        "exact_derivation",
+        "interpretive_grouping",
+        "inferred_completion",
+        "unresolved_alternative"
+      ],
+      "title": "EpistemicPartition",
+      "type": "string"
+    },
     "EpistemicStatus": {
       "description": "How an item is known. A `str` enum so a descriptor stays plain JSON.",
       "enum": [
@@ -497,6 +971,84 @@
       ],
       "title": "EpistemicStatus",
       "type": "string"
+    },
+    "ExtentAlternative": {
+      "additionalProperties": false,
+      "description": "One competing reading of where the thing is.",
+      "properties": {
+        "alternative_id": {
+          "minLength": 1,
+          "title": "Alternative Id",
+          "type": "string"
+        },
+        "weight": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Weight",
+          "type": "number"
+        },
+        "artifact_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Id"
+        },
+        "instances": {
+          "items": {
+            "$ref": "#/$defs/InstanceRef"
+          },
+          "title": "Instances",
+          "type": "array"
+        },
+        "grounds": {
+          "items": {
+            "$ref": "#/$defs/Ground"
+          },
+          "title": "Grounds",
+          "type": "array"
+        }
+      },
+      "required": [
+        "alternative_id",
+        "weight"
+      ],
+      "title": "ExtentAlternative",
+      "type": "object"
+    },
+    "ExtentBoundaryPayload": {
+      "additionalProperties": false,
+      "description": "`extent.boundary_rings` \u2014 the edge as curves, derived from the mask that stays the\nauthority.\n\nMULTI-RING BY CONSTRUCTION. A grille, an arch and a leaf each produce several outer rings and\nseveral inner ones, and a single-polygon field would have forced a producer to choose one and\nthrow the rest away.",
+      "properties": {
+        "variant": {
+          "const": "extent_boundary",
+          "title": "Variant",
+          "type": "string"
+        },
+        "rings_traced": {
+          "minimum": 0,
+          "title": "Rings Traced",
+          "type": "integer"
+        },
+        "boundaries": {
+          "items": {
+            "$ref": "#/$defs/InstanceBoundary"
+          },
+          "title": "Boundaries",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "rings_traced"
+      ],
+      "title": "ExtentBoundaryPayload",
+      "type": "object"
     },
     "ExtentComparison": {
       "additionalProperties": false,
@@ -576,6 +1128,54 @@
       "title": "ExtentCorrespondence",
       "type": "object"
     },
+    "ExtentDensityFieldPayload": {
+      "additionalProperties": false,
+      "description": "`extent.density_field` \u2014 where the collection is, when there is no single object.\n\nFIVE HUNDRED PEOPLE IN A PLAZA. There is no object called `crowd`, and \"the crowd occupies\nthe eastern half\" is still a true and useful sentence. This form is how it is said without\ninventing an entity to hang it on.\n\nCOUNTS, SAMPLES AND SMOOTHING ARE THREE SEPARATE DECLARATIONS, because they answer three\ndifferent questions and a single `density` number answers none of them: `members_counted` is\nhow many entities entered, `samples_taken` is how many points were placed, and `smoothing` is\nwhat was applied afterwards. A smoothed field reporting itself as counts would let a kernel\nbandwidth read as a population.",
+      "properties": {
+        "variant": {
+          "const": "extent_density_field",
+          "title": "Variant",
+          "type": "string"
+        },
+        "members_counted": {
+          "minimum": 0,
+          "title": "Members Counted",
+          "type": "integer"
+        },
+        "samples_taken": {
+          "minimum": 0,
+          "title": "Samples Taken",
+          "type": "integer"
+        },
+        "counts_are_exact": {
+          "title": "Counts Are Exact",
+          "type": "boolean"
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/InstanceRef"
+          },
+          "title": "Members",
+          "type": "array"
+        },
+        "field": {
+          "$ref": "#/$defs/ScalarFieldSpec"
+        },
+        "smoothing": {
+          "$ref": "#/$defs/SmoothingDeclaration"
+        }
+      },
+      "required": [
+        "variant",
+        "members_counted",
+        "samples_taken",
+        "counts_are_exact",
+        "field",
+        "smoothing"
+      ],
+      "title": "ExtentDensityFieldPayload",
+      "type": "object"
+    },
     "ExtentDuplicate": {
       "additionalProperties": false,
       "description": "Two instances in ONE set that may be the same thing. A warning, never a deletion.",
@@ -600,6 +1200,304 @@
         "iou"
       ],
       "title": "ExtentDuplicate",
+      "type": "object"
+    },
+    "ExtentFragment": {
+      "additionalProperties": false,
+      "description": "One visible piece. It does not know whether it belongs to anything.",
+      "properties": {
+        "fragment_id": {
+          "minLength": 1,
+          "title": "Fragment Id",
+          "type": "string"
+        },
+        "mask_rle": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Rle"
+        },
+        "box": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Box"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "area": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Area"
+        },
+        "naming": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstanceNaming"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "fragment_id"
+      ],
+      "title": "ExtentFragment",
+      "type": "object"
+    },
+    "ExtentFragmentSetPayload": {
+      "additionalProperties": false,
+      "description": "`extent.fragment_set` \u2014 the pieces, with no claim about whether they are one thing.\n\nTHE POINT IS WHAT IT CANNOT SAY. `unity_asserted` is the literal `false` and `extra=\"forbid\"`\nmeans there is nowhere else to put the claim, so a producer that believes three green patches\nare one tree behind a fence has to say so in `extent.fused_hypothesis` \u2014 where the grounds\nare enumerated and the status is capped below `measured`.\n\nThat is what makes this form SAFE TO COMPUTE EAGERLY. Nothing downstream can read unity out\nof it, so producing one commits to nothing at all.",
+      "properties": {
+        "variant": {
+          "const": "extent_fragment_set",
+          "title": "Variant",
+          "type": "string"
+        },
+        "regions_examined": {
+          "minimum": 0,
+          "title": "Regions Examined",
+          "type": "integer"
+        },
+        "unity_asserted": {
+          "const": false,
+          "default": false,
+          "title": "Unity Asserted",
+          "type": "boolean"
+        },
+        "fragments": {
+          "items": {
+            "$ref": "#/$defs/ExtentFragment"
+          },
+          "title": "Fragments",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "regions_examined"
+      ],
+      "title": "ExtentFragmentSetPayload",
+      "type": "object"
+    },
+    "ExtentFusionHypothesisPayload": {
+      "additionalProperties": false,
+      "description": "`extent.fused_hypothesis` \u2014 are these pieces one thing, and on what evidence?\n\nA HYPOTHESIS CITES MEASUREMENTS AND DOES NOT INHERIT THEIR STATUS. Every member is a measured\nmask. The claim that they are one tree is not, and the partition caps it \u2014 at `interpretive`\nwhen it only groups what is visible, at `uncertain` when it also asserts extent behind the\nfence.\n\n`alternatives_retained` is a real field because dropping the rejected groupings is how a\nguess becomes a fact between one panel and the next.",
+      "properties": {
+        "variant": {
+          "const": "extent_fusion_hypothesis",
+          "title": "Variant",
+          "type": "string"
+        },
+        "fragments_considered": {
+          "minimum": 0,
+          "title": "Fragments Considered",
+          "type": "integer"
+        },
+        "hypotheses": {
+          "items": {
+            "$ref": "#/$defs/FusionHypothesis"
+          },
+          "title": "Hypotheses",
+          "type": "array"
+        },
+        "alternatives_retained": {
+          "title": "Alternatives Retained",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "variant",
+        "fragments_considered",
+        "alternatives_retained"
+      ],
+      "title": "ExtentFusionHypothesisPayload",
+      "type": "object"
+    },
+    "ExtentHierarchyPayload": {
+      "additionalProperties": false,
+      "description": "`extent.hierarchy` \u2014 palace \u2192 courtyard \u2192 garden \u2192 fountain, with the fractions.\n\nEVERY LEVEL IS A REAL EXTENT WITH A REAL IDENTITY, and flattening them loses the only\ninteresting question: how much of the courtyard IS garden.\n\nEVERY NODE CITES A REVISION. A tree built over `reg_7` without saying which revision of\n`reg_7` cannot be told it has gone stale, and a stale hierarchy is worse than none.",
+      "properties": {
+        "variant": {
+          "const": "extent_hierarchy",
+          "title": "Variant",
+          "type": "string"
+        },
+        "pairs_examined": {
+          "minimum": 0,
+          "title": "Pairs Examined",
+          "type": "integer"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/HierarchyNode"
+          },
+          "title": "Nodes",
+          "type": "array"
+        },
+        "root_node_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Root Node Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "pairs_examined"
+      ],
+      "title": "ExtentHierarchyPayload",
+      "type": "object"
+    },
+    "ExtentHole": {
+      "additionalProperties": false,
+      "description": "One void, and the extent it is a void OF.",
+      "properties": {
+        "hole_id": {
+          "minLength": 1,
+          "title": "Hole Id",
+          "type": "string"
+        },
+        "outer": {
+          "$ref": "#/$defs/InstanceRef"
+        },
+        "enclosed": {
+          "title": "Enclosed",
+          "type": "boolean"
+        },
+        "mask_rle": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Rle"
+        },
+        "rings": {
+          "items": {
+            "$ref": "#/$defs/BoundaryRing"
+          },
+          "title": "Rings",
+          "type": "array"
+        },
+        "area": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Area"
+        }
+      },
+      "required": [
+        "hole_id",
+        "outer",
+        "enclosed"
+      ],
+      "title": "ExtentHole",
+      "type": "object"
+    },
+    "ExtentHoleSetPayload": {
+      "additionalProperties": false,
+      "description": "`extent.hole_set` \u2014 the voids inside an extent, each tied to the extent it is inside.\n\nA VOID IS NOT A FREE-STANDING SHAPE. The arch's opening is only a hole OF the arch, and a\nhole record that did not name its outer extent would be a second extent set wearing a\ndifferent word.\n\n`enclosed` SEPARATES A HOLE FROM A CONCAVITY. A bay open at one side is not a window, and a\nschema that called both `hole` would let a courtyard validate as a doorway.",
+      "properties": {
+        "variant": {
+          "const": "extent_hole_set",
+          "title": "Variant",
+          "type": "string"
+        },
+        "candidates_examined": {
+          "minimum": 0,
+          "title": "Candidates Examined",
+          "type": "integer"
+        },
+        "holes": {
+          "items": {
+            "$ref": "#/$defs/ExtentHole"
+          },
+          "title": "Holes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "candidates_examined"
+      ],
+      "title": "ExtentHoleSetPayload",
+      "type": "object"
+    },
+    "ExtentHypothesisSetPayload": {
+      "additionalProperties": false,
+      "description": "`extent.hypothesis_set` \u2014 the competing readings, held open.\n\nTHE CUBIST CASE. One continuous object, two overlapping objects, or an object and an\narchitectural plane. The honest answer is that the picture supports three readings, and\nforcing one is a fabrication dressed as a measurement.\n\nIT CANNOT RESOLVE ITSELF. There is no `chosen` field anywhere in this record. Resolution is a\nseparate act producing a separate artifact, so the alternatives survive the choice and a\nlater reader can see what was set aside \u2014 which is the whole reason for writing them down.\n\nONE ALTERNATIVE IS NOT AN ALTERNATIVE SET. If only one reading survived, the answer is a hard\nmask, and recording it here would dress a single reading as a preserved ambiguity.",
+      "properties": {
+        "variant": {
+          "const": "extent_hypothesis_set",
+          "title": "Variant",
+          "type": "string"
+        },
+        "alternatives_considered": {
+          "minimum": 0,
+          "title": "Alternatives Considered",
+          "type": "integer"
+        },
+        "question": {
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "weights_are_probabilities": {
+          "default": false,
+          "title": "Weights Are Probabilities",
+          "type": "boolean"
+        },
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/ExtentAlternative"
+          },
+          "title": "Alternatives",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "alternatives_considered",
+        "question"
+      ],
+      "title": "ExtentHypothesisSetPayload",
       "type": "object"
     },
     "ExtentInstance": {
@@ -706,6 +1604,53 @@
       "title": "ExtentInstance",
       "type": "object"
     },
+    "ExtentPartitionPayload": {
+      "additionalProperties": false,
+      "description": "`extent.visible_inferred_partition` \u2014 which of this we saw, which we inferred, which we do\nnot know.\n\nTHE PERSON BEHIND THE TABLE. The head and torso were seen; the legs were not. One mask\ncovering both is a claim the picture does not support, and one covering only the torso throws\naway a reading worth keeping. Three parts, three statuses, enforced.\n\n`unknown` IS A REAL THIRD PART. Not-seen-and-not-inferred is not the same as absent, and a\ntwo-part schema would have forced every unresolved pixel into one of the other two.",
+      "properties": {
+        "variant": {
+          "const": "extent_partition",
+          "title": "Variant",
+          "type": "string"
+        },
+        "cells_partitioned": {
+          "minimum": 0,
+          "title": "Cells Partitioned",
+          "type": "integer"
+        },
+        "of": {
+          "$ref": "#/$defs/InstanceRef"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/PartitionRegion"
+          },
+          "minItems": 1,
+          "title": "Regions",
+          "type": "array"
+        },
+        "conditioned_on": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conditioned On"
+        }
+      },
+      "required": [
+        "variant",
+        "cells_partitioned",
+        "of",
+        "regions"
+      ],
+      "title": "ExtentPartitionPayload",
+      "type": "object"
+    },
     "ExtentSetPayload": {
       "additionalProperties": false,
       "description": "`searched` has no default because `instances: []` means two different things.\n\n\"I looked for faces and there are none\" and \"nobody looked\" arrive at the same empty list, and\nonly the first is a measurement.",
@@ -764,6 +1709,379 @@
         "searched"
       ],
       "title": "ExtentSetPayload",
+      "type": "object"
+    },
+    "ExtentSoftFieldPayload": {
+      "additionalProperties": false,
+      "description": "`extent.soft_field` \u2014 how much of it is here, where the edge is not a line.\n\nFOG IS THE CASE. A binary mask answers \"where does it end\" with a line the picture does not\ncontain. This form answers with a value per cell and a declared statement of what that value\nmeans, and it has NO `mask_rle` anywhere in it \u2014 a soft field cannot be handed to something\nexpecting a hard mask, because there is nothing in this record shaped like one.\n\n`threshold_would_be` is a courtesy, and it is not a mask. It records the cut a producer would\nuse IF someone asked for one, so that a later binarization is a recorded decision rather than\na number invented at render time.",
+      "properties": {
+        "variant": {
+          "const": "extent_soft_field",
+          "title": "Variant",
+          "type": "string"
+        },
+        "cells_evaluated": {
+          "minimum": 0,
+          "title": "Cells Evaluated",
+          "type": "integer"
+        },
+        "searched": {
+          "minLength": 1,
+          "title": "Searched",
+          "type": "string"
+        },
+        "field": {
+          "$ref": "#/$defs/ScalarFieldSpec"
+        },
+        "of_instance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstanceRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "threshold_would_be": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Would Be"
+        }
+      },
+      "required": [
+        "variant",
+        "cells_evaluated",
+        "searched",
+        "field"
+      ],
+      "title": "ExtentSoftFieldPayload",
+      "type": "object"
+    },
+    "FieldDerivation": {
+      "description": "How a scalar field's numbers came to exist. `blur_of_binary_mask` is the one that cannot\nbe calibrated: it is a picture of an edge's uncertainty, not a probability.",
+      "enum": [
+        "direct_probability",
+        "model_logit",
+        "distance_transform",
+        "blur_of_binary_mask",
+        "kernel_density",
+        "sample_histogram",
+        "manual_paint"
+      ],
+      "title": "FieldDerivation",
+      "type": "string"
+    },
+    "FusionHypothesis": {
+      "additionalProperties": false,
+      "description": "The claim that these pieces are one thing, with what it rests on and what it costs.",
+      "properties": {
+        "hypothesis_id": {
+          "minLength": 1,
+          "title": "Hypothesis Id",
+          "type": "string"
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/InstanceRef"
+          },
+          "minItems": 2,
+          "title": "Members",
+          "type": "array"
+        },
+        "grounds": {
+          "items": {
+            "$ref": "#/$defs/Ground"
+          },
+          "minItems": 1,
+          "title": "Grounds",
+          "type": "array"
+        },
+        "partition": {
+          "$ref": "#/$defs/EpistemicPartition"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        },
+        "weight": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weight"
+        },
+        "asserts_hidden_extent": {
+          "default": false,
+          "title": "Asserts Hidden Extent",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "hypothesis_id",
+        "members",
+        "grounds",
+        "partition",
+        "epistemic_status"
+      ],
+      "title": "FusionHypothesis",
+      "type": "object"
+    },
+    "GraphEdge": {
+      "additionalProperties": false,
+      "description": "One relation between two nodes THE GRAPH HOLDS.",
+      "properties": {
+        "edge_id": {
+          "minLength": 1,
+          "title": "Edge Id",
+          "type": "string"
+        },
+        "source_node_id": {
+          "minLength": 1,
+          "title": "Source Node Id",
+          "type": "string"
+        },
+        "target_node_id": {
+          "minLength": 1,
+          "title": "Target Node Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RelationKind"
+        },
+        "directed": {
+          "title": "Directed",
+          "type": "boolean"
+        },
+        "basis": {
+          "$ref": "#/$defs/EpistemicBasis"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        },
+        "measurements": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Measurements",
+          "type": "object"
+        },
+        "locus_artifact_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locus Artifact Id"
+        }
+      },
+      "required": [
+        "edge_id",
+        "source_node_id",
+        "target_node_id",
+        "kind",
+        "directed",
+        "basis",
+        "epistemic_status"
+      ],
+      "title": "GraphEdge",
+      "type": "object"
+    },
+    "GraphNode": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "minLength": 1,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "endpoint": {
+          "$ref": "#/$defs/RelationEndpoint"
+        }
+      },
+      "required": [
+        "node_id",
+        "endpoint"
+      ],
+      "title": "GraphNode",
+      "type": "object"
+    },
+    "Ground": {
+      "additionalProperties": false,
+      "description": "One piece of evidence a hypothesis rests on.\n\nENUMERATED, NOT COLLAPSED INTO ONE NUMBER. `confidence: 0.94` with no ground is a number\nabout nothing; a reviewer needs to know it was shape continuity rather than colour before\nthey can disagree with it. `strength` is optional and per-ground, so a strong colour match\nand a weak shape match do not average into one uninspectable score.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/GroundKind"
+        },
+        "detail": {
+          "minLength": 1,
+          "title": "Detail",
+          "type": "string"
+        },
+        "cites": {
+          "items": {
+            "$ref": "#/$defs/InputRef"
+          },
+          "title": "Cites",
+          "type": "array"
+        },
+        "strength": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Strength"
+        }
+      },
+      "required": [
+        "kind",
+        "detail"
+      ],
+      "title": "Ground",
+      "type": "object"
+    },
+    "GroundKind": {
+      "description": "What a hypothesis rests on. Enumerated rather than collapsed into one confidence, because\n`0.94` with no ground is a number about nothing.",
+      "enum": [
+        "appearance_continuity",
+        "shape_continuity",
+        "depth_continuity",
+        "relative_position",
+        "occlusion_hypothesis",
+        "flow_continuity",
+        "scale_consistency",
+        "human_assertion"
+      ],
+      "title": "GroundKind",
+      "type": "string"
+    },
+    "HierarchyNode": {
+      "additionalProperties": false,
+      "description": "One level of a nesting, cited by identity AND revision.\n\nExactly one of `instance` / `region`. A node naming both would claim two provenances for one\nlevel, and a node naming neither is a level of nothing.",
+      "properties": {
+        "node_id": {
+          "minLength": 1,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "instance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RevisionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "region": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RegionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parent_node_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Node Id"
+        },
+        "occupancy_of_parent": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Occupancy Of Parent"
+        },
+        "basis": {
+          "$ref": "#/$defs/EpistemicBasis"
+        }
+      },
+      "required": [
+        "node_id",
+        "basis"
+      ],
+      "title": "HierarchyNode",
+      "type": "object"
+    },
+    "HypothesisCitation": {
+      "additionalProperties": false,
+      "description": "The extent hypothesis a set of relations hangs on, named where it lives.",
+      "properties": {
+        "hypothesis_id": {
+          "minLength": 1,
+          "title": "Hypothesis Id",
+          "type": "string"
+        },
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "weight": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weight"
+        }
+      },
+      "required": [
+        "hypothesis_id",
+        "artifact_id"
+      ],
+      "title": "HypothesisCitation",
       "type": "object"
     },
     "IdentityScope": {
@@ -843,6 +2161,39 @@
       "title": "InputRef",
       "type": "object"
     },
+    "InstanceBoundary": {
+      "additionalProperties": false,
+      "description": "Every ring of one instance's edge, on the raster they were traced from.",
+      "properties": {
+        "of": {
+          "$ref": "#/$defs/InstanceRef"
+        },
+        "rings": {
+          "items": {
+            "$ref": "#/$defs/BoundaryRing"
+          },
+          "minItems": 1,
+          "title": "Rings",
+          "type": "array"
+        },
+        "raster_shape": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Raster Shape",
+          "type": "array"
+        }
+      },
+      "required": [
+        "of",
+        "rings",
+        "raster_shape"
+      ],
+      "title": "InstanceBoundary",
+      "type": "object"
+    },
     "InstanceNaming": {
       "additionalProperties": false,
       "description": "A name for one instance, carried SEPARATELY from its geometry.\n\nCONCEPT-SEG-001 already established this: a SAM 3 result is a `measured` mask plus an\n`interpretive` label carried as two descriptors, so a wrong name can be rejected without\ndiscarding a correct measurement. This is that discipline at instance granularity.",
@@ -879,6 +2230,104 @@
         "epistemic_status"
       ],
       "title": "InstanceNaming",
+      "type": "object"
+    },
+    "InstanceRef": {
+      "additionalProperties": false,
+      "description": "One instance inside one artifact, as a session records having selected it.\n\nBOTH FIELDS ARE REQUIRED, and that is the whole design. \"Never store a bare instance_id\" is a\nrule nobody has to remember when there is no arrangement of this record that could hold one:\nan instance id is unique inside its artifact and nowhere else, so `inst_1` on its own names\nevery extent set's first mask at once. A flat list of instance ids would be ambiguous in the\nNORMAL case rather than an exotic one, because every set numbers its own from 1.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "instance_id": {
+          "minLength": 1,
+          "title": "Instance Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "instance_id"
+      ],
+      "title": "InstanceRef",
+      "type": "object"
+    },
+    "IntersectionRegion": {
+      "additionalProperties": false,
+      "description": "The shared region, with BOTH denominators.",
+      "properties": {
+        "intersection_id": {
+          "minLength": 1,
+          "title": "Intersection Id",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "target": {
+          "$ref": "#/$defs/RelationEndpoint"
+        },
+        "raster_shape": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Raster Shape",
+          "type": "array"
+        },
+        "intersection_area": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Intersection Area",
+          "type": "number"
+        },
+        "fraction_of_source": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Fraction Of Source",
+          "type": "number"
+        },
+        "fraction_of_target": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Fraction Of Target",
+          "type": "number"
+        },
+        "basis": {
+          "$ref": "#/$defs/EpistemicBasis"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        },
+        "mask_rle": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Rle"
+        }
+      },
+      "required": [
+        "intersection_id",
+        "source",
+        "target",
+        "raster_shape",
+        "intersection_area",
+        "fraction_of_source",
+        "fraction_of_target",
+        "basis",
+        "epistemic_status"
+      ],
+      "title": "IntersectionRegion",
       "type": "object"
     },
     "LabelSource": {
@@ -979,6 +2428,117 @@
       "title": "OrganFamily",
       "type": "string"
     },
+    "PartitionPart": {
+      "enum": [
+        "visible",
+        "inferred",
+        "unknown"
+      ],
+      "title": "PartitionPart",
+      "type": "string"
+    },
+    "PartitionRegion": {
+      "additionalProperties": false,
+      "description": "One of the three parts, carrying its own status because they can never be the same one.",
+      "properties": {
+        "part": {
+          "$ref": "#/$defs/PartitionPart"
+        },
+        "epistemic_status": {
+          "$ref": "#/$defs/EpistemicStatus"
+        },
+        "coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Coverage",
+          "type": "number"
+        },
+        "mask_rle": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Rle"
+        },
+        "field": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScalarFieldSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "part",
+        "epistemic_status",
+        "coverage"
+      ],
+      "title": "PartitionRegion",
+      "type": "object"
+    },
+    "PayloadVariant": {
+      "description": "The same nineteen, plus `refusal`. `depth_field` is deliberately absent: a kind that can be\nreferenced is not a kind that can be built.",
+      "enum": [
+        "extent_set",
+        "extent_boundary",
+        "extent_hole_set",
+        "extent_soft_field",
+        "extent_fragment_set",
+        "extent_fusion_hypothesis",
+        "extent_partition",
+        "extent_hierarchy",
+        "extent_density_field",
+        "extent_hypothesis_set",
+        "topology_relation_set",
+        "topology_contact_locus",
+        "topology_intersection",
+        "topology_clearance_path",
+        "topology_containment_tree",
+        "topology_adjacency_graph",
+        "negative_space_field",
+        "topology_transition",
+        "topology_uncertain_relations",
+        "refusal"
+      ],
+      "title": "PayloadVariant",
+      "type": "string"
+    },
+    "PerceptualForm": {
+      "description": "The nineteen canonical answers \u2014 PERCEPTUAL-FORMS-001A.\n\nNOT the operation list. A form is what was PERCEIVED; an operation is what was ASKED FOR, and\nthe two registries have different arities in both directions. Nine of these are `deferred`:\ndesigned, validated, and unwritable until the phase that means to produce them.",
+      "enum": [
+        "extent.hard_mask",
+        "extent.boundary_rings",
+        "extent.hole_set",
+        "extent.soft_field",
+        "extent.fragment_set",
+        "extent.fused_hypothesis",
+        "extent.visible_inferred_partition",
+        "extent.hierarchy",
+        "extent.density_field",
+        "extent.hypothesis_set",
+        "topology.pair_relation",
+        "topology.contact_locus",
+        "topology.intersection_area",
+        "topology.clearance_path",
+        "topology.containment_tree",
+        "topology.adjacency_graph",
+        "topology.negative_space_field",
+        "topology.transition",
+        "topology.uncertain_relation_set"
+      ],
+      "title": "PerceptualForm",
+      "type": "string"
+    },
     "ProducerKind": {
       "enum": [
         "adapter",
@@ -1007,13 +2567,21 @@
         "contact_sheet",
         "before_after",
         "ab_overlay",
-        "difference_overlay"
+        "difference_overlay",
+        "ring_outline",
+        "hole_fill",
+        "fragment_cluster",
+        "partition_tricolor",
+        "hierarchy_tree",
+        "density_contours",
+        "hypothesis_stack",
+        "transition_diff"
       ],
       "title": "ProjectionKind",
       "type": "string"
     },
     "RefusalCode": {
-      "description": "Nine, and not one of them means 'nothing was found'.",
+      "description": "Eleven, and not one of them means 'nothing was found'.",
       "enum": [
         "missing_extent_inputs",
         "missing_depth_artifact",
@@ -1023,7 +2591,9 @@
         "capability_unavailable",
         "unknown_reference",
         "replay_cannot_recompute",
-        "source_mutated"
+        "source_mutated",
+        "unsupported_form",
+        "form_not_producible"
       ],
       "title": "RefusalCode",
       "type": "string"
@@ -1199,6 +2769,352 @@
       "title": "RelationKind",
       "type": "string"
     },
+    "RelationState": {
+      "additionalProperties": false,
+      "description": "How one pair stood, at one pair of revisions. `kind: null` is 'no relation then'.",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/RevisionRef"
+        },
+        "target": {
+          "$ref": "#/$defs/RevisionRef"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RelationKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "measurements": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Measurements",
+          "type": "object"
+        }
+      },
+      "required": [
+        "source",
+        "target"
+      ],
+      "title": "RelationState",
+      "type": "object"
+    },
+    "RevisionRef": {
+      "additionalProperties": false,
+      "description": "One instance, pinned to the revision of its geometry \u2014 PERCEPTUAL-FORMS-001A.\n\nTHE THIRD DEPTH OF THE ONE REFERENCE TYPE, not a fourth reference record: artifact \u2192\ninstance \u2192 revision, the same identity all the way down. All three fields are required, for\nthe same reason both of `InstanceRef`'s are: a revision number without the instance it\nrevises names nothing at all.\n\nIT EXISTS BECAUSE A TRANSITION IS A STATEMENT ABOUT TWO REVISIONS. `TopologyRelation.stale`\ncan say a relation is out of date. Only a pair of pinned references can say what it changed\nFROM \u2014 and a change nobody can see the start of is not a finding, it is a rumour.\n\nIT IS NOT USED WHERE AN `InstanceRef` WOULD DO. Pinning a revision onto a reference that\nmerely SELECTS something would freeze the selection to a geometry the person did not choose,\nso a session's selections stay `InstanceRef` and only the records that are about revisions\nreach this far.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "instance_id": {
+          "minLength": 1,
+          "title": "Instance Id",
+          "type": "string"
+        },
+        "geometry_rev": {
+          "minimum": 0,
+          "title": "Geometry Rev",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "instance_id",
+        "geometry_rev"
+      ],
+      "title": "RevisionRef",
+      "type": "object"
+    },
+    "RingWinding": {
+      "enum": [
+        "outer",
+        "inner"
+      ],
+      "title": "RingWinding",
+      "type": "string"
+    },
+    "ScalarFieldSpec": {
+      "additionalProperties": false,
+      "description": "A raster of numbers, and everything a reader needs in order to know what they are.\n\nEXACTLY ONE CARRIER. A small field may be inlined; a large one points at itself through a\n`DataRef` whose digest is mandatory, because a pointer without a digest points at whatever is\nthere now. Carrying both would create two truths, one of which is stale.\n\nTHE POINTER DOES NOT REPLACE THE METADATA. Shape, coordinate system, value range, derivation\nand calibration stay here even when the raster is elsewhere \u2014 they are what makes the pointer\ninterpretable, and a reader who cannot say what the numbers mean cannot draw them honestly.",
+      "properties": {
+        "field_shape": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Field Shape",
+          "type": "array"
+        },
+        "coordinate_system": {
+          "$ref": "#/$defs/CoordinateSystem"
+        },
+        "value_range": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Value Range",
+          "type": "array"
+        },
+        "derivation": {
+          "$ref": "#/$defs/FieldDerivation"
+        },
+        "calibration": {
+          "$ref": "#/$defs/CalibrationDeclaration"
+        },
+        "data_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "inline_values": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inline Values"
+        },
+        "statistics": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Statistics",
+          "type": "object"
+        }
+      },
+      "required": [
+        "field_shape",
+        "coordinate_system",
+        "value_range",
+        "derivation",
+        "calibration"
+      ],
+      "title": "ScalarFieldSpec",
+      "type": "object"
+    },
+    "SmoothingDeclaration": {
+      "additionalProperties": false,
+      "description": "What was done to the samples after they were placed. Declared, so that a bandwidth cannot\nbe mistaken for a population.",
+      "properties": {
+        "applied": {
+          "title": "Applied",
+          "type": "boolean"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method"
+        },
+        "bandwidth": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bandwidth"
+        }
+      },
+      "required": [
+        "applied"
+      ],
+      "title": "SmoothingDeclaration",
+      "type": "object"
+    },
+    "TopologyAdjacencyGraphPayload": {
+      "additionalProperties": false,
+      "description": "`topology.adjacency_graph` \u2014 what touches what, across the whole scene.\n\nTHE NAVE AT WELLS. Pier, arch, pier, arch, receding. The interesting object is the repeated\nstructure, and it exists only once the pairwise relations are assembled into one graph whose\nnodes are identities rather than positions.\n\nEVERY EDGE NAMES TWO NODES THE RECORD HOLDS. An edge to an unlisted node is a relation about\nsomething this graph does not contain, and a graph that admitted one could not be read\nwithout going somewhere else to find out what it meant.",
+      "properties": {
+        "variant": {
+          "const": "topology_adjacency_graph",
+          "title": "Variant",
+          "type": "string"
+        },
+        "pairs_examined": {
+          "minimum": 0,
+          "title": "Pairs Examined",
+          "type": "integer"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/GraphNode"
+          },
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/GraphEdge"
+          },
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "pairs_examined"
+      ],
+      "title": "TopologyAdjacencyGraphPayload",
+      "type": "object"
+    },
+    "TopologyClearancePathPayload": {
+      "additionalProperties": false,
+      "description": "`topology.clearance_path` \u2014 how far apart, and along which line.\n\nA DISTANCE WITHOUT A PATH CANNOT BE CHECKED. `separation: 0.11` is unfalsifiable on the\nscreen. Two endpoints and the segment between them can be looked at and disagreed with, which\nis the entire difference between a measurement and an assertion.",
+      "properties": {
+        "variant": {
+          "const": "topology_clearance_path",
+          "title": "Variant",
+          "type": "string"
+        },
+        "pairs_examined": {
+          "minimum": 0,
+          "title": "Pairs Examined",
+          "type": "integer"
+        },
+        "paths": {
+          "items": {
+            "$ref": "#/$defs/ClearancePath"
+          },
+          "title": "Paths",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "pairs_examined"
+      ],
+      "title": "TopologyClearancePathPayload",
+      "type": "object"
+    },
+    "TopologyContactLocusPayload": {
+      "additionalProperties": false,
+      "description": "`topology.contact_locus` \u2014 the band itself, recorded rather than re-derived.\n\nTHE FORM THAT MOVES A DRAWING BACK INTO THE EVIDENCE. Today the band a person sees is\ncomputed in their browser and honestly stamped `derived: true, computed_by: lab_browser`,\nbecause `TopologyRelation` carries `contact_pixels` and no shape. The stamp is truthful and it\nis also a gap: nobody can review a band that was never recorded, and two readers on two\nrasters can disagree with nothing to appeal to.\n\nWhen a producer writes this form the same projection becomes `direct`, and the browser's\nderived band becomes a CHECK against it rather than a substitute for it.",
+      "properties": {
+        "variant": {
+          "const": "topology_contact_locus",
+          "title": "Variant",
+          "type": "string"
+        },
+        "pairs_examined": {
+          "minimum": 0,
+          "title": "Pairs Examined",
+          "type": "integer"
+        },
+        "loci": {
+          "items": {
+            "$ref": "#/$defs/ContactLocus"
+          },
+          "title": "Loci",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "pairs_examined"
+      ],
+      "title": "TopologyContactLocusPayload",
+      "type": "object"
+    },
+    "TopologyContainmentTreePayload": {
+      "additionalProperties": false,
+      "description": "`topology.containment_tree` \u2014 the nesting, assembled from relations already measured.\n\nA COMPOSITION, NOT A NEW MEASUREMENT. Every edge here is a relation that was measured\nalready; the tree adds ordering and transitivity and no evidence at all, which is why its\npartition is `exact_derivation` and why it may claim no more than the weakest edge in it.\n\nCYCLES ARE REFUSED RATHER THAN BROKEN. A containment cycle means the relations disagree, and\nsilently dropping an edge to make a tree would hide the disagreement instead of reporting it.",
+      "properties": {
+        "variant": {
+          "const": "topology_containment_tree",
+          "title": "Variant",
+          "type": "string"
+        },
+        "pairs_examined": {
+          "minimum": 0,
+          "title": "Pairs Examined",
+          "type": "integer"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/ContainmentNode"
+          },
+          "title": "Nodes",
+          "type": "array"
+        },
+        "root_node_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Root Node Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "pairs_examined"
+      ],
+      "title": "TopologyContainmentTreePayload",
+      "type": "object"
+    },
+    "TopologyIntersectionPayload": {
+      "additionalProperties": false,
+      "description": "`topology.intersection_area` \u2014 what they share, and how much of each it is.\n\nTHE TREE ACROSS THE FA\u00c7ADE. `overlaps` is true and uninteresting. \"The tree crosses seventy\nper cent of the fa\u00e7ade's width\" is the sentence a person wanted, and it needs the shared\nregion and both denominators rather than one ratio \u2014 because a small thing entirely inside a\nlarge one covers all of itself and almost none of the other, and one number cannot say both.",
+      "properties": {
+        "variant": {
+          "const": "topology_intersection",
+          "title": "Variant",
+          "type": "string"
+        },
+        "pairs_examined": {
+          "minimum": 0,
+          "title": "Pairs Examined",
+          "type": "integer"
+        },
+        "intersections": {
+          "items": {
+            "$ref": "#/$defs/IntersectionRegion"
+          },
+          "title": "Intersections",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "pairs_examined"
+      ],
+      "title": "TopologyIntersectionPayload",
+      "type": "object"
+    },
     "TopologyRelation": {
       "additionalProperties": false,
       "description": "One measured relation, with the basis it rests on and the numbers behind it.",
@@ -1293,6 +3209,111 @@
       ],
       "title": "TopologyRelationSetPayload",
       "type": "object"
+    },
+    "TopologyTransition": {
+      "additionalProperties": false,
+      "description": "What changed, cited at both ends and on both sides.",
+      "properties": {
+        "transition_id": {
+          "minLength": 1,
+          "title": "Transition Id",
+          "type": "string"
+        },
+        "before": {
+          "$ref": "#/$defs/RelationState"
+        },
+        "after": {
+          "$ref": "#/$defs/RelationState"
+        },
+        "change": {
+          "$ref": "#/$defs/TransitionChange"
+        }
+      },
+      "required": [
+        "transition_id",
+        "before",
+        "after",
+        "change"
+      ],
+      "title": "TopologyTransition",
+      "type": "object"
+    },
+    "TopologyTransitionPayload": {
+      "additionalProperties": false,
+      "description": "`topology.transition` \u2014 what changed between two revisions of the same pair.\n\nA REFINEMENT CHANGES A MASK, AND EVERY RELATION THAT RESTED ON IT IS NOW ABOUT SOMETHING\nELSE. `TopologyRelation.stale` can say a relation is out of date. Only this form says what\nthe change WAS \u2014 that `meets` became `overlaps`, or that `disjoint` became `meets` \u2014 and only\na record citing four revision-pinned references can be checked by someone who was not there.",
+      "properties": {
+        "variant": {
+          "const": "topology_transition",
+          "title": "Variant",
+          "type": "string"
+        },
+        "revisions_compared": {
+          "minimum": 0,
+          "title": "Revisions Compared",
+          "type": "integer"
+        },
+        "transitions": {
+          "items": {
+            "$ref": "#/$defs/TopologyTransition"
+          },
+          "title": "Transitions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "revisions_compared"
+      ],
+      "title": "TopologyTransitionPayload",
+      "type": "object"
+    },
+    "TopologyUncertainRelationsPayload": {
+      "additionalProperties": false,
+      "description": "`topology.uncertain_relation_set` \u2014 what would be true, if that reading were right.\n\nIF THE FRAGMENTS ARE ONE OBJECT THEN IT OVERLAPS THE PLANE; IF THEY ARE TWO THEN ONE OF THEM\nIS BEHIND IT. Both are worth recording, and neither is a measurement.\n\nEVERY RELATION NAMES THE HYPOTHESIS IT HANGS ON, and that hypothesis must be one this payload\ndeclared. A conditional relation whose condition was dropped reads exactly like a measured\none \u2014 same kind, same endpoints, same numbers \u2014 which is precisely the substitution this form\nexists to make impossible.",
+      "properties": {
+        "variant": {
+          "const": "topology_uncertain_relations",
+          "title": "Variant",
+          "type": "string"
+        },
+        "pairs_examined": {
+          "minimum": 0,
+          "title": "Pairs Examined",
+          "type": "integer"
+        },
+        "hypotheses": {
+          "items": {
+            "$ref": "#/$defs/HypothesisCitation"
+          },
+          "minItems": 1,
+          "title": "Hypotheses",
+          "type": "array"
+        },
+        "relations": {
+          "items": {
+            "$ref": "#/$defs/ConditionalRelation"
+          },
+          "title": "Relations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variant",
+        "pairs_examined",
+        "hypotheses"
+      ],
+      "title": "TopologyUncertainRelationsPayload",
+      "type": "object"
+    },
+    "TransitionChange": {
+      "enum": [
+        "appeared",
+        "disappeared",
+        "changed",
+        "unchanged"
+      ],
+      "title": "TransitionChange",
+      "type": "string"
     }
   },
   "additionalProperties": false,
