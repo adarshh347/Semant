@@ -26,7 +26,22 @@ and as the `topology_relation_set` the façade measured from it. The suite runs 
 `--check` by name, so a scene edited and not regenerated fails here rather than drifting quietly.
 
 The mutation tests at the end are the other half. Each deletes one guard and asserts the deletion
-turns a named test red — a law nothing fails on is a comment.
+turns a named test red — a law nothing fails on is a comment. The counts below were MEASURED, by
+deleting each guard in the real source and re-running this file, not claimed:
+
+    guard deleted                                              tests that noticed
+    ─────────────────────────────────────────────────────────  ──────────────────
+    the direction normalisation in `_child_parent`                            9
+    the cycle detector in `containment`                                       3
+    `_nearest` returning None for incomparable holders                        5
+    `CONTACT_KINDS` restricted to `meets`                                     2
+    the canonical ordering of an undirected pair                              1
+    the same-revision check in `transition`                                   2
+    the family split in `transition`                                          2
+    the conditional ceiling in `_capped`                                     14
+    the undeclared-hypothesis check in `uncertain`                            1
+    Lane A's deferral gate, called from `production`                          4
+    the roster check that makes an endpoint dangle                            1
 """
 from __future__ import annotations
 
@@ -44,7 +59,8 @@ from backend.schemas.perception_lab import (BASIS_CEILINGS, PARTITION_CEILINGS, 
                                             EpistemicBasis, EpistemicPartition, EpistemicStatus,
                                             ExtentHypothesisSetPayload, PerceptualArtifact,
                                             RefusalCode, RelationKind, TopologyContactLocusPayload,
-                                            TopologyContainmentTreePayload, TransitionChange)
+                                            TopologyContainmentTreePayload,
+                                            TopologyUncertainRelationsPayload, TransitionChange)
 from backend.services.perception_lab import definitions as D
 from backend.services.perception_lab.topology_forms import adjacency as A
 from backend.services.perception_lab.topology_forms import containment as C
@@ -965,3 +981,298 @@ def test_the_conditional_set_is_deferred_and_says_so():
 
 def test_assembling_the_same_readings_twice_gives_the_same_conditional_set():
     assert conditional().payload.model_dump_json() == conditional().payload.model_dump_json()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# isolation: proved on the import closure, not promised in a docstring
+# ════════════════════════════════════════════════════════════════════════════
+
+PACKAGE = "backend.services.perception_lab.topology_forms"
+
+#: Everything this package may reach, transitively. Small on purpose, and asserted as an EQUALITY
+#: rather than a subset: a module added to the closure has to be added here too, by somebody who
+#: has to say why in a diff.
+ALLOWED_CLOSURE = {
+    "backend.schemas.perception_lab",
+    "backend.services.epistemics",
+    "backend.services.perception_lab",
+    "backend.services.perception_lab.contracts",
+    "backend.services.perception_lab.definitions",
+    "backend.services.role_registry",
+    "backend.services.vision_orchestrator.contracts",
+    "backend.services.vision_orchestrator.registry",
+}
+
+#: The things whose ABSENCE is the deliverable. Each one is a capability this lane would silently
+#: acquire if an import slipped in, and each is invisible in a code review that reads one file.
+FORBIDDEN = {
+    "extent": ("backend.services.perception_lab.extent",
+               "backend.services.perception_lab.extent_metrics"),
+    "depth": ("backend.services.depth_organ",),
+    "the organs that measure": ("backend.services.nestedness_organ",
+                                "backend.services.adjacency_organ",
+                                "backend.services.occlusion_organ",
+                                "backend.services.mask_geometry",
+                                "backend.services.region_geometry",
+                                "backend.services.perception_lab.topology",
+                                "backend.services.perception_lab.topology_evidence"),
+    "the database": ("backend.database", "backend.services.perception_lab.mongo_store",
+                     "backend.services.perception_lab.store"),
+    "the ledger and the wire": ("backend.routers", "backend.services.perception_lab.live",
+                                "backend.services.perception_lab.orchestrator"),
+}
+
+
+def _module_path(module: str) -> Optional[Path]:
+    direct = REPO_ROOT / (module.replace(".", "/") + ".py")
+    if direct.exists():
+        return direct
+    package = REPO_ROOT / module.replace(".", "/") / "__init__.py"
+    return package if package.exists() else None
+
+
+def closure(root: str) -> set:
+    """Every `backend.*` module reachable from `root` by following imports, statically.
+
+    STATICALLY, and that is the point. Asserting at runtime that no adapter was called proves the
+    call did not happen on that path; walking the closure proves there IS no path. The two questions
+    are different and only the second is a property of the code.
+    """
+    seen: set = set()
+    stack = [root]
+    while stack:
+        module = stack.pop()
+        if module in seen:
+            continue
+        seen.add(module)
+        path = _module_path(module)
+        if path is None:
+            continue
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                stack.extend(a.name for a in node.names if a.name.startswith("backend"))
+            elif isinstance(node, ast.ImportFrom):
+                if node.module and node.module.startswith("backend"):
+                    stack.append(node.module)
+                    stack.extend(f"{node.module}.{a.name}" for a in node.names)
+    return {m for m in seen if _module_path(m)}
+
+
+def test_these_producers_cannot_reach_extent_depth_a_database_or_a_post():
+    """The isolation claim, as a fact about the import graph.
+
+    Topology consumes SUPPLIED extents — Lane C's rule, inherited here without softening. An organ
+    that quietly ran another would make every verdict a verdict about two, and the only way to be
+    sure it cannot is that there is no path by which it could.
+    """
+    reached = closure(PACKAGE)
+    outside = {m for m in reached if not m.startswith(PACKAGE)}
+    assert outside == ALLOWED_CLOSURE, (
+        f"reached {sorted(outside - ALLOWED_CLOSURE)} that is not allowed, and did not reach "
+        f"{sorted(ALLOWED_CLOSURE - outside)} that was")
+    for what, modules in FORBIDDEN.items():
+        for module in modules:
+            assert module not in reached, f"{PACKAGE} can reach {what}: {module}"
+
+
+def test_nothing_in_this_package_writes_anything_anywhere():
+    """No store, no post, no ledger, no file. Read as source rather than exercised, because the
+    guarantee is about every path and a test can only walk the ones it thinks of."""
+    forbidden = ("insert_one", "update_one", "replace_one", "delete_one", "bulk_write",
+                 "requests.", "httpx.", "open(", "Path(", "os.environ")
+    for path in sorted((REPO_ROOT / PACKAGE.replace(".", "/")).glob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        for needle in forbidden:
+            assert needle not in source, f"{path.name} contains {needle!r}"
+
+
+def test_no_producer_mints_an_artifact():
+    """These are producers of FORMS, not of artifacts. Minting one is where the deferred gate and
+    the operation gate bite, and both live in Lane A."""
+    for path in sorted((REPO_ROOT / PACKAGE.replace(".", "/")).glob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        assert "PerceptualArtifact(" not in source, f"{path.name} constructs an artifact"
+
+
+def test_the_four_producers_all_run_and_report_their_verdict():
+    """One pass over all four, so a producer that stopped returning a `FormProduction` is caught
+    here rather than in whichever suite happened to touch it."""
+    roster = piers_roster()
+    productions = [
+        tree(fixture("relations.forest.json")),
+        graph(fixture("relations.piers.json"), roster=roster),
+        transitions("relations.revision-0.json", "relations.revision-1.json"),
+        conditional(),
+    ]
+    for production in productions:
+        assert production.payload is not None
+        assert production.form_key in D.forms()
+        assert production.producible is (D.form(production.form_key).state != "deferred")
+        assert production.input_artifact_ids
+        assert STATUS_ORDER[production.ceiling] <= STATUS_ORDER[
+            EpistemicStatus(D.form(production.form_key).epistemic_ceiling)]
+    assert [p.producible for p in productions] == [True, True, False, False]
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# mutation tests: break a rule, watch it fail
+# ════════════════════════════════════════════════════════════════════════════
+
+
+def test_mutation_a_direction_ignoring_containment_builds_the_wrong_tree(monkeypatch):
+    """DIRECTION GUARD. `_child_parent` is the one place the two spellings are reconciled.
+
+    Deleting it — reading every relation as if it were `nested_within` — inverts every `contains`
+    edge in the forest, and the tree comes out upside down with the basin at the root.
+    """
+    monkeypatch.setattr(C, "_child_parent",
+                        lambda r: (endpoint_key(r.source), endpoint_key(r.target)))
+    mutated = tree(fixture("relations.forest.json"))
+    assert set(mutated.payload.root_node_ids) == {key(FOREST, "basin"), key(FOREST, "niche")}, \
+        "with the direction dropped, the smallest shapes become the roots"
+    assert parents(mutated) != parents(tree(inverted(fixture("relations.forest.json")))), \
+        "and the inverse-equivalence test stops holding, which is the test that would go red"
+
+
+def test_mutation_dropping_the_cycle_guard_makes_the_payload_unbuildable(monkeypatch):
+    """CYCLE GUARD. Lane A's `_acyclic` refuses a payload containing a loop.
+
+    So a producer that stopped detecting cycles would not publish a wrong tree — it would fail to
+    publish anything at all, loudly, which is why the guard is here and not only there.
+    """
+    monkeypatch.setattr(C, "_cyclic_nodes", lambda candidates: set())
+    doc = relation_artifact([relation("contains", "a", "b"), relation("contains", "b", "a")],
+                            pairs_examined=1)
+    with pytest.raises(Exception) as raised:
+        tree(doc)
+    assert "cycle" in str(raised.value)
+
+
+def test_mutation_picking_the_first_candidate_parent_asserts_a_nesting_nobody_measured(monkeypatch):
+    """AMBIGUITY GUARD. `_nearest` returns None when the candidates are incomparable.
+
+    Making it choose gives `inner` a parent that half the evidence contradicts — and the record
+    would be indistinguishable from one where the nesting was unambiguous.
+    """
+    monkeypatch.setattr(C, "_nearest", lambda offered, candidates, held: sorted(offered)[0])
+    mutated = tree(fixture("relations.ambiguous.json"))
+    assert parents(mutated)[key(AMBIGUOUS, "inner")] == key(AMBIGUOUS, "left_hall")
+    assert mutated.conflicts == (), "the ambiguity has vanished from the record entirely"
+
+
+def test_mutation_counting_apartness_as_connectivity_loses_the_island(monkeypatch):
+    """CONTACT GUARD. The graph records `disjoint` findings, so it is connected under "was
+    compared to". Widening `CONTACT_KINDS` says every shape in the scene touches every other."""
+    monkeypatch.setattr(A, "CONTACT_KINDS",
+                        frozenset({RelationKind.MEETS, RelationKind.DISJOINT}))
+    mutated = graph(fixture("relations.piers.json"), roster=piers_roster())
+    assert mutated.isolated == ()
+    assert len(mutated.contact_components) == 1, "the island has been absorbed by its own apartness"
+
+
+def test_mutation_keeping_the_measured_order_doubles_every_undirected_edge(monkeypatch):
+    """SYMMETRY GUARD. `_pair` sorts the ends of an undirected relation so one finding lands on one
+    edge id. Without it a scene reads twice as densely connected as it was measured to be."""
+    monkeypatch.setattr(A, "_pair", lambda r: (endpoint_key(r.source), endpoint_key(r.target)))
+    both = relation_artifact([relation("meets", "x", "y", directed=False),
+                              relation("meets", "y", "x", directed=False)], pairs_examined=1)
+    mutated = graph(both)
+    assert len(mutated.payload.edges) == 2, "one measured finding, recorded twice"
+
+
+def test_mutation_unpinning_the_revisions_leaves_no_transition_at_all(monkeypatch):
+    """REVISION GUARD. A transition is a statement about two revisions.
+
+    Flattening every reference to one revision makes the before and after cite the same pair
+    twice — which Lane A reads as a re-measurement and refuses, and which this producer therefore
+    reports as `revision_unchanged` instead of publishing.
+    """
+    real = X._revision
+    monkeypatch.setattr(X, "_revision",
+                        lambda e: real(e).model_copy(update={"geometry_rev": 0}))
+    mutated = transitions("relations.revision-0.json", "relations.revision-1.json")
+    assert mutated.payload.transitions == []
+    assert mutated.unchanged_pairs, "the change is gone and only its absence is recorded"
+
+
+def test_mutation_merging_the_families_loses_the_finding_that_matters(monkeypatch):
+    """FAMILY GUARD. Nesting and planarity are asked separately because a pair holds both at once.
+
+    Merged, the one-pixel control is `nested_within` + `meets` + `overlaps` in one family, the
+    state is ambiguous, and the disappearance of the containment — the whole finding — is dropped.
+    """
+    monkeypatch.setattr(X, "FAMILIES", {"everything": frozenset(RelationKind)})
+    mutated = transitions("relations.one-pixel-0.json", "relations.one-pixel-1.json")
+    assert mutated.payload.transitions == []
+    assert mutated.omissions_for("ambiguous_state")
+
+
+def test_mutation_a_conditional_relation_that_kept_its_measured_status_does_not_validate(monkeypatch):
+    """HYPOTHESIS CEILING. `_capped` is this producer's half; `ConditionalRelation` is Lane A's.
+
+    Removing ours does not publish an over-claiming record — it fails to publish, because the
+    schema refuses a conditional relation that calls itself `measured`. Both halves exist so that
+    neither is the only thing standing there.
+    """
+    monkeypatch.setattr(U, "_capped", lambda relation: relation.epistemic_status)
+    with pytest.raises(Exception) as raised:
+        conditional()
+    assert "may not be" in str(raised.value) or "measured" in str(raised.value)
+
+
+def test_mutation_a_relation_whose_condition_was_dropped_does_not_validate():
+    """HYPOTHESIS GUARD, from the record's side. A condition nobody can look up has been dropped,
+    and a dropped condition reads exactly like a measurement."""
+    from pydantic import ValidationError
+
+    good = conditional().payload
+    doc = json.loads(good.model_dump_json())
+    doc["relations"][0]["conditioned_on"] = "alt_never_declared"
+    with pytest.raises(ValidationError) as raised:
+        TopologyUncertainRelationsPayload.model_validate(doc)
+    assert "does not declare" in str(raised.value)
+
+
+def test_mutation_calling_every_finding_stable_does_not_change_the_payload(monkeypatch):
+    """The split is a reading OF the payload and never a part of it, so breaking the split cannot
+    corrupt the record. This is the mutation that must NOT propagate."""
+    honest = conditional().payload.model_dump_json()
+    monkeypatch.setattr(U, "_split", lambda seen: (("everything",), ()))
+    mutated = conditional()
+    assert mutated.stable == ("everything",)
+    assert mutated.payload.model_dump_json() == honest
+
+
+def test_mutation_removing_the_deferral_gate_would_make_two_forms_writable(monkeypatch):
+    """DEFERRAL GATE. Lane A's `check_form_producible` is the only thing holding `topology.transition`
+    and `topology.uncertain_relation_set` shut in this deployment, and these producers do not
+    duplicate it — they call it."""
+    assert transitions("relations.revision-0.json",
+                       "relations.revision-1.json").producible is False
+    monkeypatch.setattr("backend.services.perception_lab.topology_forms.production."
+                        "D.check_form_producible", lambda form_key, **kw: None)
+    opened = transitions("relations.revision-0.json", "relations.revision-1.json")
+    assert opened.producible is True
+    assert opened.writable_payload is not None
+    assert not [r for r in opened.refusals if r.code is RefusalCode.FORM_NOT_PRODUCIBLE]
+
+
+def test_mutation_a_containment_node_over_its_basis_ceiling_does_not_validate():
+    from pydantic import ValidationError
+
+    from backend.schemas.perception_lab import ContainmentNode, RelationEndpoint
+    endpoint = RelationEndpoint(artifact_id="a", instance_id="i", scope="session")
+    with pytest.raises(ValidationError):
+        ContainmentNode(node_id="n", endpoint=endpoint, parent_node_id=None,
+                        basis=EpistemicBasis.BOX, epistemic_status=EpistemicStatus.MEASURED)
+
+
+def test_mutation_a_graph_edge_naming_a_node_the_graph_does_not_hold_does_not_validate():
+    from pydantic import ValidationError
+
+    good = graph(fixture("relations.piers.json"), roster=piers_roster()).payload
+    doc = json.loads(good.model_dump_json())
+    doc["edges"][0]["target_node_id"] = "art_elsewhere#inst_9"
+    with pytest.raises(ValidationError) as raised:
+        A.TopologyAdjacencyGraphPayload.model_validate(doc)
+    assert "does not" in str(raised.value)
