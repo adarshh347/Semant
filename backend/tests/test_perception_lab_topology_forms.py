@@ -42,8 +42,10 @@ import pytest
 
 from backend.schemas.perception_lab import (BASIS_CEILINGS, STATUS_ORDER, EpistemicBasis,
                                             EpistemicStatus, PerceptualArtifact, RefusalCode,
-                                            RelationKind, TopologyContainmentTreePayload)
+                                            RelationKind, TopologyContactLocusPayload,
+                                            TopologyContainmentTreePayload)
 from backend.services.perception_lab import definitions as D
+from backend.services.perception_lab.topology_forms import adjacency as A
 from backend.services.perception_lab.topology_forms import containment as C
 from backend.services.perception_lab.topology_forms.sources import Roster, endpoint_key
 
@@ -127,6 +129,26 @@ def inverted(doc: Dict[str, Any]) -> Dict[str, Any]:
             rel["kind"] = flip[rel["kind"]]
             rel["source"], rel["target"] = rel["target"], rel["source"]
     return out
+
+
+def S_locus(*, key_a: str, key_b: str) -> TopologyContactLocusPayload:
+    """A recorded contact band for one pair.
+
+    Built as a payload rather than an artifact, and that is not a shortcut: `topology.contact_locus`
+    is produced by no operation, so `PerceptualArtifact` refuses to carry one and there is no
+    arrangement of this fixture that could be an artifact today.
+    """
+    def end(key: str) -> Dict[str, Any]:
+        artifact_id, instance_id = key.split("#")
+        return {"artifact_id": artifact_id, "instance_id": instance_id, "scope": "session",
+                "region_id": None, "geometry_rev": None}
+    return TopologyContactLocusPayload.model_validate({
+        "variant": "topology_contact_locus", "pairs_examined": 1,
+        "loci": [{"locus_id": "locus_1", "source": end(key_a), "target": end(key_b),
+                  "raster_shape": [40, 60], "contact_pixels": 24, "basis": "mask",
+                  "epistemic_status": "measured",
+                  "mask_rle": {"size": [40, 60], "counts": [1200, 24, 1176]},
+                  "points": [[0.26, 0.1], [0.26, 0.5]]}]})
 
 
 def tree(*sets: Dict[str, Any], roster: Optional[Roster] = None) -> C.ContainmentReading:
@@ -442,3 +464,200 @@ def test_assembling_the_same_relations_twice_gives_the_same_tree():
     assert first.payload.model_dump_json() == second.payload.model_dump_json()
     assert first.implied == second.implied
     assert first.ceiling == second.ceiling
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# the adjacency graph: what touches what, across the whole scene
+# ════════════════════════════════════════════════════════════════════════════
+
+
+def graph(*sets: Dict[str, Any], roster: Optional[Roster] = None,
+          loci: Sequence[Any] = (), max_nodes: Optional[int] = None) -> A.AdjacencyReading:
+    return A.produce_adjacency_graph(list(sets), roster=roster, loci=loci, max_nodes=max_nodes)
+
+
+def piers_roster() -> Roster:
+    return Roster.of([fixture("extent-set.piers.json")])
+
+
+def edge_between(reading: A.AdjacencyReading, kind: str, a: str, b: str) -> Any:
+    wanted = {key(PIERS, a), key(PIERS, b)}
+    found = [e for e in reading.payload.edges
+             if e.kind.value == kind and {e.source_node_id, e.target_node_id} == wanted]
+    assert len(found) == 1, f"expected one {kind} edge between {a} and {b}, got {len(found)}"
+    return found[0]
+
+
+def test_the_row_of_piers_becomes_one_chain_and_an_island():
+    """The nave at Wells, at 40x60. The repeated structure exists only in the assembly."""
+    reading = graph(fixture("relations.piers.json"), roster=piers_roster())
+    assert reading.producible
+    assert [n.node_id for n in reading.payload.nodes] == [
+        key(PIERS, i) for i in ("pier_1", "pier_2", "pier_3", "pier_4", "island")]
+    assert reading.contact_components == (
+        tuple(key(PIERS, i) for i in ("pier_1", "pier_2", "pier_3", "pier_4")),
+        (key(PIERS, "island"),))
+    assert reading.isolated == (key(PIERS, "island"),)
+
+
+def test_connectivity_is_asked_of_contact_alone():
+    """The graph also records `disjoint` findings, so it is connected under "was compared to".
+
+    Reporting that as connectivity would tell a reader that everything in the scene touches
+    everything else — which is the opposite of what ten pairs of measurements found.
+    """
+    reading = graph(fixture("relations.piers.json"), roster=piers_roster())
+    assert any(e.kind is RelationKind.DISJOINT and key(PIERS, "island") in
+               (e.source_node_id, e.target_node_id) for e in reading.payload.edges)
+    assert reading.isolated == (key(PIERS, "island"),), \
+        "the island has four disjoint edges and touches nothing"
+
+
+def test_an_undirected_relation_is_one_edge_however_it_was_spelled():
+    """Adjacency symmetry. `A meets B` and `B meets A` are one finding, and a graph that kept both
+    would report a scene twice as densely connected as it was measured to be."""
+    both = relation_artifact([relation("meets", "x", "y", directed=False),
+                              relation("meets", "y", "x", directed=False)], pairs_examined=1)
+    reading = graph(both)
+    assert len(reading.payload.edges) == 1
+    edge, = reading.payload.edges
+    assert (edge.source_node_id, edge.target_node_id) == (key(FOREST, "x"), key(FOREST, "y")), \
+        "the pair is recorded in a canonical order, so one finding lands on one edge id"
+    assert edge.directed is False
+    assert [o.reason for o in reading.omitted] == ["duplicate"]
+
+
+def test_a_directed_relation_keeps_the_arrow_that_is_its_claim():
+    """`nested_within` says which of the two is inside the other. Sorting that pair would lose the
+    only thing the measurement found."""
+    doc = relation_artifact([relation("nested_within", "z_inner", "a_outer")], pairs_examined=1)
+    edge, = graph(doc).payload.edges
+    assert edge.directed is True
+    assert edge.source_node_id == key(FOREST, "z_inner")
+    assert edge.target_node_id == key(FOREST, "a_outer"), \
+        "sorted() would have swapped these two and inverted the claim"
+
+
+def test_two_instances_a_person_called_the_same_thing_stay_two_nodes():
+    """`pier_1` and `pier_2` both carry the human label "pier".
+
+    A graph that merged them by name would assert one edge where two were measured, and the
+    assertion would be invisible: the merged node would look exactly like a measured one.
+    """
+    scene = fixture("extent-set.piers.json")
+    labels = [i["naming"]["text"] for i in scene["measurement"]["payload"]["instances"]
+              if i.get("naming")]
+    assert labels == ["pier", "pier"], "the control is only a control if the labels collide"
+
+    reading = graph(fixture("relations.piers.json"), roster=piers_roster())
+    assert key(PIERS, "pier_1") in {n.node_id for n in reading.payload.nodes}
+    assert key(PIERS, "pier_2") in {n.node_id for n in reading.payload.nodes}
+    assert "pier\"" not in json.dumps(json.loads(reading.payload.model_dump_json())), \
+        "no label reaches the graph at all"
+
+
+def test_a_node_id_is_the_key_the_browser_already_builds():
+    """Lane E's `relationGraph` keys nodes `${artifact_id}#${instance_id}`.
+
+    Matching it is what makes the browser's DERIVED graph a check against a recorded one rather
+    than a second graph sitting beside it.
+    """
+    reading = graph(fixture("relations.piers.json"), roster=piers_roster())
+    for node in reading.payload.nodes:
+        assert node.node_id == f"{node.endpoint.artifact_id}#{node.endpoint.instance_id}"
+
+
+def test_a_declared_member_nothing_touches_is_still_in_the_graph():
+    """"Nothing touches it" and "it was never in the set" are different findings, and only a
+    declared roster can tell them apart."""
+    only_piers = relation_artifact(
+        [relation("meets", "pier_1", "pier_2", artifact=PIERS, directed=False)],
+        pairs_examined=10)
+    with_roster = graph(only_piers, roster=piers_roster())
+    assert key(PIERS, "island") in {n.node_id for n in with_roster.payload.nodes}
+    assert key(PIERS, "island") in with_roster.isolated
+
+    without = graph(only_piers)
+    assert {n.node_id for n in without.payload.nodes} == {key(PIERS, "pier_1"),
+                                                          key(PIERS, "pier_2")}
+    assert without.bounded_to is None, "no roster is not a bound of zero"
+
+
+def test_a_bounded_graph_names_every_member_it_left_out():
+    """A truncated graph that said nothing about the truncation would read as coverage, which is
+    the one thing a scene-wide record must never do."""
+    reading = graph(fixture("relations.piers.json"), roster=piers_roster(), max_nodes=3)
+    assert len(reading.payload.nodes) == 3
+    dropped = {o.what for o in reading.omissions_for("bound_exceeded")}
+    assert key(PIERS, "pier_4") in dropped and key(PIERS, "island") in dropped
+    assert all(e.source_node_id in {n.node_id for n in reading.payload.nodes}
+               for e in reading.payload.edges)
+    assert reading.payload.pairs_examined == 10, \
+        "ten pairs were still examined; the bound is on the graph, not on the measurement"
+
+
+def test_an_endpoint_outside_the_roster_is_refused_rather_than_admitted():
+    doc = relation_artifact([relation("meets", "pier_1", "ghost", artifact=PIERS, directed=False)],
+                            pairs_examined=1)
+    reading = graph(doc, roster=piers_roster())
+    refusal, = reading.refusals
+    assert refusal.code is RefusalCode.UNKNOWN_REFERENCE
+    assert reading.payload.edges == []
+    assert [o.what for o in reading.omissions_for("endpoint_dangling")] == [key(PIERS, "ghost")]
+
+
+def test_every_edge_names_two_nodes_the_graph_holds():
+    """Lane A refuses a payload whose edge names an unlisted node, so this asserts the producer
+    never builds one — including under a bound, which is where it would be easiest to."""
+    for reading in (graph(fixture("relations.piers.json"), roster=piers_roster()),
+                    graph(fixture("relations.piers.json"), roster=piers_roster(), max_nodes=2),
+                    graph(fixture("relations.forest.json"))):
+        held = {n.node_id for n in reading.payload.nodes}
+        for edge in reading.payload.edges:
+            assert {edge.source_node_id, edge.target_node_id} <= held
+            assert edge.source_node_id != edge.target_node_id
+
+
+def test_an_edge_cites_a_recorded_band_and_never_carries_one():
+    """A graph able to hold geometry is a graph able to disagree with the measurement it depicts.
+
+    The locus arrives as an `(artifact_id, payload)` pair rather than as an artifact, because
+    `topology.contact_locus` is produced by no operation and `PerceptualArtifact` therefore refuses
+    to carry one. See `sources.carried`.
+    """
+    locus_payload = S_locus(key_a=key(PIERS, "pier_1"), key_b=key(PIERS, "pier_2"))
+    reading = graph(fixture("relations.piers.json"), roster=piers_roster(),
+                    loci=[("art_locus_1", locus_payload)])
+    touching = edge_between(reading, "meets", "pier_1", "pier_2")
+    assert touching.locus_artifact_id == "art_locus_1"
+    assert edge_between(reading, "meets", "pier_2", "pier_3").locus_artifact_id is None
+
+    drawn = json.dumps(json.loads(reading.payload.model_dump_json()))
+    assert "mask_rle" not in drawn and "counts" not in drawn
+
+
+def test_the_edge_keeps_the_numbers_the_relation_measured():
+    reading = graph(fixture("relations.piers.json"), roster=piers_roster())
+    touching = edge_between(reading, "meets", "pier_1", "pier_2")
+    assert touching.measurements["contact_pixels"] > 0
+    measured = next(r for r in fixture("relations.piers.json")["measurement"]["payload"]["relations"]
+                    if r["kind"] == "meets" and r["source"]["instance_id"] == "pier_1")
+    assert touching.measurements == measured["measurements"]
+
+
+def test_a_box_basis_edge_stays_interpretive_in_the_graph_too():
+    doc = relation_artifact([relation("meets", "a", "b", basis="box", status="interpretive",
+                                      directed=False)],
+                            pairs_examined=1, basis="box", status="interpretive")
+    reading = graph(doc)
+    edge, = reading.payload.edges
+    assert edge.basis is EpistemicBasis.BOX
+    assert edge.epistemic_status is EpistemicStatus.INTERPRETIVE
+    assert reading.ceiling is EpistemicStatus.INTERPRETIVE
+
+
+def test_assembling_the_same_scene_twice_gives_the_same_graph():
+    first = graph(fixture("relations.piers.json"), roster=piers_roster())
+    second = graph(fixture("relations.piers.json"), roster=piers_roster())
+    assert first.payload.model_dump_json() == second.payload.model_dump_json()
+    assert first.contact_components == second.contact_components

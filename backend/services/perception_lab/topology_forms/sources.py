@@ -61,6 +61,34 @@ def as_artifact(supplied: Supplied) -> PerceptualArtifact:
     return PerceptualArtifact.model_validate(dict(supplied))
 
 
+#: An input that may arrive as a whole artifact, or as the artifact id it WILL have beside the
+#: payload it carries. See `carried` for why the second form has to exist.
+Carried = Union[Supplied, Tuple[str, Any]]
+
+
+def carried(supplied: Carried) -> Tuple[str, Any]:
+    """The artifact id and the payload, from either an artifact or a declared `(id, payload)` pair.
+
+    THE PAIR FORM EXISTS BECAUSE OF THE DEFERRAL, and it is not a convenience. Two of the input
+    forms these producers declare — `extent.hypothesis_set` and `topology.contact_locus` — cannot
+    be carried by any artifact in this deployment: `PerceptualArtifact` refuses a form no operation
+    declares, and no operation declares either of those. A producer that accepted only artifacts
+    could therefore never be handed the very inputs its contract entry says it reads, and the two
+    accepted-input declarations would be undeliverable rather than merely unused.
+
+    So the pair form takes the payload and the id the artifact WILL have. It is not a way round the
+    gate: nothing here mints an artifact, and the producing form's own deferral is checked
+    separately and reported on the production. It is the only shape in which a deferred input can
+    reach a producer at all, and the alternative was to leave two declared inputs untestable until
+    a later phase makes them constructible.
+    """
+    if isinstance(supplied, tuple):
+        artifact_id, payload = supplied
+        return str(artifact_id), payload
+    artifact = as_artifact(supplied)
+    return artifact.identity.artifact_id, artifact.measurement.payload
+
+
 def endpoint_key(endpoint: Union[RelationEndpoint, RevisionRef]) -> str:
     """`art_x#inst_y` — the composite Lane E's browser graph already keys on.
 
@@ -125,21 +153,31 @@ class HypothesisSet:
     form_key: str = "extent.hypothesis_set"
 
     @classmethod
-    def of(cls, supplied: Supplied) -> "HypothesisSet":
-        artifact = as_artifact(supplied)
-        payload = artifact.measurement.payload
+    def of(cls, supplied: Carried, *, epistemic_status: EpistemicStatus = EpistemicStatus.UNCERTAIN,
+           epistemic_basis: EpistemicBasis = EpistemicBasis.MASK) -> "HypothesisSet":
+        """The set, from an artifact or from the `(id, payload)` pair a deferred form must use.
+
+        The two status arguments are read off the artifact when there is one and default to the
+        weakest reading when there is not — an unresolved alternative is `uncertain` by
+        `PARTITION_CEILINGS`, so defaulting anywhere stronger would let the pair form claim
+        something the artifact form could not.
+        """
+        artifact_id, payload = carried(supplied)
+        if not isinstance(supplied, tuple):
+            artifact = as_artifact(supplied)
+            epistemic_status = artifact.measurement.epistemic_status
+            epistemic_basis = artifact.measurement.epistemic_basis
         if payload is None or payload.variant != "extent_hypothesis_set":
             raise NotARelationSet(
-                f"artifact {artifact.identity.artifact_id!r} carries "
-                f"{artifact.measurement.payload_variant.value!r}, and a conditional relation set "
-                f"hangs on extent hypotheses. Supply an extent.hypothesis_set artifact.")
-        return cls(artifact_id=artifact.identity.artifact_id,
+                f"artifact {artifact_id!r} carries "
+                f"{getattr(payload, 'variant', None)!r}, and a conditional relation set hangs on "
+                f"extent hypotheses. Supply an extent.hypothesis_set.")
+        return cls(artifact_id=artifact_id,
                    alternatives=tuple(payload.alternatives),
                    alternatives_considered=int(payload.alternatives_considered),
                    question=payload.question,
                    weights_are_probabilities=bool(payload.weights_are_probabilities),
-                   epistemic_status=artifact.measurement.epistemic_status,
-                   epistemic_basis=artifact.measurement.epistemic_basis)
+                   epistemic_status=epistemic_status, epistemic_basis=epistemic_basis)
 
     @property
     def ids(self) -> Tuple[str, ...]:
@@ -261,5 +299,6 @@ class Reading:
         return tuple(r for r in self.relations if r.kind in wanted)
 
 
-__all__ = ["Supplied", "NotARelationSet", "as_artifact", "endpoint_key", "revision_key",
+__all__ = ["Supplied", "Carried", "carried", "NotARelationSet", "as_artifact",
+           "endpoint_key", "revision_key",
            "RelationSet", "HypothesisSet", "Roster", "NO_ROSTER", "Reading"]
