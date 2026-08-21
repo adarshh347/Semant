@@ -39,9 +39,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
-from backend.schemas.perception_lab import (EpistemicBasis, EpistemicStatus, PerceptualArtifact,
-                                            RelationEndpoint, RelationKind, RevisionRef,
-                                            TopologyRelation)
+from backend.schemas.perception_lab import (EpistemicBasis, EpistemicStatus, IdentityScope,
+                                            PerceptualArtifact, RelationEndpoint, RelationKind,
+                                            RevisionRef, TopologyRelation)
 
 #: The artifact this package accepts, in either shape a caller may hold it: the typed record, or
 #: the JSON it crossed the wire as. Both are validated through `PerceptualArtifact` before a single
@@ -147,6 +147,68 @@ class HypothesisSet:
 
 
 @dataclass(frozen=True)
+class Roster:
+    """The endpoints a caller DECLARES a structure may hold, read off supplied extent artifacts.
+
+    THE BOUND AND THE DANGLING CHECK ARE ONE OBJECT, because they are one question asked from two
+    sides. "Which members is this graph over?" and "does this relation cite something nobody
+    supplied?" have the same answer, and two separate mechanisms would eventually disagree about
+    it.
+
+    A ROSTER IS OPTIONAL, AND ITS ABSENCE MEANS SOMETHING DIFFERENT FROM AN EMPTY ONE. Without a
+    roster a structure is over exactly the endpoints its relations cite, and nothing can dangle
+    because nothing was declared. With one, an endpoint outside it is refused rather than quietly
+    admitted — and a declared member that no relation mentions stays visible as an isolated node,
+    which is how a disconnected graph tells the difference between "nothing touches it" and "it
+    was never in the set".
+
+    THE INSTANCES ARE READ, THE MASKS ARE NOT. This lane never looks at geometry; it takes the
+    identity and the revision and leaves the pixels where they are.
+    """
+    keys: Tuple[str, ...]
+    endpoints: Mapping[str, RelationEndpoint]
+    artifact_ids: Tuple[str, ...]
+
+    @classmethod
+    def of(cls, supplied: Sequence[Supplied]) -> "Roster":
+        keys: List[str] = []
+        endpoints: Dict[str, RelationEndpoint] = {}
+        artifact_ids: List[str] = []
+        for one in supplied:
+            artifact = as_artifact(one)
+            payload = artifact.measurement.payload
+            if payload is None or payload.variant != "extent_set":
+                raise NotARelationSet(
+                    f"a roster is read off extent sets; artifact "
+                    f"{artifact.identity.artifact_id!r} carries "
+                    f"{artifact.measurement.payload_variant.value!r}")
+            artifact_ids.append(artifact.identity.artifact_id)
+            for instance in payload.instances:
+                endpoint = RelationEndpoint(
+                    artifact_id=artifact.identity.artifact_id,
+                    instance_id=instance.instance_id,
+                    scope=(IdentityScope.CANONICAL if instance.region_id
+                           else artifact.identity.identity_scope),
+                    region_id=instance.region_id, geometry_rev=instance.geometry_rev)
+                key = endpoint_key(endpoint)
+                if key not in endpoints:
+                    keys.append(key)
+                    endpoints[key] = endpoint
+        return cls(keys=tuple(keys), endpoints=endpoints, artifact_ids=tuple(artifact_ids))
+
+    def holds(self, key: str) -> bool:
+        return key in self.endpoints
+
+    def __len__(self) -> int:
+        return len(self.keys)
+
+
+#: What a producer means by "no roster was declared". Distinct from an empty roster, which is a
+#: caller saying the structure may hold nothing at all.
+NO_ROSTER: Optional[Roster] = None
+
+
+@dataclass(frozen=True)
 class Reading:
     """Every relation supplied to one producer, with the artifacts they came from.
 
@@ -200,4 +262,4 @@ class Reading:
 
 
 __all__ = ["Supplied", "NotARelationSet", "as_artifact", "endpoint_key", "revision_key",
-           "RelationSet", "HypothesisSet", "Reading"]
+           "RelationSet", "HypothesisSet", "Roster", "NO_ROSTER", "Reading"]

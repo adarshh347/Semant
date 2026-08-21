@@ -1,0 +1,128 @@
+{
+  "identity": {
+    "artifact_id": "art_forms_rel_rev_0",
+    "session_id": "labs_topology_forms",
+    "run_id": "run_rev_0",
+    "step_id": "step_pairs",
+    "organ_family": "topology",
+    "artifact_kind": "topology_relation_set",
+    "form": null,
+    "operation": "topology.all_pairs",
+    "identity_scope": "session",
+    "identity_refs": [
+      {
+        "region_id": "reg_bar",
+        "geometry_rev": 0,
+        "scope": "canonical"
+      },
+      {
+        "region_id": "reg_post",
+        "geometry_rev": 0,
+        "scope": "canonical"
+      }
+    ],
+    "input_refs": [
+      {
+        "role": "members",
+        "scope": "session",
+        "artifact_id": "art_forms_revision",
+        "instance_id": "bar",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      {
+        "role": "members",
+        "scope": "session",
+        "artifact_id": "art_forms_revision",
+        "instance_id": "post",
+        "region_id": null,
+        "geometry_rev": null
+      }
+    ],
+    "derived_from": [
+      "art_forms_revision"
+    ]
+  },
+  "measurement": {
+    "payload_variant": "topology_relation_set",
+    "payload": {
+      "variant": "topology_relation_set",
+      "pairs_examined": 1,
+      "relations": [
+        {
+          "relation_id": "rel_398846a99e63",
+          "kind": "disjoint",
+          "source": {
+            "artifact_id": "art_forms_revision",
+            "instance_id": "bar",
+            "scope": "canonical",
+            "region_id": "reg_bar",
+            "geometry_rev": 0
+          },
+          "target": {
+            "artifact_id": "art_forms_revision",
+            "instance_id": "post",
+            "scope": "canonical",
+            "region_id": "reg_post",
+            "geometry_rev": 0
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.0,
+            "contact_pixels": 0.0,
+            "source_perimeter_pixels": 56.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 3.0,
+            "clearance_normalized": 0.041603,
+            "nearest_x": 0.325,
+            "nearest_y": 0.2625,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02
+          },
+          "stale": false
+        }
+      ],
+      "bounded_to": 2
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "measured",
+    "epistemic_basis": "mask",
+    "partition": null,
+    "basis_detail": "2 extents, 1 unordered pairs, families ['adjacency', 'containment', 'overlap', 'separation']"
+  },
+  "projection": {
+    "projection_kind": "relation_graph",
+    "hints": {
+      "palette_role": "relation",
+      "emphasis": "primary",
+      "legend": "measured \u2014 read the basis before the number"
+    }
+  },
+  "interpretation": {
+    "label": null,
+    "label_source": "none",
+    "epistemic_status": "uncertain",
+    "notes": "1 relation(s) over 1 pair(s) of 2 extents"
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "changed_at": "2026-08-10T12:00:00Z",
+    "changed_by": "perception_lab"
+  },
+  "provenance": {
+    "producer_kind": "adapter",
+    "producer": "topology_facade",
+    "adapter": "mask_arithmetic",
+    "model": null,
+    "revision": null,
+    "source_image_digest": "sha256:70909a17c0d5e4b2",
+    "started_at": null,
+    "completed_at": null,
+    "duration_ms": null,
+    "device": null,
+    "peak_memory_mb": null
+  }
+}
