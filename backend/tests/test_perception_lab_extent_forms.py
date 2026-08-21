@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Sequence
 import pytest
 from pydantic import ValidationError
 
+from backend.schemas import perception_lab as S
 from backend.schemas.perception_lab import (ExtentInstance, ExtentSetPayload, PerceptualForm,
                                             RefusalCode, RingWinding)
 from backend.services.mask_geometry import polygons_to_bits, rle_encode
@@ -275,10 +276,11 @@ def test_a_malformed_mask_reaches_no_form_at_all():
 def test_a_box_only_instance_is_not_traced_and_is_not_silently_absent_either():
     """GroundingDINO returns boxes. There is no boundary of a box worth tracing, and dropping the
     instance without saying so would make a partial answer look like a complete one."""
-    payload = ExtentSetPayload(variant="extent_set", searched="every separable instance", instances=[
-        ExtentInstance(instance_id="inst_1", mask_rle=mask(DONUT), geometry_rev=1),
-        ExtentInstance(instance_id="inst_2", box={"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}),
-    ])
+    payload = ExtentSetPayload(
+        variant="extent_set", searched="every separable instance", instances=[
+            ExtentInstance(instance_id="inst_1", mask_rle=mask(DONUT), geometry_rev=1),
+            ExtentInstance(instance_id="inst_2", box={"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}),
+        ])
     usable, skipped = I.source_extents("art_1", payload)
     assert [e.instance_id for e in usable] == ["inst_1"]
     assert [s.instance_id for s in skipped] == ["inst_2"]
@@ -548,3 +550,135 @@ def test_the_fragment_form_this_lane_writes_is_the_one_the_registry_declares():
     assert derived.payload.variant == definition.payload_variant
     assert definition.absence.examined_field == "regions_examined"
     assert "fragment_set_asserts_no_unity" in definition.test_obligations
+
+
+# ── the three forms together ─────────────────────────────────────────────────
+
+
+ALL_CONTROLS = {
+    "solid rectangle": SOLID,
+    "donut": DONUT,
+    "two separated islands": TWO_ISLANDS,
+    "islands touching at a corner": CORNER_TOUCH,
+    "islands sharing an edge": EDGE_TOUCH,
+    "a shape nested in a hole": NESTED,
+    "a void pinched to one corner": PINCHED,
+    "a boundary pinched to one corner": ["###", "#.#", "##."],
+    "an empty mask": EMPTY,
+    "a mask filling the frame": ["####", "####", "####", "####"],
+    "a one-pixel mask": ["....", "..#.", "....", "...."],
+    "a comb": ["#.#.#.#.", "#.#.#.#.", "########", "........"],
+}
+
+
+def derive_all(rows):
+    """All three forms of one mask, keyed by the payload variant the registry names them by."""
+    source = extent(rows)
+    return {
+        "extent_boundary": B.boundary_rings([source], source_image_digest=DIGEST),
+        "extent_hole_set": H.hole_set([source], source_image_digest=DIGEST),
+        "extent_fragment_set": F.fragment_set([source], source_image_digest=DIGEST),
+    }
+
+
+@pytest.mark.parametrize("name", sorted(ALL_CONTROLS))
+def test_every_control_produces_a_payload_the_form_registry_recognises(name):
+    """Validated through the registry's own table rather than through the class the producer
+    happened to build. A payload that only validates against the model it was constructed from
+    proves nothing about the contract."""
+    for variant, derived in derive_all(ALL_CONTROLS[name]).items():
+        model = S.FORM_PAYLOAD_MODELS[variant]
+        assert isinstance(derived.payload, model)
+        reloaded = model.model_validate(derived.payload.model_dump(mode="json"))
+        assert reloaded.model_dump() == derived.payload.model_dump()
+        assert D.form(derived.form.value).payload_variant == variant
+
+
+@pytest.mark.parametrize("name", sorted(ALL_CONTROLS))
+def test_every_control_derives_to_the_same_bytes_twice(name):
+    first = derive_all(ALL_CONTROLS[name])
+    second = derive_all(ALL_CONTROLS[name])
+    for variant in first:
+        assert first[variant].payload.model_dump() == second[variant].payload.model_dump(), variant
+        assert first[variant].measurements == second[variant].measurements, variant
+
+
+@pytest.mark.parametrize("name", sorted(ALL_CONTROLS))
+def test_an_outer_ring_encloses_its_piece_plus_every_hole_in_it(name):
+    """The identity that ties the three forms together, in whole pixels.
+
+    A ring around a piece bounds the piece AND the voids inside it, so the ring's lattice area is
+    the piece's pixel count plus its holes'. If the tracer dropped a ring, or the complement
+    invented a hole, or a hole belonged to the wrong piece, this arithmetic breaks — which is why
+    it is asserted rather than the three forms being checked separately and hoped to agree.
+    """
+    raster = R.raster_of(mask(ALL_CONTROLS[name]), what=name)
+    for piece in R.foreground_components(raster):
+        rings = B.trace(piece)
+        outer = [r for r in rings if r.is_outer]
+        assert len(outer) == 1, "one connected piece has exactly one outer ring"
+        holes = [v for v in H.voids_of(piece, rings) if v.enclosed]
+        assert outer[0].encloses_px == piece.area_px + sum(v.pixels.area_px for v in holes)
+
+
+@pytest.mark.parametrize("name", sorted(ALL_CONTROLS))
+def test_no_pixel_is_both_a_piece_and_a_void_of_that_piece(name):
+    raster = R.raster_of(mask(ALL_CONTROLS[name]), what=name)
+    for piece in R.foreground_components(raster):
+        for void in H.voids_of(piece, B.trace(piece)):
+            assert not (piece.members & void.pixels.members)
+
+
+def test_the_committed_payload_for_each_form_and_this_producer_agree_on_the_shape():
+    """Lane A froze one hand-authored payload per form. This producer's output has to validate
+    through the same model, and that model has to accept the frozen one — two directions, because
+    a producer agreeing with itself is not agreement."""
+    import json
+    from backend.services.perception_lab.contracts import CONTRACTS_DIR
+    manifest = json.loads((CONTRACTS_DIR / "fixtures" / "perception-lab" / "manifest.json")
+                          .read_text(encoding="utf-8"))
+    by_form = manifest["form_payloads"]["by_form"]
+    for key in ("extent.boundary_rings", "extent.hole_set", "extent.fragment_set"):
+        entry = by_form[key]
+        committed = json.loads((CONTRACTS_DIR / "fixtures" / "perception-lab" / entry["file"])
+                               .read_text(encoding="utf-8"))
+        model = S.FORM_PAYLOAD_MODELS[entry["variant"]]
+        assert model.model_validate(committed).variant == entry["variant"]
+        derived = derive_all(NESTED)[entry["variant"]]
+        assert set(derived.payload.model_dump()) == set(committed)
+
+
+def test_a_larger_mask_derives_deterministically_and_its_rings_still_rasterize_back():
+    """Twelve controls are twelve shapes somebody chose. This is a 24x32 mask nobody chose —
+    generated from a fixed arithmetic rule, so it is the same mask every run, with pieces and
+    voids and pinches nobody arranged."""
+    rows = ["".join("#" if (r * r + c * c * 3 + r * c) % 7 < 3 else "." for c in range(32))
+            for r in range(24)]
+    source = extent(rows)
+    first = B.boundary_rings([source], source_image_digest=DIGEST)
+    second = B.boundary_rings([source], source_image_digest=DIGEST)
+    assert first.payload.model_dump() == second.payload.model_dump()
+    assert rasterize(first.payload)[0] == source.raster.rle
+
+    pieces = R.foreground_components(source.raster)
+    assert len(pieces) > 5, "the precondition: this mask is genuinely fragmented"
+    counted = sum(M.perimeter_px(p) for p in pieces)
+    assert counted == sum(r.cracks for p in pieces for r in B.trace(p))
+    frags = F.fragment_set([source], source_image_digest=DIGEST, measure_separation=False)
+    assert len(frags.payload.fragments) == len(pieces)
+    assert sum(frags.measurements["area_px"].values()) == source.raster.area_px
+
+
+def test_this_package_reaches_no_facade_no_store_and_no_route():
+    """The lane's boundary, checked in the source. `extent.py` is not imported, so it cannot be
+    changed by being depended on; nothing here can write, and nothing here can be routed to."""
+    import pathlib
+    package = pathlib.Path(R.__file__).parent
+    banned = ("perception_lab.extent", "perception_lab.orchestrator", "perception_lab.session",
+              "perception_lab.store", "perception_lab.mongo_store", "perception_lab.live",
+              "perception_lab.adapters", "backend.routers", "backend.database", "fastapi")
+    for path in sorted(package.glob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        for name in banned:
+            assert f"import {name}" not in source and f"from {name}" not in source, \
+                f"{path.name} reaches {name}"

@@ -28,8 +28,8 @@ cannot, so this form is the one that refuses. See `inputs.one_raster`.
 SEPARATION IS QUADRATIC AND SAYS SO. The exact gap between two pieces is a minimum over their
 surface pixels, so measuring every pair costs pairs-times-surface. It is on by default because
 "how far apart are they" is half the question a fragment set is asked, and
-`measure_separation=False` is how a caller with four hundred pieces declines it — a decision made out loud rather than a size
-threshold nobody can see.
+`measure_separation=False` is how a caller with four hundred pieces declines it — a decision
+made out loud rather than a size threshold nobody can see.
 
 PURE. No database, no network, no model, no clock, no image.
 """
