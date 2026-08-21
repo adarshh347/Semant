@@ -36,12 +36,20 @@ convention that is chosen rather than forced: foreground 4-connected, background
 """
 from __future__ import annotations
 
+from backend.services.perception_lab.extent_forms.boundary import (TracedRing, boundary_rings,
+                                                                    instance_boundary, trace)
+from backend.services.perception_lab.extent_forms.inputs import (DERIVATION_REVISION, Derived,
+                                                                 DerivationProvenance, PRODUCER,
+                                                                 SourceExtent, source_extent,
+                                                                 source_extents)
 from backend.services.perception_lab.extent_forms.raster import (
     BACKGROUND_CONNECTIVITY, ExtentFormRefusal, FOREGROUND_CONNECTIVITY, PixelSet, Raster,
     canonical_rle, complement_components, digest_of, foreground_components, raster_of)
 
 __all__ = [
-    "BACKGROUND_CONNECTIVITY", "ExtentFormRefusal", "FOREGROUND_CONNECTIVITY", "PixelSet",
-    "Raster", "canonical_rle", "complement_components", "digest_of", "foreground_components",
-    "raster_of",
+    "BACKGROUND_CONNECTIVITY", "DERIVATION_REVISION", "DerivationProvenance", "Derived",
+    "ExtentFormRefusal", "FOREGROUND_CONNECTIVITY", "PRODUCER", "PixelSet", "Raster",
+    "SourceExtent", "TracedRing", "boundary_rings", "canonical_rle", "complement_components",
+    "digest_of", "foreground_components", "instance_boundary", "raster_of", "source_extent",
+    "source_extents", "trace",
 ]

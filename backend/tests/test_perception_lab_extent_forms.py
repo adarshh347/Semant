@@ -1,0 +1,293 @@
+"""
+PERCEPTUAL-FORMS-001B — the three exact Extent forms, and what each of them may not say.
+
+WHAT THIS MODULE HOLDS TO. `test_perception_lab_forms.py` proves the grammar is closed and the
+payload shapes cannot express certain lies. This proves the PRODUCER: that what comes out of
+`extent_forms` validates as the form it claims, that a hole is never a fragment, that an outer
+boundary is never a hole boundary, and that two runs over one mask produce the same bytes on any
+machine.
+
+THE EXACTNESS PROOF IS THE ROUND TRIP. A ring is claimed to be the exact border of a pixel set, so
+rasterizing every ring of a mask must reproduce that mask byte for byte — not approximately, not
+within a tolerance. `mask_geometry.polygons_to_bits` is the rasterizer the rest of the tree
+already uses, and it is used here unmodified so the proof is against something this package does
+not own.
+
+THE FIXTURES ARE ASCII. A donut written as `#####` / `#...#` is checkable by eye, and the seven
+controls the lane was asked for — solid, donut, two islands, touching islands, nested, malformed,
+incompatible — are each written out in full rather than generated.
+
+PURE. No database, no network, no model, no image, no cv2.
+"""
+from __future__ import annotations
+
+from typing import Any, Dict, List, Sequence
+
+import pytest
+from pydantic import ValidationError
+
+from backend.schemas.perception_lab import (ExtentInstance, ExtentSetPayload, PerceptualForm,
+                                            RefusalCode, RingWinding)
+from backend.services.mask_geometry import polygons_to_bits, rle_encode
+from backend.services.perception_lab import definitions as D
+from backend.services.perception_lab.extent_forms import boundary as B
+from backend.services.perception_lab.extent_forms import inputs as I
+from backend.services.perception_lab.extent_forms import measure as M
+from backend.services.perception_lab.extent_forms import raster as R
+
+DIGEST = "sha256:0f1e2d3c"
+
+
+def mask(rows: Sequence[str]) -> Dict[str, Any]:
+    """ASCII to COCO RLE. `#` is a pixel of the thing; anything else is not."""
+    h, w = len(rows), len(rows[0])
+    bits = bytearray()
+    for row in rows:
+        assert len(row) == w, "every row of a synthetic mask is the same width"
+        bits.extend(1 if ch == "#" else 0 for ch in row)
+    return rle_encode(bits, h, w)
+
+
+def extent(rows: Sequence[str], *, artifact_id: str = "art_1", instance_id: str = "inst_1",
+           geometry_rev: int = 3) -> I.SourceExtent:
+    return I.source_extent(artifact_id, {"instance_id": instance_id, "mask_rle": mask(rows),
+                                         "geometry_rev": geometry_rev})
+
+
+#: The seven synthetic controls this lane was asked to prove itself against.
+SOLID = ["........", "..####..", "..####..", "..####..", "........"]
+DONUT = ["#####", "#...#", "#...#", "#...#", "#####"]
+TWO_ISLANDS = ["#..#", "#..#", "...."]
+CORNER_TOUCH = ["#...", ".#..", "....", "...."]
+EDGE_TOUCH = ["##..", "....", "....", "...."]
+NESTED = ["#####", "#...#", "#.#.#", "#...#", "#####"]
+PINCHED = ["####", "#.##", "##.#", "####"]
+EMPTY = ["....", "....", "....", "...."]
+MALFORMED = {"size": [4, 4], "counts": [3, 3]}
+
+
+def rasterize(payload) -> Dict[int, Dict[str, Any]]:
+    """Every boundary in a payload, drawn back onto its own raster by the tree's own rasterizer."""
+    out: Dict[int, Dict[str, Any]] = {}
+    for i, record in enumerate(payload.boundaries):
+        h, w = record.raster_shape
+        rings = [[[p[0], p[1]] for p in ring.points] for ring in record.rings]
+        out[i] = rle_encode(polygons_to_bits(rings, h, w), h, w)
+    return out
+
+
+# ── extent.boundary_rings ────────────────────────────────────────────────────
+
+
+def test_a_solid_rectangle_has_one_outer_ring_and_no_holes():
+    derived = B.boundary_rings([extent(SOLID)], source_image_digest=DIGEST)
+    assert derived.form is PerceptualForm.EXTENT_BOUNDARY_RINGS
+    assert derived.payload.rings_traced == 1
+    ring, = derived.payload.boundaries[0].rings
+    assert ring.winding is RingWinding.OUTER
+    assert len(ring.points) == 4, "four corners, because the straight runs between them are not"
+
+
+def test_a_donut_has_an_outer_ring_and_an_inner_one_and_they_are_not_interchangeable():
+    derived = B.boundary_rings([extent(DONUT)], source_image_digest=DIGEST)
+    outer, inner = derived.payload.boundaries[0].rings
+    assert (outer.winding, inner.winding) == (RingWinding.OUTER, RingWinding.INNER)
+    assert derived.measurements["encloses_px"][outer.ring_id] == 25
+    assert derived.measurements["encloses_px"][inner.ring_id] == 9
+
+
+def test_the_two_rings_of_a_donut_run_in_opposite_directions_and_the_class_is_the_sign():
+    """The producer knows which side is inside because it put it there.
+
+    A reader is forbidden from recovering that from point order — but the producer's own
+    classification had better BE the orientation, or the declared winding is a guess that happens
+    to be right.
+    """
+    pieces = R.foreground_components(R.raster_of(mask(DONUT), what="donut"))
+    outer, inner = B.trace(pieces[0])
+    assert M.lattice_area(outer.lattice) > 0 and outer.winding is RingWinding.OUTER
+    assert M.lattice_area(inner.lattice) < 0 and inner.winding is RingWinding.INNER
+
+
+def test_a_reader_cannot_recover_the_winding_from_the_points_which_is_why_it_is_declared():
+    """The schema accepts a ring whose points run one way and whose winding says the other.
+
+    That is not a hole in the contract; it is the contract's point. Winding is DECLARED, so a
+    consumer must read the field — and this test is what stops someone replacing that field with
+    an inference the day two renderers disagree.
+    """
+    derived = B.boundary_rings([extent(DONUT)], source_image_digest=DIGEST)
+    outer = derived.payload.boundaries[0].rings[0]
+    reversed_ring = outer.model_copy(update={"points": list(reversed(outer.points))})
+    assert reversed_ring.winding is RingWinding.OUTER
+
+
+def test_two_separated_islands_are_two_outer_rings_of_one_instance():
+    derived = B.boundary_rings([extent(TWO_ISLANDS)], source_image_digest=DIGEST)
+    record, = derived.payload.boundaries
+    assert derived.payload.rings_traced == 2
+    assert [r.winding for r in record.rings] == [RingWinding.OUTER, RingWinding.OUTER]
+
+
+def test_islands_that_touch_at_a_corner_stay_two_rings_and_ones_that_share_an_edge_become_one():
+    corner = B.boundary_rings([extent(CORNER_TOUCH)], source_image_digest=DIGEST)
+    edge = B.boundary_rings([extent(EDGE_TOUCH)], source_image_digest=DIGEST)
+    assert corner.payload.rings_traced == 2
+    assert edge.payload.rings_traced == 1
+
+
+def test_a_shape_inside_a_hole_keeps_its_own_outer_ring_and_does_not_join_the_ring_around_it():
+    derived = B.boundary_rings([extent(NESTED)], source_image_digest=DIGEST)
+    rings = derived.payload.boundaries[0].rings
+    assert [r.winding for r in rings] == [RingWinding.OUTER, RingWinding.INNER, RingWinding.OUTER]
+    assert len({r.ring_id for r in rings}) == 3
+
+
+def test_a_void_that_narrows_to_a_single_corner_stays_one_ring_that_passes_through_it_twice():
+    """The pinch. Two void pixels meeting diagonally inside one piece are ONE void under the
+    declared pairing, so their boundary is one closed curve — and the corner where it pinches is
+    visited twice, by two different turns."""
+    derived = B.boundary_rings([extent(PINCHED)], source_image_digest=DIGEST)
+    outer, inner = derived.payload.boundaries[0].rings
+    assert inner.winding is RingWinding.INNER
+    assert derived.measurements["encloses_px"][inner.ring_id] == 2
+    corners = [tuple(p) for p in inner.points]
+    assert len(corners) != len(set(corners)), "the pinch corner is on the ring twice"
+
+
+def test_every_ring_rasterizes_back_to_the_mask_it_was_traced_from():
+    """The exactness claim, made falsifiable. Not `close to`, not `within a tolerance` — the same
+    bytes, through a rasterizer this package does not own."""
+    for rows in (SOLID, DONUT, TWO_ISLANDS, CORNER_TOUCH, EDGE_TOUCH, NESTED, PINCHED,
+                 ["###", "#.#", "##."], ["#"], ["#####"], ["#", "#", "#"]):
+        source = extent(rows)
+        derived = B.boundary_rings([source], source_image_digest=DIGEST)
+        assert rasterize(derived.payload)[0] == source.raster.rle, rows
+
+
+def test_the_traced_perimeter_and_the_counted_perimeter_are_the_same_number():
+    """Two independent routes to one integer: the tracer follows the cracks into curves, and
+    `perimeter_px` counts the outward-facing pixel sides without tracing anything."""
+    for rows in (SOLID, DONUT, NESTED, PINCHED, CORNER_TOUCH):
+        raster = R.raster_of(mask(rows), what="x")
+        counted = sum(M.perimeter_px(p) for p in R.foreground_components(raster))
+        traced = sum(r.cracks for p in R.foreground_components(raster) for r in B.trace(p))
+        assert counted == traced, rows
+
+
+def test_an_empty_mask_has_no_boundary_and_that_is_an_answer_rather_than_a_failure():
+    derived = B.boundary_rings([extent(EMPTY)], source_image_digest=DIGEST)
+    assert derived.payload.rings_traced == 0
+    assert derived.payload.boundaries == []
+
+
+def test_the_count_of_rings_traced_never_drifts_from_the_rings_recorded():
+    """`rings_traced` is what proves something looked, so it is checked against the list rather
+    than trusted beside it — and a producer that reported one number and recorded another would
+    not validate."""
+    derived = B.boundary_rings([extent(NESTED), extent(DONUT, instance_id="inst_2")],
+                               source_image_digest=DIGEST)
+    assert derived.payload.rings_traced == 5
+    drifted = derived.payload.model_dump()
+    drifted["rings_traced"] = 4
+    with pytest.raises(ValidationError):
+        type(derived.payload).model_validate(drifted)
+
+
+def test_a_ring_carries_no_length_because_the_field_carries_no_unit():
+    """A step of one pixel is `1/w` across and `1/h` down. On any raster that is not square a
+    single normalized length mixes two scales, and a pixel count in a field a reader takes for
+    normalized is worse than an absent number. The exact integer is in `measurements`."""
+    derived = B.boundary_rings([extent(SOLID)], source_image_digest=DIGEST)
+    ring, = derived.payload.boundaries[0].rings
+    assert ring.length is None
+    assert derived.measurements["perimeter_px"][ring.ring_id] == 14
+
+
+def test_a_ring_id_survives_a_change_somewhere_else_in_the_image():
+    """Content-addressed identity, and the reason for it. Adding an island in the corner must not
+    renumber the ring around the arch on the other side of the picture."""
+    alone = B.boundary_rings([extent(["....", ".##.", ".##.", "...."])],
+                             source_image_digest=DIGEST)
+    with_island = B.boundary_rings([extent(["#...", ".##.", ".##.", "...."])],
+                                   source_image_digest=DIGEST)
+    first = alone.payload.boundaries[0].rings[0].ring_id
+    assert first in {r.ring_id for r in with_island.payload.boundaries[0].rings}
+
+
+def test_the_same_mask_traced_twice_produces_the_same_bytes():
+    one = B.boundary_rings([extent(NESTED)], source_image_digest=DIGEST)
+    two = B.boundary_rings([extent(NESTED)], source_image_digest=DIGEST)
+    assert one.payload.model_dump() == two.payload.model_dump()
+
+
+def test_nothing_in_this_package_imports_a_model_a_database_or_cv2():
+    """The independence claim, checked in the source rather than asserted in a docstring.
+
+    `mask_geometry.bits_to_polygons` traces with cv2 when it is there and falls back to bounding
+    rectangles when it is not, so the same mask gives two different answers on two machines. This
+    package has to give one, which means it cannot reach for either.
+    """
+    import pathlib
+    package = pathlib.Path(R.__file__).parent
+    banned = ("cv2", "numpy", "torch", "motor", "pymongo", "PIL", "requests", "httpx")
+    for path in sorted(package.glob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        for name in banned:
+            assert f"import {name}" not in source, f"{path.name} imports {name}"
+
+
+# ── what a derivation is handed ──────────────────────────────────────────────
+
+
+def test_a_derivation_with_no_source_digest_is_refused_rather_than_left_untraceable():
+    with pytest.raises(R.ExtentFormRefusal) as caught:
+        B.boundary_rings([extent(SOLID)], source_image_digest="short")
+    assert caught.value.refusal.code is RefusalCode.INVALID_PARAMETERS
+    assert caught.value.refusal.missing == ["source_image_digest"]
+
+
+def test_the_receipt_points_at_the_instance_and_not_merely_at_the_artifact():
+    derived = B.boundary_rings([extent(DONUT, instance_id="inst_7")], source_image_digest=DIGEST)
+    ref, = derived.provenance.input_refs
+    assert ref.reference == "art_1#inst_7"
+    assert ref.geometry_rev == 3
+    assert derived.provenance.derived_from == ("art_1",)
+    assert derived.provenance.revision == I.DERIVATION_REVISION
+
+
+def test_a_mask_that_disagrees_with_the_raster_it_was_declared_on_is_refused_not_resampled():
+    with pytest.raises(R.ExtentFormRefusal) as caught:
+        I.source_extent("art_1", {"instance_id": "inst_1", "mask_rle": mask(SOLID)},
+                        raster_shape=[10, 10])
+    assert caught.value.refusal.code is RefusalCode.INVALID_PARAMETERS
+    assert caught.value.refusal.detail["mask_raster"] == [5, 8]
+
+
+def test_a_malformed_mask_reaches_no_form_at_all():
+    with pytest.raises(R.ExtentFormRefusal) as caught:
+        I.source_extent("art_1", {"instance_id": "inst_1", "mask_rle": MALFORMED})
+    assert caught.value.refusal.code is RefusalCode.MISSING_EXTENT_INPUTS
+
+
+def test_a_box_only_instance_is_not_traced_and_is_not_silently_absent_either():
+    """GroundingDINO returns boxes. There is no boundary of a box worth tracing, and dropping the
+    instance without saying so would make a partial answer look like a complete one."""
+    payload = ExtentSetPayload(variant="extent_set", searched="every separable instance", instances=[
+        ExtentInstance(instance_id="inst_1", mask_rle=mask(DONUT), geometry_rev=1),
+        ExtentInstance(instance_id="inst_2", box={"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}),
+    ])
+    usable, skipped = I.source_extents("art_1", payload)
+    assert [e.instance_id for e in usable] == ["inst_1"]
+    assert [s.instance_id for s in skipped] == ["inst_2"]
+
+
+def test_the_producible_form_this_lane_writes_is_the_one_the_registry_declares():
+    definition = D.form(PerceptualForm.EXTENT_BOUNDARY_RINGS.value)
+    derived = B.boundary_rings([extent(DONUT)], source_image_digest=DIGEST)
+    assert derived.payload.variant == definition.payload_variant
+    assert definition.producible and not definition.has_producer, (
+        "the form is writable and no operation declares it yet — which is why this lane returns "
+        "a payload and a receipt rather than an artifact naming an operation that never ran")
+    assert derived.provenance.partition.value in definition.admissible_partitions
+    assert derived.provenance.epistemic_basis.value in definition.admissible_bases
