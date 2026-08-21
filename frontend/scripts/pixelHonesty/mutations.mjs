@@ -897,6 +897,69 @@ export const MUTATIONS = [
         expect: 'the stylesheet carries none of the meaning gives an unrecognised scope its own '
             + 'treatment rather than the softer one',
     },
+
+    // ── HARNESS-003G: the image inspector ──────────────────────────────────
+    //
+    // Five guarantees this lane added, each broken the way it would actually break. The first two
+    // are the panel's whole reason for existing; the last three are the quiet ones — a default, a
+    // key, and an element type — that no screenshot would ever catch.
+    {
+        id: 'inquiry/an-empty-citation-surface-disappears',
+        guarantee: 'a surface nothing cites prints its zero — "no atom names this picture" and '
+            + '"the atoms have not arrived yet" are not the same fact',
+        file: 'src/inquiryWorkbench/ImageInspector.jsx',
+        find: '                {CITATION_SURFACES.map((surface) => (',
+        replace: '                {CITATION_SURFACES.filter((s) => citations[s].length)'
+            + '.map((surface) => (',
+        suites: ['src/inquiryWorkbench/imageInspector.dom.test.jsx'],
+        expect: 'what rests on it prints a zero surface as a zero, never as an absence',
+    },
+    {
+        id: 'inquiry/the-picture-sits-beside-the-claims-in-silence',
+        guarantee: 'the sentence saying nothing was checked against these pixels is IN the panel '
+            + '— a claim beside its image is the most persuasive layout on this surface',
+        file: 'src/inquiryWorkbench/ImageInspector.jsx',
+        find: '            <p className="iw-quiet iw-inspector-caveat" data-caveat="not-verified">',
+        replace: '            <p className="iw-quiet iw-inspector-caveat" '
+            + 'data-caveat="not-verified">{null}</p>\n            <p hidden>',
+        suites: ['src/inquiryWorkbench/imageInspector.dom.test.jsx'],
+        expect: 'what rests on it says once, where the picture and the claims meet, that nothing '
+            + 'was checked',
+    },
+    {
+        id: 'inquiry/an-undeclared-read-reads-as-a-read',
+        guarantee: 'an image with no post record is `null` — nobody declared whether it was read, '
+            + 'which is not a record saying it was',
+        file: 'src/inquiryWorkbench/imageInspector.js',
+        find: '            readable: post ? post.readable : null,',
+        replace: '            readable: post ? post.readable : true,',
+        suites: ['src/inquiryWorkbench/imageInspector.test.js'],
+        expect: 'the catalogue leaves readability null when no post record declared it',
+    },
+    {
+        id: 'inquiry/an-image-reference-resolves-on-the-url-field',
+        guarantee: 'a citation is a post id, and `image_ref` is a URL — keyed the other way this '
+            + 'panel resolves every fixture and nothing in production',
+        file: 'src/inquiryWorkbench/imageInspector.js',
+        find: '    return catalogue.find((e) => e.post_id === key)\n'
+            + '        || catalogue.find((e) => e.image_ref && e.image_ref === key)',
+        replace: '    return catalogue.find((e) => e.image_ref && e.image_ref === key)\n'
+            + '        || catalogue.find((e) => e.post_id === key)',
+        suites: ['src/inquiryWorkbench/imageInspector.test.js'],
+        expect: 'resolution is keyed on post_id prefers a post_id match over an image_ref match',
+    },
+    {
+        id: 'inquiry/an-unopenable-reference-is-still-announced-as-a-control',
+        guarantee: 'a reference with no inspector behind it is a plain token — a disabled button '
+            + 'is still a button to a screen reader',
+        file: 'src/inquiryWorkbench/ImageInspector.jsx',
+        find: '        return <span className={`iw-imgref is-inert ${className}`.trim()}>'
+            + '{body}</span>;',
+        replace: '        return <button type="button" disabled '
+            + 'className={`iw-imgref is-inert ${className}`.trim()}>{body}</button>;',
+        suites: ['src/inquiryWorkbench/imageInspector.dom.test.jsx'],
+        expect: 'a reference outside a provider is a plain token, not a control',
+    },
 ];
 
 // ── applying a lie ─────────────────────────────────────────────────────────
