@@ -1,0 +1,345 @@
+{
+  "name": "rose-window-organization",
+  "inquiry_map": {
+    "schema_version": "inquiry-intelligence.v1",
+    "inquiry_map_id": "imap_window",
+    "inquiry_id": "window",
+    "principal_question": "does one organising figure govern the whole interior?",
+    "origin": "prompt",
+    "user_hypotheses": [
+      {
+        "hypothesis_id": "hyp_window_centring",
+        "text": "the rose window organises the whole interior around one centre, and the nave bays repeat that centring along their length",
+        "origin": "prompt",
+        "spans": [],
+        "user_terms": [
+          "centre",
+          "repeat",
+          "radiate"
+        ],
+        "note": ""
+      }
+    ],
+    "user_vocabulary": [
+      "centre",
+      "repeat",
+      "radiate",
+      "bay"
+    ],
+    "requested_comparisons": [
+      {
+        "comparison_id": "rqc_window_pair",
+        "text": "compare the rose with the nave",
+        "image_ids": [
+          "post_rose_north",
+          "post_nave_interior"
+        ],
+        "dimension": "",
+        "spans": []
+      }
+    ],
+    "interpretive_questions": [
+      {
+        "question_id": "qst_window_figure",
+        "text": "what would it mean for one figure to govern an interior?",
+        "capability_classes": [],
+        "spans": []
+      }
+    ],
+    "potentially_observable_questions": [
+      {
+        "question_id": "qst_window_interval",
+        "text": "does the bay interval actually change?",
+        "capability_classes": [
+          "extent",
+          "pattern"
+        ],
+        "spans": []
+      }
+    ],
+    "desired_answer_form": "judgement",
+    "ambiguities": [
+      {
+        "ambiguity_id": "amb_window_repeat",
+        "text": "'repeat' covers both rotation and linear recurrence",
+        "readings": [
+          "turning about a point",
+          "recurring along a line"
+        ],
+        "why_it_matters": "",
+        "spans": []
+      }
+    ],
+    "prompt_source_spans": [],
+    "provenance": {
+      "producer": "inquiry_intelligence/map-fixture",
+      "kind": "fixture",
+      "model": "",
+      "provider": "",
+      "prompt_sha256": "",
+      "note": ""
+    }
+  },
+  "observations": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "observation_id": "vob_window_radial",
+      "image_id": "post_rose_north",
+      "origin": "image_observation",
+      "locus": "the full circle of tracery",
+      "region_ref": "",
+      "ground_ref": "",
+      "feature": "radial division",
+      "visible_description": "the tracery divides into twelve equal wedges, each subdivided twice",
+      "organization": "rotational, with every division meeting at one point",
+      "appearance_effect": "reads as turning about its own centre",
+      "interpretive_possibility": "may be the interior's organising figure",
+      "reading_block_refs": [],
+      "epistemic_status": "interpretive",
+      "uncertainty": 0.3,
+      "requested_capability_classes": [
+        "pattern"
+      ],
+      "state": "observed",
+      "absence_reason": "",
+      "measurement": null,
+      "provenance": {
+        "producer": "inquiry_intelligence/vlm-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    },
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "observation_id": "vob_nave_bay_rhythm",
+      "image_id": "post_nave_interior",
+      "origin": "image_observation",
+      "locus": "the arcade running away from the viewer",
+      "region_ref": "",
+      "ground_ref": "",
+      "feature": "bay rhythm",
+      "visible_description": "the arcade repeats a single bay unit, and the apparent interval shortens toward the far end",
+      "organization": "linear repetition along one axis",
+      "appearance_effect": "reads as travelling rather than as turning",
+      "interpretive_possibility": "the shortening may be perspective rather than a change in the bays",
+      "reading_block_refs": [],
+      "epistemic_status": "interpretive",
+      "uncertainty": 0.55,
+      "requested_capability_classes": [
+        "pattern",
+        "extent"
+      ],
+      "state": "observed",
+      "absence_reason": "",
+      "measurement": null,
+      "provenance": {
+        "producer": "inquiry_intelligence/vlm-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    },
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "observation_id": "vob_nave_vault_absent",
+      "image_id": "post_nave_interior",
+      "origin": "image_observation",
+      "locus": "",
+      "region_ref": "",
+      "ground_ref": "",
+      "feature": "vault division",
+      "visible_description": "",
+      "organization": "",
+      "appearance_effect": "",
+      "interpretive_possibility": "",
+      "reading_block_refs": [],
+      "epistemic_status": "interpretive",
+      "uncertainty": 0.0,
+      "requested_capability_classes": [],
+      "state": "refused",
+      "absence_reason": "the vault is out of frame in this photograph; nothing was read for it",
+      "measurement": null,
+      "provenance": {
+        "producer": "inquiry_intelligence/vlm-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "alignments": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "alignment_id": "hal_window_complicates",
+      "hypothesis_id": "hyp_window_centring",
+      "observation_id": "vob_nave_bay_rhythm",
+      "alignment": "complicates",
+      "explanation": "repetition along an axis is not the same figure as rotation about a point; the person's word 'repeat' covers both and the two observations do not agree",
+      "missing_capability_classes": [],
+      "uncertainty": 0.0,
+      "provenance": {
+        "producer": "inquiry_intelligence/aligner-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    },
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "alignment_id": "hal_window_cannot",
+      "hypothesis_id": "hyp_window_centring",
+      "observation_id": "vob_nave_vault_absent",
+      "alignment": "cannot_determine",
+      "explanation": "the part of the interior that would settle it was not in the photograph",
+      "missing_capability_classes": [
+        "extent"
+      ],
+      "uncertainty": 0.0,
+      "provenance": {
+        "producer": "inquiry_intelligence/aligner-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "contrasts": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "contrast_id": "con_window_organisation",
+      "question_ref": "",
+      "question_text": "is the same organising figure at work in both?",
+      "observation_ids": [
+        "vob_window_radial",
+        "vob_nave_bay_rhythm"
+      ],
+      "image_ids": [
+        "post_rose_north",
+        "post_nave_interior"
+      ],
+      "comparison_dimension": "what the repetition is organised about",
+      "why_it_matters": "the person's claim is that one figure governs both",
+      "difference_investigated": "whether rotation about a point and repetition along an axis are the same organisation seen twice",
+      "possible_countercondition": "the apparent shortening is perspective, in which case the bays are uniform and there is no second figure to compare",
+      "required_capability_classes": [
+        "pattern"
+      ],
+      "priority": 2,
+      "scope": "cross_image",
+      "origin": "semant_inference",
+      "provenance": {
+        "producer": "inquiry_intelligence/planner-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "relations": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "relation_id": "crl_window_shared",
+      "left_observation_id": "vob_window_radial",
+      "right_observation_id": "vob_nave_bay_rhythm",
+      "relation_kind": "shared_organization",
+      "explanation": "both are built from one unit repeated, and the repetition is the organising fact in each",
+      "image_ids": [
+        "post_rose_north",
+        "post_nave_interior"
+      ],
+      "inquiry_relevance": "this is the person's claim, restated at the level of the two observations",
+      "epistemic_status": "interpretive",
+      "hypothesis_refs": [
+        "hyp_window_centring"
+      ],
+      "uncertainty": 0.6,
+      "counterevidence": [
+        "the interval change may be perspective, which would make the second observation about the camera rather than about the interior"
+      ],
+      "contrast_ref": "con_window_organisation",
+      "scope": "cross_image",
+      "measurement": null,
+      "origin": "semant_inference",
+      "provenance": {
+        "producer": "inquiry_intelligence/relator-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "critiques": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "critique_id": "crt_window_revise",
+      "relation_id": "crl_window_shared",
+      "verdict": "revise",
+      "prompt_parroting": "parrots_prompt",
+      "source_completeness": "partial",
+      "image_diversity": "cross_image",
+      "inquiry_relevance": "relevant",
+      "unsupported_inference": "unsupported_leap",
+      "speculative_or_historical_warning": "'the organising figure of the interior' is a reading the two photographs cannot settle",
+      "missing_capability_classes": [
+        "pattern",
+        "geometry"
+      ],
+      "explanation": "it restates the person's sentence with the observations attached, and one side rests on a shortening that may be perspective; the vault reading is missing",
+      "provenance": {
+        "producer": "inquiry_intelligence/critic-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "outcome": {
+    "schema_version": "inquiry-intelligence.v1",
+    "outcome_id": "out_window",
+    "inquiry_id": "window",
+    "comparative": true,
+    "workflow": "completed",
+    "outcome": "prompt_dominated",
+    "counts": {
+      "hypotheses": 1,
+      "observations": 3,
+      "refused_observations": 1,
+      "measured_observations": 0,
+      "alignments": 2,
+      "contrasts": 1,
+      "relations": 1,
+      "accepted_relations": 0,
+      "accepted_cross_image_relations": 0
+    },
+    "explanation": "the machinery finished and the one relation it produced restates the person's own sentence; the critic sent it back rather than accepting it",
+    "limitations": [
+      "one observation was refused for framing and is not evidence of absence",
+      "the interval change may be perspective and nothing measured it"
+    ],
+    "provenance": {
+      "producer": "inquiry_intelligence/outcome-fixture",
+      "kind": "fixture",
+      "model": "",
+      "provider": "",
+      "prompt_sha256": "",
+      "note": ""
+    }
+  }
+}
