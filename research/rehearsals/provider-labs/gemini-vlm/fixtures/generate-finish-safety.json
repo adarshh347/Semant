@@ -1,0 +1,13 @@
+{
+  "candidates": [
+    {
+      "content": { "role": "model", "parts": [] },
+      "finishReason": "SAFETY",
+      "safetyRatings": [
+        { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "probability": "HIGH" }
+      ]
+    }
+  ],
+  "usageMetadata": { "promptTokenCount": 1204, "totalTokenCount": 1204 },
+  "modelVersion": "fixture-model-a-001"
+}

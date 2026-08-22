@@ -1,0 +1,13 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [{ "text": "Certainly! Here is what I can see in the image you provided:" }]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": { "promptTokenCount": 1204, "candidatesTokenCount": 12, "totalTokenCount": 1216 },
+  "modelVersion": "fixture-model-a-001"
+}

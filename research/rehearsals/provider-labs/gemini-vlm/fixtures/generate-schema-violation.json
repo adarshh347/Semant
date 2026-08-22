@@ -1,0 +1,13 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [{ "text": "{\"observations\":[{\"image_index\":0,\"quality\":\"soft\"}],\"refusals\":[]}" }]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": { "promptTokenCount": 1204, "candidatesTokenCount": 20, "totalTokenCount": 1224 },
+  "modelVersion": "fixture-model-a-001"
+}
