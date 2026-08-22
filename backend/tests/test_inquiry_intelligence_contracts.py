@@ -1016,3 +1016,13 @@ def test_the_open_fields_really_are_open():
                          (ContrastPlan, "comparison_dimension"), (UserHypothesis, "text")):
         annotation = model.model_fields[field].annotation
         assert annotation is str, (model.__name__, field, annotation)
+
+
+def test_a_blank_image_in_a_request_is_refused_rather_than_dropped():
+    """Silently discarding it means a request for three pictures is served as a request for two,
+    and the person is shown a comparison of a set they did not ask about with nothing saying so."""
+    with pytest.raises(ValidationError):
+        RequestedComparison(comparison_id=mint("requested_comparison", ["i1", "c"]), text="t",
+                            image_ids=["post_a", "  "])
+    with pytest.raises(ValidationError):
+        a_contrast(image_ids=["post_a", ""])

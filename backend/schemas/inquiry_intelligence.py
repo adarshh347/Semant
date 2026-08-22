@@ -317,9 +317,11 @@ class RequestedComparison(_Strict):
     @field_validator("image_ids")
     @classmethod
     def _distinct(cls, ids: List[str]) -> List[str]:
-        cleaned = [str(i).strip() for i in ids if str(i).strip()]
-        if len(set(cleaned)) != len(cleaned):
-            raise ValueError(f"the same image is named twice in {ids!r}")
+        # REFUSED rather than dropped, which is what this did first. Silently discarding a blank
+        # entry means a request for three pictures is served as a request for two, and the person
+        # is shown a comparison of a set they did not ask about with nothing saying so.
+        cleaned = [_require_nonblank(i, "image_ids") for i in ids]
+        _require_unique(cleaned, "image_ids")
         return cleaned
 
 
