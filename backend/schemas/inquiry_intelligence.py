@@ -518,6 +518,328 @@ class VisualObservation(_Strict):
         return self.epistemic_status is EpistemicStatus.MEASURED and self.measurement is not None
 
 
+# ── 3. how an observation stands to what the person proposed ────────────────
+
+class AlignmentKind(str, Enum):
+    """The five ways an observation can bear on a hypothesis, and the last two are not failures.
+
+    `DOES_NOT_BEAR_ON` and `CANNOT_DETERMINE` are the members that keep the other three honest. A
+    vocabulary with only supports/complicates/challenges forces every observation to take a side,
+    and the pressure to take a side is exactly what turns a picture into a witness for whatever the
+    person already said. Most observations bear on most hypotheses not at all.
+    """
+    SUPPORTS = "supports"
+    COMPLICATES = "complicates"
+    CHALLENGES = "challenges"
+    DOES_NOT_BEAR_ON = "does_not_bear_on"
+    CANNOT_DETERMINE = "cannot_determine"
+
+
+class HypothesisAlignment(_Strict):
+    """One observation, one hypothesis, and the relation between them — never a merge of the two.
+
+    THE ALIGNMENT IS A THIRD OBJECT rather than a field on either side. A `supported: true` on the
+    hypothesis would make the person's sentence carry an image finding, which is the thing this
+    whole module exists to make unsayable; a field on the observation would make a picture carry
+    the person's proposal. The relation belongs to neither, so it lives on its own.
+
+    An alignment is never `measured`. It is a judgement ABOUT two things, and if one of them was
+    measured that fact stays on the observation where the evidence is.
+    """
+    schema_version: str = SCHEMA_VERSION
+    alignment_id: str = Field(..., min_length=1)
+    hypothesis_id: str = Field(..., min_length=1)
+    observation_id: str = Field(..., min_length=1)
+    alignment: AlignmentKind
+    explanation: str = Field(..., min_length=1)
+    missing_capability_classes: List[CapabilityClass] = Field(default_factory=list)
+    uncertainty: float = Field(default=0.0, ge=0.0, le=1.0)
+    provenance: Provenance
+
+    @field_validator("schema_version")
+    @classmethod
+    def _readable(cls, value: str) -> str:
+        return _require_readable(value)
+
+    @field_validator("alignment_id")
+    @classmethod
+    def _own_prefix(cls, value: str) -> str:
+        return _require_prefix(value, "hypothesis_alignment")
+
+    @field_validator("hypothesis_id")
+    @classmethod
+    def _points_at_a_hypothesis(cls, value: str) -> str:
+        return _require_prefix(value, "user_hypothesis")
+
+    @field_validator("observation_id")
+    @classmethod
+    def _points_at_an_observation(cls, value: str) -> str:
+        return _require_prefix(value, "visual_observation")
+
+    @field_validator("explanation")
+    @classmethod
+    def _says_why(cls, value: str) -> str:
+        return _require_nonblank(value, "explanation")
+
+
+# ── 4. what Semant chose to compare ─────────────────────────────────────────
+
+class ContrastScope(str, Enum):
+    """Whether a contrast crosses pictures. Declared rather than inferred, so the declaration can
+    be CHECKED against what the observations actually resolve to."""
+    SINGLE_IMAGE = "single_image"
+    CROSS_IMAGE = "cross_image"
+
+
+class ContrastPlan(_Strict):
+    """A comparison SEMANT decided was worth making. Nothing has been compared yet.
+
+    `possible_countercondition` is required, and that is the load-bearing decision in this model. A
+    contrast that cannot say what would show the opposite is not an investigation — it is a
+    description of an expected result, and it will find that result. One sentence naming what would
+    embarrass the comparison is the cheapest falsifiability this system can buy.
+
+    `comparison_dimension` is an open string and must stay one. The moment it becomes an enum, the
+    set of comparisons Semant can make is fixed at the size of whatever list somebody wrote, and
+    every subject outside it gets compared along an axis that does not fit it.
+    """
+    schema_version: str = SCHEMA_VERSION
+    contrast_id: str = Field(..., min_length=1)
+    question_ref: str = Field(default="", description="the inquiry question served, if one")
+    question_text: str = Field(default="", description="the question in words")
+    observation_ids: List[str] = Field(..., min_length=2)
+    image_ids: List[str] = Field(..., min_length=1)
+    comparison_dimension: str = Field(..., min_length=1, description="open vocabulary")
+    why_it_matters: str = Field(..., min_length=1)
+    difference_investigated: str = Field(..., min_length=1)
+    possible_countercondition: str = Field(..., min_length=1)
+    required_capability_classes: List[CapabilityClass] = Field(default_factory=list)
+    priority: int = Field(default=3, ge=1, le=5)
+    scope: ContrastScope = ContrastScope.CROSS_IMAGE
+    origin: Literal[MaterialOrigin.SEMANT_INFERENCE] = MaterialOrigin.SEMANT_INFERENCE
+    provenance: Provenance
+
+    @field_validator("schema_version")
+    @classmethod
+    def _readable(cls, value: str) -> str:
+        return _require_readable(value)
+
+    @field_validator("contrast_id")
+    @classmethod
+    def _own_prefix(cls, value: str) -> str:
+        return _require_prefix(value, "contrast_plan")
+
+    @field_validator("observation_ids")
+    @classmethod
+    def _point_at_observations(cls, refs: List[str]) -> List[str]:
+        cleaned = [_require_prefix(r, "visual_observation") for r in refs]
+        _require_unique(cleaned, "observation_ids")
+        return cleaned
+
+    @field_validator("comparison_dimension", "why_it_matters", "difference_investigated",
+                     "possible_countercondition")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        return _require_nonblank(value, "a contrast's own sentences")
+
+    @field_validator("image_ids")
+    @classmethod
+    def _distinct_images(cls, ids: List[str]) -> List[str]:
+        cleaned = [_require_nonblank(i, "image_ids") for i in ids]
+        _require_unique(cleaned, "image_ids")
+        return cleaned
+
+    @model_validator(mode="after")
+    def _scope_matches_the_pictures(self) -> "ContrastPlan":
+        if self.scope is ContrastScope.CROSS_IMAGE and len(self.image_ids) < 2:
+            raise ValueError(
+                f"{self.contrast_id} declares itself cross-image and names "
+                f"{self.image_ids!r}. A cross-image contrast must resolve to at least two distinct "
+                f"images; one picture compared with itself is a single-image contrast, which is a "
+                f"legitimate thing to plan and a different claim to make.")
+        if self.scope is ContrastScope.SINGLE_IMAGE and len(self.image_ids) != 1:
+            raise ValueError(
+                f"{self.contrast_id} declares itself single-image over {self.image_ids!r}.")
+        return self
+
+
+# ── 5. what it inferred ─────────────────────────────────────────────────────
+
+class RelationKind(str, Enum):
+    """The closed grammar of how two observations can stand to one another.
+
+    Closed, and topic-free: every member describes a SHAPE of relation that could hold between
+    observations of anything at all. `UNKNOWN` is a legal outcome and a visible one — a relation
+    the model could not type is better kept and marked than dropped or forced into the nearest
+    member, which is how a vocabulary quietly stops meaning anything.
+    """
+    CONTRAST = "contrast"
+    SHARED_ORGANIZATION = "shared_organization"
+    DIVERGENT_TREATMENT = "divergent_treatment"
+    ANALOGY = "analogy"
+    SCALE_VARIATION = "scale_variation"
+    COMPOSITIONAL = "compositional"
+    CAUSAL_HYPOTHESIS = "causal_hypothesis"
+    UNKNOWN = "unknown"
+
+
+class CandidateRelation(_Strict):
+    """A relation Semant proposes between two observations. CANDIDATE is the whole word.
+
+    Nothing here has been accepted. `RelationCritique` is a separate object by a separate producer,
+    for the same reason the alignment is a third object: a relation carrying its own verdict is a
+    thing that grades itself, and the grade it gives itself is the one it was built to earn.
+
+    `counterevidence` is a list on the relation rather than a field on the critique, because the
+    proposer is the one who knows what it had to set aside. A relation that names none is not
+    thereby unopposed; it is a relation whose proposer did not look, and the critic reads the empty
+    list as exactly that.
+    """
+    schema_version: str = SCHEMA_VERSION
+    relation_id: str = Field(..., min_length=1)
+    left_observation_id: str = Field(..., min_length=1)
+    right_observation_id: str = Field(..., min_length=1)
+    relation_kind: RelationKind
+    explanation: str = Field(..., min_length=1)
+    image_ids: List[str] = Field(..., min_length=1)
+    inquiry_relevance: str = Field(..., min_length=1, description="why this bears on the question")
+    epistemic_status: EpistemicStatus = EpistemicStatus.INTERPRETIVE
+    hypothesis_refs: List[str] = Field(default_factory=list)
+    uncertainty: float = Field(default=0.0, ge=0.0, le=1.0)
+    counterevidence: List[str] = Field(default_factory=list)
+    contrast_ref: str = Field(default="", description="the plan this answers, if one")
+    scope: ContrastScope = ContrastScope.CROSS_IMAGE
+    measurement: Optional[MeasurementProvenance] = None
+    origin: Literal[MaterialOrigin.SEMANT_INFERENCE] = MaterialOrigin.SEMANT_INFERENCE
+    provenance: Provenance
+
+    @field_validator("schema_version")
+    @classmethod
+    def _readable(cls, value: str) -> str:
+        return _require_readable(value)
+
+    @field_validator("relation_id")
+    @classmethod
+    def _own_prefix(cls, value: str) -> str:
+        return _require_prefix(value, "candidate_relation")
+
+    @field_validator("left_observation_id", "right_observation_id")
+    @classmethod
+    def _point_at_observations(cls, value: str) -> str:
+        return _require_prefix(value, "visual_observation")
+
+    @field_validator("hypothesis_refs")
+    @classmethod
+    def _point_at_hypotheses(cls, refs: List[str]) -> List[str]:
+        return [_require_prefix(r, "user_hypothesis") for r in refs]
+
+    @field_validator("contrast_ref")
+    @classmethod
+    def _points_at_a_contrast(cls, value: str) -> str:
+        return _require_prefix(value, "contrast_plan") if value else value
+
+    @field_validator("explanation", "inquiry_relevance")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        return _require_nonblank(value, "a relation's own sentences")
+
+    @field_validator("image_ids")
+    @classmethod
+    def _distinct_images(cls, ids: List[str]) -> List[str]:
+        cleaned = [_require_nonblank(i, "image_ids") for i in ids]
+        _require_unique(cleaned, "image_ids")
+        return cleaned
+
+    @model_validator(mode="after")
+    def _stands_between_two_things(self) -> "CandidateRelation":
+        if self.left_observation_id == self.right_observation_id:
+            raise ValueError(
+                f"{self.relation_id} relates {self.left_observation_id} to itself. A relation with "
+                f"one side is a description, and describing an observation twice does not make a "
+                f"comparison.")
+        if self.scope is ContrastScope.CROSS_IMAGE and len(self.image_ids) < 2:
+            raise ValueError(
+                f"{self.relation_id} claims to be cross-image over {self.image_ids!r}. A relation "
+                f"cannot claim to cross pictures unless its observations resolve to at least two.")
+        _require_measurement(self.epistemic_status, self.measurement, self.relation_id)
+        return self
+
+    def observation_refs(self) -> Tuple[str, str]:
+        return (self.left_observation_id, self.right_observation_id)
+
+    def is_cross_image(self) -> bool:
+        """What the relation DECLARES. Whether it is true of the observations is `check_resolves`,
+        and the two are kept apart on purpose: a declaration is checkable only against something,
+        and the something is a set of observations this object does not hold."""
+        return self.scope is ContrastScope.CROSS_IMAGE and len(self.image_ids) >= 2
+
+
+# ── resolution: a reference is a promise, and this is how it is kept ─────────
+
+class UnresolvedReference(ValueError):
+    """A reference that names nothing. Its own type so a caller can tell a dangling pointer from a
+    malformed object — the two want different repairs, and `driver_failed:ValueError` tells a
+    reader neither."""
+
+
+def index_observations(observations: Sequence["VisualObservation"]) -> Dict[str, "VisualObservation"]:
+    index: Dict[str, VisualObservation] = {}
+    for observation in observations:
+        if observation.observation_id in index:
+            raise ValueError(f"{observation.observation_id} appears twice in the same set")
+        index[observation.observation_id] = observation
+    return index
+
+
+def resolve_observations(refs: Sequence[str],
+                         observations: Sequence["VisualObservation"]) -> List["VisualObservation"]:
+    """Every ref, or an exception naming the first that missed. No partial resolution.
+
+    Returning what it could find would let a caller compute over a subset and report the whole —
+    which is the shape of every "it said it compared four and compared two" failure.
+    """
+    index = index_observations(observations)
+    out = []
+    for ref in refs:
+        if ref not in index:
+            raise UnresolvedReference(
+                f"{ref!r} names no observation in this set ({len(index)} known). A relation whose "
+                f"sides do not resolve is a sentence about nothing.")
+        out.append(index[ref])
+    return out
+
+
+def images_of(refs: Sequence[str], observations: Sequence["VisualObservation"]) -> List[str]:
+    """The distinct images the referenced observations are ABOUT, in first-seen order."""
+    seen: List[str] = []
+    for observation in resolve_observations(refs, observations):
+        if observation.image_id not in seen:
+            seen.append(observation.image_id)
+    return seen
+
+
+def check_resolves(item: Any, observations: Sequence["VisualObservation"]) -> List[str]:
+    """A contrast or a relation against the observations it names. Returns the resolved images.
+
+    THE DECLARED IMAGES MUST EQUAL THE RESOLVED ONES. Checking only the count would accept a
+    cross-image claim whose two observations are both about one picture and whose `image_ids`
+    happen to list two — which is precisely the lie the invariant is written against.
+    """
+    refs = (list(item.observation_refs()) if hasattr(item, "observation_refs")
+            else list(item.observation_ids))
+    resolved = images_of(refs, observations)
+    declared = list(item.image_ids)
+    if sorted(resolved) != sorted(declared):
+        raise UnresolvedReference(
+            f"declares images {declared!r} and its observations resolve to {resolved!r}. A "
+            f"declaration that does not match what the observations are about is the form a "
+            f"cross-image claim takes when nothing crossed.")
+    if getattr(item, "scope", None) is ContrastScope.CROSS_IMAGE and len(resolved) < 2:
+        raise UnresolvedReference(
+            f"claims to cross pictures and resolves to {resolved!r}.")
+    return resolved
+
+
 # ── the shared checks ────────────────────────────────────────────────────────
 
 def _require_prefix(value: str, kind: str) -> str:

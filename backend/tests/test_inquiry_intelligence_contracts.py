@@ -25,7 +25,11 @@ from backend.schemas.inquiry_intelligence import (READABLE_SCHEMA_VERSIONS, SCHE
                                                   MaterialOrigin, MeasurementProvenance,
                                                   ObservationState, PromptSpan, Provenance,
                                                   ProvenanceKind, RequestedComparison,
-                                                  UserHypothesis, VisualObservation, mint)
+                                                  AlignmentKind, CandidateRelation, ContrastPlan,
+                                                  ContrastScope, HypothesisAlignment, RelationKind,
+                                                  UnresolvedReference, UserHypothesis,
+                                                  VisualObservation, check_resolves,
+                                                  index_observations, mint, resolve_observations)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -404,3 +408,208 @@ def test_a_round_trip_of_a_dump_with_an_extra_key_is_refused():
     body["some_future_field"] = "arrived from a later version"
     with pytest.raises(ValidationError):
         VisualObservation.model_validate(body)
+
+
+# ── 10. the alignment is a third object ──────────────────────────────────────
+
+def a_relation(**kw):
+    body = {"relation_id": mint("candidate_relation", ["i1", "a"]),
+            "left_observation_id": mint("visual_observation", ["i1", "a"]),
+            "right_observation_id": mint("visual_observation", ["i1", "b"]),
+            "relation_kind": RelationKind.CONTRAST,
+            "explanation": "the two are worked to opposite degrees of finish",
+            "image_ids": ["post_a", "post_b"],
+            "inquiry_relevance": "the question asked which of them is more worked",
+            "provenance": a_provenance()}
+    body.update(kw)
+    return CandidateRelation(**body)
+
+
+def a_contrast(**kw):
+    body = {"contrast_id": mint("contrast_plan", ["i1", "a"]),
+            "observation_ids": [mint("visual_observation", ["i1", "a"]),
+                                mint("visual_observation", ["i1", "b"])],
+            "image_ids": ["post_a", "post_b"],
+            "comparison_dimension": "degree of finish",
+            "why_it_matters": "the person's question turns on which is more worked",
+            "difference_investigated": "whether one surface is left rougher than the other",
+            "possible_countercondition": "both surfaces are worked identically and the difference "
+                                         "is lighting",
+            "provenance": a_provenance()}
+    body.update(kw)
+    return ContrastPlan(**body)
+
+
+def two_observations(image_a="post_a", image_b="post_b"):
+    return [an_observation(observation_id=mint("visual_observation", ["i1", "a"]), image_id=image_a),
+            an_observation(observation_id=mint("visual_observation", ["i1", "b"]), image_id=image_b)]
+
+
+def test_an_alignment_names_both_sides_and_lives_on_neither():
+    """A `supported: true` on the hypothesis would make the person's sentence carry an image
+    finding; the same field on the observation would make a picture carry the person's proposal.
+    Neither field exists, so the relation has to be its own object."""
+    assert "alignment" not in UserHypothesis.model_fields
+    assert "supported" not in UserHypothesis.model_fields
+    assert "hypothesis_id" not in VisualObservation.model_fields
+    alignment = HypothesisAlignment(
+        alignment_id=mint("hypothesis_alignment", ["i1", "a"]),
+        hypothesis_id=mint("user_hypothesis", ["i1", "h"]),
+        observation_id=mint("visual_observation", ["i1", "a"]),
+        alignment=AlignmentKind.CHALLENGES,
+        explanation="the surface the person called uniform is worked differently at the base",
+        provenance=a_provenance())
+    assert alignment.hypothesis_id.startswith("hyp_")
+    assert alignment.observation_id.startswith("vob_")
+
+
+def test_an_alignment_cannot_be_wired_backwards():
+    """The prefixes are load bearing: swapping the two arguments is the mistake this catches, and
+    it is a mistake no amount of care at the call site prevents forever."""
+    with pytest.raises(ValidationError):
+        HypothesisAlignment(alignment_id=mint("hypothesis_alignment", ["i1", "a"]),
+                            hypothesis_id=mint("visual_observation", ["i1", "a"]),
+                            observation_id=mint("user_hypothesis", ["i1", "h"]),
+                            alignment=AlignmentKind.SUPPORTS, explanation="x",
+                            provenance=a_provenance())
+
+
+def test_an_alignment_has_no_status_to_launder_a_measurement_through():
+    assert "epistemic_status" not in HypothesisAlignment.model_fields
+    assert "measurement" not in HypothesisAlignment.model_fields
+
+
+def test_the_two_negatives_are_first_class_answers():
+    """A vocabulary with only supports/complicates/challenges forces every observation to take a
+    side, and taking a side is how a picture becomes a witness for what the person already said."""
+    for kind in (AlignmentKind.DOES_NOT_BEAR_ON, AlignmentKind.CANNOT_DETERMINE):
+        alignment = HypothesisAlignment(
+            alignment_id=mint("hypothesis_alignment", ["i1", kind.value]),
+            hypothesis_id=mint("user_hypothesis", ["i1", "h"]),
+            observation_id=mint("visual_observation", ["i1", "a"]),
+            alignment=kind, explanation="the observation is about a different part of the picture",
+            missing_capability_classes=[CapabilityClass.EXTENT], provenance=a_provenance())
+        assert alignment.alignment is kind
+
+
+# ── 11. a contrast must be falsifiable and must cross what it says it does ───
+
+def test_a_contrast_needs_at_least_two_observations_to_contrast():
+    with pytest.raises(ValidationError):
+        a_contrast(observation_ids=[mint("visual_observation", ["i1", "a"])])
+
+
+def test_a_cross_image_contrast_must_name_two_distinct_images():
+    with pytest.raises(ValidationError) as caught:
+        a_contrast(image_ids=["post_a"])
+    assert "at least two distinct" in str(caught.value)
+
+
+def test_a_single_image_contrast_is_a_legitimate_and_different_claim():
+    single = a_contrast(scope=ContrastScope.SINGLE_IMAGE, image_ids=["post_a"])
+    assert single.scope is ContrastScope.SINGLE_IMAGE
+    with pytest.raises(ValidationError):
+        a_contrast(scope=ContrastScope.SINGLE_IMAGE, image_ids=["post_a", "post_b"])
+
+
+def test_a_contrast_that_cannot_say_what_would_embarrass_it_is_refused():
+    """The load-bearing requirement in this model. A comparison with no countercondition is a
+    description of an expected result, and it will find that result."""
+    with pytest.raises(ValidationError):
+        a_contrast(possible_countercondition="")
+    with pytest.raises(ValidationError):
+        a_contrast(possible_countercondition="   ")
+
+
+def test_the_comparison_dimension_is_open_vocabulary():
+    for dimension in ["degree of finish", "how the interval changes downward",
+                      "whether the divisions repeat", "какой-то другой признак"]:
+        assert a_contrast(comparison_dimension=dimension).comparison_dimension == dimension
+    assert not hasattr(__import__("backend.schemas.inquiry_intelligence", fromlist=["x"]),
+                       "ComparisonDimension"), "a dimension enum would close the vocabulary"
+
+
+def test_priority_is_bounded_rather_than_free():
+    assert a_contrast(priority=1).priority == 1
+    for bad in (0, 6):
+        with pytest.raises(ValidationError):
+            a_contrast(priority=bad)
+
+
+# ── 12. a relation stands between two things ────────────────────────────────
+
+def test_a_relation_cannot_relate_an_observation_to_itself():
+    same = mint("visual_observation", ["i1", "a"])
+    with pytest.raises(ValidationError) as caught:
+        a_relation(left_observation_id=same, right_observation_id=same)
+    assert "relates" in str(caught.value) and "itself" in str(caught.value)
+
+
+def test_a_relation_cannot_claim_to_cross_pictures_on_one_picture():
+    with pytest.raises(ValidationError) as caught:
+        a_relation(image_ids=["post_a"])
+    assert "at least two" in str(caught.value)
+    assert a_relation(scope=ContrastScope.SINGLE_IMAGE, image_ids=["post_a"]).image_ids == ["post_a"]
+
+
+def test_a_relation_is_interpretive_until_something_measured_it():
+    assert a_relation().epistemic_status is EpistemicStatus.INTERPRETIVE
+    with pytest.raises(ValidationError) as caught:
+        a_relation(epistemic_status=EpistemicStatus.MEASURED)
+    assert "measurement provenance" in str(caught.value)
+    assert a_relation(epistemic_status=EpistemicStatus.MEASURED,
+                      measurement=a_measurement()).is_cross_image() is True
+
+
+def test_a_relation_points_at_hypotheses_as_hypotheses():
+    assert a_relation(hypothesis_refs=[mint("user_hypothesis", ["i1", "h"])]).hypothesis_refs
+    with pytest.raises(ValidationError):
+        a_relation(hypothesis_refs=[mint("visual_observation", ["i1", "a"])])
+
+
+def test_a_relation_carries_its_own_counterevidence():
+    """The proposer knows what it set aside. An empty list is not "unopposed" — it is "the proposer
+    did not look", and the critic is told to read it that way."""
+    assert a_relation().counterevidence == []
+    assert a_relation(counterevidence=["the lighting differs between the two"]).counterevidence
+
+
+# ── 13. references resolve, or say which one did not ────────────────────────
+
+def test_a_dangling_reference_is_its_own_kind_of_failure():
+    with pytest.raises(UnresolvedReference) as caught:
+        resolve_observations([mint("visual_observation", ["i1", "missing"])], two_observations())
+    assert "names no observation" in str(caught.value)
+
+
+def test_resolution_is_all_or_nothing():
+    """Returning what it could find would let a caller compute over a subset and report the whole."""
+    refs = [mint("visual_observation", ["i1", "a"]), mint("visual_observation", ["i1", "gone"])]
+    with pytest.raises(UnresolvedReference):
+        resolve_observations(refs, two_observations())
+
+
+def test_a_relation_that_declares_two_images_and_resolves_to_one_is_caught():
+    """THE INVARIANT THAT COUNTING CANNOT REACH. Both observations are about the same picture, and
+    `image_ids` lists two — the exact shape a cross-image claim takes when nothing crossed."""
+    both_on_one = two_observations(image_a="post_a", image_b="post_a")
+    relation = a_relation(image_ids=["post_a", "post_b"])
+    with pytest.raises(UnresolvedReference) as caught:
+        check_resolves(relation, both_on_one)
+    assert "when nothing crossed" in str(caught.value)
+
+
+def test_a_relation_whose_observations_really_do_cross_resolves():
+    assert check_resolves(a_relation(), two_observations()) == ["post_a", "post_b"]
+
+
+def test_a_contrast_resolves_by_the_same_rule():
+    assert check_resolves(a_contrast(), two_observations()) == ["post_a", "post_b"]
+    with pytest.raises(UnresolvedReference):
+        check_resolves(a_contrast(), two_observations(image_a="post_a", image_b="post_a"))
+
+
+def test_two_observations_with_one_id_are_refused_before_anything_resolves():
+    duplicate = two_observations()[0]
+    with pytest.raises(ValueError):
+        index_observations([duplicate, duplicate])
