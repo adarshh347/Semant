@@ -1,0 +1,53 @@
+{
+  "version": "gemini-census.v1",
+  "taken_at": "2026-08-22T01:09:46Z",
+  "mode": "skipped",
+  "skipped_reason": "GEMINI_API_KEY is not set; the account was never contacted",
+  "project": {
+    "key_present": false,
+    "key_fingerprint": null
+  },
+  "models": [],
+  "quotas": {
+    "rpm": {
+      "value": null,
+      "unit": null,
+      "source": "not_observed",
+      "note": "requests per minute — account dashboard only"
+    },
+    "tpm": {
+      "value": null,
+      "unit": null,
+      "source": "not_observed",
+      "note": "tokens per minute — account dashboard only"
+    },
+    "rpd": {
+      "value": null,
+      "unit": null,
+      "source": "not_observed",
+      "note": "requests per day — account dashboard only"
+    },
+    "tpd": {
+      "value": null,
+      "unit": null,
+      "source": "not_observed",
+      "note": "tokens per day — account dashboard only"
+    }
+  },
+  "retry_after": {
+    "observed": null,
+    "header": null,
+    "body_retry_delay": null,
+    "note": "populated only by an actual 429 recorded in a run"
+  },
+  "usage_metadata": {
+    "reported": null,
+    "fields": []
+  },
+  "data_use": {
+    "value": null,
+    "unit": null,
+    "source": "not_observed",
+    "note": "whether free-tier prompts train the product — a policy fact about this account, read off the account or not at all"
+  }
+}

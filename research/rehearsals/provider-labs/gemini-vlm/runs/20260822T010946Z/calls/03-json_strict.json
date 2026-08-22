@@ -1,0 +1,46 @@
+{
+  "call_id": "03-json_strict",
+  "lab": "gemini-vlm",
+  "experiment": "json_strict",
+  "mode": "live",
+  "provider": "gemini",
+  "endpoint": "(not called)",
+  "model": "(no model)",
+  "prompt_id": null,
+  "request": {
+    "boundary_hash": "d6d8ee7537cf1ba2eec44827f297c69d44bc7df68fe32997492be9781cad5d4c",
+    "text_parts": [],
+    "image_parts": [],
+    "response_schema_sent": null,
+    "generation_config": null
+  },
+  "outcome": {
+    "status": "unavailable",
+    "http_status": null,
+    "finish_reason": null,
+    "safety_blocked": null,
+    "text": null,
+    "json": null,
+    "json_valid_against_schema": null,
+    "schema_errors": [],
+    "error_type": null,
+    "error_message": "GEMINI_API_KEY is not set"
+  },
+  "telemetry": {
+    "latency_ms": null,
+    "usage": null,
+    "model_version_reported": null,
+    "retry_after_s": null,
+    "rate_limited": null
+  },
+  "epistemic": {
+    "status": "interpretive",
+    "measured": false,
+    "supported_by_capability": null,
+    "prompt_carries_user_claim": null,
+    "note": "no call was made; nothing was observed"
+  },
+  "corpus_invariant": null,
+  "captured_at": null,
+  "content_hash": "b6e6ca985680309d043ad6279031eb79887a1194e621ebb8c95a8952d58b75f9"
+}

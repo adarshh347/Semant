@@ -1,0 +1,35 @@
+{
+  "version": "gemini-vlm-prompts.v1",
+  "note": "The four canonical prompts, verbatim. They are DATA, not code: nothing in production reads this file, and the lab reads it rather than embedding folds, sculpture or any other rehearsal topic in a script that could later be imported.",
+  "epistemic_warning": "Every one of these is a USER HYPOTHESIS or a user question. None of them is an image observation, and a model that agrees with one has produced agreement, not evidence.",
+  "prompts": [
+    {
+      "id": "rich",
+      "kind": "user_hypothesis",
+      "carries_claim": true,
+      "claim": "that folds become shadow-interplay, transparent veils, skin layers, eroticism, metallic thickness — asserted by the user before any image was looked at",
+      "text": "interestingly the architecture of folds turn into different things- interplay of shadow, the transparent veils, the skin layers, eroticism of skin, metallic thickness and sophistication of the body - shows how creative the tactile philosophy can be okay i gave this btw"
+    },
+    {
+      "id": "sparse",
+      "kind": "user_question",
+      "carries_claim": false,
+      "claim": null,
+      "text": "How do these sculptures make the same hard material feel differently soft, heavy, thin, or resistant? Build the comparison from what is visible rather than assuming the explanation in advance."
+    },
+    {
+      "id": "adversarial",
+      "kind": "user_hypothesis",
+      "carries_claim": true,
+      "claim": "that all three sculptures use folds in essentially the same way",
+      "text": "These sculptures all use folds in essentially the same way to create transparent softness. Determine whether the images support this claim, complicate it, or require refusing it."
+    },
+    {
+      "id": "generative",
+      "kind": "user_question",
+      "carries_claim": false,
+      "claim": null,
+      "text": "Find the strongest visual difference in how these sculptures organize folds around the body. Explain how that difference changes bodily perception, then propose a fourth sculpture that combines the two regimes without merely averaging them."
+    }
+  ]
+}
