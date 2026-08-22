@@ -50,7 +50,7 @@ from uuid import uuid4
 
 from backend.database import writer_passage_version_collection
 from backend.services.manuscript_service import manuscript_service
-from backend.services.writer import instrument
+from backend.services.writer import instrument, ledger
 
 #: The instrumentation events. §8 says log the genealogy and build no analysis on it yet.
 REVISED = "passage_revised"
@@ -63,6 +63,14 @@ STILL_PRESENT = "still_present"
 
 class RevisionError(ValueError):
     """A revision that must not happen, with the reason."""
+
+
+class VersionExists(RevisionError):
+    """`lineage_id@version` is already recorded. The index said so; nothing was written."""
+
+    def __init__(self, lineage_id: str, version: int):
+        self.lineage_id, self.version = lineage_id, int(version)
+        super().__init__(f"{lineage_id}@v{version} is already recorded")
 
 
 def _now() -> datetime:
@@ -195,7 +203,20 @@ class VersionStore:
             "model": model,
             "committed_at": _now(),
         }
-        await writer_passage_version_collection.insert_one(doc)
+        # Belt and braces with the unique `(lineage_id, version)` index: the read catches
+        # a sequential retry wherever the index is absent (a fresh database before
+        # startup indexed it); the index catches the race the read cannot.
+        if await writer_passage_version_collection.find_one(
+                {"lineage_id": lineage_id, "version": int(version)}):
+            raise VersionExists(lineage_id, version)
+        try:
+            await writer_passage_version_collection.insert_one(doc)
+        except Exception as exc:
+            if "duplicate" not in str(exc).lower() and type(exc).__name__ != "DuplicateKeyError":
+                raise
+            # The unique `(lineage_id, version)` index refused a second body for one
+            # version. Somebody already recorded it. Say which — and NEVER overwrite.
+            raise VersionExists(lineage_id, version) from exc
         return _out(doc)
 
     async def get(self, version_id: str) -> Optional[Dict[str, Any]]:
@@ -261,20 +282,27 @@ async def lineage_for_block(
         return {"lineage_id": lineage_id, "adopted": False,
                 "current": await version_store.current(lineage_id)}
 
-    lineage_id = lineage_id or _gen("lin")
+    # DETERMINISTIC from the block id, so two prepares racing to adopt one block plan the
+    # SAME lineage — and the unique `(lineage_id, version)` index lets exactly one record
+    # v1. The loser reads what the winner wrote. A random id here would give one block two
+    # lineages, each with a v1 that claims to be its only history.
+    lineage_id = lineage_id or f"lin_adopted_{block_id}"
     provenance = dict(block.get("provenance") or {})
-    current = await version_store.record(
-        project_id,
-        lineage_id=lineage_id,
-        version=1,
-        text=block.get("content", ""),
-        provenance=provenance,
-        passage_id=provenance.get("passage_id", ""),
-        block_id=block_id,
-        scene_id=scene_id,
-        manuscript_id=scene.get("manuscript_id", ""),
-        model=provenance.get("model", "") or "",
-    )
+    try:
+        current = await version_store.record(
+            project_id,
+            lineage_id=lineage_id,
+            version=1,
+            text=block.get("content", ""),
+            provenance=provenance,
+            passage_id=provenance.get("passage_id", ""),
+            block_id=block_id,
+            scene_id=scene_id,
+            manuscript_id=scene.get("manuscript_id", ""),
+            model=provenance.get("model", "") or "",
+        )
+    except VersionExists:
+        current = await version_store.resolve(lineage_id, 1)
     await _point_block_at(scene_id, block_id, lineage_id, 1)
     return {"lineage_id": lineage_id, "adopted": True, "current": current}
 
@@ -287,19 +315,11 @@ async def _point_block_at(scene_id: str, block_id: str, lineage_id: str, version
     It writes through `manuscript_service`, the canon owner from WS-0A, for the same reason
     Accept does: the Writer adds no second door to the manuscript.
     """
-    scene, _ = await _scene_and_block(scene_id, block_id)
-    blocks = []
-    for b in scene.get("blocks", []):
-        if b.get("id") == block_id:
-            b = dict(b)
-            b["lineage_id"] = lineage_id
-            b["version"] = version
-            if text is not None:
-                b["content"] = text
-            if provenance is not None:
-                b["provenance"] = dict(provenance)
-        blocks.append(b)
-    return await manuscript_service.update_scene(scene_id, {"blocks": blocks})
+    await _scene_and_block(scene_id, block_id)
+    moved = await manuscript_service.point_block(
+        scene_id, block_id, lineage_id=lineage_id, version=version,
+        content=text, provenance=provenance)
+    return moved["scene"]
 
 
 # ── the prompt (§3 — the strong form of no-silent-improvement) ───────────────
@@ -386,32 +406,68 @@ async def accept_revision(
             f"lineage {lineage_id} has no committed version to revise — "
             "a revision needs a parent"
         )
-    parent = history[-1]
 
-    diff = declaration_diff(
-        declared_set(parent.get("provenance", {})), declared_set(provenance)
-    )
-    version = parent["version"] + 1
-    recorded = await version_store.record(
-        project_id,
-        lineage_id=lineage_id,
-        version=version,
-        text=text,
-        provenance=provenance,
-        passage_id=passage_id,
-        block_id=block_id,
-        scene_id=scene_id,
-        manuscript_id=parent.get("manuscript_id", ""),
-        revised_from=f"{lineage_id}@v{parent['version']}",
-        diff=diff,
-        in_response_to=in_response_to,
-        model=model,
-    )
+    # RETRY-SAFE. If this passage already recorded a version on this lineage, that IS the
+    # version this call is committing: a previous attempt got that far and died before the
+    # pointer moved or the passage was marked. Reuse it; never record a second.
+    recorded = next((v for v in history if v.get("passage_id") == passage_id and passage_id), None)
+    if recorded is not None:
+        parent = next((v for v in history if v["version"] == recorded["version"] - 1), None)
+        diff = dict(recorded.get("declaration_diff") or {})
+        version = recorded["version"]
+    else:
+        parent = history[-1]
+        diff = declaration_diff(
+            declared_set(parent.get("provenance", {})), declared_set(provenance)
+        )
+        version = parent["version"] + 1
+        ledger.trip("revision.version_insert")
+        try:
+            recorded = await version_store.record(
+                project_id,
+                lineage_id=lineage_id,
+                version=version,
+                text=text,
+                provenance=provenance,
+                passage_id=passage_id,
+                block_id=block_id,
+                scene_id=scene_id,
+                manuscript_id=parent.get("manuscript_id", ""),
+                revised_from=f"{lineage_id}@v{parent['version']}",
+                diff=diff,
+                in_response_to=in_response_to,
+                model=model,
+            )
+        except VersionExists as exc:
+            # Another passage's revision landed as v{version} first. The lineage has moved
+            # on; this re-render was made against a parent that is no longer current.
+            raise RevisionError(
+                f"{lineage_id} already has a v{exc.version}, committed from a different "
+                f"re-render. Re-open the revision against the current version and render "
+                f"again — nothing was written."
+            ) from exc
 
     # The pointer moves only now, and only after the new version is durably recorded — so a
     # failure between the two leaves the author looking at prose that still has a version.
-    scene = await _point_block_at(scene_id, block_id, lineage_id, version,
-                                  text=text, provenance=provenance)
+    # CONDITIONAL on the block still showing the parent: a block that already shows this
+    # version is the retry case and is left alone; a block showing anything else is a
+    # pointer this call has no business moving.
+    ledger.trip("revision.pointer_move")
+    _, block = await _scene_and_block(scene_id, block_id)
+    if int(block.get("version") or 0) == version and block.get("lineage_id") == lineage_id:
+        scene = await manuscript_service.get_scene(scene_id)
+    else:
+        moved = await manuscript_service.point_block(
+            scene_id, block_id, lineage_id=lineage_id, version=version,
+            content=text, provenance=provenance,
+            expect_version=parent["version"] if parent else None)
+        if not moved["moved"]:
+            raise RevisionError(
+                f"block {block_id} no longer shows v{parent['version'] if parent else '?'} of "
+                f"{lineage_id}; the pointer was not moved. v{version} is recorded and "
+                f"resolvable — re-open the revision to see where the block stands."
+            )
+        scene = moved["scene"]
 
     await instrument.record(
         REVISED, project_id,
@@ -466,8 +522,13 @@ async def close_loop(version_id: str, reading: Dict[str, Any]) -> Dict[str, Any]
     ]
     outcome = STILL_PRESENT if recurred else CLEARED
 
-    await writer_passage_version_collection.update_one(
-        {"_id": version_id},
+    # WRITTEN ONCE. The outcome is the one field a version takes after insert, and it is
+    # a conditional write: only a version whose loop is still open takes it. A second
+    # closure — a retry, or a later reading — finds it closed and returns what stands,
+    # so two concurrent closures converge on one outcome and one instrumentation event.
+    ledger.trip("loop.close")
+    res = await writer_passage_version_collection.update_one(
+        {"_id": version_id, "loop_outcome": None},
         {"$set": {"loop_outcome": {
             "outcome": outcome,
             "flag_id": flag_id,
@@ -476,6 +537,8 @@ async def close_loop(version_id: str, reading: Dict[str, Any]) -> Dict[str, Any]
             "closed_at": _now(),
         }}},
     )
+    if res.matched_count == 0:
+        return await version_store.get(version_id)
     await instrument.record(
         LOOP_CLOSED, version.get("project_id", ""),
         operators=[o.get("name") for o in (version.get("provenance") or {}).get("operators", [])
