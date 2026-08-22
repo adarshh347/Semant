@@ -1,0 +1,721 @@
+{
+  "suite": "forms",
+  "recorded_at": "2026-08-22T02:00:54+00:00",
+  "post_id": "695be8baa9ea58f1b6aef609",
+  "label": "painted",
+  "session_id": "labs_5a779b9c282e",
+  "rows": [
+    {
+      "trial": "extent.hard_mask \u00b7 direct operation",
+      "form": "extent.hard_mask",
+      "level": "direct_operation",
+      "operation": "extent.find_all",
+      "outcome": "ready",
+      "wall_ms": 11432,
+      "stages": [
+        {
+          "adapter": "yolo_sam2_auto",
+          "state": "completed",
+          "invoked": true,
+          "duration_ms": 9084,
+          "detail": "1 extents from sam2-auto; inner_ms=9084; adapter=yolo_sam2_auto; organ_duration_ms=6642"
+        }
+      ],
+      "artifact_ids": [
+        "art_2b7642e1baff"
+      ],
+      "refusals": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null,
+      "producer": "yolo_sam2_auto",
+      "adapter": "yolo_sam2_auto",
+      "model": "sam2.1_hiera_tiny",
+      "revision": "sam2.1-auto",
+      "device": "mps",
+      "peak_memory_mb": null,
+      "instances": 1
+    },
+    {
+      "trial": "extent.boundary_rings \u00b7 direct form",
+      "form": "extent.boundary_rings",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 313,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_forms.boundary_rings",
+      "producer_kind": "code",
+      "producer_revision": "extent-exact-forms.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_f5e8edea7d7c",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "extent_boundary",
+      "examined": 3,
+      "renderings_available": [
+        "ring_outline",
+        "mask_outline"
+      ],
+      "refusals": [],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.hole_set \u00b7 direct form",
+      "form": "extent.hole_set",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 288,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_forms.hole_set",
+      "producer_kind": "code",
+      "producer_revision": "extent-exact-forms.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_fddf589b7496",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "extent_hole_set",
+      "examined": 3,
+      "renderings_available": [
+        "hole_fill",
+        "mask_outline"
+      ],
+      "refusals": [],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.soft_field \u00b7 not derivable here",
+      "form": "extent.soft_field",
+      "level": "direct_form",
+      "producible_here": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation",
+        "capability_unavailable"
+      ],
+      "note": "registered and deferred. the raster was evaluated and every cell is zero \u2014 the thing is not here. The shape is settled a phase before anything writes it.",
+      "producers": [
+        {
+          "key": "sam2_logits",
+          "kind": "model",
+          "label": "sam2_logits \u2014 reject",
+          "state": "unavailable",
+          "model": "facebook/sam2.1-hiera-tiny",
+          "revision": null,
+          "reason": "reports 5% of the true softness on the one control that is genuinely boundary-less. sigmoid(logit) is a mask confidence, not a coverage",
+          "remedy": "use the route the finding names",
+          "admission": "reject"
+        }
+      ],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.fragment_set \u00b7 direct form",
+      "form": "extent.fragment_set",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 395,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_forms.fragment_set",
+      "producer_kind": "code",
+      "producer_revision": "extent-exact-forms.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_c2fb3358c192",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "extent_fragment_set",
+      "examined": 3,
+      "renderings_available": [
+        "fragment_cluster",
+        "mask_fill"
+      ],
+      "refusals": [],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.fused_hypothesis \u00b7 direct form",
+      "form": "extent.fused_hypothesis",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 176,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_composites.produce_fused_hypothesis",
+      "producer_kind": "code",
+      "producer_revision": "extent-composites.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_f042931ae362",
+      "ceiling": "interpretive",
+      "basis": "mask",
+      "payload_variant": "extent_fusion_hypothesis",
+      "examined": 1,
+      "renderings_available": [
+        "fragment_cluster",
+        "hypothesis_stack"
+      ],
+      "refusals": [
+        {
+          "code": "form_not_producible",
+          "organ": "extent",
+          "operation": null,
+          "message": "extent.fused_hypothesis is registered and deferred. No producer in this phase writes one.",
+          "missing": [
+            "extent.fused_hypothesis"
+          ],
+          "remedy": "wait for the phase that enables it, or produce a form that exists",
+          "detail": {
+            "form": "extent.fused_hypothesis",
+            "state": "deferred"
+          }
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.visible_inferred_partition \u00b7 direct form",
+      "form": "extent.visible_inferred_partition",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 189,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_composites.produce_visible_inferred_partition",
+      "producer_kind": "code",
+      "producer_revision": "extent-composites.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_b796b54a4bb3",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": null,
+      "examined": null,
+      "renderings_available": [
+        "partition_tricolor",
+        "scalar_wash"
+      ],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "extent",
+          "operation": null,
+          "message": "a partition with no visible part contradicts the extent it partitions. `of` names something somebody measured, and an answer holding only inferred and unknown pixels is a statement about an extent nobody saw.",
+          "missing": [
+            "visible"
+          ],
+          "remedy": "supply the part that was seen",
+          "detail": {
+            "form": "extent.visible_inferred_partition"
+          }
+        },
+        {
+          "code": "form_not_producible",
+          "organ": "extent",
+          "operation": null,
+          "message": "extent.visible_inferred_partition is registered and deferred. No producer in this phase writes one.",
+          "missing": [
+            "extent.visible_inferred_partition"
+          ],
+          "remedy": "wait for the phase that enables it, or produce a form that exists",
+          "detail": {
+            "form": "extent.visible_inferred_partition",
+            "state": "deferred"
+          }
+        }
+      ],
+      "omitted": [
+        {
+          "what": "visible",
+          "reason": "part_not_supplied",
+          "detail": "no visible region was supplied."
+        },
+        {
+          "what": "inferred",
+          "reason": "part_not_supplied",
+          "detail": "no inferred region was supplied."
+        },
+        {
+          "what": "unknown",
+          "reason": "part_not_supplied",
+          "detail": "no unknown region was supplied. `unknown` is a real third part: not-seen-and-not-inferred is not the same as absent."
+        }
+      ],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.hierarchy \u00b7 direct form",
+      "form": "extent.hierarchy",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 208,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_composites.produce_extent_hierarchy",
+      "producer_kind": "code",
+      "producer_revision": "extent-composites.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_9b579157c011",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "extent_hierarchy",
+      "examined": 0,
+      "renderings_available": [
+        "hierarchy_tree",
+        "mask_fill"
+      ],
+      "refusals": [],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.density_field \u00b7 direct form",
+      "form": "extent.density_field",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 227,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_composites.produce_density_field",
+      "producer_kind": "code",
+      "producer_revision": "extent-composites.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_e5f82fe018e5",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "extent_density_field",
+      "examined": 1,
+      "renderings_available": [
+        "density_contours",
+        "scalar_wash"
+      ],
+      "refusals": [
+        {
+          "code": "form_not_producible",
+          "organ": "extent",
+          "operation": null,
+          "message": "extent.density_field is registered and deferred. No producer in this phase writes one.",
+          "missing": [
+            "extent.density_field"
+          ],
+          "remedy": "wait for the phase that enables it, or produce a form that exists",
+          "detail": {
+            "form": "extent.density_field",
+            "state": "deferred"
+          }
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.hypothesis_set \u00b7 direct form",
+      "form": "extent.hypothesis_set",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 183,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_composites.produce_hypothesis_set",
+      "producer_kind": "code",
+      "producer_revision": "extent-composites.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_a470d65aaa4b",
+      "ceiling": "uncertain",
+      "basis": "mask",
+      "payload_variant": "extent_hypothesis_set",
+      "examined": 0,
+      "renderings_available": [
+        "hypothesis_stack",
+        "ab_overlay"
+      ],
+      "refusals": [
+        {
+          "code": "form_not_producible",
+          "organ": "extent",
+          "operation": null,
+          "message": "extent.hypothesis_set is registered and deferred. No producer in this phase writes one.",
+          "missing": [
+            "extent.hypothesis_set"
+          ],
+          "remedy": "wait for the phase that enables it, or produce a form that exists",
+          "detail": {
+            "form": "extent.hypothesis_set",
+            "state": "deferred"
+          }
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.contact_locus \u00b7 not derivable here",
+      "form": "topology.contact_locus",
+      "level": "direct_form",
+      "producible_here": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+      "producers": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.intersection_area \u00b7 not derivable here",
+      "form": "topology.intersection_area",
+      "level": "direct_form",
+      "producible_here": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+      "producers": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.clearance_path \u00b7 not derivable here",
+      "form": "topology.clearance_path",
+      "level": "direct_form",
+      "producible_here": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+      "producers": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.containment_tree \u00b7 direct form",
+      "form": "topology.containment_tree",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 100,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": null,
+      "producer_kind": null,
+      "producer_revision": null,
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": null,
+      "derivation_id": null,
+      "ceiling": null,
+      "basis": null,
+      "payload_variant": null,
+      "examined": null,
+      "renderings_available": [
+        "hierarchy_tree",
+        "relation_graph"
+      ],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "topology",
+          "operation": null,
+          "message": "topology.containment_tree reads a topology.pair_relation set and none was supplied.",
+          "missing": [
+            "topology.pair_relation"
+          ],
+          "remedy": "measure a relation set in this session and derive again",
+          "detail": {}
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.adjacency_graph \u00b7 direct form",
+      "form": "topology.adjacency_graph",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 122,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": null,
+      "producer_kind": null,
+      "producer_revision": null,
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": null,
+      "derivation_id": null,
+      "ceiling": null,
+      "basis": null,
+      "payload_variant": null,
+      "examined": null,
+      "renderings_available": [
+        "relation_graph",
+        "contact_band"
+      ],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "topology",
+          "operation": null,
+          "message": "topology.adjacency_graph reads a topology.pair_relation set and none was supplied.",
+          "missing": [
+            "topology.pair_relation"
+          ],
+          "remedy": "measure a relation set in this session and derive again",
+          "detail": {}
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.negative_space_field \u00b7 not derivable here",
+      "form": "topology.negative_space_field",
+      "level": "direct_form",
+      "producible_here": true,
+      "blocked_by": [],
+      "note": "",
+      "producers": [
+        {
+          "key": "distance_transform",
+          "kind": "code",
+          "label": "separation and negative space, per pixel",
+          "state": "available",
+          "model": null,
+          "revision": "topology-facade.v1",
+          "reason": null,
+          "remedy": null,
+          "admission": null
+        }
+      ],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.transition \u00b7 direct form",
+      "form": "topology.transition",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 123,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": null,
+      "producer_kind": null,
+      "producer_revision": null,
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": null,
+      "derivation_id": null,
+      "ceiling": null,
+      "basis": null,
+      "payload_variant": null,
+      "examined": null,
+      "renderings_available": [
+        "transition_diff",
+        "before_after"
+      ],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "topology",
+          "operation": null,
+          "message": "topology.transition reads a topology.pair_relation set and none was supplied.",
+          "missing": [
+            "topology.pair_relation"
+          ],
+          "remedy": "measure a relation set in this session and derive again",
+          "detail": {}
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.uncertain_relation_set \u00b7 direct form",
+      "form": "topology.uncertain_relation_set",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 130,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": null,
+      "producer_kind": null,
+      "producer_revision": null,
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": null,
+      "derivation_id": null,
+      "ceiling": null,
+      "basis": null,
+      "payload_variant": null,
+      "examined": null,
+      "renderings_available": [
+        "hypothesis_stack",
+        "relation_graph"
+      ],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "topology",
+          "operation": null,
+          "message": "a conditional relation set is conditioned on a reading of the extents, and no hypothesis set was supplied.",
+          "missing": [
+            "extent.hypothesis_set"
+          ],
+          "remedy": "derive an extent.hypothesis_set first and supply it here",
+          "detail": {}
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    }
+  ],
+  "source_unchanged": true,
+  "ledger_before": {
+    "post_id": "695be8baa9ea58f1b6aef609",
+    "fingerprint": "120891f393d1c46124c565d7c6282ef468c9a23fd4decd7a0f82fb56abae529e",
+    "ledger": {
+      "region_annotations": 41,
+      "visual_marks": 0,
+      "grounds": 1,
+      "percepts": 0,
+      "visual_layers": 0
+    }
+  },
+  "ledger_after": {
+    "post_id": "695be8baa9ea58f1b6aef609",
+    "fingerprint": "120891f393d1c46124c565d7c6282ef468c9a23fd4decd7a0f82fb56abae529e",
+    "ledger": {
+      "region_annotations": 41,
+      "visual_marks": 0,
+      "grounds": 1,
+      "percepts": 0,
+      "visual_layers": 0
+    }
+  },
+  "lab_collections": {
+    "sessions": 36,
+    "plans": 84,
+    "runs": 53,
+    "artifacts": 45,
+    "reviews": 0
+  }
+}

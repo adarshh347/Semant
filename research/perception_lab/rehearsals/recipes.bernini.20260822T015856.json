@@ -1,0 +1,423 @@
+{
+  "suite": "recipes",
+  "recorded_at": "2026-08-22T01:58:56+00:00",
+  "post_id": "6a603f6d1ecd6db1c931eb5e",
+  "label": "bernini",
+  "rows": [
+    {
+      "trial": "boundary-and-void \u00b7 recipe",
+      "recipe": "boundary-and-void",
+      "level": "recipe",
+      "http": 201,
+      "wall_ms": 721,
+      "ready": true,
+      "reasons": [],
+      "declared_operations": 1,
+      "declared_derivations": 2,
+      "bounds": {
+        "max_operations": 1,
+        "max_model_calls": 1,
+        "max_instances": 8
+      },
+      "resolved_steps": [
+        {
+          "operation": "extent.find_all",
+          "adapter": "yolo_sam2_auto",
+          "parameters": {
+            "max_instances": 8,
+            "min_area": 0.002
+          }
+        }
+      ],
+      "refusals": [],
+      "requires_confirmation": false,
+      "derivations_declared": [
+        "extent.boundary_rings",
+        "extent.hole_set"
+      ],
+      "decision_points": [
+        "Is that dark shape a void INSIDE this extent, or the gap between this one and the next?"
+      ],
+      "session_mode": "isolation",
+      "session_organ": "extent",
+      "notes": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "fragment-continuity \u00b7 recipe",
+      "recipe": "fragment-continuity",
+      "level": "recipe",
+      "http": 201,
+      "wall_ms": 565,
+      "ready": false,
+      "reasons": [
+        "extent.fused_hypothesis: not producible in this deployment"
+      ],
+      "declared_operations": 1,
+      "declared_derivations": 2,
+      "bounds": {
+        "max_operations": 1,
+        "max_model_calls": 1,
+        "max_instances": 12
+      },
+      "resolved_steps": [
+        {
+          "operation": "extent.find_named",
+          "adapter": "sam3_concept",
+          "parameters": {
+            "max_instances": 12,
+            "concept": "the figure"
+          }
+        }
+      ],
+      "refusals": [],
+      "requires_confirmation": false,
+      "derivations_declared": [
+        "extent.fragment_set",
+        "extent.fused_hypothesis"
+      ],
+      "decision_points": [
+        "Are these pieces one thing, and does saying so require asserting extent nobody saw?"
+      ],
+      "session_mode": "isolation",
+      "session_organ": "extent",
+      "notes": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "visible-versus-inferred \u00b7 recipe",
+      "recipe": "visible-versus-inferred",
+      "level": "recipe",
+      "http": 201,
+      "wall_ms": 609,
+      "ready": false,
+      "reasons": [
+        "extent.visible_inferred_partition: not producible in this deployment"
+      ],
+      "declared_operations": 2,
+      "declared_derivations": 1,
+      "bounds": {
+        "max_operations": 2,
+        "max_model_calls": 1,
+        "max_instances": 4
+      },
+      "resolved_steps": [
+        {
+          "operation": "extent.find_named",
+          "adapter": "sam3_concept",
+          "parameters": {
+            "max_instances": 4,
+            "concept": "the figure"
+          }
+        },
+        {
+          "operation": "extent.draw",
+          "adapter": "human",
+          "parameters": {
+            "tool": "mask_brush"
+          }
+        }
+      ],
+      "refusals": [],
+      "requires_confirmation": false,
+      "derivations_declared": [
+        "extent.visible_inferred_partition"
+      ],
+      "decision_points": [
+        "Where does the inferred part stop and the unknown part begin?"
+      ],
+      "session_mode": "isolation",
+      "session_organ": "extent",
+      "notes": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "courtyard-hierarchy \u00b7 recipe",
+      "recipe": "courtyard-hierarchy",
+      "level": "recipe",
+      "http": 201,
+      "wall_ms": 583,
+      "ready": true,
+      "reasons": [],
+      "declared_operations": 2,
+      "declared_derivations": 2,
+      "bounds": {
+        "max_operations": 2,
+        "max_model_calls": 2,
+        "max_instances": 8,
+        "max_pairs": 28
+      },
+      "resolved_steps": [
+        {
+          "operation": "extent.find_all",
+          "adapter": "yolo_sam2_auto",
+          "parameters": {
+            "max_instances": 8,
+            "min_area": 0.001
+          }
+        }
+      ],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "topology",
+          "operation": "topology.all_pairs",
+          "message": "topology.all_pairs needs extents to measure and none were supplied.",
+          "missing": [
+            "members"
+          ],
+          "remedy": "The bounded set. A person chooses it; the operation never widens it.",
+          "detail": {
+            "role": "members",
+            "artifact_kinds": [
+              "extent_set"
+            ],
+            "min": 2,
+            "max": 12
+          }
+        }
+      ],
+      "requires_confirmation": true,
+      "derivations_declared": [
+        "topology.containment_tree",
+        "extent.hierarchy"
+      ],
+      "decision_points": [
+        "Is the fountain INSIDE the courtyard, or PART OF it?"
+      ],
+      "session_mode": "chain",
+      "session_organ": "extent",
+      "notes": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "piazza-negative-space \u00b7 recipe",
+      "recipe": "piazza-negative-space",
+      "level": "recipe",
+      "http": 201,
+      "wall_ms": 546,
+      "ready": false,
+      "reasons": [
+        "extent.density_field: not producible in this deployment"
+      ],
+      "declared_operations": 2,
+      "declared_derivations": 2,
+      "bounds": {
+        "max_operations": 2,
+        "max_model_calls": 2,
+        "max_instances": 64
+      },
+      "resolved_steps": [
+        {
+          "operation": "extent.find_named",
+          "adapter": "sam3_concept",
+          "parameters": {
+            "max_instances": 64,
+            "concept": "the figure"
+          }
+        }
+      ],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "topology",
+          "operation": "topology.negative_space",
+          "message": "topology.negative_space needs extents to measure and none were supplied.",
+          "missing": [
+            "figure"
+          ],
+          "remedy": "The extents whose complement is measured.",
+          "detail": {
+            "role": "figure",
+            "artifact_kinds": [
+              "extent_set"
+            ],
+            "min": 1,
+            "max": 8
+          }
+        }
+      ],
+      "requires_confirmation": true,
+      "derivations_declared": [
+        "extent.fragment_set",
+        "extent.density_field"
+      ],
+      "decision_points": [
+        "What bandwidth, and are you prepared to lose the unit?"
+      ],
+      "session_mode": "chain",
+      "session_organ": "extent",
+      "notes": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology-sensitivity \u00b7 recipe",
+      "recipe": "topology-sensitivity",
+      "level": "recipe",
+      "http": 201,
+      "wall_ms": 671,
+      "ready": false,
+      "reasons": [
+        "topology.transition: not producible in this deployment"
+      ],
+      "declared_operations": 2,
+      "declared_derivations": 1,
+      "bounds": {
+        "max_operations": 2,
+        "max_model_calls": 2,
+        "max_pairs": 12
+      },
+      "resolved_steps": [],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "topology",
+          "operation": "topology.all_pairs",
+          "message": "topology.all_pairs needs extents to measure and none were supplied.",
+          "missing": [
+            "members"
+          ],
+          "remedy": "The bounded set. A person chooses it; the operation never widens it.",
+          "detail": {
+            "role": "members",
+            "artifact_kinds": [
+              "extent_set"
+            ],
+            "min": 2,
+            "max": 12
+          }
+        },
+        {
+          "code": "missing_extent_inputs",
+          "organ": "topology",
+          "operation": "topology.all_pairs",
+          "message": "topology.all_pairs needs extents to measure and none were supplied.",
+          "missing": [
+            "members"
+          ],
+          "remedy": "The bounded set. A person chooses it; the operation never widens it.",
+          "detail": {
+            "role": "members",
+            "artifact_kinds": [
+              "extent_set"
+            ],
+            "min": 2,
+            "max": 12
+          }
+        }
+      ],
+      "requires_confirmation": false,
+      "derivations_declared": [
+        "topology.transition"
+      ],
+      "decision_points": [
+        "Did the RELATION change, or did the object?"
+      ],
+      "session_mode": "isolation",
+      "session_organ": "topology",
+      "notes": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "ambiguous-form-hypothesis \u00b7 recipe",
+      "recipe": "ambiguous-form-hypothesis",
+      "level": "recipe",
+      "http": 201,
+      "wall_ms": 747,
+      "ready": false,
+      "reasons": [
+        "extent.fused_hypothesis: not producible in this deployment",
+        "extent.hypothesis_set: not producible in this deployment"
+      ],
+      "declared_operations": 2,
+      "declared_derivations": 1,
+      "bounds": {
+        "max_operations": 2,
+        "max_model_calls": 2,
+        "max_instances": 4
+      },
+      "resolved_steps": [
+        {
+          "operation": "extent.find_named",
+          "adapter": "sam3_concept",
+          "parameters": {
+            "max_instances": 4,
+            "concept": "the figure"
+          }
+        },
+        {
+          "operation": "extent.find_named",
+          "adapter": "sam3_concept",
+          "parameters": {
+            "max_instances": 4,
+            "concept": "the figure"
+          }
+        }
+      ],
+      "refusals": [],
+      "requires_confirmation": false,
+      "derivations_declared": [
+        "extent.hypothesis_set"
+      ],
+      "decision_points": [
+        "Are these genuinely competing readings, or is one of them simply wrong?"
+      ],
+      "session_mode": "isolation",
+      "session_organ": "extent",
+      "notes": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "courtyard-hierarchy \u00b7 chain study in an ISOLATION session",
+      "level": "recipe",
+      "recipe": "courtyard-hierarchy",
+      "session_mode": "isolation",
+      "deliberate_breach": true,
+      "resolved_steps": [
+        {
+          "operation": "extent.find_all"
+        }
+      ],
+      "refusals": [
+        {
+          "code": "organ_locked",
+          "message": "topology.all_pairs belongs to the topology organ; this session is locked to extent."
+        }
+      ],
+      "lock_held": true,
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    }
+  ],
+  "source_unchanged": true,
+  "lab_collections": {
+    "sessions": 32,
+    "plans": 75,
+    "runs": 48,
+    "artifacts": 40,
+    "reviews": 0
+  }
+}

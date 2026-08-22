@@ -1,0 +1,493 @@
+{
+  "evaluation_version": "inquiry-intelligence-evaluation.v1",
+  "evaluated_at": "2026-08-22T01:20:11.200066+00:00",
+  "case_ref": {
+    "case_id": "II-01-rich-user-vocabulary",
+    "case_version": "1.0.0",
+    "prompt_sha256_matches": true
+  },
+  "session_ref": {
+    "session_id": "inqs_86ed0e585b15",
+    "inquiry_id": "inq_05e70c3b4bab",
+    "revision": 6,
+    "schema_version": "semantic-inquiry-session.v2",
+    "state": "complete"
+  },
+  "run_identity": {
+    "deployment_kind": "live",
+    "declared": true,
+    "reachable": true,
+    "provider": "groq",
+    "models": {
+      "theorist": "qwen/qwen3.6-27b",
+      "compiler": "openai/gpt-oss-120b",
+      "composer": "openai/gpt-oss-120b",
+      "framer": "inquiry/deterministic-v1"
+    },
+    "stage_bindings": {
+      "theorist": "live",
+      "compiler": "live"
+    }
+  },
+  "inputs": {
+    "post_ids": [
+      "6a6041b81ecd6db1c931eb7a",
+      "6a6041b61ecd6db1c931eb78",
+      "6a60408e1ecd6db1c931eb6b"
+    ],
+    "fingerprints": {
+      "6a6041b81ecd6db1c931eb7a": "165304160602f8b7415ac2f1c80b480ac7779262d3940f62d403784a3b7e927f",
+      "6a6041b61ecd6db1c931eb78": "0237a39cb28b41e082d185b3d153714e004d0304dbfc08fcfd634db1c03037eb",
+      "6a60408e1ecd6db1c931eb6b": "8a1270244e2876e81465c894c076e235de170c7dee121607c99c8f936c26395a"
+    },
+    "fingerprint_changes": []
+  },
+  "metrics": {
+    "prompt_hypotheses_preserved": {
+      "value": true,
+      "kind": "flag",
+      "detail": {
+        "prompt_source_units": [
+          "su_c54512165ce9"
+        ],
+        "user_authored_atoms": 11,
+        "prompt_units_not_attributed_to_the_person": []
+      }
+    },
+    "prompt_hypothesis_atoms": {
+      "value": 11,
+      "kind": "count",
+      "detail": {
+        "atom_ids": [
+          "atm_190a7f1ff9c3",
+          "atm_423153ba2f49",
+          "atm_08b0a2e709ff",
+          "atm_4cf0fcd93cea",
+          "atm_f5484835f2a3",
+          "atm_81265d5cc7e5",
+          "atm_d09a6eca6902",
+          "atm_9ca614cae8b6",
+          "atm_5ad524f6dc87",
+          "atm_e2a4787aa233",
+          "atm_3451a5c8ff39"
+        ]
+      }
+    },
+    "image_observation_atoms": {
+      "value": 97,
+      "kind": "count"
+    },
+    "observations_total": {
+      "value": 24,
+      "kind": "count"
+    },
+    "observations_per_image": {
+      "value": {
+        "6a6041b81ecd6db1c931eb7a": 10,
+        "6a6041b61ecd6db1c931eb78": 11,
+        "6a60408e1ecd6db1c931eb6b": 10
+      },
+      "kind": "breakdown"
+    },
+    "observations_per_image_min": {
+      "value": 10,
+      "kind": "count",
+      "detail": {
+        "6a6041b81ecd6db1c931eb7a": 10,
+        "6a6041b61ecd6db1c931eb78": 11,
+        "6a60408e1ecd6db1c931eb6b": 10
+      }
+    },
+    "observations_with_image_refs": {
+      "value": 24,
+      "kind": "count"
+    },
+    "observations_without_image_refs": {
+      "value": 0,
+      "kind": "count",
+      "detail": {
+        "block_ids": []
+      }
+    },
+    "image_diversity_images_cited": {
+      "value": 3,
+      "kind": "count",
+      "detail": {
+        "post_ids": [
+          "6a60408e1ecd6db1c931eb6b",
+          "6a6041b61ecd6db1c931eb78",
+          "6a6041b81ecd6db1c931eb7a"
+        ]
+      }
+    },
+    "image_diversity_balance": {
+      "value": 0.9677419354838709,
+      "kind": "ratio",
+      "detail": {
+        "6a6041b81ecd6db1c931eb7a": 10,
+        "6a6041b61ecd6db1c931eb78": 11,
+        "6a60408e1ecd6db1c931eb6b": 10
+      }
+    },
+    "lexical_prompt_copy_ratio": {
+      "value": 0.03754693366708386,
+      "kind": "ratio",
+      "detail": {
+        "reading_content_words": 799,
+        "in_prompt": 30
+      }
+    },
+    "claims_total": {
+      "value": 20,
+      "kind": "count"
+    },
+    "claims_sourced_only_from_prompt": {
+      "value": 11,
+      "kind": "count",
+      "detail": {
+        "claim_ids": [
+          "clm_fed56dc0f6aa",
+          "clm_2fa96ea39baf",
+          "clm_990b2df2e816",
+          "clm_635e6f2c1de4",
+          "clm_f3b2690cf6cd",
+          "clm_b88f0b5e62db",
+          "clm_a70036651b75",
+          "clm_bbe814b8e1ea",
+          "clm_8712930f684d",
+          "clm_a9ef8e7b38ac",
+          "clm_9187e00dd9de"
+        ],
+        "of_total": 20
+      }
+    },
+    "claims_with_image_traceability": {
+      "value": 9,
+      "kind": "count",
+      "detail": {
+        "claim_ids": [
+          "clm_001b56249793",
+          "clm_ed93db87f55b",
+          "clm_d50eabe77b33",
+          "clm_c1b593c9f3e4",
+          "clm_dba23c893ddf",
+          "clm_d9cac98008ca",
+          "clm_09b761768b88",
+          "clm_d13a0a9f1e8b",
+          "clm_97eba8c16d70"
+        ],
+        "of_total": 20,
+        "path": "claim.source_spans[].source_id -> block.image_refs"
+      }
+    },
+    "contrast_count": {
+      "value": 0,
+      "kind": "count"
+    },
+    "cross_image_contrast_count": {
+      "value": 0,
+      "kind": "count",
+      "detail": {
+        "note": "no contrast relation was produced."
+      }
+    },
+    "relation_count": {
+      "value": 0,
+      "kind": "count"
+    },
+    "cross_image_relation_count": {
+      "value": 0,
+      "kind": "count",
+      "detail": {
+        "note": "no relation was produced, so none is cross-image."
+      }
+    },
+    "relation_source_completeness": {
+      "value": null,
+      "kind": "ratio",
+      "refused": "no relation was produced, so completeness is undefined. A run with no relations has not achieved perfect relation hygiene."
+    },
+    "relations_accepted_without_critique": {
+      "value": 0,
+      "kind": "count",
+      "detail": {
+        "note": "no relation was produced."
+      }
+    },
+    "critic_accepted": {
+      "value": null,
+      "kind": "count",
+      "refused": "the contract carries no relation-critique record. Nothing in a session distinguishes a relation that was reviewed and kept from one nobody looked at, so accept / revise / reject cannot be counted. This is a gap in the pipeline, not in the run."
+    },
+    "critic_revised": {
+      "value": null,
+      "kind": "count",
+      "refused": "the contract carries no relation-critique record. Nothing in a session distinguishes a relation that was reviewed and kept from one nobody looked at, so accept / revise / reject cannot be counted. This is a gap in the pipeline, not in the run."
+    },
+    "critic_rejected": {
+      "value": null,
+      "kind": "count",
+      "refused": "the contract carries no relation-critique record. Nothing in a session distinguishes a relation that was reviewed and kept from one nobody looked at, so accept / revise / reject cannot be counted. This is a gap in the pipeline, not in the run."
+    },
+    "truncated_stages": {
+      "value": 4,
+      "kind": "count",
+      "detail": {
+        "stages": [
+          "compiler",
+          "semantic_dissector",
+          "semantic_dissector",
+          "relation_architect"
+        ]
+      }
+    },
+    "thin_stages": {
+      "value": 2,
+      "kind": "count",
+      "detail": {
+        "stages": [
+          "epistemic_operationalizer:thin",
+          "coverage_audit:coverage_failed"
+        ]
+      }
+    },
+    "unexamined_atoms": {
+      "value": 87,
+      "kind": "count"
+    },
+    "unexamined_claims": {
+      "value": 0,
+      "kind": "count"
+    },
+    "unexamined_relation_batches": {
+      "value": 0,
+      "kind": "count",
+      "detail": {
+        "allowed": 1,
+        "sent": 1
+      }
+    },
+    "observables_proposed": {
+      "value": 6,
+      "kind": "count"
+    },
+    "capability_gaps": {
+      "value": 0,
+      "kind": "count",
+      "detail": {
+        "gaps": [],
+        "refusal_ids": []
+      }
+    },
+    "capability_receipts": {
+      "value": 0,
+      "kind": "count"
+    },
+    "unsupported_measured_statuses": {
+      "value": 0,
+      "kind": "count",
+      "detail": []
+    },
+    "synthesis_asserts_capability_without_receipt": {
+      "value": 1,
+      "kind": "count",
+      "warning": "matched by sentence pattern. Read the sentences in `detail` before citing this: the contradiction being reported is with the receipt count, not with the wording.",
+      "detail": [
+        {
+          "where": "note",
+          "sentence": "Phase 1: one capability was invoked and it was a declared SIMULATION."
+        }
+      ]
+    },
+    "answer_sections_total": {
+      "value": 1,
+      "kind": "count"
+    },
+    "answer_sections_with_refs": {
+      "value": 1,
+      "kind": "count",
+      "detail": {
+        "of_total": 1
+      }
+    },
+    "contradiction_preserved": {
+      "value": true,
+      "kind": "flag",
+      "detail": {
+        "contrast_edges": [],
+        "refusals": [
+          "cref_ad789e25f2e6",
+          "cref_ade2a6056dfe",
+          "cref_ceb1721ced80",
+          "cref_ad789e25f2e6",
+          "cref_ade2a6056dfe",
+          "cref_ceb1721ced80"
+        ],
+        "remainder_entries": 14
+      }
+    },
+    "source_post_fingerprint_changes": {
+      "value": 0,
+      "kind": "count",
+      "detail": {
+        "fingerprints": {
+          "6a6041b81ecd6db1c931eb7a": "165304160602f8b7415ac2f1c80b480ac7779262d3940f62d403784a3b7e927f",
+          "6a6041b61ecd6db1c931eb78": "0237a39cb28b41e082d185b3d153714e004d0304dbfc08fcfd634db1c03037eb",
+          "6a60408e1ecd6db1c931eb6b": "8a1270244e2876e81465c894c076e235de170c7dee121607c99c8f936c26395a"
+        },
+        "note": "the session's own fingerprints; compared with the case manifest under `inputs.fingerprint_changes`."
+      }
+    },
+    "workflow_outcome": {
+      "value": "complete",
+      "kind": "label",
+      "detail": {
+        "stop_reason": "the chain closed: every claim carries a verdict and every sentence of the answer names what it rests on."
+      }
+    }
+  },
+  "diagnosis": {
+    "workflow_outcome": "complete",
+    "semantic_outcome": "prompt_dominated",
+    "outcomes_disagree": true,
+    "findings": [
+      {
+        "code": "relations_absent",
+        "severity": "underperformance",
+        "statement": "20 claim(s) were compiled and no relation between any two of them was produced. Whatever the claims are worth individually, no comparison was made.",
+        "evidence": {
+          "claims": 20
+        }
+      },
+      {
+        "code": "prompt_dominated",
+        "severity": "underperformance",
+        "statement": "11 of 20 claim(s) trace only to the prompt. More than half of what this run 'found' is what it was told.",
+        "evidence": {
+          "prompt_only": 11,
+          "claims": 20
+        }
+      },
+      {
+        "code": "stage_truncated",
+        "severity": "underperformance",
+        "statement": "4 stage/pass ended truncated: compiler, semantic_dissector, semantic_dissector, relation_architect. What is in the graph is what fitted in the budget, not what there was.",
+        "evidence": {
+          "stages": [
+            "compiler",
+            "semantic_dissector",
+            "semantic_dissector",
+            "relation_architect"
+          ]
+        }
+      },
+      {
+        "code": "stage_thin",
+        "severity": "underperformance",
+        "statement": "2 stage/pass ended thin or failed its coverage audit: epistemic_operationalizer:thin, coverage_audit:coverage_failed.",
+        "evidence": {
+          "stages": [
+            "epistemic_operationalizer:thin",
+            "coverage_audit:coverage_failed"
+          ]
+        }
+      },
+      {
+        "code": "answer_asserts_an_instrument_that_did_not_run",
+        "severity": "error",
+        "statement": "the answer's own prose asserts that a capability was invoked, and the record carries 0 receipt(s) and 0 evidence object(s). The structured flags may well be honest; the sentence a person reads is not.",
+        "evidence": [
+          {
+            "where": "note",
+            "sentence": "Phase 1: one capability was invoked and it was a declared SIMULATION."
+          }
+        ]
+      },
+      {
+        "code": "nothing_was_commissioned",
+        "severity": "underperformance",
+        "statement": "6 observable(s) were proposed and none was run. The run named what would settle its claims and then settled none of them \u2014 which is a legitimate outcome, and is not what a terminal state of `complete` conveys on its own.",
+        "evidence": {
+          "observables": 6
+        }
+      },
+      {
+        "code": "workflow_and_semantics_disagree",
+        "severity": "underperformance",
+        "statement": "the machinery reported `complete` while the record shows `prompt_dominated`. The stop reason given was: the chain closed: every claim carries a verdict and every sentence of the answer names what it rests on.",
+        "evidence": {
+          "workflow_outcome": "complete",
+          "semantic_outcome": "prompt_dominated"
+        }
+      }
+    ],
+    "expectations": [
+      {
+        "metric": "prompt_hypotheses_preserved",
+        "expectation": {
+          "equals": true
+        },
+        "why": "The prompt's concepts must remain attributable to the person. This is the only expectation in the whole manifest whose failure is a lie rather than a shortfall.",
+        "observed": true,
+        "status": "met"
+      },
+      {
+        "metric": "prompt_hypothesis_atoms",
+        "expectation": {
+          "min": 1
+        },
+        "why": "A prompt this dense that yields no user-authored atom has folded the person's vocabulary into the model's own voice.",
+        "observed": 11,
+        "status": "met"
+      },
+      {
+        "metric": "claims_sourced_only_from_prompt",
+        "expectation": {
+          "max": 8
+        },
+        "why": "A bound, not a target. Some prompt-sourced claims are correct \u2014 the person did make assertions \u2014 but a majority means the run mostly restated the question.",
+        "observed": 11,
+        "status": "unmet"
+      },
+      {
+        "metric": "claims_with_image_traceability",
+        "expectation": {
+          "min": 6
+        },
+        "why": "At least some claims must be traceable to a picture, or nothing was learned from looking.",
+        "observed": 9,
+        "status": "met"
+      },
+      {
+        "metric": "observations_with_image_refs",
+        "expectation": {
+          "min": 10
+        },
+        "why": "The reading must be anchored per image before any of it can be compared across images.",
+        "observed": 24,
+        "status": "met"
+      }
+    ]
+  },
+  "manual_review": {
+    "questions": [
+      "Did the run say anything about these sculptures that the prompt did not already say?",
+      "Where the run used the person's words, did it use them about something visible, or only about the words?",
+      "Is the answer's reading of 'tactile philosophy' an interpretation of the images or a paraphrase of the question?"
+    ],
+    "note": "These are not scored and are not proxied. Aesthetic quality and philosophical depth are outside what this harness can decide.",
+    "unautomated_shortcuts": []
+  },
+  "timing": {
+    "stage_ms": {
+      "framer": 165.268,
+      "theorist": 57077.032,
+      "compiler": 452035.906,
+      "steward": 489.18,
+      "capability": 1859.8790000000001,
+      "judge": 1943.533,
+      "composer": 1191.5059999999999
+    }
+  },
+  "baseline_comparison": null
+}

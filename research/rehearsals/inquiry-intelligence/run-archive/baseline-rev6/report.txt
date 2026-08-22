@@ -1,0 +1,77 @@
+case      II-01-rich-user-vocabulary v1.0.0
+session   inqs_86ed0e585b15 rev 6  [live]
+workflow  complete
+semantic  prompt_dominated   <- DISAGREE
+
+metrics
+  prompt_hypotheses_preserved            True
+  prompt_hypothesis_atoms                11
+  image_observation_atoms                97
+  observations_total                     24
+  observations_per_image                 {"6a6041b81ecd6db1c931eb7a": 10, "6a6041b61ecd6db1c931eb78": 11, "6a60408e1ecd6db1c931eb6b": 10}
+  observations_per_image_min             10
+  observations_with_image_refs           24
+  observations_without_image_refs        0
+  image_diversity_images_cited           3
+  image_diversity_balance                0.968
+  lexical_prompt_copy_ratio              0.038
+  claims_total                           20
+  claims_sourced_only_from_prompt        11
+  claims_with_image_traceability         9
+  contrast_count                         0
+  cross_image_contrast_count             0
+  relation_count                         0
+  cross_image_relation_count             0
+  relation_source_completeness           refused
+      ↳ no relation was produced, so completeness is undefined. A run with no relations has not achieved perfect relation hygiene.
+  relations_accepted_without_critique    0
+  critic_accepted                        refused
+      ↳ the contract carries no relation-critique record. Nothing in a session distinguishes a relation that was reviewed and kept from one nobody looked at, so accept / revise / reject cannot be counted. This is a gap in the pipeline, not in the run.
+  critic_revised                         refused
+      ↳ the contract carries no relation-critique record. Nothing in a session distinguishes a relation that was reviewed and kept from one nobody looked at, so accept / revise / reject cannot be counted. This is a gap in the pipeline, not in the run.
+  critic_rejected                        refused
+      ↳ the contract carries no relation-critique record. Nothing in a session distinguishes a relation that was reviewed and kept from one nobody looked at, so accept / revise / reject cannot be counted. This is a gap in the pipeline, not in the run.
+  truncated_stages                       4
+  thin_stages                            2
+  unexamined_atoms                       87
+  unexamined_claims                      0
+  unexamined_relation_batches            0
+  observables_proposed                   6
+  capability_gaps                        0
+  capability_receipts                    0
+  unsupported_measured_statuses          0
+  synthesis_asserts_capability_without_receipt 1 !
+      ↳ matched by sentence pattern. Read the sentences in `detail` before citing this: the contradiction being reported is with the receipt count, not with the wording.
+  answer_sections_total                  1
+  answer_sections_with_refs              1
+  contradiction_preserved                True
+  source_post_fingerprint_changes        0
+  workflow_outcome                       complete
+
+findings
+  [UNDERPERFORMANCE] relations_absent
+      20 claim(s) were compiled and no relation between any two of them was produced. Whatever the claims are worth individually, no comparison was made.
+  [UNDERPERFORMANCE] prompt_dominated
+      11 of 20 claim(s) trace only to the prompt. More than half of what this run 'found' is what it was told.
+  [UNDERPERFORMANCE] stage_truncated
+      4 stage/pass ended truncated: compiler, semantic_dissector, semantic_dissector, relation_architect. What is in the graph is what fitted in the budget, not what there was.
+  [UNDERPERFORMANCE] stage_thin
+      2 stage/pass ended thin or failed its coverage audit: epistemic_operationalizer:thin, coverage_audit:coverage_failed.
+  [ERROR] answer_asserts_an_instrument_that_did_not_run
+      the answer's own prose asserts that a capability was invoked, and the record carries 0 receipt(s) and 0 evidence object(s). The structured flags may well be honest; the sentence a person reads is not.
+  [UNDERPERFORMANCE] nothing_was_commissioned
+      6 observable(s) were proposed and none was run. The run named what would settle its claims and then settled none of them — which is a legitimate outcome, and is not what a terminal state of `complete` conveys on its own.
+  [UNDERPERFORMANCE] workflow_and_semantics_disagree
+      the machinery reported `complete` while the record shows `prompt_dominated`. The stop reason given was: the chain closed: every claim carries a verdict and every sentence of the answer names what it rests on.
+
+expectations
+  met            prompt_hypotheses_preserved  expected {"equals": true}, observed true
+  met            prompt_hypothesis_atoms  expected {"min": 1}, observed 11
+  unmet          claims_sourced_only_from_prompt  expected {"max": 8}, observed 11
+  met            claims_with_image_traceability  expected {"min": 6}, observed 9
+  met            observations_with_image_refs  expected {"min": 10}, observed 24
+
+NOT DECIDED HERE — for a person to answer
+  ? Did the run say anything about these sculptures that the prompt did not already say?
+  ? Where the run used the person's words, did it use them about something visible, or only about the words?
+  ? Is the answer's reading of 'tactile philosophy' an interpretation of the images or a paraphrase of the question?

@@ -1,0 +1,46 @@
+{
+  "call_id": "06-relation_proposal",
+  "lab": "gemini-vlm",
+  "experiment": "relation_proposal",
+  "mode": "live",
+  "provider": "gemini",
+  "endpoint": "(not called)",
+  "model": "(no model)",
+  "prompt_id": null,
+  "request": {
+    "boundary_hash": "d6d8ee7537cf1ba2eec44827f297c69d44bc7df68fe32997492be9781cad5d4c",
+    "text_parts": [],
+    "image_parts": [],
+    "response_schema_sent": null,
+    "generation_config": null
+  },
+  "outcome": {
+    "status": "unavailable",
+    "http_status": null,
+    "finish_reason": null,
+    "safety_blocked": null,
+    "text": null,
+    "json": null,
+    "json_valid_against_schema": null,
+    "schema_errors": [],
+    "error_type": null,
+    "error_message": "GEMINI_API_KEY is not set"
+  },
+  "telemetry": {
+    "latency_ms": null,
+    "usage": null,
+    "model_version_reported": null,
+    "retry_after_s": null,
+    "rate_limited": null
+  },
+  "epistemic": {
+    "status": "interpretive",
+    "measured": false,
+    "supported_by_capability": null,
+    "prompt_carries_user_claim": null,
+    "note": "no call was made; nothing was observed"
+  },
+  "corpus_invariant": null,
+  "captured_at": null,
+  "content_hash": "570d574a06b1b626b46e70f1c80acdb747fed6ef6a9889c947c62c8a7a0dd043"
+}

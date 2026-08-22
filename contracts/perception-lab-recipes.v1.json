@@ -1,0 +1,697 @@
+{
+  "schema_version": "perception-lab-recipes.v1",
+  "title": "Perceptual recipes — PERCEPTUAL-FORMS-001G",
+  "what_this_is": [
+    "Seven bounded studies, as DATA. A recipe is an ordered list of direct acts somebody could",
+    "have performed one at a time, written down so they can be performed the same way twice.",
+    "It is not a plan, not a policy and not a program: nothing here branches, nothing here",
+    "loops, and nothing here reads a result in order to decide what to do next.",
+    "EVERY OPERATION STEP EXPANDS TO A `DirectCommand` AND GOES THROUGH THE SAME RESOLVER a",
+    "pressed control does. There is no second execution path, so 'a recipe reaches the same",
+    "producer as direct invocation' is not a property that has to be maintained — it is the",
+    "only arrangement the expander can produce.",
+    "NO MODEL CHOOSES OR REWRITES ANY OF THIS. A recipe is selected by a person; its steps are",
+    "fixed; a language model that wanted to change one would have to edit this file."
+  ],
+  "step_kinds": {
+    "operation": "a declared direct operation. Becomes a DirectCommand and counts against `max_operations`. EVERY operation reaches an adapter, including `extent.draw` — the person's hand goes through the same machinery — so only the non-manual ones count against `max_model_calls`, which is the budget that is actually scarce",
+    "derivation": "a pure producer in this repository. Reads recorded artifacts, calls nothing, and counts against nothing",
+    "asks_for": "declared parameters a PERSON supplies at run time. A concept is somebody's word and a drawn mask is their hand; a recipe fixes the shape of the act and never the content of those. A binding for anything not listed here is refused"
+  },
+  "stop_outcomes": [
+    "empty",
+    "refused",
+    "unavailable",
+    "partial"
+  ],
+  "recipes": [
+    {
+      "key": "boundary-and-void",
+      "label": "Boundary and void study",
+      "question": "Where exactly does its edge run, and what does it enclose?",
+      "organ": "extent",
+      "mode": "isolation",
+      "required_forms": [
+        "extent.hard_mask",
+        "extent.boundary_rings",
+        "extent.hole_set"
+      ],
+      "prerequisites": [
+        "a source image is loaded",
+        "the Extent organ is available"
+      ],
+      "steps": [
+        {
+          "id": "propose",
+          "kind": "operation",
+          "operation": "extent.find_all",
+          "parameters": {
+            "max_instances": 8,
+            "min_area": 0.002
+          },
+          "why": "the masks are the substrate; everything after this reads them and adds nothing"
+        },
+        {
+          "id": "trace",
+          "kind": "derivation",
+          "produces": "extent.boundary_rings",
+          "reads": [
+            "propose"
+          ],
+          "why": "the edge as closed curves, traced along the cracks between pixels"
+        },
+        {
+          "id": "voids",
+          "kind": "derivation",
+          "produces": "extent.hole_set",
+          "reads": [
+            "propose",
+            "trace"
+          ],
+          "why": "the bounded voids of each piece, each carrying the inner ring that bounds it"
+        }
+      ],
+      "bounds": {
+        "max_operations": 1,
+        "max_model_calls": 1,
+        "max_instances": 8
+      },
+      "stop_conditions": [
+        {
+          "when": "the proposal returns no instance",
+          "outcome": "empty",
+          "reason": "something looked over the whole image and found nothing separable. There is no boundary to trace and no void to find, and that is an answer"
+        },
+        {
+          "when": "every traced mask is empty",
+          "outcome": "empty",
+          "reason": "the masks were traced and enclosed nothing. An empty mask has no boundary; this is not a mask that was never traced"
+        },
+        {
+          "when": "the Extent adapter is unavailable",
+          "outcome": "unavailable",
+          "reason": "nothing looked. Unavailable is not empty, and reporting an empty extent set here would be the single worst thing this laboratory could do"
+        }
+      ],
+      "expected_renderers": [
+        "mask_fill",
+        "ring_outline",
+        "hole_fill",
+        "mask_outline"
+      ],
+      "decision_points": [
+        {
+          "at": "voids",
+          "asks": "Is that dark shape a void INSIDE this extent, or the gap between this one and the next?",
+          "why_a_person": "the producer answers it by whether the void reaches the frame, which is exact and is not the same question. A void that runs off the edge of the picture is undecidable from this crop and is reported as examined-and-not-a-hole",
+          "options": [
+            "a hole of this extent",
+            "a gap between two extents",
+            "cannot tell from this crop"
+          ]
+        }
+      ],
+      "fixtures": [
+        "solid-mask",
+        "donut",
+        "nested-holes"
+      ]
+    },
+    {
+      "key": "fragment-continuity",
+      "label": "Fragment continuity study",
+      "question": "These separate pieces — are any of them one thing?",
+      "organ": "extent",
+      "mode": "isolation",
+      "required_forms": [
+        "extent.hard_mask",
+        "extent.fragment_set",
+        "extent.fused_hypothesis"
+      ],
+      "prerequisites": [
+        "a source image is loaded",
+        "a concept to search for has been named by a person"
+      ],
+      "steps": [
+        {
+          "id": "find",
+          "kind": "operation",
+          "operation": "extent.find_named",
+          "parameters": {
+            "max_instances": 12
+          },
+          "why": "the named search; the concept is the person's word and the mask is the measurement",
+          "asks_for": [
+            "concept"
+          ]
+        },
+        {
+          "id": "split",
+          "kind": "derivation",
+          "produces": "extent.fragment_set",
+          "reads": [
+            "find"
+          ],
+          "why": "the connected pieces, with no claim about whether they belong together. Safe to compute eagerly because nothing downstream can read unity out of it"
+        },
+        {
+          "id": "propose",
+          "kind": "derivation",
+          "produces": "extent.fused_hypothesis",
+          "reads": [
+            "split"
+          ],
+          "why": "a person's proposed grouping, assembled with its grounds and its cost. Nothing here computes the grouping"
+        }
+      ],
+      "bounds": {
+        "max_operations": 1,
+        "max_model_calls": 1,
+        "max_instances": 12
+      },
+      "stop_conditions": [
+        {
+          "when": "no grouping is proposed",
+          "outcome": "empty",
+          "reason": "the fragments were considered and no grouping was supportable. This is not a fragment set and it is not a hard mask of the union"
+        },
+        {
+          "when": "a proposed grouping's only ground is an admitted-as-one-ground-among-several model",
+          "outcome": "refused",
+          "reason": "resemblance is not unity. `false-similarity` is the committed proof: three identical discs, and any appearance threshold gives one confident group of three"
+        },
+        {
+          "when": "the fused hypothesis form is deferred in this deployment",
+          "outcome": "refused",
+          "reason": "the payload is assembled and is not writable. The shape is settled a phase before anything writes it"
+        }
+      ],
+      "expected_renderers": [
+        "mask_fill",
+        "fragment_cluster",
+        "hypothesis_stack"
+      ],
+      "decision_points": [
+        {
+          "at": "propose",
+          "asks": "Are these pieces one thing, and does saying so require asserting extent nobody saw?",
+          "why_a_person": "the second half changes the claim, not a flag on it. Grouping what is visible is `interpretive`; asserting what continues behind the fence is `uncertain`, and no confidence moves it",
+          "options": [
+            "one thing, all of it visible",
+            "one thing, and it continues behind something",
+            "separate things",
+            "cannot tell"
+          ]
+        }
+      ],
+      "fixtures": [
+        "disconnected-fragments",
+        "false-similarity"
+      ]
+    },
+    {
+      "key": "visible-versus-inferred",
+      "label": "Visible versus inferred study",
+      "question": "Which of this did we see, which did we infer, and which do we not know?",
+      "organ": "extent",
+      "mode": "isolation",
+      "required_forms": [
+        "extent.hard_mask",
+        "extent.visible_inferred_partition"
+      ],
+      "prerequisites": [
+        "a source image is loaded",
+        "an extent that is partly hidden has been selected",
+        "no model is admitted to produce this form; the inferred part comes from a person or a fixture"
+      ],
+      "steps": [
+        {
+          "id": "seen",
+          "kind": "operation",
+          "operation": "extent.find_named",
+          "parameters": {
+            "max_instances": 4
+          },
+          "why": "the part that is visible, measured. This is the only step in the study that looks at the image",
+          "asks_for": [
+            "concept"
+          ]
+        },
+        {
+          "id": "paint",
+          "kind": "operation",
+          "operation": "extent.draw",
+          "parameters": {
+            "tool": "mask_brush"
+          },
+          "why": "a person paints what they believe continues behind the occluder. Their hand, not a guess from words",
+          "asks_for": [
+            "mask_rle"
+          ]
+        },
+        {
+          "id": "partition",
+          "kind": "derivation",
+          "produces": "extent.visible_inferred_partition",
+          "reads": [
+            "seen",
+            "paint"
+          ],
+          "why": "the three parts assembled, with three statuses. An overlap between any two refuses the whole partition"
+        }
+      ],
+      "bounds": {
+        "max_operations": 2,
+        "max_model_calls": 1,
+        "max_instances": 4
+      },
+      "stop_conditions": [
+        {
+          "when": "nothing falls outside the visible part",
+          "outcome": "empty",
+          "reason": "the extent was partitioned and all of it was seen. This is not a hard mask of visible plus inferred"
+        },
+        {
+          "when": "two parts share a pixel",
+          "outcome": "refused",
+          "reason": "a pixel in two parts is one the record cannot place, and a reader drawing the tricolour would paint a hallucinated leg in the same colour as a photographed one"
+        },
+        {
+          "when": "a person declines to paint an inferred part",
+          "outcome": "partial",
+          "reason": "the visible part stands on its own. An absent inferred part is not an empty one"
+        }
+      ],
+      "expected_renderers": [
+        "mask_fill",
+        "partition_tricolor",
+        "scalar_wash"
+      ],
+      "decision_points": [
+        {
+          "at": "paint",
+          "asks": "Where does the inferred part stop and the unknown part begin?",
+          "why_a_person": "not-seen-and-not-inferred is a real third part. The pixels that run off the frame are settled by nothing, and forcing them into either of the other two is the trap `partition` was built to catch",
+          "options": [
+            "inferred: I can say where it continues",
+            "unknown: I cannot",
+            "decline to infer"
+          ]
+        }
+      ],
+      "fixtures": [
+        "partition"
+      ]
+    },
+    {
+      "key": "courtyard-hierarchy",
+      "label": "Courtyard hierarchy study",
+      "question": "Palace, courtyard, garden, fountain — what is inside what, and what is part of what?",
+      "organ": "extent",
+      "mode": "chain",
+      "required_forms": [
+        "extent.hard_mask",
+        "topology.pair_relation",
+        "topology.containment_tree",
+        "extent.hierarchy"
+      ],
+      "prerequisites": [
+        "a source image is loaded",
+        "the Topology organ is available",
+        "a chain crossing the organ boundary has been confirmed by a person"
+      ],
+      "steps": [
+        {
+          "id": "find",
+          "kind": "operation",
+          "operation": "extent.find_all",
+          "parameters": {
+            "max_instances": 8,
+            "min_area": 0.001
+          },
+          "why": "the levels, as extents. Every level is a real extent with a real identity"
+        },
+        {
+          "id": "relate",
+          "kind": "operation",
+          "operation": "topology.all_pairs",
+          "parameters": {
+            "max_regions": 8
+          },
+          "why": "the nestings, measured per pixel by the Topology facade"
+        },
+        {
+          "id": "nest",
+          "kind": "derivation",
+          "produces": "topology.containment_tree",
+          "reads": [
+            "relate"
+          ],
+          "why": "the relations assembled into a nesting, with transitivity absorbed and disagreements reported"
+        },
+        {
+          "id": "hierarchy",
+          "kind": "derivation",
+          "produces": "extent.hierarchy",
+          "reads": [
+            "find",
+            "nest"
+          ],
+          "why": "the levels with their fractions, and with geometric containment kept distinct from asserted part/whole"
+        }
+      ],
+      "bounds": {
+        "max_operations": 2,
+        "max_model_calls": 2,
+        "max_instances": 8,
+        "max_pairs": 28
+      },
+      "stop_conditions": [
+        {
+          "when": "no extent contains another",
+          "outcome": "empty",
+          "reason": "the extents were compared for nesting and none contained another. This is a flat extent set, not a failure"
+        },
+        {
+          "when": "the relations disagree in a loop",
+          "outcome": "refused",
+          "reason": "a containment cycle means the inputs disagree. Dropping an edge to make a tree would hide the disagreement behind a clean picture"
+        },
+        {
+          "when": "an instance carries no geometry revision",
+          "outcome": "partial",
+          "reason": "a tree that cannot be told it has gone stale is worse than none, so the unpinned level is left out and named"
+        }
+      ],
+      "expected_renderers": [
+        "mask_fill",
+        "relation_graph",
+        "hierarchy_tree"
+      ],
+      "decision_points": [
+        {
+          "at": "hierarchy",
+          "asks": "Is the fountain INSIDE the courtyard, or PART OF it?",
+          "why_a_person": "a pigeon standing in a courtyard is contained by it and is not part of it; the wall around the court is part of it and is not inside it. Geometry answers the first and only a person answers the second",
+          "options": [
+            "geometric containment, measured",
+            "part/whole, asserted by me",
+            "both",
+            "neither"
+          ]
+        }
+      ],
+      "fixtures": [
+        "containment-tree",
+        "nested-holes"
+      ]
+    },
+    {
+      "key": "piazza-negative-space",
+      "label": "Piazza negative-space study",
+      "question": "Where is the crowd, and where is the space it leaves?",
+      "organ": "extent",
+      "mode": "chain",
+      "required_forms": [
+        "extent.hard_mask",
+        "extent.fragment_set",
+        "extent.density_field",
+        "topology.negative_space_field"
+      ],
+      "prerequisites": [
+        "a source image is loaded",
+        "the Topology organ is available",
+        "a chain crossing the organ boundary has been confirmed by a person"
+      ],
+      "steps": [
+        {
+          "id": "find",
+          "kind": "operation",
+          "operation": "extent.find_named",
+          "parameters": {
+            "max_instances": 64
+          },
+          "why": "the members of the collection, each measured. There is no object called `crowd`",
+          "asks_for": [
+            "concept"
+          ]
+        },
+        {
+          "id": "pieces",
+          "kind": "derivation",
+          "produces": "extent.fragment_set",
+          "reads": [
+            "find"
+          ],
+          "why": "the separable pieces, so the count is of things rather than of proposals"
+        },
+        {
+          "id": "density",
+          "kind": "derivation",
+          "produces": "extent.density_field",
+          "reads": [
+            "pieces"
+          ],
+          "why": "one sample per counted member, with the kernel declared. The count is exact; the field is a choice"
+        },
+        {
+          "id": "ground",
+          "kind": "operation",
+          "operation": "topology.negative_space",
+          "parameters": {
+            "max_distance": 0.25
+          },
+          "why": "the space the collection leaves, measured by the Topology facade rather than inferred from the density"
+        }
+      ],
+      "bounds": {
+        "max_operations": 2,
+        "max_model_calls": 2,
+        "max_instances": 64
+      },
+      "stop_conditions": [
+        {
+          "when": "no member is found",
+          "outcome": "empty",
+          "reason": "the members were counted and the field is everywhere zero. This is not a soft field and not a hard mask of the convex hull"
+        },
+        {
+          "when": "a member carries neither a mask nor a box",
+          "outcome": "partial",
+          "reason": "there is nowhere to place its sample. Counting it and not placing it would make the field disagree with its own count"
+        },
+        {
+          "when": "no bandwidth has been chosen",
+          "outcome": "partial",
+          "reason": "the unsmoothed histogram is produced and stays `calibrated`. Smoothing is a decision and is never taken on a person's behalf"
+        }
+      ],
+      "expected_renderers": [
+        "mask_fill",
+        "fragment_cluster",
+        "density_contours",
+        "scalar_wash"
+      ],
+      "decision_points": [
+        {
+          "at": "density",
+          "asks": "What bandwidth, and are you prepared to lose the unit?",
+          "why_a_person": "the bandwidth is the single biggest determinant of what the field looks like, and smoothing turns members-per-cell into weighted neighbours. The count survives it; the calibration does not",
+          "options": [
+            "no smoothing: keep counts",
+            "narrow kernel",
+            "wide kernel"
+          ]
+        }
+      ],
+      "fixtures": [
+        "density-peaks",
+        "soft-fringe"
+      ]
+    },
+    {
+      "key": "topology-sensitivity",
+      "label": "Topology sensitivity study",
+      "question": "How little has to change before the relation does?",
+      "organ": "topology",
+      "mode": "isolation",
+      "required_forms": [
+        "topology.pair_relation",
+        "topology.transition"
+      ],
+      "prerequisites": [
+        "two revisions of one extent are recorded",
+        "both endpoints carry a geometry revision",
+        "the Topology organ is available"
+      ],
+      "steps": [
+        {
+          "id": "before",
+          "kind": "operation",
+          "operation": "topology.all_pairs",
+          "parameters": {
+            "max_regions": 4
+          },
+          "why": "the relations at the first revision"
+        },
+        {
+          "id": "after",
+          "kind": "operation",
+          "operation": "topology.all_pairs",
+          "parameters": {
+            "max_regions": 4
+          },
+          "why": "the relations at the second, measured the same way so the difference is in the geometry"
+        },
+        {
+          "id": "diff",
+          "kind": "derivation",
+          "produces": "topology.transition",
+          "reads": [
+            "before",
+            "after"
+          ],
+          "why": "what changed between two pinned revisions, and what merely moved without changing"
+        }
+      ],
+      "bounds": {
+        "max_operations": 2,
+        "max_model_calls": 2,
+        "max_pairs": 12
+      },
+      "stop_conditions": [
+        {
+          "when": "the two revisions are the same revision",
+          "outcome": "refused",
+          "reason": "the pair was re-measured, not revised. A transition between a thing and itself is not a finding"
+        },
+        {
+          "when": "an endpoint carries no geometry revision",
+          "outcome": "refused",
+          "reason": "a change nobody can see the start of is not a finding, it is a rumour"
+        },
+        {
+          "when": "nothing changed",
+          "outcome": "empty",
+          "reason": "the pair was compared across two revisions and the relation held. That is the answer the study was asking for"
+        }
+      ],
+      "expected_renderers": [
+        "relation_graph",
+        "transition_diff",
+        "before_after"
+      ],
+      "decision_points": [
+        {
+          "at": "diff",
+          "asks": "Did the RELATION change, or did the object?",
+          "why_a_person": "one pixel closing a gap turns `disjoint` into `meets`, and a producer with any tolerance at all misses it. Whether that one pixel is a finding or a segmentation wobble is not a question geometry can answer",
+          "options": [
+            "the relation changed",
+            "the segmentation moved",
+            "cannot tell"
+          ]
+        }
+      ],
+      "fixtures": [
+        "one-pixel-transition",
+        "adjacency-graph"
+      ]
+    },
+    {
+      "key": "ambiguous-form-hypothesis",
+      "label": "Ambiguous form hypothesis study",
+      "question": "The picture supports more than one reading. What are they?",
+      "organ": "extent",
+      "mode": "isolation",
+      "required_forms": [
+        "extent.hard_mask",
+        "extent.fused_hypothesis",
+        "extent.hypothesis_set"
+      ],
+      "prerequisites": [
+        "a source image is loaded",
+        "at least two competing readings have been drawn or named by a person"
+      ],
+      "steps": [
+        {
+          "id": "reading_one",
+          "kind": "operation",
+          "operation": "extent.find_named",
+          "parameters": {
+            "max_instances": 4
+          },
+          "why": "the first reading, as a named search. The word is the person's; the mask is the measurement",
+          "asks_for": [
+            "concept"
+          ]
+        },
+        {
+          "id": "reading_two",
+          "kind": "operation",
+          "operation": "extent.find_named",
+          "parameters": {
+            "max_instances": 4
+          },
+          "why": "the second reading, measured the same way so the two are comparable",
+          "asks_for": [
+            "concept"
+          ]
+        },
+        {
+          "id": "hold",
+          "kind": "derivation",
+          "produces": "extent.hypothesis_set",
+          "reads": [
+            "reading_one",
+            "reading_two"
+          ],
+          "why": "the readings held open, ordered by derived id so nothing in the record reads as a winner"
+        }
+      ],
+      "bounds": {
+        "max_operations": 2,
+        "max_model_calls": 2,
+        "max_instances": 4
+      },
+      "stop_conditions": [
+        {
+          "when": "only one reading survives",
+          "outcome": "refused",
+          "reason": "one alternative is not an alternative set. A single surviving reading is a hard mask, and recording it here would dress one answer as a preserved ambiguity"
+        },
+        {
+          "when": "a reading names nothing",
+          "outcome": "partial",
+          "reason": "a weight attached to nothing is a number about nothing"
+        },
+        {
+          "when": "a person chooses one reading",
+          "outcome": "partial",
+          "reason": "resolution is a separate act that produces a separate artifact. This record has no field a choice could be written into, and the alternatives survive it"
+        }
+      ],
+      "expected_renderers": [
+        "mask_fill",
+        "hypothesis_stack",
+        "ab_overlay"
+      ],
+      "decision_points": [
+        {
+          "at": "hold",
+          "asks": "Are these genuinely competing readings, or is one of them simply wrong?",
+          "why_a_person": "the form preserves an ambiguity and cannot create one. Two readings of a shadow are an ambiguity; a reading and a mistake are not, and only somebody looking can say which pair this is",
+          "options": [
+            "both are legitimate",
+            "one is a mistake",
+            "there is a third reading nobody has drawn"
+          ]
+        }
+      ],
+      "fixtures": [
+        "competing-extents",
+        "false-similarity"
+      ]
+    }
+  ]
+}

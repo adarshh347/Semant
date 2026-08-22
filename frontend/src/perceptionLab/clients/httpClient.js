@@ -173,6 +173,52 @@ export function createHttpLabClient({ baseUrl = LAB_BASE, postsUrl = POSTS_BASE,
             return { states: body.states || {}, organs: body.organs || [] };
         },
 
+        // ── PERCEPTUAL-FORMS-001H: the two lower levels ─────────────────────
+        //
+        // Six methods, and they are deliberately absent from `REQUIRED_CLIENT_METHODS`. A client
+        // on an older backend cannot serve them; the laboratory still opens, works at the level
+        // it can, and SAYS which levels this wire does not have. See `formBench/formClient.js`.
+
+        /** Nineteen forms, who could write each here, and why nothing can. */
+        forms: async () => get('/forms', 'read the form catalogue'),
+
+        /** The seven bounded studies, as declared. Carries no way to run one. */
+        recipes: async () => get('/recipes', 'read the recipe catalogue'),
+
+        /** Every reason a study cannot finish in THIS session, asked before anything is spent. */
+        recipeReadiness: async ({ session_id, key }) => get(
+            `/sessions/${encodeURIComponent(session_id)}/recipes/${encodeURIComponent(key)}`
+            + '/readiness', `check whether ${key} can run here`),
+
+        /**
+         * Expand a study into direct acts and resolve them. NOTHING RUNS.
+         *
+         * The plan comes back for a person to look at, exactly as `plan()` does — and a study that
+         * crosses the organ boundary comes back with `requires_confirmation` set, exactly as a
+         * hand-composed chain does.
+         */
+        planRecipe: async ({ session_id, key, bindings }) => post(
+            `/sessions/${encodeURIComponent(session_id)}/recipes/${encodeURIComponent(key)}`
+            + '/plans', { bindings: bindings || {} }, `propose ${key}`),
+
+        /**
+         * Compute one form from artifacts this session already holds. REACHES NO ADAPTER.
+         *
+         * A refusal comes back as a 201 with the refusal in the body, so this resolves rather than
+         * rejecting: "that input did not resolve" is the laboratory's answer and not a transport
+         * failure, and turning it into a thrown error would put it in the same bucket as a dropped
+         * connection.
+         */
+        derive: async ({ session_id, form, artifact_ids, parameters }) => post(
+            `/sessions/${encodeURIComponent(session_id)}/derivations`,
+            { form, artifact_ids: artifact_ids || [], parameters: parameters || {} },
+            `produce ${form}`),
+
+        /** Every form derived in this session, in the order they were computed. */
+        derivations: async ({ session_id }) => get(
+            `/sessions/${encodeURIComponent(session_id)}/derivations`,
+            'read this session’s derivations'),
+
         // ── the corpus ──────────────────────────────────────────────────────
 
         /**

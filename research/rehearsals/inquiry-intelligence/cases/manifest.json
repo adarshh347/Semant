@@ -1,0 +1,41 @@
+{
+  "manifest_id": "inquiry-intelligence-cases",
+  "manifest_version": "1.0.0",
+  "created": "2026-08-22",
+  "lane": "INTELLIGENCE-001B",
+  "purpose": "Determine whether information FLOWED, remained TRACEABLE, and produced CROSS-IMAGE RELATIONS. Nothing here scores aesthetic quality or philosophical depth; those live in each case's manual_review_questions and are deliberately not automated.",
+  "corpora": {
+    "sculpture": {
+      "status": "canonical",
+      "post_ids": [
+        "6a6041b81ecd6db1c931eb7a",
+        "6a6041b61ecd6db1c931eb78",
+        "6a60408e1ecd6db1c931eb6b"
+      ],
+      "resolved_read_only_at": "2026-08-22T00:00:00Z",
+      "fingerprints": {
+        "6a6041b81ecd6db1c931eb7a": "165304160602f8b7415ac2f1c80b480ac7779262d3940f62d403784a3b7e927f",
+        "6a6041b61ecd6db1c931eb78": "0237a39cb28b41e082d185b3d153714e004d0304dbfc08fcfd634db1c03037eb",
+        "6a60408e1ecd6db1c931eb6b": "8a1270244e2876e81465c894c076e235de170c7dee121607c99c8f936c26395a"
+      },
+      "note": "Resolved through `inquiry_session.corpus.resolve`, which reads and never writes. These three fingerprints are byte-identical to the ones carried by the rev6 baseline export, so that export and any run made today read the same pixels."
+    },
+    "architecture": {
+      "status": "candidates_awaiting_human_confirmation",
+      "post_ids": [],
+      "note": "NOT CANONICAL AND NOT USABLE. `scripts/inquiry_intelligence_rehearsal.py --propose-architecture` searches the database read-only and writes a contact sheet to `architecture-control/`. Ids become canonical only when a person has looked at the images and said so — a control set assembled from metadata alone would make every cross-domain result a claim about the search query."
+    }
+  },
+  "cases": [
+    { "case_id": "II-01-rich-user-vocabulary", "corpus": "sculpture", "file": "II-01-rich-user-vocabulary.json" },
+    { "case_id": "II-02-sparse-inquiry", "corpus": "sculpture", "file": "II-02-sparse-inquiry.json" },
+    { "case_id": "II-03-adversarial-hypothesis", "corpus": "sculpture", "file": "II-03-adversarial-hypothesis.json" },
+    { "case_id": "II-04-generative-relation", "corpus": "sculpture", "file": "II-04-generative-relation.json" }
+  ],
+  "what_this_cannot_decide": [
+    "whether an answer is beautiful, deep, or worth reading",
+    "whether a relation it found is INTERESTING rather than merely present",
+    "whether a proposal combines two regimes or averages them",
+    "whether the vocabulary it discovered is the vocabulary these works deserve"
+  ]
+}

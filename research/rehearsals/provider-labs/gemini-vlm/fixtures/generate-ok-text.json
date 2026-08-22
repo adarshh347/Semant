@@ -1,0 +1,15 @@
+{
+  "candidates": [
+    {
+      "content": { "role": "model", "parts": [{ "text": "ready" }] },
+      "finishReason": "STOP",
+      "safetyRatings": []
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 7,
+    "candidatesTokenCount": 1,
+    "totalTokenCount": 8
+  },
+  "modelVersion": "fixture-model-a-001"
+}

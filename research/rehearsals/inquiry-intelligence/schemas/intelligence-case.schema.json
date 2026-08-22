@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:rehearsal/inquiry-intelligence-case.schema.json",
+  "title": "Inquiry Intelligence Case",
+  "description": "RESEARCH-ONLY. One evaluation case for the inquiry-intelligence flow: a prompt, a corpus, the pressure it applies, and what a run must structurally do with it. Implies no production entity, route or collection. A case declares STRUCTURAL expectations only — nothing here asserts that a good answer is a beautiful one, and `manual_review_questions` is where the judgements a machine may not make are written down instead of quietly automated.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "case_version",
+    "prompt",
+    "post_ids",
+    "intended_pressure",
+    "expected_structural_properties",
+    "forbidden_shortcuts",
+    "manual_review_questions",
+    "input_fingerprints",
+    "run_mode",
+    "declarations"
+  ],
+  "properties": {
+    "case_id": { "type": "string", "minLength": 1 },
+    "case_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Bumped whenever the prompt, the corpus or the expectations change. An evaluation records the version it ran against, because a metric compared across two versions is comparing two questions."
+    },
+    "title": { "type": "string" },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "BYTE-FOR-BYTE what the person typed, including its typos and its trailing aside. Tidying it would change the very thing case 1 exists to measure — how much of a person's own vocabulary comes back as a discovery."
+    },
+    "prompt_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "post_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "intended_pressure": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "What this case is trying to make the flow fail at. Written as pressures rather than as scores: the case is a question, not a grade."
+    },
+    "expected_structural_properties": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["metric", "expectation", "why"],
+        "properties": {
+          "metric": {
+            "type": "string",
+            "description": "A metric name the evaluator actually computes. Checked against the evaluator's registry, so an expectation naming a metric nobody measures is a manifest error rather than a silently absent check."
+          },
+          "expectation": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "A bound, not a target. Absent keys are not checked.",
+            "properties": {
+              "min": { "type": ["number", "null"] },
+              "max": { "type": ["number", "null"] },
+              "equals": {},
+              "at_least_one": { "type": "boolean" },
+              "must_be_null": { "type": "boolean" }
+            }
+          },
+          "why": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "forbidden_shortcuts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["shortcut", "detected_by", "why"],
+        "properties": {
+          "shortcut": { "type": "string", "minLength": 1 },
+          "detected_by": {
+            "type": "string",
+            "description": "The metric that would show it. `none` is an allowed and honest value — it says this shortcut is real and nothing automatic catches it, which is a better record than pretending a proxy does."
+          },
+          "why": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "manual_review_questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "The judgements this harness explicitly refuses to automate. Aesthetic quality, philosophical depth and whether a relation is INTERESTING all live here."
+    },
+    "input_fingerprints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["post_id", "fingerprint", "resolved_at"],
+        "properties": {
+          "post_id": { "type": "string" },
+          "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "resolved_at": { "type": "string" },
+          "readable": { "type": ["boolean", "null"] }
+        }
+      }
+    },
+    "run_mode": {
+      "type": "string",
+      "enum": ["live", "replay", "fixture", "local", "offline"],
+      "description": "Kept distinct because a metric computed over a replay and one computed over a live call are not the same evidence, and a report that pooled them would be the exact identity collapse the tree forbids."
+    },
+    "declarations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "models"],
+      "properties": {
+        "provider": { "type": ["string", "null"] },
+        "models": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "null"] },
+          "description": "Per stage. `null` means nobody declared it — which is not the same as a stage that ran no model, and the evaluator keeps them apart."
+        },
+        "note": { "type": "string" }
+      }
+    },
+    "notes": { "type": "array", "items": { "type": "string" } }
+  }
+}
