@@ -32,6 +32,7 @@ from backend.schemas.perception_lab import (EpistemicBasis, EpistemicStatus, Gro
 from backend.services.perception_lab import definitions as D
 from backend.services.perception_lab.extent_composites import admission as A
 from backend.services.perception_lab.extent_composites import alternatives as ALT
+from backend.services.perception_lab.extent_composites import density as DN
 from backend.services.perception_lab.extent_composites import fusion as FUS
 from backend.services.perception_lab.extent_composites import grounds as GR
 from backend.services.perception_lab.extent_composites import hierarchy as HI
@@ -825,3 +826,132 @@ def test_no_model_produces_this_form_and_the_refusal_names_both_deferred_candida
         A.producer_for(PT.FORM)
     assert caught.value.refusal.detail["verdicts"] == {"pix2gestalt": "defer",
                                                        "amodal_sam": "defer"}
+
+
+# ── extent.density_field ─────────────────────────────────────────────────────
+
+
+PIERS = "art_forms_piers"
+
+
+def piers() -> SRC.ExtentSource:
+    return SRC.extent_set(scene("piers"))
+
+
+def all_keys(source: SRC.ExtentSource) -> List[str]:
+    return list(source.keys())
+
+
+def test_the_count_is_known_rather_than_estimated_which_is_what_the_model_could_not_do():
+    source = piers()
+    result = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[4, 4])
+    assert result.payload.counts_are_exact is True
+    assert result.payload.members_counted == 5 == result.payload.samples_taken
+    assert len(result.payload.members) == 5
+    with pytest.raises(A.ModelNotAdmitted) as caught:
+        A.producer_for(DN.FORM)
+    assert caught.value.refusal.detail["verdicts"] == {"density_counter": "reject"}
+
+
+def test_a_count_and_a_member_list_that_disagree_do_not_validate():
+    source = piers()
+    result = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[4, 4])
+    drifted = result.payload.model_dump()
+    drifted["members_counted"] = 4
+    with pytest.raises(ValidationError):
+        S.ExtentDensityFieldPayload.model_validate(drifted)
+
+
+@pytest.mark.parametrize("bandwidth", [0.5, 1.0, 2.0, 8.0])
+def test_smoothing_moves_mass_and_does_not_make_it(bandwidth):
+    """The arithmetic version of "a bandwidth choice may not read as a population". A truncated
+    Gaussian loses whatever falls off the frame, so every kernel is renormalized over the cells it
+    actually reaches — one member is worth one member wherever it stands."""
+    source = piers()
+    smoothed = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[6, 6],
+                                        kernel=DN.Kernel(DN.GAUSSIAN, bandwidth))
+    assert smoothed.payload.field.statistics["sum"] == 5.0
+    assert smoothed.payload.members_counted == 5
+
+
+def test_a_wider_bandwidth_flattens_the_peak_without_changing_the_count():
+    source = piers()
+    tight = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[6, 6],
+                                     kernel=DN.Kernel(DN.GAUSSIAN, 0.5))
+    wide = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[6, 6],
+                                    kernel=DN.Kernel(DN.GAUSSIAN, 4.0))
+    assert tight.payload.field.statistics["peak"] > wide.payload.field.statistics["peak"]
+    assert tight.payload.members_counted == wide.payload.members_counted
+    assert tight.payload.smoothing.bandwidth == 0.5
+    assert wide.payload.smoothing.bandwidth == 4.0
+
+
+def test_smoothing_costs_the_calibration_because_the_numbers_stop_being_counts():
+    source = piers()
+    raw = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[4, 4])
+    assert raw.payload.field.calibration.state is S.CalibrationState.CALIBRATED
+    assert raw.payload.field.calibration.units == DN.UNITS
+    assert raw.payload.field.calibration.method and raw.payload.field.calibration.reference
+    assert set(raw.payload.field.inline_values) <= {0.0, 1.0, 2.0, 3.0, 4.0, 5.0}
+
+    smoothed = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[4, 4],
+                                        kernel=DN.Kernel(DN.GAUSSIAN, 1.0))
+    assert smoothed.payload.field.calibration.state is S.CalibrationState.NOMINAL
+    assert smoothed.payload.field.calibration.units is None
+
+
+def test_a_smoothed_field_naming_a_derivation_that_does_no_smoothing_does_not_validate():
+    source = piers()
+    result = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[4, 4],
+                                      kernel=DN.Kernel(DN.GAUSSIAN, 1.0))
+    assert result.payload.field.derivation is S.FieldDerivation.KERNEL_DENSITY
+    lying = result.payload.model_dump()
+    lying["field"]["derivation"] = "blur_of_binary_mask"
+    with pytest.raises(ValidationError):
+        S.ExtentDensityFieldPayload.model_validate(lying)
+
+
+def test_smoothing_that_was_applied_names_its_method_and_its_bandwidth():
+    with pytest.raises(ValidationError):
+        S.SmoothingDeclaration(applied=True, method="gaussian", bandwidth=None)
+    with pytest.raises(ValidationError):
+        S.SmoothingDeclaration(applied=False, method="gaussian", bandwidth=1.0)
+
+
+def test_counts_samples_and_smoothing_stay_three_separate_declarations():
+    """A single `density` number answers none of the three questions they answer."""
+    source = piers()
+    result = DN.produce_density_field(all_keys(source) + ["art_elsewhere#ghost"],
+                                      sources=[source], field_shape=[4, 4])
+    assert result.payload.members_counted == 5
+    assert result.payload.samples_taken == 5
+    assert result.payload.smoothing.applied is False
+    assert [o.what for o in result.omissions_for("endpoint_dangling")] == ["art_elsewhere#ghost"]
+
+
+def test_a_field_with_no_cells_has_nowhere_to_count_into():
+    source = piers()
+    result = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[0, 4])
+    assert result.payload is None
+    assert any(r.code is RefusalCode.INVALID_PARAMETERS for r in result.refusals)
+
+
+def test_a_box_basis_source_is_admitted_here_and_drops_the_ceiling_rather_than_being_refused():
+    """`extent.density_field` admits `box`, unlike `extent.fused_hypothesis`. The centre of a box
+    and the centre of area of the mask inside it are different points, so the field is honest and
+    coarser — and the ceiling says which."""
+    boxes = extents("piers", basis="box", status="interpretive")
+    result = DN.produce_density_field(all_keys(boxes), sources=[boxes], field_shape=[4, 4])
+    assert result.payload is not None
+    assert result.basis is EpistemicBasis.BOX
+    assert result.ceiling is EpistemicStatus.INTERPRETIVE
+    assert "box" in D.form(DN.FORM).admissible_bases
+
+
+def test_the_same_members_counted_twice_produce_the_same_field():
+    source = piers()
+    one = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[5, 5],
+                                   kernel=DN.Kernel(DN.GAUSSIAN, 1.5))
+    two = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[5, 5],
+                                   kernel=DN.Kernel(DN.GAUSSIAN, 1.5))
+    assert one.payload.model_dump() == two.payload.model_dump()
