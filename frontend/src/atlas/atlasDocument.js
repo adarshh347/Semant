@@ -289,3 +289,16 @@ export function refusalLines(refused) {
         return `${what}: ${r?.detail || r?.reason || 'refused'}`;
     });
 }
+
+// ── the index: which runs are a way in, and what is on the shelf ───────────
+
+/** The runs a canvas can be opened over: the ones that finished. A run still running has not
+ *  resolved its corpus, and a stopped one may never have. */
+export const completedRuns = (runs) =>
+    (runs || []).filter((r) => r && r.status === 'complete' && r.run_id);
+
+/** Partition the shelf: what is out, and what was put away. */
+export const splitArchived = (atlases) => ({
+    open: (atlases || []).filter((a) => !a.archived),
+    archived: (atlases || []).filter((a) => a.archived),
+});

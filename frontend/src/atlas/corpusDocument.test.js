@@ -9,7 +9,8 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-    MAX_IMAGES, corpusSummary, imagesFrom, move, saveBlocker, toggle, walkRows,
+    MAX_IMAGES, corpusSummary, dropCorpus, imagesFrom, move, refusalText, replaceCorpus,
+    rowsAfterPatch, saveBlocker, toggle, walkRows,
 } from './corpusDocument.js';
 
 describe('picking the walk', () => {
@@ -108,5 +109,56 @@ describe('reading a saved walk', () => {
         const rows = walkRows({ images: [
             { post_id: 'p3', position: 0 }, { post_id: 'p1', position: 1 }] });
         expect(rows.map((r) => r.postId)).toEqual(['p3', 'p1']);
+    });
+});
+
+// ── L1 lifecycle helpers ────────────────────────────────────────────────────
+
+describe('the saved-walks list, after a change', () => {
+    const list = [{ id: 'a', title: 'one' }, { id: 'b', title: 'two' }];
+
+    it('replaces a changed walk in place, keeping the order of the list', () => {
+        expect(replaceCorpus(list, { id: 'b', title: 'two, renamed' }).map((c) => c.title))
+            .toEqual(['one', 'two, renamed']);
+    });
+
+    it('ignores a document with no id rather than inserting a ghost', () => {
+        expect(replaceCorpus(list, {})).toEqual(list);
+    });
+
+    it('drops a forgotten walk and nothing else', () => {
+        expect(dropCorpus(list, 'a').map((c) => c.id)).toEqual(['b']);
+    });
+
+    it('says a refusal as one sentence, and nothing when there were none', () => {
+        expect(refusalText([])).toBe('');
+        expect(refusalText([{ reason: 'unknown_image', detail: "no image 'x'" }, { reason: 'r2' }]))
+            .toBe("Not applied: no image 'x'; r2.");
+    });
+});
+
+describe('rows after a PATCH', () => {
+    const rows = walkRows({ images: [
+        { post_id: 'p1', position: 0, note: 'a', readable: true, image_ref: 'u1', title: 't1', committed: 2 },
+        { post_id: 'p2', position: 1, note: '', readable: false, image_ref: '', unreadable_reason: 'gone' },
+    ] });
+
+    it('takes the server’s order and notes, and keeps what the view knew about each image', () => {
+        const next = rowsAfterPatch(rows, { images: [
+            { post_id: 'p2', position: 0, note: 'moved' }, { post_id: 'p1', position: 1, note: 'a' },
+        ] });
+        expect(next.map((r) => r.postId)).toEqual(['p2', 'p1']);
+        expect(next[0]).toMatchObject({ note: 'moved', readable: false, unreadableReason: 'gone' });
+        expect(next[1]).toMatchObject({ imageRef: 'u1', title: 't1', committed: 2 });
+    });
+
+    it('does not sort — the stored order is the walk', () => {
+        const next = rowsAfterPatch(rows, { images: [{ post_id: 'p2' }, { post_id: 'p1' }] });
+        expect(next.map((r) => r.postId)).toEqual(['p2', 'p1']);
+    });
+
+    it('an image the view never saw is still drawn, as readable until told otherwise', () => {
+        const next = rowsAfterPatch(rows, { images: [{ post_id: 'p9' }] });
+        expect(next[0]).toMatchObject({ postId: 'p9', readable: true, imageRef: '' });
     });
 });

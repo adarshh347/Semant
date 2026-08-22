@@ -90,3 +90,53 @@ export function walkRows(view) {
         unreadableReason: i.unreadable_reason || '',
     }));
 }
+
+// ── L1 lifecycle: what the saved-walks list does with what the server sends back ──────────────
+
+/** A changed walk replaces its earlier self in the list; the order of the list is kept. */
+export function replaceCorpus(corpora, doc) {
+    if (!doc?.id) return corpora || [];
+    return (corpora || []).map((c) => (c.id === doc.id ? doc : c));
+}
+
+/** A forgotten walk leaves the list. Nothing else moves. */
+export function dropCorpus(corpora, corpusId) {
+    return (corpora || []).filter((c) => c.id !== corpusId);
+}
+
+/**
+ * The server's refusals, as one sentence, or '' when there were none.
+ *
+ * A PATCH applies what it can and reports what it could not (`{corpus, refused}`); the surface
+ * says the refusal rather than pretending the whole gesture landed.
+ */
+export function refusalText(refused) {
+    const list = (refused || []).map((r) => r?.detail || r?.reason).filter(Boolean);
+    return list.length ? `Not applied: ${list.join('; ')}.` : '';
+}
+
+/**
+ * The rows after a PATCH: the server's new order and notes, wearing what the hydrated view
+ * already knew about each image (its picture, its title, whether it could be read).
+ *
+ * A PATCH answers with the STORED document, which carries ids and order and nothing else — on
+ * purpose. Re-fetching the view after every nudge would be honest but slow, and forgetting the
+ * pictures would make the list unusable; this keeps both without caching anything the view did
+ * not already hand over.
+ */
+export function rowsAfterPatch(rows, corpus) {
+    const known = new Map((rows || []).map((r) => [r.postId, r]));
+    return (corpus?.images || []).map((i, n) => {
+        const prior = known.get(String(i.post_id));
+        return {
+            postId: String(i.post_id),
+            position: Number(i.position ?? n),
+            note: i.note || '',
+            readable: prior ? prior.readable : true,
+            imageRef: prior?.imageRef || '',
+            title: prior?.title || '',
+            committed: prior?.committed || 0,
+            unreadableReason: prior?.unreadableReason || '',
+        };
+    });
+}
