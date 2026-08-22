@@ -1,0 +1,259 @@
+{
+  "name": "moorings",
+  "topic": "two moorings photographed an hour apart, and a claim about which is held more tightly",
+  "why_this_fixture": [
+    "The INTELLIGENCE-002C rehearsal shape: a user hypothesis that arrives already claiming the",
+    "picture shows it, several image readings of very different quality, a comparison Semant",
+    "elected to draw, four candidate relations with four different fates, and a capability the",
+    "system does not have.",
+    "It exists to prove that nine specific dishonesties are caught rather than composed:",
+    "a hypothesis declaring an image status; a reading offering model agreement as measurement;",
+    "a reading resting on a capability the gap list says is missing; a reading that declared no",
+    "status at all; a reading declaring a sixth kind of knowing; a reading anchored to no image;",
+    "an alignment against a hypothesis nobody proposed; a plan citing an observation that was",
+    "never placed; and a relation that was accepted while its own critique would not vouch for it.",
+    "NOTHING in it is nautical to the code. Its twin, `proofs.json`, runs the identical path over",
+    "a subject with no vocabulary, no capability and no refusal in common."
+  ],
+  "topic_nouns": ["mast", "rigging", "hull", "gunwale", "pontoon", "bollard", "halyard", "cleat"],
+  "inquiry_id": "inq_moorings",
+  "prompt": "Two moorings, photographed an hour apart. I think the second boat is held more tightly than the first — show me where the pictures bear that out and where they do not.",
+  "inquiry_map": {
+    "inquiry_id": "inq_moorings",
+    "images": [
+      {"image_id": "img_north", "title": "the first mooring, from the quay"},
+      {"image_id": "img_south", "title": "the second mooring, from the same quay an hour later"}
+    ],
+    "hypotheses": [
+      {
+        "hypothesis_id": "h_tension",
+        "statement": "the second boat is held more tightly than the first",
+        "declared_status": "visible",
+        "images": ["img_north", "img_south"]
+      },
+      {
+        "hypothesis_id": "h_age",
+        "statement": "the older of the two moorings was built for a heavier hull",
+        "images": ["img_north"]
+      }
+    ]
+  },
+  "observations": [
+    {
+      "observation_id": "o_n1",
+      "image_id": "img_north",
+      "producer": "visual_observer",
+      "statement": "a thick line runs from the bollard to a cleat near the bow, slack enough to sag between them",
+      "declared_status": "measured",
+      "evidence_ids": ["e_slack"]
+    },
+    {
+      "observation_id": "o_n2",
+      "image_id": "img_north",
+      "producer": "visual_observer",
+      "statement": "the pontoon sits low on the near side, as though something heavy is resting on that end",
+      "declared_status": "interpretive",
+      "evidence_ids": ["e_note"]
+    },
+    {
+      "observation_id": "o_n3",
+      "image_id": "img_north",
+      "producer": "visual_observer",
+      "statement": "the rigging is under even tension across all four stays",
+      "declared_status": "measured",
+      "evidence_ids": ["e_panel"]
+    },
+    {
+      "observation_id": "o_n4",
+      "image_id": "img_north",
+      "producer": "visual_observer",
+      "statement": "the fenders are placed at unequal intervals along the hull",
+      "declared_status": "probable"
+    },
+    {
+      "observation_id": "o_s1",
+      "image_id": "img_south",
+      "producer": "visual_observer",
+      "statement": "two lines cross at the gunwale and take up the load together",
+      "declared_status": "visible",
+      "evidence_ids": ["e_extent"]
+    },
+    {
+      "observation_id": "o_s2",
+      "image_id": "img_south",
+      "producer": "visual_observer",
+      "statement": "the halyard is newer than the rest of the standing gear",
+      "declared_status": "measured",
+      "evidence_ids": ["e_finish"]
+    },
+    {
+      "observation_id": "o_s3",
+      "image_id": "img_south",
+      "producer": "visual_observer",
+      "statement": "the mast leans a degree or two off vertical"
+    },
+    {
+      "observation_id": "o_loose",
+      "producer": "visual_observer",
+      "statement": "something in one of the frames is taut",
+      "declared_status": "interpretive"
+    }
+  ],
+  "alignments": [
+    {
+      "alignment_id": "a_sag",
+      "hypothesis_id": "h_tension",
+      "observation_id": "o_n1",
+      "stance": "contradicts",
+      "statement": "the sag in the first mooring's line tells against the proposal at least as much as for it",
+      "declared_status": "interpretive"
+    },
+    {
+      "alignment_id": "a_cross",
+      "hypothesis_id": "h_tension",
+      "observation_id": "o_s1",
+      "stance": "supports",
+      "statement": "two lines sharing the load is what being held tightly would look like",
+      "declared_status": "measured"
+    },
+    {
+      "alignment_id": "a_ghost",
+      "hypothesis_id": "h_weather",
+      "observation_id": "o_s1",
+      "stance": "supports",
+      "statement": "the crossing is what you would expect if a blow were forecast",
+      "declared_status": "interpretive"
+    }
+  ],
+  "contrast_plans": [
+    {
+      "plan_id": "p_load",
+      "statement": "set the single sagging line of the first mooring against the crossed pair of the second",
+      "because": "both are the same job done two ways, and the difference should be legible in the lines alone",
+      "images": ["img_north", "img_south"],
+      "observation_ids": ["o_n1", "o_s1"]
+    },
+    {
+      "plan_id": "p_ride",
+      "statement": "compare how far each pontoon rides above the water",
+      "because": "a difference in freeboard would say more about the load than the lines do",
+      "images": ["img_north", "img_south"],
+      "observation_ids": ["o_n2", "o_never"],
+      "declared_status": "measured"
+    }
+  ],
+  "accepted_relations": [
+    {
+      "relation_id": "r_share",
+      "statement": "the second mooring carries its load across two lines where the first carries it across one",
+      "declared_status": "interpretive",
+      "subjects": ["img_north", "img_south"],
+      "plan_id": "p_load"
+    },
+    {
+      "relation_id": "r_tighter",
+      "statement": "the second boat is held more tightly than the first",
+      "declared_status": "measured",
+      "subjects": ["img_north", "img_south"],
+      "plan_id": "p_load",
+      "evidence_ids": ["e_cross"]
+    },
+    {
+      "relation_id": "r_near",
+      "statement": "the near cleat takes more of the load than the far one",
+      "declared_status": "interpretive",
+      "subjects": ["img_south"]
+    }
+  ],
+  "rejected_relations": [
+    {
+      "relation_id": "r_older",
+      "statement": "the first mooring is older than the second",
+      "declared_status": "interpretive",
+      "subjects": ["img_north", "img_south"]
+    }
+  ],
+  "critiques": [
+    {
+      "critique_id": "c_share",
+      "relation_id": "r_share",
+      "verdict": "sustained",
+      "because": "both frames were read for the same thing and both readings name the same count"
+    },
+    {
+      "critique_id": "c_tighter",
+      "relation_id": "r_tighter",
+      "verdict": "withheld",
+      "because": "the geometry measures one line's sag; the boat's hold is a different quantity and nothing computed it"
+    },
+    {
+      "critique_id": "c_older",
+      "relation_id": "r_older",
+      "verdict": "refuted",
+      "because": "nothing in either frame dates anything"
+    },
+    {
+      "critique_id": "c_ghost",
+      "relation_id": "r_nowhere",
+      "verdict": "sustained",
+      "because": "a critique of a relation that was never proposed"
+    }
+  ],
+  "observables": [
+    {
+      "observable_id": "ob_freeboard",
+      "of": "o_n2",
+      "statement": "the height of the pontoon deck above the waterline, in pixels",
+      "capability_classes": ["extent_measure"]
+    },
+    {
+      "observable_id": "ob_oxide",
+      "of": "o_s2",
+      "statement": "how far the surface has weathered, against a reference",
+      "capability_classes": ["surface_age"]
+    },
+    {
+      "observable_id": "ob_share",
+      "of": "r_near",
+      "statement": "the share of the load taken at each attachment",
+      "capability_classes": ["load_estimate"]
+    }
+  ],
+  "capability_gaps": [
+    {
+      "gap_id": "g_age",
+      "capability": "surface_age",
+      "why": "nothing in this system dates a surface from a photograph",
+      "needed_for": ["o_s2", "r_older"]
+    },
+    {
+      "gap_id": "g_load",
+      "capability": "load_estimate",
+      "why": "no producer estimates a force from a still frame",
+      "needed_for": ["r_near"]
+    },
+    {
+      "gap_id": "g_air",
+      "capability": "wind_direction",
+      "why": "nothing here reads the air, and no question in this inquiry asked it to",
+      "needed_for": []
+    }
+  ],
+  "evidence": [
+    {"evidence_id": "e_slack", "kind": "measurement", "capability": "slack_geometry", "of": "o_n1",
+     "value": "sag of 0.11 of the span"},
+    {"evidence_id": "e_note", "kind": "reading", "capability": "visual_observer", "of": "o_n2"},
+    {"evidence_id": "e_panel", "kind": "agreement", "capability": "observer_panel", "of": "o_n3",
+     "value": "four of four observers concurred"},
+    {"evidence_id": "e_extent", "kind": "extent", "capability": "extent_segmenter", "of": "o_s1"},
+    {"evidence_id": "e_finish", "kind": "measurement", "capability": "surface_age", "of": "o_s2"},
+    {"evidence_id": "e_cross", "kind": "measurement", "capability": "slack_geometry", "of": "r_tighter"}
+  ],
+  "capabilities": {
+    "slack_geometry": true,
+    "extent_segmenter": true,
+    "extent_measure": true,
+    "observer_panel": true,
+    "surface_age": false
+  }
+}
