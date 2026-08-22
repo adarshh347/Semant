@@ -36,6 +36,10 @@ from backend.services.perception_lab.extent_composites.compose import PRODUCER, 
 from backend.services.perception_lab.extent_composites.fusion import (ProposedFusion,
                                                                       produce_fused_hypothesis)
 from backend.services.perception_lab.extent_composites.grounds import GroundEvidence, Vetting, vet
+from backend.services.perception_lab.extent_composites.hierarchy import (LinkKind, ProposedLink,
+                                                                        produce_extent_hierarchy)
+from backend.services.perception_lab.extent_composites.partition import (
+    SuppliedPart, produce_visible_inferred_partition)
 from backend.services.perception_lab.extent_composites.admission import (ADMISSIONS, Admission,
                                                                          EVIDENCE_ROOT,
                                                                          ModelNotAdmitted, Role,
@@ -48,9 +52,10 @@ from backend.services.perception_lab.extent_composites.sources import (ExtentSou
                                                                        fragment_set, index)
 
 __all__ = [
-    "ADMISSIONS", "Admission", "EVIDENCE_ROOT", "ExtentSource", "GroundEvidence",
-    "ModelNotAdmitted", "NotAnExtentSet", "PRODUCER", "ProposedFusion", "Reading", "Role",
-    "Verdict", "Vetting", "admissions_for", "admitted", "extent_set", "fragment_set",
-    "ground_admission", "index", "produce", "produce_fused_hypothesis",
-    "produce_hypothesis_set", "producer_for", "vet",
+    "ADMISSIONS", "Admission", "EVIDENCE_ROOT", "ExtentSource", "GroundEvidence", "LinkKind",
+    "ModelNotAdmitted", "NotAnExtentSet", "PRODUCER", "ProposedFusion", "ProposedLink", "Reading",
+    "Role", "SuppliedPart", "Verdict", "Vetting", "admissions_for", "admitted", "extent_set",
+    "fragment_set", "ground_admission", "index", "produce", "produce_extent_hierarchy",
+    "produce_fused_hypothesis", "produce_hypothesis_set",
+    "produce_visible_inferred_partition", "producer_for", "vet",
 ]

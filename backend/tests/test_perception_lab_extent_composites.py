@@ -17,6 +17,7 @@ PURE. No database, no network, no model, no adapter, no image.
 """
 from __future__ import annotations
 
+import copy
 import json
 import re
 from pathlib import Path
@@ -33,6 +34,8 @@ from backend.services.perception_lab.extent_composites import admission as A
 from backend.services.perception_lab.extent_composites import alternatives as ALT
 from backend.services.perception_lab.extent_composites import fusion as FUS
 from backend.services.perception_lab.extent_composites import grounds as GR
+from backend.services.perception_lab.extent_composites import hierarchy as HI
+from backend.services.perception_lab.extent_composites import partition as PT
 from backend.services.perception_lab.extent_composites import sources as SRC
 from backend.services.perception_lab.topology_forms import production as P
 
@@ -538,3 +541,287 @@ def test_a_deferred_form_carries_its_payload_and_its_verdict_and_is_not_writable
     assert result.producible is False
     assert result.writable_payload is None
     assert any(r.code is RefusalCode.FORM_NOT_PRODUCIBLE for r in result.refusals)
+
+
+# ── extent.hierarchy ─────────────────────────────────────────────────────────
+
+
+def forest() -> SRC.ExtentSource:
+    return SRC.extent_set(scene("forest"))
+
+
+def link(child: str, parent: Optional[str] = None, **kw) -> "HI.ProposedLink":
+    return HI.ProposedLink(f"{FOREST}#{child}",
+                           None if parent is None else f"{FOREST}#{parent}", **kw)
+
+
+def asserted(text: str = "the wall encloses the court") -> "GR.GroundEvidence":
+    return GR.GroundEvidence(kind=GroundKind.HUMAN_ASSERTION, detail=text,
+                             attributed_to=GR.HUMAN)
+
+
+def by_instance(result) -> Dict[str, Any]:
+    return {n.instance.instance_id: n for n in result.payload.nodes}
+
+
+def test_a_measured_nesting_carries_the_fraction_of_the_parent_it_occupies():
+    result = HI.produce_extent_hierarchy(
+        [link("court"), link("fountain", "court"), link("basin", "fountain")],
+        sources=[forest()])
+    nodes = by_instance(result)
+    assert nodes["court"].parent_node_id is None
+    assert nodes["fountain"].occupancy_of_parent == 0.112782
+    assert nodes["basin"].occupancy_of_parent == 0.133333
+    assert all(n.basis is EpistemicBasis.MASK for n in result.payload.nodes)
+    assert result.ceiling is EpistemicStatus.MEASURED
+
+
+def test_geometric_containment_and_semantic_part_whole_are_two_different_links():
+    """A pigeon standing in a courtyard is contained by it and is not part of it. The wall around
+    the court is part of it and is not inside it. `basis` is where the distinction lives."""
+    result = HI.produce_extent_hierarchy(
+        [link("court"), link("fountain", "court"),
+         link("wall", "court", kind=HI.LinkKind.SEMANTIC, asserted_by=asserted())],
+        sources=[forest()])
+    nodes = by_instance(result)
+    assert nodes["fountain"].basis is EpistemicBasis.MASK
+    assert nodes["wall"].basis is EpistemicBasis.MANUAL
+    assert result.ceiling is EpistemicStatus.INTERPRETIVE, (
+        "one asserted link makes the whole tree an interpretive grouping")
+
+
+def test_a_semantic_link_carries_no_occupancy_even_where_the_masks_would_support_one():
+    """A fraction beside an asserted parentage would make the assertion look measured, and
+    `HierarchyNode` has no field saying which of the two the number belongs to."""
+    result = HI.produce_extent_hierarchy(
+        [link("court"), link("fountain", "court", kind=HI.LinkKind.SEMANTIC,
+                             asserted_by=asserted("the fountain belongs to the court"))],
+        sources=[forest()])
+    assert by_instance(result)["fountain"].occupancy_of_parent is None
+    measured = HI.produce_extent_hierarchy([link("court"), link("fountain", "court")],
+                                           sources=[forest()])
+    assert by_instance(measured)["fountain"].occupancy_of_parent == 0.112782
+
+
+def test_a_part_whole_link_that_names_nobody_is_a_containment_claim_with_the_measurement_removed():
+    result = HI.produce_extent_hierarchy(
+        [link("court"), link("wall", "court", kind=HI.LinkKind.SEMANTIC)], sources=[forest()])
+    assert "wall" not in by_instance(result)
+    assert [o.reason for o in result.omissions_for("semantic_link_undeclared")] == \
+        ["semantic_link_undeclared"]
+
+
+def test_a_proposed_parent_that_does_not_contain_the_child_is_refused_per_pixel():
+    """The courtyard's wall surrounds the court; it is not inside it. No tolerance, no
+    almost-contained, and the refusal is recorded rather than the link being quietly kept."""
+    result = HI.produce_extent_hierarchy([link("court"), link("wall", "court")],
+                                          sources=[forest()])
+    assert "wall" not in by_instance(result)
+    stated, = result.omissions_for("not_geometrically_contained")
+    assert stated.what == f"{FOREST}#wall<-{FOREST}#court"
+
+
+def test_a_node_whose_parent_was_excluded_is_excluded_and_says_so():
+    """Re-rooting it would invent a level nobody proposed; dropping it quietly would make a
+    partial tree read as a complete one."""
+    result = HI.produce_extent_hierarchy(
+        [link("court"), link("wall", "court"), link("niche", "wall")], sources=[forest()])
+    assert set(by_instance(result)) == {"court"}
+    assert len(result.omissions_for("orphaned_by_exclusion")) == 1
+
+
+def test_a_cycle_is_reported_and_never_broken_by_dropping_an_edge():
+    """A geometric cycle cannot arise off one raster — containment is checked per pixel and two
+    masks cannot each contain the other. An ASSERTED cycle can, and does: a person says the
+    fountain is part of the basin and the basin is part of the fountain, and the links disagree.
+    """
+    result = HI.produce_extent_hierarchy(
+        [link("fountain", "basin", kind=HI.LinkKind.SEMANTIC, asserted_by=asserted("a")),
+         link("basin", "fountain", kind=HI.LinkKind.SEMANTIC, asserted_by=asserted("b"))],
+        sources=[forest()])
+    assert result.payload.nodes == []
+    assert len(result.omissions_for("containment_cycle")) == 2, (
+        "the whole loop goes; deleting the edge that happened to be walked last would produce a "
+        "tree that validates and that nobody chose")
+
+
+def test_two_masks_cannot_each_contain_the_other_so_a_geometric_cycle_never_forms():
+    """The precondition for the test above, asserted rather than assumed."""
+    result = HI.produce_extent_hierarchy(
+        [link("fountain", "basin"), link("basin", "fountain")], sources=[forest()])
+    assert len(result.omissions_for("not_geometrically_contained")) == 1
+    assert result.omissions_for("containment_cycle") == ()
+
+
+def test_a_second_parent_for_one_node_is_a_second_tree_and_is_refused():
+    result = HI.produce_extent_hierarchy(
+        [link("court"), link("fountain", "court"), link("fountain", "basin")],
+        sources=[forest()])
+    assert by_instance(result)["fountain"].parent_node_id is not None
+    assert len(result.omissions_for("duplicate")) == 1
+
+
+def test_every_node_cites_a_revision_and_one_that_cannot_is_left_out():
+    result = HI.produce_extent_hierarchy([link("court")], sources=[forest()])
+    node, = result.payload.nodes
+    assert node.instance.geometry_rev == 1
+    unpinned = copy.deepcopy(scene("forest"))
+    for instance in unpinned["measurement"]["payload"]["instances"]:
+        instance["geometry_rev"] = None
+        instance["region_id"] = None
+    unpinned["identity"]["identity_refs"] = []
+    unpinned["identity"]["identity_scope"] = "session"
+    bare = HI.produce_extent_hierarchy([link("court")], sources=[SRC.extent_set(unpinned)])
+    assert bare.payload.nodes == []
+    assert [o.reason for o in bare.omissions_for("revision_missing")] == ["revision_missing"]
+
+
+def test_pairs_examined_counts_the_parentages_put_forward_including_the_failures():
+    result = HI.produce_extent_hierarchy(
+        [link("court"), link("wall", "court"), link("fountain", "court")], sources=[forest()])
+    assert result.payload.pairs_examined == 3
+    assert len(result.payload.nodes) == 2
+
+
+def test_the_hierarchy_is_the_one_form_of_the_five_that_may_actually_be_written():
+    result = HI.produce_extent_hierarchy([link("court")], sources=[forest()])
+    assert result.producible is True
+    assert result.writable_payload is not None
+    assert D.form(HI.FORM).state == "experimental"
+
+
+# ── extent.visible_inferred_partition ────────────────────────────────────────
+
+
+def instance_mask(source: SRC.ExtentSource, instance_id: str) -> Dict[str, Any]:
+    return {m.instance_id: m for m in source.members}[instance_id].mask_rle
+
+
+def part(kind: S.PartitionPart, mask=None, **kw) -> "PT.SuppliedPart":
+    return PT.SuppliedPart(kind, mask_rle=mask, **kw)
+
+
+def test_the_three_parts_carry_three_statuses_and_the_inferred_one_is_never_visible():
+    source = forest()
+    result = PT.produce_visible_inferred_partition(
+        f"{FOREST}#court",
+        [part(S.PartitionPart.VISIBLE, instance_mask(source, "basin")),
+         part(S.PartitionPart.INFERRED, instance_mask(source, "niche"))],
+        sources=[source])
+    statuses = {r.part: r.epistemic_status for r in result.payload.regions}
+    assert statuses[S.PartitionPart.VISIBLE] is EpistemicStatus.MEASURED
+    assert statuses[S.PartitionPart.INFERRED] is EpistemicStatus.UNCERTAIN
+    lifted = result.payload.model_dump()
+    lifted["regions"][1]["epistemic_status"] = "measured"
+    with pytest.raises(ValidationError):
+        S.ExtentPartitionPayload.model_validate(lifted)
+
+
+def test_the_statuses_this_producer_picks_are_a_subset_of_the_ones_the_schema_allows():
+    """A second copy of a rule is a second chance to disagree with it, so the copy is checked in
+    the only direction that is safe: everything this producer picks must validate, and nothing the
+    schema forbids may appear in the copy.
+
+    THE COPY IS DELIBERATELY NARROWER ON THE INFERRED PART. The schema permits `interpretive` OR
+    `uncertain` there, because a person reading a partly hidden figure may be doing something
+    weaker than completing it. This producer only ever completes, and Lane C's rule for every
+    amodal output is that it is `uncertain` — so `interpretive` stays available to a manual
+    author and is never written here.
+    """
+    def region(kind, status):
+        return PT.PartitionRegion(part=kind, epistemic_status=status, coverage=0.1,
+                                  mask_rle={"size": [2, 2], "counts": [0, 1, 3]})
+    for kind, allowed in PT.ALLOWED.items():
+        for status in allowed:
+            assert region(kind, status).epistemic_status is status
+    assert EpistemicStatus.INTERPRETIVE not in PT.ALLOWED[S.PartitionPart.INFERRED]
+    assert region(S.PartitionPart.INFERRED, EpistemicStatus.INTERPRETIVE), (
+        "the schema allows it; this producer does not use it")
+    for forbidden in (EpistemicStatus.MEASURED, EpistemicStatus.VISIBLE):
+        with pytest.raises(ValidationError):
+            region(S.PartitionPart.INFERRED, forbidden)
+        assert forbidden not in PT.ALLOWED[S.PartitionPart.INFERRED]
+
+
+def test_a_pixel_in_two_parts_refuses_the_whole_partition_rather_than_half_of_it():
+    """A reader drawing the tricolour would paint it in whichever key their loop reached last, so
+    a hallucinated leg would appear in the same colour as a photographed one. Every part of the
+    answer is contaminated by that ambiguity, so there is no partial answer worth returning."""
+    source = forest()
+    mask = instance_mask(source, "basin")
+    result = PT.produce_visible_inferred_partition(
+        f"{FOREST}#court",
+        [part(S.PartitionPart.VISIBLE, mask), part(S.PartitionPart.INFERRED, mask)],
+        sources=[source])
+    assert result.payload is None
+    refusal, = [r for r in result.refusals if r.code is RefusalCode.INVALID_PARAMETERS]
+    assert refusal.detail["parts"] == ["visible", "inferred"]
+    assert refusal.detail["shared_pixels"] > 0
+
+
+def test_parts_on_another_raster_are_refused_before_they_can_pass_the_overlap_check():
+    """`intersection_area` returns None on a raster mismatch rather than resampling, so two parts
+    on two rasters would pass the overlap check by being incomparable."""
+    source = forest()
+    result = PT.produce_visible_inferred_partition(
+        f"{FOREST}#court", [part(S.PartitionPart.VISIBLE, {"size": [2, 2], "counts": [0, 1, 3]})],
+        sources=[source])
+    assert result.payload is None
+    refusal, = [r for r in result.refusals if r.code is RefusalCode.INVALID_PARAMETERS]
+    assert refusal.detail["part_raster"] == [2, 2] and refusal.detail["extent_raster"] == [40, 60]
+
+
+def test_a_partition_with_no_visible_part_contradicts_the_extent_it_partitions():
+    source = forest()
+    result = PT.produce_visible_inferred_partition(
+        f"{FOREST}#court", [part(S.PartitionPart.INFERRED, instance_mask(source, "niche"))],
+        sources=[source])
+    assert result.payload is None
+    assert any(r.code is RefusalCode.MISSING_EXTENT_INPUTS for r in result.refusals)
+
+
+def test_the_unknown_part_is_a_real_third_part_and_its_absence_is_recorded():
+    source = forest()
+    result = PT.produce_visible_inferred_partition(
+        f"{FOREST}#court", [part(S.PartitionPart.VISIBLE, instance_mask(source, "basin"))],
+        sources=[source])
+    missing = {o.what for o in result.omissions_for("part_not_supplied")}
+    assert missing == {"inferred", "unknown"}
+    assert "not the same as absent" in \
+        [o.detail for o in result.omissions_for("part_not_supplied") if o.what == "unknown"][0]
+
+
+def test_coverage_is_measured_off_the_mask_and_never_taken_from_the_caller():
+    """A supplied coverage beside a supplied mask is two numbers that can disagree, and the schema
+    checks their sum without being able to check either."""
+    source = forest()
+    result = PT.produce_visible_inferred_partition(
+        f"{FOREST}#court",
+        [PT.SuppliedPart(S.PartitionPart.VISIBLE, mask_rle=instance_mask(source, "basin"),
+                         coverage=0.99)], sources=[source])
+    region, = result.payload.regions
+    assert region.coverage == 0.006667, "the mask says 0.0067; the caller said 0.99"
+
+
+def test_cells_partitioned_is_the_raster_and_not_the_number_of_parts():
+    source = forest()
+    result = PT.produce_visible_inferred_partition(
+        f"{FOREST}#court", [part(S.PartitionPart.VISIBLE, instance_mask(source, "basin"))],
+        sources=[source])
+    assert result.payload.cells_partitioned == 40 * 60
+
+
+def test_partitioning_something_nobody_saw_is_a_question_with_no_answer():
+    weak = extents("forest", basis="mask", status="uncertain")
+    result = PT.produce_visible_inferred_partition(
+        f"{FOREST}#court", [part(S.PartitionPart.VISIBLE, instance_mask(weak, "basin"))],
+        sources=[weak])
+    assert result.payload is None
+    assert any(r.detail.get("input_status") == "uncertain" for r in result.refusals)
+
+
+def test_no_model_produces_this_form_and_the_refusal_names_both_deferred_candidates():
+    with pytest.raises(A.ModelNotAdmitted) as caught:
+        A.producer_for(PT.FORM)
+    assert caught.value.refusal.detail["verdicts"] == {"pix2gestalt": "defer",
+                                                       "amodal_sam": "defer"}
