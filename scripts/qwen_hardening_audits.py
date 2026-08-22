@@ -52,12 +52,12 @@ import local_qwen_vlm_lab as lab                                            # no
 # The repair is not to delete the sentence. It is to say precisely WHAT KIND of number it is,
 # because these four are different things and a single "measurement grammar" flag conflates them:
 #
-#     a count of things visible in the picture        three folds        LEGITIMATE
+#     a count of things visible in the picture        three windows      LEGITIMATE
 #     the declared uncertainty category               medium             LEGITIMATE
 #     a quantity nothing measured                     10% · 30 degrees   INVALID
 #     a bare number in unclear service                a 2:1 feel         REVIEW
 #
-# Condemning the first would make the audit useless: an observer that may not say how many folds
+# Condemning the first would make the audit useless: an observer that may not say how many windows
 # it can see is not an observer. So the classifier is context-sensitive and topic-independent —
 # no material, no genre, no period word appears anywhere in it.
 
@@ -150,7 +150,7 @@ def classify_precision(kind: str, match: str, before: str, after: str) -> Tuple[
         if _COUNTABLE_AFTER.match(after):
             return ("allowed_source_visible_quantity",
                     "a count of things in the picture. An observer that may not say how many "
-                    "folds it can see is not an observer")
+                    "windows it can see is not an observer")
         return ("ambiguous_requires_review",
                 "a number with no countable noun and no unit after it")
     return ("ambiguous_requires_review", "unrecognised candidate shape")
@@ -235,9 +235,9 @@ def audit_observation_record(parsed: Any) -> Dict[str, Any]:
 # #230's captured run did not fail by being incoherent. It failed by being FLUENT AND WRONG in
 # three specific, checkable ways, and every one of them is a rule below:
 #
-#   it cited "carved as part of the solid mass" to support a claim that the folding is the SAME
-#   operation in all three. That is true of all carved drapery everywhere, so it cannot separate
-#   the claim from its negation.                       -> non_discriminative_evidence
+#   it quoted a property every compared object has, to support a claim that they undergo the
+#   SAME process. A predicate true of all of them cannot separate the claim from its negation.
+#                                                      -> non_discriminative_evidence
 #
 #   it cited "woven/braided styles" — a description of DIVERSITY — as evidence of sameness, with
 #   nothing joining the two.                           -> diversity_used_for_sameness
@@ -362,8 +362,8 @@ def critique_alignment(parsed: Any, claims: List[Dict[str, str]],
 
     So the strict check fires only when a quote is built ENTIRELY from vocabulary the observer used
     about every image. That is sound and never wrong when it fires; it is also conservative, and
-    on #230's own captured run it does not fire, because that run quoted `carved as part of the
-    solid mass` while one image's observations never used the word `carved`. The coverage-based
+    on #230's own captured run it does not fire, because that run quoted a phrase whose key
+    terms one image's observations never used. The coverage-based
     version catches that case and is reported as a REVIEW, because a threshold is a judgement and
     calling a judgement a verdict is the mistake this whole lab exists to avoid.
     """
@@ -444,8 +444,8 @@ def critique_alignment(parsed: Any, claims: List[Dict[str, str]],
 
             # THE INSTRUMENT THAT ACTUALLY BITES. Checking the whole explanation for zero
             # distinctive words never fires — a paragraph always contains something. But a model
-            # arguing from evidence QUOTES it, and #230's captured run quoted
-            # `'carved as part of the solid mass'` to prove three objects share an operation.
+            # arguing from evidence QUOTES it, and #230's captured run quoted a
+            # property every object had, to prove the three shared one process.
             # Every content word of that quote is one the observer used about all three, so the
             # quote cannot separate the claim from its negation however true it is.
             for q in _QUOTED.findall(expl):
