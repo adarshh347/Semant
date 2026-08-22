@@ -135,8 +135,19 @@ def test_the_capability_answer_carries_the_reason_an_adapter_is_not_running(wire
 
 
 def test_sam3_reports_configuration_rather_than_a_bare_unavailable(wired, monkeypatch):
+    """Given SAM 3 is not running BECAUSE IT IS NOT CONFIGURED, does the wire say which?
+
+    The precondition is stated rather than assumed. Deleting the variable is half of "not
+    configured"; the other half is the adapter agreeing, and on a machine where the checkpoint IS
+    present and some earlier import left a loaded predictor in the module, only the first half
+    would hold. Stating both is not faking the answer — the answer under test is the SENTENCE the
+    catalogue attaches, and `test_sam3_says_which_of_the_three_absences_it_is` drives the real
+    resolution path.
+    """
     from backend.services import sam3_concept_service as svc
     monkeypatch.delenv(svc.WEIGHTS_ENV, raising=False)
+    monkeypatch.setattr(svc, "is_available", lambda: False)
+    monkeypatch.setattr(svc, "weights_path", lambda: None)
     client, _ = wired
     body = client.get(f"{PREFIX}/capabilities").json()
     sam3 = [a for organ in body["organs"] for op in organ["operations"]
