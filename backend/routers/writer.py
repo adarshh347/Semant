@@ -12,7 +12,11 @@ same code path.
     GET    /{project_id}/operators              list
     GET    /{project_id}/operators/{name}       read
     PATCH  /{project_id}/operators/{name}       edit (bumps version, keeps history)
-    DELETE /{project_id}/operators/{name}       delete
+    DELETE /{project_id}/operators/{name}       RETIRE (history kept; no longer invocable)
+    POST   /{project_id}/operators/{name}/restore   bring a retired operator back
+
+  Ledger integrity
+    GET    /ledger/integrity                    duplicates, stuck operations, dangling pointers
 
   The loop
     POST   /{project_id}/parse                  the `/` ÷ `//` split — no model, no writes
@@ -42,6 +46,7 @@ from backend.schemas.writer import (
     BlockRun,
     OperatorCreate,
     OperatorPropose,
+    OperatorRetire,
     OperatorUpdate,
     AssemblageCreate,
     AssemblageDismiss,
@@ -57,6 +62,7 @@ from backend.schemas.writer import (
     RelationsUpdate,
 )
 from backend.services.writer import dsl, instrument
+from backend.services.writer import ledger as ledger_mod
 from backend.services.writer import alignment as alignment_mod
 from backend.services.writer import assemblages as assemblages_mod
 from backend.services.writer import readings as readings_mod
@@ -129,10 +135,31 @@ async def update_operator(project_id: str, name: str, request: OperatorUpdate):
 
 
 @router.delete("/{project_id}/operators/{name}")
-async def delete_operator(project_id: str, name: str):
-    if not await operator_registry.delete(project_id, name):
+async def retire_operator(project_id: str, name: str, request: OperatorRetire = None):
+    """RETIRE, not delete. The operator and every version of it stay, so old provenance
+    still resolves exactly; new renders, edges and assemblages naming it are refused until
+    the author restores it. Returns the retired operator and what still references it."""
+    op = await operator_registry.retire(project_id, name, (request.reason if request else "") or "")
+    if not op:
         raise HTTPException(status_code=404, detail=f"operator '{name}' is not defined in this project")
-    return {"deleted": name}
+    return {"retired": name, "operator": op, "references": op.get("references", [])}
+
+
+@router.post("/{project_id}/operators/{name}/restore")
+async def restore_operator(project_id: str, name: str):
+    """The explicit act that makes a retired operator invocable again."""
+    op = await operator_registry.restore(project_id, name)
+    if not op:
+        raise HTTPException(status_code=404, detail=f"operator '{name}' is not defined in this project")
+    return op
+
+
+@router.get("/ledger/integrity")
+async def ledger_integrity():
+    """Read-only: what would make Writer history unresolvable. Repairs nothing."""
+    report = await ledger_mod.integrity_report()
+    report["text"] = ledger_mod.format_report(report)
+    return report
 
 
 # --- The operator graph (W3) ---
@@ -140,7 +167,8 @@ async def delete_operator(project_id: str, name: str):
 @router.get("/{project_id}/graph")
 async def operator_graph(project_id: str):
     """The ontology as nodes + typed edges. A READ over the ledger; touches no canon."""
-    operators = await operator_registry.list(project_id)
+    operators = await operator_registry.list(project_id, include_retired=True)
+    retired = {op["name"] for op in operators if op.get("retired")}
     edges = []
     for op in operators:
         for rel in relations_mod.relations_of(op):
@@ -151,6 +179,10 @@ async def operator_graph(project_id: str):
                 # Only `requires` conditions a render. The graph says which edges act, so
                 # the author can see the difference rather than having to remember it.
                 "feeds_render": rel["kind"] in relations_mod.RENDERING_KINDS,
+                # An edge to a retired operator is kept — it is history — and it is shown
+                # as what it is: a render following it will refuse until the target is
+                # restored or the edge removed.
+                "target_retired": rel["target"] in retired,
             })
     return {
         "nodes": [
@@ -158,10 +190,13 @@ async def operator_graph(project_id: str):
              "definition": op.get("definition", ""),
              "rendering_intent": op.get("rendering_intent", ""),
              "examples": op.get("examples", []),
-             "negative_examples": op.get("negative_examples", [])}
+             "negative_examples": op.get("negative_examples", []),
+             "retired": bool(op.get("retired")),
+             "retired_at": op.get("retired_at")}
             for op in operators
         ],
         "edges": edges,
+        "dangling": await operator_registry.dangling_references(project_id),
         "kinds": list(relations_mod.RELATION_KINDS),
         "rendering_kinds": sorted(relations_mod.RENDERING_KINDS),
     }
@@ -366,7 +401,10 @@ async def accept_revision(project_id: str, request: RevisionAccept):
             block_id=request.block_id,
             in_response_to=(request.in_response_to.model_dump()
                             if request.in_response_to else None),
+            idempotency_key=request.idempotency_key or "",
         )
+    except ledger_mod.IdempotencyConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except (PassageError, revisions_mod.RevisionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -525,7 +563,11 @@ async def get_passage(passage_id: str):
 async def accept_passage(passage_id: str, request: PassageAccept):
     """The author's commit — the ONLY path from quarantine into the sacred manuscript."""
     try:
-        return await passage_store.accept(passage_id, scene_id=request.scene_id or "")
+        return await passage_store.accept(
+            passage_id, scene_id=request.scene_id or "",
+            idempotency_key=request.idempotency_key or "")
+    except ledger_mod.IdempotencyConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except PassageError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -533,7 +575,10 @@ async def accept_passage(passage_id: str, request: PassageAccept):
 @router.post("/passages/{passage_id}/dismiss")
 async def dismiss_passage(passage_id: str, request: PassageDismiss):
     try:
-        return await passage_store.dismiss(passage_id, request.reason or "")
+        return await passage_store.dismiss(
+            passage_id, request.reason or "", idempotency_key=request.idempotency_key or "")
+    except ledger_mod.IdempotencyConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except PassageError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

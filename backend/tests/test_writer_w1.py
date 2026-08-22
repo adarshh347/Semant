@@ -27,6 +27,7 @@ import pytest
 
 from backend.services import manuscript_service as ms_svc
 from backend.services.writer import dsl, instrument
+from backend.services.writer import ledger as ledger_mod
 from backend.services.writer import operators as op_svc
 from backend.services.writer import passages as psg_svc
 from backend.services.writer import revisions as rev_svc
@@ -66,21 +67,66 @@ class _Cursor:
         return gen()
 
 
+def _resolve_path(doc, path):
+    """A dotted path into a doc. Through a list it yields the field of every element
+    (Mongo's `blocks.id` semantics), so `{"blocks.id": {"$ne": x}}` means "no block has
+    id x" — the guard `manuscript_service.append_block` relies on."""
+    current = [doc]
+    for part in path.split("."):
+        nxt = []
+        for c in current:
+            if isinstance(c, list):
+                for item in c:
+                    if isinstance(item, dict) and part in item:
+                        nxt.append(item[part])
+            elif isinstance(c, dict) and part in c:
+                nxt.append(c[part])
+        current = nxt
+    return current
+
+
+def _match_one(values, cond, present):
+    if isinstance(cond, dict) and cond and all(str(k).startswith("$") for k in cond):
+        for op, arg in cond.items():
+            if op == "$in":
+                if not any(v in arg for v in values):
+                    return False
+            elif op == "$ne":
+                if any(v == arg for v in values):
+                    return False
+            elif op == "$exists":
+                if bool(arg) != present:
+                    return False
+            elif op == "$elemMatch":
+                # Enough of `$elemMatch` for a compare-and-set on an array element — the
+                # shape `readings.decide` and `manuscript_service.point_block` use.
+                hit = False
+                for container in values:
+                    for i in (container if isinstance(container, list) else []):
+                        if isinstance(i, dict) and all(i.get(ik) == iv for ik, iv in arg.items()):
+                            hit = True
+                if not hit:
+                    return False
+            elif op == "$type":
+                if not any(isinstance(v, str) for v in values):
+                    return False
+            else:
+                raise NotImplementedError(op)
+        return True
+    return any(v == cond for v in values)
+
+
 def _match(doc, query):
     for k, v in (query or {}).items():
-        if isinstance(v, dict) and "$in" in v:
-            if doc.get(k) not in v["$in"]:
-                return False
-        elif isinstance(v, dict) and "$elemMatch" in v:
-            # Enough of `$elemMatch` for a compare-and-set on an array element — the shape
-            # `readings.decide` uses to make "a decision is made once" atomic.
-            items = doc.get(k)
-            if not isinstance(items, list) or not any(
-                isinstance(i, dict) and all(i.get(ik) == iv for ik, iv in v["$elemMatch"].items())
-                for i in items
-            ):
-                return False
-        elif doc.get(k) != v:
+        values = _resolve_path(doc, k)
+        present = bool(values)
+        if not present and not (isinstance(v, dict) and any(
+                o in v for o in ("$ne", "$exists"))):
+            # `{"field": None}` matches an absent field, as Mongo does.
+            if v is None:
+                continue
+            return False
+        if not _match_one(values, v, present):
             return False
     return True
 
@@ -107,11 +153,36 @@ def _apply_set(doc, changes, array_filters):
                 item[m["field"]] = value
 
 
+class DuplicateKeyError(Exception):
+    """The fake's stand-in for pymongo's. Raised only by a unique index the test declared."""
+
+
 class FakeCollection:
     def __init__(self):
         self.docs = {}
+        self.indexes = []          # [{"keys": [...], "unique": bool, "name": str}]
+
+    async def create_index(self, keys, unique=False, name=None, **kwargs):
+        self.indexes.append({"keys": [k for k, _ in keys], "unique": unique, "name": name})
+        return name
+
+    def _check_unique(self, doc, ignore_id=None):
+        for index in self.indexes:
+            if not index["unique"]:
+                continue
+            key = tuple(doc.get(k) for k in index["keys"])
+            if any(v is None for v in key):
+                continue
+            for other_id, other in self.docs.items():
+                if other_id == ignore_id:
+                    continue
+                if tuple(other.get(k) for k in index["keys"]) == key:
+                    raise DuplicateKeyError(f"E11000 duplicate key error: {index['name']} {key}")
 
     async def insert_one(self, doc):
+        if doc["_id"] in self.docs:
+            raise DuplicateKeyError(f"E11000 duplicate key error: _id {doc['_id']}")
+        self._check_unique(doc)
         self.docs[doc["_id"]] = copy.deepcopy(doc)
         return type("R", (), {"inserted_id": doc["_id"]})()
 
@@ -124,17 +195,31 @@ class FakeCollection:
     def find(self, query=None, projection=None):
         return _Cursor([copy.deepcopy(d) for d in self.docs.values() if _match(d, query)])
 
+    async def count_documents(self, query=None):
+        return sum(1 for d in self.docs.values() if _match(d, query))
+
+    def _apply(self, d, update, array_filters):
+        _apply_set(d, update.get("$set", {}), array_filters)
+        for path, value in update.get("$push", {}).items():
+            d.setdefault(path, []).append(copy.deepcopy(value))
+        for path, value in update.get("$inc", {}).items():
+            d[path] = d.get(path, 0) + value
+        for path in update.get("$unset", {}):
+            d.pop(path, None)
+
     async def update_one(self, query, update, upsert=False, array_filters=None):
         for d in self.docs.values():
             if _match(d, query):
-                _apply_set(d, update.get("$set", {}), array_filters)
+                self._apply(d, update, array_filters)
                 return _UpdateResult(1, 1)
         if upsert:
             # W10 — the register vocabulary is written with upsert, so a fake that silently
             # dropped the first write would make an empty ladder look like a working one.
-            doc = dict(query)
-            _apply_set(doc, update.get("$set", {}), array_filters)
+            doc = {k: v for k, v in query.items() if not isinstance(v, dict)}
+            doc.update(update.get("$setOnInsert", {}))
+            self._apply(doc, update, array_filters)
             doc.setdefault("_id", doc.get("_id") or f"upsert_{len(self.docs)}")
+            self._check_unique(doc)
             self.docs[doc["_id"]] = copy.deepcopy(doc)
             return _UpdateResult(0, 1)
         return _UpdateResult(0, 0)
@@ -168,6 +253,8 @@ def store(monkeypatch):
 
     monkeypatch.setattr(op_svc, "writer_operator_collection", ops)
     monkeypatch.setattr(psg_svc, "writer_passage_collection", psgs)
+    # ATLAS-WRITER-MASS-BUILD-001D — every transition keeps an operation record.
+    monkeypatch.setattr(ledger_mod, "writer_operation_collection", FakeCollection())
     # W8 — Accept records an immutable version; it is ledger, not write-behind,
     # so it must be faked rather than allowed to reach the real collection.
     monkeypatch.setattr(rev_svc, "writer_passage_version_collection", FakeCollection())
@@ -554,9 +641,16 @@ def test_a_decision_is_made_once(store, threshold_operator, fixture_manuscript, 
     ))
     passage_id = out["results"][0]["passage_id"]
 
-    run(psg_svc.passage_store.accept(passage_id))
-    with pytest.raises(psg_svc.PassageError):
-        run(psg_svc.passage_store.accept(passage_id))
+    first = run(psg_svc.passage_store.accept(passage_id))
+    # ATLAS-WRITER-MASS-BUILD-001D — the decision is still made once. A SECOND identical
+    # Accept is a retry, and a retry returns the commit that already happened rather than
+    # refusing it or making another: same block, same lineage, one block in the scene.
+    again = run(psg_svc.passage_store.accept(passage_id))
+    assert again["block_id"] == first["block_id"]
+    assert again["lineage_id"] == first["lineage_id"]
+    scene = run(ms_svc.manuscript_service.get_scene(scene_id))
+    assert [b["id"] for b in scene["blocks"]] == [first["block_id"]]
+    # The OTHER decision is refused: an accepted passage cannot be dismissed.
     with pytest.raises(psg_svc.PassageError):
         run(psg_svc.passage_store.dismiss(passage_id))
 

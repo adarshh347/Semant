@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Sequence
 from uuid import uuid4
 
 from backend.database import writer_usage_collection
+from backend.services.writer import ledger
 
 RENDER = "render"
 REFUSAL = "refusal"
@@ -69,6 +70,9 @@ async def record(
         "at": datetime.now(timezone.utc),
     }
     try:
+        # The instrumentation failpoint sits INSIDE the swallow, because that is the
+        # contract under test: a usage write that dies changes nothing upstream.
+        ledger.trip("instrument")
         await writer_usage_collection.insert_one(doc)
         return doc["_id"]
     except Exception:

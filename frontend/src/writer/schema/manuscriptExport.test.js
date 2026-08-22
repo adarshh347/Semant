@@ -44,6 +44,8 @@ const UNACCEPTED = 'PROSE-THAT-WAS-NEVER-ACCEPTED';
 describe('the manuscript export rule', () => {
   it('declares the rule on the schema, defaulting to false', () => {
     expect(exportsToManuscript(schema.nodes.paragraph)).toBe(true);
+    // 001D — a committed passage reaches the page as ONE block.
+    expect(exportsToManuscript(schema.nodes.committedPassage)).toBe(true);
     expect(exportsToManuscript(schema.nodes.orchestration)).toBe(false);
     expect(exportsToManuscript(schema.nodes.directive)).toBe(false);
     expect(exportsToManuscript(schema.nodes.quarantinedPassage)).toBe(false);

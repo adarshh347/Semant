@@ -3,7 +3,9 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 
 import { ManuscriptExport } from './manuscriptExport';
-import { Directive, ManuscriptParagraph, Orchestration, QuarantinedPassage } from './writerSchema';
+import {
+  CommittedPassage, Directive, ManuscriptParagraph, Orchestration, QuarantinedPassage,
+} from './writerSchema';
 import { WriterNotation } from './WriterNotation';
 import OrchestrationView from '../views/OrchestrationView';
 import DirectiveChip from '../views/DirectiveChip';
@@ -40,6 +42,7 @@ export function writerExtensions({ placeholder } = {}) {
     }),
     ManuscriptExport,
     ManuscriptParagraph,
+    CommittedPassage,
     Orchestration.extend({
       addNodeView: () => ReactNodeViewRenderer(OrchestrationView),
     }),
