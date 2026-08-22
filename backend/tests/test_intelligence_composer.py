@@ -29,7 +29,7 @@ from backend.services.inquiry_intelligence.composer import (AGREEMENT_EVIDENCE_K
                                                             SectionId, Standing,
                                                             assert_never_promoted, canonical,
                                                             compose, section_id)
-from backend.tests.fixtures import inquiry_intelligence_fixtures as fixtures
+from backend.tests.fixtures import intelligence_composer_fixtures as fixtures
 
 BOTH = pytest.mark.parametrize("name", fixtures.FIXTURES)
 

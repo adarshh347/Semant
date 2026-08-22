@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -24,12 +25,17 @@ from backend.services import epistemics
 from backend.services.inquiry_intelligence import composer
 from backend.services.inquiry_intelligence.composer import (SECTION_ORDER, LineKind, RefusalKind,
                                                             SectionId)
-from backend.tests.fixtures import inquiry_intelligence_fixtures as fixtures
+from backend.tests.fixtures import intelligence_composer_fixtures as fixtures
 
-#: Everything this directive is allowed to have written on the production side. Derived from the
-#: module rather than typed out, so moving the package cannot quietly point the scan at nothing.
-PACKAGE_DIR = Path(composer.__file__).resolve().parent
-PRODUCTION_SOURCES = sorted(PACKAGE_DIR.rglob("*.py"))
+#: Everything this directive is allowed to have written on the production side, which is one file.
+#: Derived from the module rather than typed out, so moving it cannot quietly point the scan at
+#: nothing.
+#:
+#: NOT the whole package. `backend/services/inquiry_intelligence/` is shared: 001A landed `intent`,
+#: 001B `observer` and `observation_audit`, and more lanes are due. Scanning siblings would mean
+#: this suite policing files it did not write — failing on their perfectly legitimate imports, and
+#: going red when a lane that has nothing to do with the composer lands. Each lane scans its own.
+PRODUCTION_SOURCES = [Path(composer.__file__).resolve()]
 
 BOTH = pytest.mark.parametrize("name", fixtures.FIXTURES)
 
@@ -104,6 +110,51 @@ def test_that_scan_can_fail():
     at the wrong directory."""
     decoy = "SPECIAL_CASE = '{}'\n".format(fixtures.topic_nouns()[0])
     assert any(noun.lower() in decoy.lower() for noun in fixtures.topic_nouns())
+
+
+def test_the_scan_is_pointed_at_something():
+    """And the control for the control. `PRODUCTION_SOURCES` is now one entry rather than a glob,
+    so an empty list would silently satisfy every scan above."""
+    assert PRODUCTION_SOURCES and all(p.exists() for p in PRODUCTION_SOURCES)
+    assert all(p.read_text(encoding="utf-8") for p in PRODUCTION_SOURCES)
+
+
+def _words(text: str) -> set:
+    """A source split into whole words, underscores counting as separators.
+
+    WHY THE SCAN ABOVE MATCHES SUBSTRINGS AND THIS ONE DOES NOT. This lane's own topic nouns were
+    chosen so that a substring hit is a real hit, and the stricter test is worth keeping for them.
+    The nouns borrowed from 001A were chosen by another lane for its own samples, and two of them
+    are inside ordinary English: `rose` is in "prose" and `rim` is in "trimmed". A substring scan
+    over a borrowed vocabulary reports the language rather than the code, and the only way to
+    satisfy it is to write worse prose. Splitting on non-letters keeps what actually matters — an
+    identifier like `rose_window_case` is still two words, and is still caught.
+    """
+    return set(re.split(r"[^a-z]+", text.lower()))
+
+
+def test_the_composer_does_not_name_the_subjects_of_the_lane_it_consumes_either():
+    """A guarantee only the merged tree can check. INTELLIGENCE-001A's four fixtures are about
+    sculpture, a cathedral window, two plants and a contradicted reading of a vessel; the composer
+    is downstream of all four and must know none of them. Their scan covers their schema; this
+    covers the module that reads its output."""
+    from backend.tests.fixtures.inquiry_intelligence_fixtures import TOPIC_NOUNS
+    nouns = sorted({n.lower() for group in TOPIC_NOUNS.values() for n in group})
+    assert len(nouns) >= 15
+    offences = []
+    for path in PRODUCTION_SOURCES:
+        words = _words(path.read_text(encoding="utf-8"))
+        offences.extend("{}: {}".format(path, n) for n in nouns if n in words)
+    assert offences == [], offences
+
+
+def test_that_scan_can_fail_on_an_identifier_and_not_only_on_prose():
+    """The negative control, and the one that matters for a word-boundary scan: a topic noun
+    buried in a symbol name must still be caught."""
+    from backend.tests.fixtures.inquiry_intelligence_fixtures import TOPIC_NOUNS
+    nouns = {n.lower() for group in TOPIC_NOUNS.values() for n in group}
+    assert _words("SPECIAL_CASE_rose_window = 1\n") & nouns
+    assert _words("prose = 'trimmed'\n") & nouns == set()
 
 
 def test_no_production_source_names_any_id_or_capability_from_either_sample():
