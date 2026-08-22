@@ -412,3 +412,27 @@ def test_a_wrong_level_reference_is_not_called_a_hallucination():
         assert any(r.startswith(ref) for ref in rec["refs"]), \
             f"{r} is not an observation id of a known image — it is an invention"
     assert not set(rec["wrong_level_refs"]) & set(rec["invented_refs"])
+
+
+def test_the_digest_does_not_teach_a_citation_format_it_then_rejects():
+    """
+    The first digest rendered ids as `[img-k7-o0]`. The model cited `"[img-k7-o0]"` — every one of
+    eleven citations valid, every one recorded as a hallucination by a checker comparing raw
+    strings. The harness taught the wrong form and then failed the model for learning it.
+    """
+    exp1 = {"images": [{"ref": "img-k7", "parsed": {
+        "observations": [{"locus": "a", "visible_organization": "b",
+                          "surface_light_behavior": "c", "apparent_material_effect": "d",
+                          "uncertainty": "low", "status": "interpretive"}],
+        "cannot_determine": ["e"]}}]}
+    digest, index = lab._observation_digest(exp1)
+    assert "[img-k7-o0]" not in digest, "the bracketed form is back"
+    assert "img-k7-o0" in index
+    for oid in index:
+        assert oid in digest
+
+
+def test_a_decorated_citation_is_repaired_not_called_a_hallucination():
+    assert lab.normalize_oid("[img-k7-o0]") == "img-k7-o0"
+    assert lab.normalize_oid(" `img-q2-o3` ") == "img-q2-o3"
+    assert lab.normalize_oid("img-v9-o1") == "img-v9-o1"

@@ -1046,15 +1046,29 @@ def _observation_digest(exp1: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
         for j, o in enumerate(parsed.get("observations") or []):
             oid = f"{img['ref']}-o{j}"
             index[oid] = json.dumps(o, ensure_ascii=False)
+            # `id=` RATHER THAN `[id]`. The first version rendered the id inside square
+            # brackets, and the model dutifully cited `"[img-k7-o0]"` — every one of eleven
+            # citations valid, every one recorded as a hallucination by a checker comparing raw
+            # strings. The harness taught it the wrong form and then failed it for learning.
             lines.append(
-                f"[{oid}] locus: {o.get('locus')} | organization: "
+                f"id={oid} | locus: {o.get('locus')} | organization: "
                 f"{o.get('visible_organization')} | surface and light: "
                 f"{o.get('surface_light_behavior')} | apparent material effect: "
                 f"{o.get('apparent_material_effect')} | uncertainty: {o.get('uncertainty')} "
                 f"| status: {o.get('status')}")
         for c in parsed.get("cannot_determine") or []:
-            lines.append(f"[{img['ref']}-undetermined] {c}")
+            lines.append(f"id={img['ref']}-undetermined | {c}")
     return "\n".join(lines), index
+
+
+def normalize_oid(raw: Any) -> str:
+    """
+    Strip the decoration a model wraps around an id it read in a list. Kept as a repair COUNT
+    rather than a silent fix: a run where every citation needed repairing is telling you the
+    prompt taught the wrong format, and absorbing that quietly is how a harness defect gets
+    written up as a model defect.
+    """
+    return str(raw).strip().strip("[]`\"' ").strip()
 
 
 _FUNCTION_WORDS = set(
@@ -1155,10 +1169,12 @@ def cmd_align(args) -> int:
     nov = novelty(json.dumps(obj, ensure_ascii=False) if obj else (call.content or ""),
                   digest + "\n" + entry["text"] + "\n" + ALIGN_SYSTEM)
 
-    cited = []
-    bad_ids = []
+    cited, bad_ids, repairs = [], [], 0
     for c in ((obj or {}).get("claims") or []):
-        for oid in (c.get("observation_ids") or []):
+        for raw_oid in (c.get("observation_ids") or []):
+            oid = normalize_oid(raw_oid)
+            if oid != str(raw_oid):
+                repairs += 1
             cited.append(oid)
             if oid not in index and not oid.endswith("-undetermined"):
                 bad_ids.append(oid)
@@ -1177,6 +1193,7 @@ def cmd_align(args) -> int:
         "novelty": nov,
         "cited_observation_ids": cited,
         "hallucinated_observation_ids": bad_ids,
+        "citation_format_repairs": repairs,
         "audit": audit_text(json.dumps(obj, ensure_ascii=False) if obj else (call.content or "")),
         "prompt_copying": prompt_copying(entry["text"], call.content or ""),
     }
@@ -1188,7 +1205,8 @@ def cmd_align(args) -> int:
     print(f"  prompt        {which} ({entry['provenance']})")
     print(f"  status        {call.status}   schema_errors={len(errs)}")
     print(f"  claims        {len(((obj or {}).get('claims') or []))}  stances={stances}")
-    print(f"  cited ids     {len(cited)} cited, {len(bad_ids)} of them do not exist")
+    print(f"  cited ids     {len(cited)} cited, {len(bad_ids)} do not exist, "
+          f"{repairs} needed their format repaired")
     print(f"  novel terms   {nov['novel_substantive_count']} substantive "
           f"{nov['novel_substantive'][:10]}  (+{len(nov['novel_discourse'])} discourse)")
     print(f"  copying       {rec['prompt_copying']['fraction_of_answer']} of the answer is the "
@@ -1244,8 +1262,8 @@ def cmd_compare(args) -> int:
     # reader would silently misread as a claim about whole images. Reporting them as one number
     # would have described a fluent, well-formed, wrongly-scoped comparison as a hallucination.
     _digest, index = _observation_digest(exp1)
-    off = sorted({r for c in ((obj or {}).get("comparisons") or [])
-                  for r in (c.get("refs") or []) if r not in refs})
+    off = sorted({normalize_oid(r) for c in ((obj or {}).get("comparisons") or [])
+                  for r in (c.get("refs") or []) if normalize_oid(r) not in refs})
     wrong_level = [r for r in off if r in index]
     invented = [r for r in off if r not in index]
 
@@ -1402,9 +1420,10 @@ def cmd_rehearsal_prompts(args) -> int:
         stances = {}
         for c in ((obj or {}).get("claims") or []):
             stances[c.get("stance")] = stances.get(c.get("stance"), 0) + 1
-        bad_ids = sorted({oid for c in ((obj or {}).get("claims") or [])
-                          for oid in (c.get("observation_ids") or [])
-                          if oid not in index and not oid.endswith("-undetermined")})
+        norm = [normalize_oid(o) for c in ((obj or {}).get("claims") or [])
+                for o in (c.get("observation_ids") or [])]
+        bad_ids = sorted({o for o in norm
+                          if o not in index and not o.endswith("-undetermined")})
         r = {
             "prompt_id": entry["id"], "character": entry["character"],
             "provenance": entry["provenance"], "what_it_probes": entry["what_it_probes"],
