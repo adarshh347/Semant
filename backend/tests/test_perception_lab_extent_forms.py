@@ -376,9 +376,13 @@ def test_two_voids_of_one_extent_get_two_ids_and_neither_is_the_other():
     derived = H.hole_set([extent(two)], source_image_digest=DIGEST)
     assert len(derived.payload.holes) == 2
     assert len({h.hole_id for h in derived.payload.holes}) == 2
-    assert derived.payload.candidates_examined == 2, (
-        "this shape fills the frame, so there is no outside to examine and reject — two voids "
-        "looked at, two holes found")
+    assert derived.payload.candidates_examined == 3, (
+        "two holes, plus the outside. This shape fills the frame and the outside is therefore "
+        "beyond it — examined and rejected like any other void, because `enclosed` already means "
+        "'does not reach the frame' and a picture is a crop. Changed in PERCEPTUAL-FORMS-001H, "
+        "which is when the count became consistent: every piece has exactly one exterior "
+        "candidate plus its holes, whatever it touches")
+    assert derived.measurements["voids_open_to_the_frame"]["art_1#inst_1"] == 1
 
 
 def test_a_void_pinched_to_a_single_corner_is_one_hole_and_not_two():
@@ -682,3 +686,33 @@ def test_this_package_reaches_no_facade_no_store_and_no_route():
         for name in banned:
             assert f"import {name}" not in source and f"from {name}" not in source, \
                 f"{path.name} reaches {name}"
+
+
+# ── the window agrees with the whole raster ──────────────────────────────────
+
+
+@pytest.mark.parametrize("name", sorted(ALL_CONTROLS))
+def test_the_windowed_voids_agree_with_the_whole_raster_fill(name):
+    """PERCEPTUAL-FORMS-001H. `bounded_voids` computes in a window and `complement_of` computes
+    over the whole raster, and they must find the same holes.
+
+    THE COMPARISON IS ON THE ENCLOSED ONES. The exterior differs by construction and deliberately:
+    the window's ring lies partly outside the picture, so a shape that fills the frame has an
+    outside there and had none before. What must not differ is which voids are enclosed, and how
+    many pixels each one holds.
+    """
+    raster = R.raster_of(mask(ALL_CONTROLS[name]), what=name)
+    for piece in R.foreground_components(raster):
+        windowed = sorted(v.pixels for v, escapes in R.bounded_voids(piece) if not escapes)
+        whole = sorted(v.pixels for v in R.complement_of(piece) if not v.touches_border)
+        assert windowed == whole, name
+
+
+def test_the_window_finds_an_outside_for_a_shape_that_fills_the_frame():
+    """A picture is a crop. The space beyond the frame is a void that was examined and rejected,
+    which is what makes `candidates_examined` mean the same thing wherever the shape sits."""
+    piece = R.foreground_components(R.raster_of(mask(["##", "##"]), what="full"))[0]
+    voids = R.bounded_voids(piece)
+    assert [escapes for _, escapes in voids] == [True]
+    assert voids[0][0].pixels == (), "the outside of a full frame holds no pixel of this picture"
+    assert R.complement_of(piece) == (), "the whole-raster fill sees no outside at all"

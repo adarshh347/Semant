@@ -315,6 +315,10 @@ PERCEPTION_LAB_COLLECTIONS = {
     "runs": "perception_lab_runs",
     "artifacts": "perception_lab_artifacts",
     "reviews": "perception_lab_reviews",
+    # PERCEPTUAL-FORMS-001H. A derivation is not an artifact and never becomes one, so it is a
+    # sixth collection rather than a discriminator on the fifth: a reader scanning the artifact
+    # collection should find only things that were measured by an operation somebody ran.
+    "derivations": "perception_lab_derivations",
 }
 
 perception_lab_session_collection = database.get_collection(PERCEPTION_LAB_COLLECTIONS["sessions"])
@@ -322,6 +326,8 @@ perception_lab_plan_collection = database.get_collection(PERCEPTION_LAB_COLLECTI
 perception_lab_run_collection = database.get_collection(PERCEPTION_LAB_COLLECTIONS["runs"])
 perception_lab_artifact_collection = database.get_collection(PERCEPTION_LAB_COLLECTIONS["artifacts"])
 perception_lab_review_collection = database.get_collection(PERCEPTION_LAB_COLLECTIONS["reviews"])
+perception_lab_derivation_collection = database.get_collection(
+    PERCEPTION_LAB_COLLECTIONS["derivations"])
 
 # THE ONE SYNCHRONOUS CLIENT IN THIS FILE, and it is not an oversight.
 #

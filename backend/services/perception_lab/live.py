@@ -40,6 +40,7 @@ from backend.services.perception_lab.adapters import CallBudget, CancelToken
 from backend.services.perception_lab.bridges import LabRuntime, live_registry
 from backend.services.perception_lab.contracts import LAB_SCHEMA_VERSION
 from backend.services.perception_lab.mongo_store import MongoLabStore
+from backend.services.perception_lab import producers
 from backend.services.perception_lab.orchestrator import Execution, PerceptionConductor
 from backend.services.perception_lab.planners import ModelPlanner
 from backend.services.perception_lab.response import LabResponse
@@ -161,10 +162,7 @@ def capability_catalogue(registry: Any) -> Dict[str, Any]:
                 "key": op.key,
                 "manual": op.manual,
                 "requires_confirmation": op.requires_confirmation,
-                "adapters": [
-                    {"key": name,
-                     "state": states.get(name, CapabilityState.UNKNOWN_UNTIL_RUNTIME).value}
-                    for name in op.adapters],
+                "adapters": [_adapter_json(name, states) for name in op.adapters],
                 "inputs": [{"role": i.role, "required": i.required,
                             "required_for_execution": i.required_for_execution}
                            for i in op.inputs],
@@ -176,7 +174,30 @@ def capability_catalogue(registry: Any) -> Dict[str, Any]:
                        "deferred_note": organ.deferred_note,
                        "operations": operations if organ.enabled else []})
     return {"schema_version": LAB_SCHEMA_VERSION, "organs": organs,
-            "states": {name: state.value for name, state in states.items()}}
+            "states": {name: state.value for name, state in states.items()},
+            # PERCEPTUAL-FORMS-001H. The form catalogue rides beside the organ catalogue rather
+            # than on a second route, because a person deciding what to open needs both answers at
+            # once and two round trips is two chances for them to disagree.
+            "forms": producers.catalogue(states=states)}
+
+
+def _adapter_json(name: str, states: Mapping[str, CapabilityState]) -> Dict[str, Any]:
+    """One adapter's state, and — when it is not running — WHICH absence and what to do about it.
+
+    THE REASON IS NEW AND IT IS THE POINT. `unavailable` on its own once sent a rehearsal looking
+    for a 3.2 GB download that was already on the disk; the checkpoint was there and the
+    environment variable naming it was not, and the table could not tell those apart. The state
+    still comes from the registry — this only adds the sentence the registry has no field for.
+    """
+    state = states.get(name, CapabilityState.UNKNOWN_UNTIL_RUNTIME)
+    entry = producers.adapter_identity(name)
+    out: Dict[str, Any] = {"key": name, "state": state.value, "kind": entry.kind,
+                           "label": entry.label, "model": entry.model,
+                           "revision": entry.revision}
+    if state is not CapabilityState.AVAILABLE:
+        out["reason"] = entry.reason
+        out["remedy"] = entry.remedy
+    return out
 
 
 # ── projections ──────────────────────────────────────────────────────────────
