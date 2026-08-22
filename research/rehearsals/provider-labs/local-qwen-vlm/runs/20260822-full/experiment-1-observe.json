@@ -1,0 +1,305 @@
+{
+  "provider": "local_qwen_vlm",
+  "run_id": "20260822-full",
+  "experiment": "1-prompt-blind",
+  "system": "You are looking at one photograph and reporting only what is visible in it.\nReport where in the frame you are looking, how what you see is organised, how the surface behaves under the light, and what material effect that appearance suggests.\nState your uncertainty for each entry.\nEverything you report is an interpretation of an appearance. Nothing you report has been measured, so never state a dimension, an angle, a percentage or a ratio.\nDo not name a maker, a period, a date, a title or a person the object might depict. If you recognise the object, that recognition is not part of this report.\nIf something cannot be determined from this photograph, say so in cannot_determine.",
+  "user_template": "Image {ref}. Give between three and six separate entries, each about a different part of the picture. Use the reference {ref} exactly.",
+  "prompt_blind": true,
+  "note": "The user's own words were not in this process's request bodies. Experiment 2 introduces them, and only after these observations were written to disk.",
+  "images": [
+    {
+      "ref": "img-k7",
+      "call": {
+        "label": "observe:img-k7",
+        "ok": true,
+        "status": "completed",
+        "content": "{\n  \"image_ref\": \"img-k7\",\n  \"observations\": [\n    {\n      \"locus\": \"The head and shoulders of the figure, positioned in the upper center of the frame.\",\n      \"visible_organization\": \"A sculpted bust where the head is tilted downward and to the left. The hair is styled with waves falling from a crown-like braid, framing the face.\",\n      \"surface_light_behavior\": \"The smooth surface shows soft specular highlights on the forehead, cheekbone, and bridge of the nose. Subtle shadows are cast by the folds in the hair and under the chin, defining the form.\",\n      \"apparent_material_effect\": \"The high gloss and way the light reflects suggests a polished, non-porous material like ceramic or fine-grained stone.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"The drapery wrapped around the chest and shoulders, occupying the lower half of the figure.\",\n      \"visible_organization\": \"Fabric-like folds drape asymmetrically across the front. A single fold crosses diagonally over the right breast area (viewer's left).\",\n      \"surface_light_behavior\": \"Light catches the rounded top edges of the folds, while deep shadows define the crevices between them. The highlight patterns follow the curvature of the implied fabric.\",\n      \"apparent_material_effect\": \"The surface appears stiff yet pliable, with a luster that is less reflective than the skin but still significant, suggesting a glazed finish.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"The background plane behind and to the sides of the figure.\",\n      \"visible_organization\": \"A uniform, dark expanse that fills the corners of the frame, creating a void around the central subject.\",\n      \"surface_light_behavior\": \"The surface shows a very smooth gradient, being darkest at the top and right edges and lightening slightly towards the center where it meets the base of the sculpture.\",\n      \"apparent_material_effect\": \"Its matte appearance suggests a painted wall or an artificial backdrop used to isolate the subject.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"The small, flat surface visible at the very bottom edge of the photograph, directly beneath the figure's base.\",\n      \"visible_organization\": \"A narrow band appearing in the lower frame.\",\n      \"surface_light_behavior\": \"It reflects a warm, brownish tint from an unseen light source above or in front. The reflection is diffuse rather than sharp.\",\n      \"apparent_material_effect\": \"The color and sheen are consistent with varnished wood or a dark fabric cloth draped over the display surface.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"The facial features: nose, lips, and closed eyes.\",\n      \"visible_organization\": \"The nose projects forward from the face. The lips are slightly parted. The eyes are depicted as closed.\",\n      \"surface_light_behavior\": \"The bridge of the nose has a distinct highlight line running down its center. Soft shadows fall in the corners of the mouth and beneath the eyelids.\",\n      \"apparent_material_effect\": \"These features appear seamless with the rest of the head, reinforcing the appearance of a single, solid cast material without seams or paint application marks.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    }\n  ],\n  \"cannot_determine\": [\n    \"The exact material composition (e.g., whether it is stone, plaster, or resin).\",\n    \"The lighting direction with certainty, as shadows are complex and diffuse.\",\n    \"Any textural details on the surface, such as microscopic grain or tool marks.\"\n  ]\n}",
+        "finish_reason": "stop",
+        "prompt_tokens": 385,
+        "completion_tokens": 858,
+        "cached_tokens": 381,
+        "prompt_per_second": 5.686608179901536,
+        "predicted_per_second": 10.565002267468923,
+        "client_wall_ms": 82720.9,
+        "request_digest": "781aec51c4866fc3",
+        "machine_after": {
+          "swap_used_mb": 9998.94,
+          "swap_raw": "total = 11264.00M  used = 9998.94M  free = 1265.06M  (encrypted)",
+          "wired_mb": 9775.1,
+          "compressed_mb": 3627.4,
+          "free_mb": 64.9,
+          "server_rss_mb": 240.7,
+          "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+          "server_pid": 47592
+        }
+      },
+      "parsed": {
+        "image_ref": "img-k7",
+        "observations": [
+          {
+            "locus": "The head and shoulders of the figure, positioned in the upper center of the frame.",
+            "visible_organization": "A sculpted bust where the head is tilted downward and to the left. The hair is styled with waves falling from a crown-like braid, framing the face.",
+            "surface_light_behavior": "The smooth surface shows soft specular highlights on the forehead, cheekbone, and bridge of the nose. Subtle shadows are cast by the folds in the hair and under the chin, defining the form.",
+            "apparent_material_effect": "The high gloss and way the light reflects suggests a polished, non-porous material like ceramic or fine-grained stone.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "The drapery wrapped around the chest and shoulders, occupying the lower half of the figure.",
+            "visible_organization": "Fabric-like folds drape asymmetrically across the front. A single fold crosses diagonally over the right breast area (viewer's left).",
+            "surface_light_behavior": "Light catches the rounded top edges of the folds, while deep shadows define the crevices between them. The highlight patterns follow the curvature of the implied fabric.",
+            "apparent_material_effect": "The surface appears stiff yet pliable, with a luster that is less reflective than the skin but still significant, suggesting a glazed finish.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "The background plane behind and to the sides of the figure.",
+            "visible_organization": "A uniform, dark expanse that fills the corners of the frame, creating a void around the central subject.",
+            "surface_light_behavior": "The surface shows a very smooth gradient, being darkest at the top and right edges and lightening slightly towards the center where it meets the base of the sculpture.",
+            "apparent_material_effect": "Its matte appearance suggests a painted wall or an artificial backdrop used to isolate the subject.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "The small, flat surface visible at the very bottom edge of the photograph, directly beneath the figure's base.",
+            "visible_organization": "A narrow band appearing in the lower frame.",
+            "surface_light_behavior": "It reflects a warm, brownish tint from an unseen light source above or in front. The reflection is diffuse rather than sharp.",
+            "apparent_material_effect": "The color and sheen are consistent with varnished wood or a dark fabric cloth draped over the display surface.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "The facial features: nose, lips, and closed eyes.",
+            "visible_organization": "The nose projects forward from the face. The lips are slightly parted. The eyes are depicted as closed.",
+            "surface_light_behavior": "The bridge of the nose has a distinct highlight line running down its center. Soft shadows fall in the corners of the mouth and beneath the eyelids.",
+            "apparent_material_effect": "These features appear seamless with the rest of the head, reinforcing the appearance of a single, solid cast material without seams or paint application marks.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          }
+        ],
+        "cannot_determine": [
+          "The exact material composition (e.g., whether it is stone, plaster, or resin).",
+          "The lighting direction with certainty, as shadows are complex and diffuse.",
+          "Any textural details on the surface, such as microscopic grain or tool marks."
+        ]
+      },
+      "parse_note": null,
+      "schema_errors": [],
+      "ref_correct": true,
+      "audit": {
+        "measurement_claims": [],
+        "attribution_claims": [],
+        "proper_nouns": [],
+        "clean": true
+      },
+      "post_id": "6a6041b81ecd6db1c931eb7a"
+    },
+    {
+      "ref": "img-q2",
+      "call": {
+        "label": "observe:img-q2",
+        "ok": true,
+        "status": "completed",
+        "content": "{\n  \"image_ref\": \"img-q2\",\n  \"observations\": [\n    {\n      \"locus\": \"center-left to upper-right, covering the sculpture's head and shoulders\",\n      \"visible_organization\": \"A sculpted human figure, shown from the chest up. The head is tilted slightly to its right (viewer's left). Hair is carved into a style that appears woven or braided, with a distinct crown-like element on top.\",\n      \"surface_light_behavior\": \"The surface is predominantly matte, reflecting light diffusely rather than creating sharp glints. Shadows are soft and deep, particularly in the crevices of the folds and beneath the chin.\",\n      \"apparent_material_effect\": \"The appearance strongly suggests a non-metallic material with some translucency, such as polished stone or alabaster.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"extending from the shoulders downwards and outwards\",\n      \"visible_organization\": \"A draped fabric, carved as part of the solid mass, covering the figure's chest and shoulders. The folds are numerous and complex, converging towards the bottom of the frame.\",\n      \"surface_light_behavior\": \"Light highlights the rounded tops of the folded planes while darkening the deeper grooves between them, emphasizing the three-dimensional volume.\",\n      \"apparent_material_effect\": \"Despite being carved from a single piece, the surface mimics the soft texture and weight of cloth through its deeply sculpted form.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"bottom-center, directly below the bust\",\n      \"visible_organization\": \"A supporting plinth or base structure. It has a distinct lower layer and an upper section to which the sculpture is attached.\",\n      \"surface_light_behavior\": \"The surface is very dark and appears largely in shadow, absorbing most of the incident light.\",\n      \"apparent_material_effect\": \"The dark value and lack of reflected detail suggest a porous or rough material like dark wood, unpolished stone, or painted cast iron.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"background, surrounding the sculpture on all sides\",\n      \"visible_organization\": \"A uniform field that serves as a backdrop for the sculpture. There are no distinct patterns or objects visible.\",\n      \"surface_light_behavior\": \"The background is significantly darker than the illuminated parts of the sculpture, suggesting a low-key lighting setup.\",\n      \"apparent_material_effect\": \"Its darkness makes it difficult to determine if it is a painted wall, a draped cloth, or a shadowed area within an architectural space. The texture appears smooth due to the lack of detail.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"extreme left edge and bottom corner of the frame\",\n      \"visible_organization\": \"A dark, undefined space where the shadow of the sculpture is cast against what is likely a floor or wall.\",\n      \"surface_light_behavior\": \"This area is in deep shadow, showing almost no reflected light.\",\n      \"apparent_material_effect\": \"The indistinct form suggests a large, matte surface that is heavily shaded by the main subject. The material could be stone, plaster, or fabric.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    }\n  ],\n  \"cannot_determine\": [\n    \"The specific type of object depicted in the sculpture (e.g., a bust of a particular deity or figure).\",\n    \"The identity or origin of any symbols present on the crown-like feature.\",\n    \"The complete material composition of the sculpture or the plinth.\"\n  ]\n}",
+        "finish_reason": "stop",
+        "prompt_tokens": 397,
+        "completion_tokens": 866,
+        "cached_tokens": 393,
+        "prompt_per_second": 4.1019919272798875,
+        "predicted_per_second": 10.152359093706297,
+        "client_wall_ms": 90807.3,
+        "request_digest": "0304cce56007da8c",
+        "machine_after": {
+          "swap_used_mb": 10132.06,
+          "swap_raw": "total = 11264.00M  used = 10132.06M  free = 1131.94M  (encrypted)",
+          "wired_mb": 9508.1,
+          "compressed_mb": 3764.8,
+          "free_mb": 49.0,
+          "server_rss_mb": 246.3,
+          "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+          "server_pid": 47592
+        }
+      },
+      "parsed": {
+        "image_ref": "img-q2",
+        "observations": [
+          {
+            "locus": "center-left to upper-right, covering the sculpture's head and shoulders",
+            "visible_organization": "A sculpted human figure, shown from the chest up. The head is tilted slightly to its right (viewer's left). Hair is carved into a style that appears woven or braided, with a distinct crown-like element on top.",
+            "surface_light_behavior": "The surface is predominantly matte, reflecting light diffusely rather than creating sharp glints. Shadows are soft and deep, particularly in the crevices of the folds and beneath the chin.",
+            "apparent_material_effect": "The appearance strongly suggests a non-metallic material with some translucency, such as polished stone or alabaster.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "extending from the shoulders downwards and outwards",
+            "visible_organization": "A draped fabric, carved as part of the solid mass, covering the figure's chest and shoulders. The folds are numerous and complex, converging towards the bottom of the frame.",
+            "surface_light_behavior": "Light highlights the rounded tops of the folded planes while darkening the deeper grooves between them, emphasizing the three-dimensional volume.",
+            "apparent_material_effect": "Despite being carved from a single piece, the surface mimics the soft texture and weight of cloth through its deeply sculpted form.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "bottom-center, directly below the bust",
+            "visible_organization": "A supporting plinth or base structure. It has a distinct lower layer and an upper section to which the sculpture is attached.",
+            "surface_light_behavior": "The surface is very dark and appears largely in shadow, absorbing most of the incident light.",
+            "apparent_material_effect": "The dark value and lack of reflected detail suggest a porous or rough material like dark wood, unpolished stone, or painted cast iron.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "background, surrounding the sculpture on all sides",
+            "visible_organization": "A uniform field that serves as a backdrop for the sculpture. There are no distinct patterns or objects visible.",
+            "surface_light_behavior": "The background is significantly darker than the illuminated parts of the sculpture, suggesting a low-key lighting setup.",
+            "apparent_material_effect": "Its darkness makes it difficult to determine if it is a painted wall, a draped cloth, or a shadowed area within an architectural space. The texture appears smooth due to the lack of detail.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "extreme left edge and bottom corner of the frame",
+            "visible_organization": "A dark, undefined space where the shadow of the sculpture is cast against what is likely a floor or wall.",
+            "surface_light_behavior": "This area is in deep shadow, showing almost no reflected light.",
+            "apparent_material_effect": "The indistinct form suggests a large, matte surface that is heavily shaded by the main subject. The material could be stone, plaster, or fabric.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          }
+        ],
+        "cannot_determine": [
+          "The specific type of object depicted in the sculpture (e.g., a bust of a particular deity or figure).",
+          "The identity or origin of any symbols present on the crown-like feature.",
+          "The complete material composition of the sculpture or the plinth."
+        ]
+      },
+      "parse_note": null,
+      "schema_errors": [],
+      "ref_correct": true,
+      "audit": {
+        "measurement_claims": [],
+        "attribution_claims": [],
+        "proper_nouns": [],
+        "clean": true
+      },
+      "post_id": "6a6041b61ecd6db1c931eb78"
+    },
+    {
+      "ref": "img-v9",
+      "call": {
+        "label": "observe:img-v9",
+        "ok": true,
+        "status": "completed",
+        "content": "{\n  \"image_ref\": \"img-v9\",\n  \"observations\": [\n    {\n      \"locus\": \"central face area\",\n      \"visible_organization\": \"A sculpted human face is depicted with closed eyes, a visible nose, lips, and chin. The facial features are arranged beneath a draped material.\",\n      \"surface_light_behavior\": \"The surface appears smooth but with subtle variations in tone suggesting form underneath the veil. Highlights are soft and diffuse.\",\n      \"apparent_material_effect\": \"The appearance suggests carved stone or plaster, possibly marble or alabaster, with a polished finish that reflects light softly.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"veil/draped fabric covering\",\n      \"visible_organization\": \"A sheet-like material is draped over the head and shoulders, with defined folds running vertically down the face and sides. The fabric appears to be wrapped tightly around the contours of the head.\",\n      \"surface_light_behavior\": \"Light interacts with the undulating surface of the drapery, creating alternating bands of bright highlights and deep shadows that emphasize the texture and flow of the folds.\",\n      \"apparent_material_effect\": \"The visual effect is consistent with thin stone, such as carved marble or alabaster, given its translucency in illuminated areas and matte appearance in shadowed crevices.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"right side of the image (from viewer's perspective)\",\n      \"visible_organization\": \"This section shows the right side of the head and the continuation of the draped veil falling past the shoulder. The background is dark and featureless.\",\n      \"surface_light_behavior\": \"Illumination on the right edge seems slightly stronger than on the left, causing highlights to appear more intense along the folds there.\",\n      \"apparent_material_effect\": \"Continues the appearance of a polished, semi-translucent stone material with layered folding effects.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"bottom-left corner\",\n      \"visible_organization\": \"Part of what appears to be the shoulder or upper chest area is visible, partially covered by the veil's drape.\",\n      \"surface_light_behavior\": \"Lighting here is more subdued, revealing fewer highlights and deeper shadows within the fabric folds compared to the central face.\",\n      \"apparent_material_effect\": \"Consistent with a heavy stone material; no clear indication of metallic or painted surfaces.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"background region\",\n      \"visible_organization\": \"The background surrounding the figure is uniformly dark and devoid of any discernible detail or pattern.\",\n      \"surface_light_behavior\": \"No reflected light or texture variations are visible, indicating either a completely black void or extreme shadowing.\",\n      \"apparent_material_effect\": \"Could be an intentional photographic choice using solid color backdrop, or the object may be isolated against darkness in its environment.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"overall surface texture\",\n      \"visible_organization\": \"The entire figure exhibits a consistent textural treatment across both the face and the veil.\",\n      \"surface_light_behavior\": \"Light behaves as if reflecting off a hard, non-porous material with slight variations in translucency depending on thickness or depth of carving.\",\n      \"apparent_material_effect\": \"Suggests carved stone rather than fabric or metal; possibly alabaster due to its luminous quality where light passes through thinner sections.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    }\n  ],\n  \"cannot_determine\": [\n    \"The actual dimensions or scale of the object.\",\n    \"Whether the veil depicts real fabric or is sculpted stone intended to mimic cloth.\",\n    \"Any symbolic meaning or identity associated with the depicted figure.\",\n    \"Environmental context beyond what is visually presented in the frame.\"\n  ]\n}",
+        "finish_reason": "stop",
+        "prompt_tokens": 389,
+        "completion_tokens": 940,
+        "cached_tokens": 385,
+        "prompt_per_second": 2.6353221450731668,
+        "predicted_per_second": 10.966747653197757,
+        "client_wall_ms": 92168.4,
+        "request_digest": "ab744db6770876c3",
+        "machine_after": {
+          "swap_used_mb": 10029.94,
+          "swap_raw": "total = 11264.00M  used = 10029.94M  free = 1234.06M  (encrypted)",
+          "wired_mb": 11648.9,
+          "compressed_mb": 2508.5,
+          "free_mb": 14.3,
+          "server_rss_mb": 232.6,
+          "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+          "server_pid": 47592
+        }
+      },
+      "parsed": {
+        "image_ref": "img-v9",
+        "observations": [
+          {
+            "locus": "central face area",
+            "visible_organization": "A sculpted human face is depicted with closed eyes, a visible nose, lips, and chin. The facial features are arranged beneath a draped material.",
+            "surface_light_behavior": "The surface appears smooth but with subtle variations in tone suggesting form underneath the veil. Highlights are soft and diffuse.",
+            "apparent_material_effect": "The appearance suggests carved stone or plaster, possibly marble or alabaster, with a polished finish that reflects light softly.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "veil/draped fabric covering",
+            "visible_organization": "A sheet-like material is draped over the head and shoulders, with defined folds running vertically down the face and sides. The fabric appears to be wrapped tightly around the contours of the head.",
+            "surface_light_behavior": "Light interacts with the undulating surface of the drapery, creating alternating bands of bright highlights and deep shadows that emphasize the texture and flow of the folds.",
+            "apparent_material_effect": "The visual effect is consistent with thin stone, such as carved marble or alabaster, given its translucency in illuminated areas and matte appearance in shadowed crevices.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "right side of the image (from viewer's perspective)",
+            "visible_organization": "This section shows the right side of the head and the continuation of the draped veil falling past the shoulder. The background is dark and featureless.",
+            "surface_light_behavior": "Illumination on the right edge seems slightly stronger than on the left, causing highlights to appear more intense along the folds there.",
+            "apparent_material_effect": "Continues the appearance of a polished, semi-translucent stone material with layered folding effects.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "bottom-left corner",
+            "visible_organization": "Part of what appears to be the shoulder or upper chest area is visible, partially covered by the veil's drape.",
+            "surface_light_behavior": "Lighting here is more subdued, revealing fewer highlights and deeper shadows within the fabric folds compared to the central face.",
+            "apparent_material_effect": "Consistent with a heavy stone material; no clear indication of metallic or painted surfaces.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "background region",
+            "visible_organization": "The background surrounding the figure is uniformly dark and devoid of any discernible detail or pattern.",
+            "surface_light_behavior": "No reflected light or texture variations are visible, indicating either a completely black void or extreme shadowing.",
+            "apparent_material_effect": "Could be an intentional photographic choice using solid color backdrop, or the object may be isolated against darkness in its environment.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "overall surface texture",
+            "visible_organization": "The entire figure exhibits a consistent textural treatment across both the face and the veil.",
+            "surface_light_behavior": "Light behaves as if reflecting off a hard, non-porous material with slight variations in translucency depending on thickness or depth of carving.",
+            "apparent_material_effect": "Suggests carved stone rather than fabric or metal; possibly alabaster due to its luminous quality where light passes through thinner sections.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          }
+        ],
+        "cannot_determine": [
+          "The actual dimensions or scale of the object.",
+          "Whether the veil depicts real fabric or is sculpted stone intended to mimic cloth.",
+          "Any symbolic meaning or identity associated with the depicted figure.",
+          "Environmental context beyond what is visually presented in the frame."
+        ]
+      },
+      "parse_note": null,
+      "schema_errors": [],
+      "ref_correct": true,
+      "audit": {
+        "measurement_claims": [],
+        "attribution_claims": [],
+        "proper_nouns": [],
+        "clean": true
+      },
+      "post_id": "6a60408e1ecd6db1c931eb6b"
+    }
+  ],
+  "plain_caption": {
+    "label": "observe:plain_caption",
+    "ok": true,
+    "status": "completed",
+    "content": "**“A Marble Reverie: Classical Elegance in Stone”**  \n*A serene marble bust of a woman, draped in flowing fabric, captures timeless grace and quiet contemplation against a dark backdrop.*",
+    "finish_reason": "stop",
+    "prompt_tokens": 213,
+    "completion_tokens": 40,
+    "cached_tokens": 0,
+    "prompt_per_second": 104.84522777010444,
+    "predicted_per_second": 11.821846590624913,
+    "client_wall_ms": 6691.9,
+    "request_digest": "3e43f0a36aebc363",
+    "machine_after": {
+      "swap_used_mb": 8568.56,
+      "swap_raw": "total = 10240.00M  used = 8568.56M  free = 1671.44M  (encrypted)",
+      "wired_mb": 9200.3,
+      "compressed_mb": 3973.7,
+      "free_mb": 44.9,
+      "server_rss_mb": 245.4,
+      "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+      "server_pid": 47592
+    }
+  }
+}

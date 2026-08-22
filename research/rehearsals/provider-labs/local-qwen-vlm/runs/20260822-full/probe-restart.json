@@ -1,0 +1,24 @@
+{
+  "provider": "local_qwen_vlm",
+  "run_id": "20260822-full",
+  "probe": "shutdown-and-restart",
+  "pid_before": 47592,
+  "shutdown_clean": true,
+  "shutdown_ms": 268.4,
+  "startup_ms": 5041.5,
+  "came_back": true,
+  "first_answer_ok": true,
+  "first_answer_ms": 446.3,
+  "first_answer": "alive",
+  "pid_after": 81487,
+  "machine_after": {
+    "swap_used_mb": 4200.19,
+    "swap_raw": "total = 6144.00M  used = 4200.19M  free = 1943.81M  (encrypted)",
+    "wired_mb": 9429.8,
+    "compressed_mb": 3100.8,
+    "free_mb": 89.2,
+    "server_rss_mb": 7394.1,
+    "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+    "server_pid": 81487
+  }
+}

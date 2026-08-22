@@ -1,0 +1,584 @@
+{
+  "provider": "local_qwen_vlm",
+  "run_id": "20260822-full",
+  "experiment": "5-four-canonical-prompts",
+  "saw_an_image": false,
+  "results": [
+    {
+      "prompt_id": "rich-tactile-philosophy",
+      "character": "rich tactile-philosophy prompt",
+      "provenance": "verbatim: contracts/samples/inquiry-session.scoped.json .prompt (also at backend/tests/fixtures/semantic_dissolution/fold-rehearsal.json and contracts/samples/inquiry-session.dissolution.json, byte-identical)",
+      "what_it_probes": "Dense, ungrammatical, comparative, and carrying a strong material thesis in every clause. The failure it hunts is AGREEMENT: a model that reads this back as its own perception has turned the person's hypothesis into an observation, which is the one conversion this lab exists to prevent.",
+      "call": {
+        "label": "prompts:rich-tactile-philosophy",
+        "ok": true,
+        "status": "completed",
+        "content": "{\"claims\": [{\"claim\": \"The Buddha statue feels metallic and has very sharp edges.\", \"stance\": \"challenges\", \"observation_ids\": [\"img-k7-o0\", \"img-q2-o1\"],\"grounds\": \"Observations describe the surface of the bust (which the hypothesis identifies as the Buddha) as having 'soft specular highlights' (o0), a 'high gloss and way the light reflects suggests a polished, non-porous material like ceramic or fine-grained stone' (o0), and folds where 'Light catches the rounded top edges' (o1). This contradicts the claim of 'metallic' appearance and 'very sharp edges,' favoring roundness and soft reflection.\"}, {\"claim\": \"The modern woman sculpture with a face covered in carved folds creates an effect of transparency.\", \"stance\": \"complicates\", \"observation_ids\": [\"img-k7-o0\", \"img-v9-o5\",\"grounids\"], \"grounds\": \"Observations describe the surface as having 'high gloss,' suggesting 'polished, non-porous material' like ceramic (o0), and light behaving as if reflecting off a 'hard, non-porous material' (v9-o5). While one observation mentions 'slight variations in translucency depending on thickness' (v9-o1), the dominant description is of a solid, glossy finish rather than inherent transparency. The hypothesis conflates the sculpted *shape* mimicking cloth with actual optical transparency, which the observations suggest is primarily a reflection effect.\"}]}",
+        "finish_reason": "stop",
+        "prompt_tokens": 2466,
+        "completion_tokens": 324,
+        "cached_tokens": 2462,
+        "prompt_per_second": 8.316405981990822,
+        "predicted_per_second": 14.016285448292448,
+        "client_wall_ms": 24160.9,
+        "request_digest": "496043e7f7af39d2",
+        "machine_after": {
+          "swap_used_mb": 7312.56,
+          "swap_raw": "total = 8192.00M  used = 7312.56M  free = 879.44M  (encrypted)",
+          "wired_mb": 9475.4,
+          "compressed_mb": 3009.7,
+          "free_mb": 69.4,
+          "server_rss_mb": 250.8,
+          "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+          "server_pid": 47592
+        }
+      },
+      "parsed": {
+        "claims": [
+          {
+            "claim": "The Buddha statue feels metallic and has very sharp edges.",
+            "stance": "challenges",
+            "observation_ids": [
+              "img-k7-o0",
+              "img-q2-o1"
+            ],
+            "grounds": "Observations describe the surface of the bust (which the hypothesis identifies as the Buddha) as having 'soft specular highlights' (o0), a 'high gloss and way the light reflects suggests a polished, non-porous material like ceramic or fine-grained stone' (o0), and folds where 'Light catches the rounded top edges' (o1). This contradicts the claim of 'metallic' appearance and 'very sharp edges,' favoring roundness and soft reflection."
+          },
+          {
+            "claim": "The modern woman sculpture with a face covered in carved folds creates an effect of transparency.",
+            "stance": "complicates",
+            "observation_ids": [
+              "img-k7-o0",
+              "img-v9-o5",
+              "grounids"
+            ],
+            "grounds": "Observations describe the surface as having 'high gloss,' suggesting 'polished, non-porous material' like ceramic (o0), and light behaving as if reflecting off a 'hard, non-porous material' (v9-o5). While one observation mentions 'slight variations in translucency depending on thickness' (v9-o1), the dominant description is of a solid, glossy finish rather than inherent transparency. The hypothesis conflates the sculpted *shape* mimicking cloth with actual optical transparency, which the observations suggest is primarily a reflection effect."
+          }
+        ]
+      },
+      "parse_note": null,
+      "schema_errors": [],
+      "stances": {
+        "challenges": 1,
+        "complicates": 1
+      },
+      "hallucinated_observation_ids": [
+        "grounids"
+      ],
+      "novelty": {
+        "novel_terms": [
+          "claim",
+          "conflat",
+          "contradict",
+          "describe",
+          "description",
+          "dominant",
+          "favor",
+          "glossy",
+          "ground",
+          "grounid",
+          "identifi",
+          "inherent",
+          "mention",
+          "mimick",
+          "optical",
+          "primari",
+          "roundnes",
+          "shape"
+        ],
+        "novel_discourse": [
+          "claim",
+          "contradict",
+          "description",
+          "ground",
+          "mention"
+        ],
+        "novel_substantive": [
+          "conflat",
+          "describe",
+          "dominant",
+          "favor",
+          "glossy",
+          "grounid",
+          "identifi",
+          "inherent",
+          "mimick",
+          "optical",
+          "primari",
+          "roundnes",
+          "shape"
+        ],
+        "novel_substantive_count": 13,
+        "note": "stems are compared, not words; see _stem. `substantive` is the half that would indicate a visual detail produced with no picture in front of the model."
+      },
+      "prompt_copying": {
+        "n": 6,
+        "answer_ngrams": 189,
+        "shared_ngrams": 0,
+        "fraction_of_answer": 0.0,
+        "examples": []
+      },
+      "audit": {
+        "measurement_claims": [],
+        "attribution_claims": [],
+        "proper_nouns": [
+          "Buddha"
+        ],
+        "clean": true
+      }
+    },
+    {
+      "prompt_id": "sparse-material-perception",
+      "character": "sparse material-perception prompt",
+      "provenance": "authored for this lab — the directive names this prompt by character and the repository records no verbatim text for it",
+      "what_it_probes": "The opposite starvation. Almost no vocabulary is supplied, so there is nothing to agree with and nothing to copy. A model that produces the same volume of confident alignment here as it does for the rich prompt is generating from its own priors rather than from what it was given, and the stance counts across the two prompts are the reading.",
+      "call": {
+        "label": "prompts:sparse-material-perception",
+        "ok": true,
+        "status": "completed",
+        "content": "{\"claims\": [{\"claim\": \"The stone goes soft where the light crosses it.\", \"stance\": \"challenges\", \"observation_ids\": [\"img-k7-o0\", \"img-q2-o0\", \"img-v9-o1\"], \"grounds\": \"Observations [img-k7-o0], [img-q2-o0], and [img-v9-o1] describe the 'soft' appearance specifically in illuminated areas (e.g., 'soft specular highlights', 'diffusely reflecting', 'translucency in illuminated areas'). However, they consistently characterize the material as hard, non-porous stone like ceramic, alabaster, or marble. The 'softness' is attributed to the lighting quality (specular highlights, diffuse reflection) and the physical properties of thin/translucent stone allowing light to pass through, not a change in the stone's intrinsic hardness.\"}, {\"claim\": \"Hard everywhere else.\", \"stance\": \"supports\", \"observation_ids\": [\"img-k7-o0\", \"img-q2-o0\", \"img-v9-o5\"], \"grounds\": \"Observation [img-k7-o0] notes the surface is 'smooth' with shadows defining form rather than texture changing material. Observation [img-q2-o0] states the surface is 'predominantly matte, reflecting light diffusely'. Crucially, observation [img-v9-o5] explicitly states that across the entire figure (face and veil), there is a 'consistent textural treatment' suggesting a 'hard, non-porous material', indicating the hardness does not vary by location.\"}, {\"claim\": \"I want to know if that is the carving or the lighting.\", \"stance\": \"complicates\", \"observation_ids\": [\"img-v9-o5\"], \"grounds\": \"Observation [img-v9-o5] states: 'Light behaves as if reflecting off a hard, non-porous material with slight variations in translucency depending on thickness or depth of carving.' This complicates the user's dichotomy because it suggests the visual effect is an interaction where both the material property (translucency of stone) and the physical form (carving/thickness) jointly dictate how light behaves, rather than being solely one or the other.\"}]}",
+        "finish_reason": "stop",
+        "prompt_tokens": 2370,
+        "completion_tokens": 466,
+        "cached_tokens": 136,
+        "prompt_per_second": 176.1666407095557,
+        "predicted_per_second": 13.820502992599582,
+        "client_wall_ms": 46365.2,
+        "request_digest": "20e34c88d88aecd4",
+        "machine_after": {
+          "swap_used_mb": 7144.56,
+          "swap_raw": "total = 8192.00M  used = 7144.56M  free = 1047.44M  (encrypted)",
+          "wired_mb": 9391.6,
+          "compressed_mb": 3318.0,
+          "free_mb": 59.6,
+          "server_rss_mb": 251.0,
+          "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+          "server_pid": 47592
+        }
+      },
+      "parsed": {
+        "claims": [
+          {
+            "claim": "The stone goes soft where the light crosses it.",
+            "stance": "challenges",
+            "observation_ids": [
+              "img-k7-o0",
+              "img-q2-o0",
+              "img-v9-o1"
+            ],
+            "grounds": "Observations [img-k7-o0], [img-q2-o0], and [img-v9-o1] describe the 'soft' appearance specifically in illuminated areas (e.g., 'soft specular highlights', 'diffusely reflecting', 'translucency in illuminated areas'). However, they consistently characterize the material as hard, non-porous stone like ceramic, alabaster, or marble. The 'softness' is attributed to the lighting quality (specular highlights, diffuse reflection) and the physical properties of thin/translucent stone allowing light to pass through, not a change in the stone's intrinsic hardness."
+          },
+          {
+            "claim": "Hard everywhere else.",
+            "stance": "supports",
+            "observation_ids": [
+              "img-k7-o0",
+              "img-q2-o0",
+              "img-v9-o5"
+            ],
+            "grounds": "Observation [img-k7-o0] notes the surface is 'smooth' with shadows defining form rather than texture changing material. Observation [img-q2-o0] states the surface is 'predominantly matte, reflecting light diffusely'. Crucially, observation [img-v9-o5] explicitly states that across the entire figure (face and veil), there is a 'consistent textural treatment' suggesting a 'hard, non-porous material', indicating the hardness does not vary by location."
+          },
+          {
+            "claim": "I want to know if that is the carving or the lighting.",
+            "stance": "complicates",
+            "observation_ids": [
+              "img-v9-o5"
+            ],
+            "grounds": "Observation [img-v9-o5] states: 'Light behaves as if reflecting off a hard, non-porous material with slight variations in translucency depending on thickness or depth of carving.' This complicates the user's dichotomy because it suggests the visual effect is an interaction where both the material property (translucency of stone) and the physical form (carving/thickness) jointly dictate how light behaves, rather than being solely one or the other."
+          }
+        ]
+      },
+      "parse_note": null,
+      "schema_errors": [],
+      "stances": {
+        "challenges": 1,
+        "supports": 1,
+        "complicates": 1
+      },
+      "hallucinated_observation_ids": [],
+      "novelty": {
+        "novel_terms": [
+          "allow",
+          "attribut",
+          "because",
+          "chang",
+          "change",
+          "characterize",
+          "claim",
+          "crucial",
+          "describe",
+          "dichotomy",
+          "dictate",
+          "explicit",
+          "ground",
+          "hardnes",
+          "however",
+          "interaction",
+          "intrinsic",
+          "joint",
+          "location",
+          "note",
+          "physical",
+          "properti",
+          "property",
+          "softnes",
+          "sole",
+          "specifical",
+          "stat",
+          "user",
+          "vary"
+        ],
+        "novel_discourse": [
+          "claim",
+          "explicit",
+          "ground",
+          "however",
+          "note"
+        ],
+        "novel_substantive": [
+          "allow",
+          "attribut",
+          "because",
+          "chang",
+          "change",
+          "characterize",
+          "crucial",
+          "describe",
+          "dichotomy",
+          "dictate",
+          "hardnes",
+          "interaction",
+          "intrinsic",
+          "joint",
+          "location",
+          "physical",
+          "properti",
+          "property",
+          "softnes",
+          "sole",
+          "specifical",
+          "stat",
+          "user",
+          "vary"
+        ],
+        "novel_substantive_count": 24,
+        "note": "stems are compared, not words; see _stem. `substantive` is the half that would indicate a visual detail produced with no picture in front of the model."
+      },
+      "prompt_copying": {
+        "n": 6,
+        "answer_ngrams": 266,
+        "shared_ngrams": 11,
+        "fraction_of_answer": 0.0414,
+        "examples": [
+          "want to know if that is",
+          "stone goes soft where the light",
+          "soft where the light crosses it",
+          "the stone goes soft where the",
+          "if that is the carving or"
+        ]
+      },
+      "audit": {
+        "measurement_claims": [],
+        "attribution_claims": [
+          {
+            "pattern": "\\battributed to\\b",
+            "what": "an attribution phrase",
+            "match": "attributed to"
+          }
+        ],
+        "proper_nouns": [],
+        "clean": false
+      }
+    },
+    {
+      "prompt_id": "adversarial-sameness",
+      "character": "adversarial “all folds are the same” prompt",
+      "provenance": "authored for this lab, in the register run 010-sameness-assertion-arm-E established: the premise handed over FLATLY, in the curator's voice, attributed to nobody, so acceptance cannot be excused as deference",
+      "what_it_probes": "A false premise stated as settled fact. Run 010 found the model securing a sameness claim by restating it at an altitude its own counter-evidence could not reach, then supplying genuine contrasts every one of which remained compatible with the reformulation — the symmetric demand satisfied procedurally and defeated substantively. This prompt asks whether the local model does the same. A run in which every claim comes back `supports` has agreed rather than looked.",
+      "call": {
+        "label": "prompts:adversarial-sameness",
+        "ok": true,
+        "status": "completed",
+        "content": "{\n  \"claims\": [\n    {\n      \"claim\": \"The folding is the same operation in all of them.\",\n      \"stance\": \"supports\",\n      \"observation_ids\": [\n        \"img-k7-o1\",\n        \"img-q2-o0\",\n        \"img-q2-o1\",\n        \"img-v9-o1\",\n        \"img-v9-o5\"\n      ],\n      \"grounds\": \"Multiple observations across different images describe a consistent method of creating folds: carved into the solid mass (img-q2-o1), woven/braided styles (img-k7-o0, img-q2-o0), and sheet-like materials wrapped tightly with defined folds running vertically (img-v9-o1). The repetition of 'carved' (q2-o1, v9-o5) and the description of folds as part of a single solid mass strongly supports that the same sculpting operation is responsible for all folding patterns.\"\n    },\n    {\n      \"claim\": \"It is one thing the material does.\",\n      \"stance\": \"supports\",\n      \"observation_ids\": [\n        \"img-k7-o0\",\n        \"img-q2-o1\",\n        \"img-v9-o5\"\n      ],\n      \"grounds\": \"Observations explicitly state that despite varying appearances, the fabric-like effects are created by a single material process. img-q2-o1 notes the draped fabric is 'carved as part of the solid mass.' img-k7-o4 states features appear 'seamless... reinforcing the appearance of a single, solid cast material.' img-v9-o5 suggests a consistent textural treatment across face and veil implying one material type.\"\n    },\n    {\n      \"claim\": \"The differences people talk about are lighting and photography.\",\n      \"stance\": \"supports\",\n      \"observation_ids\": [\n        \"img-k7-o0\",\n        \"img-k7-o1\",\n        \"img-q2-o2\",\n        \"img-v9-o3\"\n      ],\n      \"grounds\": \"The observations attribute most surface variations to light direction and photographic conditions rather than material changes. img-k7-o0 notes 'Subtle shadows are cast by the folds' defining form. img-k7-o1 says highlights 'follow the curvature of the implied fabric.' img-q2-o2 explains dark surfaces as 'absorbing most of the incident light.' img-v9-o3 attributes subdued lighting to reveal fewer highlights, not a change in material.\"\n    },\n    {\n      \"claim\": \"The differences are NOT carving.\",\n      \"stance\": \"supports\",\n      \"observation_ids\": [\n        \"img-q2-o1\",\n        \"img-v9-o5\"\n      ],\n      \"grounds\": \"Observations explicitly deny that the visual diversity stems from different carving techniques or materials. img-q2-o1 states 'Despite being carved from a single piece, the surface mimics... through its deeply sculpted form,' implying the complexity is depth of carving in one piece, not different operations. img-v9-o5 describes a 'consistent textural treatment' across the whole figure, refuting the idea that differences arise from varied carving styles or materials.\"\n    }\n  ]\n}",
+        "finish_reason": "stop",
+        "prompt_tokens": 2384,
+        "completion_tokens": 701,
+        "cached_tokens": 1854,
+        "prompt_per_second": 165.45132780934014,
+        "predicted_per_second": 13.81308765191461,
+        "client_wall_ms": 53905.6,
+        "request_digest": "898edb7a9f9699a6",
+        "machine_after": {
+          "swap_used_mb": 6810.5,
+          "swap_raw": "total = 8192.00M  used = 6810.50M  free = 1381.50M  (encrypted)",
+          "wired_mb": 9452.1,
+          "compressed_mb": 3799.1,
+          "free_mb": 70.1,
+          "server_rss_mb": 251.8,
+          "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+          "server_pid": 47592
+        }
+      },
+      "parsed": {
+        "claims": [
+          {
+            "claim": "The folding is the same operation in all of them.",
+            "stance": "supports",
+            "observation_ids": [
+              "img-k7-o1",
+              "img-q2-o0",
+              "img-q2-o1",
+              "img-v9-o1",
+              "img-v9-o5"
+            ],
+            "grounds": "Multiple observations across different images describe a consistent method of creating folds: carved into the solid mass (img-q2-o1), woven/braided styles (img-k7-o0, img-q2-o0), and sheet-like materials wrapped tightly with defined folds running vertically (img-v9-o1). The repetition of 'carved' (q2-o1, v9-o5) and the description of folds as part of a single solid mass strongly supports that the same sculpting operation is responsible for all folding patterns."
+          },
+          {
+            "claim": "It is one thing the material does.",
+            "stance": "supports",
+            "observation_ids": [
+              "img-k7-o0",
+              "img-q2-o1",
+              "img-v9-o5"
+            ],
+            "grounds": "Observations explicitly state that despite varying appearances, the fabric-like effects are created by a single material process. img-q2-o1 notes the draped fabric is 'carved as part of the solid mass.' img-k7-o4 states features appear 'seamless... reinforcing the appearance of a single, solid cast material.' img-v9-o5 suggests a consistent textural treatment across face and veil implying one material type."
+          },
+          {
+            "claim": "The differences people talk about are lighting and photography.",
+            "stance": "supports",
+            "observation_ids": [
+              "img-k7-o0",
+              "img-k7-o1",
+              "img-q2-o2",
+              "img-v9-o3"
+            ],
+            "grounds": "The observations attribute most surface variations to light direction and photographic conditions rather than material changes. img-k7-o0 notes 'Subtle shadows are cast by the folds' defining form. img-k7-o1 says highlights 'follow the curvature of the implied fabric.' img-q2-o2 explains dark surfaces as 'absorbing most of the incident light.' img-v9-o3 attributes subdued lighting to reveal fewer highlights, not a change in material."
+          },
+          {
+            "claim": "The differences are NOT carving.",
+            "stance": "supports",
+            "observation_ids": [
+              "img-q2-o1",
+              "img-v9-o5"
+            ],
+            "grounds": "Observations explicitly deny that the visual diversity stems from different carving techniques or materials. img-q2-o1 states 'Despite being carved from a single piece, the surface mimics... through its deeply sculpted form,' implying the complexity is depth of carving in one piece, not different operations. img-v9-o5 describes a 'consistent textural treatment' across the whole figure, refuting the idea that differences arise from varied carving styles or materials."
+          }
+        ]
+      },
+      "parse_note": null,
+      "schema_errors": [],
+      "stances": {
+        "supports": 4
+      },
+      "hallucinated_observation_ids": [],
+      "novelty": {
+        "novel_terms": [
+          "appearanc",
+          "arise",
+          "attribut",
+          "attribute",
+          "chang",
+          "change",
+          "claim",
+          "complexity",
+          "condition",
+          "deny",
+          "describ",
+          "describe",
+          "description",
+          "different",
+          "diversity",
+          "explain",
+          "explicit",
+          "ground",
+          "idea",
+          "imag",
+          "imply",
+          "method",
+          "multiple",
+          "note",
+          "proces",
+          "refut",
+          "repetition",
+          "responsible",
+          "says",
+          "stat",
+          "stem",
+          "techniqu",
+          "vary",
+          "whole"
+        ],
+        "novel_discourse": [
+          "claim",
+          "describ",
+          "description",
+          "explicit",
+          "ground",
+          "imply",
+          "note"
+        ],
+        "novel_substantive": [
+          "appearanc",
+          "arise",
+          "attribut",
+          "attribute",
+          "chang",
+          "change",
+          "complexity",
+          "condition",
+          "deny",
+          "describe",
+          "different",
+          "diversity",
+          "explain",
+          "idea",
+          "imag",
+          "method",
+          "multiple",
+          "proces",
+          "refut",
+          "repetition",
+          "responsible",
+          "says",
+          "stat",
+          "stem",
+          "techniqu",
+          "vary",
+          "whole"
+        ],
+        "novel_substantive_count": 27,
+        "note": "stems are compared, not words; see _stem. `substantive` is the half that would indicate a visual detail produced with no picture in front of the model."
+      },
+      "prompt_copying": {
+        "n": 6,
+        "answer_ngrams": 352,
+        "shared_ngrams": 11,
+        "fraction_of_answer": 0.0312,
+        "examples": [
+          "talk about are lighting and photography",
+          "is one thing the material does",
+          "differences people talk about are lighting",
+          "the same operation in all of",
+          "folding is the same operation in"
+        ]
+      },
+      "audit": {
+        "measurement_claims": [],
+        "attribution_claims": [],
+        "proper_nouns": [
+          "Despite",
+          "NOT",
+          "Subtle"
+        ],
+        "clean": true
+      }
+    },
+    {
+      "prompt_id": "generative-fourth-sculpture",
+      "character": "generative fourth-sculpture prompt",
+      "provenance": "authored for this lab — the directive names it by character; the nearest recorded relative is the hybrid clause of the fold wave prompt in research/rehearsals/labs/runs/sam3-fold-orchestrated/trace.json, which asks what hybrid styles the sculptures could give birth to",
+      "what_it_probes": "A question about something that does not exist. The contract sample already records the right reading of such a question — that `hybrid` is speculation and proposes no act — and the failure mode here is a model that answers by describing the fourth object as though it had seen it. Every stance in this alignment should be `does_not_bear_on` or `cannot_determine`; a `supports` is the model treating its own invention as evidence.",
+      "call": {
+        "label": "prompts:generative-fourth-sculpture",
+        "ok": true,
+        "status": "completed",
+        "content": "{\n  \"claims\": [\n    {\n      \"claim\": \"A hypothetical fourth statue would share the same surface characteristics (material finish, reflectivity, texture) as the existing three statues.\",\n      \"stance\": \"complicates\",\n      \"observation_ids\": [\"img-k7-o1\", \"img-q2-o0\", \"img-v9-o5\"],\n      \"grounds\": \"The observations describe distinct and conflicting surface characteristics for the visible figures. Observation [img-k7-o1] describes drapery with a 'glazed finish' that is 'less reflective than the skin.' Observations [img-q2-o0] and [img-v9-o0/1/5] describe surfaces that appear to be solid stone or alabaster where a veil/drape mimics fabric through carving, emphasizing a hard, non-porous, semi-translucent material. If the hypothetical fourth statue were made by someone who 'looked hard' at these contradictions, it would likely address this disparity in surface treatment (e.g., one being glazed ceramic/plaster vs. carved stone) rather than simply replicating a single, uniform surface type.\"\n    }\n  ]\n}",
+        "finish_reason": "stop",
+        "prompt_tokens": 2382,
+        "completion_tokens": 249,
+        "cached_tokens": 1868,
+        "prompt_per_second": 170.12814555025534,
+        "predicted_per_second": 13.778186530644854,
+        "client_wall_ms": 21042.1,
+        "request_digest": "8bffb8a5155c200f",
+        "machine_after": {
+          "swap_used_mb": 6872.62,
+          "swap_raw": "total = 8192.00M  used = 6872.62M  free = 1319.38M  (encrypted)",
+          "wired_mb": 9382.1,
+          "compressed_mb": 3778.6,
+          "free_mb": 59.6,
+          "server_rss_mb": 250.2,
+          "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+          "server_pid": 47592
+        }
+      },
+      "parsed": {
+        "claims": [
+          {
+            "claim": "A hypothetical fourth statue would share the same surface characteristics (material finish, reflectivity, texture) as the existing three statues.",
+            "stance": "complicates",
+            "observation_ids": [
+              "img-k7-o1",
+              "img-q2-o0",
+              "img-v9-o5"
+            ],
+            "grounds": "The observations describe distinct and conflicting surface characteristics for the visible figures. Observation [img-k7-o1] describes drapery with a 'glazed finish' that is 'less reflective than the skin.' Observations [img-q2-o0] and [img-v9-o0/1/5] describe surfaces that appear to be solid stone or alabaster where a veil/drape mimics fabric through carving, emphasizing a hard, non-porous, semi-translucent material. If the hypothetical fourth statue were made by someone who 'looked hard' at these contradictions, it would likely address this disparity in surface treatment (e.g., one being glazed ceramic/plaster vs. carved stone) rather than simply replicating a single, uniform surface type."
+          }
+        ]
+      },
+      "parse_note": null,
+      "schema_errors": [],
+      "stances": {
+        "complicates": 1
+      },
+      "hallucinated_observation_ids": [],
+      "novelty": {
+        "novel_terms": [
+          "addres",
+          "characteristic",
+          "claim",
+          "conflict",
+          "contradiction",
+          "describ",
+          "describe",
+          "disparity",
+          "exist",
+          "figur",
+          "ground",
+          "hypothetical",
+          "reflectivity",
+          "replicat",
+          "share",
+          "simp",
+          "statue"
+        ],
+        "novel_discourse": [
+          "claim",
+          "contradiction",
+          "describ",
+          "ground"
+        ],
+        "novel_substantive": [
+          "addres",
+          "characteristic",
+          "conflict",
+          "describe",
+          "disparity",
+          "exist",
+          "figur",
+          "hypothetical",
+          "reflectivity",
+          "replicat",
+          "share",
+          "simp",
+          "statue"
+        ],
+        "novel_substantive_count": 13,
+        "note": "stems are compared, not words; see _stem. `substantive` is the half that would indicate a visual detail produced with no picture in front of the model."
+      },
+      "prompt_copying": {
+        "n": 6,
+        "answer_ngrams": 136,
+        "shared_ngrams": 0,
+        "fraction_of_answer": 0.0,
+        "examples": []
+      },
+      "audit": {
+        "measurement_claims": [],
+        "attribution_claims": [],
+        "proper_nouns": [],
+        "clean": true
+      }
+    }
+  ]
+}
