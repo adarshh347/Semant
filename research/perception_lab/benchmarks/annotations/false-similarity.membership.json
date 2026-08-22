@@ -1,0 +1,78 @@
+{
+  "annotation_id": "ann-false-similarity-01",
+  "form": "extent.fused_hypothesis",
+  "subject": {
+    "kind": "control",
+    "ref": "false-similarity",
+    "digest": null,
+    "raster": [
+      64,
+      64
+    ]
+  },
+  "annotator": {
+    "id": "annotator-c",
+    "expertise": "domain_expert",
+    "minutes_spent": 4
+  },
+  "annotated_on": "2026-08-22",
+  "legitimate_readings": [
+    {
+      "reading_id": "baseline_pair",
+      "label": "A and B are one thing; C is another",
+      "why": "A and B rest on a common baseline and C sits elsewhere in the frame. Position is the only evidence here and it is sufficient.",
+      "mask_rle": null,
+      "instance_refs": [
+        "frag_a",
+        "frag_b"
+      ],
+      "preferred_by_annotator": true
+    }
+  ],
+  "single_correct_answer": true,
+  "ambiguity": {
+    "level": "slight",
+    "sources": [
+      "same_colour_as_neighbour"
+    ],
+    "confidence": 0.8,
+    "note": "All three are identical discs, so anything reasoning from appearance will group all three. The ambiguity is not in the picture; it is in which evidence you privilege."
+  },
+  "fragment_membership": [
+    {
+      "grouping_id": "baseline",
+      "groups": [
+        [
+          "frag_a",
+          "frag_b"
+        ],
+        [
+          "frag_c"
+        ]
+      ],
+      "why": "shared baseline",
+      "asserts_hidden_extent": false,
+      "grounds": [
+        {
+          "kind": "relative_position",
+          "detail": "A and B share a baseline; C does not",
+          "strength": 0.8
+        },
+        {
+          "kind": "appearance_continuity",
+          "detail": "identical in all three — evidence AGAINST using appearance here, recorded so the score can show a producer that used it anyway",
+          "strength": 0.0
+        }
+      ]
+    }
+  ],
+  "utility_verdicts": [
+    {
+      "verdict": "correct",
+      "why": "the grouping is what a person would act on, and the grounds say what it rests on.",
+      "about": "baseline"
+    }
+  ],
+  "notes": "The appearance ground is recorded with strength 0.0 rather than omitted. A ground that was considered and rejected is evidence about the reasoning; a ground that is simply absent is silence, and the two look identical in a score that only counts grounds.",
+  "disagrees_with": null
+}
