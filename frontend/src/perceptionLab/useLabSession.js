@@ -255,6 +255,22 @@ export default function useLabSession(client, { initialOrgan = 'extent',
      * every resolved step and says, before the button is pressed, which of them will refuse when
      * run. The run then refuses for real, with a refusal artifact in the ledger.
      */
+    /**
+     * PERCEPTUAL-FORMS-001H — put a plan somebody else proposed into the one preview.
+     *
+     * A recipe is expanded and resolved by the backend, and the plan that comes back has to land
+     * in the same `PlanPreview` a pressed control's does. A study with its own preview would be a
+     * second place a person reads a plan before running it, and the two would drift on the first
+     * edit — which is precisely the drift the single-preview rule exists to prevent.
+     *
+     * IT ADOPTS A PLAN AND NEVER RUNS ONE. `runPlan` is unchanged and is still the only thing in
+     * this hook that reaches the execute route.
+     */
+    const adoptPlan = useCallback((plan) => {
+        setState((prev) => ({ ...prev, plan }));
+        return plan;
+    }, []);
+
     const planDirectly = useCallback((operation, parameters, input_refs) => guard(
         'proposing a plan', async () => {
             // A CONTROL THAT NAMED A MASK HAS SELECTED THAT MASK, and the session is told so
@@ -452,6 +468,7 @@ export default function useLabSession(client, { initialOrgan = 'extent',
         toggleSelectedInstance,
         setActiveId,
         setFocus,
+        adoptPlan,
         planDirectly,
         planFromText,
         runPlan,

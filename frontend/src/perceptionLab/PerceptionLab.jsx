@@ -17,6 +17,10 @@ import ReviewTray from './components/ReviewTray';
 import HistoryPanel from './components/HistoryPanel';
 import ExportBar from './components/ExportBar';
 import Ledger from './components/Ledger';
+import FormBench from './formBench/FormBench';
+import RecipeTray from './formBench/RecipeTray';
+import useFormBench from './formBench/useFormBench';
+import './formBench/formBench.css';
 import { EmptyState } from './components/Chips';
 import { inputRef } from './records';
 import './perceptionLab.css';
@@ -47,6 +51,16 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
     const [arm, setArm] = useState('direct');
     const [comparisonRunId, setComparisonRunId] = useState(null);
     const lab = useLabSession(client, { initialOrgan, initialMode });
+    /**
+     * PERCEPTUAL-FORMS-001H — the two lower levels, held beside the session rather than inside it.
+     *
+     * Separate from `useLabSession` because it measures nothing and runs nothing: it reads two
+     * catalogues, asks readiness, and posts derivations that reach no adapter. Folding it into the
+     * session hook would put a thing that cannot spend a model call next to the thing that can.
+     */
+    const bench = useFormBench(client, {
+        sessionId: lab.session?.session_id || null, ledger: lab.ledger,
+    });
 
     const source = useMemo(
         () => (lab.sources || []).find((s) => s.id === lab.sourceId) || null,
@@ -233,6 +247,23 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                     stageRef={stageRef}
                                     busy={lab.busy} />
                             ) : null}
+                            {arm === 'form' ? (
+                                <FormBench
+                                    bench={bench}
+                                    onDerive={(form, artifactIds) => bench.derive(
+                                        form, artifactIds, {})} />
+                            ) : null}
+                            {arm === 'recipe' ? (
+                                <RecipeTray
+                                    bench={bench}
+                                    onPlan={async (key, bindings) => {
+                                        const body = await bench.planRecipe(key, bindings);
+                                        // THE PLAN LANDS IN THE SAME PREVIEW a pressed control's
+                                        // does. A study with its own preview would be a second
+                                        // place a person reads a plan, and the two would drift.
+                                        if (body?.plan) lab.adoptPlan(body.plan);
+                                    }} />
+                            ) : null}
                             {arm === 'direct' ? (
                                 <DirectControls
                                     organ={lab.organ}
@@ -242,7 +273,8 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                     ledger={lab.ledger}
                                     onPropose={lab.planDirectly}
                                     busy={lab.busy} />
-                            ) : (
+                            ) : null}
+                            {arm === 'prompt' ? (
                                 <PromptConversation
                                     organ={lab.organ}
                                     turns={lab.session.prompt_turns}
@@ -252,7 +284,7 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                     byId={lab.byId}
                                     onAsk={lab.planFromText}
                                     busy={lab.busy} />
-                            )}
+                            ) : null}
                             <PlanPreview
                                 plan={lab.plan}
                                 onRun={lab.runPlan}

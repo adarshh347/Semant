@@ -44,6 +44,10 @@ const RefineLab = React.lazy(() => import('./pages/RefineLab.jsx'));
 const DifferentialLab = React.lazy(() => import('./pages/DifferentialLab.jsx')); // DEV-ONLY · CIRCUIT-001 P2E-B harness
 const ArticleLab = React.lazy(() => import('./pages/ArticleLab.jsx')); // DEV-ONLY · CIRCUIT-003 M4 harness
 const PerceptionLabPage = React.lazy(() => import('./pages/PerceptionLabPage.jsx')); // PERCEPTUAL-ORGANS-002 F2 — the live Extent & Topology laboratory
+// PERCEPTUAL-FORMS-001H — every one of the nineteen forms, opened from its committed payload.
+// No session and no wire: for the sixteen forms nothing can write as an artifact, a fixture is
+// the only way to see what the shape looks like before deciding whether it is right.
+const FormRendererLabPage = React.lazy(() => import('./pages/FormRendererLabPage.jsx'));
 // AGENT-DEMO — the run surface: images + a prompt → the orchestrator working, in the open.
 // Its OWN route and shell, deliberately not folded into /differential, which is the manual
 // instrument and has diverged from this on purpose.
@@ -141,6 +145,9 @@ const router = createBrowserRouter([
       // wired to the real Extent and Topology organs. `?client=fixture` reads the committed
       // scenes instead; there is no fallback between the two and the badge says which.
       { path: "lab/perception", element: <PerceptionLabPage /> },
+      // PERCEPTUAL-FORMS-001H — the fixture level. Deliberately its own route: the live
+      // laboratory draws what it produced, and this draws what the contract froze.
+      { path: "lab/forms", element: <FormRendererLabPage /> },
       // AGENT-DEMO — a real user surface, not a lab: images + a prompt, and the run in the open.
       { path: "agent", element: <AgentDemoPage /> },
       // WAVE4 — watch a being think within an image: an agent's walk, its measured perceptions,
