@@ -154,5 +154,5 @@ def area_of(member: Any) -> Optional[float]:
     return getattr(member, "area", None)
 
 
-__all__ = ["BOUNDARY_RINGS", "ExtentSource", "FRAGMENT_SET", "FUSED_HYPOTHESIS", "HARD_MASK",
+__all__ = ["BOUNDARY_RINGS", "EpistemicBasis", "EpistemicStatus", "ExtentSource", "FRAGMENT_SET", "FUSED_HYPOTHESIS", "HARD_MASK",
            "NotAnExtentSet", "area_of", "extent_set", "fragment_set", "geometry_of", "index"]

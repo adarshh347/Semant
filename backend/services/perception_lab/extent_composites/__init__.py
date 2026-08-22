@@ -30,6 +30,12 @@ PURE. No database, no network, no model, no clock, no image, no route.
 """
 from __future__ import annotations
 
+from backend.services.perception_lab.extent_composites.alternatives import (Reading,
+                                                                            produce_hypothesis_set)
+from backend.services.perception_lab.extent_composites.compose import PRODUCER, produce
+from backend.services.perception_lab.extent_composites.fusion import (ProposedFusion,
+                                                                      produce_fused_hypothesis)
+from backend.services.perception_lab.extent_composites.grounds import GroundEvidence, Vetting, vet
 from backend.services.perception_lab.extent_composites.admission import (ADMISSIONS, Admission,
                                                                          EVIDENCE_ROOT,
                                                                          ModelNotAdmitted, Role,
@@ -42,7 +48,9 @@ from backend.services.perception_lab.extent_composites.sources import (ExtentSou
                                                                        fragment_set, index)
 
 __all__ = [
-    "ADMISSIONS", "Admission", "EVIDENCE_ROOT", "ExtentSource", "ModelNotAdmitted",
-    "NotAnExtentSet", "Role", "Verdict", "admissions_for", "admitted", "extent_set",
-    "fragment_set", "ground_admission", "index", "producer_for",
+    "ADMISSIONS", "Admission", "EVIDENCE_ROOT", "ExtentSource", "GroundEvidence",
+    "ModelNotAdmitted", "NotAnExtentSet", "PRODUCER", "ProposedFusion", "Reading", "Role",
+    "Verdict", "Vetting", "admissions_for", "admitted", "extent_set", "fragment_set",
+    "ground_admission", "index", "produce", "produce_fused_hypothesis",
+    "produce_hypothesis_set", "producer_for", "vet",
 ]

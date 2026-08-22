@@ -82,6 +82,7 @@ OMISSION_REASONS: Tuple[str, ...] = (
     "not_geometrically_contained",  # a proposed parent does not contain the child, per pixel
     "semantic_link_undeclared",     # a part/whole link with no human assertion behind it
     "single_reading",          # one alternative is not an alternative set
+    "basis_not_admitted",      # the input's substrate is not one the composing form admits
 )
 
 

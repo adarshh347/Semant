@@ -30,6 +30,9 @@ from backend.schemas.perception_lab import (EpistemicBasis, EpistemicStatus, Gro
                                             RefusalCode)
 from backend.services.perception_lab import definitions as D
 from backend.services.perception_lab.extent_composites import admission as A
+from backend.services.perception_lab.extent_composites import alternatives as ALT
+from backend.services.perception_lab.extent_composites import fusion as FUS
+from backend.services.perception_lab.extent_composites import grounds as GR
 from backend.services.perception_lab.extent_composites import sources as SRC
 from backend.services.perception_lab.topology_forms import production as P
 
@@ -224,3 +227,314 @@ def test_the_omission_vocabulary_is_one_list_and_this_lane_extended_it():
         assert reason in P.OMISSION_REASONS
     with pytest.raises(ValueError):
         P.Omission(what="x", reason="omitted_for_other_reasons", detail="")
+
+
+# ── the scaffolding the composite producers are fed ──────────────────────────
+
+
+FIXTURES = REPO_ROOT / "research" / "perception_lab" / "fixtures" / "topology_forms"
+
+#: Lane D's committed scenes, reused rather than re-drawn. They are real `extent_set` artifacts
+#: measured off real rasters, so a change in how the Extent façade records an instance reaches
+#: this suite as a diff a person reads.
+FOREST = "art_forms_forest"
+CUBIST = "art_forms_cubist"
+
+
+def scene(name: str) -> Dict[str, Any]:
+    return json.loads((FIXTURES / f"extent-set.{name}.json").read_text(encoding="utf-8"))
+
+
+def extents(name: str, *, basis: str = "mask", status: str = "measured") -> SRC.ExtentSource:
+    doc = scene(name)
+    doc["measurement"]["epistemic_basis"] = basis
+    doc["measurement"]["epistemic_status"] = status
+    return SRC.extent_set(doc)
+
+
+def fragments(*ids: str, artifact_id: str = "art_frag", examined: int = 0) -> SRC.ExtentSource:
+    """A carried `extent.fragment_set`. It cannot be an artifact and that is not a shortcut:
+    no operation declares the form, so `PerceptualArtifact` refuses to carry one."""
+    payload = S.ExtentFragmentSetPayload.model_validate({
+        "variant": "extent_fragment_set", "unity_asserted": False,
+        "regions_examined": examined or len(ids),
+        "fragments": [{"fragment_id": f, "mask_rle": None, "area": 0.01,
+                       "box": {"x": 0.1 * (i + 1), "y": 0.1, "w": 0.05, "h": 0.05},
+                       "naming": None} for i, f in enumerate(ids)]})
+    return SRC.fragment_set((artifact_id, payload))
+
+
+def geometry_ground(detail: str = "the severed edges continue into each other",
+                    strength: float = 0.4) -> "GR.GroundEvidence":
+    return GR.GroundEvidence(kind=GroundKind.SHAPE_CONTINUITY, detail=detail,
+                             attributed_to=GR.GEOMETRY, strength=strength)
+
+
+def model_ground(model: str = "dinov2_affinity",
+                 kind: GroundKind = GroundKind.APPEARANCE_CONTINUITY,
+                 strength: float = 0.95) -> "GR.GroundEvidence":
+    return GR.GroundEvidence(kind=kind, detail="pooled patch cosine",
+                             attributed_to=f"{GR.MODEL_PREFIX}{model}", strength=strength)
+
+
+# ── extent.fused_hypothesis ──────────────────────────────────────────────────
+
+
+def test_a_grouping_of_measured_masks_is_not_a_measurement():
+    """Every member is a mask somebody measured per pixel. The claim that they are one thing is a
+    different kind of statement about the same pixels, and the partition caps it."""
+    source = extents("cubist")
+    result = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        proposal_id="upper_and_lower", member_keys=(f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+        evidence=(geometry_ground(),))], sources=[source])
+    hypothesis, = result.payload.hypotheses
+    assert hypothesis.partition is S.EpistemicPartition.INTERPRETIVE_GROUPING
+    assert hypothesis.epistemic_status is EpistemicStatus.INTERPRETIVE
+    assert source.epistemic_status is EpistemicStatus.MEASURED, "the members were measured"
+    assert result.ceiling is EpistemicStatus.INTERPRETIVE
+
+
+def test_asserting_hidden_extent_is_a_different_claim_and_costs_more():
+    source = extents("cubist")
+    both = FUS.produce_fused_hypothesis([
+        FUS.ProposedFusion("visible", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+                           evidence=(geometry_ground(),)),
+        FUS.ProposedFusion("behind", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+                           evidence=(geometry_ground(),), asserts_hidden_extent=True),
+    ], sources=[source])
+    by_hidden = {h.asserts_hidden_extent: h for h in both.payload.hypotheses}
+    assert by_hidden[False].epistemic_status is EpistemicStatus.INTERPRETIVE
+    assert by_hidden[True].epistemic_status is EpistemicStatus.UNCERTAIN
+    assert by_hidden[True].partition is S.EpistemicPartition.INFERRED_COMPLETION
+    assert both.ceiling is EpistemicStatus.UNCERTAIN, (
+        "a set holding one completion asserts hidden extent, and the record says so")
+
+
+def test_no_weight_lifts_a_grouping_out_of_its_partition():
+    source = extents("cubist")
+    result = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "certain", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+        evidence=(geometry_ground(strength=1.0),), weight=1.0)], sources=[source])
+    hypothesis, = result.payload.hypotheses
+    assert hypothesis.weight == 1.0
+    assert hypothesis.epistemic_status is EpistemicStatus.INTERPRETIVE
+    lifted = result.payload.model_dump()
+    lifted["hypotheses"][0]["epistemic_status"] = "measured"
+    with pytest.raises(ValidationError):
+        S.ExtentFusionHypothesisPayload.model_validate(lifted)
+
+
+def test_a_grouping_with_no_ground_is_left_out_and_named():
+    result = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "bare", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"))], sources=[extents("cubist")])
+    assert result.payload.hypotheses == []
+    assert [o.what for o in result.omissions_for("no_ground_supplied")] == ["bare"]
+
+
+def test_the_only_ground_may_not_be_one_lane_c_admitted_as_one_ground_among_several():
+    """`false-similarity`: three identical discs, two of which belong together. A cosine of 0.95
+    is exactly what the trap produces, and it may not carry a fusion by itself."""
+    alone = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "resemblance_only", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+        evidence=(model_ground(),))], sources=[extents("cubist")])
+    assert alone.payload.hypotheses == []
+    assert [o.what for o in alone.omissions_for("sole_ground_forbidden")] == ["resemblance_only"]
+
+    beside = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "resemblance_and_shape", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+        evidence=(model_ground(), geometry_ground()))], sources=[extents("cubist")])
+    assert len(beside.payload.hypotheses) == 1, "Lane C's rule is `sole`, and this one is not"
+    assert len(beside.payload.hypotheses[0].grounds) == 2
+
+
+def test_a_ground_from_a_model_lane_c_refused_never_reaches_the_payload():
+    result = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "smuggled", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+        evidence=(geometry_ground(),
+                  model_ground(model="pix2gestalt", kind=GroundKind.OCCLUSION_HYPOTHESIS)))],
+        sources=[extents("cubist")])
+    hypothesis, = result.payload.hypotheses
+    assert [g.kind for g in hypothesis.grounds] == [GroundKind.SHAPE_CONTINUITY]
+    dropped, = result.omissions_for("ground_not_admitted")
+    assert "pix2gestalt" in dropped.what
+    assert "never put to 'extent.fused_hypothesis'" in dropped.detail, (
+        "an admission is per (model, form). pix2gestalt is a deferred candidate for the PARTITION "
+        "form and is not thereby a candidate for this one — a verdict earned on one question is "
+        "not a licence to answer another")
+
+
+def test_a_ground_attributed_to_nothing_this_laboratory_knows_is_refused():
+    result = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "anonymous", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+        evidence=(GR.GroundEvidence(kind=GroundKind.SHAPE_CONTINUITY, detail="it looks right",
+                                    attributed_to="intuition"),))], sources=[extents("cubist")])
+    assert result.payload.hypotheses == []
+    assert result.omissions_for("ground_not_admitted")
+
+
+def test_a_person_may_assert_and_may_not_thereby_measure():
+    person = GR.GroundEvidence(kind=GroundKind.DEPTH_CONTINUITY, detail="I can see it is behind",
+                               attributed_to=GR.HUMAN)
+    vetting = GR.vet([person], form_key=FUS.FORM, subject="p")
+    assert vetting.grounds == ()
+    assert vetting.omitted[0].reason == "ground_not_admitted"
+    allowed = GR.vet([GR.GroundEvidence(kind=GroundKind.HUMAN_ASSERTION, detail="one tree",
+                                        attributed_to=GR.HUMAN)], form_key=FUS.FORM, subject="p")
+    assert len(allowed.grounds) == 1
+
+
+def test_a_member_no_supplied_source_holds_is_refused_rather_than_invented():
+    result = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "dangling", (f"{CUBIST}#form_upper", "art_elsewhere#ghost"),
+        evidence=(geometry_ground(),))], sources=[extents("cubist")])
+    assert result.payload.hypotheses == []
+    assert [o.what for o in result.omissions_for("endpoint_dangling")] == ["dangling"]
+
+
+def test_a_fusion_of_one_thing_with_itself_is_not_a_fusion():
+    result = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "self", (f"{CUBIST}#form", f"{CUBIST}#form"), evidence=(geometry_ground(),))],
+        sources=[extents("cubist")])
+    assert [o.what for o in result.omissions_for("self_pair")] == ["self"]
+
+
+def test_a_box_basis_extent_set_cannot_ground_a_fusion_and_is_not_quietly_downgraded():
+    """A bounding box does not show that two patches continue into each other. Composing over it
+    at a lower ceiling would produce a hypothesis whose evidence is a rectangle."""
+    boxes = extents("cubist", basis="box", status="interpretive")
+    result = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "boxes", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+        evidence=(geometry_ground(),))], sources=[boxes])
+    assert result.payload is None
+    assert [o.reason for o in result.omitted] == ["basis_not_admitted"]
+    assert "box" not in D.form(FUS.FORM).admissible_bases
+    assert result.input_artifact_ids == (), "a source that was dropped is not an input"
+
+
+def test_two_competing_groupings_of_the_same_members_both_survive():
+    """Dropping the rejected grouping is how a guess becomes a fact between one panel and the
+    next. `alternatives_retained` is the field that says it did not happen here."""
+    result = FUS.produce_fused_hypothesis([
+        FUS.ProposedFusion("one_tree", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+                           evidence=(geometry_ground(),), weight=0.8),
+        FUS.ProposedFusion("two_things", (f"{CUBIST}#form_upper", f"{CUBIST}#plane"),
+                           evidence=(geometry_ground("the planes align"),), weight=0.2),
+    ], sources=[extents("cubist")])
+    assert len(result.payload.hypotheses) == 2
+    assert result.payload.alternatives_retained is True
+    assert [h.weight for h in result.payload.hypotheses] == [0.8, 0.2], (
+        "the order is the order they were proposed in — never sorted by weight")
+
+
+def test_fragments_considered_is_carried_through_and_never_recounted():
+    """"the fragments were considered and no grouping was supportable" and "nobody looked" arrive
+    at the same empty list. This is the whole difference."""
+    source = fragments("frag_a", "frag_b", examined=9)
+    result = FUS.produce_fused_hypothesis([], sources=[source])
+    assert result.payload.fragments_considered == 9
+    assert result.payload.hypotheses == []
+
+
+def test_the_same_proposal_composed_twice_gets_the_same_hypothesis_id():
+    proposals = [FUS.ProposedFusion("p", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+                                    evidence=(geometry_ground(),))]
+    one = FUS.produce_fused_hypothesis(proposals, sources=[extents("cubist")])
+    two = FUS.produce_fused_hypothesis(proposals, sources=[extents("cubist")])
+    assert one.payload.model_dump() == two.payload.model_dump()
+
+
+# ── extent.hypothesis_set ────────────────────────────────────────────────────
+
+
+def readings() -> List["ALT.Reading"]:
+    return [
+        ALT.Reading("body_only", weight=0.5, member_keys=(f"{CUBIST}#form",),
+                    evidence=(geometry_ground("the figure alone"),)),
+        ALT.Reading("body_and_shadow", weight=0.5,
+                    member_keys=(f"{CUBIST}#form", f"{CUBIST}#plane"),
+                    evidence=(geometry_ground("the dark shape is cast by it"),)),
+    ]
+
+
+def test_competing_readings_are_held_open_and_the_record_cannot_resolve_itself():
+    result = ALT.produce_hypothesis_set("is the shadow part of the figure?", readings(),
+                                        sources=[extents("cubist")])
+    assert len(result.payload.alternatives) == 2
+    assert "chosen" not in result.payload.model_dump()
+    assert "winner" not in S.ExtentHypothesisSetPayload.model_fields
+
+
+def test_an_unresolved_alternative_is_uncertain_however_measured_its_extents_are():
+    source = extents("cubist")
+    result = ALT.produce_hypothesis_set("which reading?", readings(), sources=[source])
+    assert source.epistemic_status is EpistemicStatus.MEASURED
+    assert result.ceiling is EpistemicStatus.UNCERTAIN
+    assert D.form(ALT.FORM).admissible_partitions == ("unresolved_alternative",)
+
+
+def test_alternatives_are_ordered_by_id_and_never_by_weight():
+    """A reader that takes the first element takes a winner, whatever the field it was sorted on
+    is called."""
+    heavy = [ALT.Reading("a_light", weight=0.1, member_keys=(f"{CUBIST}#form",)),
+             ALT.Reading("b_heavy", weight=0.9, member_keys=(f"{CUBIST}#plane",))]
+    result = ALT.produce_hypothesis_set("q", heavy, sources=[extents("cubist")])
+    ids = [a.alternative_id for a in result.payload.alternatives]
+    assert ids == sorted(ids), "the order is the derived id, which carries no ranking"
+    weights = [a.weight for a in result.payload.alternatives]
+    assert set(weights) == {0.1, 0.9}
+    heaviest = max(result.payload.alternatives, key=lambda a: a.weight)
+    assert (heaviest is result.payload.alternatives[0]) == (
+        heaviest.alternative_id == ids[0]), (
+        "which alternative lands first is decided by the id and by nothing else")
+
+
+def test_weights_that_happen_to_sum_to_one_are_not_thereby_probabilities():
+    result = ALT.produce_hypothesis_set("q", readings(), sources=[extents("cubist")])
+    assert sum(a.weight for a in result.payload.alternatives) == 1.0
+    assert result.payload.weights_are_probabilities is False
+
+
+def test_declaring_probabilities_that_do_not_sum_to_one_is_refused_rather_than_validated_away():
+    lopsided = [ALT.Reading("a", weight=0.9, member_keys=(f"{CUBIST}#form",)),
+                ALT.Reading("b", weight=0.9, member_keys=(f"{CUBIST}#plane",))]
+    result = ALT.produce_hypothesis_set("q", lopsided, sources=[extents("cubist")],
+                                        weights_are_probabilities=True)
+    assert result.payload.weights_are_probabilities is False
+    assert any(r.code is RefusalCode.INVALID_PARAMETERS for r in result.refusals)
+
+
+def test_one_surviving_reading_is_a_hard_mask_and_is_refused_here():
+    result = ALT.produce_hypothesis_set("q", [readings()[0]], sources=[extents("cubist")])
+    assert result.payload.alternatives == []
+    assert result.payload.alternatives_considered == 1
+    assert [o.reason for o in result.omissions_for("single_reading")] == ["single_reading"]
+    assert any(r.code is RefusalCode.UNSUPPORTED_FORM for r in result.refusals)
+
+
+def test_a_reading_that_names_nothing_is_a_weight_about_nothing():
+    result = ALT.produce_hypothesis_set("q", readings() + [ALT.Reading("empty", weight=0.3)],
+                                        sources=[extents("cubist")])
+    assert len(result.payload.alternatives) == 2
+    assert result.payload.alternatives_considered == 3
+    assert [o.what for o in result.omissions_for("endpoint_dangling")] == ["empty"]
+
+
+# ── both forms are deferred, and every producer says so ──────────────────────
+
+
+@pytest.mark.parametrize("build", [
+    lambda: FUS.produce_fused_hypothesis(
+        [FUS.ProposedFusion("p", (f"{CUBIST}#form_upper", f"{CUBIST}#form_lower"),
+                            evidence=(GR.GroundEvidence(kind=GroundKind.SHAPE_CONTINUITY,
+                                                        detail="d"),))],
+        sources=[extents("cubist")]),
+    lambda: ALT.produce_hypothesis_set("q", readings(), sources=[extents("cubist")]),
+])
+def test_a_deferred_form_carries_its_payload_and_its_verdict_and_is_not_writable(build):
+    """The shape is what this phase settles; the deferral is what it does not soften. A caller
+    that wants to mint an artifact has to step over `producible` to do it."""
+    result = build()
+    assert result.payload is not None
+    assert result.producible is False
+    assert result.writable_payload is None
+    assert any(r.code is RefusalCode.FORM_NOT_PRODUCIBLE for r in result.refusals)
