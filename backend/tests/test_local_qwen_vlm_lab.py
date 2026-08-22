@@ -436,3 +436,31 @@ def test_a_decorated_citation_is_repaired_not_called_a_hallucination():
     assert lab.normalize_oid("[img-k7-o0]") == "img-k7-o0"
     assert lab.normalize_oid(" `img-q2-o3` ") == "img-q2-o3"
     assert lab.normalize_oid("img-v9-o1") == "img-v9-o1"
+
+
+def test_precision_language_is_reported_and_not_counted():
+    """
+    `the details are precisely executed` is a claim about craft, not a measurement. The first
+    version of the table failed a reliability run for it — the same crying-wolf mistake already
+    fixed twice. The adverb is now reported under `precision_language` and does not count.
+    """
+    a = lab.audit_text("the details are precisely executed and perfectly smooth")
+    assert a["clean"]
+    assert a["precision_language"]
+    b = lab.audit_text("precisely parallel to the shoulder")
+    assert not b["clean"]
+    assert "a precision claim" in [h["what"] for h in b["measurement_claims"]]
+
+
+def test_the_reliability_record_keeps_what_it_counted():
+    """
+    The first record said `1 measurement claim` and could not say which, so the gate it failed
+    could not be read and the lane could not tell a fabricated measurement from its own false
+    positive. A count without the thing it counted is not a measurement.
+    """
+    rec = _frozen("experiment-4-reliability")
+    for t in rec["trials"]:
+        assert "measurement_matches" in t and "attribution_matches" in t
+        assert len(t["measurement_matches"]) == t["measurement_claims"]
+        assert len(t["attribution_matches"]) == t["attribution_claims"]
+        assert t["parsed"] is None or "observations" in t["parsed"]

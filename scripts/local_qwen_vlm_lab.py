@@ -445,10 +445,25 @@ MEASUREMENT_PATTERNS = [
     # single most likely fabricated measurement in a visual reading walked straight through.
     (r"\b\d+(?:\.\d+)?\s*(?:%|per\s?cent\b|percent\b)", "a percentage", False),
     (r"\bmeasur(?:ed|ement|ements|es)\b", "the word measured", False),
-    (r"\b(?:exactly|precisely)\b", "a precision claim", False),
+    # `precisely` ALONE IS NOT A MEASUREMENT. "the details are precisely executed" is a claim
+    # about craft, and the first version of this table failed a run for it — the same crying-wolf
+    # mistake already fixed twice above. A precision claim needs something quantitative or
+    # geometric next to it; the bare adverb is recorded under `precision_language`, which is
+    # reported and does not count.
+    (r"\b(?:exactly|precisely)\s+(?:\d|one|two|three|half|at the |on the |along the |aligned|"
+     r"parallel|perpendicular|vertical|horizontal|centred|centered|symmetrical)",
+     "a precision claim", False),
     (r"\bratio of\s+\d", "a stated ratio", False),
     (r"\b\d+(?:\.\d+)?\s*:\s*\d+(?:\.\d+)?\b", "a numeric ratio", False),
     (r"\bcalibrat(?:ed|ion)\b", "a calibration claim", False),
+]
+
+#: Reported, never counted. The difference between "this is how the audit reads" and "this is a
+#: fabricated measurement" is the difference between a note and a verdict.
+SOFT_MEASUREMENT_PATTERNS = [
+    (r"\b(?:exactly|precisely|perfectly)\b", "precision language", False),
+    (r"\b(?:uniform|uniformly|even|evenly)\s+(?:across|throughout|distributed)\b",
+     "a uniformity claim", False),
 ]
 
 ATTRIBUTION_PATTERNS = [
@@ -514,11 +529,18 @@ def audit_text(text: str) -> Dict[str, Any]:
     attributed = [{"pattern": p, "what": w, "match": m.group(0)}
                   for p, w, cs in ATTRIBUTION_PATTERNS
                   for m in re.finditer(p, text, 0 if cs else re.I)]
+    soft = [{"pattern": p, "what": w, "match": m.group(0)}
+            for p, w, cs in SOFT_MEASUREMENT_PATTERNS
+            for m in re.finditer(p, text, 0 if cs else re.I)]
     return {
         "measurement_claims": measured,
         "attribution_claims": attributed,
+        "precision_language": soft,
         "proper_nouns": find_proper_nouns(text),
         "clean": not measured and not attributed,
+        "note": "`precision_language` is reported and NOT counted: an adverb of manner is a claim "
+                "about craft, not a measurement, and failing a run for it is the audit crying "
+                "wolf.",
     }
 
 
@@ -1328,9 +1350,17 @@ def cmd_reliability(args) -> int:
                                              if o.get("status") != "interpretive"}),
             "hallucinated_refs": ([parsed.get("image_ref")]
                                   if parsed and parsed.get("image_ref") not in REF_TOKENS else []),
+            # THE MATCHES, NOT ONLY THE COUNT. The first version of this record said
+            # "1 measurement claim" and could not say which — so the gate it failed could not be
+            # read, and the lane could not tell a fabricated measurement from its own false
+            # positive. A count without the thing it counted is not a measurement.
             "measurement_claims": len(r["audit"]["measurement_claims"]),
+            "measurement_matches": r["audit"]["measurement_claims"],
             "attribution_claims": len(r["audit"]["attribution_claims"]),
+            "attribution_matches": r["audit"]["attribution_claims"],
+            "precision_language": r["audit"].get("precision_language") or [],
             "proper_nouns": r["audit"]["proper_nouns"],
+            "parsed": parsed,
             "prompt_copying": prompt_copying(BLIND_SYSTEM + BLIND_USER.format(ref=ref), prose),
             "latency_ms": r["call"].get("client_wall_ms"),
             "prompt_tokens": r["call"].get("prompt_tokens"),
@@ -1477,9 +1507,10 @@ def cmd_stability(args) -> int:
         return 2
 
     prompts = json.loads(PROMPTS_PATH.read_text())["prompts"]
-    entry = next((x for x in prompts if x["id"] == args.prompt_id), None)
+    wanted = getattr(args, "stability_prompt_id", None) or "adversarial-sameness"
+    entry = next((x for x in prompts if x["id"] == wanted), None)
     if not entry:
-        print(f"no prompt {args.prompt_id!r}")
+        print(f"no prompt {wanted!r}")
         return 2
 
     digest, index = _observation_digest(exp1)
@@ -1650,8 +1681,8 @@ def cmd_gates(args) -> int:
       f"{s.get('trials_with_hallucinated_ref')} invented; the comparison pass invented "
       f"{((exp3 or {}).get('invented_refs')) or 'none'} and used "
       f"{((exp3 or {}).get('wrong_level_refs')) or 'no'} observation ids where an image ref was "
-      f"required (a level confusion, not a hallucination — and it fails this gate because a "
-      f"reader takes it for a claim about whole images)",
+      f"required. A wrong-level ref is a level confusion rather than a hallucination, and it "
+      f"still fails this gate, because a reader takes it for a claim about whole images",
       have=bool(rel and exp3))
 
     novel = sum((r.get("novelty") or {}).get("novel_substantive_count") or 0
@@ -1686,10 +1717,14 @@ def cmd_gates(args) -> int:
 
     measured = (s.get("trials_with_measurement_claim") or 0) + (s.get(
         "trials_with_invalid_status") or 0)
+    hits = sorted({m["match"] for t in ((rel or {}).get("trials") or [])
+                   for m in (t.get("measurement_matches") or [])})
     g("no measured status", "no measured status is fabricated",
       measured == 0,
-      f"{s.get('trials_with_invalid_status')} trials carried a status other than `interpretive`; "
-      f"{s.get('trials_with_measurement_claim')} trials wrote measurement grammar",
+      f"{s.get('trials_with_invalid_status')} trials carried a status other than `interpretive` "
+      f"— the enum held. {s.get('trials_with_measurement_claim')} trials wrote measurement "
+      f"grammar into the PROSE beside it: {hits or 'none'}. That gap is the whole reason the "
+      f"prose is audited apart from the fields",
       have=bool(rel))
 
     three = ((census or {}).get("probes") or {}).get("three_images") or {}
@@ -1896,7 +1931,11 @@ def main(argv=None) -> int:
     sub.add_parser("rehearsal-prompts", help="experiment 5 — the four canonical prompts")
     st = sub.add_parser("stability", help="ask one prompt N times and count the stances")
     st.add_argument("--repeats", type=int, default=6)
-    st.add_argument("--prompt-id", default="adversarial-sameness")
+    # ITS OWN ATTRIBUTE NAME. `all` passes one namespace through every subcommand, so a
+    # `--prompt-id` here shares storage with the alignment step's — and the first `all` run
+    # measured the stability of the RICH prompt while printing the adversarial one's heading.
+    st.add_argument("--stability-prompt-id", dest="stability_prompt_id",
+                    default="adversarial-sameness")
     ar = sub.add_parser("restart", help="shut the server down and bring it back")
     ar.add_argument("--ctx", type=int, default=32768)
     ar.add_argument("--startup-budget", type=float, default=180.0)
@@ -1908,6 +1947,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     for attr, default in (("trials", 10), ("prompt_id", "rich-tactile-philosophy"),
                           ("with_restart", False), ("ctx", 32768), ("repeats", 6),
+                          ("stability_prompt_id", "adversarial-sameness"),
                           ("startup_budget", 180.0)):
         if not hasattr(args, attr):
             setattr(args, attr, default)
