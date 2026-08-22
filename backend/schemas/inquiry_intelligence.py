@@ -45,9 +45,10 @@ translucent" two passes later, with nothing to point at as the moment it happene
 ## Open vocabulary, closed grammar
 
 Every SUBJECT is an open string: a feature, a comparison dimension, a user's own word. Every
-RELATION between subjects is a closed enum. No enum in this file names a fold, a sculpture, a
-building, a plant or any other rehearsal subject, and `test_inquiry_intelligence_contracts.py`
-scans this module for exactly that — the same guard `semantic_compilation` lives under.
+RELATION between subjects is a closed enum. Every member of every enum here describes a shape one
+could want to say about anything at all, and none of them names a subject any rehearsal happens to
+be about — `test_inquiry_intelligence_contracts.py` scans this module against the vocabulary of all
+four fixtures, which is the same guard `semantic_compilation` lives under.
 
 ## Ids
 

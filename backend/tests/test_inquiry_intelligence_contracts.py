@@ -14,6 +14,8 @@ or the schema will be routed around the first time it is inconvenient.
 from __future__ import annotations
 
 import json
+import re
+from enum import Enum
 from pathlib import Path
 
 import pytest
@@ -35,6 +37,7 @@ from backend.schemas.inquiry_intelligence import (READABLE_SCHEMA_VERSIONS, SCHE
                                                   IntelligenceOutcome, IntelligenceOutcomeRecord,
                                                   ParrotAssessment, RelationCritique, Relevance,
                                                   SourceCompleteness, WorkflowCompletion)
+from backend.tests.fixtures import inquiry_intelligence_fixtures as F
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -804,3 +807,212 @@ def test_insufficient_observations_cannot_be_blamed_for_accepted_relations():
         an_outcome(outcome=IntelligenceOutcome.INSUFFICIENT_OBSERVATIONS,
                    counts=IntelligenceCounts(relations=3, accepted_relations=2,
                                              accepted_cross_image_relations=1))
+
+
+# ── 16. four subjects, one set of contracts ─────────────────────────────────
+
+@pytest.mark.parametrize("name", F.FIXTURES)
+def test_a_fixture_loads_through_the_real_models(name):
+    loaded = F.load(name)
+    assert loaded.name == name
+    assert loaded.observations and loaded.relations and loaded.critiques
+
+
+@pytest.mark.parametrize("name", F.FIXTURES)
+def test_a_fixture_round_trips_without_dropping_a_field(name):
+    """The stored document is the thing under test. A fixture built in memory proves nothing about
+    what survives an encode and a decode, which is the only form these objects will ever be in by
+    the time anybody reads them."""
+    body = F.raw(name)
+    loaded = F.load(name)
+    assert loaded.inquiry_map.model_dump(mode="json") == body["inquiry_map"]
+    assert [o.model_dump(mode="json") for o in loaded.observations] == body["observations"]
+    assert [a.model_dump(mode="json") for a in loaded.alignments] == body["alignments"]
+    assert [c.model_dump(mode="json") for c in loaded.contrasts] == body["contrasts"]
+    assert [r.model_dump(mode="json") for r in loaded.relations] == body["relations"]
+    assert [c.model_dump(mode="json") for c in loaded.critiques] == body["critiques"]
+    assert loaded.outcome.model_dump(mode="json") == body["outcome"]
+
+
+@pytest.mark.parametrize("name", F.FIXTURES)
+def test_every_reference_in_a_fixture_resolves(name):
+    """Not "the ids look plausible" — every contrast and every relation is resolved against the
+    observations that fixture actually carries, and the declared images must equal the resolved
+    ones."""
+    loaded = F.load(name)
+    known = {o.observation_id for o in loaded.observations}
+    for item in (*loaded.contrasts, *loaded.relations):
+        check_resolves(item, loaded.observations)
+    for alignment in loaded.alignments:
+        assert alignment.observation_id in known
+        assert alignment.hypothesis_id in loaded.inquiry_map.hypothesis_ids()
+    for critique in loaded.critiques:
+        loaded.relation(critique.relation_id)
+
+
+@pytest.mark.parametrize("name", F.FIXTURES)
+def test_a_fixtures_counts_are_the_objects_it_actually_carries(name):
+    """The outcome cannot lie about the run it summarises. This is the arithmetic the record's own
+    validator cannot do — it never sees the objects, only the numbers."""
+    loaded, counts = F.load(name), F.load(name).outcome.counts
+    assert counts.observations == len(loaded.observations)
+    assert counts.relations == len(loaded.relations)
+    assert counts.alignments == len(loaded.alignments)
+    assert counts.contrasts == len(loaded.contrasts)
+    assert counts.hypotheses == len(loaded.inquiry_map.user_hypotheses)
+    assert counts.refused_observations == len(
+        [o for o in loaded.observations if o.state is not ObservationState.OBSERVED])
+    assert counts.accepted_relations == len(loaded.accepted_critiques())
+    crossing = [c for c in loaded.accepted_critiques()
+                if len(check_resolves(loaded.relation(c.relation_id), loaded.observations)) >= 2]
+    assert counts.accepted_cross_image_relations == len(crossing)
+
+
+@pytest.mark.parametrize("name", F.FIXTURES)
+def test_a_critics_image_diversity_claim_is_true_of_the_observations(name):
+    """The critic says `cross_image`; resolution says whether it is. A claim nobody checks against
+    the objects is the claim that drifts first."""
+    loaded = F.load(name)
+    for critique in loaded.critiques:
+        if critique.image_diversity is ImageDiversity.CROSS_IMAGE:
+            resolved = check_resolves(loaded.relation(critique.relation_id), loaded.observations)
+            assert len(resolved) >= 2, (critique.critique_id, resolved)
+
+
+@pytest.mark.parametrize("name", F.FIXTURES)
+def test_nothing_in_any_fixture_is_measured(name):
+    """No instrument has run in any of these. Every observation and every relation is interpretive,
+    and the fixtures would be dishonest in exactly the way the schema exists to prevent if one of
+    them quietly were not."""
+    loaded = F.load(name)
+    for observation in loaded.observations:
+        assert observation.epistemic_status is not EpistemicStatus.MEASURED
+        assert observation.measurement is None
+    for relation in loaded.relations:
+        assert relation.epistemic_status is EpistemicStatus.INTERPRETIVE
+    assert loaded.outcome.counts.measured_observations == 0
+
+
+@pytest.mark.parametrize("name", F.FIXTURES)
+def test_every_observation_is_about_a_picture_the_person_pointed_at(name):
+    loaded = F.load(name)
+    requested = set(loaded.inquiry_map.images_requested())
+    for observation in loaded.observations:
+        assert observation.image_id in requested, (observation.observation_id, requested)
+
+
+@pytest.mark.parametrize("name", F.FIXTURES)
+def test_every_fixture_keeps_the_persons_words_as_the_persons(name):
+    loaded = F.load(name)
+    for hypothesis in loaded.inquiry_map.user_hypotheses:
+        assert hypothesis.origin is MaterialOrigin.PROMPT
+        dumped = hypothesis.model_dump(mode="json")
+        assert not ({"image_id", "region_ref", "ground_ref", "epistemic_status", "measurement"}
+                    & set(dumped))
+
+
+# ── 17. the adversarial case: the pictures disagree with the person ─────────
+
+def test_the_system_can_tell_the_person_they_are_wrong():
+    """A system that can only agree with its user has no way to be useful to them.
+
+    Note what does NOT happen: the hypothesis is not amended, not annotated and not downgraded. It
+    sits in the map exactly as typed, and the disagreement lives in a third object beside it.
+    """
+    loaded = F.load("contradicted-hypothesis")
+    hypothesis = loaded.inquiry_map.user_hypotheses[0]
+    challenges = [a for a in loaded.alignments if a.alignment is AlignmentKind.CHALLENGES]
+    assert challenges, "the adversarial fixture must contain an actual challenge"
+    assert all(a.hypothesis_id == hypothesis.hypothesis_id for a in challenges)
+    assert hypothesis.text == F.raw("contradicted-hypothesis")["inquiry_map"]["user_hypotheses"][0]["text"]
+    assert loaded.accepted_critiques(), "the contradiction was accepted, not merely proposed"
+    assert loaded.outcome.was_useful()
+
+
+def test_an_inquiry_can_both_support_and_challenge_one_hypothesis():
+    """Two pictures, one claim, opposite bearings. Nothing reconciles them into a score."""
+    loaded = F.load("contradicted-hypothesis")
+    kinds = {a.alignment for a in loaded.alignments}
+    assert AlignmentKind.SUPPORTS in kinds and AlignmentKind.CHALLENGES in kinds
+
+
+def test_a_finished_run_can_still_be_prompt_dominated():
+    """The other end of the same axis: the machinery completed, the critic refused the one relation
+    it produced for restating the question, and the record says so rather than reporting a
+    success."""
+    loaded = F.load("rose-window-organization")
+    assert loaded.outcome.finished() is True
+    assert loaded.outcome.was_useful() is False
+    assert loaded.outcome.outcome is IntelligenceOutcome.PROMPT_DOMINATED
+    assert loaded.critiques[0].prompt_parroting is ParrotAssessment.PARROTS_PROMPT
+    assert [o for o in loaded.observations if o.state is ObservationState.REFUSED]
+
+
+# ── 18. the contracts do not know what any of this is about ─────────────────
+
+PRODUCTION_SOURCES = [Path("backend/schemas/inquiry_intelligence.py")]
+
+
+def _scannable() -> list:
+    return [(p, (ROOT / p).read_text(encoding="utf-8").lower()) for p in PRODUCTION_SOURCES]
+
+
+def _mentions(text: str, noun: str) -> bool:
+    """Whole words only.
+
+    A substring scan reports `rose` inside `prose` and `rim` inside `trimmed`, which is not a
+    theoretical concern — both occur in this module, and a scan that cried wolf on them would be
+    switched off within a week. The tree's existing scan in `test_semantic_dissolution_fixtures`
+    is substring-based and gets away with it because none of its nouns embed in ordinary English.
+    """
+    return re.search(rf"\b{re.escape(noun)}\b", text) is not None
+
+
+def test_no_contract_source_names_any_fixtures_subject():
+    nouns = F.topic_nouns()
+    assert len(nouns) >= 15, "the scan is pointed at too little vocabulary"
+    sources = _scannable()
+    assert sources and all(text for _, text in sources), "the scan is pointed at nothing"
+    offences = [f"{path}: {noun}" for path, text in sources for noun in nouns
+                if _mentions(text, noun)]
+    assert not offences, offences
+
+
+def test_the_scan_would_catch_a_planted_noun():
+    """The negative control. A guard nobody has seen fail is a guard nobody knows is running."""
+    for noun in ("drapery", "nave", "frond", "vessel", "sculpture"):
+        assert _mentions(f"a field describing the {noun} in question", noun)
+    assert not _mentions("one prose field holding all three", "rose")
+    assert not _mentions("whitespace collapsed and trimmed", "rim")
+
+
+def test_the_four_subjects_share_no_vocabulary():
+    """The generality claim in the only form it can take. If two fixtures shared subject words, a
+    module that had learned one of them would still pass."""
+    subjects = {k: set(v) for k, v in F.TOPIC_NOUNS.items() if not k.startswith("_")}
+    for left in subjects:
+        for right in subjects:
+            if left < right:
+                assert not (subjects[left] & subjects[right]), (left, right)
+
+
+def test_no_enum_in_the_contracts_names_a_subject():
+    """Every closed set, member by member. An enum is where a topic hides most comfortably, because
+    it looks like vocabulary rather than like a decision about what can be said."""
+    import backend.schemas.inquiry_intelligence as module
+    nouns = F.topic_nouns()
+    for attribute in vars(module).values():
+        if isinstance(attribute, type) and issubclass(attribute, Enum):
+            for member in attribute:
+                for noun in nouns:
+                    assert not _mentions(str(member.value).lower(), noun), (attribute, member)
+
+
+def test_the_open_fields_really_are_open():
+    """The counterpart of the enum scan: the fields that carry a subject are plain strings, and a
+    later `Literal` or enum on any of them would close the vocabulary."""
+    from backend.schemas.inquiry_intelligence import ContrastPlan, VisualObservation
+    for model, field in ((VisualObservation, "feature"), (VisualObservation, "locus"),
+                         (ContrastPlan, "comparison_dimension"), (UserHypothesis, "text")):
+        annotation = model.model_fields[field].annotation
+        assert annotation is str, (model.__name__, field, annotation)
