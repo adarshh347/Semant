@@ -13,6 +13,23 @@ resolves that string, and a test asserts it stays that way. A lane that ended by
 theorist to a 9B quantisation on a 16 GB laptop would have skipped the measurement it existed to
 take.
 
+## There is a follow-up, and it changed two of these answers
+
+**INTELLIGENCE-001C-R1** lives in [`hardening/`](hardening/README.md) and re-asked the questions
+this lab left open. Two of its results revise what is written below:
+
+- **32k is ratified.** This lab ran at 32768 without comparing it to anything. R1 measured it
+  against 16k and against a retention benchmark: served 32768 verified, peak wired 9 305 MB under
+  a 12 713 MB ceiling, **20/20 retrieval** at four prompt sizes by five depths. `32K_SAFE`.
+- **Do not raise the image-token floor.** This lab recommended trying `--image-min-tokens 1024`
+  before grounding work. On this corpus that costs **2× latency and buys nothing** — spatial
+  density and lexical variety both fall slightly. The recommendation stands only for large images,
+  which R1 did not test.
+
+R1 also found that the false-premise failure is worse than measured here: **0 of 24 repeats**
+resisted every claim once the claim set was fixed. This lab's 1-in-8 was measured on a moving
+target, because the model split the prompt itself and the split changed between runs.
+
 ## Running it
 
 ```bash
