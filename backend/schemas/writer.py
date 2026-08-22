@@ -161,17 +161,26 @@ class RevisionAccept(BaseModel):
     """Commit a quarantined re-render as the next version of an existing passage.
 
     Never replaces prose: it appends an immutable version and moves the block's pointer.
+    `idempotency_key` is optional: the passage id already makes a retry converge, and the
+    key adds only the guarantee that one key cannot name two different commits.
     """
     passage_id: str
     lineage_id: str
     scene_id: str
     block_id: str
     in_response_to: Optional[FlagReference] = None
+    idempotency_key: Optional[str] = ""
 
 
 class LoopClose(BaseModel):
     """Record whether re-reading a revision found the divergence it answered still there."""
     reading_id: str
+    idempotency_key: Optional[str] = ""
+
+
+class OperatorRetire(BaseModel):
+    """Retire an operator. It stays, with its history; it can no longer be invoked."""
+    reason: Optional[str] = ""
 
 
 # --- Recall & cite (W9) ---
@@ -250,9 +259,15 @@ class BlockParse(BaseModel):
 # --- The author's decision on a quarantined passage ---
 
 class PassageAccept(BaseModel):
-    """Commit a passage into canon. `scene_id` overrides the one it was rendered against."""
+    """Commit a passage into canon. `scene_id` overrides the one it was rendered against.
+
+    A retry — the same passage, with or without the same `idempotency_key` — returns the
+    commit that already happened rather than making a second one.
+    """
     scene_id: Optional[str] = ""
+    idempotency_key: Optional[str] = ""
 
 
 class PassageDismiss(BaseModel):
     reason: Optional[str] = ""
+    idempotency_key: Optional[str] = ""

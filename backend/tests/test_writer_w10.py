@@ -22,6 +22,7 @@ import pytest
 
 from backend.services import manuscript_service as ms_svc
 from backend.services.writer import instrument
+from backend.services.writer import ledger as ledger_mod
 from backend.services.writer import operators as op_svc
 from backend.services.writer import passages as psg_svc
 from backend.services.writer import recall as rc_svc
@@ -50,6 +51,8 @@ def store(monkeypatch):
     manuscripts, scenes, snaps = FakeCollection(), FakeCollection(), FakeCollection()
     monkeypatch.setattr(op_svc, "writer_operator_collection", ops)
     monkeypatch.setattr(psg_svc, "writer_passage_collection", psgs)
+    # ATLAS-WRITER-MASS-BUILD-001D — every transition keeps an operation record.
+    monkeypatch.setattr(ledger_mod, "writer_operation_collection", FakeCollection())
     monkeypatch.setattr(instrument, "writer_usage_collection", usage)
     monkeypatch.setattr(reg, "writer_register_collection", regs)
     monkeypatch.setattr(rev_svc, "writer_passage_version_collection", versions_c)

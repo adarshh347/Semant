@@ -47,6 +47,51 @@ def _strip_html(fragment: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+_PARA_SPLIT_HTML = re.compile(r"</p>\s*<p[^>]*>", re.IGNORECASE)
+_PARA_SPLIT_TEXT = re.compile(r"\n\s*\n")
+
+
+def block_paragraphs(content: str) -> List[str]:
+    """ONE canonical block's internal paragraph structure, as plain text, in order.
+
+    A Writer passage is one block — one identity, one lineage, one version — and a render
+    of several paragraphs stays one block with structure INSIDE it. That is the decision
+    ATLAS-WRITER-MASS-BUILD-001D makes about multi-paragraph identity, and this is the one
+    place that structure is read. A block's content is either the text Accept stored (blank
+    lines between paragraphs) or the HTML the editor serialises (`<p>…</p><p>…</p>`); both
+    mean the same thing here, and neither creates a second identity.
+    """
+    raw = content or ""
+    if "<p" in raw.lower():
+        parts = _PARA_SPLIT_HTML.split(raw)
+    else:
+        parts = _PARA_SPLIT_TEXT.split(raw)
+    out: List[str] = []
+    for part in parts:
+        text = _strip_html(part)
+        if text:
+            out.append(text)
+    return out
+
+
+class BlockIdentityError(ValueError):
+    """Two blocks in one scene claim one id. Refused: a pointer with two targets moves nothing."""
+
+
+def assert_distinct_block_ids(blocks: List[Dict[str, Any]]) -> None:
+    seen: set = set()
+    for b in blocks or []:
+        bid = b.get("id")
+        if not bid:
+            continue
+        if bid in seen:
+            raise BlockIdentityError(
+                f"block id {bid} appears more than once — one block, one identity. A "
+                f"multi-paragraph passage is ONE block with paragraphs inside it, never "
+                f"several blocks sharing an id.")
+        seen.add(bid)
+
+
 def _word_count(blocks: List[Dict[str, Any]]) -> int:
     words = 0
     for b in blocks or []:
@@ -71,10 +116,12 @@ _MD_PREFIX = {"h1": "# ", "h2": "## ", "h3": "### ", "quote": "> "}
 def _blocks_to_markdown(blocks: List[Dict[str, Any]]) -> str:
     lines: List[str] = []
     for b in blocks or []:
-        text = _strip_html(b.get("content", ""))
-        if not text:
-            continue
-        lines.append(_MD_PREFIX.get(b.get("type", "paragraph"), "") + text)
+        prefix = _MD_PREFIX.get(b.get("type", "paragraph"), "")
+        # A block's internal paragraphs export as paragraphs. They are still one block —
+        # the export walks blocks and each block holds one version — but the cadence the
+        # author accepted is not flattened into one line on the way out.
+        for text in block_paragraphs(b.get("content", "")):
+            lines.append(prefix + text)
     return "\n\n".join(lines)
 
 
@@ -287,6 +334,7 @@ class ManuscriptService:
         if patch.get("title") is not None:
             fields["title"] = patch["title"]
         if patch.get("blocks") is not None:
+            assert_distinct_block_ids(patch["blocks"])
             fields["blocks"] = patch["blocks"]
             fields["word_count"] = _word_count(patch["blocks"])
         if not fields:
@@ -316,6 +364,79 @@ class ManuscriptService:
                 {"_id": manuscript_id}, {"$set": {"chapters": chapters, "updated_at": _now()}}
             )
         return await self.get_manuscript(manuscript_id)
+
+    # --- Atomic block writes (ATLAS-WRITER-MASS-BUILD-001D) ---
+    #
+    # `update_scene` is a read-modify-write of the whole block list, which is right for the
+    # author saving a scene and wrong for two Accepts landing in one scene at once: the
+    # second would overwrite the first's block. These two are the canon writes the Writer's
+    # transitions use instead. Both are CONDITIONAL and IDEMPOTENT — a retry that finds its
+    # block already there does nothing, and a pointer move that finds the block not where it
+    # expected refuses rather than overwriting whatever is there now. Canon still has one
+    # owner: these live here, and the Writer calls them.
+
+    async def append_block(self, scene_id: str, block: Dict[str, Any]) -> Dict[str, Any]:
+        """Append one block unless a block with that id is already present.
+
+        Returns `{scene, appended}`. `appended: False` means the id was already in the
+        scene — the retry case — and nothing was written. A missing scene raises.
+        """
+        if not block.get("id"):
+            raise ValueError("a block needs an id before it can be appended")
+        now = _now()
+        res = await scene_collection.update_one(
+            {"_id": scene_id, "blocks.id": {"$ne": block["id"]}},
+            {"$push": {"blocks": block}, "$set": {"updated_at": now}},
+        )
+        scene = await scene_collection.find_one({"_id": scene_id})
+        if not scene:
+            raise ValueError(f"no such scene: {scene_id}")
+        appended = res.matched_count > 0
+        if appended:
+            await scene_collection.update_one(
+                {"_id": scene_id}, {"$set": {"word_count": _word_count(scene.get("blocks", []))}})
+            await manuscript_collection.update_one(
+                {"_id": scene["manuscript_id"]}, {"$set": {"updated_at": now}})
+        return {"scene": await self.get_scene(scene_id), "appended": appended}
+
+    async def point_block(
+        self, scene_id: str, block_id: str, *, lineage_id: str, version: int,
+        content: Optional[str] = None, provenance: Optional[Dict[str, Any]] = None,
+        expect_version: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Move ONE block's pointer to `lineage_id@version`, optionally replacing its text.
+
+        Conditional on `expect_version` when given: the block must currently show that
+        version, or nothing is written. Returns `{scene, moved}`; `moved: False` with the
+        block already at `version` is the retry case, and `moved: False` otherwise means
+        the block is somewhere this call did not expect — the caller decides.
+        """
+        query: Dict[str, Any] = {"_id": scene_id}
+        if expect_version is None:
+            query["blocks"] = {"$elemMatch": {"id": block_id}}
+        else:
+            query["blocks"] = {"$elemMatch": {"id": block_id, "version": expect_version}}
+        fields: Dict[str, Any] = {
+            "blocks.$[b].lineage_id": lineage_id,
+            "blocks.$[b].version": int(version),
+            "updated_at": _now(),
+        }
+        if content is not None:
+            fields["blocks.$[b].content"] = content
+        if provenance is not None:
+            fields["blocks.$[b].provenance"] = dict(provenance)
+        res = await scene_collection.update_one(
+            query, {"$set": fields}, array_filters=[{"b.id": block_id}])
+        scene = await scene_collection.find_one({"_id": scene_id})
+        if not scene:
+            raise ValueError(f"no such scene: {scene_id}")
+        moved = res.matched_count > 0
+        if moved:
+            await scene_collection.update_one(
+                {"_id": scene_id}, {"$set": {"word_count": _word_count(scene.get("blocks", []))}})
+            await manuscript_collection.update_one(
+                {"_id": scene["manuscript_id"]}, {"$set": {"updated_at": _now()}})
+        return {"scene": await self.get_scene(scene_id), "moved": moved}
 
     # --- Version snapshots (immutable) ---
 

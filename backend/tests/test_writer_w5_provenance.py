@@ -21,6 +21,7 @@ import pytest
 
 from backend.services import manuscript_service as ms_svc
 from backend.services.writer import assemblages as asm
+from backend.services.writer import ledger as ledger_mod
 from backend.services.writer import dsl, instrument
 from backend.services.writer import operators as op_svc
 from backend.services.writer import passages as psg_svc
@@ -38,6 +39,8 @@ def store(monkeypatch):
     manuscripts, scenes, versions = FakeCollection(), FakeCollection(), FakeCollection()
     monkeypatch.setattr(op_svc, "writer_operator_collection", ops)
     monkeypatch.setattr(psg_svc, "writer_passage_collection", psgs)
+    # ATLAS-WRITER-MASS-BUILD-001D — every transition keeps an operation record.
+    monkeypatch.setattr(ledger_mod, "writer_operation_collection", FakeCollection())
     # W8 — Accept records an immutable version; it is ledger, not write-behind,
     # so it must be faked rather than allowed to reach the real collection.
     monkeypatch.setattr(rev_svc, "writer_passage_version_collection", FakeCollection())

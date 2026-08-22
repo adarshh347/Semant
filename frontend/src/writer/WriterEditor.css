@@ -108,6 +108,19 @@
   background: color-mix(in srgb, var(--writer-flag) 7%, transparent);
 }
 
+/*
+ * ONE committed passage, one identity (001D). The wrapper is invisible as a box — the
+ * paragraphs inside keep the two-tier cadence exactly as loose paragraphs do — and it
+ * highlights as ONE thing on hover, because it IS one thing: one block, one lineage, one
+ * version, however many paragraphs it holds.
+ */
+.writer-prose .writer-passage { margin: 0; }
+.writer-prose > .writer-passage { margin-top: 1.6rem; }
+.writer-prose .writer-passage > p:first-child { text-indent: 0; margin-top: 0; }
+.writer-prose .writer-passage:hover {
+  background: color-mix(in srgb, var(--writer-flag) 7%, transparent);
+}
+
 /* --- focus mode --- */
 
 .writer-editor--focus .writer-prose > * { transition: opacity 160ms ease; opacity: 0.28; }

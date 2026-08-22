@@ -15,6 +15,7 @@ from backend.services.research_agent_service import start_worker
 from backend.services.region_embedding_service import ensure_indexes
 from backend.services.taste_signal_service import ensure_indexes as ensure_taste_indexes
 from backend.services.vision_run_service import ensure_indexes as ensure_vision_run_indexes
+from backend.services.writer import ledger as writer_ledger
 from backend.database import post_collection
 from backend.schemas.post import PaginatedPosts
 from backend.security import require_api_key
@@ -53,6 +54,16 @@ async def startup_event():
     await ensure_taste_indexes()
     # Index the vision-run provenance store (CIRCULATION-SPINE-001 · P1)
     await ensure_vision_run_indexes()
+    # Index the Writer ledger (ATLAS-WRITER-MASS-BUILD-001D). LOUD ON DUPLICATES: a unique
+    # index is never created over rows that violate it, nothing is discarded, and the repair
+    # report is printed in full and kept on `app.state` for /api/v1/writer/ledger/integrity.
+    # The process still comes up — the vision app shares it — but every line of the report
+    # is in the log, and the Writer's own integrity route says the same thing.
+    try:
+        app.state.writer_ledger = await writer_ledger.ensure_indexes()
+    except writer_ledger.LedgerIntegrityError as exc:
+        print("❌ WRITER LEDGER INTEGRITY — unique indexes withheld:\n" + str(exc))
+        app.state.writer_ledger = exc.report
     # Start the Research Article Agent background worker (drains the agent_runs queue)
     start_worker()
 

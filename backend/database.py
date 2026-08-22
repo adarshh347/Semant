@@ -362,3 +362,18 @@ def perception_lab_collections():
     """The five lab collections, synchronously. `{record_kind: collection}`."""
     db = sync_database()
     return {kind: db.get_collection(name) for kind, name in PERCEPTION_LAB_COLLECTIONS.items()}
+
+
+# --- Semant Writer · ledger integrity (ATLAS-WRITER-MASS-BUILD-001D) ---
+# writer_operation_collection: one document per CANONICAL TRANSITION the Writer performs —
+# a passage Accept, a revision Accept, a Dismiss, a loop closure. It is the operation record
+# half of the compensating protocol in `services/writer/ledger.py`: every step a transition
+# takes is written here before and after it runs, so a call that died between the version
+# insert and the scene write leaves a record that says exactly that, and the next identical
+# call RESUMES from it rather than planning a second block id.
+#
+# It is DERIVED, in the sense the lane's invariants use the word: the immutable versions and
+# the scene blocks are the authority, and this collection only says how they got there. It
+# is also the one place a client-supplied idempotency key lands, so the same key arriving
+# twice maps to one operation rather than two.
+writer_operation_collection = database.get_collection("writer_operations")
