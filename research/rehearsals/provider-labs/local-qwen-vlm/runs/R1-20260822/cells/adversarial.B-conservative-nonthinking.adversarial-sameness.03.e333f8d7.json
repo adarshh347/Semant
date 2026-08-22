@@ -1,0 +1,364 @@
+{
+  "state": "done",
+  "started_at": "2026-08-22T22:07:30+0530",
+  "machine_at_start": {
+    "swap_used_mb": 8925.12,
+    "swap_raw": "total = 10240.00M  used = 8925.12M  free = 1314.88M  (encrypted)",
+    "wired_mb": 9530.9,
+    "compressed_mb": 3426.1,
+    "free_mb": 61.6,
+    "server_rss_mb": 7290.9,
+    "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+    "server_pid": 20985,
+    "at": "22:07:30"
+  },
+  "note": "a receipt written BEFORE the model was called. A cell left in this state was interrupted in flight; it is not a model failure and is never scored as one.",
+  "run_id": "R1-20260822",
+  "config_id": "adversarial.B-conservative-nonthinking.adversarial-sameness.03.e333f8d7",
+  "group": "adversarial",
+  "name": "B-conservative-nonthinking.adversarial-sameness.03",
+  "config": {
+    "sampling": {
+      "temperature": 0.7,
+      "top_p": 0.8,
+      "top_k": 20,
+      "min_p": 0.0,
+      "presence_penalty": 0.0
+    },
+    "thinking": false,
+    "prompt_id": "adversarial-sameness",
+    "repeat": 3,
+    "n_ctx": 32768,
+    "image_min_tokens": 1024
+  },
+  "inference_profile_id": "B-conservative-nonthinking",
+  "alignment": {
+    "prompt_id": "adversarial-sameness",
+    "saw_an_image": false,
+    "claim_ids_supplied": [
+      "c1",
+      "c2",
+      "c3",
+      "c4"
+    ],
+    "enum_injected": [
+      "c1",
+      "c2",
+      "c3",
+      "c4"
+    ],
+    "call": {
+      "label": "align:adversarial-sameness",
+      "ok": true,
+      "status": "completed",
+      "finish_reason": "stop",
+      "content": "{\n  \"dispositions\": [\n    {\n      \"user_claim_id\": \"c1\",\n      \"disposition\": \"cannot_determine\",\n      \"observation_ids\": [\"img-k7-o1\", \"img-k7-o2\", \"img-k7-o3\", \"img-q2-o0\", \"img-q2-o1\", \"img-q2-o2\", \"img-q2-o3\", \"img-q2-o4\", \"img-v9-o0\", \"img-v9-o1\", \"img-v9-o2\", \"img-v9-o3\"],\n      \"discriminative_explanation\": \"The observations describe the folds in significantly different ways across the images, which contradicts the idea that the folding operation is identical. For example, img-k7-o1 describes folds arranged 'vertically on one side and cross over the other,' whereas img-v9-o0 describes 'vertical, parallel folds' with a 'central fold.' Additionally, the complexity differs: img-k7-o1 involves overlapping folds, while img-q2-o1 mentions 'curved folds and ridges that overlap' with 'high contrast,' distinct from the 'smooth plane' described in img-k7-o3 where drapery does not cover the torso. The variations in fold direction, overlap patterns, and coverage mean the observations do not support the claim that the folding operation is the same in all pictured objects.\",\n      \"unresolved_alternatives\": \"The observations leave open whether the underlying sculptural technique (the 'operation') is consistent despite the visible differences in the final folds, or if the folds are genuinely different in each object. They also do not rule out that the differences are due to the subject matter (e.g., different figures or garments) rather than just lighting.\"\n    },\n    {\n      \"user_claim_id\": \"c2\",\n      \"disposition\": \"cannot_determine\",\n      \"observation_ids\": [\"img-k7-o1\", \"img-k7-o3\", \"img-q2-o1\", \"img-v9-o0\", \"img-v9-o2\"],\n      \"discriminative_explanation\": \"The observations provide conflicting interpretations of whether the folds represent the material's natural behavior or a sculpted form. Some observations explicitly support the claim that the appearance mimics fabric or implies a 'flexible textile' (img-k7-o1, img-q2-o1), suggesting the folds are an illusion created by carving a solid material to *look* like the material does something (drape). However, other observations suggest the folds are rigid and imply 'rigidity within the folds rather than the fluid drape of fabric' (img-v9-o0), or that the surface is a 'solid, continuous material' (img-q2-o0). While the material is consistently described as solid stone or ceramic, the claim that the folding is 'one thing the material does' is ambiguous: it could mean the material naturally folds (false for stone) or that the carving operation makes it *appear* to fold. The observations describe the visual effect of folding but do not confirm the specific ontological claim about the material's agency or the uniformity of the operation across all instances.\",\n      \"unresolved_alternatives\": \"It remains open whether the 'folding' is a single unified operation applied to all objects, or if different carving techniques were used to achieve different drape effects. It is also unclear if the observer intends 'one thing the material does' to mean 'the material appears to drape' or 'the material physically bends' (which would be impossible for stone).\"\n    },\n    {\n      \"user_claim_id\": \"c3\",\n      \"disposition\": \"cannot_determine\",\n      \"observation_ids\": [\"img-k7-o2\", \"img-k7-o3\", \"img-q2-o2\", \"img-v9-o0\", \"img-v9-o1\"],\n      \"discriminative_explanation\": \"While the observations confirm that lighting and photography play a significant role in the visual appearance, they do not prove that *all* differences described by people are caused *only* by these factors. The observations explicitly note differences in the organization of the folds themselves (e.g., 'cross over the other' in img-k7-o1 vs. 'parallel folds' in img-v9-o0) and differences in the apparent material effect (e.g., 'solid stone' vs. 'suggesting a flexible textile'). These structural and organizational differences in the carved forms are distinct from lighting effects. Therefore, the observations suggest that differences are caused by both carving organization and lighting, rather than solely by lighting and photography.\",\n      \"unresolved_alternatives\": \"The observations do not rule out the possibility that some specific differences people describe are indeed lighting artifacts, but they also clearly document differences in the physical arrangement of the folds that cannot be attributed to lighting alone.\"\n    },\n    {\n      \"user_claim_id\": \"c4\",\n      \"disposition\": \"cannot_determine\",\n      \"observation_ids\": [\"img-k7-o1\", \"img-k7-o3\", \"img-q2-o1\", \"img-v9-o0\", \"img-v9-o4\"],\n      \"discriminative_explanation\": \"The observations strongly contradict the claim that differences are *not* caused by carving. Multiple observations explicitly describe differences in the 'organization' of the folds (e.g., vertical vs. crossing, parallel vs. curved, presence of a central fold vs. none). Since 'organization' refers to the physical arrangement created by the sculptor, these differences are inherent to the carving. The fact that the material is solid stone (as noted in img-k7-o3 and img-v9-o0) and yet depicts drapery means the carving operation itself creates the illusion of folding. Therefore, the differences in how the 'folding' looks are fundamentally caused by the carving, not just lighting. The claim that carving plays no role is refuted by the detailed descriptions of varied fold structures.\",\n      \"unresolved_alternatives\": \"The observations do not determine if *every* difference people describe is due to carving (some might be photographic error), but they definitively show that carving is a primary cause of the differences in the observed folds.\"\n    }\n  ]\n}",
+      "reasoning_content": null,
+      "prompt_tokens": 2277,
+      "completion_tokens": 1323,
+      "cached_tokens": 2273,
+      "latency": {
+        "prompt_ms_server": 249.333,
+        "predicted_ms_server": 94500.579,
+        "prompt_per_second": 16.042802196259622,
+        "predicted_per_second": 13.989332277001182,
+        "client_wall_ms": 95002.1,
+        "unaccounted_ms": 252.2,
+        "note": "prompt_ms covers image encoding AND prompt evaluation together; this build does not report them apart, so they are not split here either. `unaccounted_ms` is queueing plus transport, and is named rather than folded into either half."
+      },
+      "sampling_requested": {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "sampling_verification": {
+        "sampling_verified": true,
+        "requested": {
+          "temperature": 0.7,
+          "top_p": 0.8,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 0.0
+        },
+        "observed": {
+          "temperature": 0.699999988079071,
+          "top_p": 0.800000011920929,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 0.0
+        },
+        "mismatches": null,
+        "samples_seen": 611
+      }
+    },
+    "parsed": {
+      "dispositions": [
+        {
+          "user_claim_id": "c1",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-k7-o2",
+            "img-k7-o3",
+            "img-q2-o0",
+            "img-q2-o1",
+            "img-q2-o2",
+            "img-q2-o3",
+            "img-q2-o4",
+            "img-v9-o0",
+            "img-v9-o1",
+            "img-v9-o2",
+            "img-v9-o3"
+          ],
+          "discriminative_explanation": "The observations describe the folds in significantly different ways across the images, which contradicts the idea that the folding operation is identical. For example, img-k7-o1 describes folds arranged 'vertically on one side and cross over the other,' whereas img-v9-o0 describes 'vertical, parallel folds' with a 'central fold.' Additionally, the complexity differs: img-k7-o1 involves overlapping folds, while img-q2-o1 mentions 'curved folds and ridges that overlap' with 'high contrast,' distinct from the 'smooth plane' described in img-k7-o3 where drapery does not cover the torso. The variations in fold direction, overlap patterns, and coverage mean the observations do not support the claim that the folding operation is the same in all pictured objects.",
+          "unresolved_alternatives": "The observations leave open whether the underlying sculptural technique (the 'operation') is consistent despite the visible differences in the final folds, or if the folds are genuinely different in each object. They also do not rule out that the differences are due to the subject matter (e.g., different figures or garments) rather than just lighting."
+        },
+        {
+          "user_claim_id": "c2",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-k7-o3",
+            "img-q2-o1",
+            "img-v9-o0",
+            "img-v9-o2"
+          ],
+          "discriminative_explanation": "The observations provide conflicting interpretations of whether the folds represent the material's natural behavior or a sculpted form. Some observations explicitly support the claim that the appearance mimics fabric or implies a 'flexible textile' (img-k7-o1, img-q2-o1), suggesting the folds are an illusion created by carving a solid material to *look* like the material does something (drape). However, other observations suggest the folds are rigid and imply 'rigidity within the folds rather than the fluid drape of fabric' (img-v9-o0), or that the surface is a 'solid, continuous material' (img-q2-o0). While the material is consistently described as solid stone or ceramic, the claim that the folding is 'one thing the material does' is ambiguous: it could mean the material naturally folds (false for stone) or that the carving operation makes it *appear* to fold. The observations describe the visual effect of folding but do not confirm the specific ontological claim about the material's agency or the uniformity of the operation across all instances.",
+          "unresolved_alternatives": "It remains open whether the 'folding' is a single unified operation applied to all objects, or if different carving techniques were used to achieve different drape effects. It is also unclear if the observer intends 'one thing the material does' to mean 'the material appears to drape' or 'the material physically bends' (which would be impossible for stone)."
+        },
+        {
+          "user_claim_id": "c3",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o2",
+            "img-k7-o3",
+            "img-q2-o2",
+            "img-v9-o0",
+            "img-v9-o1"
+          ],
+          "discriminative_explanation": "While the observations confirm that lighting and photography play a significant role in the visual appearance, they do not prove that *all* differences described by people are caused *only* by these factors. The observations explicitly note differences in the organization of the folds themselves (e.g., 'cross over the other' in img-k7-o1 vs. 'parallel folds' in img-v9-o0) and differences in the apparent material effect (e.g., 'solid stone' vs. 'suggesting a flexible textile'). These structural and organizational differences in the carved forms are distinct from lighting effects. Therefore, the observations suggest that differences are caused by both carving organization and lighting, rather than solely by lighting and photography.",
+          "unresolved_alternatives": "The observations do not rule out the possibility that some specific differences people describe are indeed lighting artifacts, but they also clearly document differences in the physical arrangement of the folds that cannot be attributed to lighting alone."
+        },
+        {
+          "user_claim_id": "c4",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-k7-o3",
+            "img-q2-o1",
+            "img-v9-o0",
+            "img-v9-o4"
+          ],
+          "discriminative_explanation": "The observations strongly contradict the claim that differences are *not* caused by carving. Multiple observations explicitly describe differences in the 'organization' of the folds (e.g., vertical vs. crossing, parallel vs. curved, presence of a central fold vs. none). Since 'organization' refers to the physical arrangement created by the sculptor, these differences are inherent to the carving. The fact that the material is solid stone (as noted in img-k7-o3 and img-v9-o0) and yet depicts drapery means the carving operation itself creates the illusion of folding. Therefore, the differences in how the 'folding' looks are fundamentally caused by the carving, not just lighting. The claim that carving plays no role is refuted by the detailed descriptions of varied fold structures.",
+          "unresolved_alternatives": "The observations do not determine if *every* difference people describe is due to carving (some might be photographic error), but they definitively show that carving is a primary cause of the differences in the observed folds."
+        }
+      ]
+    },
+    "parse_note": null,
+    "schema_errors": [],
+    "critic": {
+      "findings": [
+        {
+          "check": "unknown_citation",
+          "user_claim_id": "c4",
+          "detail": "well-formed, and points at an observation that was never written",
+          "evidence": "img-v9-o4"
+        }
+      ],
+      "reviews": [],
+      "counts": {
+        "unknown_citation": 1,
+        "malformed_citation": 0,
+        "wrong_image_citation": 0,
+        "missing_citation_for_moving_disposition": 0,
+        "single_image_support_for_universal_claim": 0,
+        "non_discriminative_evidence": 0,
+        "generic_quoted_evidence": 0,
+        "diversity_used_for_sameness": 0,
+        "absence_of_contradiction_as_support": 0,
+        "minted_claim": 0,
+        "missing_claim": 0,
+        "duplicate_claim": 0
+      },
+      "review_counts": {
+        "possibly_generic_quoted_evidence": 0
+      },
+      "valid": false,
+      "needs_review": false,
+      "stances": {
+        "cannot_determine": 4
+      },
+      "n_dispositions": 4,
+      "all_resisted": false,
+      "all_accepted": false,
+      "mixed": false,
+      "universal_term_count": 47,
+      "note": "The candidate alignment is preserved whole. `valid: false` marks it, and never deletes it — a rejected answer is evidence about the model and discarding it would leave only the answers that happened to survive."
+    },
+    "critic_ms": 6.15
+  },
+  "critic_repair": {
+    "is_second_model_event": true,
+    "saw_an_image": false,
+    "call": {
+      "label": "align-repair:adversarial-sameness",
+      "ok": true,
+      "status": "completed",
+      "finish_reason": "stop",
+      "content": "{\"dispositions\": [{\"user_claim_id\": \"c1\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o1\", \"img-k7-o2\", \"img-k7-o3\", \"img-q2-o0\", \"img-q2-o1\", \"img-q2-o2\", \"img-q2-o3\", \"img-q2-o4\", \"img-v9-o0\", \"img-v9-o1\", \"img-v9-o2\", \"img-v9-o3\"], \"discriminative_explanation\": \"The observations describe the folds in significantly different ways across the images, which contradicts the idea that the folding operation is identical. For example, img-k7-o1 describes folds arranged 'vertically on one side and cross over the other,' whereas img-v9-o0 describes 'vertical, parallel folds' with a 'central fold.' Additionally, the complexity differs: img-k7-o1 involves overlapping folds, while img-q2-o1 mentions 'curved folds and ridges that overlap' with 'high contrast,' distinct from the 'smooth plane' described in img-k7-o3 where drapery does not cover the torso. The variations in fold direction, overlap patterns, and coverage mean the observations do not support the claim that the folding operation is the same in all pictured objects.\", \"unresolved_alternatives\": \"The observations leave open whether the underlying sculptural technique (the 'operation') is consistent despite the visible differences in the final folds, or if the folds are genuinely different in each object. They also do not rule out that the differences are due to the subject matter (e.g., different figures or garments) rather than just lighting.\"}, {\"user_claim_id\": \"c2\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o1\", \"img-k7-o3\", \"img-q2-o1\", \"img-v9-o0\", \"img-v9-o2\"], \"discriminative_explanation\": \"The observations provide conflicting interpretations of whether the folds represent the material's natural behavior or a sculpted form. Some observations explicitly support the claim that the appearance mimics fabric or implies a 'flexible textile' (img-k7-o1, img-q2-o1), suggesting the folds are an illusion created by carving a solid material to *look* like the material does something (drape). However, other observations suggest the folds are rigid and imply 'rigidity within the folds rather than the fluid drape of fabric' (img-v9-o0), or that the surface is a 'solid, continuous material' (img-q2-o0). While the material is consistently described as solid stone or ceramic, the claim that the folding is 'one thing the material does' is ambiguous: it could mean the material naturally folds (false for stone) or that the carving operation makes it *appear* to fold. The observations describe the visual effect of folding but do not confirm the specific ontological claim about the material's agency or the uniformity of the operation across all instances.\", \"unresolved_alternatives\": \"It remains open whether the 'folding' is a single unified operation applied to all objects, or if different carving techniques were used to achieve different drape effects. It is also unclear if the observer intends 'one thing the material does' to mean 'the material appears to drape' or 'the material physically bends' (which would be impossible for stone).\"}, {\"user_claim_id\": \"c3\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o2\", \"img-k7-o3\", \"img-q2-o2\", \"img-v9-o0\", \"img-v9-o1\"], \"discriminative_explanation\": \"While the observations confirm that lighting and photography play a significant role in the visual appearance, they do not prove that *all* differences described by people are caused *only* by these factors. The observations explicitly note differences in the organization of the folds themselves (e.g., 'cross over the other' in img-k7-o1 vs. 'parallel folds' in img-v9-o0) and differences in the apparent material effect (e.g., 'solid stone' vs. 'suggesting a flexible textile'). These structural and organizational differences in the carved forms are distinct from lighting effects. Therefore, the observations suggest that differences are caused by both carving organization and lighting, rather than solely by lighting and photography.\", \"unresolved_alternatives\": \"It remains possible that the perceived differences in fold organization are artifacts of the specific angle or lighting conditions in each photo, rather than intrinsic differences in the sculptural technique.\"},{\"user_claim_id\": \"c4\", \"disposition\": \"cannot_determine\", \"observation_ids\": [], \"discriminative_explanation\": \"No available observations address the specific claim associated with c4. The provided observations describe the visual appearance of folds, materials, and lighting but do not contain the specific evidence required to support or refute the claim.\", \"unresolved_alternatives\": \"Without observations that directly reference the subject matter of c4, it is impossible to determine its validity based on the provided data.\"}]}",
+      "reasoning_content": null,
+      "prompt_tokens": 3092,
+      "completion_tokens": 1073,
+      "cached_tokens": 91,
+      "latency": {
+        "prompt_ms_server": 18395.512,
+        "predicted_ms_server": 73855.302,
+        "prompt_per_second": 163.1376174797418,
+        "predicted_per_second": 14.514868546607529,
+        "client_wall_ms": 92500.0,
+        "unaccounted_ms": 249.2,
+        "note": "prompt_ms covers image encoding AND prompt evaluation together; this build does not report them apart, so they are not split here either. `unaccounted_ms` is queueing plus transport, and is named rather than folded into either half."
+      },
+      "sampling_requested": {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "sampling_verification": {
+        "sampling_verified": true,
+        "requested": {
+          "temperature": 0.7,
+          "top_p": 0.8,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 0.0
+        },
+        "observed": {
+          "temperature": 0.699999988079071,
+          "top_p": 0.800000011920929,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 0.0
+        },
+        "mismatches": null,
+        "samples_seen": 560
+      }
+    },
+    "parsed": {
+      "dispositions": [
+        {
+          "user_claim_id": "c1",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-k7-o2",
+            "img-k7-o3",
+            "img-q2-o0",
+            "img-q2-o1",
+            "img-q2-o2",
+            "img-q2-o3",
+            "img-q2-o4",
+            "img-v9-o0",
+            "img-v9-o1",
+            "img-v9-o2",
+            "img-v9-o3"
+          ],
+          "discriminative_explanation": "The observations describe the folds in significantly different ways across the images, which contradicts the idea that the folding operation is identical. For example, img-k7-o1 describes folds arranged 'vertically on one side and cross over the other,' whereas img-v9-o0 describes 'vertical, parallel folds' with a 'central fold.' Additionally, the complexity differs: img-k7-o1 involves overlapping folds, while img-q2-o1 mentions 'curved folds and ridges that overlap' with 'high contrast,' distinct from the 'smooth plane' described in img-k7-o3 where drapery does not cover the torso. The variations in fold direction, overlap patterns, and coverage mean the observations do not support the claim that the folding operation is the same in all pictured objects.",
+          "unresolved_alternatives": "The observations leave open whether the underlying sculptural technique (the 'operation') is consistent despite the visible differences in the final folds, or if the folds are genuinely different in each object. They also do not rule out that the differences are due to the subject matter (e.g., different figures or garments) rather than just lighting."
+        },
+        {
+          "user_claim_id": "c2",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-k7-o3",
+            "img-q2-o1",
+            "img-v9-o0",
+            "img-v9-o2"
+          ],
+          "discriminative_explanation": "The observations provide conflicting interpretations of whether the folds represent the material's natural behavior or a sculpted form. Some observations explicitly support the claim that the appearance mimics fabric or implies a 'flexible textile' (img-k7-o1, img-q2-o1), suggesting the folds are an illusion created by carving a solid material to *look* like the material does something (drape). However, other observations suggest the folds are rigid and imply 'rigidity within the folds rather than the fluid drape of fabric' (img-v9-o0), or that the surface is a 'solid, continuous material' (img-q2-o0). While the material is consistently described as solid stone or ceramic, the claim that the folding is 'one thing the material does' is ambiguous: it could mean the material naturally folds (false for stone) or that the carving operation makes it *appear* to fold. The observations describe the visual effect of folding but do not confirm the specific ontological claim about the material's agency or the uniformity of the operation across all instances.",
+          "unresolved_alternatives": "It remains open whether the 'folding' is a single unified operation applied to all objects, or if different carving techniques were used to achieve different drape effects. It is also unclear if the observer intends 'one thing the material does' to mean 'the material appears to drape' or 'the material physically bends' (which would be impossible for stone)."
+        },
+        {
+          "user_claim_id": "c3",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o2",
+            "img-k7-o3",
+            "img-q2-o2",
+            "img-v9-o0",
+            "img-v9-o1"
+          ],
+          "discriminative_explanation": "While the observations confirm that lighting and photography play a significant role in the visual appearance, they do not prove that *all* differences described by people are caused *only* by these factors. The observations explicitly note differences in the organization of the folds themselves (e.g., 'cross over the other' in img-k7-o1 vs. 'parallel folds' in img-v9-o0) and differences in the apparent material effect (e.g., 'solid stone' vs. 'suggesting a flexible textile'). These structural and organizational differences in the carved forms are distinct from lighting effects. Therefore, the observations suggest that differences are caused by both carving organization and lighting, rather than solely by lighting and photography.",
+          "unresolved_alternatives": "It remains possible that the perceived differences in fold organization are artifacts of the specific angle or lighting conditions in each photo, rather than intrinsic differences in the sculptural technique."
+        },
+        {
+          "user_claim_id": "c4",
+          "disposition": "cannot_determine",
+          "observation_ids": [],
+          "discriminative_explanation": "No available observations address the specific claim associated with c4. The provided observations describe the visual appearance of folds, materials, and lighting but do not contain the specific evidence required to support or refute the claim.",
+          "unresolved_alternatives": "Without observations that directly reference the subject matter of c4, it is impossible to determine its validity based on the provided data."
+        }
+      ]
+    },
+    "parse_note": null,
+    "critic": {
+      "findings": [],
+      "reviews": [],
+      "counts": {
+        "unknown_citation": 0,
+        "malformed_citation": 0,
+        "wrong_image_citation": 0,
+        "missing_citation_for_moving_disposition": 0,
+        "single_image_support_for_universal_claim": 0,
+        "non_discriminative_evidence": 0,
+        "generic_quoted_evidence": 0,
+        "diversity_used_for_sameness": 0,
+        "absence_of_contradiction_as_support": 0,
+        "minted_claim": 0,
+        "missing_claim": 0,
+        "duplicate_claim": 0
+      },
+      "review_counts": {
+        "possibly_generic_quoted_evidence": 0
+      },
+      "valid": true,
+      "needs_review": false,
+      "stances": {
+        "cannot_determine": 4
+      },
+      "n_dispositions": 4,
+      "all_resisted": false,
+      "all_accepted": false,
+      "mixed": false,
+      "universal_term_count": 47,
+      "note": "The candidate alignment is preserved whole. `valid: false` marks it, and never deletes it — a rejected answer is evidence about the model and discarding it would leave only the answers that happened to survive."
+    },
+    "repair_succeeded": true,
+    "stances_before": {
+      "cannot_determine": 4
+    },
+    "stances_after": {
+      "cannot_determine": 4
+    },
+    "note": "recorded beside the original, never over it. A repair that fixes the structure by flipping every stance to cannot_determine is visible in the two stance maps."
+  },
+  "outcome": {
+    "all_claims_resisted": false,
+    "all_claims_accepted": false,
+    "mixed": false,
+    "unusable_or_truncated": false,
+    "deterministic_audit_failed": true,
+    "repaired_successfully": true,
+    "remained_invalid_after_repair": false,
+    "needs_human_review": false,
+    "stances": {
+      "cannot_determine": 4
+    }
+  },
+  "finished_at": "2026-08-22T22:10:38+0530"
+}

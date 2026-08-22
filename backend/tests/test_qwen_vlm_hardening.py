@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 
 import pytest
@@ -629,11 +630,17 @@ def test_frozen_context_cells_record_what_the_server_served():
 
 
 def test_frozen_retention_never_calls_retrieval_reasoning():
-    blob = json.dumps(_frozen("context-cells")).lower()
-    assert "retrieval" in blob
+    """
+    The label must say retrieval and must not CLAIM reasoning. The first version of this test
+    banned the substring `reason` outright and failed on the record's own phrase `retrieval, not
+    reasoning` — the guard was right and the test was wrong.
+    """
     for rec in _frozen("context-cells"):
         for r in rec.get("retention", []):
-            assert "reason" not in r.get("what_this_is", "").lower()
+            what = r.get("what_this_is", "").lower()
+            assert "retrieval" in what, what
+            for m in re.finditer(r"reason", what):
+                assert what[max(0, m.start() - 4):m.start()] == "not ", what
 
 
 def test_frozen_adversarial_outcomes_are_not_collapsed_into_one_number():

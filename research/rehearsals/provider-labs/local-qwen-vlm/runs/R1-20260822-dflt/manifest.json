@@ -1,0 +1,30 @@
+{
+  "lane": "INTELLIGENCE-001C-R1",
+  "run_id": "R1-20260822-dflt",
+  "provider": "local_qwen_vlm",
+  "execution_mode": "local_live",
+  "replayed": false,
+  "binds_anything": false,
+  "opened_at": "2026-08-22T23:38:09+0530",
+  "identity": {
+    "llama_server_version_raw": "version: 0.1.2-dev (build 10520, commit cd644c395)",
+    "llama_cpp_build": "b10520-cd644c395",
+    "llama_server_path": "/opt/homebrew/bin/llama-server",
+    "model_path": "/Users/merleauponty/ml models/qwen 9b q5km/Qwen3.5-9B-Q5_K_M.gguf",
+    "model_sha256": "dc2a39aef291f91a9116ad214058da0d86eb648743a124bd8c333787c4b9c91c",
+    "model_bytes": 6577841376,
+    "mmproj_path": "/Users/merleauponty/ml models/qwen 9b q5km/mmproj-F16.gguf",
+    "mmproj_sha256": "f70dc3509053962b0d0d3ee8a7eacebf5d60aa560cad78254ae8698516ae029f",
+    "mmproj_bytes": 918166080,
+    "hardware": "Mac16,10",
+    "memsize_bytes": 17179869184,
+    "metal_ceiling_mb": 12713,
+    "scope": "Every number in this run belongs to THIS quantization, projector, build, sampling configuration and machine. Not to `Qwen 9B`."
+  },
+  "baseline_untouched": "PR #230's run records are not read for writing and not re-derived. This run stands beside them.",
+  "groups_requested": [
+    "inference"
+  ],
+  "repeats": 8,
+  "profiles_declared": "research/rehearsals/provider-labs/local-qwen-vlm/hardening/profiles.json"
+}

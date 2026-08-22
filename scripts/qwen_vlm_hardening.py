@@ -250,6 +250,7 @@ class ServerControl:
 
     def stop(self, budget: float = 60) -> Dict[str, Any]:
         pid = self.running_pid()
+        self.STATE_PATH.unlink(missing_ok=True)
         if pid is None:
             return {"was_running": False, "clean": True, "ms": 0.0}
         t0 = time.time()
@@ -262,6 +263,40 @@ class ServerControl:
         return {"was_running": True, "clean": False,
                 "ms": round((time.time() - t0) * 1000, 1), "pid": pid,
                 "note": "did not exit on SIGTERM within the budget — recorded, not escalated"}
+
+    #: What the currently-running server was launched with. Written on start, cleared on stop.
+    STATE_PATH = Path("/tmp/.qwen_r1_server_profile.json")
+
+    def ensure(self, log_dir: Path) -> Dict[str, Any]:
+        """
+        Guarantee the RUNNING server is this profile, restarting it if it is not.
+
+        THIS METHOD EXISTS BECAUSE ITS ABSENCE PRODUCED A FALSE RESULT. The inference group only
+        started a server when none was healthy, so a run asked for the default image-token floor,
+        found the 1024-floor server from the previous group still up, and answered every cell
+        through it — while the cell recorded `image_min_tokens: null`. The numbers were real; the
+        label was a lie, and a latency comparison across floors was being assembled out of cells
+        that were all at the same floor.
+
+        So the launched argv is written to disk on start and compared here, and every cell now
+        records the argv of the server that actually answered it.
+        """
+        current = None
+        if self.STATE_PATH.exists():
+            try:
+                current = json.loads(self.STATE_PATH.read_text())
+            except Exception:
+                current = None
+        want = self.profile.argv()
+        if self.healthy(3) and current and current.get("argv") == want:
+            return {"restarted": False, "argv": want,
+                    "why": "the running server was already this profile"}
+        self.stop()
+        rec = self.start()
+        rec["restarted"] = True
+        rec["why"] = ("no server was running" if not current else
+                      "the running server was a different profile")
+        return rec
 
     def start(self, budget: float = 300) -> Dict[str, Any]:
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -279,6 +314,10 @@ class ServerControl:
             if proc.poll() is not None:
                 break
             time.sleep(0.5)
+        if healthy:
+            self.STATE_PATH.write_text(json.dumps(
+                {"argv": self.profile.argv(), "profile_id": self.profile.id,
+                 "pid": self.pid}) + "\n")
         rec = {
             "profile_id": self.profile.id,
             "n_ctx_requested": self.profile.n_ctx,
@@ -1254,12 +1293,11 @@ def run_inference_group(ledger: Ledger, profiles: Dict[str, Any], n_ctx: int,
     """
     lp = LaunchProfile(ctx_id=f"ctx{n_ctx // 1024}k", n_ctx=n_ctx, image_min_tokens=image_min)
     sc = ServerControl(lp, ledger.root / "logs")
-    if not sc.healthy(3):
-        sc.stop()
-        start = sc.start()
-        if not start.get("started_ok"):
-            print("  UNAVAILABLE — the shared server for this group did not start")
-            return
+    ensured = sc.ensure(ledger.root / "logs")
+    if ensured.get("restarted") and not (ensured.get("started_ok", True)):
+        print("  UNAVAILABLE — the shared server for this group did not start")
+        return
+    print(f"  server: {lp.id} ({ensured['why']})")
     for ip in profiles["inference_profiles"]:
         cell = Cell("inference", ip["id"],
                     {"n_ctx": n_ctx, "image_min_tokens": image_min,
@@ -1292,6 +1330,8 @@ def run_inference_group(ledger: Ledger, profiles: Dict[str, Any], n_ctx: int,
         verified = [r["call"].get("sampling_verification") for r in results]
         ledger.finish(cell, "done", {
             "inference_profile": ip,
+            "served_by_argv": lp.argv(),
+            "served_image_min_tokens": lp.image_min_tokens,
             "sampling_requested": sampling,
             "sampling_verification": verified,
             "sampling_verified_any": any((v or {}).get("sampling_verified") for v in verified),
@@ -1343,11 +1383,8 @@ def run_adversarial_group(ledger: Ledger, profiles: Dict[str, Any], n_ctx: int,
     """
     lp = LaunchProfile(ctx_id=f"ctx{n_ctx // 1024}k", n_ctx=n_ctx, image_min_tokens=image_min)
     sc = ServerControl(lp, ledger.root / "logs")
-    if not sc.healthy(3):
-        sc.stop()
-        if not sc.start().get("started_ok"):
-            print("  UNAVAILABLE — the shared server for this group did not start")
-            return
+    ensured = sc.ensure(ledger.root / "logs")
+    print(f"  server: {lp.id} ({ensured['why']})")
     for ip in profiles["inference_profiles"]:
         sampling = {k: ip[k] for k in ("temperature", "top_p", "top_k", "min_p",
                                        "presence_penalty")}
@@ -1403,10 +1440,24 @@ def adversarial_outcome(a: Dict[str, Any], repair: Optional[Dict[str, Any]]) -> 
 
 
 def adversarial_tally(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    THE CATEGORIES MUST SUM TO THE REPEAT COUNT, and in the first pass they did not.
+
+    `all_resisted` needs at least one challenge; `all_accepted` needs every claim supported;
+    `mixed` needs both. A run in which EVERY disposition is `cannot_determine` or
+    `does_not_bear_on` is none of the three, and eight repeats reported as 0 + 5 + 1 quietly lost
+    two of them. Worse, the lost category is the interesting one: abstaining from every claim is
+    not resisting a false premise, and a profile that abstains more would otherwise read as a
+    profile that resists more.
+    """
     done = [r for r in rows if r.get("state") == "done"]
     o = [r["outcome"] for r in done]
+    noncommittal = [x for x in o if not x["all_claims_resisted"]
+                    and not x["all_claims_accepted"] and not x["mixed"]]
     return {
         "repeats_done": len(done),
+        "all_noncommittal": len(noncommittal),
+        "categories_sum_to_repeats": True,
         "interrupted": sum(1 for r in rows if r.get("state") == "started"),
         "unavailable": sum(1 for r in rows if r.get("state") == "unavailable"),
         "unparseable": sum(1 for r in rows if r.get("state") == "invalid"),
@@ -1416,6 +1467,9 @@ def adversarial_tally(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "audit_failed": sum(1 for x in o if x["deterministic_audit_failed"]),
         "repaired": sum(1 for x in o if x["repaired_successfully"]),
         "still_invalid_after_repair": sum(1 for x in o if x["remained_invalid_after_repair"]),
+        "note": "`all_noncommittal` is every claim answered cannot_determine or "
+                "does_not_bear_on. It is ABSTENTION, not resistance, and is counted apart so a "
+                "profile that stops committing cannot be read as a profile that starts arguing.",
     }
 
 
@@ -1493,7 +1547,12 @@ def cmd_matrix(args) -> int:
         print("--- Part 2: image-token floor")
         run_image_group(ledger, profiles, safe_ctx, raws, args.max_tokens)
 
-    image_min, why_img = choose_image_floor(ledger)
+    if args.image_floor == "auto":
+        image_min, why_img = choose_image_floor(ledger)
+    elif args.image_floor == "default":
+        image_min, why_img = None, "forced to the default floor by --image-floor"
+    else:
+        image_min, why_img = int(args.image_floor), "forced by --image-floor"
     print(f"  image-token floor for the remaining groups: {image_min} ({why_img})")
 
     exp1 = None
@@ -1558,12 +1617,25 @@ def choose_safe_context(ledger: Ledger, profiles: Dict[str, Any]) -> Tuple[int, 
 
 
 def choose_image_floor(ledger: Ledger) -> Tuple[Optional[int], str]:
+    """
+    The rule AS DECLARED before Part 2 ran: the highest floor that stayed safe.
+
+    IT IS THE WRONG RULE, and the lane reports that rather than editing it. Part 2 found that
+    raising the floor from ~195 to ~1060 image tokens doubled latency and bought nothing
+    measurable — spatial-term density and lexical variety both fell slightly, and the observation
+    and locus counts did not move. Optimising for `safe` optimised for the wrong thing.
+
+    Changing the rule after seeing the result would be moving the matrix to fit the data, so it
+    stands. `--image-floor` exists instead, and both floors are run and reported.
+    """
     rows = [r for r in ledger.by_group("image_tokens") if r.get("state") == "done"]
     safe = [r for r in rows if (r.get("safety") or {}).get("safe")]
     if not safe:
         return None, "no image-token cell completed safely — staying on the default floor"
     best = max(safe, key=lambda r: r.get("image_min_tokens") or 0)
-    return best.get("image_min_tokens"), f"highest floor that stayed safe ({best['name']})"
+    return best.get("image_min_tokens"), (f"highest floor that stayed safe ({best['name']}) — the "
+                                          f"rule as declared, and see its docstring for why the "
+                                          f"lane thinks the rule is wrong")
 
 
 def cmd_progress(args) -> int:
@@ -1600,7 +1672,8 @@ def cmd_progress(args) -> int:
         elif r["group"] == "adversarial" and r.get("state") == "done":
             o = r.get("outcome") or {}
             note = ("all_resisted" if o.get("all_claims_resisted") else
-                    "ALL_ACCEPTED" if o.get("all_claims_accepted") else "mixed")
+                    "ALL_ACCEPTED" if o.get("all_claims_accepted") else
+                    "mixed" if o.get("mixed") else "all_noncommittal")
             if o.get("deterministic_audit_failed"):
                 note += " +audit_failed"
             if o.get("repaired_successfully"):
@@ -1666,39 +1739,79 @@ def context_verdict(ledger: Ledger) -> Dict[str, Any]:
     return out
 
 
+#: Below this many observations the observer question has not been asked seriously enough to
+#: answer. #230 found one fabrication in ten; a verdict resting on three would not have been able
+#: to see that rate at all.
+OBSERVER_MIN_SAMPLE = 9
+
+
 def observer_verdict(ledger: Ledger) -> Dict[str, Any]:
-    inf = [r for r in ledger.by_group("inference")
-           if r.get("state") == "done" and r["name"] != "observation-inventory"]
-    if not inf:
+    """
+    AGGREGATED, NOT BEST-OF. The first version of this function scored the single strongest cell,
+    which is cherry-picking dressed as a verdict: with three observations per cell, `the best cell
+    was clean` is a statement about three samples chosen after the fact. It now pools every valid
+    inference cell and requires a minimum sample before it will say ELIGIBLE at all.
+
+    Cells marked `invalid` are excluded — those are the ones whose recorded configuration did not
+    match the server that answered them, and a verdict built on a mislabelled cell is a verdict
+    about an unknown configuration.
+    """
+    cells = [r for r in ledger.by_group("inference")
+             if r.get("state") == "done" and r["name"] != "observation-inventory"]
+    excluded = [r["name"] for r in ledger.by_group("inference") if r.get("state") == "invalid"]
+    if not cells:
         return {"verdict": "UNDETERMINED",
-                "why": "no inference cell completed, so nothing measured this role in this run"}
-    best = None
-    for r in inf:
+                "why": "no valid inference cell completed, so nothing measured this role",
+                "excluded_mislabelled_cells": excluded}
+
+    tot = {k: 0 for k in ("parsed", "schema_valid", "ref_correct", "epistemically_valid",
+                          "attribution_unclean", "unsupported_precision_fields",
+                          "observations_total")}
+    rep = {k: 0 for k in ("attempted", "repaired", "gutted", "still_invalid")}
+    for r in cells:
         a = r.get("aggregate") or {}
-        parsed = a.get("parsed") or 0
-        score = (a.get("epistemically_valid") or 0, parsed and a.get("schema_valid") or 0)
-        if best is None or score > best[0]:
-            best = (score, r)
-    r = best[1]
-    a = r["aggregate"]
-    parsed, valid = a["parsed"], a["epistemically_valid"]
-    clean_without_audit = valid == parsed and parsed > 0
-    rep = r.get("repair_summary") or {}
-    verdict = ("ELIGIBLE_FOR_PROMPT_BLIND_OBSERVATION" if clean_without_audit and parsed >= 3
-               else "ELIGIBLE_WITH_MANDATORY_AUDIT"
-               if parsed and (valid + rep.get("repaired", 0)) >= parsed
-               else "RESEARCH_ONLY")
+        for k in tot:
+            tot[k] += a.get(k) or 0
+        for k in rep:
+            rep[k] += (r.get("repair_summary") or {}).get(k) or 0
+
+    parsed, valid = tot["parsed"], tot["epistemically_valid"]
+    if parsed < OBSERVER_MIN_SAMPLE:
+        verdict = "UNDETERMINED"
+        why = (f"only {parsed} observations across {len(cells)} cells — below the "
+               f"{OBSERVER_MIN_SAMPLE} this lane declared as the minimum sample. #230 found one "
+               f"fabrication in ten, and a verdict resting on fewer could not have seen it")
+    elif valid == parsed and tot["attribution_unclean"] == 0:
+        verdict = "ELIGIBLE_FOR_PROMPT_BLIND_OBSERVATION"
+        why = (f"{valid}/{parsed} observations across {len(cells)} sampling cells were "
+               f"epistemically valid BEFORE any repair, with {tot['attribution_unclean']} "
+               f"carrying an unsupported attribution")
+    elif (valid + rep["repaired"]) >= parsed:
+        verdict = "ELIGIBLE_WITH_MANDATORY_AUDIT"
+        why = (f"{valid}/{parsed} were valid unaided; the audit plus one repair pass covered the "
+               f"rest ({rep['repaired']} repaired, {rep['gutted']} gutted, "
+               f"{rep['still_invalid']} still invalid)")
+    else:
+        verdict = "RESEARCH_ONLY"
+        why = (f"{valid}/{parsed} valid, and one repair pass did not cover the shortfall "
+               f"({rep['repaired']} repaired, {rep['still_invalid']} still invalid)")
+
     return {
         "verdict": verdict,
-        "best_profile": r["name"],
-        "why": (f"{valid}/{parsed} observations were epistemically valid before any repair"
-                + (f", and the audit plus one repair pass covered the rest "
-                   f"({rep.get('repaired', 0)} repaired, {rep.get('gutted', 0)} gutted, "
-                   f"{rep.get('still_invalid', 0)} still invalid)" if rep.get("attempted")
-                   else " with no repair needed")),
-        "schema_valid": f"{a['schema_valid']}/{parsed}",
-        "refs_correct": f"{a['ref_correct']}/{parsed}",
-        "attribution_unclean": a["attribution_unclean"],
+        "why": why,
+        "cells_pooled": [r["name"] for r in cells],
+        "excluded_mislabelled_cells": excluded,
+        "observations": tot["observations_total"],
+        "schema_valid": f"{tot['schema_valid']}/{parsed}",
+        "refs_correct": f"{tot['ref_correct']}/{parsed}",
+        "unsupported_precision_fields": tot["unsupported_precision_fields"],
+        "attribution_unclean": tot["attribution_unclean"],
+        "repairs": rep,
+        "against_the_baseline": "#230 measured 1 fabricated quantity in 10 structured "
+                                "observations at the default floor. This lane adds the count "
+                                "above; the two are not pooled, because they are different "
+                                "sampling configurations and pooling them would invent a rate "
+                                "neither measured.",
         "caveat": "ELIGIBLE IS NOT INTEGRATED. This lane registers nothing; a binding is a "
                   "separate small PR after a human has read the frozen outputs.",
     }
@@ -1748,12 +1861,32 @@ def role_verdicts(ledger: Ledger) -> Dict[str, Any]:
     return out
 
 
+class PooledLedger(Ledger):
+    """
+    Several run ids read as one.
+
+    A control run is not a separate universe: `R1-…-dflt` re-ran the inference profiles at the
+    floor the Part 2 evidence supports, and leaving it out of the verdict would mean judging the
+    observer on the configuration the lane thinks is wrong.
+    """
+
+    def __init__(self, run_id: str, also: List[str]):
+        super().__init__(run_id)
+        self.also = [Ledger(r) for r in also if (RUNS_ROOT / r / "cells").exists()]
+
+    def all_records(self) -> List[Dict[str, Any]]:
+        out = super().all_records()
+        for l in self.also:
+            out += l.all_records()
+        return out
+
+
 def cmd_report(args) -> int:
     run_id = args.run or latest_r1_run()
     if not run_id:
         print("no R1 run recorded")
         return 2
-    ledger = Ledger(run_id)
+    ledger = PooledLedger(run_id, list(args.also_run or []))
     cv = context_verdict(ledger)
     rv = role_verdicts(ledger)
     ov = rv["prompt_blind_observer"]
@@ -1765,6 +1898,7 @@ def cmd_report(args) -> int:
 
     report = {
         "lane": "INTELLIGENCE-001C-R1", "run_id": run_id,
+        "pooled_runs": [run_id] + list(args.also_run or []),
         "identity": json.loads(ledger.manifest_path.read_text()).get("identity"),
         "context_verdict": cv,
         "visual_observer_verdict": ov,
@@ -1815,6 +1949,41 @@ def cmd_report(args) -> int:
     return 0
 
 
+def cmd_freeze(args) -> int:
+    """
+    Copy real cells into `hardening/frozen/` so the test suite exercises the audits against what
+    the model actually said, with no model loaded. Nothing here is hand-written; where a cell is
+    bad, the test asserts the guard CATCHES it.
+    """
+    run_id = args.run or latest_r1_run()
+    if not run_id:
+        print("no R1 run recorded")
+        return 2
+    HARD_FROZEN.mkdir(parents=True, exist_ok=True)
+    recs: List[Dict[str, Any]] = []
+    for rid in [run_id] + list(args.also_run or []):
+        led = Ledger(rid)
+        if led.cells_dir.exists():
+            recs += led.all_records()
+    groups = {"context-cells": "context", "image-cells": "image_tokens",
+              "inference-cells": "inference", "adversarial-cells": "adversarial"}
+    for fname, group in groups.items():
+        rows = [r for r in recs if r.get("group") == group]
+        (HARD_FROZEN / f"{fname}.json").write_text(
+            json.dumps(rows, indent=2, ensure_ascii=False) + "\n")
+        print(f"  froze {len(rows):>3} {group} cells -> {fname}.json")
+    (HARD_FROZEN / "PROVENANCE.md").write_text(
+        f"# Frozen cells — INTELLIGENCE-001C-R1\n\n"
+        f"Real cells from runs: {', '.join([run_id] + list(args.also_run or []))}, captured on the\n"
+        f"machine that ran the lane. Kept so `backend/tests/test_qwen_vlm_hardening.py` can\n"
+        f"exercise the guards with no model loaded and no server running.\n\n"
+        f"Cells marked `invalid` are kept deliberately. In this run three inference cells recorded\n"
+        f"`image_min_tokens: null` while being answered by a server still launched at the 1024\n"
+        f"floor — the numbers are real, the label was wrong, and deleting them would discard\n"
+        f"evidence to tidy up a harness bug. `ServerControl.ensure()` is the fix.\n")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description="INTELLIGENCE-001C-R1 — 32k capacity and reliability hardening. "
@@ -1830,16 +1999,27 @@ def main(argv=None) -> int:
                    help=f"a bounded subset of {GROUPS}")
     m.add_argument("--repeats", type=int, default=8)
     m.add_argument("--prompt-id", default="adversarial-sameness")
+    m.add_argument("--image-floor", default="auto",
+                   help="auto (the declared rule), `default` (no floor), or an integer. The "
+                        "declared rule picks the highest SAFE floor, which Part 2's evidence does "
+                        "not support; this flag lets both be run and reported.")
 
     sub.add_parser("progress", help="the compact table")
-    sub.add_parser("report", help="the decision table")
+    rp = sub.add_parser("report", help="the decision table")
+    rp.add_argument("--also-run", nargs="*", default=[],
+                    help="fold these run ids into the verdicts (e.g. a corrected control run)")
+    fz = sub.add_parser("freeze", help="copy real cells into hardening/frozen/ for the tests")
+    fz.add_argument("--also-run", nargs="*", default=[],
+                    help="additional run ids to fold in (e.g. a corrected control run)")
 
     args = ap.parse_args(argv)
     for attr, default in (("dry_run", False), ("profiles", None), ("repeats", 8),
-                          ("prompt_id", "adversarial-sameness")):
+                          ("prompt_id", "adversarial-sameness"), ("image_floor", "auto"),
+                          ("also_run", [])):
         if not hasattr(args, attr):
             setattr(args, attr, default)
-    return {"matrix": cmd_matrix, "progress": cmd_progress, "report": cmd_report}[args.cmd](args)
+    return {"matrix": cmd_matrix, "progress": cmd_progress, "report": cmd_report,
+            "freeze": cmd_freeze}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,193 @@
+{
+  "state": "done",
+  "started_at": "2026-08-22T21:37:18+0530",
+  "machine_at_start": {
+    "swap_used_mb": 8105.31,
+    "swap_raw": "total = 9216.00M  used = 8105.31M  free = 1110.69M  (encrypted)",
+    "wired_mb": 9194.7,
+    "compressed_mb": 3744.6,
+    "free_mb": 61.7,
+    "server_rss_mb": 7287.4,
+    "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+    "server_pid": 20985,
+    "at": "21:37:18"
+  },
+  "note": "a receipt written BEFORE the model was called. A cell left in this state was interrupted in flight; it is not a model failure and is never scored as one.",
+  "run_id": "R1-20260822",
+  "config_id": "adversarial.A-merged-baseline.adversarial-sameness.04.1f70c075",
+  "group": "adversarial",
+  "name": "A-merged-baseline.adversarial-sameness.04",
+  "config": {
+    "sampling": {
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0.0,
+      "presence_penalty": 1.5
+    },
+    "thinking": false,
+    "prompt_id": "adversarial-sameness",
+    "repeat": 4,
+    "n_ctx": 32768,
+    "image_min_tokens": 1024
+  },
+  "inference_profile_id": "A-merged-baseline",
+  "alignment": {
+    "prompt_id": "adversarial-sameness",
+    "saw_an_image": false,
+    "claim_ids_supplied": [
+      "c1",
+      "c2",
+      "c3",
+      "c4"
+    ],
+    "enum_injected": [
+      "c1",
+      "c2",
+      "c3",
+      "c4"
+    ],
+    "call": {
+      "label": "align:adversarial-sameness",
+      "ok": true,
+      "status": "completed",
+      "finish_reason": "stop",
+      "content": "{\n\t\t\t\"dispositions\": [\n\t\t\t\t{\"user_claim_id\": \"c1\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o0\", \"img-k7-o1\", \"img-v9-o0\"], \"discriminative_explanation\": \"The observations describe folds in three distinct configurations: wavy braided strands framing the head (o0), asymmetric vertical folds crossing over a chest (o1), and long parallel vertical folds descending from a headpiece (o0 of v9). These are geometrically inconsistent with a single 'same operation' applied to create all variations.\", \"unresolved_alternatives\": \"It is possible the observer perceives similarity in technique despite geometric differences, or that the claim refers to a specific subset not fully represented here.\"},\n\t\t\t\t{\"user_claim_id\": \"c2\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o1\", \"img-v9-o0\"], \"discriminative_explanation\": \"While some observations (o1, v9-o0) suggest the visual effect mimics flexible fabric or implies rigidity depending on interpretation, others (k7-o3, q2-o4) explicitly support 'fine-grained stone' and integration into a solid material. The observations leave open whether the folding is an intrinsic property of the material being represented or a skillfully carved simulation of another medium.\", \"unresolved_alternatives\": \"The claim could be true if the material itself is malleable (like clay) or false if it is rigid stone where the folds are purely sculpted shapes.\"},\n\t\t\t\t{\"user_claim_id\": \"c3\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o0\", \"img-q2-o0\", \"img-v9-o0\"], \"discriminative_explanation\": \"Observations consistently document lighting effects (highlights on crests, shadows in valleys) that mimic soft fabric or define form. However, the observations also attribute these visual qualities to 'carved' forms and specific material properties (stone, ceramic, rigid folds). The observations do not isolate photography variables enough to prove they are the sole cause of perceived differences versus carving technique.\", \"unresolved_alternatives\": \"It remains open whether lighting is the primary differentiator or if actual carving variations exist alongside lighting effects.\"},\n\t\t\t\t{\"user_claim_id\": \"c4\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o3\", \"img-v9-o0\"], \"discriminative_explanation\": \"Observations explicitly support interpretations of 'fine-grained stone' and 'carved stone,' suggesting the folds are physical cuts rather than just photographic artifacts. Conversely, other interpretations suggest material flexibility. The visual data supports both carved simulation and literal carving, so it does not definitively rule out carving as a cause for differences.\", \"unresolved_alternatives\": \"Differences could be caused by a combination of actual carving variations AND lighting/photography, or solely by one factor that the current observations do not uniquely isolate.\"}\n\t\t\t]\n\t\t}",
+      "reasoning_content": null,
+      "prompt_tokens": 2277,
+      "completion_tokens": 678,
+      "cached_tokens": 2273,
+      "latency": {
+        "prompt_ms_server": 536.944,
+        "predicted_ms_server": 144045.879,
+        "prompt_per_second": 7.44956643523347,
+        "predicted_per_second": 4.699891483879244,
+        "client_wall_ms": 144796.2,
+        "unaccounted_ms": 213.4,
+        "note": "prompt_ms covers image encoding AND prompt evaluation together; this build does not report them apart, so they are not split here either. `unaccounted_ms` is queueing plus transport, and is named rather than folded into either half."
+      },
+      "sampling_requested": {
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 1.5
+      },
+      "sampling_verification": {
+        "sampling_verified": true,
+        "requested": {
+          "temperature": 1.0,
+          "top_p": 0.95,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 1.5
+        },
+        "observed": {
+          "temperature": 1.0,
+          "top_p": 0.949999988079071,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 1.5
+        },
+        "mismatches": null,
+        "samples_seen": 912
+      }
+    },
+    "parsed": {
+      "dispositions": [
+        {
+          "user_claim_id": "c1",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o0",
+            "img-k7-o1",
+            "img-v9-o0"
+          ],
+          "discriminative_explanation": "The observations describe folds in three distinct configurations: wavy braided strands framing the head (o0), asymmetric vertical folds crossing over a chest (o1), and long parallel vertical folds descending from a headpiece (o0 of v9). These are geometrically inconsistent with a single 'same operation' applied to create all variations.",
+          "unresolved_alternatives": "It is possible the observer perceives similarity in technique despite geometric differences, or that the claim refers to a specific subset not fully represented here."
+        },
+        {
+          "user_claim_id": "c2",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-v9-o0"
+          ],
+          "discriminative_explanation": "While some observations (o1, v9-o0) suggest the visual effect mimics flexible fabric or implies rigidity depending on interpretation, others (k7-o3, q2-o4) explicitly support 'fine-grained stone' and integration into a solid material. The observations leave open whether the folding is an intrinsic property of the material being represented or a skillfully carved simulation of another medium.",
+          "unresolved_alternatives": "The claim could be true if the material itself is malleable (like clay) or false if it is rigid stone where the folds are purely sculpted shapes."
+        },
+        {
+          "user_claim_id": "c3",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o0",
+            "img-q2-o0",
+            "img-v9-o0"
+          ],
+          "discriminative_explanation": "Observations consistently document lighting effects (highlights on crests, shadows in valleys) that mimic soft fabric or define form. However, the observations also attribute these visual qualities to 'carved' forms and specific material properties (stone, ceramic, rigid folds). The observations do not isolate photography variables enough to prove they are the sole cause of perceived differences versus carving technique.",
+          "unresolved_alternatives": "It remains open whether lighting is the primary differentiator or if actual carving variations exist alongside lighting effects."
+        },
+        {
+          "user_claim_id": "c4",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o3",
+            "img-v9-o0"
+          ],
+          "discriminative_explanation": "Observations explicitly support interpretations of 'fine-grained stone' and 'carved stone,' suggesting the folds are physical cuts rather than just photographic artifacts. Conversely, other interpretations suggest material flexibility. The visual data supports both carved simulation and literal carving, so it does not definitively rule out carving as a cause for differences.",
+          "unresolved_alternatives": "Differences could be caused by a combination of actual carving variations AND lighting/photography, or solely by one factor that the current observations do not uniquely isolate."
+        }
+      ]
+    },
+    "parse_note": null,
+    "schema_errors": [],
+    "critic": {
+      "findings": [],
+      "reviews": [],
+      "counts": {
+        "unknown_citation": 0,
+        "malformed_citation": 0,
+        "wrong_image_citation": 0,
+        "missing_citation_for_moving_disposition": 0,
+        "single_image_support_for_universal_claim": 0,
+        "non_discriminative_evidence": 0,
+        "generic_quoted_evidence": 0,
+        "diversity_used_for_sameness": 0,
+        "absence_of_contradiction_as_support": 0,
+        "minted_claim": 0,
+        "missing_claim": 0,
+        "duplicate_claim": 0
+      },
+      "review_counts": {
+        "possibly_generic_quoted_evidence": 0
+      },
+      "valid": true,
+      "needs_review": false,
+      "stances": {
+        "cannot_determine": 4
+      },
+      "n_dispositions": 4,
+      "all_resisted": false,
+      "all_accepted": false,
+      "mixed": false,
+      "universal_term_count": 47,
+      "note": "The candidate alignment is preserved whole. `valid: false` marks it, and never deletes it — a rejected answer is evidence about the model and discarding it would leave only the answers that happened to survive."
+    },
+    "critic_ms": 2.13
+  },
+  "critic_repair": null,
+  "outcome": {
+    "all_claims_resisted": false,
+    "all_claims_accepted": false,
+    "mixed": false,
+    "unusable_or_truncated": false,
+    "deterministic_audit_failed": false,
+    "repaired_successfully": false,
+    "remained_invalid_after_repair": false,
+    "needs_human_review": false,
+    "stances": {
+      "cannot_determine": 4
+    }
+  },
+  "finished_at": "2026-08-22T21:39:43+0530"
+}

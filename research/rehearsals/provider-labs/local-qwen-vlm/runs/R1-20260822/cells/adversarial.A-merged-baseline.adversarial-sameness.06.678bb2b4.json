@@ -1,0 +1,418 @@
+{
+  "state": "done",
+  "started_at": "2026-08-22T21:47:51+0530",
+  "machine_at_start": {
+    "swap_used_mb": 8110.88,
+    "swap_raw": "total = 9216.00M  used = 8110.88M  free = 1105.12M  (encrypted)",
+    "wired_mb": 9183.6,
+    "compressed_mb": 3535.3,
+    "free_mb": 59.5,
+    "server_rss_mb": 7287.8,
+    "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+    "server_pid": 20985,
+    "at": "21:47:51"
+  },
+  "note": "a receipt written BEFORE the model was called. A cell left in this state was interrupted in flight; it is not a model failure and is never scored as one.",
+  "run_id": "R1-20260822",
+  "config_id": "adversarial.A-merged-baseline.adversarial-sameness.06.678bb2b4",
+  "group": "adversarial",
+  "name": "A-merged-baseline.adversarial-sameness.06",
+  "config": {
+    "sampling": {
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0.0,
+      "presence_penalty": 1.5
+    },
+    "thinking": false,
+    "prompt_id": "adversarial-sameness",
+    "repeat": 6,
+    "n_ctx": 32768,
+    "image_min_tokens": 1024
+  },
+  "inference_profile_id": "A-merged-baseline",
+  "alignment": {
+    "prompt_id": "adversarial-sameness",
+    "saw_an_image": false,
+    "claim_ids_supplied": [
+      "c1",
+      "c2",
+      "c3",
+      "c4"
+    ],
+    "enum_injected": [
+      "c1",
+      "c2",
+      "c3",
+      "c4"
+    ],
+    "call": {
+      "label": "align:adversarial-sameness",
+      "ok": true,
+      "status": "completed",
+      "finish_reason": "stop",
+      "content": "{ \"dispositions\": [ { \"user_claim_id\": \"c1\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o1\", \"img-v9-o0\", \"img-q2-o1\"], \"discriminative_explanation\": \"The observations describe distinct organizational structures that contradict the claim of a single identical operation. Observation img-k7-o1 describes vertical folds on one side crossing over the other, while observation img-v9-o0 describes vertical parallel folds with a central fold hanging over the nose. Because these descriptions detail different spatial arrangements and configurations, the evidence suggests the carving operations differ between objects rather than being the same.\", \"unresolved_alternatives\": \"The claim could be true if 'same operation' refers to a generalized technique (e.g., all are draped drapery) applied in different ways, but the text does not support this specific reading of identity. It is also possible the observer has not yet identified a deeper similarity between these specific variations.\" }, { \"user_claim_id\": \"c2\", \"disposition\": \"supports\", \"observation_ids\": [\"img-k7-o1\", \"img-v9-o0\", \"img-q2-o1\"], \"discriminative_explanation\": \"These observations explicitly state that the visual texture appears to be 'carved from the same solid material as the body' (img-k7-o1) or suggest a 'solid material such as carved stone or plaster' creating the effect of folds (img-v9-o0, img-q2-o1). The text repeatedly frames the drapery not as actual fabric but as a molded form ('shaped with extreme subtlety to suggest a flexible textile', 'carved to drape'), directly supporting the idea that the material performs the folding through its solid nature rather than being an added component.\", \"unresolved_alternatives\": \"The observations note that fine craftsmanship and specific mediums (like bronze vs. marble) are indeterminate (img-v9-undetermined). While the *operation* of carving seems to be the cause, we cannot rule out other material causes if the lighting is manipulated to simulate a solid object folding where it isn't.\" }, { \"user_claim_id\": \"c3\", \"disposition\": \"supports\", \"observation_ids\": [\"img-k7-o0\", \"img-k7-o1\", \"img-q2-o0\", \"img-v9-o0\"], \"discriminative_explanation\": \"The observations consistently attribute visual effects to light interaction rather than structural differences. For instance, img-k7-o1 notes that 'Light catches the convex curves... creating a play of bright highlights and dark valleys' which mimics fabric, implying the folds are static features illuminated by light. Similarly, img-v9-o0 states the surface is matte and 'diffuses light across its planes,' with shadows emphasizing curvature due to lighting direction ('directional light source from above' in img-v9-o1). The repeated emphasis on how light behaves (highlights, soft diffusion, deep shadows) suggests these are photographic/lighting phenomena revealing form, rather than the forms themselves being different.\", \"unresolved_alternatives\": \"While lighting explains the *appearance* of movement and texture (e.g., 'sense of movement as if wind is blowing' in img-v9-o0), we cannot be certain that no minor sculptural adjustments were made to enhance these lighting effects. The 'uncertainty: high' status on some interpretive claims leaves open the possibility that some observed variations are intentional sculptural choices rather than purely lighting artifacts.\" }, { \"user_claim_id\": \"c4\", \"disposition\": \"supports\", \"observation_ids\": [\"img-k7-o1\", \"img-v9-o0\", \"img-q2-o1\"], \"discriminative_explanation\": \"The observations consistently describe the surface as a 'solid material' (stone, ceramic, plaster) that is 'carved' or 'sculpted' to create these forms. For example, img-k7-o1 states the surface 'appears to be carved from the same solid material,' and img-v9-o0 concludes the effect suggests a 'solid material such as carved stone.' If the material is carved into folds, then the differences in appearance are inherent to how that single carved operation interacts with light (addressed in c3), meaning they are not caused by different carving *patterns* defining separate operations but by the uniform nature of the carved solid responding to light. The text explicitly rejects the idea that these are assembled fabrics ('no evidence of translucency', 'integrated into a solid material'), implying the variation is optical/illuminative on a single material type.\", \"unresolved_alternatives\": \"We cannot rule out that different artisans used slightly different carving depths or angles, which would constitute 'different carving' in a technical sense, even if the fundamental operation (carving stone) is the same. The observations leave open the possibility of subtle structural differences beneath the unified visual effect created by lighting.\" } ]\n}",
+      "reasoning_content": null,
+      "prompt_tokens": 2277,
+      "completion_tokens": 1040,
+      "cached_tokens": 2273,
+      "latency": {
+        "prompt_ms_server": 542.698,
+        "predicted_ms_server": 221233.852,
+        "prompt_per_second": 7.370581796874137,
+        "predicted_per_second": 4.696387965075074,
+        "client_wall_ms": 221956.8,
+        "unaccounted_ms": 180.2,
+        "note": "prompt_ms covers image encoding AND prompt evaluation together; this build does not report them apart, so they are not split here either. `unaccounted_ms` is queueing plus transport, and is named rather than folded into either half."
+      },
+      "sampling_requested": {
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 1.5
+      },
+      "sampling_verification": {
+        "sampling_verified": true,
+        "requested": {
+          "temperature": 1.0,
+          "top_p": 0.95,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 1.5
+        },
+        "observed": {
+          "temperature": 1.0,
+          "top_p": 0.949999988079071,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 1.5
+        },
+        "mismatches": null,
+        "samples_seen": 1399
+      }
+    },
+    "parsed": {
+      "dispositions": [
+        {
+          "user_claim_id": "c1",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-v9-o0",
+            "img-q2-o1"
+          ],
+          "discriminative_explanation": "The observations describe distinct organizational structures that contradict the claim of a single identical operation. Observation img-k7-o1 describes vertical folds on one side crossing over the other, while observation img-v9-o0 describes vertical parallel folds with a central fold hanging over the nose. Because these descriptions detail different spatial arrangements and configurations, the evidence suggests the carving operations differ between objects rather than being the same.",
+          "unresolved_alternatives": "The claim could be true if 'same operation' refers to a generalized technique (e.g., all are draped drapery) applied in different ways, but the text does not support this specific reading of identity. It is also possible the observer has not yet identified a deeper similarity between these specific variations."
+        },
+        {
+          "user_claim_id": "c2",
+          "disposition": "supports",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-v9-o0",
+            "img-q2-o1"
+          ],
+          "discriminative_explanation": "These observations explicitly state that the visual texture appears to be 'carved from the same solid material as the body' (img-k7-o1) or suggest a 'solid material such as carved stone or plaster' creating the effect of folds (img-v9-o0, img-q2-o1). The text repeatedly frames the drapery not as actual fabric but as a molded form ('shaped with extreme subtlety to suggest a flexible textile', 'carved to drape'), directly supporting the idea that the material performs the folding through its solid nature rather than being an added component.",
+          "unresolved_alternatives": "The observations note that fine craftsmanship and specific mediums (like bronze vs. marble) are indeterminate (img-v9-undetermined). While the *operation* of carving seems to be the cause, we cannot rule out other material causes if the lighting is manipulated to simulate a solid object folding where it isn't."
+        },
+        {
+          "user_claim_id": "c3",
+          "disposition": "supports",
+          "observation_ids": [
+            "img-k7-o0",
+            "img-k7-o1",
+            "img-q2-o0",
+            "img-v9-o0"
+          ],
+          "discriminative_explanation": "The observations consistently attribute visual effects to light interaction rather than structural differences. For instance, img-k7-o1 notes that 'Light catches the convex curves... creating a play of bright highlights and dark valleys' which mimics fabric, implying the folds are static features illuminated by light. Similarly, img-v9-o0 states the surface is matte and 'diffuses light across its planes,' with shadows emphasizing curvature due to lighting direction ('directional light source from above' in img-v9-o1). The repeated emphasis on how light behaves (highlights, soft diffusion, deep shadows) suggests these are photographic/lighting phenomena revealing form, rather than the forms themselves being different.",
+          "unresolved_alternatives": "While lighting explains the *appearance* of movement and texture (e.g., 'sense of movement as if wind is blowing' in img-v9-o0), we cannot be certain that no minor sculptural adjustments were made to enhance these lighting effects. The 'uncertainty: high' status on some interpretive claims leaves open the possibility that some observed variations are intentional sculptural choices rather than purely lighting artifacts."
+        },
+        {
+          "user_claim_id": "c4",
+          "disposition": "supports",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-v9-o0",
+            "img-q2-o1"
+          ],
+          "discriminative_explanation": "The observations consistently describe the surface as a 'solid material' (stone, ceramic, plaster) that is 'carved' or 'sculpted' to create these forms. For example, img-k7-o1 states the surface 'appears to be carved from the same solid material,' and img-v9-o0 concludes the effect suggests a 'solid material such as carved stone.' If the material is carved into folds, then the differences in appearance are inherent to how that single carved operation interacts with light (addressed in c3), meaning they are not caused by different carving *patterns* defining separate operations but by the uniform nature of the carved solid responding to light. The text explicitly rejects the idea that these are assembled fabrics ('no evidence of translucency', 'integrated into a solid material'), implying the variation is optical/illuminative on a single material type.",
+          "unresolved_alternatives": "We cannot rule out that different artisans used slightly different carving depths or angles, which would constitute 'different carving' in a technical sense, even if the fundamental operation (carving stone) is the same. The observations leave open the possibility of subtle structural differences beneath the unified visual effect created by lighting."
+        }
+      ]
+    },
+    "parse_note": null,
+    "schema_errors": [],
+    "critic": {
+      "findings": [
+        {
+          "check": "diversity_used_for_sameness",
+          "user_claim_id": "c2",
+          "detail": "the explanation describes difference and concludes sameness, with no bridging argument joining the two",
+          "evidence": {
+            "contrast": [
+              "but"
+            ]
+          }
+        },
+        {
+          "check": "generic_quoted_evidence",
+          "user_claim_id": "c4",
+          "detail": "the quoted evidence is true of every object compared, so it cannot establish a relation between them. A generic fact is not a discriminative one",
+          "evidence": {
+            "quote": "solid material",
+            "all_terms_universal": [
+              "material",
+              "solid"
+            ]
+          }
+        },
+        {
+          "check": "generic_quoted_evidence",
+          "user_claim_id": "c4",
+          "detail": "the quoted evidence is true of every object compared, so it cannot establish a relation between them. A generic fact is not a discriminative one",
+          "evidence": {
+            "quote": "appears to be carved from the same solid material,",
+            "all_terms_universal": [
+              "appear",
+              "carv",
+              "material",
+              "solid"
+            ]
+          }
+        },
+        {
+          "check": "generic_quoted_evidence",
+          "user_claim_id": "c4",
+          "detail": "the quoted evidence is true of every object compared, so it cannot establish a relation between them. A generic fact is not a discriminative one",
+          "evidence": {
+            "quote": "solid material such as carved stone.",
+            "all_terms_universal": [
+              "carv",
+              "material",
+              "solid",
+              "stone"
+            ]
+          }
+        }
+      ],
+      "reviews": [
+        {
+          "check": "possibly_generic_quoted_evidence",
+          "user_claim_id": "c2",
+          "detail": "every image's observations contain at least 60% of this quote's vocabulary, so it may describe all of them equally and prove nothing about their relation. A threshold is a judgement, so this is put to a reader rather than used to invalidate",
+          "evidence": {
+            "quote": "carved from the same solid material as the body",
+            "coverage": {
+              "img-k7": 1.0,
+              "img-q2": 0.75,
+              "img-v9": 0.75
+            }
+          }
+        },
+        {
+          "check": "possibly_generic_quoted_evidence",
+          "user_claim_id": "c2",
+          "detail": "every image's observations contain at least 60% of this quote's vocabulary, so it may describe all of them equally and prove nothing about their relation. A threshold is a judgement, so this is put to a reader rather than used to invalidate",
+          "evidence": {
+            "quote": "solid material such as carved stone or plaster",
+            "coverage": {
+              "img-k7": 0.8,
+              "img-q2": 1.0,
+              "img-v9": 1.0
+            }
+          }
+        }
+      ],
+      "counts": {
+        "unknown_citation": 0,
+        "malformed_citation": 0,
+        "wrong_image_citation": 0,
+        "missing_citation_for_moving_disposition": 0,
+        "single_image_support_for_universal_claim": 0,
+        "non_discriminative_evidence": 0,
+        "generic_quoted_evidence": 3,
+        "diversity_used_for_sameness": 1,
+        "absence_of_contradiction_as_support": 0,
+        "minted_claim": 0,
+        "missing_claim": 0,
+        "duplicate_claim": 0
+      },
+      "review_counts": {
+        "possibly_generic_quoted_evidence": 2
+      },
+      "valid": false,
+      "needs_review": true,
+      "stances": {
+        "cannot_determine": 1,
+        "supports": 3
+      },
+      "n_dispositions": 4,
+      "all_resisted": false,
+      "all_accepted": false,
+      "mixed": true,
+      "universal_term_count": 47,
+      "note": "The candidate alignment is preserved whole. `valid: false` marks it, and never deletes it — a rejected answer is evidence about the model and discarding it would leave only the answers that happened to survive."
+    },
+    "critic_ms": 1.14
+  },
+  "critic_repair": {
+    "is_second_model_event": true,
+    "saw_an_image": false,
+    "call": {
+      "label": "align-repair:adversarial-sameness",
+      "ok": true,
+      "status": "completed",
+      "finish_reason": "stop",
+      "content": "{\"dispositions\": [{\"user_claim_id\": \"c1\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o1\", \"img-v9-o0\", \"img-q2-o1\"], \"discriminative_explanation\": \"The observations describe distinct organizational structures that contradict the claim of a single identical operation. Observation img-k7-o1 describes vertical folds on one side crossing over the other, while observation img-v9-o0 describes vertical parallel folds with a central fold hanging over the nose. Because these descriptions detail different spatial arrangements and configurations, the evidence suggests the carving operations differ between objects rather than being the same.\", \"unresolved_alternatives\": \"The claim could be true if 'same operation' refers to a generalized technique (e.g., all are draped drapery) applied in different ways, but the text does not support this specific reading of identity. It is also possible the observer has not yet identified a deeper similarity between these specific variations.\"}, {\"user_claim_id\": \"c2\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o1\", \"img-v9-o0\", \"img-q2-o1\"], \"discriminative_explanation\": \"While the observations state the drapery appears to be carved from a solid material similar to the body (img-k7-o1), they simultaneously describe conflicting organizational patterns (crossing folds vs. parallel folds). Since the evidence establishes both material unity and structural variation without explicitly linking them to a single unified operation, it remains unclear if these are variations of one process or distinct ones.\", \"unresolved_alternatives\": \"The observations note that fine craftsmanship and specific mediums are indeterminate (img-v9-undetermined). The material description alone does not rule out that different carving techniques produced the observed structural differences.\"}, {\"user_claim_id\": \"c3\", \"disposition\": \"supports\", \"observation_ids\": [\"img-k7-o0\", \"img-k7-o1\", \"img-q2-o0\", \"img-v9-o0\"], \"discriminative_explanation\": \"The observations consistently attribute visual effects to light interaction rather than structural differences. For instance, img-k7-o1 notes that 'Light catches the convex curves... creating a play of bright highlights and dark valleys' which mimics fabric, implying the folds are static features illuminated by light. Similarly, img-v9-o0 states the surface is matte and 'diffuses light across its planes,' with shadows emphasizing curvature due to lighting direction ('directional light source from above' in img-v9-o1). The repeated emphasis on how light behaves (highlights, soft diffusion, deep shadows) suggests these are photographic/lighting phenomena revealing form, rather than the forms themselves being different.\", \"unresolved_alternatives\": \"While lighting explains the *appearance* of movement and texture (e.g., 'sense of movement as if wind is blowing' in img-v9-o0), we cannot be certain that no minor sculptural adjustments were made to enhance these lighting effects. The 'uncertainty: high' status on some interpretive claims leaves open the possibility that some observed variations are intentional sculptural choices rather than purely lighting artifacts.\"}, {\"user_claim_id\": \"c4\", \"disposition\": \"cannot_determine\", \"observation_ids\": [\"img-k7-o1\", \"img-v9-o0\", \"img-q2-o1\"], \"discriminative_explanation\": \"The observations consistently describe the surface as a 'solid material' (stone, ceramic, plaster), but this property is universal to all items in the set and therefore does not discriminate between them. Furthermore, while img-k7-o1 suggests the drapery is carved from the same material as the body, other observations note conflicting structural details or lack of specific evidence linking the material type directly to a single unified operation. Without discriminative features distinguishing the objects beyond their shared solidity, the relationship remains indeterminate.\", \"unresolved_alternatives\": \"The claim requires a bridge between shared material and a specific operational link, but the provided text only confirms that multiple objects are made of solid material without detailing how they were constructed together or if they share a single workflow.\"}]}",
+      "reasoning_content": null,
+      "prompt_tokens": 3309,
+      "completion_tokens": 865,
+      "cached_tokens": 91,
+      "latency": {
+        "prompt_ms_server": 47099.838,
+        "predicted_ms_server": 170088.618,
+        "prompt_per_second": 68.32295261822344,
+        "predicted_per_second": 5.079704980611931,
+        "client_wall_ms": 217325.8,
+        "unaccounted_ms": 137.3,
+        "note": "prompt_ms covers image encoding AND prompt evaluation together; this build does not report them apart, so they are not split here either. `unaccounted_ms` is queueing plus transport, and is named rather than folded into either half."
+      },
+      "sampling_requested": {
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 1.5
+      },
+      "sampling_verification": {
+        "sampling_verified": true,
+        "requested": {
+          "temperature": 1.0,
+          "top_p": 0.95,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 1.5
+        },
+        "observed": {
+          "temperature": 1.0,
+          "top_p": 0.949999988079071,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 1.5
+        },
+        "mismatches": null,
+        "samples_seen": 1310
+      }
+    },
+    "parsed": {
+      "dispositions": [
+        {
+          "user_claim_id": "c1",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-v9-o0",
+            "img-q2-o1"
+          ],
+          "discriminative_explanation": "The observations describe distinct organizational structures that contradict the claim of a single identical operation. Observation img-k7-o1 describes vertical folds on one side crossing over the other, while observation img-v9-o0 describes vertical parallel folds with a central fold hanging over the nose. Because these descriptions detail different spatial arrangements and configurations, the evidence suggests the carving operations differ between objects rather than being the same.",
+          "unresolved_alternatives": "The claim could be true if 'same operation' refers to a generalized technique (e.g., all are draped drapery) applied in different ways, but the text does not support this specific reading of identity. It is also possible the observer has not yet identified a deeper similarity between these specific variations."
+        },
+        {
+          "user_claim_id": "c2",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-v9-o0",
+            "img-q2-o1"
+          ],
+          "discriminative_explanation": "While the observations state the drapery appears to be carved from a solid material similar to the body (img-k7-o1), they simultaneously describe conflicting organizational patterns (crossing folds vs. parallel folds). Since the evidence establishes both material unity and structural variation without explicitly linking them to a single unified operation, it remains unclear if these are variations of one process or distinct ones.",
+          "unresolved_alternatives": "The observations note that fine craftsmanship and specific mediums are indeterminate (img-v9-undetermined). The material description alone does not rule out that different carving techniques produced the observed structural differences."
+        },
+        {
+          "user_claim_id": "c3",
+          "disposition": "supports",
+          "observation_ids": [
+            "img-k7-o0",
+            "img-k7-o1",
+            "img-q2-o0",
+            "img-v9-o0"
+          ],
+          "discriminative_explanation": "The observations consistently attribute visual effects to light interaction rather than structural differences. For instance, img-k7-o1 notes that 'Light catches the convex curves... creating a play of bright highlights and dark valleys' which mimics fabric, implying the folds are static features illuminated by light. Similarly, img-v9-o0 states the surface is matte and 'diffuses light across its planes,' with shadows emphasizing curvature due to lighting direction ('directional light source from above' in img-v9-o1). The repeated emphasis on how light behaves (highlights, soft diffusion, deep shadows) suggests these are photographic/lighting phenomena revealing form, rather than the forms themselves being different.",
+          "unresolved_alternatives": "While lighting explains the *appearance* of movement and texture (e.g., 'sense of movement as if wind is blowing' in img-v9-o0), we cannot be certain that no minor sculptural adjustments were made to enhance these lighting effects. The 'uncertainty: high' status on some interpretive claims leaves open the possibility that some observed variations are intentional sculptural choices rather than purely lighting artifacts."
+        },
+        {
+          "user_claim_id": "c4",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-v9-o0",
+            "img-q2-o1"
+          ],
+          "discriminative_explanation": "The observations consistently describe the surface as a 'solid material' (stone, ceramic, plaster), but this property is universal to all items in the set and therefore does not discriminate between them. Furthermore, while img-k7-o1 suggests the drapery is carved from the same material as the body, other observations note conflicting structural details or lack of specific evidence linking the material type directly to a single unified operation. Without discriminative features distinguishing the objects beyond their shared solidity, the relationship remains indeterminate.",
+          "unresolved_alternatives": "The claim requires a bridge between shared material and a specific operational link, but the provided text only confirms that multiple objects are made of solid material without detailing how they were constructed together or if they share a single workflow."
+        }
+      ]
+    },
+    "parse_note": null,
+    "critic": {
+      "findings": [],
+      "reviews": [],
+      "counts": {
+        "unknown_citation": 0,
+        "malformed_citation": 0,
+        "wrong_image_citation": 0,
+        "missing_citation_for_moving_disposition": 0,
+        "single_image_support_for_universal_claim": 0,
+        "non_discriminative_evidence": 0,
+        "generic_quoted_evidence": 0,
+        "diversity_used_for_sameness": 0,
+        "absence_of_contradiction_as_support": 0,
+        "minted_claim": 0,
+        "missing_claim": 0,
+        "duplicate_claim": 0
+      },
+      "review_counts": {
+        "possibly_generic_quoted_evidence": 0
+      },
+      "valid": true,
+      "needs_review": false,
+      "stances": {
+        "cannot_determine": 3,
+        "supports": 1
+      },
+      "n_dispositions": 4,
+      "all_resisted": false,
+      "all_accepted": false,
+      "mixed": true,
+      "universal_term_count": 47,
+      "note": "The candidate alignment is preserved whole. `valid: false` marks it, and never deletes it — a rejected answer is evidence about the model and discarding it would leave only the answers that happened to survive."
+    },
+    "repair_succeeded": true,
+    "stances_before": {
+      "cannot_determine": 1,
+      "supports": 3
+    },
+    "stances_after": {
+      "cannot_determine": 3,
+      "supports": 1
+    },
+    "note": "recorded beside the original, never over it. A repair that fixes the structure by flipping every stance to cannot_determine is visible in the two stance maps."
+  },
+  "outcome": {
+    "all_claims_resisted": false,
+    "all_claims_accepted": false,
+    "mixed": true,
+    "unusable_or_truncated": false,
+    "deterministic_audit_failed": true,
+    "repaired_successfully": true,
+    "remained_invalid_after_repair": false,
+    "needs_human_review": true,
+    "stances": {
+      "cannot_determine": 1,
+      "supports": 3
+    }
+  },
+  "finished_at": "2026-08-22T21:55:10+0530"
+}
