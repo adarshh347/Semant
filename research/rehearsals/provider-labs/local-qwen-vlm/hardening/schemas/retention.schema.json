@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:provider-lab/local-qwen-vlm/hardening/retention.schema.json",
+  "title": "Context-retention retrieval",
+  "description": "A RETRIEVAL probe, not an intelligence probe. The model is shown an inventory of schema-shaped observation records carrying opaque sentinel ids and asked for one field of one record. A correct answer means it could find a token it was shown at a given depth in the prompt. Calling that `reasoning` would be the single easiest way to oversell a local model, so the field names here say retrieval and nothing else. The #230 overflow probe — filler text repeated until the server refused — is kept as a low-level control and is a different question: that one asks whether the server refuses cleanly, this one asks whether the context is USABLE.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sentinel_id", "record_present", "requested_field", "field_value", "cited_record_ids"],
+  "properties": {
+    "sentinel_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The sentinel asked for, echoed back. Opaque and unguessable by construction, so an echo is either retrieval or invention and never a lucky ordinal."
+    },
+    "record_present": {
+      "type": "boolean",
+      "description": "Whether that sentinel was in the inventory at all. Negative controls ask for a sentinel that was never placed; a model that answers `true` there has invented a record, which is a different failure from failing to find a real one."
+    },
+    "requested_field": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The field name asked for, echoed. Guards against a model returning the right record's wrong field and scoring as a hit."
+    },
+    "field_value": {
+      "type": "string",
+      "description": "The value read out. Empty is legitimate when record_present is false, and is scored as such rather than as a miss."
+    },
+    "cited_record_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Which records it used. A retrieval that cites three records to answer about one is recorded, because it says something about how the answer was found."
+    }
+  }
+}
