@@ -32,7 +32,8 @@ A mean over both is a third number that is true of neither.
     cases/          four canonical prompts + the versioned corpus manifest
     schemas/        JSON Schema for a case and for an evaluation
     fixtures/       sanitized session records the committed tests read
-    runs/           one directory per evaluation run (archive)
+    run-archive/    one directory per evaluation run
+                    (NOT `runs/` — the repository ignores that name globally)
     architecture-control/
                     candidate ids for a cross-domain control set, AWAITING HUMAN CONFIRMATION
 

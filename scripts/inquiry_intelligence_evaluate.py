@@ -64,7 +64,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REHEARSALS = ROOT / "research" / "rehearsals" / "inquiry-intelligence"
 CASES_DIR = REHEARSALS / "cases"
 FIXTURES_DIR = REHEARSALS / "fixtures"
-RUNS_DIR = REHEARSALS / "runs"
+RUNS_DIR = REHEARSALS / "run-archive"
 
 #: `complicates` and `challenges` are the contrast relations. `supports` is agreement,
 #: `composes_from` and `generalizes` are constructions — none of the three is a contrast, and
