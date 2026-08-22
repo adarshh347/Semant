@@ -36,6 +36,12 @@ runs/
 # the weights they describe are never written here. Same two-line shape as the negations above.
 !research/perception_lab/model_trials/runs/
 !research/perception_lab/model_trials/runs/**
+# INTELLIGENCE-001C — the local-VLM lab's run records are EVIDENCE too: a census, five
+# experiments and a computed verdict, all JSON. The IMAGE BYTES are excluded by that lab's own
+# .gitignore (research/rehearsals/provider-labs/local-qwen-vlm/.gitignore), so nothing here
+# carries a copy of a source post. Same two-line shape as the negations above.
+!research/rehearsals/provider-labs/local-qwen-vlm/runs/
+!research/rehearsals/provider-labs/local-qwen-vlm/runs/**
 .ds-sync/
 ds-bundle/
 .design-sync/.cache/

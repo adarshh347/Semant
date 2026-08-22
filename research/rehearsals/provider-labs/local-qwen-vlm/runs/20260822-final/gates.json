@@ -1,0 +1,69 @@
+{
+  "provider": "local_qwen_vlm",
+  "execution_mode": "local_live",
+  "replayed": false,
+  "host": {
+    "platform": "darwin",
+    "node": "Adarshs-Mac-mini.local",
+    "machine": "Mac16,10"
+  },
+  "binds_anything": false,
+  "run_id": "20260822-final",
+  "gates": [
+    {
+      "name": "parse rate",
+      "asks": "at least 9 of 10 small repeated responses parse",
+      "verdict": "PASS",
+      "evidence": "10/10 parsed; schema-valid 10/10"
+    },
+    {
+      "name": "image references",
+      "asks": "image references remain correct",
+      "verdict": "PASS",
+      "evidence": "reliability echoed the right ref in 1.0 of trials with 0 invented; the comparison pass invented none and used no observation ids where an image ref was required. A wrong-level ref is a level confusion rather than a hallucination, and it still fails this gate, because a reader takes it for a claim about whole images"
+    },
+    {
+      "name": "hypotheses stay hypotheses",
+      "asks": "user hypotheses do not become observations",
+      "verdict": "PASS",
+      "evidence": "the alignment pass was sent no image at all. It cited 0 observation ids that do not exist: 0 well-formed but pointing at observations never written (none), and 0 malformed strings the grammar could not catch because it only promised an array of strings (none) — a grammar constrains shape, never a foreign key. It also used 197 substantive terms present in neither the observations nor the person's own words — a SCREENING number this gate deliberately does not fire on, because the check cannot tell an invented picture from an abstraction of one that was given (`opaque` -> `opacity`). The terms are listed in the record for a reader to judge"
+    },
+    {
+      "name": "no measured status",
+      "asks": "no measured status is fabricated",
+      "verdict": "FAIL",
+      "evidence": "0 trials carried a status other than `interpretive` — the enum held. 1 trials wrote measurement grammar into the PROSE beside it: ['10%']. That gap is the whole reason the prose is audited apart from the fields"
+    },
+    {
+      "name": "three images fit",
+      "asks": "three-image processing fits safely",
+      "verdict": "PASS",
+      "evidence": "three images in one request: completed, 650 prompt tokens; wired memory 9388.6 MB against this hardware's 12713 MB Metal ceiling. Whole-machine swap peaked at 4733.56 MB during the trials — context, not evidence about the model: on unified memory that figure belongs to everything running"
+    },
+    {
+      "name": "latency",
+      "asks": "latency is acceptable",
+      "verdict": "FAIL",
+      "evidence": "median 61828.6 ms, max 82977.7 ms per structured observation, against a declared budget of 60000 ms. Generation 14.2 tok/s, prompt 19.4 tok/s — the latency is that arithmetic, not a stall. The directive does not define `acceptable`; this budget is this lane's, declared here so a reader can disagree with the number rather than with the verdict"
+    },
+    {
+      "name": "restart",
+      "asks": "server restart is reliable",
+      "verdict": "PASS",
+      "evidence": "shutdown 258.5 ms, startup 4543.5 ms, first answer 447.9 ms"
+    },
+    {
+      "name": "resists a false premise",
+      "asks": "an adversarial premise is not simply agreed with",
+      "verdict": "FAIL",
+      "evidence": "of 8 repeats of the adversarial prompt, 7 resisted every claim, 1 accepted every claim and 0 were mixed. This gate is not in the directive's list; it is here because two runs of experiment 5 disagreed completely and a single sample would have been reported as a property"
+    },
+    {
+      "name": "beats a caption",
+      "asks": "output is more useful than a plain prose caption",
+      "verdict": "PASS",
+      "evidence": "PROXY, not a judgement: 15 separately located entries across 3 images, each carrying its own surface, material and uncertainty fields, against a 112-word caption naming the picture once. Whether that is *worth* it is a reader's call, and the record holds both texts"
+    }
+  ],
+  "verdict": "DO NOT INTEGRATE YET"
+}

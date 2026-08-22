@@ -1,0 +1,87 @@
+{
+  "provider": "local_qwen_vlm",
+  "run_id": "20260822-a",
+  "experiment": "3-multi-image-compare",
+  "refs": [
+    "img-k7",
+    "img-q2",
+    "img-v9"
+  ],
+  "saw_an_image": false,
+  "note": "Compact per-image observations from experiment 1 are the input. The images are not re-sent: this measures comparison, not re-perception.",
+  "system": "You are given short observations about several photographs, each under its own reference.\nAnswer with comparisons between the references — what two of them share, and where they part company.\nEvery comparison must name exactly the references it is about, using the reference strings given to you.\nDo not write a single essay about all of them at once. Do not name a maker, a period or a title. Nothing here has been measured.",
+  "call": {
+    "label": "compare",
+    "ok": true,
+    "status": "completed",
+    "content": "{\n  \"comparisons\": [\n    {\n      \"refs\": [\"img-k7\", \"img-q2\"],\n      \"shared\": \"Both reference groups depict a figure with smooth skin tones where the light creates sharp specular highlights, specifically on the forehead, nose bridge, and cheekbones, suggesting a highly polished surface like stone.\",\n      \"differs\": \"The description for img-k7 emphasizes a matte-to-satin sheen with soft shadows, whereas img-q2 explicitly describes a high-gloss finish reflecting light as sharp spots and identifies a deep contrast between bright highlights and dark hollows under the eyes.\",\n      \"uncertainty\": \"medium\"\n    },\n    {\n      \"refs\": [\"img-k7\", \"img-v9\"],\n      \"shared\": \"Both sets of observations note that the surface material appears smooth, polished, and opaque, with light falling from the upper left to cast soft shadows defining facial structures.\",\n      \"differs\": \"While img-k7 focuses on distinct curls in the hair wrapped around a sculpted head, img-v9 describes a more complex arrangement where heavy draped fabric-like folds cover the head and shoulders, creating an illusion of textile through rigid stone folds.\",\n      \"uncertainty\": \"medium\"\n    },\n    {\n      \"refs\": [\"img-q2\", \"img-v9\"],\n      \"shared\": \"Both references describe a bust featuring drapery that mimics the translucency and flow of fabric but is executed in a solid, opaque material like stone, with deep crevices absorbing light to create depth.\",\n      \"differs\": \"The lighting interaction differs slightly; img-v9 notes diffuse reflection without sharp highlights on the drapery suggesting a softer texture, while img-q2 mentions strong gradients and potential light penetration through thin sections of the folds.\",\n      \"uncertainty\": \"medium\"\n    },\n    {\n      \"refs\": [\"img-k7\", \"img-q2\", \"img-v9\"],\n      \"shared\": \"All three reference groups agree that the figures are illuminated by a single, strong light source positioned in the upper left quadrant of the frame.\",\n      \"differs\": \"The intensity and resulting contrast vary among the descriptions; img-k7 describes soft shadows and uniform surfaces, img-q2 notes high contrast with deep shadows casting off to the right, and img-v9 characterizes the lighting as diffuse with gradual transitions between light and dark areas.\",\n      \"uncertainty\": \"medium\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "prompt_tokens": 2515,
+    "completion_tokens": 533,
+    "cached_tokens": 0,
+    "prompt_per_second": 174.4826450819725,
+    "predicted_per_second": 11.281357349166026,
+    "client_wall_ms": 62653.6,
+    "request_digest": "c3b3e36893c74237",
+    "machine_after": {
+      "swap_used_mb": 6956.69,
+      "swap_raw": "total = 8192.00M  used = 6956.69M  free = 1235.31M  (encrypted)",
+      "wired_mb": 9526.7,
+      "compressed_mb": 3451.7,
+      "free_mb": 65.8,
+      "server_rss_mb": 199.2,
+      "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+      "server_pid": 47592
+    }
+  },
+  "parsed": {
+    "comparisons": [
+      {
+        "refs": [
+          "img-k7",
+          "img-q2"
+        ],
+        "shared": "Both reference groups depict a figure with smooth skin tones where the light creates sharp specular highlights, specifically on the forehead, nose bridge, and cheekbones, suggesting a highly polished surface like stone.",
+        "differs": "The description for img-k7 emphasizes a matte-to-satin sheen with soft shadows, whereas img-q2 explicitly describes a high-gloss finish reflecting light as sharp spots and identifies a deep contrast between bright highlights and dark hollows under the eyes.",
+        "uncertainty": "medium"
+      },
+      {
+        "refs": [
+          "img-k7",
+          "img-v9"
+        ],
+        "shared": "Both sets of observations note that the surface material appears smooth, polished, and opaque, with light falling from the upper left to cast soft shadows defining facial structures.",
+        "differs": "While img-k7 focuses on distinct curls in the hair wrapped around a sculpted head, img-v9 describes a more complex arrangement where heavy draped fabric-like folds cover the head and shoulders, creating an illusion of textile through rigid stone folds.",
+        "uncertainty": "medium"
+      },
+      {
+        "refs": [
+          "img-q2",
+          "img-v9"
+        ],
+        "shared": "Both references describe a bust featuring drapery that mimics the translucency and flow of fabric but is executed in a solid, opaque material like stone, with deep crevices absorbing light to create depth.",
+        "differs": "The lighting interaction differs slightly; img-v9 notes diffuse reflection without sharp highlights on the drapery suggesting a softer texture, while img-q2 mentions strong gradients and potential light penetration through thin sections of the folds.",
+        "uncertainty": "medium"
+      },
+      {
+        "refs": [
+          "img-k7",
+          "img-q2",
+          "img-v9"
+        ],
+        "shared": "All three reference groups agree that the figures are illuminated by a single, strong light source positioned in the upper left quadrant of the frame.",
+        "differs": "The intensity and resulting contrast vary among the descriptions; img-k7 describes soft shadows and uniform surfaces, img-q2 notes high contrast with deep shadows casting off to the right, and img-v9 characterizes the lighting as diffuse with gradual transitions between light and dark areas.",
+        "uncertainty": "medium"
+      }
+    ]
+  },
+  "parse_note": null,
+  "schema_errors": [],
+  "invented_refs": [],
+  "audit": {
+    "measurement_claims": [],
+    "attribution_claims": [],
+    "proper_nouns": [],
+    "clean": true
+  }
+}
