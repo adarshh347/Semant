@@ -16,6 +16,8 @@ rehearsals/
   skills/       (R6+) versioned agent skills (only after multi-run support)
   decisions/    ADRs — graduate / retain / revise / demote / retire
   schemas/      (R1+) research trace + candidate-card JSON schemas (not product schemas)
+  labs/         single-actuator lab — manifests, suites, frozen runs
+  provider-labs/<name>/  is a hosted model worth having? census + recorded calls, integrating nothing
 ```
 
 **Start here:** `R0/R0-recommendation.md`. Invariants: `mask_rle` authoritative; semantics/narrative

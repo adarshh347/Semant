@@ -1,0 +1,6 @@
+# The image BYTES are not the repository's to carry. What is committed is `../corpus.json`:
+# the post ids, the resolved URLs and the sha256 of each file — enough to prove that a later run
+# sent the same picture, and small enough that the research memory stays readable. The CDN
+# remains the single copy of the image, and the posts remain untouched.
+*
+!.gitignore

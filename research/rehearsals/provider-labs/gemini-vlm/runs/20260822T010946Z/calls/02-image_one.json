@@ -1,0 +1,46 @@
+{
+  "call_id": "02-image_one",
+  "lab": "gemini-vlm",
+  "experiment": "image_one",
+  "mode": "live",
+  "provider": "gemini",
+  "endpoint": "(not called)",
+  "model": "(no model)",
+  "prompt_id": null,
+  "request": {
+    "boundary_hash": "d6d8ee7537cf1ba2eec44827f297c69d44bc7df68fe32997492be9781cad5d4c",
+    "text_parts": [],
+    "image_parts": [],
+    "response_schema_sent": null,
+    "generation_config": null
+  },
+  "outcome": {
+    "status": "unavailable",
+    "http_status": null,
+    "finish_reason": null,
+    "safety_blocked": null,
+    "text": null,
+    "json": null,
+    "json_valid_against_schema": null,
+    "schema_errors": [],
+    "error_type": null,
+    "error_message": "GEMINI_API_KEY is not set"
+  },
+  "telemetry": {
+    "latency_ms": null,
+    "usage": null,
+    "model_version_reported": null,
+    "retry_after_s": null,
+    "rate_limited": null
+  },
+  "epistemic": {
+    "status": "interpretive",
+    "measured": false,
+    "supported_by_capability": null,
+    "prompt_carries_user_claim": null,
+    "note": "no call was made; nothing was observed"
+  },
+  "corpus_invariant": null,
+  "captured_at": null,
+  "content_hash": "dc926ac0e8217b28f329fd3f912d6746de7a1ac575fb69ca7186660256065610"
+}

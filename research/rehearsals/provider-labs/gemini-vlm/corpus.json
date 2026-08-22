@@ -1,0 +1,39 @@
+{
+  "version": "gemini-vlm-corpus.v1",
+  "note": "Resolved read-only from the posts collection. No field of any post was written. `post_fingerprint` is the invariant a run re-checks.",
+  "images": [
+    {
+      "post_id": "6a6041b81ecd6db1c931eb7a",
+      "resolved": true,
+      "why": null,
+      "photo_url": "https://res.cloudinary.com/g4maiv1x/image/upload/v1784693176/posts/f75baebf-67c1-444c-bb2e-cb81628986ab.jpg",
+      "post_fingerprint": "165304160602f8b7415ac2f1c80b480ac7779262d3940f62d403784a3b7e927f",
+      "sha256": "02efebe7bac883d501808fb2646ad11a90e03d553545087c775c72f4af3b19ae",
+      "bytes": 17028,
+      "mime_type": "image/jpeg",
+      "cached_at": "research/rehearsals/provider-labs/gemini-vlm/corpus/6a6041b81ecd6db1c931eb7a.jpg"
+    },
+    {
+      "post_id": "6a6041b61ecd6db1c931eb78",
+      "resolved": true,
+      "why": null,
+      "photo_url": "https://res.cloudinary.com/g4maiv1x/image/upload/v1784693173/posts/a69866f5-cf75-49c7-a174-8d43152108ad.jpg",
+      "post_fingerprint": "0237a39cb28b41e082d185b3d153714e004d0304dbfc08fcfd634db1c03037eb",
+      "sha256": "f43e90ced439fdc730ecdb3cd1b5d0eac680fc2a7884ac3765c0eed61fab6787",
+      "bytes": 15281,
+      "mime_type": "image/jpeg",
+      "cached_at": "research/rehearsals/provider-labs/gemini-vlm/corpus/6a6041b61ecd6db1c931eb78.jpg"
+    },
+    {
+      "post_id": "6a60408e1ecd6db1c931eb6b",
+      "resolved": true,
+      "why": null,
+      "photo_url": "https://res.cloudinary.com/g4maiv1x/image/upload/v1784692877/posts/cf2fff38-b1cd-45e8-b188-83b3f012277d.jpg",
+      "post_fingerprint": "8a1270244e2876e81465c894c076e235de170c7dee121607c99c8f936c26395a",
+      "sha256": "31b23bffc1880df1c0062fb96b3635178a7da0596c932b6db28e1ebe70ca35a5",
+      "bytes": 17593,
+      "mime_type": "image/jpeg",
+      "cached_at": "research/rehearsals/provider-labs/gemini-vlm/corpus/6a60408e1ecd6db1c931eb6b.jpg"
+    }
+  ]
+}
