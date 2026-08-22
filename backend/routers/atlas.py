@@ -10,6 +10,8 @@ set of images.
     GET  /api/v1/atlas/{id}/view          the same, hydrated from the ledger for rendering
     POST /api/v1/atlas/{id}/arrangement   node positions; refusals travel with the save
     POST /api/v1/atlas/{id}/notes         T1 — the author's freehand notes; NOT percepts
+    PATCH /api/v1/atlas/{id}              lifecycle: rename, archive, restore (no delete, by design)
+    POST /api/v1/atlas/{id}/duplicate     the same evidence and arrangement, as a new Atlas
 
 WHY `GET {id}` AND `GET {id}/view` ARE TWO ENDPOINTS. They could have been one with a query
 parameter, and separating them is the point: the first returns exactly what is stored, so what the
@@ -105,6 +107,18 @@ class CreateAtlasRequest(BaseModel):
 
 class ArrangementRequest(BaseModel):
     nodes: List[NodePatch] = Field(default_factory=list)
+
+
+class LifecyclePatch(BaseModel):
+    """Rename, archive, restore. Two fields and the model is closed, so a lifecycle patch cannot
+    smuggle a node, an edge or a plan onto the document through the one route that is allowed to
+    touch its title."""
+    title: Optional[str] = None
+    archived: Optional[bool] = None
+
+
+class DuplicateRequest(BaseModel):
+    title: Optional[str] = None
 
 
 class NotePatch(BaseModel):
@@ -207,8 +221,36 @@ async def create_atlas(body: CreateAtlasRequest):
 
 @router.get("")
 @router.get("/")
-async def list_atlases(limit: int = 20):
-    return {"atlases": [A._out(d) for d in await A.list_atlases(limit=max(1, min(limit, 100)))]}
+async def list_atlases(limit: int = 20, include_archived: bool = False):
+    docs = await A.list_atlases(limit=max(1, min(limit, 100)), include_archived=include_archived)
+    return {"atlases": [A._out(d) for d in docs]}
+
+
+@router.patch("/{atlas_id}")
+async def patch_atlas(atlas_id: str, body: LifecyclePatch):
+    """Rename, archive or restore. Nothing else — the arrangement and the notes have their own
+    routes, and the evidence has none here.
+
+    There is deliberately no DELETE. An archived Atlas leaves the shelf and keeps its provenance
+    (`corpus_ref`, the notes, the accepted plan), which is what a manuscript written from it will
+    need to be explicable later. A hard delete would be the one lifecycle gesture that loses that.
+    """
+    doc = await _atlas_or_404(atlas_id)
+    if body.title is not None:
+        doc = await A.rename_atlas(atlas_id, body.title) or doc
+    if body.archived is not None:
+        doc = await A.set_archived(atlas_id, body.archived) or doc
+    return A._out(doc)
+
+
+@router.post("/{atlas_id}/duplicate", status_code=201)
+async def duplicate_atlas(atlas_id: str, body: DuplicateRequest):
+    """A new Atlas over the same evidence, with the same arrangement and notes. The plan, the draft
+    and the edges start fresh — see `atlas_service.duplicate_doc` for why — and the copy records
+    which Atlas it came from."""
+    await _atlas_or_404(atlas_id)
+    doc = await A.duplicate_atlas(atlas_id, title=body.title)
+    return A._out(doc)
 
 
 @router.get("/{atlas_id}")

@@ -1297,3 +1297,86 @@
     gap: var(--space-4);
     margin-top: var(--space-5);
 }
+
+/* ── the index: lifecycle controls beside what they act on ─────────────────── */
+
+.atlas-plain:hover { color: var(--ink); }
+.atlas-plain:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-sm); }
+.atlas-plain:active { transform: translateY(1px); }
+.atlas-plain[disabled] { opacity: 0.45; cursor: not-allowed; text-decoration: none; }
+.atlas-plain.is-danger { color: var(--accent); }
+
+.atlas-list-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.atlas-list-item:active { transform: translateY(1px); }
+.atlas-list-item[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+/* A row is the thing you open plus the thin controls that act on it. The controls sit beside,
+   never inside, the open button — a rename is not an open. */
+.atlas-list-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+.atlas-list-row .atlas-list-item { flex: 1 1 auto; }
+.atlas-list-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex: 0 0 auto;
+    font-size: var(--fs-small);
+}
+
+.atlas-inline {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0 0 var(--space-3);
+}
+.atlas-inline .atlas-input { flex: 1 1 auto; }
+
+/* The walk, opened in place under its row. */
+.atlas-walk {
+    margin: var(--space-2) 0 var(--space-4);
+    padding: var(--space-4);
+    background: var(--surface-2, var(--surface));
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.12));
+    border-radius: var(--radius-md);
+}
+.atlas-walk .atlas-order { margin-top: var(--space-2); }
+.atlas-walk-thumb {
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--line, rgba(23, 18, 26, 0.12));
+}
+.atlas-walk-thumb.is-unreadable {
+    display: inline-grid;
+    place-items: center;
+    font-family: var(--font-mono);
+    color: var(--ink-subtle);
+}
+.atlas-walk-foot {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+    font-size: var(--fs-small);
+}
+.atlas-confirm { display: inline-flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+
+.atlas-order-move button:hover { color: var(--ink); background: var(--surface-hover); }
+.atlas-order-move button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.atlas-order-move button:active { transform: translateY(1px); }
+
+.atlas-archived { margin-bottom: var(--space-12); }
+.atlas-archived > summary {
+    cursor: pointer;
+    color: var(--ink-muted);
+    font-size: var(--fs-small);
+    margin-bottom: var(--space-3);
+}
+.atlas-archived > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.atlas-archived .atlas-list { margin-bottom: 0; }
