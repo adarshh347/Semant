@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:provider-lab/local-qwen-vlm/comparison.schema.json",
+  "title": "Multi-image comparison",
+  "description": "Comparisons BETWEEN named references, never one essay about all of them. The array shape is the point: an essay cannot be checked for which picture a sentence was about, and the failure this experiment exists to catch is a fluent paragraph that has silently merged three objects into one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["comparisons"],
+  "properties": {
+    "comparisons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["refs", "shared", "differs", "uncertainty"],
+        "properties": {
+          "refs": {
+            "type": "array",
+            "minItems": 2,
+            "items": { "type": "string" },
+            "description": "Exactly the references this comparison is about. Any string not among the references supplied is recorded as an invented ref."
+          },
+          "shared": { "type": "string", "minLength": 1 },
+          "differs": { "type": "string", "minLength": 1 },
+          "uncertainty": { "type": "string", "enum": ["low", "medium", "high"] }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "provider": "local_qwen_vlm",
+  "execution_mode": "local_live",
+  "replayed": false,
+  "host": {
+    "platform": "darwin",
+    "node": "Adarshs-Mac-mini.local",
+    "machine": "Mac16,10"
+  },
+  "binds_anything": false,
+  "run_id": "20260822-final",
+  "experiment": "3-multi-image-compare",
+  "refs": [
+    "img-k7",
+    "img-q2",
+    "img-v9"
+  ],
+  "saw_an_image": false,
+  "note": "Compact per-image observations from experiment 1 are the input. The images are not re-sent: this measures comparison, not re-perception.",
+  "system": "You are given short observations about several photographs, each under its own reference.\nAnswer with comparisons between the references — what two of them share, and where they part company.\nEvery comparison must name exactly the references it is about, using the reference strings given to you.\nDo not write a single essay about all of them at once. Do not name a maker, a period or a title. Nothing here has been measured.",
+  "call": {
+    "label": "compare",
+    "ok": true,
+    "status": "completed",
+    "content": "{ \"comparisons\": [ { \"refs\": [ \"img-k7\", \"img-q2\" ], \"shared\": \"Both images feature a figure with closed eyes or downcast gaze where soft lighting creates gentle shadows rather than harsh contrasts, and both depict drapery carved to imitate the folds of cloth.\", \"differs\": \"While img-k7 uses intense directional lighting to create high contrast between bright highlights and deep shadows for specific details like hair, img-q2 relies on a softer light source that produces uniform brightness across facial features.\", \"uncertainty\": \"high\" }, { \"refs\": [ \"img-k7\", \"img-v9\" ], \"shared\": \"Both sculptures are defined by the use of draped fabric covering the shoulders and head, with both utilizing lighting to accentuate the three-dimensional volume of these folds.\", \"differs\": \"In img-k7, the stone's texture mimics a liquid silk appearance with sharp specular reflections on curled hair, whereas img-v9 presents a smoother surface with diffuse gradients that suggest a more solid, continuous stone form beneath the drapery.\", \"uncertainty\": \"high\" }, { \"refs\": [ \"img-q2\", \"img-v9\" ], \"shared\": \"Both images share a similar lighting scheme where a single source from the upper left or side creates bright highlights on raised surfaces like noses and forehead while leaving recesses in shadow.\", \"differs\": \"The background of img-v9 is described as a flat, featureless void that absorbs all light with no reflection, whereas img-q2 features a dark base that is partially illuminated at its edges, creating a stepped structure not present in the other two.\", \"uncertainty\": \"high\" }, { \"refs\": [ \"img-k7\", \"img-q2\", \"img-v9\" ], \"shared\": \"All three observations describe stone sculptures where the carving technique is specifically noted to create an illusion of soft materials like fabric or hair, resulting in a high level of interpretive uncertainty regarding the actual substance.\", \"differs\": \"img-k7 focuses intensely on the complexity of individual hair strands and tight curls with deep shadows, while img-q2 emphasizes symmetrical facial patterns and heavy garment folds, and img-v9 concentrates on the transition between veil-like coverings and the underlying skull structure with minimal variation in highlight intensity.\", \"uncertainty\": \"high\" } ] }",
+    "finish_reason": "stop",
+    "prompt_tokens": 2113,
+    "completion_tokens": 501,
+    "cached_tokens": 0,
+    "prompt_per_second": 180.9680531862796,
+    "predicted_per_second": 13.961740085174993,
+    "client_wall_ms": 47649.9,
+    "request_digest": "305d11abf730a735",
+    "machine_after": {
+      "swap_used_mb": 4840.75,
+      "swap_raw": "total = 5120.00M  used = 4840.75M  free = 279.25M  (encrypted)",
+      "wired_mb": 9350.5,
+      "compressed_mb": 3823.8,
+      "free_mb": 67.0,
+      "server_rss_mb": 7265.8,
+      "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+      "server_pid": 93273
+    }
+  },
+  "parsed": {
+    "comparisons": [
+      {
+        "refs": [
+          "img-k7",
+          "img-q2"
+        ],
+        "shared": "Both images feature a figure with closed eyes or downcast gaze where soft lighting creates gentle shadows rather than harsh contrasts, and both depict drapery carved to imitate the folds of cloth.",
+        "differs": "While img-k7 uses intense directional lighting to create high contrast between bright highlights and deep shadows for specific details like hair, img-q2 relies on a softer light source that produces uniform brightness across facial features.",
+        "uncertainty": "high"
+      },
+      {
+        "refs": [
+          "img-k7",
+          "img-v9"
+        ],
+        "shared": "Both sculptures are defined by the use of draped fabric covering the shoulders and head, with both utilizing lighting to accentuate the three-dimensional volume of these folds.",
+        "differs": "In img-k7, the stone's texture mimics a liquid silk appearance with sharp specular reflections on curled hair, whereas img-v9 presents a smoother surface with diffuse gradients that suggest a more solid, continuous stone form beneath the drapery.",
+        "uncertainty": "high"
+      },
+      {
+        "refs": [
+          "img-q2",
+          "img-v9"
+        ],
+        "shared": "Both images share a similar lighting scheme where a single source from the upper left or side creates bright highlights on raised surfaces like noses and forehead while leaving recesses in shadow.",
+        "differs": "The background of img-v9 is described as a flat, featureless void that absorbs all light with no reflection, whereas img-q2 features a dark base that is partially illuminated at its edges, creating a stepped structure not present in the other two.",
+        "uncertainty": "high"
+      },
+      {
+        "refs": [
+          "img-k7",
+          "img-q2",
+          "img-v9"
+        ],
+        "shared": "All three observations describe stone sculptures where the carving technique is specifically noted to create an illusion of soft materials like fabric or hair, resulting in a high level of interpretive uncertainty regarding the actual substance.",
+        "differs": "img-k7 focuses intensely on the complexity of individual hair strands and tight curls with deep shadows, while img-q2 emphasizes symmetrical facial patterns and heavy garment folds, and img-v9 concentrates on the transition between veil-like coverings and the underlying skull structure with minimal variation in highlight intensity.",
+        "uncertainty": "high"
+      }
+    ]
+  },
+  "parse_note": null,
+  "schema_errors": [],
+  "invented_refs": [],
+  "wrong_level_refs": [],
+  "wrong_level_note": "a real observation id used where an image ref was required — the model compared two loci and labelled it a comparison of two pictures. Not a hallucination; a category error, and one a reader would take for a claim about whole images.",
+  "audit": {
+    "measurement_claims": [],
+    "attribution_claims": [],
+    "precision_language": [],
+    "proper_nouns": [],
+    "clean": true,
+    "note": "`precision_language` is reported and NOT counted: an adverb of manner is a claim about craft, not a measurement, and failing a run for it is the audit crying wolf."
+  }
+}

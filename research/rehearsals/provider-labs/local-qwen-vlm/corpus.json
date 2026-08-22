@@ -1,0 +1,42 @@
+{
+  "provider_lab": "local_qwen_vlm",
+  "resolved_at": "2026-08-22T06:36:24+0530",
+  "access": "read-only; every mutating method on the posts collection was replaced with a raiser before the first query",
+  "bytes_in_git": false,
+  "note": "The image bytes are cached under image-cache/, which this lab's .gitignore excludes. The sha256 is the anchor: an observation in this lab is about THESE bytes and the harness refuses to run if they change.",
+  "images": [
+    {
+      "post_id": "6a6041b81ecd6db1c931eb7a",
+      "found": true,
+      "photo_url": "https://res.cloudinary.com/g4maiv1x/image/upload/v1784693176/posts/f75baebf-67c1-444c-bb2e-cb81628986ab.jpg",
+      "general_tags": [],
+      "instagram_handle": null,
+      "n_text_blocks": 0,
+      "n_region_annotations": 0,
+      "sha256": "02efebe7bac883d501808fb2646ad11a90e03d553545087c775c72f4af3b19ae",
+      "bytes": 17028
+    },
+    {
+      "post_id": "6a6041b61ecd6db1c931eb78",
+      "found": true,
+      "photo_url": "https://res.cloudinary.com/g4maiv1x/image/upload/v1784693173/posts/a69866f5-cf75-49c7-a174-8d43152108ad.jpg",
+      "general_tags": [],
+      "instagram_handle": null,
+      "n_text_blocks": 0,
+      "n_region_annotations": 0,
+      "sha256": "f43e90ced439fdc730ecdb3cd1b5d0eac680fc2a7884ac3765c0eed61fab6787",
+      "bytes": 15281
+    },
+    {
+      "post_id": "6a60408e1ecd6db1c931eb6b",
+      "found": true,
+      "photo_url": "https://res.cloudinary.com/g4maiv1x/image/upload/v1784692877/posts/cf2fff38-b1cd-45e8-b188-83b3f012277d.jpg",
+      "general_tags": [],
+      "instagram_handle": null,
+      "n_text_blocks": 0,
+      "n_region_annotations": 0,
+      "sha256": "31b23bffc1880df1c0062fb96b3635178a7da0596c932b6db28e1ebe70ca35a5",
+      "bytes": 17593
+    }
+  ]
+}
