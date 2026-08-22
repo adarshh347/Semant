@@ -180,9 +180,19 @@ HISTORICAL_MARKERS: Tuple[str, ...] = (
     "predates", "postdates", "survives from", "in antiquity",
 )
 
+#: A bare number is not a date. "roughly 1200 pixels across" and "about 240 units wide" are
+#: descriptions, and flagging either would raise a VIOLATION against an honest reading — so a year
+#: has to arrive with a temporal cue AND look like a year, or arrive as a plural decade.
 _HISTORICAL_DATING = re.compile(
-    r"\b\d{1,2}(?:st|nd|rd|th)[\s-]centur(?:y|ies)\b|\bcentur(?:y|ies)\b|\b1\d{3}s?\b|\b20\d{2}s\b"
-    r"|\bB\.?C\.?E?\.?\b|\bA\.?D\.?\b|\bc(?:irca)?\.\s*\d{3,4}\b", re.I)
+    r"\b\d{1,2}(?:st|nd|rd|th)[\s-]centur(?:y|ies)\b"
+    r"|\bcentur(?:y|ies)\b"
+    r"|\b(?:in|from|of|since|around|about|by|before|after|dated|circa)\s+(?:1\d{3}|20\d{2})s?\b"
+    r"|\b1\d{2}0s\b|\b20\d0s\b"
+    r"|\bc(?:irca)?\.\s*\d{3,4}\b", re.I)
+
+#: CASE-SENSITIVE, unlike everything else here, because "ad" is an ordinary English word and
+#: `re.I` would turn every mention of an ad into a dated claim.
+_HISTORICAL_ERA = re.compile(r"\b(?:B\.?C\.?E?\.?|A\.?D\.?)\b")
 
 
 class MarkerFamily(str, Enum):
@@ -251,6 +261,7 @@ def _families(text: str) -> Dict[MarkerFamily, Tuple[str, ...]]:
     intent.extend(m.group(0) for m in _AGENCY_INTENT.finditer(text))
     history = list(_phrases(lower, HISTORICAL_MARKERS))
     history.extend(m.group(0) for m in _HISTORICAL_DATING.finditer(text))
+    history.extend(m.group(0) for m in _HISTORICAL_ERA.finditer(text))
     hedge = list(_phrases(lower, HEDGE_MARKERS))
     return {MarkerFamily.INTENT: tuple(dict.fromkeys(intent)),
             MarkerFamily.HISTORY: tuple(dict.fromkeys(history)),

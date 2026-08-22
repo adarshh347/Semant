@@ -165,6 +165,22 @@ def test_attributed_agency_is_caught_by_grammar_and_not_by_a_list_of_makers(text
     assert report.by_code(AuditCode.SPECULATION_AS_DESCRIPTION)
 
 
+@pytest.mark.parametrize("text", ["roughly 1200 pixels across", "about 240 units wide",
+                                  "a run of 11 channels", "the ad hoc joint between them"])
+def test_a_number_in_an_honest_description_is_not_a_dated_claim(text):
+    """A false VIOLATION is expensive — it is an accusation. A year has to look like a year and
+    arrive with a temporal cue, and the era abbreviations are matched case-sensitively because
+    "ad" is an ordinary word."""
+    assert not audit([_observation(visible_organization=text)]).violations
+
+
+@pytest.mark.parametrize("text", ["built in 1720", "the 1890s elevation", "dating from c. 1650",
+                                  "originally cut in the 17th century", "erected in 40 BC"])
+def test_a_real_dated_claim_in_a_description_still_lands(text):
+    assert audit([_observation(visible_organization=text)]).by_code(
+        AuditCode.HISTORICAL_CLAIM_AS_DESCRIPTION)
+
+
 def test_a_hedge_in_a_description_is_a_suspicion_rather_than_a_violation():
     report = audit([_observation(visible_organization="perhaps eight of them")])
     findings = report.by_code(AuditCode.SPECULATION_AS_DESCRIPTION)
@@ -409,7 +425,8 @@ def test_the_marker_tables_name_no_rehearsal_topic():
               "arch", "plant", "leaf", "leaves", "petal", "stem", "marble", "bronze", "gothic",
               "baroque", "renaissance", "classical", "medieval")
     tables = (A.INTENT_MARKERS, A.HISTORICAL_MARKERS, tuple(A._FIELD_POLICY.keys()),
-              (A._AGENCY_INTENT.pattern, A._HISTORICAL_DATING.pattern))
+              (A._AGENCY_INTENT.pattern, A._HISTORICAL_DATING.pattern,
+                                            A._HISTORICAL_ERA.pattern))
     blob = " ".join(str(x) for table in tables for x in table).lower()
     for topic in topics:
         assert topic not in blob, f"{topic!r} is subject matter, in a table that decides findings"
