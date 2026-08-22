@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:provider-lab/local-qwen-vlm/observation.schema.json",
+  "title": "Prompt-blind visual observation",
+  "description": "One image, observed without the person's aesthetic vocabulary anywhere in the request. Sent to llama-server as response_format.json_schema with strict:true, so it is a GRAMMAR the sampler is constrained by and not a request the model may decline. `status` is a one-value enum on purpose: a model cannot mark an appearance `measured` here, because the token is not in the grammar. The prose is audited separately, since a field can say `interpretive` while the sentence beside it says `approximately thirty degrees`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["image_ref", "observations", "cannot_determine"],
+  "properties": {
+    "image_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Echoed back from the reference the caller supplied. The tokens are opaque (img-k7, img-q2, img-v9) so a returned ref is either one that was handed over or it is invented — an ordinal like A/B/C could be guessed correctly by a model that tracked nothing."
+    },
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["locus", "visible_organization", "surface_light_behavior", "apparent_material_effect", "uncertainty", "status"],
+        "properties": {
+          "locus": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Where in the frame this entry is about. A feature or a region, in the model's own words."
+          },
+          "visible_organization": {
+            "type": "string",
+            "minLength": 1,
+            "description": "How what is there is arranged. Not what it means."
+          },
+          "surface_light_behavior": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What the light does on that surface."
+          },
+          "apparent_material_effect": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What material effect the appearance suggests. APPARENT: this is an inference from a photograph, never a material identification."
+          },
+          "uncertainty": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "The model's own confidence in this entry. Recorded, and never promoted into evidence by anything downstream."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["interpretive"],
+            "description": "The only permitted value. Nothing observed by a VLM is measured; a measuring capability has not run. The single-value enum is the enforcement, not the description."
+          }
+        }
+      }
+    },
+    "cannot_determine": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "What this photograph cannot settle. An empty array is a claim that everything asked was determinable, and is read as one."
+    }
+  }
+}

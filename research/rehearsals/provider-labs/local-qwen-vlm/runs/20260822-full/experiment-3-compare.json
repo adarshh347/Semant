@@ -1,0 +1,98 @@
+{
+  "provider": "local_qwen_vlm",
+  "run_id": "20260822-full",
+  "experiment": "3-multi-image-compare",
+  "refs": [
+    "img-k7",
+    "img-q2",
+    "img-v9"
+  ],
+  "saw_an_image": false,
+  "note": "Compact per-image observations from experiment 1 are the input. The images are not re-sent: this measures comparison, not re-perception.",
+  "system": "You are given short observations about several photographs, each under its own reference.\nAnswer with comparisons between the references — what two of them share, and where they part company.\nEvery comparison must name exactly the references it is about, using the reference strings given to you.\nDo not write a single essay about all of them at once. Do not name a maker, a period or a title. Nothing here has been measured.",
+  "call": {
+    "label": "compare",
+    "ok": true,
+    "status": "completed",
+    "content": "{\n  \"comparisons\": [\n    {\n      \"refs\": [\"img-k7\", \"img-q2\"],\n      \"shared\": \"Both feature a sculpted human figure with hair styled in waves or a crown-like braid, where light creates specular highlights on the forehead and cheekbones while defining deep shadows within facial folds.\",\n      \"differs\": \"img-k7 describes the head as tilted downward and to the left with smooth, highly glossy surfaces suggesting ceramic or fine-grained stone, whereas img-q2 notes the head tilted slightly right with a predominantly matte surface that reflects light diffusely, implying a material like polished alabaster.\",\n      \"uncertainty\": \"high\"\n    },\n    {\n      \"refs\": [\"img-k7\", \"img-v9\"],\n      \"shared\": \"Each observation notes a seamless integration of facial features with the rest of the sculpture, creating the illusion of a single solid cast material without visible seams or paint marks.\",\n      \"differs\": \"In img-k7, the hair is explicitly described as a crown-like braid framing the face with high gloss reflections, while img-v9 portrays the figure with eyes and nose situated beneath a draped veil that mimics thin, polished stone with soft, diffuse highlights.\",\n      \"uncertainty\": \"high\"\n    },\n    {\n      \"refs\": [\"img-k7-o3\", \"img-q2-o4\"],\n      \"shared\": \"Both descriptions focus on dark, undefined areas at the bottom or edges of the frame that absorb light and suggest heavy matte surfaces like varnished wood, dark fabric, or shadowed stone.\",\n      \"differs\": \"img-k7-o3 identifies a narrow band reflecting a warm, brownish tint directly beneath the figure's base, potentially varnished wood, while img-q2-o4 describes an extreme left edge and corner in deep shadow where the sculpture casts its own silhouette against a floor or wall.\",\n      \"uncertainty\": \"high\"\n    },\n    {\n      \"refs\": [\"img-k7\", \"img-v9\"],\n      \"shared\": \"Both sets of observations interpret the material effect as highly polished and semi-translucent stone, specifically hinting at ceramics in one and alabaster or marble in the other.\",\n      \"differs\": \"The light interaction differs significantly; img-k7 emphasizes sharp specular highlights on smooth skin and hair indicating a high gloss finish, whereas img-v9 stresses soft, diffuse reflections and alternating bands of brightness and darkness across the entire figure to suggest translucency.\",\n      \"uncertainty\": \"high\"\n    },\n    {\n      \"refs\": [\"img-q2\", \"img-v9\"],\n      \"shared\": \"Both sets characterize the material as a hard, non-porous stone carved to mimic softness, creating complex folds that are deep in shadow but bright on rounded surfaces.\",\n      \"differs\": \"img-q2 explicitly contrasts the sculpted drapery against the solid head, noting the fabric-like texture is carved into the mass without actual cloth, while img-v9 presents a veil that is wrapped tightly over the face and appears semi-translucent, with lighting suggesting light passing through thinner sections of the stone.\",\n      \"uncertainty\": \"high\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "prompt_tokens": 2293,
+    "completion_tokens": 692,
+    "cached_tokens": 0,
+    "prompt_per_second": 181.13014149321066,
+    "predicted_per_second": 12.122724923301396,
+    "client_wall_ms": 70102.8,
+    "request_digest": "369dce1e7cb15da8",
+    "machine_after": {
+      "swap_used_mb": 9091.88,
+      "swap_raw": "total = 10240.00M  used = 9091.88M  free = 1148.12M  (encrypted)",
+      "wired_mb": 9290.8,
+      "compressed_mb": 1303.0,
+      "free_mb": 856.2,
+      "server_rss_mb": 285.3,
+      "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+      "server_pid": 47592
+    }
+  },
+  "parsed": {
+    "comparisons": [
+      {
+        "refs": [
+          "img-k7",
+          "img-q2"
+        ],
+        "shared": "Both feature a sculpted human figure with hair styled in waves or a crown-like braid, where light creates specular highlights on the forehead and cheekbones while defining deep shadows within facial folds.",
+        "differs": "img-k7 describes the head as tilted downward and to the left with smooth, highly glossy surfaces suggesting ceramic or fine-grained stone, whereas img-q2 notes the head tilted slightly right with a predominantly matte surface that reflects light diffusely, implying a material like polished alabaster.",
+        "uncertainty": "high"
+      },
+      {
+        "refs": [
+          "img-k7",
+          "img-v9"
+        ],
+        "shared": "Each observation notes a seamless integration of facial features with the rest of the sculpture, creating the illusion of a single solid cast material without visible seams or paint marks.",
+        "differs": "In img-k7, the hair is explicitly described as a crown-like braid framing the face with high gloss reflections, while img-v9 portrays the figure with eyes and nose situated beneath a draped veil that mimics thin, polished stone with soft, diffuse highlights.",
+        "uncertainty": "high"
+      },
+      {
+        "refs": [
+          "img-k7-o3",
+          "img-q2-o4"
+        ],
+        "shared": "Both descriptions focus on dark, undefined areas at the bottom or edges of the frame that absorb light and suggest heavy matte surfaces like varnished wood, dark fabric, or shadowed stone.",
+        "differs": "img-k7-o3 identifies a narrow band reflecting a warm, brownish tint directly beneath the figure's base, potentially varnished wood, while img-q2-o4 describes an extreme left edge and corner in deep shadow where the sculpture casts its own silhouette against a floor or wall.",
+        "uncertainty": "high"
+      },
+      {
+        "refs": [
+          "img-k7",
+          "img-v9"
+        ],
+        "shared": "Both sets of observations interpret the material effect as highly polished and semi-translucent stone, specifically hinting at ceramics in one and alabaster or marble in the other.",
+        "differs": "The light interaction differs significantly; img-k7 emphasizes sharp specular highlights on smooth skin and hair indicating a high gloss finish, whereas img-v9 stresses soft, diffuse reflections and alternating bands of brightness and darkness across the entire figure to suggest translucency.",
+        "uncertainty": "high"
+      },
+      {
+        "refs": [
+          "img-q2",
+          "img-v9"
+        ],
+        "shared": "Both sets characterize the material as a hard, non-porous stone carved to mimic softness, creating complex folds that are deep in shadow but bright on rounded surfaces.",
+        "differs": "img-q2 explicitly contrasts the sculpted drapery against the solid head, noting the fabric-like texture is carved into the mass without actual cloth, while img-v9 presents a veil that is wrapped tightly over the face and appears semi-translucent, with lighting suggesting light passing through thinner sections of the stone.",
+        "uncertainty": "high"
+      }
+    ]
+  },
+  "parse_note": null,
+  "schema_errors": [],
+  "invented_refs": [
+    "img-k7-o3",
+    "img-q2-o4"
+  ],
+  "audit": {
+    "measurement_claims": [],
+    "attribution_claims": [],
+    "proper_nouns": [],
+    "clean": true
+  }
+}
