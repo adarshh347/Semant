@@ -43,12 +43,42 @@ export function authMessage(status) {
 
 async function json(res, action) {
     if (!res.ok) {
-        const message = (res.status === 401 || res.status === 403)
-            ? authMessage(res.status)
-            : `Failed to ${action} (${res.status})`;
+        let message = `Failed to ${action} (${res.status})`;
+        if (res.status === 401 || res.status === 403) {
+            message = authMessage(res.status);
+        } else {
+            // The server's own sentence, when it wrote one: "corpus 'x' holds no images" tells a
+            // curator what to do and "(409)" does not.
+            let detail = null;
+            try { detail = (await res.json())?.detail ?? null; } catch { /* no body */ }
+            if (typeof detail === 'string' && detail.trim()) message = detail;
+        }
         throw new AtlasRequestError(message, res.status);
     }
     return res.json();
+}
+
+/**
+ * What `POST /atlas` is sent, from ONE of its three sources. Pure, and exported so the contract
+ * can be pinned without a fetch.
+ *
+ * THE BODY NAMES EXACTLY ONE SOURCE. A saved walk is sent as `corpus_id` alone — the server
+ * resolves its ordered post ids once and stores both — and a run as `run_id` alone. Only the
+ * explicit selection sends `post_ids`. The old client destructured `title`, `post_ids` and
+ * `run_id` and silently dropped `corpus_id`, so opening a saved walk sent `{post_ids: []}` and
+ * the server, correctly, refused an Atlas over nothing. A body that carried an empty `post_ids`
+ * beside a `corpus_id` would be honest by accident; this one is honest by construction.
+ */
+export function createBody({ title = '', post_ids = null, run_id = null, corpus_id = null } = {}) {
+    const body = { title: String(title || '') };
+    if (corpus_id) {
+        body.corpus_id = String(corpus_id);
+    } else if (run_id) {
+        body.run_id = String(run_id);
+    } else {
+        body.post_ids = [...(post_ids || [])];
+    }
+    return body;
 }
 
 const post = (url, body) =>
@@ -76,11 +106,33 @@ async function jsonOrDetail(res, action) {
 }
 
 export const atlasService = {
-    async list() {
-        return json(await fetch(`${BASE}/`), 'list atlases');
+    /** The shelf. Archived canvases are left off unless asked for. */
+    async list({ includeArchived = false } = {}) {
+        const q = includeArchived ? '?include_archived=true' : '';
+        return json(await fetch(`${BASE}/${q}`), 'list atlases');
     },
-    async create({ title = '', post_ids = [], run_id = null } = {}) {
-        return json(await post(`${BASE}/`, { title, post_ids, run_id }), 'create atlas');
+    /** Open a canvas over ONE source: `post_ids`, a saved walk's `corpus_id`, or a `run_id`. */
+    async create(source = {}) {
+        return json(await post(`${BASE}/`, createBody(source)), 'create atlas');
+    },
+    // ── the lifecycle: rename, archive, restore, duplicate. There is no delete, by design — an
+    // archived Atlas keeps its provenance, which is what a later manuscript needs. ──
+    async rename(id, title) {
+        return json(await fetch(`${BASE}/${id}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: String(title || '') }),
+        }), 'rename the atlas');
+    },
+    async setArchived(id, archived) {
+        return json(await fetch(`${BASE}/${id}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ archived: Boolean(archived) }),
+        }), archived ? 'archive the atlas' : 'restore the atlas');
+    },
+    /** The same evidence and arrangement as a new Atlas; plan, draft and edges start fresh. */
+    async duplicate(id, { title = null } = {}) {
+        return json(await post(`${BASE}/${id}/duplicate`, title == null ? {} : { title }),
+            'duplicate the atlas');
     },
     /** The STORED document — arrangement only. */
     async get(id) {

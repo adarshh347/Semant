@@ -72,6 +72,22 @@ function inlineToHTML(node) {
   return html;
 }
 
+/**
+ * A block's internal paragraph structure — the mirror of `manuscript_service.block_paragraphs`.
+ * Either the HTML the editor serialises (`<p>…</p><p>…</p>`) or the text Accept stored
+ * (blank-line separated). Both describe ONE block.
+ */
+export function blockParagraphs(content) {
+  const raw = String(content ?? '');
+  if (/<p[\s>]/i.test(raw)) {
+    return raw
+      .split(/<\/p>\s*<p[^>]*>/i)
+      .map((part) => part.replace(/^\s*<p[^>]*>/i, '').replace(/<\/p>\s*$/i, ''))
+      .filter((part) => part.replace(/<[^>]+>/g, '').trim());
+  }
+  return raw.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+}
+
 function escapeHTML(text) {
   return String(text ?? '')
     .replace(/&/g, '&amp;')
@@ -96,6 +112,30 @@ export function toManuscriptBlocks(doc) {
 
   doc.forEach((node) => {
     if (!exportsToManuscript(node.type)) return;
+
+    if (node.type.name === 'committedPassage') {
+      // ONE block, with its paragraphs inside. The wrapper is the only holder of the
+      // identity; the paragraphs it contains carry none, so there is nothing here that
+      // could become a second block claiming the same id.
+      const paragraphs = [];
+      node.forEach((child) => {
+        if (child.type.name !== 'paragraph') return;
+        const inner = inlineToHTML(child);
+        if (inner) paragraphs.push(`<p>${inner}</p>`);
+      });
+      blocks.push({
+        id: node.attrs?.blockId || undefined,
+        type: 'paragraph',
+        content: paragraphs.join(''),
+        color: null,
+        origin: node.attrs?.provenance ? 'user_confirmed' : 'human',
+        provenance: node.attrs?.provenance || null,
+        lineage_id: node.attrs?.lineageId || undefined,
+        version: node.attrs?.version || undefined,
+      });
+      return;
+    }
+
     const content = inlineToHTML(node);
     blocks.push({
       id: node.attrs?.blockId || undefined,
@@ -136,27 +176,36 @@ export function manuscriptBlocksToDoc(blocks) {
   const content = (blocks || [])
     .map((block) => {
       const html = String(block.content ?? '');
-      const inner = html.replace(/^<p>/i, '').replace(/<\/p>$/i, '');
-      const nodes = [];
-      inner.split(/<br\s*\/?>/i).forEach((line, i) => {
-        if (i > 0) nodes.push({ type: 'hardBreak' });
-        const text = line
-          .replace(/<[^>]+>/g, '')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&amp;/g, '&');
-        if (text) nodes.push({ type: 'text', text });
-      });
-      return {
-        type: 'paragraph',
-        attrs: {
-          provenance: block.provenance ?? null,
-          blockId: block.id ?? null,
-          lineageId: block.lineage_id ?? null,
-          version: block.version ?? null,
-        },
-        content: nodes,
+      const paragraphs = blockParagraphs(html).map((para) => {
+        const nodes = [];
+        para.split(/<br\s*\/?>/i).forEach((line, i) => {
+          if (i > 0) nodes.push({ type: 'hardBreak' });
+          const text = line
+            .replace(/<[^>]+>/g, '')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&');
+          if (text) nodes.push({ type: 'text', text });
+        });
+        return { type: 'paragraph', content: nodes };
+      }).filter((node) => node.content.length > 0);
+
+      const attrs = {
+        provenance: block.provenance ?? null,
+        blockId: block.id ?? null,
+        lineageId: block.lineage_id ?? null,
+        version: block.version ?? null,
       };
+      // A committed passage — anything that carries an identity — comes back as ONE wrapper
+      // however many paragraphs it holds. Prose the author typed is a plain paragraph.
+      if (block.lineage_id || block.provenance) {
+        return paragraphs.length
+          ? { type: 'committedPassage', attrs, content: paragraphs }
+          : { type: 'paragraph', content: [] };
+      }
+      return paragraphs.length
+        ? { type: 'paragraph', attrs, content: paragraphs[0].content }
+        : { type: 'paragraph', content: [] };
     })
     .filter((node) => node.content.length > 0);
 

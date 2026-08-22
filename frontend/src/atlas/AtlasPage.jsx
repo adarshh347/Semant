@@ -4,9 +4,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import AtlasWorkspace from './AtlasWorkspace.jsx';
 import { atlasService, authMessage, isAuthFailure } from './atlasService.js';
 import { corpusService } from './corpusService.js';
+import CorpusWalkEditor from './CorpusWalkEditor.jsx';
 import {
-    corpusSummary, imagesFrom, move, saveBlocker, toggle as toggleImage,
+    corpusSummary, dropCorpus, imagesFrom, move, replaceCorpus, saveBlocker,
+    toggle as toggleImage,
 } from './corpusDocument.js';
+import { completedRuns, splitArchived } from './atlasDocument.js';
 import { API_URL } from '../config/api';
 import './atlas.css';
 
@@ -20,16 +23,30 @@ import './atlas.css';
  *
  * An Atlas can also be opened over a run's corpus, which is the common path once a run has
  * already assembled and read a set of images: the canvas then shows exactly what that run spanned.
+ *
+ * THREE SOURCES, ONE CONTRACT. A canvas opens over an explicit ordered selection (`post_ids`), a
+ * saved walk (`corpus_id`) or a completed run (`run_id`), and the request names exactly one of
+ * them — see `createBody` in the service. Every source goes through `openOver`, and the route
+ * changes ONLY once a real Atlas has come back: navigating first and hoping would put a curator
+ * on a canvas that does not exist.
+ *
+ * THE LIFECYCLE IS THIN. Rename, archive, restore and duplicate an Atlas; rename, re-sequence,
+ * re-note, drop from and forget a walk. Each is one call the server already accepts, sits beside
+ * the thing it acts on, and none of them can reach a post. This is not an asset manager.
  */
 
 function AtlasIndex() {
     const navigate = useNavigate();
     const [posts, setPosts] = useState([]);
     const [atlases, setAtlases] = useState([]);
+    const [runs, setRuns] = useState([]);
     const [selected, setSelected] = useState([]);
     const [title, setTitle] = useState('');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
+    // The shelf's own refusals — opening a walk or a run, renaming, archiving — land beside the
+    // lists they are about; the picker's land inside the form. Two slots, so neither is lost.
+    const [shelfError, setShelfError] = useState('');
     // L1 — the saved walks. A corpus is a SEQUENCE somebody named; these are the ones they can
     // reopen without picking the images out of a gallery again.
     const [corpora, setCorpora] = useState([]);
@@ -38,6 +55,9 @@ function AtlasIndex() {
     const [saving, setSaving] = useState(false);
     // Told apart from "there is nothing here", which is what this page used to show instead.
     const [denied, setDenied] = useState('');
+    // Which walk is open for editing, and which Atlas is being renamed (with the draft title).
+    const [editing, setEditing] = useState('');
+    const [renaming, setRenaming] = useState({ id: '', title: '' });
 
     useEffect(() => {
         let live = true;
@@ -64,7 +84,8 @@ function AtlasIndex() {
             }
 
             try {
-                const data = await atlasService.list();
+                // The archived ones too: the shelf shows them put away, not gone.
+                const data = await atlasService.list({ includeArchived: true });
                 if (live) setAtlases(data?.atlases || []);
             } catch (e) {
                 // A REFUSAL IS NOT AN EMPTY SHELF. "A fresh install has none" is a fine reason to
@@ -73,6 +94,19 @@ function AtlasIndex() {
                 // as an empty picker tells the curator their work is gone.
                 if (isAuthFailure(e)) refused = e.message;
             }
+
+            try {
+                // The runs route is the existing source of truth for "which runs finished"; no
+                // other list is invented for this. Absent or refused, the section simply does not
+                // render — a run is one way in, not the only one.
+                const res = await fetch(`${API_URL}/api/v1/runs/?limit=20`);
+                if (res.status === 401 || res.status === 403) {
+                    refused = refused || authMessage(res.status);
+                } else if (res.ok) {
+                    const data = await res.json();
+                    if (live && Array.isArray(data?.runs)) setRuns(data.runs);
+                }
+            } catch { /* unreachable — same tolerance as the posts list */ }
 
             if (live && refused) setDenied(refused);
         })();
@@ -110,32 +144,121 @@ function AtlasIndex() {
         }
     }, [notes, saving, selected, title, why]);
 
-    const openCorpus = useCallback(async (corpusId) => {
+    /**
+     * Open a canvas over ONE source, and go there only once it exists.
+     *
+     * The route changes after the server has answered with an Atlas that has an id — never
+     * before, and never on a body that merely did not throw. `busy` stays set on success because
+     * the page is about to unmount.
+     */
+    const openOver = useCallback(async (source, failMessage, report = setError) => {
         if (busy) return;
         setBusy(true);
         setError('');
+        setShelfError('');
         try {
-            const doc = await atlasService.create({ corpus_id: corpusId });
+            const doc = await atlasService.create(source);
+            if (!doc?.id) throw new Error('The backend returned no Atlas to open.');
             navigate(`/atlas/${doc.id}`);
         } catch (err) {
-            setError(err?.message || 'Could not open a canvas over that walk.');
+            report(err?.message || failMessage);
             setBusy(false);
         }
     }, [busy, navigate]);
 
-    const open = useCallback(async (e) => {
+    const openCorpus = (corpusId) =>
+        openOver({ corpus_id: corpusId }, 'Could not open a canvas over that walk.', setShelfError);
+    const openRun = (runId) =>
+        openOver({ run_id: runId }, 'Could not open a canvas over that run.', setShelfError);
+    const open = (e) => {
         e.preventDefault();
-        if (selected.length < 1 || busy) return;
+        if (selected.length < 1) return;
+        openOver({ title: title.trim(), post_ids: selected },
+            'Could not open a canvas over those images.');
+    };
+
+    // ── the Atlas lifecycle: one call each, and the shelf redrawn from what came back ──
+    const lifecycle = useCallback(async (call, failMessage) => {
+        if (busy) return;
         setBusy(true);
-        setError('');
+        setShelfError('');
         try {
-            const doc = await atlasService.create({ title: title.trim(), post_ids: selected });
-            navigate(`/atlas/${doc.id}`);
+            await call();
         } catch (err) {
-            setError(err?.message || 'Could not open a canvas over those images.');
+            setShelfError(err?.message || failMessage);
+        } finally {
             setBusy(false);
         }
-    }, [busy, navigate, selected, title]);
+    }, [busy]);
+
+    const renameAtlas = (e) => {
+        e.preventDefault();
+        const { id, title: next } = renaming;
+        if (!id || !next.trim()) return;
+        lifecycle(async () => {
+            const doc = await atlasService.rename(id, next.trim());
+            setAtlases((prev) => prev.map((a) => (a.id === doc.id ? doc : a)));
+            setRenaming({ id: '', title: '' });
+        }, 'The canvas was not renamed.');
+    };
+    const setArchived = (id, archived) => lifecycle(async () => {
+        const doc = await atlasService.setArchived(id, archived);
+        setAtlases((prev) => prev.map((a) => (a.id === doc.id ? doc : a)));
+    }, archived ? 'The canvas was not archived.' : 'The canvas was not restored.');
+    const duplicateAtlas = (id) => lifecycle(async () => {
+        const doc = await atlasService.duplicate(id);
+        setAtlases((prev) => [doc, ...prev]);
+    }, 'The canvas was not duplicated.');
+
+    const { open: shelf, archived } = splitArchived(atlases);
+    const finished = completedRuns(runs);
+
+    const atlasRow = (a, { put } = {}) => (
+        <li key={a.id} className="atlas-list-row" data-atlas={a.id}>
+            {renaming.id === a.id ? (
+                <form className="atlas-inline" onSubmit={renameAtlas} aria-label="Rename the canvas">
+                    <input className="atlas-input" value={renaming.title} maxLength={120}
+                        aria-label="The canvas's name" autoFocus disabled={busy}
+                        onChange={(e) => setRenaming({ id: a.id, title: e.target.value })} />
+                    <button type="submit" className="atlas-plain" disabled={busy || !renaming.title.trim()}>
+                        Rename
+                    </button>
+                    <button type="button" className="atlas-plain" disabled={busy}
+                        onClick={() => setRenaming({ id: '', title: '' })}>Cancel</button>
+                </form>
+            ) : (
+                <>
+                    <button type="button" className="atlas-list-item" disabled={busy}
+                        onClick={() => navigate(`/atlas/${a.id}`)}>
+                        <span className="atlas-list-title">{a.title || a.id}</span>
+                        <span className="atlas-list-meta">
+                            {(a.nodes || []).length} image{(a.nodes || []).length === 1 ? '' : 's'}
+                            {a.corpus_ref?.kind === 'curated' && ' · from a walk'}
+                            {a.corpus_ref?.kind === 'run' && ' · from a run'}
+                            {a.duplicated_from && ' · a copy'}
+                        </span>
+                    </button>
+                    <span className="atlas-list-actions">
+                        {put ? (
+                            <button type="button" className="atlas-plain" data-restore disabled={busy}
+                                onClick={() => setArchived(a.id, false)}>Restore</button>
+                        ) : (
+                            <>
+                                <button type="button" className="atlas-plain" data-rename disabled={busy}
+                                    onClick={() => setRenaming({ id: a.id, title: a.title || '' })}>
+                                    Rename
+                                </button>
+                                <button type="button" className="atlas-plain" data-duplicate disabled={busy}
+                                    onClick={() => duplicateAtlas(a.id)}>Duplicate</button>
+                                <button type="button" className="atlas-plain" data-archive disabled={busy}
+                                    onClick={() => setArchived(a.id, true)}>Archive</button>
+                            </>
+                        )}
+                    </span>
+                </>
+            )}
+        </li>
+    );
 
     return (
         <div className="atlas-index">
@@ -161,18 +284,59 @@ function AtlasIndex() {
                     </p>
                     <ul className="atlas-list">
                         {corpora.map(corpusSummary).map((c) => (
-                            <li key={c.id}>
-                                <button type="button" className="atlas-list-item"
-                                    data-corpus={c.id} disabled={busy}
-                                    onClick={() => openCorpus(c.id)}>
-                                    <span className="atlas-list-title">{c.title}</span>
-                                    <span className="atlas-list-meta">
-                                        {c.count} image{c.count === 1 ? '' : 's'}, in order
-                                        {/* Counted separately: an unexplained walk is still a
-                                            walk, and folding this into the total would make it
-                                            read as a defect rather than a prompt. */}
-                                        {c.noted > 0 && ` · ${c.noted} noted`}
+                            <li key={c.id} data-walk={c.id}>
+                                <div className="atlas-list-row">
+                                    <button type="button" className="atlas-list-item"
+                                        data-corpus={c.id} disabled={busy}
+                                        onClick={() => openCorpus(c.id)}>
+                                        <span className="atlas-list-title">{c.title}</span>
+                                        <span className="atlas-list-meta">
+                                            {c.count} image{c.count === 1 ? '' : 's'}, in order
+                                            {/* Counted separately: an unexplained walk is still a
+                                                walk, and folding this into the total would make it
+                                                read as a defect rather than a prompt. */}
+                                            {c.noted > 0 && ` · ${c.noted} noted`}
+                                        </span>
+                                    </button>
+                                    <span className="atlas-list-actions">
+                                        <button type="button" className="atlas-plain" data-edit-walk
+                                            disabled={busy} aria-expanded={editing === c.id}
+                                            onClick={() => setEditing(editing === c.id ? '' : c.id)}>
+                                            {editing === c.id ? 'Close' : 'Edit'}
+                                        </button>
                                     </span>
+                                </div>
+                                {editing === c.id && (
+                                    <CorpusWalkEditor
+                                        corpus={corpora.find((k) => k.id === c.id)}
+                                        onChange={(doc) => setCorpora((prev) => replaceCorpus(prev, doc))}
+                                        onDelete={(id) => {
+                                            setCorpora((prev) => dropCorpus(prev, id));
+                                            setEditing('');
+                                        }}
+                                        onClose={() => setEditing('')} />
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+
+            {finished.length > 0 && (
+                <section className="atlas-existing" aria-label="Completed runs">
+                    <h2 className="atlas-h2">Open a run’s corpus</h2>
+                    <p className="atlas-sub">
+                        A finished run already assembled and read a set of images; the canvas shows
+                        exactly what that run spanned, in the order it resolved them.
+                    </p>
+                    <ul className="atlas-list">
+                        {finished.map((r) => (
+                            <li key={r.run_id}>
+                                <button type="button" className="atlas-list-item"
+                                    data-run={r.run_id} disabled={busy}
+                                    onClick={() => openRun(r.run_id)}>
+                                    <span className="atlas-list-title">{r.prompt || r.run_id}</span>
+                                    <span className="atlas-list-meta">{r.mode || 'run'} · complete</span>
                                 </button>
                             </li>
                         ))}
@@ -180,24 +344,24 @@ function AtlasIndex() {
                 </section>
             )}
 
-            {atlases.length > 0 && (
-                <section className="atlas-existing">
+            {shelf.length > 0 && (
+                <section className="atlas-existing" aria-label="Your canvases">
                     <h2 className="atlas-h2">Open one you have</h2>
-                    <ul className="atlas-list">
-                        {atlases.map((a) => (
-                            <li key={a.id}>
-                                <button type="button" className="atlas-list-item"
-                                    onClick={() => navigate(`/atlas/${a.id}`)}>
-                                    <span className="atlas-list-title">{a.title || a.id}</span>
-                                    <span className="atlas-list-meta">
-                                        {(a.nodes || []).length} image{(a.nodes || []).length === 1 ? '' : 's'}
-                                    </span>
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
+                    <ul className="atlas-list">{shelf.map((a) => atlasRow(a))}</ul>
                 </section>
             )}
+
+            {archived.length > 0 && (
+                <details className="atlas-archived">
+                    <summary>
+                        {archived.length} archived canvas{archived.length === 1 ? '' : 'es'} — put
+                        away, not gone
+                    </summary>
+                    <ul className="atlas-list">{archived.map((a) => atlasRow(a, { put: true }))}</ul>
+                </details>
+            )}
+
+            {shelfError && <p className="atlas-error" role="alert" data-shelf-error>{shelfError}</p>}
 
             <form className="atlas-new" onSubmit={open} aria-label="Open a new Atlas">
                 <h2 className="atlas-h2">Or start a new one</h2>

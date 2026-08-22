@@ -62,11 +62,25 @@ export const writerService = {
   async updateOperator(projectId, name, data) {
     return json(await patch(`${BASE}/${projectId}/operators/${name}`, data), 'update operator');
   },
-  async deleteOperator(projectId, name) {
+  // RETIRE, not delete (001D). The operator and every version of it stay so old provenance
+  // resolves; new renders naming it refuse until `restoreOperator`. The response carries
+  // `references` — the live edges and assemblage members that will now refuse.
+  async retireOperator(projectId, name, reason = '') {
     return json(
-      await fetch(`${BASE}/${projectId}/operators/${name}`, { method: 'DELETE' }),
-      'delete operator',
+      await fetch(`${BASE}/${projectId}/operators/${name}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      }),
+      'retire operator',
     );
+  },
+  async restoreOperator(projectId, name) {
+    return json(await post(`${BASE}/${projectId}/operators/${name}/restore`, {}), 'restore operator');
+  },
+  /** Kept for older callers. It retires — nothing is removed. */
+  async deleteOperator(projectId, name) {
+    return this.retireOperator(projectId, name);
   },
 
   // --- The operator graph (W3) ---

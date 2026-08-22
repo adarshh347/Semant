@@ -25,6 +25,15 @@ operator as it stood when it fired, not as it stands today.
 
 SCOPE. Operators are project-scoped for W1 (`project_id`), which for now is the
 manuscript id. W3's operator graph will need this key; nothing else uses it yet.
+
+RETIRING, NEVER DELETING (ATLAS-WRITER-MASS-BUILD-001D). A committed passage pins
+`name@version`, and `resolve_version` turns that pin back into the body that fired. A
+hard delete would break every such pin at once — old provenance would point at nothing
+and `requires` edges at a name that no longer exists. So an operator is RETIRED: it stays
+in the collection with `retired: True`, every read that answers "what wrote this?" still
+finds it, and every path that would INVOKE it — a render, a new edge, an assemblage — is
+refused with the one actionable sentence: restore it, or stop naming it. Retiring
+rewrites nothing; `restore` clears the flag and bumps nothing.
 """
 from __future__ import annotations
 
@@ -36,6 +45,7 @@ from uuid import uuid4
 
 from backend.database import writer_operator_collection
 from backend.services.writer import instrument
+from backend.services.writer import ledger
 from backend.services.writer import library
 from backend.services.writer import registers as registers_mod
 from backend.services.writer import relations as relations_mod
@@ -74,6 +84,15 @@ class OperatorError(ValueError):
     """A malformed operator. Raised, not returned: there is nothing to render against."""
 
 
+def _retired_when(op: Dict[str, Any]) -> str:
+    when = op.get("retired_at")
+    if not when:
+        return ""
+    if isinstance(when, datetime):
+        when = when.date().isoformat()
+    return f" on {when}"
+
+
 def _validate(name: str, definition: str) -> None:
     if not name or not NAME_RE.match(name):
         raise OperatorError(
@@ -93,20 +112,62 @@ class OperatorRegistry:
 
     # ── reads ────────────────────────────────────────────────────────────────
 
-    async def get(self, project_id: str, name: str) -> Optional[Dict[str, Any]]:
-        return _out(await writer_operator_collection.find_one(
-            {"project_id": project_id, "name": name}
-        ))
+    async def get(
+        self, project_id: str, name: str, *, include_retired: bool = False
+    ) -> Optional[Dict[str, Any]]:
+        """The LIVE operator by name. A retired one is None here unless asked for.
 
-    async def list(self, project_id: str) -> List[Dict[str, Any]]:
+        `include_retired=True` is for readers answering "what is this name?" — the restore
+        path, the dangling-edge report, the guard that refuses to recreate a retired name.
+        Anything that would RENDER from the answer must not pass it.
+        """
+        doc = await writer_operator_collection.find_one({"project_id": project_id, "name": name})
+        if doc and doc.get("retired") and not include_retired:
+            return None
+        return _out(doc)
+
+    async def list(
+        self, project_id: str, *, include_retired: bool = False
+    ) -> List[Dict[str, Any]]:
         out: List[Dict[str, Any]] = []
         async for doc in writer_operator_collection.find({"project_id": project_id}).sort("name", 1):
+            if doc.get("retired") and not include_retired:
+                continue
             out.append(_out(doc))
         return out
 
-    async def by_name(self, project_id: str) -> Dict[str, Dict[str, Any]]:
+    async def by_name(
+        self, project_id: str, *, include_retired: bool = False
+    ) -> Dict[str, Dict[str, Any]]:
         """The whole project ontology keyed by name — what relation validation reads."""
-        return {op["name"]: op for op in await self.list(project_id)}
+        return {op["name"]: op
+                for op in await self.list(project_id, include_retired=include_retired)}
+
+    async def dangling_references(self, project_id: str) -> List[Dict[str, Any]]:
+        """Every live edge or assemblage member that names a RETIRED operator.
+
+        History is preserved — the edge stays on the operator that declared it — and this
+        is what makes it visible rather than silent: the graph shows it, a render that
+        would follow it refuses, and the author hears which name to restore or unlink.
+        """
+        everything = await self.by_name(project_id, include_retired=True)
+        retired = {n for n, op in everything.items() if op.get("retired")}
+        out: List[Dict[str, Any]] = []
+        for name, op in everything.items():
+            if op.get("retired"):
+                continue
+            for rel in relations_mod.relations_of(op):
+                if rel["target"] in retired:
+                    out.append({"source": name, "target": rel["target"], "kind": rel["kind"],
+                                "via": "relation",
+                                "retired_at": everything[rel["target"]].get("retired_at")})
+            for member in op.get("members") or []:
+                target = member.get("name") if isinstance(member, dict) else str(member)
+                if target in retired:
+                    out.append({"source": name, "target": target, "kind": "member",
+                                "via": "assemblage",
+                                "retired_at": everything[target].get("retired_at")})
+        return out
 
     async def resolve_version(
         self, project_id: str, name: str, version: int
@@ -191,7 +252,7 @@ class OperatorRegistry:
         doc = await self.get(project_id, name)
         if not doc:
             return None
-        index = await self.by_name(project_id)
+        index = await self.by_name(project_id, include_retired=True)
         validated = relations_mod.validate_relations(name, relations, index)
         return await self.update(project_id, name, {"relations": validated})
 
@@ -370,11 +431,17 @@ class OperatorRegistry:
 
         _validate(name, definition)
 
-        index = await self.by_name(project_id)
+        index = await self.by_name(project_id, include_retired=True)
         members: List[Dict[str, Any]] = []
         for raw in member_names:
             member = str(raw or "").strip()
             op = index.get(member)
+            if op is not None and op.get("retired"):
+                raise OperatorError(
+                    f"`{member}` was retired"
+                    f"{_retired_when(op)}. An assemblage is distilled from operators you "
+                    f"still use; restore `{member}` first, or leave it out."
+                )
             if op is None:
                 raise OperatorError(
                     f"`{member}` is not an operator in this project. An assemblage is built "
@@ -411,13 +478,17 @@ class OperatorRegistry:
         """
         found: Dict[str, Any] = {}
         missing: List[str] = []
+        retired: List[Dict[str, Any]] = []
         for name in names:
-            op = await self.get(project_id, name)
-            if op:
+            op = await self.get(project_id, name, include_retired=True)
+            if op and op.get("retired"):
+                retired.append({"name": name, "retired_at": op.get("retired_at"),
+                                "reason": op.get("retired_reason") or ""})
+            elif op:
                 found[name] = op
             else:
                 missing.append(name)
-        return {"found": found, "missing": missing}
+        return {"found": found, "missing": missing, "retired": retired}
 
     # ── the `#create` gesture: propose → confirm → store ─────────────────────
 
@@ -477,12 +548,19 @@ class OperatorRegistry:
             except registers_mod.RegisterError as exc:
                 raise OperatorError(str(exc)) from exc
         if relations:
-            index = await self.by_name(project_id)
+            index = await self.by_name(project_id, include_retired=True)
             # The operator being created is itself a valid target for its own edges to be
             # checked against (self-relation is rejected inside `validate_relations`).
             index.setdefault(name, {"name": name, "relations": []})
             relations = relations_mod.validate_relations(name, relations, index)
-        if await self.get(project_id, name):
+        existing = await self.get(project_id, name, include_retired=True)
+        if existing and existing.get("retired"):
+            raise OperatorError(
+                f"operator '{name}' was retired{_retired_when(existing)} and its history is "
+                f"kept under that name — restore it instead of redefining it, so passages "
+                f"that cite it keep resolving to what actually wrote them"
+            )
+        if existing:
             raise OperatorError(
                 f"operator '{name}' already exists in this project — update it instead of "
                 f"redefining it, so passages that cite version 1 stay readable"
@@ -512,10 +590,21 @@ class OperatorRegistry:
             "register": register or "",
             "version": 1,
             "history": [],
+            "retired": False,
             "created_at": now,
             "updated_at": now,
         }
-        await writer_operator_collection.insert_one(doc)
+        try:
+            await writer_operator_collection.insert_one(doc)
+        except Exception as exc:          # pymongo.errors.DuplicateKeyError, or a fake's
+            if "duplicate" not in str(exc).lower() and type(exc).__name__ != "DuplicateKeyError":
+                raise
+            # Two creates interleaved; the unique `(project_id, name)` index let one land.
+            # The loser hears the same sentence it would have heard a moment later.
+            raise OperatorError(
+                f"operator '{name}' already exists in this project — update it instead of "
+                f"redefining it, so passages that cite version 1 stay readable"
+            ) from exc
         return _out(doc)
 
     async def update(self, project_id: str, name: str, patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -523,6 +612,11 @@ class OperatorRegistry:
         doc = await writer_operator_collection.find_one({"project_id": project_id, "name": name})
         if not doc:
             return None
+        if doc.get("retired"):
+            raise OperatorError(
+                f"operator '{name}' is retired{_retired_when(doc)}. Restore it before "
+                f"editing it — a retired operator is history, and history is not edited."
+            )
 
         editable = ("definition", "rendering_intent", "examples", "negative_examples",
                     "relations", "author", "kind", "members", "library_ref", "register")
@@ -541,7 +635,7 @@ class OperatorRegistry:
             except registers_mod.RegisterError as exc:
                 raise OperatorError(str(exc)) from exc
         if "relations" in fields:
-            index = await self.by_name(project_id)
+            index = await self.by_name(project_id, include_retired=True)
             fields["relations"] = relations_mod.validate_relations(
                 name, fields["relations"], index
             )
@@ -561,9 +655,50 @@ class OperatorRegistry:
         )
         return await self.get(project_id, name)
 
+    async def retire(
+        self, project_id: str, name: str, reason: str = ""
+    ) -> Optional[Dict[str, Any]]:
+        """Retire an operator: it stays, with its history, and can no longer be invoked.
+
+        Returns the retired operator plus `references` — every live edge or assemblage
+        member that still names it, so the author knows what will now refuse. Idempotent:
+        retiring a retired operator changes nothing and returns it as it stands. No
+        version bump, because nothing about what the operator WAS has changed.
+        """
+        doc = await writer_operator_collection.find_one({"project_id": project_id, "name": name})
+        if not doc:
+            return None
+        if not doc.get("retired"):
+            ledger.trip("operator.retire")
+            await writer_operator_collection.update_one(
+                {"_id": doc["_id"], "retired": {"$ne": True}},
+                {"$set": {"retired": True, "retired_at": _now(),
+                          "retired_reason": (reason or "").strip()}},
+            )
+            await instrument.record(
+                "operator_retired", project_id, operators=[name], detail=reason or "")
+        out = await self.get(project_id, name, include_retired=True)
+        out["references"] = [r for r in await self.dangling_references(project_id)
+                             if r["target"] == name]
+        return out
+
+    async def restore(self, project_id: str, name: str) -> Optional[Dict[str, Any]]:
+        """The author brings a retired operator back. Explicit; the only way a retired
+        name renders again. Nothing about it is rewritten — same version, same history."""
+        doc = await writer_operator_collection.find_one({"project_id": project_id, "name": name})
+        if not doc:
+            return None
+        if doc.get("retired"):
+            await writer_operator_collection.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"retired": False, "restored_at": _now()}},
+            )
+            await instrument.record("operator_restored", project_id, operators=[name])
+        return await self.get(project_id, name)
+
     async def delete(self, project_id: str, name: str) -> bool:
-        res = await writer_operator_collection.delete_one({"project_id": project_id, "name": name})
-        return res.deleted_count > 0
+        """Kept for callers that still say `delete`. It RETIRES — nothing is removed."""
+        return (await self.retire(project_id, name)) is not None
 
     # ── the evidence base handed to the render call ──────────────────────────
 

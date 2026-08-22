@@ -156,6 +156,17 @@ def validate_relation(
             f"Define it first with `#create {rel['target']}: …`."
         )
 
+    target = by_name.get(rel["target"]) or {}
+    if target.get("retired"):
+        # The name is still in the ontology — its history is — but it is not something a
+        # NEW edge may point at. The refusal says what to do, which is the difference
+        # between a dangling edge and a visible one.
+        raise RelationError(
+            f"`{rel['target']}` is retired. A relation cannot point at an operator you have "
+            f"stopped using — restore `{rel['target']}` if you mean it, or relate "
+            f"`{source}` to something live."
+        )
+
     if rel["kind"] == "requires":
         cycle = find_requires_cycle(source, by_name, extra_edge=(source, rel["target"]))
         if cycle:
