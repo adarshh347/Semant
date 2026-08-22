@@ -1,5 +1,5 @@
 """
-PERCEPTUAL-FORMS-001G — `extent.hierarchy`: palace, courtyard, garden, fountain — and the fractions.
+PERCEPTUAL-FORMS-001G — `extent.hierarchy`: palace, courtyard, garden — and the fractions.
 
 TWO KINDS OF LINK, AND THE FORM EXISTS BECAUSE THEY ARE NOT THE SAME LINK.
 
@@ -189,7 +189,8 @@ def produce_extent_hierarchy(links: Sequence[ProposedLink], *,
     # record does not hold, so it has to go — and re-rooting it would invent a parentage nobody
     # proposed, while dropping it quietly would make a partial tree read as a complete one.
     held_ids = {n.node_id for n in nodes}
-    orphans = [n for n in nodes if n.parent_node_id is not None and n.parent_node_id not in held_ids]
+    orphans = [n for n in nodes
+               if n.parent_node_id is not None and n.parent_node_id not in held_ids]
     for orphan in orphans:
         omissions.append(Omission(
             what=orphan.node_id, reason="orphaned_by_exclusion",

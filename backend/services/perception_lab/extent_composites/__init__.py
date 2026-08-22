@@ -1,5 +1,5 @@
 """
-PERCEPTUAL-FORMS-001G — the composite Extent forms, and the recipes that compose direct acts.
+PERCEPTUAL-FORMS-001G — the composite Extent forms: five claims about measured extents.
 
 FIVE FORMS THAT ARE CLAIMS RATHER THAN MEASUREMENTS:
 

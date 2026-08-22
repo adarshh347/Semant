@@ -105,7 +105,8 @@ def extent_set(supplied: Supplied) -> ExtentSource:
 
 def fragment_set(supplied: Carried, *,
                  epistemic_status: EpistemicStatus = EpistemicStatus.MEASURED,
-                 epistemic_basis: EpistemicBasis = EpistemicBasis.MASK) -> ExtentSource:
+                 epistemic_basis: EpistemicBasis = EpistemicBasis.MASK
+                 ) -> ExtentSource:
     """An `extent.fragment_set` payload, carried with the id its artifact WOULD have.
 
     THE STATUS IS THE CALLER'S TO DECLARE AND IT DEFAULTS TO THE STRONGEST, which is safe only
@@ -154,5 +155,6 @@ def area_of(member: Any) -> Optional[float]:
     return getattr(member, "area", None)
 
 
-__all__ = ["BOUNDARY_RINGS", "EpistemicBasis", "EpistemicStatus", "ExtentSource", "FRAGMENT_SET", "FUSED_HYPOTHESIS", "HARD_MASK",
-           "NotAnExtentSet", "area_of", "extent_set", "fragment_set", "geometry_of", "index"]
+__all__ = ["BOUNDARY_RINGS", "EpistemicBasis", "EpistemicStatus", "ExtentSource",
+           "FRAGMENT_SET", "FUSED_HYPOTHESIS", "HARD_MASK", "NotAnExtentSet", "area_of",
+           "extent_set", "fragment_set", "geometry_of", "index"]

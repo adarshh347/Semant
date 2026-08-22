@@ -604,7 +604,7 @@ def test_a_semantic_link_carries_no_occupancy_even_where_the_masks_would_support
     assert by_instance(measured)["fountain"].occupancy_of_parent == 0.112782
 
 
-def test_a_part_whole_link_that_names_nobody_is_a_containment_claim_with_the_measurement_removed():
+def test_a_part_whole_link_that_names_nobody_is_a_containment_claim_without_a_measurement():
     result = HI.produce_extent_hierarchy(
         [link("court"), link("wall", "court", kind=HI.LinkKind.SEMANTIC)], sources=[forest()])
     assert "wall" not in by_instance(result)
@@ -955,3 +955,164 @@ def test_the_same_members_counted_twice_produce_the_same_field():
     two = DN.produce_density_field(all_keys(source), sources=[source], field_shape=[5, 5],
                                    kernel=DN.Kernel(DN.GAUSSIAN, 1.5))
     assert one.payload.model_dump() == two.payload.model_dump()
+
+
+# ── against Lane F's controls, whose answers are known by construction ───────
+
+
+CONTROL_DIR = REPO_ROOT / "research" / "perception_lab" / "benchmarks" / "controls"
+CONTROLS = json.loads((CONTROL_DIR / "manifest.json").read_text(encoding="utf-8"))["controls"]
+
+
+def control_source(name: str, *, artifact_id: str = "art_control") -> SRC.ExtentSource:
+    """One of Lane F's twelve, as an `extent_set` artifact these producers can read.
+
+    THE MASKS ARE LANE F'S AND THE ENVELOPE IS LANE D'S. Built by replacing the payload of a
+    committed artifact rather than typed out, so a change to the artifact envelope shows up in one
+    place — and so the numbers below are checked against a control whose truth is known BY
+    CONSTRUCTION rather than against whatever this producer happened to return.
+    """
+    control = CONTROLS[name]
+    doc = copy.deepcopy(scene("forest"))
+    doc["identity"]["artifact_id"] = artifact_id
+    doc["identity"]["identity_refs"] = []
+    doc["identity"]["identity_scope"] = "session"
+    doc["measurement"]["payload"] = {
+        "variant": "extent_set", "searched": control["what"],
+        "instances": [{"instance_id": key, "mask_rle": rle, "box": None, "area": None,
+                       "confidence": None, "naming": None, "region_id": None, "geometry_rev": 1}
+                      for key, rle in control["instances"].items()],
+        "dropped_below_min_area": None, "duplicates": [], "comparison": None}
+    doc["provenance"]["source_image_digest"] = control["digest"]
+    return SRC.extent_set(doc)
+
+
+def test_the_containment_tree_control_comes_back_with_the_tree_it_was_drawn_with():
+    """Lane F drew five rectangles whose nesting is known. This computes the same tree from the
+    pixels, including the two roots — a forest, not a tree. A producer that forced a single root
+    would have invented a container."""
+    source = control_source("containment-tree")
+    truth = CONTROLS["containment-tree"]["truth"]
+    links = [HI.ProposedLink(f"art_control#{n['node_id']}",
+                             None if n["parent_node_id"] is None
+                             else f"art_control#{n['parent_node_id']}")
+             for n in truth["nodes"]]
+    result = HI.produce_extent_hierarchy(links, sources=[source])
+    nodes = {n.instance.instance_id: n for n in result.payload.nodes}
+    assert set(nodes) == {n["node_id"] for n in truth["nodes"]}
+    by_id = {n.node_id: n.instance.instance_id for n in result.payload.nodes}
+    parents = {k: (by_id[v.parent_node_id] if v.parent_node_id else None)
+               for k, v in nodes.items()}
+    assert parents == {n["node_id"]: n["parent_node_id"] for n in truth["nodes"]}
+    assert len(result.payload.root_node_ids) == len(truth["root_node_ids"]) == 2
+
+
+def test_the_occupancy_fractions_are_the_ones_lane_f_recorded():
+    """The number the form exists for — how much of the courtyard IS garden — checked against a
+    control that was drawn to have those fractions."""
+    source = control_source("containment-tree")
+    truth = CONTROLS["containment-tree"]["truth"]
+    links = [HI.ProposedLink(f"art_control#{n['node_id']}",
+                             None if n["parent_node_id"] is None
+                             else f"art_control#{n['parent_node_id']}")
+             for n in truth["nodes"]]
+    result = HI.produce_extent_hierarchy(links, sources=[source])
+    measured = {n.instance.instance_id: n.occupancy_of_parent
+                for n in result.payload.nodes if n.occupancy_of_parent is not None}
+    assert measured == truth["occupancy_of_parent"]
+
+
+def test_the_false_similarity_control_refuses_the_grouping_appearance_would_give():
+    """Three identical discs, two of which belong together. Lane F recorded both the legitimate
+    grouping and the one an appearance threshold produces; this shows the producer keeping the
+    first and refusing the second on the ground Lane C's verdict names."""
+    source = control_source("false-similarity")
+    truth = CONTROLS["false-similarity"]["truth"]
+    legitimate = truth["legitimate_groupings"][0]["groups"][0]
+    wrong = truth["similarity_would_give"][0]
+
+    kept = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "baseline", tuple(f"art_control#{k}" for k in legitimate),
+        evidence=(geometry_ground("A and B rest on one baseline"),))], sources=[source])
+    assert len(kept.payload.hypotheses) == 1
+    assert [r.instance_id for r in kept.payload.hypotheses[0].members] == legitimate
+
+    refused = FUS.produce_fused_hypothesis([FUS.ProposedFusion(
+        "all_three_look_alike", tuple(f"art_control#{k}" for k in wrong),
+        evidence=(model_ground(strength=0.947),))], sources=[source])
+    assert refused.payload.hypotheses == []
+    assert [o.what for o in refused.omissions_for("sole_ground_forbidden")] == \
+        ["all_three_look_alike"]
+
+
+def test_the_partition_control_keeps_the_three_parts_and_their_three_statuses():
+    """A figure behind a bar, running off the frame. The inferred part is exact because the figure
+    was drawn before the bar covered it; the unknown part is settled by nothing."""
+    source = control_source("partition")
+    truth = CONTROLS["partition"]["truth"]
+    masks = {m.instance_id: m.mask_rle for m in source.members}
+    result = PT.produce_visible_inferred_partition(
+        "art_control#inst_visible",
+        [part(S.PartitionPart.VISIBLE, masks["inst_visible"]),
+         part(S.PartitionPart.INFERRED, masks["inst_inferred"]),
+         part(S.PartitionPart.UNKNOWN, masks["inst_unknown"])],
+        sources=[source])
+    coverage = {r.part.value: r.coverage for r in result.payload.regions}
+    assert coverage == {k: v["area_fraction"] for k, v in truth["parts"].items()}
+    assert round(sum(coverage.values()), 6) == truth["coverage_sums_to"]
+    statuses = {r.part.value: r.epistemic_status.value for r in result.payload.regions}
+    assert statuses["visible"] == truth["parts"]["visible"]["epistemic_status"]
+    assert statuses["inferred"] == statuses["unknown"] == "uncertain"
+
+
+def test_the_density_control_counts_the_marks_lane_f_drew_by_splitting_them_first():
+    """The piazza study's chain, end to end: one mask holding twenty-five marks, split into pieces
+    by Lane B's exact fragment producer, counted by this lane's density field. The count is the
+    count Lane F drew, and smoothing does not change it."""
+    from backend.services.perception_lab import extent_forms as LB
+    source = control_source("density-peaks")
+    truth = CONTROLS["density-peaks"]["truth"]
+    marks = {m.instance_id: m for m in source.members}["inst_marks"]
+
+    pieces = LB.fragment_set(
+        [LB.source_extent("art_control", {"instance_id": "inst_marks",
+                                          "mask_rle": marks.mask_rle, "geometry_rev": 1})],
+        source_image_digest=CONTROLS["density-peaks"]["digest"], measure_separation=False)
+    assert len(pieces.payload.fragments) == truth["true_count"] == 25
+
+    fragments = SRC.fragment_set(("art_marks", pieces.payload))
+    keys = list(fragments.keys())
+    raw = DN.produce_density_field(keys, sources=[fragments], field_shape=[8, 8])
+    assert raw.payload.members_counted == 25
+    assert raw.payload.field.statistics["sum"] == 25.0
+    smoothed = DN.produce_density_field(keys, sources=[fragments], field_shape=[8, 8],
+                                        kernel=DN.Kernel(DN.GAUSSIAN, 1.0))
+    assert smoothed.payload.field.statistics["sum"] == 25.0
+    assert smoothed.payload.field.calibration.state is S.CalibrationState.NOMINAL
+
+
+def test_the_competing_extents_control_keeps_both_readings_and_names_no_winner():
+    source = control_source("competing-extents")
+    truth = CONTROLS["competing-extents"]["truth"]
+    result = ALT.produce_hypothesis_set(
+        "is the shadow part of the figure?",
+        [ALT.Reading(r["reading_id"], weight=0.5,
+                     member_keys=(f"art_control#{r['instance']}",),
+                     evidence=(geometry_ground(r["why"]),))
+         for r in truth["legitimate_readings"]],
+        sources=[source])
+    assert len(result.payload.alternatives) == len(truth["legitimate_readings"]) == 2
+    assert result.ceiling is EpistemicStatus.UNCERTAIN
+    assert "chosen" not in result.payload.model_dump()
+    assert result.payload.weights_are_probabilities is False
+
+
+def test_every_control_this_lane_computes_against_declares_the_form_it_was_used_for():
+    """A control checked against a form it was not built for proves nothing about either."""
+    used = {"containment-tree": "extent.hierarchy",
+            "false-similarity": "extent.fused_hypothesis",
+            "partition": "extent.visible_inferred_partition",
+            "density-peaks": "extent.density_field",
+            "competing-extents": "extent.hypothesis_set"}
+    for control, form_key in used.items():
+        assert form_key in CONTROLS[control]["forms"], control

@@ -236,7 +236,8 @@ def _check(recipe: Recipe, *, controls: Sequence[str], outcomes: Sequence[str]) 
                 - set(step.parameters) - set(step.asks_for))
             if missing_required:
                 raise RecipeError(
-                    f"{recipe.key}: step {step.id!r} neither fixes nor asks for {missing_required}, "
+                    f"{recipe.key}: step {step.id!r} neither fixes nor asks for "
+                    f"{missing_required}, "
                     f"which {step.operation!r} requires. The step would be refused by the "
                     f"resolver every time it ran.")
             if recipe.mode is SessionMode.ISOLATION \

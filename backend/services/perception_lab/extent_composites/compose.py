@@ -18,7 +18,7 @@ is asked here and recorded on the production — and it is asked THROUGH `defini
 rather than recomputed, because the contract already ranks the four statuses and a second ranking
 here would be a second chance to disagree.
 
-AND THE THIRD CAP DOES NOT ALWAYS APPLY, WHICH IS NOT AN OVERSIGHT. `derived_ceiling` extends the
+AND THE THIRD CAP DOES NOT ALWAYS APPLY, WHICH IS NOT AN OVERSIGHT. `derived_ceiling` extends
 caps with the input statuses only for `exact_derivation` and `interpretive_grouping`. An
 `inferred_completion` and an `unresolved_alternative` are already capped BELOW every input by their
 own partition — `uncertain` is the floor of the ordering — so adding the inputs would change
