@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:provider-lab/local-qwen-vlm/hardening/repair.schema.json",
+  "title": "One repair pass over a response already judged invalid",
+  "description": "A SECOND MODEL EVENT, recorded as its own call beside the original. The original response is preserved byte-for-byte and is never overwritten; repaired prose is never presented as the first answer. The repair is given the audit finding and the original structured response, and NOT the image — re-observation is a different operation and resending the picture would let the repair quietly become a second look. A repair that changes the wording while preserving the unsupported claim is still a failure, and the audit is re-run over the result to decide that rather than trusting the model's own report.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["repaired_text", "removed", "kept", "changed_meaning"],
+  "properties": {
+    "repaired_text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The offending field, rewritten. The audit is re-run over this and decides whether the repair worked."
+    },
+    "removed": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What was taken out, in the model's own words. Compared against the audit's matched span."
+    },
+    "kept": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The observation that survived. A repair that removes the unsupported number by deleting the whole observation has destroyed the useful part, and this field is what lets that be seen."
+    },
+    "changed_meaning": {
+      "type": "boolean",
+      "description": "The model's own report of whether the reading changed. Recorded, never trusted: the audit and a text diff decide."
+    }
+  }
+}

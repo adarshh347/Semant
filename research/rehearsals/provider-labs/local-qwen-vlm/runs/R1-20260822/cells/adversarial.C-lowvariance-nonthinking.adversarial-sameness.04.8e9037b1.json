@@ -1,0 +1,199 @@
+{
+  "state": "done",
+  "started_at": "2026-08-22T22:26:42+0530",
+  "machine_at_start": {
+    "swap_used_mb": 9636.94,
+    "swap_raw": "total = 10240.00M  used = 9636.94M  free = 603.06M  (encrypted)",
+    "wired_mb": 9291.8,
+    "compressed_mb": 3909.4,
+    "free_mb": 61.9,
+    "server_rss_mb": 7290.4,
+    "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+    "server_pid": 20985,
+    "at": "22:26:42"
+  },
+  "note": "a receipt written BEFORE the model was called. A cell left in this state was interrupted in flight; it is not a model failure and is never scored as one.",
+  "run_id": "R1-20260822",
+  "config_id": "adversarial.C-lowvariance-nonthinking.adversarial-sameness.04.8e9037b1",
+  "group": "adversarial",
+  "name": "C-lowvariance-nonthinking.adversarial-sameness.04",
+  "config": {
+    "sampling": {
+      "temperature": 0.4,
+      "top_p": 0.8,
+      "top_k": 20,
+      "min_p": 0.0,
+      "presence_penalty": 0.0
+    },
+    "thinking": false,
+    "prompt_id": "adversarial-sameness",
+    "repeat": 4,
+    "n_ctx": 32768,
+    "image_min_tokens": 1024
+  },
+  "inference_profile_id": "C-lowvariance-nonthinking",
+  "alignment": {
+    "prompt_id": "adversarial-sameness",
+    "saw_an_image": false,
+    "claim_ids_supplied": [
+      "c1",
+      "c2",
+      "c3",
+      "c4"
+    ],
+    "enum_injected": [
+      "c1",
+      "c2",
+      "c3",
+      "c4"
+    ],
+    "call": {
+      "label": "align:adversarial-sameness",
+      "ok": true,
+      "status": "completed",
+      "finish_reason": "stop",
+      "content": "{\n  \"dispositions\": [\n    {\n      \"user_claim_id\": \"c1\",\n      \"disposition\": \"cannot_determine\",\n      \"observation_ids\": [\"img-k7-o1\", \"img-k7-o0\", \"img-v9-o0\", \"img-q2-o1\"],\n      \"discriminative_explanation\": \"The observations describe different folding patterns across the images. img-k7-o1 describes folds arranged 'vertically on one side and cross over the other,' while img-v9-o0 describes 'vertical, parallel folds.' img-q2-o1 describes 'curved folds and ridges that overlap.' Because the specific organization of the folds differs between the described objects, the observations do not support the claim that the folding is the 'same operation' in all of them.\",\n      \"unresolved_alternatives\": \"The differences could be due to different carving techniques, different poses, or different subjects, rather than a single uniform operation.\"\n    },\n    {\n      \"user_claim_id\": \"c2\",\n      \"disposition\": \"cannot_determine\",\n      \"observation_ids\": [\"img-k7-o1\", \"img-k7-o3\", \"img-v9-o0\", \"img-q2-o1\"],\n      \"discriminative_explanation\": \"The observations consistently state that the folds are 'sculpted,' 'carved,' or 'molded' (e.g., img-k7-o1: 'sculpted to drape'; img-q2-o1: 'fabric... that has been carefully molded'). This indicates the folding is a result of the artist's manipulation of the material (carving/molding), not an inherent physical property of the material itself doing the folding spontaneously. The claim that it is 'one thing the material does' implies the material's natural behavior, whereas the observations attribute the form to the sculpting process.\",\n      \"unresolved_alternatives\": \"It remains possible that the material is chosen specifically for its malleability to allow such detailed molding, but the act of folding is clearly attributed to the sculptor's technique, not the material's autonomous action.\"\n    },\n    {\n      \"user_claim_id\": \"c3\",\n      \"disposition\": \"cannot_determine\",\n      \"observation_ids\": [\"img-k7-o0\", \"img-k7-o1\", \"img-v9-o0\", \"img-q2-o1\"],\n      \"discriminative_explanation\": \"The observations confirm that lighting and photography play a significant role in how the folds appear. For instance, img-k7-o1 notes that light 'catches the convex curves... creating a play of bright highlights and dark valleys,' and img-v9-o0 mentions that 'deeper recesses... cast soft shadows.' However, the observations also explicitly describe differences in the *organization* of the folds themselves (e.g., parallel vs. crossing vs. overlapping) that exist independently of the lighting conditions described. Therefore, while lighting affects the visual appearance, the observations do not support the claim that *all* the differences people describe are caused solely by lighting and photography, as the underlying forms of the folds are visibly distinct.\",\n      \"unresolved_alternatives\": \"Some differences in appearance might be entirely due to lighting, but the structural differences in the folds suggest other factors (like carving style or subject matter) are also at play.\"\n    },\n    {\n      \"user_claim_id\": \"c4\",\n      \"disposition\": \"cannot_determine\",\n      \"observation_ids\": [\"img-k7-o1\", \"img-k7-o0\", \"img-v9-o0\", \"img-q2-o1\"],\n      \"discriminative_explanation\": \"The observations provide strong evidence that carving *does* contribute to the differences. The texts repeatedly use verbs like 'sculpted' (img-k7-o1), 'carved' (img-k7-o0, img-v9-o1), and 'molded' (img-q2-o1) to describe the creation of the folds. Furthermore, the descriptions of the folds' organization (e.g., 'cross over' in img-k7-o1 vs. 'parallel' in img-v9-o0) indicate that the physical form of the folds varies based on how the material was shaped. Thus, the observations contradict the idea that differences are *not* caused by carving; they explicitly attribute the forms to carving techniques.\",\n      \"unresolved_alternatives\": \"While carving is a factor, it is possible that lighting and photography also contribute to the perceived differences, but the claim that carving plays *no* role is unsupported by the text.\"\n    }\n  ]\n}",
+      "reasoning_content": null,
+      "prompt_tokens": 2277,
+      "completion_tokens": 997,
+      "cached_tokens": 2273,
+      "latency": {
+        "prompt_ms_server": 271.463,
+        "predicted_ms_server": 68438.717,
+        "prompt_per_second": 14.734973090255393,
+        "predicted_per_second": 14.553165863702558,
+        "client_wall_ms": 69050.1,
+        "unaccounted_ms": 339.9,
+        "note": "prompt_ms covers image encoding AND prompt evaluation together; this build does not report them apart, so they are not split here either. `unaccounted_ms` is queueing plus transport, and is named rather than folded into either half."
+      },
+      "sampling_requested": {
+        "temperature": 0.4,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "sampling_verification": {
+        "sampling_verified": true,
+        "requested": {
+          "temperature": 0.4,
+          "top_p": 0.8,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 0.0
+        },
+        "observed": {
+          "temperature": 0.4000000059604645,
+          "top_p": 0.800000011920929,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 0.0
+        },
+        "mismatches": null,
+        "samples_seen": 444
+      }
+    },
+    "parsed": {
+      "dispositions": [
+        {
+          "user_claim_id": "c1",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-k7-o0",
+            "img-v9-o0",
+            "img-q2-o1"
+          ],
+          "discriminative_explanation": "The observations describe different folding patterns across the images. img-k7-o1 describes folds arranged 'vertically on one side and cross over the other,' while img-v9-o0 describes 'vertical, parallel folds.' img-q2-o1 describes 'curved folds and ridges that overlap.' Because the specific organization of the folds differs between the described objects, the observations do not support the claim that the folding is the 'same operation' in all of them.",
+          "unresolved_alternatives": "The differences could be due to different carving techniques, different poses, or different subjects, rather than a single uniform operation."
+        },
+        {
+          "user_claim_id": "c2",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-k7-o3",
+            "img-v9-o0",
+            "img-q2-o1"
+          ],
+          "discriminative_explanation": "The observations consistently state that the folds are 'sculpted,' 'carved,' or 'molded' (e.g., img-k7-o1: 'sculpted to drape'; img-q2-o1: 'fabric... that has been carefully molded'). This indicates the folding is a result of the artist's manipulation of the material (carving/molding), not an inherent physical property of the material itself doing the folding spontaneously. The claim that it is 'one thing the material does' implies the material's natural behavior, whereas the observations attribute the form to the sculpting process.",
+          "unresolved_alternatives": "It remains possible that the material is chosen specifically for its malleability to allow such detailed molding, but the act of folding is clearly attributed to the sculptor's technique, not the material's autonomous action."
+        },
+        {
+          "user_claim_id": "c3",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o0",
+            "img-k7-o1",
+            "img-v9-o0",
+            "img-q2-o1"
+          ],
+          "discriminative_explanation": "The observations confirm that lighting and photography play a significant role in how the folds appear. For instance, img-k7-o1 notes that light 'catches the convex curves... creating a play of bright highlights and dark valleys,' and img-v9-o0 mentions that 'deeper recesses... cast soft shadows.' However, the observations also explicitly describe differences in the *organization* of the folds themselves (e.g., parallel vs. crossing vs. overlapping) that exist independently of the lighting conditions described. Therefore, while lighting affects the visual appearance, the observations do not support the claim that *all* the differences people describe are caused solely by lighting and photography, as the underlying forms of the folds are visibly distinct.",
+          "unresolved_alternatives": "Some differences in appearance might be entirely due to lighting, but the structural differences in the folds suggest other factors (like carving style or subject matter) are also at play."
+        },
+        {
+          "user_claim_id": "c4",
+          "disposition": "cannot_determine",
+          "observation_ids": [
+            "img-k7-o1",
+            "img-k7-o0",
+            "img-v9-o0",
+            "img-q2-o1"
+          ],
+          "discriminative_explanation": "The observations provide strong evidence that carving *does* contribute to the differences. The texts repeatedly use verbs like 'sculpted' (img-k7-o1), 'carved' (img-k7-o0, img-v9-o1), and 'molded' (img-q2-o1) to describe the creation of the folds. Furthermore, the descriptions of the folds' organization (e.g., 'cross over' in img-k7-o1 vs. 'parallel' in img-v9-o0) indicate that the physical form of the folds varies based on how the material was shaped. Thus, the observations contradict the idea that differences are *not* caused by carving; they explicitly attribute the forms to carving techniques.",
+          "unresolved_alternatives": "While carving is a factor, it is possible that lighting and photography also contribute to the perceived differences, but the claim that carving plays *no* role is unsupported by the text."
+        }
+      ]
+    },
+    "parse_note": null,
+    "schema_errors": [],
+    "critic": {
+      "findings": [],
+      "reviews": [],
+      "counts": {
+        "unknown_citation": 0,
+        "malformed_citation": 0,
+        "wrong_image_citation": 0,
+        "missing_citation_for_moving_disposition": 0,
+        "single_image_support_for_universal_claim": 0,
+        "non_discriminative_evidence": 0,
+        "generic_quoted_evidence": 0,
+        "diversity_used_for_sameness": 0,
+        "absence_of_contradiction_as_support": 0,
+        "minted_claim": 0,
+        "missing_claim": 0,
+        "duplicate_claim": 0
+      },
+      "review_counts": {
+        "possibly_generic_quoted_evidence": 0
+      },
+      "valid": true,
+      "needs_review": false,
+      "stances": {
+        "cannot_determine": 4
+      },
+      "n_dispositions": 4,
+      "all_resisted": false,
+      "all_accepted": false,
+      "mixed": false,
+      "universal_term_count": 47,
+      "note": "The candidate alignment is preserved whole. `valid: false` marks it, and never deletes it — a rejected answer is evidence about the model and discarding it would leave only the answers that happened to survive."
+    },
+    "critic_ms": 3.05
+  },
+  "critic_repair": null,
+  "outcome": {
+    "all_claims_resisted": false,
+    "all_claims_accepted": false,
+    "mixed": false,
+    "unusable_or_truncated": false,
+    "deterministic_audit_failed": false,
+    "repaired_successfully": false,
+    "remained_invalid_after_repair": false,
+    "needs_human_review": false,
+    "stances": {
+      "cannot_determine": 4
+    }
+  },
+  "finished_at": "2026-08-22T22:27:51+0530"
+}

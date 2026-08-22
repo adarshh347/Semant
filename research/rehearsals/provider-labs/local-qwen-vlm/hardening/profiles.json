@@ -1,0 +1,100 @@
+{
+  "lane": "INTELLIGENCE-001C-R1",
+  "what_this_is": "The bounded experiment matrix, declared BEFORE any of it was run. Every cell this lane reports must appear here; a result from a configuration not in this file is not part of the study. Declaring the matrix up front is what stops the latency budget, the safety rule or the profile list being adjusted after the numbers arrive.",
+  "supersedes_nothing": "PR #230's run records stand unchanged. Nothing in this lane overwrites, reinterprets or re-derives them. New results stand BESIDE the baseline.",
+
+  "baseline_from_230": {
+    "source": "research/rehearsals/provider-labs/local-qwen-vlm/runs/20260822-final/gates.json",
+    "verdict": "DO NOT INTEGRATE YET",
+    "passed": ["parse rate 10/10", "image references", "hypotheses stay hypotheses", "three images fit", "restart", "beats a caption"],
+    "failed": {
+      "no measured status": "1 trial in 10 wrote `The suggested uncertainty is 10% for 'polished'` — a number invented for its own confidence, in a record whose uncertainty field is a three-value enum",
+      "latency": "61.8 s median against a 60 s budget the lane declared",
+      "resists a false premise": "1 of 8 repeats accepted every claim; 0 mixed"
+    },
+    "note": "These are the numbers to reproduce, not assumptions to preserve. The 60 s budget was declared before #230's result and is NOT re-opened here — this lane may report that 62 s is the honest cost, and may not move the line after seeing it."
+  },
+
+  "identity_is_not_general": "Every result in this lane is about THIS quantization, THIS projector, THIS runtime build, THIS sampling configuration and THIS machine. `runs/<id>/manifest.json` carries the model digest, projector digest, llama.cpp build, full launch argv and machine state. Nothing here is a claim about `Qwen 9B` as such.",
+
+  "context_profiles": [
+    {
+      "id": "ctx16k",
+      "n_ctx": 16384,
+      "why": "The control. If 32k is unsafe or useless, this is what the lab would fall back to, so its cost must be measured rather than assumed cheaper."
+    },
+    {
+      "id": "ctx32k",
+      "n_ctx": 32768,
+      "why": "What #230 ran at, and what this lane must ratify or refuse. #230 never tested it against anything, so `32768 worked` was a fact about one configuration with no comparison."
+    }
+  ],
+  "context_profiles_excluded": {
+    "65536": "NOT STARTED IN THIS LANE, by directive. #230 declined it on memory grounds and this lane does not revisit that."
+  },
+
+  "image_token_profiles": [
+    {"id": "img-default", "image_min_tokens": null, "why": "What #230 ran: roughly 200 image tokens per image, well under what the loader warns Qwen-VL wants."},
+    {"id": "img-min512", "image_min_tokens": 512, "why": "The midpoint. If specificity is going to move, a half-step should show some of it."},
+    {"id": "img-min1024", "image_min_tokens": 1024, "why": "What llama.cpp's own loader warns is the minimum for grounding on this architecture."}
+  ],
+  "image_token_stop_rule": "If img-min1024 fails the memory gate, STOP. No higher value is attempted.",
+  "verified_flags": {
+    "--image-min-tokens": "present in llama-server --help on build 10520 (cd644c395), checked against the installed binary before use",
+    "--image-max-tokens": "present, and deliberately NOT used: raising the floor is the question, and moving both ends at once would make the cell uninterpretable"
+  },
+
+  "inference_profiles": [
+    {
+      "id": "A-merged-baseline",
+      "thinking": false,
+      "temperature": 1.0, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5,
+      "why": "Exactly what #230 ran, so every other cell has something to be different FROM. These are serve.sh's own defaults."
+    },
+    {
+      "id": "B-conservative-nonthinking",
+      "thinking": false,
+      "temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0,
+      "why": "The presence penalty is the interesting half. serve.sh sets 1.5, which is Qwen's THINKING-mode preset; a penalty that strong pushes the sampler away from tokens it has already used, and an observation schema makes a model repeat field vocabulary by design."
+    },
+    {
+      "id": "C-lowvariance-nonthinking",
+      "thinking": false,
+      "temperature": 0.4, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0,
+      "why": "An EXPERIMENT, not a proposed Qwen setting. Qwen's own documentation warns against low temperature for this family; this cell exists to find out what the instability at 1.0 actually costs, not to recommend 0.4."
+    }
+  ],
+  "greedy_excluded": "Temperature 0 is not in this matrix. A model that resists a false premise only because it cannot sample is not resisting it, and a lane that reported greedy decoding as the repair would have hidden the finding rather than fixed it.",
+  "sampling_verification": {
+    "method": "A background thread polls /slots while the chat request is in flight and records the params the slot actually held. /v1/chat/completions does not echo generation_settings; /completion does, but takes no image. Where the poll misses the window, the cell records `sampling_verified: false` and the setting is reported as REQUESTED, not effective.",
+    "checked_first": "/completion echoed temperature 0.4, top_p 0.8, presence_penalty 0.0 exactly as sent on this build, which is what establishes that per-request sampling is honoured at all."
+  },
+
+  "retention": {
+    "targets_tokens": [8000, 16000, 24000, 30000],
+    "target_30000_rule": "Only on ctx32k, and only if every earlier probe on that profile stayed safe.",
+    "positions": ["start", "quarter", "middle", "three_quarters", "end"],
+    "what_this_measures": "RETRIEVAL, not reasoning. A correct answer here means the model could find a token it was shown. Calling that `reasoning` would be the single easiest way to oversell a local model.",
+    "token_counts": "The generator aims at a target; the server reports what actually arrived. Only the server's `prompt_n` is recorded as the prompt size."
+  },
+
+  "safety_rules": [
+    "startup fails",
+    "a request terminates the server",
+    "wired memory reaches or exceeds the Metal ceiling this hardware reports",
+    "sustained memory pressure from which the machine does not recover after the request",
+    "the server fails its post-request health probe",
+    "manual intervention is required to recover it"
+  ],
+  "swap_is_context": "Whole-machine swap is recorded and is NOT evidence that this process consumed it. On unified memory that figure belongs to everything running. A profile is never marked unsafe on swap alone.",
+
+  "roles_under_test": {
+    "prompt_blind_observer": "the only role this lane can plausibly clear",
+    "prompt_aware_aligner": "tested",
+    "relation_proposer": "not tested — no cell in this matrix asks for a relation, so its verdict must be UNDETERMINED rather than inferred",
+    "critic": "tested only as the repair pass, which is a different job from being the critic of record",
+    "epistemic_judge": "not tested",
+    "final_composer": "not tested"
+  },
+  "no_transfer": "Success in one role does not transfer to another, and a role with no cell in this matrix gets UNDETERMINED. The expected outcome — observer with mandatory auditing, ineligible as judge or critic — is a HYPOTHESIS this matrix is allowed to contradict."
+}
