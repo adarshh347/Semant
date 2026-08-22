@@ -37,7 +37,7 @@ from backend.services.perception_lab.extent_forms import measure as M
 from backend.services.perception_lab.extent_forms.boundary import (TracedRing, ring_model, trace)
 from backend.services.perception_lab.extent_forms.inputs import (Derived, SourceExtent,
                                                                  provenance_for)
-from backend.services.perception_lab.extent_forms.raster import (PixelSet, complement_of,
+from backend.services.perception_lab.extent_forms.raster import (PixelSet, bounded_voids,
                                                                  foreground_components)
 
 
@@ -73,8 +73,8 @@ def voids_of(piece: PixelSet, rings: Sequence[TracedRing]) -> Tuple[Void, ...]:
     """Every component of one piece's complement, classified, in row-major order."""
     inner = [r for r in rings if not r.is_outer]
     out: List[Void] = []
-    for component in complement_of(piece):
-        if component.touches_border:
+    for component, escapes in bounded_voids(piece):
+        if escapes:
             out.append(Void(pixels=component, enclosed=False))
             continue
         anchor = _anchor_of(component)
@@ -101,9 +101,14 @@ def hole_set(extents: Sequence[SourceExtent], *, source_image_digest: str) -> De
 
     `candidates_examined` COUNTS EVERY VOID THAT WAS LOOKED AT, the open ones included. That is
     what the field is for: `holes: []` from an extent that is solid and `holes: []` from an extent
-    nobody examined are the same empty list, and only the first is a measurement. An extent with
-    one opening and an outside reports two candidates and one hole, and the difference between
-    those two numbers is exactly the voids this frame could not close.
+    nobody examined are the same empty list, and only the first is a measurement.
+
+    THE OUTSIDE IS ALWAYS ONE OF THEM, INCLUDING FOR A SHAPE THAT FILLS THE FRAME. A picture is a
+    crop, and `enclosed` already means "does not reach the frame" — so the space beyond the frame
+    is a void that was examined and rejected, exactly like a bay open at one side. The count is
+    therefore always `holes + 1`, whatever the piece touches. (It was not, before
+    PERCEPTUAL-FORMS-001H: a full-frame shape reported no outside at all, which made the same
+    number mean two things depending on where the shape sat.)
 
     THE HOLE NAMES THE INSTANCE, NOT THE PIECE. `InstanceRef` reaches artifact and instance and
     stops there, so when one instance's mask has several separate pieces every hole of every piece

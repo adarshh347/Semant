@@ -1,0 +1,788 @@
+{
+  "suite": "forms",
+  "recorded_at": "2026-08-22T02:00:04+00:00",
+  "post_id": "6a60410b1ecd6db1c931eb72",
+  "label": "david",
+  "session_id": "labs_4a448a1432a2",
+  "rows": [
+    {
+      "trial": "extent.hard_mask \u00b7 direct operation",
+      "form": "extent.hard_mask",
+      "level": "direct_operation",
+      "operation": "extent.find_all",
+      "outcome": "ready",
+      "wall_ms": 23257,
+      "stages": [
+        {
+          "adapter": "yolo_sam2_auto",
+          "state": "completed",
+          "invoked": true,
+          "duration_ms": 20781,
+          "detail": "10 extents from sam2-auto; inner_ms=20779; adapter=yolo_sam2_auto; organ_duration_ms=13550"
+        }
+      ],
+      "artifact_ids": [
+        "art_cf47026b8315"
+      ],
+      "refusals": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null,
+      "producer": "yolo_sam2_auto",
+      "adapter": "yolo_sam2_auto",
+      "model": "sam2.1_hiera_tiny",
+      "revision": "sam2.1-auto",
+      "device": "mps",
+      "peak_memory_mb": null,
+      "instances": 10
+    },
+    {
+      "trial": "topology.pair_relation \u00b7 direct operation",
+      "form": "topology.pair_relation",
+      "level": "direct_operation",
+      "operation": "topology.all_pairs",
+      "outcome": "ready",
+      "wall_ms": 6426,
+      "artifact_ids": [
+        "art_1cf012ff2f07"
+      ],
+      "producer": "nestedness_organ",
+      "adapter": "nestedness_organ",
+      "model": null,
+      "revision": null,
+      "device": null,
+      "peak_memory_mb": null,
+      "stages": [
+        {
+          "adapter": "nestedness_organ",
+          "state": "completed",
+          "invoked": true,
+          "duration_ms": 3957
+        }
+      ],
+      "refusals": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.boundary_rings \u00b7 direct form",
+      "form": "extent.boundary_rings",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 679,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_forms.boundary_rings",
+      "producer_kind": "code",
+      "producer_revision": "extent-exact-forms.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_2d158a83dd62",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "extent_boundary",
+      "examined": 15,
+      "renderings_available": [
+        "ring_outline",
+        "mask_outline"
+      ],
+      "refusals": [],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.hole_set \u00b7 direct form",
+      "form": "extent.hole_set",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 521,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_forms.hole_set",
+      "producer_kind": "code",
+      "producer_revision": "extent-exact-forms.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_eedc7aeb4e37",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "extent_hole_set",
+      "examined": 15,
+      "renderings_available": [
+        "hole_fill",
+        "mask_outline"
+      ],
+      "refusals": [],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.soft_field \u00b7 not derivable here",
+      "form": "extent.soft_field",
+      "level": "direct_form",
+      "producible_here": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation",
+        "capability_unavailable"
+      ],
+      "note": "registered and deferred. the raster was evaluated and every cell is zero \u2014 the thing is not here. The shape is settled a phase before anything writes it.",
+      "producers": [
+        {
+          "key": "sam2_logits",
+          "kind": "model",
+          "label": "sam2_logits \u2014 reject",
+          "state": "unavailable",
+          "model": "facebook/sam2.1-hiera-tiny",
+          "revision": null,
+          "reason": "reports 5% of the true softness on the one control that is genuinely boundary-less. sigmoid(logit) is a mask confidence, not a coverage",
+          "remedy": "use the route the finding names",
+          "admission": "reject"
+        }
+      ],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.fragment_set \u00b7 direct form",
+      "form": "extent.fragment_set",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 2134,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_forms.fragment_set",
+      "producer_kind": "code",
+      "producer_revision": "extent-exact-forms.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_7ec418260268",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "extent_fragment_set",
+      "examined": 13,
+      "renderings_available": [
+        "fragment_cluster",
+        "mask_fill"
+      ],
+      "refusals": [],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.fused_hypothesis \u00b7 direct form",
+      "form": "extent.fused_hypothesis",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 272,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_composites.produce_fused_hypothesis",
+      "producer_kind": "code",
+      "producer_revision": "extent-composites.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_ccb8bfcca5f3",
+      "ceiling": "interpretive",
+      "basis": "mask",
+      "payload_variant": "extent_fusion_hypothesis",
+      "examined": 10,
+      "renderings_available": [
+        "fragment_cluster",
+        "hypothesis_stack"
+      ],
+      "refusals": [
+        {
+          "code": "form_not_producible",
+          "organ": "extent",
+          "operation": null,
+          "message": "extent.fused_hypothesis is registered and deferred. No producer in this phase writes one.",
+          "missing": [
+            "extent.fused_hypothesis"
+          ],
+          "remedy": "wait for the phase that enables it, or produce a form that exists",
+          "detail": {
+            "form": "extent.fused_hypothesis",
+            "state": "deferred"
+          }
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.visible_inferred_partition \u00b7 direct form",
+      "form": "extent.visible_inferred_partition",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 221,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_composites.produce_visible_inferred_partition",
+      "producer_kind": "code",
+      "producer_revision": "extent-composites.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_70cce4f6e9a6",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": null,
+      "examined": null,
+      "renderings_available": [
+        "partition_tricolor",
+        "scalar_wash"
+      ],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "extent",
+          "operation": null,
+          "message": "a partition with no visible part contradicts the extent it partitions. `of` names something somebody measured, and an answer holding only inferred and unknown pixels is a statement about an extent nobody saw.",
+          "missing": [
+            "visible"
+          ],
+          "remedy": "supply the part that was seen",
+          "detail": {
+            "form": "extent.visible_inferred_partition"
+          }
+        },
+        {
+          "code": "form_not_producible",
+          "organ": "extent",
+          "operation": null,
+          "message": "extent.visible_inferred_partition is registered and deferred. No producer in this phase writes one.",
+          "missing": [
+            "extent.visible_inferred_partition"
+          ],
+          "remedy": "wait for the phase that enables it, or produce a form that exists",
+          "detail": {
+            "form": "extent.visible_inferred_partition",
+            "state": "deferred"
+          }
+        }
+      ],
+      "omitted": [
+        {
+          "what": "visible",
+          "reason": "part_not_supplied",
+          "detail": "no visible region was supplied."
+        },
+        {
+          "what": "inferred",
+          "reason": "part_not_supplied",
+          "detail": "no inferred region was supplied."
+        },
+        {
+          "what": "unknown",
+          "reason": "part_not_supplied",
+          "detail": "no unknown region was supplied. `unknown` is a real third part: not-seen-and-not-inferred is not the same as absent."
+        }
+      ],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.hierarchy \u00b7 direct form",
+      "form": "extent.hierarchy",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 210,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_composites.produce_extent_hierarchy",
+      "producer_kind": "code",
+      "producer_revision": "extent-composites.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_559e909a266c",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "extent_hierarchy",
+      "examined": 0,
+      "renderings_available": [
+        "hierarchy_tree",
+        "mask_fill"
+      ],
+      "refusals": [],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.density_field \u00b7 direct form",
+      "form": "extent.density_field",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 274,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_composites.produce_density_field",
+      "producer_kind": "code",
+      "producer_revision": "extent-composites.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_496c008c3a33",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "extent_density_field",
+      "examined": 10,
+      "renderings_available": [
+        "density_contours",
+        "scalar_wash"
+      ],
+      "refusals": [
+        {
+          "code": "form_not_producible",
+          "organ": "extent",
+          "operation": null,
+          "message": "extent.density_field is registered and deferred. No producer in this phase writes one.",
+          "missing": [
+            "extent.density_field"
+          ],
+          "remedy": "wait for the phase that enables it, or produce a form that exists",
+          "detail": {
+            "form": "extent.density_field",
+            "state": "deferred"
+          }
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "extent.hypothesis_set \u00b7 direct form",
+      "form": "extent.hypothesis_set",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 240,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": "perception_lab.extent_composites.produce_hypothesis_set",
+      "producer_kind": "code",
+      "producer_revision": "extent-composites.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_10f90ab348d9",
+      "ceiling": "uncertain",
+      "basis": "mask",
+      "payload_variant": "extent_hypothesis_set",
+      "examined": 0,
+      "renderings_available": [
+        "hypothesis_stack",
+        "ab_overlay"
+      ],
+      "refusals": [
+        {
+          "code": "form_not_producible",
+          "organ": "extent",
+          "operation": null,
+          "message": "extent.hypothesis_set is registered and deferred. No producer in this phase writes one.",
+          "missing": [
+            "extent.hypothesis_set"
+          ],
+          "remedy": "wait for the phase that enables it, or produce a form that exists",
+          "detail": {
+            "form": "extent.hypothesis_set",
+            "state": "deferred"
+          }
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.contact_locus \u00b7 not derivable here",
+      "form": "topology.contact_locus",
+      "level": "direct_form",
+      "producible_here": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+      "producers": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.intersection_area \u00b7 not derivable here",
+      "form": "topology.intersection_area",
+      "level": "direct_form",
+      "producible_here": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+      "producers": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.clearance_path \u00b7 not derivable here",
+      "form": "topology.clearance_path",
+      "level": "direct_form",
+      "producible_here": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+      "producers": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.containment_tree \u00b7 direct form",
+      "form": "topology.containment_tree",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 224,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": "perception_lab.topology_forms.produce_containment_tree",
+      "producer_kind": "code",
+      "producer_revision": "topology-structural-forms.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_3722821a3449",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "topology_containment_tree",
+      "examined": 10,
+      "renderings_available": [
+        "hierarchy_tree",
+        "relation_graph"
+      ],
+      "refusals": [],
+      "omitted": [
+        {
+          "what": "rel_d17fcfa0b749",
+          "reason": "not_a_structural_kind",
+          "detail": "disjoint is not a nesting"
+        },
+        {
+          "what": "rel_8f2fdbedc5fa",
+          "reason": "not_a_structural_kind",
+          "detail": "meets is not a nesting"
+        },
+        {
+          "what": "rel_2dc704056bd1",
+          "reason": "not_a_structural_kind",
+          "detail": "overlaps is not a nesting"
+        },
+        {
+          "what": "rel_712e14a8ecab",
+          "reason": "not_a_structural_kind",
+          "detail": "disjoint is not a nesting"
+        },
+        {
+          "what": "rel_ec4bea00906d",
+          "reason": "not_a_structural_kind",
+          "detail": "disjoint is not a nesting"
+        },
+        {
+          "what": "rel_67977fa80585",
+          "reason": "not_a_structural_kind",
+          "detail": "disjoint is not a nesting"
+        },
+        {
+          "what": "rel_6d7c431f2e0a",
+          "reason": "not_a_structural_kind",
+          "detail": "disjoint is not a nesting"
+        },
+        {
+          "what": "rel_b73af998bae0",
+          "reason": "not_a_structural_kind",
+          "detail": "meets is not a nesting"
+        },
+        {
+          "what": "rel_5cc767c69267",
+          "reason": "not_a_structural_kind",
+          "detail": "overlaps is not a nesting"
+        },
+        {
+          "what": "rel_9703d8dfd29a",
+          "reason": "not_a_structural_kind",
+          "detail": "disjoint is not a nesting"
+        },
+        {
+          "what": "rel_dfaf9d0f3759",
+          "reason": "not_a_structural_kind",
+          "detail": "disjoint is not a nesting"
+        },
+        {
+          "what": "rel_7fb279d4dd91",
+          "reason": "not_a_structural_kind",
+          "detail": "disjoint is not a nesting"
+        }
+      ],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.adjacency_graph \u00b7 direct form",
+      "form": "topology.adjacency_graph",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 224,
+      "producible_here": true,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "no_operation"
+      ],
+      "producer": "perception_lab.topology_forms.produce_adjacency_graph",
+      "producer_kind": "code",
+      "producer_revision": "topology-structural-forms.v1",
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": "derivation",
+      "derivation_id": "der_7a39ac469943",
+      "ceiling": "measured",
+      "basis": "mask",
+      "payload_variant": "topology_adjacency_graph",
+      "examined": 10,
+      "renderings_available": [
+        "relation_graph",
+        "contact_band"
+      ],
+      "refusals": [],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.negative_space_field \u00b7 not derivable here",
+      "form": "topology.negative_space_field",
+      "level": "direct_form",
+      "producible_here": true,
+      "blocked_by": [],
+      "note": "",
+      "producers": [
+        {
+          "key": "distance_transform",
+          "kind": "code",
+          "label": "separation and negative space, per pixel",
+          "state": "available",
+          "model": null,
+          "revision": "topology-facade.v1",
+          "reason": null,
+          "remedy": null,
+          "admission": null
+        }
+      ],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.transition \u00b7 direct form",
+      "form": "topology.transition",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 264,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": null,
+      "producer_kind": null,
+      "producer_revision": null,
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": null,
+      "derivation_id": null,
+      "ceiling": null,
+      "basis": null,
+      "payload_variant": null,
+      "examined": null,
+      "renderings_available": [
+        "transition_diff",
+        "before_after"
+      ],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "topology",
+          "operation": null,
+          "message": "a transition is a statement about two revisions and one relation set was supplied. A change nobody can see the start of is not a finding.",
+          "missing": [
+            "a second topology.pair_relation set"
+          ],
+          "remedy": "measure the same pair again after the geometry changed",
+          "detail": {}
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "topology.uncertain_relation_set \u00b7 direct form",
+      "form": "topology.uncertain_relation_set",
+      "level": "direct_form",
+      "http": 201,
+      "wall_ms": 140,
+      "producible_here": false,
+      "writable_as_artifact": false,
+      "blocked_by": [
+        "deferred_form",
+        "no_operation"
+      ],
+      "producer": null,
+      "producer_kind": null,
+      "producer_revision": null,
+      "model": null,
+      "peak_memory_mb": null,
+      "record_kind": null,
+      "derivation_id": null,
+      "ceiling": null,
+      "basis": null,
+      "payload_variant": null,
+      "examined": null,
+      "renderings_available": [
+        "hypothesis_stack",
+        "relation_graph"
+      ],
+      "refusals": [
+        {
+          "code": "missing_extent_inputs",
+          "organ": "topology",
+          "operation": null,
+          "message": "a conditional relation set is conditioned on a reading of the extents, and no hypothesis set was supplied.",
+          "missing": [
+            "extent.hypothesis_set"
+          ],
+          "remedy": "derive an extent.hypothesis_set first and supply it here",
+          "detail": {}
+        }
+      ],
+      "omitted": [],
+      "dropped_parameters": [],
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    }
+  ],
+  "source_unchanged": true,
+  "ledger_before": {
+    "post_id": "6a60410b1ecd6db1c931eb72",
+    "fingerprint": "a7f73ef95efb50715a6d0dd17c4cc3c323dd0a2e936c2f985fac7cf4b180e23b",
+    "ledger": {
+      "region_annotations": 63,
+      "visual_marks": 2,
+      "grounds": 1,
+      "percepts": 0,
+      "visual_layers": 0
+    }
+  },
+  "ledger_after": {
+    "post_id": "6a60410b1ecd6db1c931eb72",
+    "fingerprint": "a7f73ef95efb50715a6d0dd17c4cc3c323dd0a2e936c2f985fac7cf4b180e23b",
+    "ledger": {
+      "region_annotations": 63,
+      "visual_marks": 2,
+      "grounds": 1,
+      "percepts": 0,
+      "visual_layers": 0
+    }
+  },
+  "lab_collections": {
+    "sessions": 34,
+    "plans": 81,
+    "runs": 50,
+    "artifacts": 42,
+    "reviews": 0
+  }
+}

@@ -1,0 +1,3626 @@
+{
+  "suite": "preflight",
+  "recorded_at": "2026-08-22T01:53:53+00:00",
+  "post_id": "6a603f6d1ecd6db1c931eb5e",
+  "backend_cwd": "unrecorded",
+  "checks": [
+    {
+      "check": "backend answers /capabilities",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "check": "the wire is LIVE, not a fixture fallback",
+      "ok": true,
+      "detail": "LIVE"
+    },
+    {
+      "check": "every unavailable adapter says WHY and what would change it",
+      "ok": true,
+      "detail": {}
+    },
+    {
+      "check": "the form catalogue answers",
+      "ok": true,
+      "detail": {
+        "registered": 19,
+        "writable_as_artifact": 3,
+        "producible_here": 9
+      }
+    },
+    {
+      "check": "every form that cannot be written names which absence it is",
+      "ok": true,
+      "detail": {
+        "extent.hard_mask": [],
+        "extent.boundary_rings": [
+          "no_operation"
+        ],
+        "extent.hole_set": [
+          "no_operation"
+        ],
+        "extent.soft_field": [
+          "deferred_form",
+          "no_operation",
+          "capability_unavailable"
+        ],
+        "extent.fragment_set": [
+          "no_operation"
+        ],
+        "extent.fused_hypothesis": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "extent.visible_inferred_partition": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "extent.hierarchy": [
+          "no_operation"
+        ],
+        "extent.density_field": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "extent.hypothesis_set": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "topology.pair_relation": [],
+        "topology.contact_locus": [
+          "no_operation"
+        ],
+        "topology.intersection_area": [
+          "no_operation"
+        ],
+        "topology.clearance_path": [
+          "no_operation"
+        ],
+        "topology.containment_tree": [
+          "no_operation"
+        ],
+        "topology.adjacency_graph": [
+          "no_operation"
+        ],
+        "topology.negative_space_field": [],
+        "topology.transition": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "topology.uncertain_relation_set": [
+          "deferred_form",
+          "no_operation"
+        ]
+      }
+    },
+    {
+      "check": "the recipe catalogue answers seven studies",
+      "ok": true,
+      "detail": [
+        "boundary-and-void",
+        "fragment-continuity",
+        "visible-versus-inferred",
+        "courtyard-hierarchy",
+        "piazza-negative-space",
+        "topology-sensitivity",
+        "ambiguous-form-hypothesis"
+      ]
+    },
+    {
+      "check": "the post resolves to a source with a digest and a raster",
+      "ok": true,
+      "detail": {
+        "image_digest": "sha256:14c6a4df8ffd707a63c24f57d4a65ea68dc45583c76fa01debdebe433a340742",
+        "natural_width": 960,
+        "natural_height": 1274
+      }
+    },
+    {
+      "check": "a session opens and the FIRST response carries the real source",
+      "ok": true,
+      "detail": "labs_766623a91cbb"
+    },
+    {
+      "check": "the source post is byte-identical after opening",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "all_green": true,
+  "capabilities": {
+    "execution_identity": "LIVE",
+    "schema_version": "perception-lab.v1",
+    "organs": [
+      {
+        "family": "extent",
+        "label": "Extent",
+        "question": "Where is the figure or part, and how many instances are there?",
+        "enabled": true,
+        "availability": "available",
+        "epistemic_ceiling": "measured",
+        "deferred_note": null,
+        "operations": [
+          {
+            "key": "extent.find_all",
+            "manual": false,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "yolo_sam2_auto",
+                "state": "available",
+                "kind": "model",
+                "label": "SAM 2.1 automatic \u2014 every separable instance",
+                "model": "sam2.1_hiera_tiny",
+                "revision": "sam2.1-auto"
+              }
+            ],
+            "inputs": [],
+            "parameters": [
+              "max_instances",
+              "min_area",
+              "adapter"
+            ]
+          },
+          {
+            "key": "extent.find_named",
+            "manual": false,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "sam3_concept",
+                "state": "available",
+                "kind": "model",
+                "label": "SAM 3 \u2014 every instance of a named concept",
+                "model": "facebook/sam3",
+                "revision": "sam3-pcs-v1"
+              },
+              {
+                "key": "grounded_sam",
+                "state": "available",
+                "kind": "model",
+                "label": "GroundingDINO \u2014 boxes for a named concept",
+                "model": "IDEA-Research/grounding-dino-tiny",
+                "revision": "a2bb814dd30d776dcf7e30523b00659f4f141c71"
+              }
+            ],
+            "inputs": [],
+            "parameters": [
+              "concept",
+              "max_instances",
+              "adapter"
+            ]
+          },
+          {
+            "key": "extent.refine",
+            "manual": false,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "sam2_refine",
+                "state": "available",
+                "kind": "model",
+                "label": "SAM 2.1 refine \u2014 a person's points and boxes",
+                "model": "sam2.1_hiera_tiny",
+                "revision": "sam2.1-auto"
+              }
+            ],
+            "inputs": [
+              {
+                "role": "base",
+                "required": true,
+                "required_for_execution": false
+              }
+            ],
+            "parameters": [
+              "mode",
+              "points",
+              "box"
+            ]
+          },
+          {
+            "key": "extent.draw",
+            "manual": true,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "human",
+                "state": "available",
+                "kind": "human",
+                "label": "a person's hand, through extent.draw",
+                "model": null,
+                "revision": null
+              }
+            ],
+            "inputs": [],
+            "parameters": [
+              "tool",
+              "mask_rle",
+              "polygon"
+            ]
+          },
+          {
+            "key": "extent.reuse",
+            "manual": false,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "canonical_region",
+                "state": "available",
+                "kind": "code",
+                "label": "an existing Region, referenced and never re-derived",
+                "model": null,
+                "revision": null
+              }
+            ],
+            "inputs": [
+              {
+                "role": "regions",
+                "required": true,
+                "required_for_execution": false
+              }
+            ],
+            "parameters": []
+          },
+          {
+            "key": "extent.compare",
+            "manual": false,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "lab_compare",
+                "state": "available",
+                "kind": "code",
+                "label": "exact mask arithmetic between two extent sets",
+                "model": null,
+                "revision": null
+              }
+            ],
+            "inputs": [
+              {
+                "role": "left",
+                "required": true,
+                "required_for_execution": false
+              },
+              {
+                "role": "right",
+                "required": true,
+                "required_for_execution": false
+              }
+            ],
+            "parameters": [
+              "iou_threshold"
+            ]
+          }
+        ]
+      },
+      {
+        "family": "topology",
+        "label": "Topology",
+        "question": "How are extents spatially related?",
+        "enabled": true,
+        "availability": "available",
+        "epistemic_ceiling": "measured",
+        "deferred_note": null,
+        "operations": [
+          {
+            "key": "topology.containment",
+            "manual": false,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "nestedness_organ",
+                "state": "available",
+                "kind": "code",
+                "label": "containment, per pixel, on a shared raster",
+                "model": null,
+                "revision": "topology-facade.v1"
+              }
+            ],
+            "inputs": [
+              {
+                "role": "source",
+                "required": true,
+                "required_for_execution": false
+              },
+              {
+                "role": "target",
+                "required": true,
+                "required_for_execution": false
+              }
+            ],
+            "parameters": [
+              "basis"
+            ]
+          },
+          {
+            "key": "topology.adjacency",
+            "manual": false,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "adjacency_organ",
+                "state": "available",
+                "kind": "code",
+                "label": "boundary contact, per pixel",
+                "model": null,
+                "revision": "topology-facade.v1"
+              }
+            ],
+            "inputs": [
+              {
+                "role": "source",
+                "required": true,
+                "required_for_execution": false
+              },
+              {
+                "role": "target",
+                "required": true,
+                "required_for_execution": false
+              }
+            ],
+            "parameters": [
+              "basis",
+              "contact_tolerance_px"
+            ]
+          },
+          {
+            "key": "topology.overlap",
+            "manual": false,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "mask_arithmetic",
+                "state": "available",
+                "kind": "code",
+                "label": "overlap and all-pairs, exact set operations",
+                "model": null,
+                "revision": "topology-facade.v1"
+              }
+            ],
+            "inputs": [
+              {
+                "role": "source",
+                "required": true,
+                "required_for_execution": false
+              },
+              {
+                "role": "target",
+                "required": true,
+                "required_for_execution": false
+              }
+            ],
+            "parameters": []
+          },
+          {
+            "key": "topology.disjoint",
+            "manual": false,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "mask_arithmetic",
+                "state": "available",
+                "kind": "code",
+                "label": "overlap and all-pairs, exact set operations",
+                "model": null,
+                "revision": "topology-facade.v1"
+              },
+              {
+                "key": "distance_transform",
+                "state": "available",
+                "kind": "code",
+                "label": "separation and negative space, per pixel",
+                "model": null,
+                "revision": "topology-facade.v1"
+              }
+            ],
+            "inputs": [
+              {
+                "role": "source",
+                "required": true,
+                "required_for_execution": false
+              },
+              {
+                "role": "target",
+                "required": true,
+                "required_for_execution": false
+              }
+            ],
+            "parameters": []
+          },
+          {
+            "key": "topology.negative_space",
+            "manual": false,
+            "requires_confirmation": false,
+            "adapters": [
+              {
+                "key": "distance_transform",
+                "state": "available",
+                "kind": "code",
+                "label": "separation and negative space, per pixel",
+                "model": null,
+                "revision": "topology-facade.v1"
+              }
+            ],
+            "inputs": [
+              {
+                "role": "figure",
+                "required": true,
+                "required_for_execution": false
+              }
+            ],
+            "parameters": [
+              "max_distance"
+            ]
+          },
+          {
+            "key": "topology.all_pairs",
+            "manual": false,
+            "requires_confirmation": true,
+            "adapters": [
+              {
+                "key": "nestedness_organ",
+                "state": "available",
+                "kind": "code",
+                "label": "containment, per pixel, on a shared raster",
+                "model": null,
+                "revision": "topology-facade.v1"
+              },
+              {
+                "key": "adjacency_organ",
+                "state": "available",
+                "kind": "code",
+                "label": "boundary contact, per pixel",
+                "model": null,
+                "revision": "topology-facade.v1"
+              },
+              {
+                "key": "mask_arithmetic",
+                "state": "available",
+                "kind": "code",
+                "label": "overlap and all-pairs, exact set operations",
+                "model": null,
+                "revision": "topology-facade.v1"
+              }
+            ],
+            "inputs": [
+              {
+                "role": "members",
+                "required": true,
+                "required_for_execution": false
+              }
+            ],
+            "parameters": [
+              "max_regions",
+              "relations"
+            ]
+          },
+          {
+            "key": "topology.occlusion",
+            "manual": false,
+            "requires_confirmation": true,
+            "adapters": [
+              {
+                "key": "occlusion_organ",
+                "state": "available",
+                "kind": "code",
+                "label": "depth ordering over a SUPPLIED depth field",
+                "model": null,
+                "revision": "topology-facade.v1"
+              }
+            ],
+            "inputs": [
+              {
+                "role": "source",
+                "required": true,
+                "required_for_execution": false
+              },
+              {
+                "role": "target",
+                "required": true,
+                "required_for_execution": false
+              },
+              {
+                "role": "depth",
+                "required": false,
+                "required_for_execution": true
+              }
+            ],
+            "parameters": []
+          }
+        ]
+      },
+      {
+        "family": "colour",
+        "label": "Colour",
+        "question": "What colours are present, where, and in what relation?",
+        "enabled": false,
+        "availability": "deferred",
+        "epistemic_ceiling": null,
+        "deferred_note": "Registered so the shell need not change to admit it. Declares nothing it cannot do.",
+        "operations": []
+      },
+      {
+        "family": "illumination",
+        "label": "Illumination",
+        "question": "Where does the light come from, and where is it withheld?",
+        "enabled": false,
+        "availability": "deferred",
+        "epistemic_ceiling": null,
+        "deferred_note": "Registered so the shell need not change to admit it. Declares nothing it cannot do.",
+        "operations": []
+      },
+      {
+        "family": "surface_pattern",
+        "label": "Surface pattern / material",
+        "question": "What is this surface made of, and how is it patterned?",
+        "enabled": false,
+        "availability": "deferred",
+        "epistemic_ceiling": null,
+        "deferred_note": "Registered so the shell need not change to admit it. Declares nothing it cannot do.",
+        "operations": []
+      },
+      {
+        "family": "orientation_flow",
+        "label": "Orientation / flow",
+        "question": "Which way does this run?",
+        "enabled": false,
+        "availability": "deferred",
+        "epistemic_ceiling": null,
+        "deferred_note": "Registered so the shell need not change to admit it. Declares nothing it cannot do.",
+        "operations": []
+      },
+      {
+        "family": "depth",
+        "label": "Depth",
+        "question": "What is nearer, and what is further away?",
+        "enabled": false,
+        "availability": "deferred",
+        "epistemic_ceiling": null,
+        "deferred_note": "The only deferred organ that DECLARES an artifact kind, because `topology.occlusion` must be able to name the thing it needs. `produces_artifact_kinds` stays empty: naming a dependency is not satisfying it, and nothing in this phase can mint a `depth_field`.",
+        "operations": []
+      },
+      {
+        "family": "surface_form",
+        "label": "Surface form",
+        "question": "What shape is this surface, in three dimensions?",
+        "enabled": false,
+        "availability": "deferred",
+        "epistemic_ceiling": null,
+        "deferred_note": "Registered so the shell need not change to admit it. Declares nothing it cannot do.",
+        "operations": []
+      }
+    ],
+    "states": {
+      "canonical_region": "available",
+      "grounded_sam": "available",
+      "human": "available",
+      "lab_compare": "available",
+      "sam2_refine": "available",
+      "sam3_concept": "available",
+      "yolo_sam2_auto": "available",
+      "adjacency_organ": "available",
+      "distance_transform": "available",
+      "mask_arithmetic": "available",
+      "nestedness_organ": "available",
+      "occlusion_organ": "available"
+    },
+    "forms": {
+      "forms": [
+        {
+          "form": "extent.hard_mask",
+          "organ": "extent",
+          "label": "Hard mask",
+          "question": "Which pixels are it?",
+          "state": "enabled",
+          "producible": true,
+          "writable_as_artifact": true,
+          "can_be_produced_here": true,
+          "blocked_by": [],
+          "note": "",
+          "producers": [
+            {
+              "key": "yolo_sam2_auto",
+              "kind": "model",
+              "label": "SAM 2.1 automatic \u2014 every separable instance",
+              "state": "available",
+              "model": "sam2.1_hiera_tiny",
+              "revision": "sam2.1-auto",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "sam3_concept",
+              "kind": "model",
+              "label": "SAM 3 \u2014 every instance of a named concept",
+              "state": "available",
+              "model": "facebook/sam3",
+              "revision": "sam3-pcs-v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "grounded_sam",
+              "kind": "model",
+              "label": "GroundingDINO \u2014 boxes for a named concept",
+              "state": "available",
+              "model": "IDEA-Research/grounding-dino-tiny",
+              "revision": "a2bb814dd30d776dcf7e30523b00659f4f141c71",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "sam2_refine",
+              "kind": "model",
+              "label": "SAM 2.1 refine \u2014 a person's points and boxes",
+              "state": "available",
+              "model": "sam2.1_hiera_tiny",
+              "revision": "sam2.1-auto",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "human",
+              "kind": "human",
+              "label": "a person's hand, through extent.draw",
+              "state": "available",
+              "model": null,
+              "revision": null,
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "canonical_region",
+              "kind": "code",
+              "label": "an existing Region, referenced and never re-derived",
+              "state": "available",
+              "model": null,
+              "revision": null,
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "lab_compare",
+              "kind": "code",
+              "label": "exact mask arithmetic between two extent sets",
+              "state": "available",
+              "model": null,
+              "revision": null,
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "mask_fill",
+              "mode": "direct",
+              "note": "the decoded RLE, drawn"
+            },
+            {
+              "kind": "mask_outline",
+              "mode": "derived",
+              "note": "the boundary is traced in the browser; the payload carries no ring, which is what extent.boundary_rings exists to change"
+            },
+            {
+              "kind": "box_outline",
+              "mode": "direct",
+              "note": "the declared box, which is a projection of the mask and not the mask"
+            },
+            {
+              "kind": "point_markers",
+              "mode": "direct",
+              "note": "the refinement points a person placed"
+            },
+            {
+              "kind": "contact_sheet",
+              "mode": "derived",
+              "note": "one thumbnail per instance"
+            },
+            {
+              "kind": "before_after",
+              "mode": "derived",
+              "note": "a refinement against the geometry it replaced"
+            },
+            {
+              "kind": "ab_overlay",
+              "mode": "derived",
+              "note": "two sets compared, from extent.compare"
+            },
+            {
+              "kind": "difference_overlay",
+              "mode": "derived",
+              "note": "what only one of the two sets saw"
+            }
+          ],
+          "accepted_input_forms": [],
+          "absence": {
+            "examined_field": "searched",
+            "empty_means": "something looked for the named thing over this image and found no instance of it"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "extent.boundary_rings",
+          "organ": "extent",
+          "label": "Boundary rings",
+          "question": "Where exactly does its edge run, as curves rather than pixels?",
+          "state": "experimental",
+          "producible": true,
+          "writable_as_artifact": false,
+          "can_be_produced_here": true,
+          "blocked_by": [
+            "no_operation"
+          ],
+          "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+          "producers": [
+            {
+              "key": "perception_lab.extent_forms.boundary_rings",
+              "kind": "code",
+              "label": "exact derivation \u2014 boundary_rings",
+              "state": "available",
+              "model": null,
+              "revision": "extent-exact-forms.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "ring_outline",
+              "mode": "direct",
+              "note": "the rings, drawn as authored"
+            },
+            {
+              "kind": "mask_outline",
+              "mode": "direct",
+              "note": "the same rings under the older name"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask"
+          ],
+          "absence": {
+            "examined_field": "rings_traced",
+            "empty_means": "the mask was traced and it enclosed nothing \u2014 an empty mask has no boundary"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "extent.hole_set",
+          "organ": "extent",
+          "label": "Holes",
+          "question": "What voids are inside it, and are they enclosed?",
+          "state": "experimental",
+          "producible": true,
+          "writable_as_artifact": false,
+          "can_be_produced_here": true,
+          "blocked_by": [
+            "no_operation"
+          ],
+          "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+          "producers": [
+            {
+              "key": "perception_lab.extent_forms.hole_set",
+              "kind": "code",
+              "label": "exact derivation \u2014 hole_set",
+              "state": "available",
+              "model": null,
+              "revision": "extent-exact-forms.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "hole_fill",
+              "mode": "direct",
+              "note": "the voids, drawn as their own shapes"
+            },
+            {
+              "kind": "mask_outline",
+              "mode": "derived",
+              "note": "outer boundary and holes together"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask",
+            "extent.boundary_rings"
+          ],
+          "absence": {
+            "examined_field": "candidates_examined",
+            "empty_means": "the extent was examined for enclosed voids and is solid"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "extent.soft_field",
+          "organ": "extent",
+          "label": "Soft field",
+          "question": "How much of it is here, where the edge is not a line?",
+          "state": "deferred",
+          "producible": false,
+          "writable_as_artifact": false,
+          "can_be_produced_here": false,
+          "blocked_by": [
+            "deferred_form",
+            "no_operation",
+            "capability_unavailable"
+          ],
+          "note": "registered and deferred. the raster was evaluated and every cell is zero \u2014 the thing is not here. The shape is settled a phase before anything writes it.",
+          "producers": [
+            {
+              "key": "sam2_logits",
+              "kind": "model",
+              "label": "sam2_logits \u2014 reject",
+              "state": "unavailable",
+              "model": "facebook/sam2.1-hiera-tiny",
+              "revision": null,
+              "reason": "reports 5% of the true softness on the one control that is genuinely boundary-less. sigmoid(logit) is a mask confidence, not a coverage",
+              "remedy": "use the route the finding names",
+              "admission": "reject"
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "scalar_wash",
+              "mode": "direct",
+              "note": "the field, mapped to opacity"
+            },
+            {
+              "kind": "density_contours",
+              "mode": "derived",
+              "note": "iso-lines computed from the field"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask"
+          ],
+          "absence": {
+            "examined_field": "cells_evaluated",
+            "empty_means": "the raster was evaluated and every cell is zero \u2014 the thing is not here"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "extent.fragment_set",
+          "organ": "extent",
+          "label": "Fragments",
+          "question": "What separate pieces are visible, without saying yet whether they are one thing?",
+          "state": "experimental",
+          "producible": true,
+          "writable_as_artifact": false,
+          "can_be_produced_here": true,
+          "blocked_by": [
+            "no_operation"
+          ],
+          "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+          "producers": [
+            {
+              "key": "perception_lab.extent_forms.fragment_set",
+              "kind": "code",
+              "label": "exact derivation \u2014 fragment_set",
+              "state": "available",
+              "model": null,
+              "revision": "extent-exact-forms.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "fragment_cluster",
+              "mode": "direct",
+              "note": "each piece drawn in its own key, unfused"
+            },
+            {
+              "kind": "mask_fill",
+              "mode": "direct",
+              "note": "the pieces, drawn separately"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask"
+          ],
+          "absence": {
+            "examined_field": "regions_examined",
+            "empty_means": "the image was examined for separable pieces of this kind and none were found"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "extent.fused_hypothesis",
+          "organ": "extent",
+          "label": "Fusion hypothesis",
+          "question": "Are these pieces one thing, and on what evidence?",
+          "state": "deferred",
+          "producible": false,
+          "writable_as_artifact": false,
+          "can_be_produced_here": false,
+          "blocked_by": [
+            "deferred_form",
+            "no_operation"
+          ],
+          "note": "registered and deferred. the fragments were considered and no grouping was supportable. The shape is settled a phase before anything writes it.",
+          "producers": [
+            {
+              "key": "perception_lab.extent_composites.produce_fused_hypothesis",
+              "kind": "code",
+              "label": "exact derivation \u2014 produce_fused_hypothesis",
+              "state": "available",
+              "model": null,
+              "revision": "extent-composites.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "fragment_cluster",
+              "mode": "direct",
+              "note": "members drawn in one key, with the claim named"
+            },
+            {
+              "kind": "hypothesis_stack",
+              "mode": "direct",
+              "note": "the hypothesis beside its alternatives"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.fragment_set",
+            "extent.hard_mask"
+          ],
+          "absence": {
+            "examined_field": "fragments_considered",
+            "empty_means": "the fragments were considered and no grouping was supportable"
+          },
+          "epistemic_ceiling": "interpretive",
+          "carries_hypothesis": true
+        },
+        {
+          "form": "extent.visible_inferred_partition",
+          "organ": "extent",
+          "label": "Visible / inferred partition",
+          "question": "Which of this did we see, which did we infer, and which do we not know?",
+          "state": "deferred",
+          "producible": false,
+          "writable_as_artifact": false,
+          "can_be_produced_here": false,
+          "blocked_by": [
+            "deferred_form",
+            "no_operation"
+          ],
+          "note": "registered and deferred. the extent was partitioned and nothing fell outside the visible part. The shape is settled a phase before anything writes it.",
+          "producers": [
+            {
+              "key": "perception_lab.extent_composites.produce_visible_inferred_partition",
+              "kind": "code",
+              "label": "exact derivation \u2014 produce_visible_inferred_partition",
+              "state": "available",
+              "model": null,
+              "revision": "extent-composites.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "pix2gestalt",
+              "kind": "model",
+              "label": "pix2gestalt \u2014 defer",
+              "state": "unavailable",
+              "model": null,
+              "revision": null,
+              "reason": "22-28 GB VRAM against a 10 GB budget. Not downloaded, not run, not integrated - deferred on resources, not failed on merit",
+              "remedy": "re-check availability and record a verdict",
+              "admission": "defer"
+            },
+            {
+              "key": "amodal_sam",
+              "kind": "model",
+              "label": "amodal_sam \u2014 defer",
+              "state": "unavailable",
+              "model": null,
+              "revision": null,
+              "reason": "a SAM adapter that would fit the budget; no public checkpoint found on 2026-08-22. Re-check, then measure the hallucinated-structure rate",
+              "remedy": "re-check availability and record a verdict",
+              "admission": "defer"
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "partition_tricolor",
+              "mode": "direct",
+              "note": "three regions in three keys, never one shape"
+            },
+            {
+              "kind": "scalar_wash",
+              "mode": "direct",
+              "note": "confidence per cell where the partition is graded"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask",
+            "extent.soft_field",
+            "extent.fused_hypothesis"
+          ],
+          "absence": {
+            "examined_field": "cells_partitioned",
+            "empty_means": "the extent was partitioned and nothing fell outside the visible part"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": true
+        },
+        {
+          "form": "extent.hierarchy",
+          "organ": "extent",
+          "label": "Extent hierarchy",
+          "question": "What contains what, and how much of the parent does the child occupy?",
+          "state": "experimental",
+          "producible": true,
+          "writable_as_artifact": false,
+          "can_be_produced_here": true,
+          "blocked_by": [
+            "no_operation"
+          ],
+          "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+          "producers": [
+            {
+              "key": "perception_lab.extent_composites.produce_extent_hierarchy",
+              "kind": "code",
+              "label": "exact derivation \u2014 produce_extent_hierarchy",
+              "state": "available",
+              "model": null,
+              "revision": "extent-composites.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "hierarchy_tree",
+              "mode": "direct",
+              "note": "the nesting, as a tree beside the image"
+            },
+            {
+              "kind": "mask_fill",
+              "mode": "derived",
+              "note": "one level at a time, drawn from the cited extents"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask",
+            "extent.boundary_rings"
+          ],
+          "absence": {
+            "examined_field": "pairs_examined",
+            "empty_means": "the extents were compared for nesting and none contained another"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "extent.density_field",
+          "organ": "extent",
+          "label": "Density field",
+          "question": "Where is the collection, when there is no single object to outline?",
+          "state": "deferred",
+          "producible": false,
+          "writable_as_artifact": false,
+          "can_be_produced_here": false,
+          "blocked_by": [
+            "deferred_form",
+            "no_operation"
+          ],
+          "note": "registered and deferred. the members were counted and the field is everywhere zero. The shape is settled a phase before anything writes it.",
+          "producers": [
+            {
+              "key": "perception_lab.extent_composites.produce_density_field",
+              "kind": "code",
+              "label": "exact derivation \u2014 produce_density_field",
+              "state": "available",
+              "model": null,
+              "revision": "extent-composites.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "density_counter",
+              "kind": "model",
+              "label": "density_counter \u2014 reject",
+              "state": "unavailable",
+              "model": null,
+              "revision": null,
+              "reason": "DAVE and GeCo need exemplars and carry research-use terms, and the form does not need a model at all: counts from an existing extent set are exact",
+              "remedy": "use the route the finding names",
+              "admission": "reject"
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "density_contours",
+              "mode": "direct",
+              "note": "iso-lines over the declared field"
+            },
+            {
+              "kind": "scalar_wash",
+              "mode": "direct",
+              "note": "the field, mapped to opacity"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask",
+            "extent.fragment_set"
+          ],
+          "absence": {
+            "examined_field": "members_counted",
+            "empty_means": "the members were counted and the field is everywhere zero"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "extent.hypothesis_set",
+          "organ": "extent",
+          "label": "Alternative extents",
+          "question": "What are the competing readings of where this thing is?",
+          "state": "deferred",
+          "producible": false,
+          "writable_as_artifact": false,
+          "can_be_produced_here": false,
+          "blocked_by": [
+            "deferred_form",
+            "no_operation"
+          ],
+          "note": "registered and deferred. alternatives were considered and only one reading survived \u2014 which is not this form. The shape is settled a phase before anything writes it.",
+          "producers": [
+            {
+              "key": "perception_lab.extent_composites.produce_hypothesis_set",
+              "kind": "code",
+              "label": "exact derivation \u2014 produce_hypothesis_set",
+              "state": "available",
+              "model": null,
+              "revision": "extent-composites.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "hypothesis_stack",
+              "mode": "direct",
+              "note": "the alternatives, stacked and switchable"
+            },
+            {
+              "kind": "ab_overlay",
+              "mode": "derived",
+              "note": "two alternatives compared directly"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask",
+            "extent.fragment_set",
+            "extent.fused_hypothesis"
+          ],
+          "absence": {
+            "examined_field": "alternatives_considered",
+            "empty_means": "alternatives were considered and only one reading survived \u2014 which is not this form"
+          },
+          "epistemic_ceiling": "uncertain",
+          "carries_hypothesis": true
+        },
+        {
+          "form": "topology.pair_relation",
+          "organ": "topology",
+          "label": "Pair relation",
+          "question": "How do these two stand to each other?",
+          "state": "enabled",
+          "producible": true,
+          "writable_as_artifact": true,
+          "can_be_produced_here": true,
+          "blocked_by": [],
+          "note": "",
+          "producers": [
+            {
+              "key": "nestedness_organ",
+              "kind": "code",
+              "label": "containment, per pixel, on a shared raster",
+              "state": "available",
+              "model": null,
+              "revision": "topology-facade.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "adjacency_organ",
+              "kind": "code",
+              "label": "boundary contact, per pixel",
+              "state": "available",
+              "model": null,
+              "revision": "topology-facade.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "mask_arithmetic",
+              "kind": "code",
+              "label": "overlap and all-pairs, exact set operations",
+              "state": "available",
+              "model": null,
+              "revision": "topology-facade.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "distance_transform",
+              "kind": "code",
+              "label": "separation and negative space, per pixel",
+              "state": "available",
+              "model": null,
+              "revision": "topology-facade.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            },
+            {
+              "key": "occlusion_organ",
+              "kind": "code",
+              "label": "depth ordering over a SUPPLIED depth field",
+              "state": "available",
+              "model": null,
+              "revision": "topology-facade.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "endpoint_pair",
+              "mode": "derived",
+              "note": "the two endpoints, resolved and drawn"
+            },
+            {
+              "kind": "relation_graph",
+              "mode": "derived",
+              "note": "the set as a graph, laid out in the browser"
+            },
+            {
+              "kind": "contact_band",
+              "mode": "derived",
+              "note": "the browser recomputes the band; see topology.contact_locus"
+            },
+            {
+              "kind": "intersection_area",
+              "mode": "derived",
+              "note": "the browser recomputes the shared region; see topology.intersection_area"
+            },
+            {
+              "kind": "mask_outline",
+              "mode": "derived",
+              "note": "the endpoints' own boundaries, traced for a containment reading"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask"
+          ],
+          "absence": {
+            "examined_field": "pairs_examined",
+            "empty_means": "the pairs were compared and none stood in any of the asked-for relations"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "topology.contact_locus",
+          "organ": "topology",
+          "label": "Contact locus",
+          "question": "Where exactly do they touch?",
+          "state": "experimental",
+          "producible": true,
+          "writable_as_artifact": false,
+          "can_be_produced_here": false,
+          "blocked_by": [
+            "no_operation"
+          ],
+          "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+          "producers": [],
+          "renderer_projections": [
+            {
+              "kind": "contact_band",
+              "mode": "direct",
+              "note": "the recorded band, drawn as measured"
+            },
+            {
+              "kind": "point_markers",
+              "mode": "direct",
+              "note": "the recorded contact points"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask",
+            "topology.pair_relation"
+          ],
+          "absence": {
+            "examined_field": "pairs_examined",
+            "empty_means": "the pairs were examined for contact and none of them touch"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "topology.intersection_area",
+          "organ": "topology",
+          "label": "Intersection",
+          "question": "What region do they share, and how much of each is it?",
+          "state": "experimental",
+          "producible": true,
+          "writable_as_artifact": false,
+          "can_be_produced_here": false,
+          "blocked_by": [
+            "no_operation"
+          ],
+          "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+          "producers": [],
+          "renderer_projections": [
+            {
+              "kind": "intersection_area",
+              "mode": "direct",
+              "note": "the shared region, drawn as measured"
+            },
+            {
+              "kind": "mask_fill",
+              "mode": "direct",
+              "note": "the same region under the older name"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask",
+            "topology.pair_relation"
+          ],
+          "absence": {
+            "examined_field": "pairs_examined",
+            "empty_means": "the pairs were intersected and every intersection is empty"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "topology.clearance_path",
+          "organ": "topology",
+          "label": "Clearance",
+          "question": "How far apart are they, and along which line?",
+          "state": "experimental",
+          "producible": true,
+          "writable_as_artifact": false,
+          "can_be_produced_here": false,
+          "blocked_by": [
+            "no_operation"
+          ],
+          "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+          "producers": [],
+          "renderer_projections": [
+            {
+              "kind": "path_overlay",
+              "mode": "direct",
+              "note": "the recorded shortest path between the two"
+            },
+            {
+              "kind": "point_markers",
+              "mode": "direct",
+              "note": "the two nearest points"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask",
+            "topology.pair_relation"
+          ],
+          "absence": {
+            "examined_field": "pairs_examined",
+            "empty_means": "the pairs were measured and every one of them touches, so no clearance exists"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "topology.containment_tree",
+          "organ": "topology",
+          "label": "Containment tree",
+          "question": "What is nested inside what, all the way down?",
+          "state": "experimental",
+          "producible": true,
+          "writable_as_artifact": false,
+          "can_be_produced_here": true,
+          "blocked_by": [
+            "no_operation"
+          ],
+          "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+          "producers": [
+            {
+              "key": "perception_lab.topology_forms.produce_containment_tree",
+              "kind": "code",
+              "label": "exact derivation \u2014 produce_containment_tree",
+              "state": "available",
+              "model": null,
+              "revision": "topology-structural-forms.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "hierarchy_tree",
+              "mode": "direct",
+              "note": "the nesting, as a tree"
+            },
+            {
+              "kind": "relation_graph",
+              "mode": "direct",
+              "note": "the same edges, as a graph"
+            }
+          ],
+          "accepted_input_forms": [
+            "topology.pair_relation",
+            "extent.hard_mask"
+          ],
+          "absence": {
+            "examined_field": "pairs_examined",
+            "empty_means": "the pairs were compared for nesting and nothing contained anything"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "topology.adjacency_graph",
+          "organ": "topology",
+          "label": "Adjacency graph",
+          "question": "What touches what, across the whole scene?",
+          "state": "experimental",
+          "producible": true,
+          "writable_as_artifact": false,
+          "can_be_produced_here": true,
+          "blocked_by": [
+            "no_operation"
+          ],
+          "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+          "producers": [
+            {
+              "key": "perception_lab.topology_forms.produce_adjacency_graph",
+              "kind": "code",
+              "label": "exact derivation \u2014 produce_adjacency_graph",
+              "state": "available",
+              "model": null,
+              "revision": "topology-structural-forms.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "relation_graph",
+              "mode": "direct",
+              "note": "nodes and edges, laid out beside the image"
+            },
+            {
+              "kind": "contact_band",
+              "mode": "derived",
+              "note": "one edge's locus, when a locus was recorded"
+            }
+          ],
+          "accepted_input_forms": [
+            "topology.pair_relation",
+            "topology.contact_locus",
+            "extent.hard_mask"
+          ],
+          "absence": {
+            "examined_field": "pairs_examined",
+            "empty_means": "every pair was compared and nothing touches anything"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "topology.negative_space_field",
+          "organ": "topology",
+          "label": "Negative space",
+          "question": "What is NOT the figure, and how far from it?",
+          "state": "enabled",
+          "producible": true,
+          "writable_as_artifact": true,
+          "can_be_produced_here": true,
+          "blocked_by": [],
+          "note": "",
+          "producers": [
+            {
+              "key": "distance_transform",
+              "kind": "code",
+              "label": "separation and negative space, per pixel",
+              "state": "available",
+              "model": null,
+              "revision": "topology-facade.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "scalar_wash",
+              "mode": "direct",
+              "note": "the distance field, mapped to opacity"
+            },
+            {
+              "kind": "density_contours",
+              "mode": "derived",
+              "note": "iso-distance lines computed in the browser"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hard_mask"
+          ],
+          "absence": {
+            "examined_field": "figure_instance_ids",
+            "empty_means": "the figures were named and the field around them is everywhere zero"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "topology.transition",
+          "organ": "topology",
+          "label": "Transition",
+          "question": "What changed between these two revisions?",
+          "state": "deferred",
+          "producible": false,
+          "writable_as_artifact": false,
+          "can_be_produced_here": false,
+          "blocked_by": [
+            "deferred_form",
+            "no_operation"
+          ],
+          "note": "registered and deferred. the revisions were compared and no relation changed. The shape is settled a phase before anything writes it.",
+          "producers": [
+            {
+              "key": "perception_lab.topology_forms.produce_transition",
+              "kind": "code",
+              "label": "exact derivation \u2014 produce_transition",
+              "state": "available",
+              "model": null,
+              "revision": "topology-structural-forms.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "transition_diff",
+              "mode": "direct",
+              "note": "before and after, with the change named"
+            },
+            {
+              "kind": "before_after",
+              "mode": "direct",
+              "note": "the two states, side by side"
+            }
+          ],
+          "accepted_input_forms": [
+            "topology.pair_relation",
+            "topology.adjacency_graph"
+          ],
+          "absence": {
+            "examined_field": "revisions_compared",
+            "empty_means": "the revisions were compared and no relation changed"
+          },
+          "epistemic_ceiling": "measured",
+          "carries_hypothesis": false
+        },
+        {
+          "form": "topology.uncertain_relation_set",
+          "organ": "topology",
+          "label": "Conditional relations",
+          "question": "What would be true, if that reading of the extents were right?",
+          "state": "deferred",
+          "producible": false,
+          "writable_as_artifact": false,
+          "can_be_produced_here": false,
+          "blocked_by": [
+            "deferred_form",
+            "no_operation"
+          ],
+          "note": "registered and deferred. the pairs were compared under every hypothesis and none stood in a relation. The shape is settled a phase before anything writes it.",
+          "producers": [
+            {
+              "key": "perception_lab.topology_forms.produce_uncertain_relations",
+              "kind": "code",
+              "label": "exact derivation \u2014 produce_uncertain_relations",
+              "state": "available",
+              "model": null,
+              "revision": "topology-structural-forms.v1",
+              "reason": null,
+              "remedy": null,
+              "admission": null
+            }
+          ],
+          "renderer_projections": [
+            {
+              "kind": "hypothesis_stack",
+              "mode": "direct",
+              "note": "one relation set per hypothesis, switchable"
+            },
+            {
+              "kind": "relation_graph",
+              "mode": "derived",
+              "note": "the graph under one selected hypothesis"
+            }
+          ],
+          "accepted_input_forms": [
+            "extent.hypothesis_set",
+            "extent.fused_hypothesis",
+            "topology.pair_relation"
+          ],
+          "absence": {
+            "examined_field": "pairs_examined",
+            "empty_means": "the pairs were compared under every hypothesis and none stood in a relation"
+          },
+          "epistemic_ceiling": "interpretive",
+          "carries_hypothesis": true
+        }
+      ],
+      "producer_kinds": [
+        "model",
+        "code",
+        "human",
+        "none"
+      ],
+      "blocked_reasons": [
+        "deferred_form",
+        "no_operation",
+        "capability_unavailable"
+      ],
+      "counts": {
+        "registered": 19,
+        "writable_as_artifact": 3,
+        "producible_here": 9
+      }
+    }
+  },
+  "forms": {
+    "execution_identity": "LIVE",
+    "forms": [
+      {
+        "form": "extent.hard_mask",
+        "organ": "extent",
+        "label": "Hard mask",
+        "question": "Which pixels are it?",
+        "state": "enabled",
+        "producible": true,
+        "writable_as_artifact": true,
+        "can_be_produced_here": true,
+        "blocked_by": [],
+        "note": "",
+        "producers": [
+          {
+            "key": "yolo_sam2_auto",
+            "kind": "model",
+            "label": "SAM 2.1 automatic \u2014 every separable instance",
+            "state": "available",
+            "model": "sam2.1_hiera_tiny",
+            "revision": "sam2.1-auto",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "sam3_concept",
+            "kind": "model",
+            "label": "SAM 3 \u2014 every instance of a named concept",
+            "state": "available",
+            "model": "facebook/sam3",
+            "revision": "sam3-pcs-v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "grounded_sam",
+            "kind": "model",
+            "label": "GroundingDINO \u2014 boxes for a named concept",
+            "state": "available",
+            "model": "IDEA-Research/grounding-dino-tiny",
+            "revision": "a2bb814dd30d776dcf7e30523b00659f4f141c71",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "sam2_refine",
+            "kind": "model",
+            "label": "SAM 2.1 refine \u2014 a person's points and boxes",
+            "state": "available",
+            "model": "sam2.1_hiera_tiny",
+            "revision": "sam2.1-auto",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "human",
+            "kind": "human",
+            "label": "a person's hand, through extent.draw",
+            "state": "available",
+            "model": null,
+            "revision": null,
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "canonical_region",
+            "kind": "code",
+            "label": "an existing Region, referenced and never re-derived",
+            "state": "available",
+            "model": null,
+            "revision": null,
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "lab_compare",
+            "kind": "code",
+            "label": "exact mask arithmetic between two extent sets",
+            "state": "available",
+            "model": null,
+            "revision": null,
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "mask_fill",
+            "mode": "direct",
+            "note": "the decoded RLE, drawn"
+          },
+          {
+            "kind": "mask_outline",
+            "mode": "derived",
+            "note": "the boundary is traced in the browser; the payload carries no ring, which is what extent.boundary_rings exists to change"
+          },
+          {
+            "kind": "box_outline",
+            "mode": "direct",
+            "note": "the declared box, which is a projection of the mask and not the mask"
+          },
+          {
+            "kind": "point_markers",
+            "mode": "direct",
+            "note": "the refinement points a person placed"
+          },
+          {
+            "kind": "contact_sheet",
+            "mode": "derived",
+            "note": "one thumbnail per instance"
+          },
+          {
+            "kind": "before_after",
+            "mode": "derived",
+            "note": "a refinement against the geometry it replaced"
+          },
+          {
+            "kind": "ab_overlay",
+            "mode": "derived",
+            "note": "two sets compared, from extent.compare"
+          },
+          {
+            "kind": "difference_overlay",
+            "mode": "derived",
+            "note": "what only one of the two sets saw"
+          }
+        ],
+        "accepted_input_forms": [],
+        "absence": {
+          "examined_field": "searched",
+          "empty_means": "something looked for the named thing over this image and found no instance of it"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "extent.boundary_rings",
+        "organ": "extent",
+        "label": "Boundary rings",
+        "question": "Where exactly does its edge run, as curves rather than pixels?",
+        "state": "experimental",
+        "producible": true,
+        "writable_as_artifact": false,
+        "can_be_produced_here": true,
+        "blocked_by": [
+          "no_operation"
+        ],
+        "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+        "producers": [
+          {
+            "key": "perception_lab.extent_forms.boundary_rings",
+            "kind": "code",
+            "label": "exact derivation \u2014 boundary_rings",
+            "state": "available",
+            "model": null,
+            "revision": "extent-exact-forms.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "ring_outline",
+            "mode": "direct",
+            "note": "the rings, drawn as authored"
+          },
+          {
+            "kind": "mask_outline",
+            "mode": "direct",
+            "note": "the same rings under the older name"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask"
+        ],
+        "absence": {
+          "examined_field": "rings_traced",
+          "empty_means": "the mask was traced and it enclosed nothing \u2014 an empty mask has no boundary"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "extent.hole_set",
+        "organ": "extent",
+        "label": "Holes",
+        "question": "What voids are inside it, and are they enclosed?",
+        "state": "experimental",
+        "producible": true,
+        "writable_as_artifact": false,
+        "can_be_produced_here": true,
+        "blocked_by": [
+          "no_operation"
+        ],
+        "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+        "producers": [
+          {
+            "key": "perception_lab.extent_forms.hole_set",
+            "kind": "code",
+            "label": "exact derivation \u2014 hole_set",
+            "state": "available",
+            "model": null,
+            "revision": "extent-exact-forms.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "hole_fill",
+            "mode": "direct",
+            "note": "the voids, drawn as their own shapes"
+          },
+          {
+            "kind": "mask_outline",
+            "mode": "derived",
+            "note": "outer boundary and holes together"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask",
+          "extent.boundary_rings"
+        ],
+        "absence": {
+          "examined_field": "candidates_examined",
+          "empty_means": "the extent was examined for enclosed voids and is solid"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "extent.soft_field",
+        "organ": "extent",
+        "label": "Soft field",
+        "question": "How much of it is here, where the edge is not a line?",
+        "state": "deferred",
+        "producible": false,
+        "writable_as_artifact": false,
+        "can_be_produced_here": false,
+        "blocked_by": [
+          "deferred_form",
+          "no_operation",
+          "capability_unavailable"
+        ],
+        "note": "registered and deferred. the raster was evaluated and every cell is zero \u2014 the thing is not here. The shape is settled a phase before anything writes it.",
+        "producers": [
+          {
+            "key": "sam2_logits",
+            "kind": "model",
+            "label": "sam2_logits \u2014 reject",
+            "state": "unavailable",
+            "model": "facebook/sam2.1-hiera-tiny",
+            "revision": null,
+            "reason": "reports 5% of the true softness on the one control that is genuinely boundary-less. sigmoid(logit) is a mask confidence, not a coverage",
+            "remedy": "use the route the finding names",
+            "admission": "reject"
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "scalar_wash",
+            "mode": "direct",
+            "note": "the field, mapped to opacity"
+          },
+          {
+            "kind": "density_contours",
+            "mode": "derived",
+            "note": "iso-lines computed from the field"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask"
+        ],
+        "absence": {
+          "examined_field": "cells_evaluated",
+          "empty_means": "the raster was evaluated and every cell is zero \u2014 the thing is not here"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "extent.fragment_set",
+        "organ": "extent",
+        "label": "Fragments",
+        "question": "What separate pieces are visible, without saying yet whether they are one thing?",
+        "state": "experimental",
+        "producible": true,
+        "writable_as_artifact": false,
+        "can_be_produced_here": true,
+        "blocked_by": [
+          "no_operation"
+        ],
+        "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+        "producers": [
+          {
+            "key": "perception_lab.extent_forms.fragment_set",
+            "kind": "code",
+            "label": "exact derivation \u2014 fragment_set",
+            "state": "available",
+            "model": null,
+            "revision": "extent-exact-forms.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "fragment_cluster",
+            "mode": "direct",
+            "note": "each piece drawn in its own key, unfused"
+          },
+          {
+            "kind": "mask_fill",
+            "mode": "direct",
+            "note": "the pieces, drawn separately"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask"
+        ],
+        "absence": {
+          "examined_field": "regions_examined",
+          "empty_means": "the image was examined for separable pieces of this kind and none were found"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "extent.fused_hypothesis",
+        "organ": "extent",
+        "label": "Fusion hypothesis",
+        "question": "Are these pieces one thing, and on what evidence?",
+        "state": "deferred",
+        "producible": false,
+        "writable_as_artifact": false,
+        "can_be_produced_here": false,
+        "blocked_by": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "note": "registered and deferred. the fragments were considered and no grouping was supportable. The shape is settled a phase before anything writes it.",
+        "producers": [
+          {
+            "key": "perception_lab.extent_composites.produce_fused_hypothesis",
+            "kind": "code",
+            "label": "exact derivation \u2014 produce_fused_hypothesis",
+            "state": "available",
+            "model": null,
+            "revision": "extent-composites.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "fragment_cluster",
+            "mode": "direct",
+            "note": "members drawn in one key, with the claim named"
+          },
+          {
+            "kind": "hypothesis_stack",
+            "mode": "direct",
+            "note": "the hypothesis beside its alternatives"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.fragment_set",
+          "extent.hard_mask"
+        ],
+        "absence": {
+          "examined_field": "fragments_considered",
+          "empty_means": "the fragments were considered and no grouping was supportable"
+        },
+        "epistemic_ceiling": "interpretive",
+        "carries_hypothesis": true
+      },
+      {
+        "form": "extent.visible_inferred_partition",
+        "organ": "extent",
+        "label": "Visible / inferred partition",
+        "question": "Which of this did we see, which did we infer, and which do we not know?",
+        "state": "deferred",
+        "producible": false,
+        "writable_as_artifact": false,
+        "can_be_produced_here": false,
+        "blocked_by": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "note": "registered and deferred. the extent was partitioned and nothing fell outside the visible part. The shape is settled a phase before anything writes it.",
+        "producers": [
+          {
+            "key": "perception_lab.extent_composites.produce_visible_inferred_partition",
+            "kind": "code",
+            "label": "exact derivation \u2014 produce_visible_inferred_partition",
+            "state": "available",
+            "model": null,
+            "revision": "extent-composites.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "pix2gestalt",
+            "kind": "model",
+            "label": "pix2gestalt \u2014 defer",
+            "state": "unavailable",
+            "model": null,
+            "revision": null,
+            "reason": "22-28 GB VRAM against a 10 GB budget. Not downloaded, not run, not integrated - deferred on resources, not failed on merit",
+            "remedy": "re-check availability and record a verdict",
+            "admission": "defer"
+          },
+          {
+            "key": "amodal_sam",
+            "kind": "model",
+            "label": "amodal_sam \u2014 defer",
+            "state": "unavailable",
+            "model": null,
+            "revision": null,
+            "reason": "a SAM adapter that would fit the budget; no public checkpoint found on 2026-08-22. Re-check, then measure the hallucinated-structure rate",
+            "remedy": "re-check availability and record a verdict",
+            "admission": "defer"
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "partition_tricolor",
+            "mode": "direct",
+            "note": "three regions in three keys, never one shape"
+          },
+          {
+            "kind": "scalar_wash",
+            "mode": "direct",
+            "note": "confidence per cell where the partition is graded"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask",
+          "extent.soft_field",
+          "extent.fused_hypothesis"
+        ],
+        "absence": {
+          "examined_field": "cells_partitioned",
+          "empty_means": "the extent was partitioned and nothing fell outside the visible part"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": true
+      },
+      {
+        "form": "extent.hierarchy",
+        "organ": "extent",
+        "label": "Extent hierarchy",
+        "question": "What contains what, and how much of the parent does the child occupy?",
+        "state": "experimental",
+        "producible": true,
+        "writable_as_artifact": false,
+        "can_be_produced_here": true,
+        "blocked_by": [
+          "no_operation"
+        ],
+        "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+        "producers": [
+          {
+            "key": "perception_lab.extent_composites.produce_extent_hierarchy",
+            "kind": "code",
+            "label": "exact derivation \u2014 produce_extent_hierarchy",
+            "state": "available",
+            "model": null,
+            "revision": "extent-composites.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "hierarchy_tree",
+            "mode": "direct",
+            "note": "the nesting, as a tree beside the image"
+          },
+          {
+            "kind": "mask_fill",
+            "mode": "derived",
+            "note": "one level at a time, drawn from the cited extents"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask",
+          "extent.boundary_rings"
+        ],
+        "absence": {
+          "examined_field": "pairs_examined",
+          "empty_means": "the extents were compared for nesting and none contained another"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "extent.density_field",
+        "organ": "extent",
+        "label": "Density field",
+        "question": "Where is the collection, when there is no single object to outline?",
+        "state": "deferred",
+        "producible": false,
+        "writable_as_artifact": false,
+        "can_be_produced_here": false,
+        "blocked_by": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "note": "registered and deferred. the members were counted and the field is everywhere zero. The shape is settled a phase before anything writes it.",
+        "producers": [
+          {
+            "key": "perception_lab.extent_composites.produce_density_field",
+            "kind": "code",
+            "label": "exact derivation \u2014 produce_density_field",
+            "state": "available",
+            "model": null,
+            "revision": "extent-composites.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "density_counter",
+            "kind": "model",
+            "label": "density_counter \u2014 reject",
+            "state": "unavailable",
+            "model": null,
+            "revision": null,
+            "reason": "DAVE and GeCo need exemplars and carry research-use terms, and the form does not need a model at all: counts from an existing extent set are exact",
+            "remedy": "use the route the finding names",
+            "admission": "reject"
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "density_contours",
+            "mode": "direct",
+            "note": "iso-lines over the declared field"
+          },
+          {
+            "kind": "scalar_wash",
+            "mode": "direct",
+            "note": "the field, mapped to opacity"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask",
+          "extent.fragment_set"
+        ],
+        "absence": {
+          "examined_field": "members_counted",
+          "empty_means": "the members were counted and the field is everywhere zero"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "extent.hypothesis_set",
+        "organ": "extent",
+        "label": "Alternative extents",
+        "question": "What are the competing readings of where this thing is?",
+        "state": "deferred",
+        "producible": false,
+        "writable_as_artifact": false,
+        "can_be_produced_here": false,
+        "blocked_by": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "note": "registered and deferred. alternatives were considered and only one reading survived \u2014 which is not this form. The shape is settled a phase before anything writes it.",
+        "producers": [
+          {
+            "key": "perception_lab.extent_composites.produce_hypothesis_set",
+            "kind": "code",
+            "label": "exact derivation \u2014 produce_hypothesis_set",
+            "state": "available",
+            "model": null,
+            "revision": "extent-composites.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "hypothesis_stack",
+            "mode": "direct",
+            "note": "the alternatives, stacked and switchable"
+          },
+          {
+            "kind": "ab_overlay",
+            "mode": "derived",
+            "note": "two alternatives compared directly"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask",
+          "extent.fragment_set",
+          "extent.fused_hypothesis"
+        ],
+        "absence": {
+          "examined_field": "alternatives_considered",
+          "empty_means": "alternatives were considered and only one reading survived \u2014 which is not this form"
+        },
+        "epistemic_ceiling": "uncertain",
+        "carries_hypothesis": true
+      },
+      {
+        "form": "topology.pair_relation",
+        "organ": "topology",
+        "label": "Pair relation",
+        "question": "How do these two stand to each other?",
+        "state": "enabled",
+        "producible": true,
+        "writable_as_artifact": true,
+        "can_be_produced_here": true,
+        "blocked_by": [],
+        "note": "",
+        "producers": [
+          {
+            "key": "nestedness_organ",
+            "kind": "code",
+            "label": "containment, per pixel, on a shared raster",
+            "state": "available",
+            "model": null,
+            "revision": "topology-facade.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "adjacency_organ",
+            "kind": "code",
+            "label": "boundary contact, per pixel",
+            "state": "available",
+            "model": null,
+            "revision": "topology-facade.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "mask_arithmetic",
+            "kind": "code",
+            "label": "overlap and all-pairs, exact set operations",
+            "state": "available",
+            "model": null,
+            "revision": "topology-facade.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "distance_transform",
+            "kind": "code",
+            "label": "separation and negative space, per pixel",
+            "state": "available",
+            "model": null,
+            "revision": "topology-facade.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          },
+          {
+            "key": "occlusion_organ",
+            "kind": "code",
+            "label": "depth ordering over a SUPPLIED depth field",
+            "state": "available",
+            "model": null,
+            "revision": "topology-facade.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "endpoint_pair",
+            "mode": "derived",
+            "note": "the two endpoints, resolved and drawn"
+          },
+          {
+            "kind": "relation_graph",
+            "mode": "derived",
+            "note": "the set as a graph, laid out in the browser"
+          },
+          {
+            "kind": "contact_band",
+            "mode": "derived",
+            "note": "the browser recomputes the band; see topology.contact_locus"
+          },
+          {
+            "kind": "intersection_area",
+            "mode": "derived",
+            "note": "the browser recomputes the shared region; see topology.intersection_area"
+          },
+          {
+            "kind": "mask_outline",
+            "mode": "derived",
+            "note": "the endpoints' own boundaries, traced for a containment reading"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask"
+        ],
+        "absence": {
+          "examined_field": "pairs_examined",
+          "empty_means": "the pairs were compared and none stood in any of the asked-for relations"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "topology.contact_locus",
+        "organ": "topology",
+        "label": "Contact locus",
+        "question": "Where exactly do they touch?",
+        "state": "experimental",
+        "producible": true,
+        "writable_as_artifact": false,
+        "can_be_produced_here": false,
+        "blocked_by": [
+          "no_operation"
+        ],
+        "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+        "producers": [],
+        "renderer_projections": [
+          {
+            "kind": "contact_band",
+            "mode": "direct",
+            "note": "the recorded band, drawn as measured"
+          },
+          {
+            "kind": "point_markers",
+            "mode": "direct",
+            "note": "the recorded contact points"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask",
+          "topology.pair_relation"
+        ],
+        "absence": {
+          "examined_field": "pairs_examined",
+          "empty_means": "the pairs were examined for contact and none of them touch"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "topology.intersection_area",
+        "organ": "topology",
+        "label": "Intersection",
+        "question": "What region do they share, and how much of each is it?",
+        "state": "experimental",
+        "producible": true,
+        "writable_as_artifact": false,
+        "can_be_produced_here": false,
+        "blocked_by": [
+          "no_operation"
+        ],
+        "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+        "producers": [],
+        "renderer_projections": [
+          {
+            "kind": "intersection_area",
+            "mode": "direct",
+            "note": "the shared region, drawn as measured"
+          },
+          {
+            "kind": "mask_fill",
+            "mode": "direct",
+            "note": "the same region under the older name"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask",
+          "topology.pair_relation"
+        ],
+        "absence": {
+          "examined_field": "pairs_examined",
+          "empty_means": "the pairs were intersected and every intersection is empty"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "topology.clearance_path",
+        "organ": "topology",
+        "label": "Clearance",
+        "question": "How far apart are they, and along which line?",
+        "state": "experimental",
+        "producible": true,
+        "writable_as_artifact": false,
+        "can_be_produced_here": false,
+        "blocked_by": [
+          "no_operation"
+        ],
+        "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+        "producers": [],
+        "renderer_projections": [
+          {
+            "kind": "path_overlay",
+            "mode": "direct",
+            "note": "the recorded shortest path between the two"
+          },
+          {
+            "kind": "point_markers",
+            "mode": "direct",
+            "note": "the two nearest points"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask",
+          "topology.pair_relation"
+        ],
+        "absence": {
+          "examined_field": "pairs_examined",
+          "empty_means": "the pairs were measured and every one of them touches, so no clearance exists"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "topology.containment_tree",
+        "organ": "topology",
+        "label": "Containment tree",
+        "question": "What is nested inside what, all the way down?",
+        "state": "experimental",
+        "producible": true,
+        "writable_as_artifact": false,
+        "can_be_produced_here": true,
+        "blocked_by": [
+          "no_operation"
+        ],
+        "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+        "producers": [
+          {
+            "key": "perception_lab.topology_forms.produce_containment_tree",
+            "kind": "code",
+            "label": "exact derivation \u2014 produce_containment_tree",
+            "state": "available",
+            "model": null,
+            "revision": "topology-structural-forms.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "hierarchy_tree",
+            "mode": "direct",
+            "note": "the nesting, as a tree"
+          },
+          {
+            "kind": "relation_graph",
+            "mode": "direct",
+            "note": "the same edges, as a graph"
+          }
+        ],
+        "accepted_input_forms": [
+          "topology.pair_relation",
+          "extent.hard_mask"
+        ],
+        "absence": {
+          "examined_field": "pairs_examined",
+          "empty_means": "the pairs were compared for nesting and nothing contained anything"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "topology.adjacency_graph",
+        "organ": "topology",
+        "label": "Adjacency graph",
+        "question": "What touches what, across the whole scene?",
+        "state": "experimental",
+        "producible": true,
+        "writable_as_artifact": false,
+        "can_be_produced_here": true,
+        "blocked_by": [
+          "no_operation"
+        ],
+        "note": "no operation declares this form, so no artifact of it can exist \u2014 an artifact names the operation that produced it. The payload is computed, recorded as a derivation, and rendered; it is not promoted.",
+        "producers": [
+          {
+            "key": "perception_lab.topology_forms.produce_adjacency_graph",
+            "kind": "code",
+            "label": "exact derivation \u2014 produce_adjacency_graph",
+            "state": "available",
+            "model": null,
+            "revision": "topology-structural-forms.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "relation_graph",
+            "mode": "direct",
+            "note": "nodes and edges, laid out beside the image"
+          },
+          {
+            "kind": "contact_band",
+            "mode": "derived",
+            "note": "one edge's locus, when a locus was recorded"
+          }
+        ],
+        "accepted_input_forms": [
+          "topology.pair_relation",
+          "topology.contact_locus",
+          "extent.hard_mask"
+        ],
+        "absence": {
+          "examined_field": "pairs_examined",
+          "empty_means": "every pair was compared and nothing touches anything"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "topology.negative_space_field",
+        "organ": "topology",
+        "label": "Negative space",
+        "question": "What is NOT the figure, and how far from it?",
+        "state": "enabled",
+        "producible": true,
+        "writable_as_artifact": true,
+        "can_be_produced_here": true,
+        "blocked_by": [],
+        "note": "",
+        "producers": [
+          {
+            "key": "distance_transform",
+            "kind": "code",
+            "label": "separation and negative space, per pixel",
+            "state": "available",
+            "model": null,
+            "revision": "topology-facade.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "scalar_wash",
+            "mode": "direct",
+            "note": "the distance field, mapped to opacity"
+          },
+          {
+            "kind": "density_contours",
+            "mode": "derived",
+            "note": "iso-distance lines computed in the browser"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hard_mask"
+        ],
+        "absence": {
+          "examined_field": "figure_instance_ids",
+          "empty_means": "the figures were named and the field around them is everywhere zero"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "topology.transition",
+        "organ": "topology",
+        "label": "Transition",
+        "question": "What changed between these two revisions?",
+        "state": "deferred",
+        "producible": false,
+        "writable_as_artifact": false,
+        "can_be_produced_here": false,
+        "blocked_by": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "note": "registered and deferred. the revisions were compared and no relation changed. The shape is settled a phase before anything writes it.",
+        "producers": [
+          {
+            "key": "perception_lab.topology_forms.produce_transition",
+            "kind": "code",
+            "label": "exact derivation \u2014 produce_transition",
+            "state": "available",
+            "model": null,
+            "revision": "topology-structural-forms.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "transition_diff",
+            "mode": "direct",
+            "note": "before and after, with the change named"
+          },
+          {
+            "kind": "before_after",
+            "mode": "direct",
+            "note": "the two states, side by side"
+          }
+        ],
+        "accepted_input_forms": [
+          "topology.pair_relation",
+          "topology.adjacency_graph"
+        ],
+        "absence": {
+          "examined_field": "revisions_compared",
+          "empty_means": "the revisions were compared and no relation changed"
+        },
+        "epistemic_ceiling": "measured",
+        "carries_hypothesis": false
+      },
+      {
+        "form": "topology.uncertain_relation_set",
+        "organ": "topology",
+        "label": "Conditional relations",
+        "question": "What would be true, if that reading of the extents were right?",
+        "state": "deferred",
+        "producible": false,
+        "writable_as_artifact": false,
+        "can_be_produced_here": false,
+        "blocked_by": [
+          "deferred_form",
+          "no_operation"
+        ],
+        "note": "registered and deferred. the pairs were compared under every hypothesis and none stood in a relation. The shape is settled a phase before anything writes it.",
+        "producers": [
+          {
+            "key": "perception_lab.topology_forms.produce_uncertain_relations",
+            "kind": "code",
+            "label": "exact derivation \u2014 produce_uncertain_relations",
+            "state": "available",
+            "model": null,
+            "revision": "topology-structural-forms.v1",
+            "reason": null,
+            "remedy": null,
+            "admission": null
+          }
+        ],
+        "renderer_projections": [
+          {
+            "kind": "hypothesis_stack",
+            "mode": "direct",
+            "note": "one relation set per hypothesis, switchable"
+          },
+          {
+            "kind": "relation_graph",
+            "mode": "derived",
+            "note": "the graph under one selected hypothesis"
+          }
+        ],
+        "accepted_input_forms": [
+          "extent.hypothesis_set",
+          "extent.fused_hypothesis",
+          "topology.pair_relation"
+        ],
+        "absence": {
+          "examined_field": "pairs_examined",
+          "empty_means": "the pairs were compared under every hypothesis and none stood in a relation"
+        },
+        "epistemic_ceiling": "interpretive",
+        "carries_hypothesis": true
+      }
+    ],
+    "producer_kinds": [
+      "model",
+      "code",
+      "human",
+      "none"
+    ],
+    "blocked_reasons": [
+      "deferred_form",
+      "no_operation",
+      "capability_unavailable"
+    ],
+    "counts": {
+      "registered": 19,
+      "writable_as_artifact": 3,
+      "producible_here": 9
+    },
+    "derivable": [
+      "extent.boundary_rings",
+      "extent.density_field",
+      "extent.fragment_set",
+      "extent.fused_hypothesis",
+      "extent.hierarchy",
+      "extent.hole_set",
+      "extent.hypothesis_set",
+      "extent.visible_inferred_partition",
+      "topology.adjacency_graph",
+      "topology.containment_tree",
+      "topology.transition",
+      "topology.uncertain_relation_set"
+    ]
+  },
+  "recipes": {
+    "execution_identity": "LIVE",
+    "recipes": [
+      {
+        "key": "boundary-and-void",
+        "label": "Boundary and void study",
+        "question": "Where exactly does its edge run, and what does it enclose?",
+        "organ": "extent",
+        "mode": "isolation",
+        "required_forms": [
+          "extent.hard_mask",
+          "extent.boundary_rings",
+          "extent.hole_set"
+        ],
+        "prerequisites": [
+          "a source image is loaded",
+          "the Extent organ is available"
+        ],
+        "bounds": {
+          "max_operations": 1,
+          "max_model_calls": 1,
+          "max_instances": 8
+        },
+        "expected_renderers": [
+          "mask_fill",
+          "ring_outline",
+          "hole_fill",
+          "mask_outline"
+        ],
+        "fixtures": [
+          "solid-mask",
+          "donut",
+          "nested-holes"
+        ],
+        "asks_for": {},
+        "steps": [
+          {
+            "id": "propose",
+            "kind": "operation",
+            "why": "the masks are the substrate; everything after this reads them and adds nothing",
+            "operation": "extent.find_all",
+            "parameters": {
+              "max_instances": 8,
+              "min_area": 0.002
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": []
+          },
+          {
+            "id": "trace",
+            "kind": "derivation",
+            "why": "the edge as closed curves, traced along the cracks between pixels",
+            "operation": null,
+            "parameters": {},
+            "produces": "extent.boundary_rings",
+            "reads": [
+              "propose"
+            ],
+            "asks_for": []
+          },
+          {
+            "id": "voids",
+            "kind": "derivation",
+            "why": "the bounded voids of each piece, each carrying the inner ring that bounds it",
+            "operation": null,
+            "parameters": {},
+            "produces": "extent.hole_set",
+            "reads": [
+              "propose",
+              "trace"
+            ],
+            "asks_for": []
+          }
+        ],
+        "stop_conditions": [
+          {
+            "when": "the proposal returns no instance",
+            "outcome": "empty",
+            "reason": "something looked over the whole image and found nothing separable. There is no boundary to trace and no void to find, and that is an answer"
+          },
+          {
+            "when": "every traced mask is empty",
+            "outcome": "empty",
+            "reason": "the masks were traced and enclosed nothing. An empty mask has no boundary; this is not a mask that was never traced"
+          },
+          {
+            "when": "the Extent adapter is unavailable",
+            "outcome": "unavailable",
+            "reason": "nothing looked. Unavailable is not empty, and reporting an empty extent set here would be the single worst thing this laboratory could do"
+          }
+        ],
+        "decision_points": [
+          {
+            "at": "voids",
+            "asks": "Is that dark shape a void INSIDE this extent, or the gap between this one and the next?",
+            "why_a_person": "the producer answers it by whether the void reaches the frame, which is exact and is not the same question. A void that runs off the edge of the picture is undecidable from this crop and is reported as examined-and-not-a-hole",
+            "options": [
+              "a hole of this extent",
+              "a gap between two extents",
+              "cannot tell from this crop"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "fragment-continuity",
+        "label": "Fragment continuity study",
+        "question": "These separate pieces \u2014 are any of them one thing?",
+        "organ": "extent",
+        "mode": "isolation",
+        "required_forms": [
+          "extent.hard_mask",
+          "extent.fragment_set",
+          "extent.fused_hypothesis"
+        ],
+        "prerequisites": [
+          "a source image is loaded",
+          "a concept to search for has been named by a person"
+        ],
+        "bounds": {
+          "max_operations": 1,
+          "max_model_calls": 1,
+          "max_instances": 12
+        },
+        "expected_renderers": [
+          "mask_fill",
+          "fragment_cluster",
+          "hypothesis_stack"
+        ],
+        "fixtures": [
+          "disconnected-fragments",
+          "false-similarity"
+        ],
+        "asks_for": {
+          "find": [
+            "concept"
+          ]
+        },
+        "steps": [
+          {
+            "id": "find",
+            "kind": "operation",
+            "why": "the named search; the concept is the person's word and the mask is the measurement",
+            "operation": "extent.find_named",
+            "parameters": {
+              "max_instances": 12
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": [
+              "concept"
+            ]
+          },
+          {
+            "id": "split",
+            "kind": "derivation",
+            "why": "the connected pieces, with no claim about whether they belong together. Safe to compute eagerly because nothing downstream can read unity out of it",
+            "operation": null,
+            "parameters": {},
+            "produces": "extent.fragment_set",
+            "reads": [
+              "find"
+            ],
+            "asks_for": []
+          },
+          {
+            "id": "propose",
+            "kind": "derivation",
+            "why": "a person's proposed grouping, assembled with its grounds and its cost. Nothing here computes the grouping",
+            "operation": null,
+            "parameters": {},
+            "produces": "extent.fused_hypothesis",
+            "reads": [
+              "split"
+            ],
+            "asks_for": []
+          }
+        ],
+        "stop_conditions": [
+          {
+            "when": "no grouping is proposed",
+            "outcome": "empty",
+            "reason": "the fragments were considered and no grouping was supportable. This is not a fragment set and it is not a hard mask of the union"
+          },
+          {
+            "when": "a proposed grouping's only ground is an admitted-as-one-ground-among-several model",
+            "outcome": "refused",
+            "reason": "resemblance is not unity. `false-similarity` is the committed proof: three identical discs, and any appearance threshold gives one confident group of three"
+          },
+          {
+            "when": "the fused hypothesis form is deferred in this deployment",
+            "outcome": "refused",
+            "reason": "the payload is assembled and is not writable. The shape is settled a phase before anything writes it"
+          }
+        ],
+        "decision_points": [
+          {
+            "at": "propose",
+            "asks": "Are these pieces one thing, and does saying so require asserting extent nobody saw?",
+            "why_a_person": "the second half changes the claim, not a flag on it. Grouping what is visible is `interpretive`; asserting what continues behind the fence is `uncertain`, and no confidence moves it",
+            "options": [
+              "one thing, all of it visible",
+              "one thing, and it continues behind something",
+              "separate things",
+              "cannot tell"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "visible-versus-inferred",
+        "label": "Visible versus inferred study",
+        "question": "Which of this did we see, which did we infer, and which do we not know?",
+        "organ": "extent",
+        "mode": "isolation",
+        "required_forms": [
+          "extent.hard_mask",
+          "extent.visible_inferred_partition"
+        ],
+        "prerequisites": [
+          "a source image is loaded",
+          "an extent that is partly hidden has been selected",
+          "no model is admitted to produce this form; the inferred part comes from a person or a fixture"
+        ],
+        "bounds": {
+          "max_operations": 2,
+          "max_model_calls": 1,
+          "max_instances": 4
+        },
+        "expected_renderers": [
+          "mask_fill",
+          "partition_tricolor",
+          "scalar_wash"
+        ],
+        "fixtures": [
+          "partition"
+        ],
+        "asks_for": {
+          "seen": [
+            "concept"
+          ],
+          "paint": [
+            "mask_rle"
+          ]
+        },
+        "steps": [
+          {
+            "id": "seen",
+            "kind": "operation",
+            "why": "the part that is visible, measured. This is the only step in the study that looks at the image",
+            "operation": "extent.find_named",
+            "parameters": {
+              "max_instances": 4
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": [
+              "concept"
+            ]
+          },
+          {
+            "id": "paint",
+            "kind": "operation",
+            "why": "a person paints what they believe continues behind the occluder. Their hand, not a guess from words",
+            "operation": "extent.draw",
+            "parameters": {
+              "tool": "mask_brush"
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": [
+              "mask_rle"
+            ]
+          },
+          {
+            "id": "partition",
+            "kind": "derivation",
+            "why": "the three parts assembled, with three statuses. An overlap between any two refuses the whole partition",
+            "operation": null,
+            "parameters": {},
+            "produces": "extent.visible_inferred_partition",
+            "reads": [
+              "seen",
+              "paint"
+            ],
+            "asks_for": []
+          }
+        ],
+        "stop_conditions": [
+          {
+            "when": "nothing falls outside the visible part",
+            "outcome": "empty",
+            "reason": "the extent was partitioned and all of it was seen. This is not a hard mask of visible plus inferred"
+          },
+          {
+            "when": "two parts share a pixel",
+            "outcome": "refused",
+            "reason": "a pixel in two parts is one the record cannot place, and a reader drawing the tricolour would paint a hallucinated leg in the same colour as a photographed one"
+          },
+          {
+            "when": "a person declines to paint an inferred part",
+            "outcome": "partial",
+            "reason": "the visible part stands on its own. An absent inferred part is not an empty one"
+          }
+        ],
+        "decision_points": [
+          {
+            "at": "paint",
+            "asks": "Where does the inferred part stop and the unknown part begin?",
+            "why_a_person": "not-seen-and-not-inferred is a real third part. The pixels that run off the frame are settled by nothing, and forcing them into either of the other two is the trap `partition` was built to catch",
+            "options": [
+              "inferred: I can say where it continues",
+              "unknown: I cannot",
+              "decline to infer"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "courtyard-hierarchy",
+        "label": "Courtyard hierarchy study",
+        "question": "Palace, courtyard, garden, fountain \u2014 what is inside what, and what is part of what?",
+        "organ": "extent",
+        "mode": "chain",
+        "required_forms": [
+          "extent.hard_mask",
+          "topology.pair_relation",
+          "topology.containment_tree",
+          "extent.hierarchy"
+        ],
+        "prerequisites": [
+          "a source image is loaded",
+          "the Topology organ is available",
+          "a chain crossing the organ boundary has been confirmed by a person"
+        ],
+        "bounds": {
+          "max_operations": 2,
+          "max_model_calls": 2,
+          "max_instances": 8,
+          "max_pairs": 28
+        },
+        "expected_renderers": [
+          "mask_fill",
+          "relation_graph",
+          "hierarchy_tree"
+        ],
+        "fixtures": [
+          "containment-tree",
+          "nested-holes"
+        ],
+        "asks_for": {},
+        "steps": [
+          {
+            "id": "find",
+            "kind": "operation",
+            "why": "the levels, as extents. Every level is a real extent with a real identity",
+            "operation": "extent.find_all",
+            "parameters": {
+              "max_instances": 8,
+              "min_area": 0.001
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": []
+          },
+          {
+            "id": "relate",
+            "kind": "operation",
+            "why": "the nestings, measured per pixel by the Topology facade",
+            "operation": "topology.all_pairs",
+            "parameters": {
+              "max_regions": 8
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": []
+          },
+          {
+            "id": "nest",
+            "kind": "derivation",
+            "why": "the relations assembled into a nesting, with transitivity absorbed and disagreements reported",
+            "operation": null,
+            "parameters": {},
+            "produces": "topology.containment_tree",
+            "reads": [
+              "relate"
+            ],
+            "asks_for": []
+          },
+          {
+            "id": "hierarchy",
+            "kind": "derivation",
+            "why": "the levels with their fractions, and with geometric containment kept distinct from asserted part/whole",
+            "operation": null,
+            "parameters": {},
+            "produces": "extent.hierarchy",
+            "reads": [
+              "find",
+              "nest"
+            ],
+            "asks_for": []
+          }
+        ],
+        "stop_conditions": [
+          {
+            "when": "no extent contains another",
+            "outcome": "empty",
+            "reason": "the extents were compared for nesting and none contained another. This is a flat extent set, not a failure"
+          },
+          {
+            "when": "the relations disagree in a loop",
+            "outcome": "refused",
+            "reason": "a containment cycle means the inputs disagree. Dropping an edge to make a tree would hide the disagreement behind a clean picture"
+          },
+          {
+            "when": "an instance carries no geometry revision",
+            "outcome": "partial",
+            "reason": "a tree that cannot be told it has gone stale is worse than none, so the unpinned level is left out and named"
+          }
+        ],
+        "decision_points": [
+          {
+            "at": "hierarchy",
+            "asks": "Is the fountain INSIDE the courtyard, or PART OF it?",
+            "why_a_person": "a pigeon standing in a courtyard is contained by it and is not part of it; the wall around the court is part of it and is not inside it. Geometry answers the first and only a person answers the second",
+            "options": [
+              "geometric containment, measured",
+              "part/whole, asserted by me",
+              "both",
+              "neither"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "piazza-negative-space",
+        "label": "Piazza negative-space study",
+        "question": "Where is the crowd, and where is the space it leaves?",
+        "organ": "extent",
+        "mode": "chain",
+        "required_forms": [
+          "extent.hard_mask",
+          "extent.fragment_set",
+          "extent.density_field",
+          "topology.negative_space_field"
+        ],
+        "prerequisites": [
+          "a source image is loaded",
+          "the Topology organ is available",
+          "a chain crossing the organ boundary has been confirmed by a person"
+        ],
+        "bounds": {
+          "max_operations": 2,
+          "max_model_calls": 2,
+          "max_instances": 64
+        },
+        "expected_renderers": [
+          "mask_fill",
+          "fragment_cluster",
+          "density_contours",
+          "scalar_wash"
+        ],
+        "fixtures": [
+          "density-peaks",
+          "soft-fringe"
+        ],
+        "asks_for": {
+          "find": [
+            "concept"
+          ]
+        },
+        "steps": [
+          {
+            "id": "find",
+            "kind": "operation",
+            "why": "the members of the collection, each measured. There is no object called `crowd`",
+            "operation": "extent.find_named",
+            "parameters": {
+              "max_instances": 64
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": [
+              "concept"
+            ]
+          },
+          {
+            "id": "pieces",
+            "kind": "derivation",
+            "why": "the separable pieces, so the count is of things rather than of proposals",
+            "operation": null,
+            "parameters": {},
+            "produces": "extent.fragment_set",
+            "reads": [
+              "find"
+            ],
+            "asks_for": []
+          },
+          {
+            "id": "density",
+            "kind": "derivation",
+            "why": "one sample per counted member, with the kernel declared. The count is exact; the field is a choice",
+            "operation": null,
+            "parameters": {},
+            "produces": "extent.density_field",
+            "reads": [
+              "pieces"
+            ],
+            "asks_for": []
+          },
+          {
+            "id": "ground",
+            "kind": "operation",
+            "why": "the space the collection leaves, measured by the Topology facade rather than inferred from the density",
+            "operation": "topology.negative_space",
+            "parameters": {
+              "max_distance": 0.25
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": []
+          }
+        ],
+        "stop_conditions": [
+          {
+            "when": "no member is found",
+            "outcome": "empty",
+            "reason": "the members were counted and the field is everywhere zero. This is not a soft field and not a hard mask of the convex hull"
+          },
+          {
+            "when": "a member carries neither a mask nor a box",
+            "outcome": "partial",
+            "reason": "there is nowhere to place its sample. Counting it and not placing it would make the field disagree with its own count"
+          },
+          {
+            "when": "no bandwidth has been chosen",
+            "outcome": "partial",
+            "reason": "the unsmoothed histogram is produced and stays `calibrated`. Smoothing is a decision and is never taken on a person's behalf"
+          }
+        ],
+        "decision_points": [
+          {
+            "at": "density",
+            "asks": "What bandwidth, and are you prepared to lose the unit?",
+            "why_a_person": "the bandwidth is the single biggest determinant of what the field looks like, and smoothing turns members-per-cell into weighted neighbours. The count survives it; the calibration does not",
+            "options": [
+              "no smoothing: keep counts",
+              "narrow kernel",
+              "wide kernel"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "topology-sensitivity",
+        "label": "Topology sensitivity study",
+        "question": "How little has to change before the relation does?",
+        "organ": "topology",
+        "mode": "isolation",
+        "required_forms": [
+          "topology.pair_relation",
+          "topology.transition"
+        ],
+        "prerequisites": [
+          "two revisions of one extent are recorded",
+          "both endpoints carry a geometry revision",
+          "the Topology organ is available"
+        ],
+        "bounds": {
+          "max_operations": 2,
+          "max_model_calls": 2,
+          "max_pairs": 12
+        },
+        "expected_renderers": [
+          "relation_graph",
+          "transition_diff",
+          "before_after"
+        ],
+        "fixtures": [
+          "one-pixel-transition",
+          "adjacency-graph"
+        ],
+        "asks_for": {},
+        "steps": [
+          {
+            "id": "before",
+            "kind": "operation",
+            "why": "the relations at the first revision",
+            "operation": "topology.all_pairs",
+            "parameters": {
+              "max_regions": 4
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": []
+          },
+          {
+            "id": "after",
+            "kind": "operation",
+            "why": "the relations at the second, measured the same way so the difference is in the geometry",
+            "operation": "topology.all_pairs",
+            "parameters": {
+              "max_regions": 4
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": []
+          },
+          {
+            "id": "diff",
+            "kind": "derivation",
+            "why": "what changed between two pinned revisions, and what merely moved without changing",
+            "operation": null,
+            "parameters": {},
+            "produces": "topology.transition",
+            "reads": [
+              "before",
+              "after"
+            ],
+            "asks_for": []
+          }
+        ],
+        "stop_conditions": [
+          {
+            "when": "the two revisions are the same revision",
+            "outcome": "refused",
+            "reason": "the pair was re-measured, not revised. A transition between a thing and itself is not a finding"
+          },
+          {
+            "when": "an endpoint carries no geometry revision",
+            "outcome": "refused",
+            "reason": "a change nobody can see the start of is not a finding, it is a rumour"
+          },
+          {
+            "when": "nothing changed",
+            "outcome": "empty",
+            "reason": "the pair was compared across two revisions and the relation held. That is the answer the study was asking for"
+          }
+        ],
+        "decision_points": [
+          {
+            "at": "diff",
+            "asks": "Did the RELATION change, or did the object?",
+            "why_a_person": "one pixel closing a gap turns `disjoint` into `meets`, and a producer with any tolerance at all misses it. Whether that one pixel is a finding or a segmentation wobble is not a question geometry can answer",
+            "options": [
+              "the relation changed",
+              "the segmentation moved",
+              "cannot tell"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "ambiguous-form-hypothesis",
+        "label": "Ambiguous form hypothesis study",
+        "question": "The picture supports more than one reading. What are they?",
+        "organ": "extent",
+        "mode": "isolation",
+        "required_forms": [
+          "extent.hard_mask",
+          "extent.fused_hypothesis",
+          "extent.hypothesis_set"
+        ],
+        "prerequisites": [
+          "a source image is loaded",
+          "at least two competing readings have been drawn or named by a person"
+        ],
+        "bounds": {
+          "max_operations": 2,
+          "max_model_calls": 2,
+          "max_instances": 4
+        },
+        "expected_renderers": [
+          "mask_fill",
+          "hypothesis_stack",
+          "ab_overlay"
+        ],
+        "fixtures": [
+          "competing-extents",
+          "false-similarity"
+        ],
+        "asks_for": {
+          "reading_one": [
+            "concept"
+          ],
+          "reading_two": [
+            "concept"
+          ]
+        },
+        "steps": [
+          {
+            "id": "reading_one",
+            "kind": "operation",
+            "why": "the first reading, as a named search. The word is the person's; the mask is the measurement",
+            "operation": "extent.find_named",
+            "parameters": {
+              "max_instances": 4
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": [
+              "concept"
+            ]
+          },
+          {
+            "id": "reading_two",
+            "kind": "operation",
+            "why": "the second reading, measured the same way so the two are comparable",
+            "operation": "extent.find_named",
+            "parameters": {
+              "max_instances": 4
+            },
+            "produces": null,
+            "reads": [],
+            "asks_for": [
+              "concept"
+            ]
+          },
+          {
+            "id": "hold",
+            "kind": "derivation",
+            "why": "the readings held open, ordered by derived id so nothing in the record reads as a winner",
+            "operation": null,
+            "parameters": {},
+            "produces": "extent.hypothesis_set",
+            "reads": [
+              "reading_one",
+              "reading_two"
+            ],
+            "asks_for": []
+          }
+        ],
+        "stop_conditions": [
+          {
+            "when": "only one reading survives",
+            "outcome": "refused",
+            "reason": "one alternative is not an alternative set. A single surviving reading is a hard mask, and recording it here would dress one answer as a preserved ambiguity"
+          },
+          {
+            "when": "a reading names nothing",
+            "outcome": "partial",
+            "reason": "a weight attached to nothing is a number about nothing"
+          },
+          {
+            "when": "a person chooses one reading",
+            "outcome": "partial",
+            "reason": "resolution is a separate act that produces a separate artifact. This record has no field a choice could be written into, and the alternatives survive it"
+          }
+        ],
+        "decision_points": [
+          {
+            "at": "hold",
+            "asks": "Are these genuinely competing readings, or is one of them simply wrong?",
+            "why_a_person": "the form preserves an ambiguity and cannot create one. Two readings of a shadow are an ambiguity; a reading and a mistake are not, and only somebody looking can say which pair this is",
+            "options": [
+              "both are legitimate",
+              "one is a mistake",
+              "there is a third reading nobody has drawn"
+            ]
+          }
+        ]
+      }
+    ],
+    "stop_outcomes": [
+      "empty",
+      "refused",
+      "unavailable",
+      "partial"
+    ]
+  },
+  "session_id": "labs_766623a91cbb",
+  "ledger_before": {
+    "post_id": "6a603f6d1ecd6db1c931eb5e",
+    "fingerprint": "68c99ff5da267c2fcb07fa55531376506d273f81d0a641b46a0880be018e2128",
+    "ledger": {
+      "region_annotations": 0,
+      "visual_marks": 0,
+      "grounds": 0,
+      "percepts": 0,
+      "visual_layers": 0
+    }
+  },
+  "ledger_after": {
+    "post_id": "6a603f6d1ecd6db1c931eb5e",
+    "fingerprint": "68c99ff5da267c2fcb07fa55531376506d273f81d0a641b46a0880be018e2128",
+    "ledger": {
+      "region_annotations": 0,
+      "visual_marks": 0,
+      "grounds": 0,
+      "percepts": 0,
+      "visual_layers": 0
+    }
+  },
+  "lab_collections": {
+    "sessions": 19,
+    "plans": 51,
+    "runs": 45,
+    "artifacts": 37,
+    "reviews": 0
+  }
+}

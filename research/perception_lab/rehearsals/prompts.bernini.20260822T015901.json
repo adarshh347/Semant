@@ -1,0 +1,112 @@
+{
+  "suite": "prompts",
+  "recorded_at": "2026-08-22T01:59:01+00:00",
+  "post_id": "6a603f6d1ecd6db1c931eb5e",
+  "label": "bernini",
+  "session_id": "labs_aeb79c6ff02e",
+  "rows": [
+    {
+      "trial": "prompt \u00b7 mask every separable thing in this picture",
+      "level": "prompt",
+      "prompt": "mask every separable thing in this picture",
+      "http": 201,
+      "wall_ms": 586,
+      "planner": "rules",
+      "fell_back_from": null,
+      "proposed": [
+        "extent.find_named"
+      ],
+      "resolved": [
+        "extent.find_named"
+      ],
+      "refusals": [],
+      "dropped_parameters": [],
+      "notes": [],
+      "authorized": true,
+      "reached_a_recipe_route": false,
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "prompt \u00b7 trace the edge of that one",
+      "level": "prompt",
+      "prompt": "trace the edge of that one",
+      "http": 201,
+      "wall_ms": 590,
+      "planner": "rules",
+      "fell_back_from": null,
+      "proposed": [],
+      "resolved": [],
+      "refusals": [],
+      "dropped_parameters": [],
+      "notes": [
+        "no cue in the deterministic table matched this prompt, and no plan was proposed. An empty proposal is the honest answer; a keyword guess dressed as a plan is not."
+      ],
+      "authorized": false,
+      "reached_a_recipe_route": false,
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "prompt \u00b7 what is inside what",
+      "level": "prompt",
+      "prompt": "what is inside what",
+      "http": 201,
+      "wall_ms": 589,
+      "planner": "rules",
+      "fell_back_from": null,
+      "proposed": [
+        "topology.containment"
+      ],
+      "resolved": [],
+      "refusals": [
+        {
+          "code": "organ_locked",
+          "message": "topology.containment belongs to the topology organ; this session is locked to extent."
+        }
+      ],
+      "dropped_parameters": [],
+      "notes": [],
+      "authorized": false,
+      "reached_a_recipe_route": false,
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    },
+    {
+      "trial": "prompt \u00b7 is the shadow part of the figure",
+      "level": "prompt",
+      "prompt": "is the shadow part of the figure",
+      "http": 201,
+      "wall_ms": 741,
+      "planner": "rules",
+      "fell_back_from": null,
+      "proposed": [],
+      "resolved": [],
+      "refusals": [],
+      "dropped_parameters": [],
+      "notes": [
+        "no cue in the deterministic table matched this prompt, and no plan was proposed. An empty proposal is the honest answer; a keyword guess dressed as a plan is not."
+      ],
+      "authorized": false,
+      "reached_a_recipe_route": false,
+      "human_correct": null,
+      "human_useful": null,
+      "better_seen_as": null,
+      "human_notes": null
+    }
+  ],
+  "source_unchanged": true,
+  "lab_collections": {
+    "sessions": 33,
+    "plans": 79,
+    "runs": 48,
+    "artifacts": 40,
+    "reviews": 0
+  }
+}
