@@ -472,6 +472,26 @@ def test_an_unmeasurable_expectation_is_not_a_failure(raw):
 
 # ── sanitizing, and comparing ───────────────────────────────────────────────
 
+def test_the_archived_baseline_points_at_its_fixture_rather_than_copying_it():
+    """A copy that can drift from the file it was copied from will eventually disagree with it."""
+    import hashlib
+    d = ROOT / "research/rehearsals/inquiry-intelligence/run-archive/baseline-rev6"
+    assert not (d / "session.raw.json").exists(), "the committed example must not duplicate 300KB"
+    src = json.loads((d / "session.source.json").read_text())
+    assert src["fixture"] == "baseline-rev6"
+    assert src["sha256"] == hashlib.sha256(BASELINE.read_bytes()).hexdigest(), (
+        "the fixture was edited after this run was archived. That is exactly the mismatch the "
+        "digest is here to make visible — re-archive, or explain the change.")
+
+
+def test_a_live_run_still_archives_the_whole_session(tmp_path, raw, case):
+    """No fixture behind it means the archive is the only place that record exists."""
+    from scripts.inquiry_intelligence_evaluate import archive
+    out = archive(ev(raw, case), raw, case, tmp_path / "live")
+    assert (out / "session.raw.json").exists()
+    assert not (out / "session.source.json").exists()
+
+
 def test_the_committed_fixture_carries_no_outbound_url_and_no_secret():
     body = BASELINE.read_text()
     assert "http://" not in body and "https://" not in body

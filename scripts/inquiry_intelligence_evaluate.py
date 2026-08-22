@@ -1220,10 +1220,32 @@ def _text_report(ev: Mapping[str, Any]) -> str:
 
 
 def archive(ev: Mapping[str, Any], session_raw: Mapping[str, Any],
-            case: Optional[Mapping[str, Any]], out_dir: Path) -> Path:
+            case: Optional[Mapping[str, Any]], out_dir: Path,
+            *, from_fixture: Optional[str] = None) -> Path:
+    """Write one run directory.
+
+    `from_fixture` names a committed fixture the session came from, and when given the archive
+    stores a POINTER with the fixture's digest instead of a second copy of it. Two reasons, and
+    the second is the real one: 300KB of identical JSON twice is waste, but a copy that can drift
+    from the file it was copied from is a record that will eventually disagree with itself. A live
+    run has no fixture behind it and gets the full sanitized session, because there the archive is
+    the only place that record exists.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "evaluation.json").write_text(json.dumps(ev, indent=2) + "\n")
-    (out_dir / "session.raw.json").write_text(json.dumps(sanitize(session_raw), indent=2) + "\n")
+    if from_fixture:
+        src = FIXTURES_DIR / f"{from_fixture}.sanitized.json"
+        (out_dir / "session.source.json").write_text(json.dumps({
+            "fixture": from_fixture,
+            "path": str(src.relative_to(ROOT)),
+            "sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
+            "note": "the session is the committed fixture named above, not a copy of it. The "
+                    "digest is here so a fixture edited after this run was archived is a "
+                    "detectable mismatch rather than a silent one.",
+        }, indent=2) + "\n")
+    else:
+        (out_dir / "session.raw.json").write_text(
+            json.dumps(sanitize(session_raw), indent=2) + "\n")
     if case:
         (out_dir / "manifest.json").write_text(json.dumps(case, indent=2) + "\n")
     (out_dir / "report.txt").write_text(_text_report(ev) + "\n")
@@ -1282,7 +1304,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.archive:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         name = f"{stamp}-{(case or {}).get('case_id', 'uncased')}"
-        print(f"\narchived -> {archive(ev, raw, case, RUNS_DIR / name)}")
+        print(f"\narchived -> "
+              f"{archive(ev, raw, case, RUNS_DIR / name, from_fixture=args.fixture or None)}")
     return 0
 
 
