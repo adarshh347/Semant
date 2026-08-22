@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:provider-lab/local-qwen-vlm/alignment.schema.json",
+  "title": "Prompt-aware alignment",
+  "description": "The person's hypotheses, set against observations that already exist. The request that carries this schema contains NO IMAGE PART. That absence — not the instruction above it — is what makes a new visual observation impossible in this pass. Every claim must cite the observation ids it used, and an id that does not exist is recorded as a hallucinated citation rather than quietly dropped.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claims"],
+  "properties": {
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim", "stance", "observation_ids", "grounds"],
+        "properties": {
+          "claim": {
+            "type": "string",
+            "minLength": 1,
+            "description": "One hypothesis of the person's, restated as a single claim. Theirs, not the model's."
+          },
+          "stance": {
+            "type": "string",
+            "enum": ["supports", "complicates", "challenges", "does_not_bear_on", "cannot_determine"],
+            "description": "The five the directive names. `does_not_bear_on` (the observations are about something else) and `cannot_determine` (the observations are about the right thing and do not settle it) are different findings, and a schema with only one of them would force the model to lie about which."
+          },
+          "observation_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Ids from the observation digest. Empty is legitimate for does_not_bear_on and is not treated as a failure."
+          },
+          "grounds": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Why that stance, said in terms of the cited observations. Audited for terms present in neither the observations nor the person's own words."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "provider": "local_qwen_vlm",
+  "execution_mode": "local_live",
+  "replayed": false,
+  "host": {
+    "platform": "darwin",
+    "node": "Adarshs-Mac-mini.local",
+    "machine": "Mac16,10"
+  },
+  "binds_anything": false,
+  "run_id": "20260822-final",
+  "probe": "shutdown-and-restart",
+  "pid_before": 81487,
+  "shutdown_clean": true,
+  "shutdown_ms": 258.5,
+  "startup_ms": 4543.5,
+  "came_back": true,
+  "first_answer_ok": true,
+  "first_answer_ms": 447.9,
+  "first_answer": "alive",
+  "pid_after": 93273,
+  "machine_after": {
+    "swap_used_mb": 4936.62,
+    "swap_raw": "total = 6144.00M  used = 4936.62M  free = 1207.38M  (encrypted)",
+    "wired_mb": 9423.3,
+    "compressed_mb": 3197.4,
+    "free_mb": 61.6,
+    "server_rss_mb": 7399.6,
+    "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+    "server_pid": 93273
+  }
+}
