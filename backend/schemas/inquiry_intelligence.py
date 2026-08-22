@@ -774,6 +774,277 @@ class CandidateRelation(_Strict):
         return self.scope is ContrastScope.CROSS_IMAGE and len(self.image_ids) >= 2
 
 
+# ── 6. what a critic accepted or refused ────────────────────────────────────
+
+class CritiqueVerdict(str, Enum):
+    """Four verdicts, and `UNRESOLVED` is not a polite `ACCEPTED`.
+
+    A critic that had to choose between accept and reject would accept whatever it could not
+    disprove, which converts every ambiguity into a finding. `REVISE` and `UNRESOLVED` are where
+    that pressure goes instead.
+    """
+    ACCEPTED = "accepted"
+    REVISE = "revise"
+    REJECTED = "rejected"
+    UNRESOLVED = "unresolved"
+
+
+class ParrotAssessment(str, Enum):
+    """Whether the relation says anything the prompt did not already say.
+
+    THE FAILURE MODE THIS SYSTEM IS MOST EXPOSED TO. A model handed a question and some pictures
+    will restate the question about the pictures, and the restatement will be fluent, on-topic and
+    empty. `ECHOES_PROMPT` — uses the person's words, adds something — is legal. `PARROTS_PROMPT`
+    is not acceptable, ever.
+    """
+    NOT_PARROTING = "not_parroting"
+    ECHOES_PROMPT = "echoes_prompt"
+    PARROTS_PROMPT = "parrots_prompt"
+    UNASSESSED = "unassessed"
+
+
+class SourceCompleteness(str, Enum):
+    """Whether everything the relation rests on is present and resolvable."""
+    COMPLETE = "complete"
+    PARTIAL = "partial"
+    MISSING = "missing"
+    UNASSESSED = "unassessed"
+
+
+class ImageDiversity(str, Enum):
+    """What the relation actually spans, as the critic found it — not as it declared itself."""
+    CROSS_IMAGE = "cross_image"
+    SINGLE_IMAGE = "single_image"
+    UNASSESSED = "unassessed"
+
+
+class Relevance(str, Enum):
+    """Whether it bears on the question that was asked, rather than on a question it answers well."""
+    RELEVANT = "relevant"
+    TANGENTIAL = "tangential"
+    IRRELEVANT = "irrelevant"
+    UNASSESSED = "unassessed"
+
+
+class InferenceSupport(str, Enum):
+    """Whether the explanation follows from the observations, or arrives from somewhere else."""
+    SUPPORTED = "supported"
+    UNSUPPORTED_LEAP = "unsupported_leap"
+    UNASSESSED = "unassessed"
+
+
+#: The assessments that must all be made before anything may be accepted, with the value each must
+#: NOT hold. Declared as a table rather than as a chain of `if`s so the gate can be read, quoted in
+#: the refusal, and tested member by member.
+ACCEPTANCE_GATE: Tuple[Tuple[str, Tuple[Any, ...]], ...] = (
+    ("source_completeness", (SourceCompleteness.PARTIAL, SourceCompleteness.MISSING,
+                             SourceCompleteness.UNASSESSED)),
+    ("unsupported_inference", (InferenceSupport.UNSUPPORTED_LEAP, InferenceSupport.UNASSESSED)),
+    ("prompt_parroting", (ParrotAssessment.PARROTS_PROMPT, ParrotAssessment.UNASSESSED)),
+    ("inquiry_relevance", (Relevance.IRRELEVANT, Relevance.UNASSESSED)),
+)
+
+
+class RelationCritique(_Strict):
+    """A verdict on ONE relation, by a producer that did not propose it.
+
+    THE ACCEPT GATE IS THE POINT OF THIS OBJECT. `ACCEPTED` is not a field a critic sets; it is a
+    conclusion that four separate assessments have to permit, and `UNASSESSED` blocks it as firmly
+    as a negative does. A critic that accepted what it had not examined would be a rubber stamp
+    with extra fields, and the shape of that failure — everything accepted, nothing assessed — is
+    exactly what an automated critic drifts toward under load.
+
+    `missing_capability` does NOT block acceptance, deliberately. Most relations worth keeping are
+    interpretive and always will be; refusing to accept anything until an instrument exists would
+    make the critic a capability tracker rather than a critic. It is recorded, and it is what
+    `IntelligenceOutcome.CAPABILITY_GAP` is counted from.
+    """
+    schema_version: str = SCHEMA_VERSION
+    critique_id: str = Field(..., min_length=1)
+    relation_id: str = Field(..., min_length=1)
+    verdict: CritiqueVerdict
+    prompt_parroting: ParrotAssessment = ParrotAssessment.UNASSESSED
+    source_completeness: SourceCompleteness = SourceCompleteness.UNASSESSED
+    image_diversity: ImageDiversity = ImageDiversity.UNASSESSED
+    inquiry_relevance: Relevance = Relevance.UNASSESSED
+    unsupported_inference: InferenceSupport = InferenceSupport.UNASSESSED
+    speculative_or_historical_warning: str = Field(
+        default="", description="a reading that goes beyond the picture, named rather than removed")
+    missing_capability_classes: List[CapabilityClass] = Field(default_factory=list)
+    explanation: str = Field(..., min_length=1)
+    provenance: Provenance
+
+    @field_validator("schema_version")
+    @classmethod
+    def _readable(cls, value: str) -> str:
+        return _require_readable(value)
+
+    @field_validator("critique_id")
+    @classmethod
+    def _own_prefix(cls, value: str) -> str:
+        return _require_prefix(value, "relation_critique")
+
+    @field_validator("relation_id")
+    @classmethod
+    def _points_at_a_relation(cls, value: str) -> str:
+        return _require_prefix(value, "candidate_relation")
+
+    @field_validator("explanation")
+    @classmethod
+    def _says_why(cls, value: str) -> str:
+        return _require_nonblank(value, "explanation")
+
+    @model_validator(mode="after")
+    def _nothing_is_accepted_unexamined(self) -> "RelationCritique":
+        if self.verdict is not CritiqueVerdict.ACCEPTED:
+            return self
+        blocking = [(name, getattr(self, name)) for name, refused in ACCEPTANCE_GATE
+                    if getattr(self, name) in refused]
+        if blocking:
+            raise ValueError(
+                f"{self.critique_id} accepts {self.relation_id} while "
+                + "; ".join(f"{name}={value.value!r}" for name, value in blocking)
+                + ". Acceptance is a conclusion four assessments have to permit, and `unassessed` "
+                  "blocks it as firmly as a negative does: a critic that accepts what it has not "
+                  "examined is a rubber stamp with extra fields.")
+        return self
+
+    def accepted(self) -> bool:
+        return self.verdict is CritiqueVerdict.ACCEPTED
+
+
+# ── 7. whether any of it was any good ───────────────────────────────────────
+
+class WorkflowCompletion(str, Enum):
+    """Did the machinery finish. Nothing more."""
+    COMPLETED = "completed"
+    PARTIAL = "partial"
+    FAILED = "failed"
+
+
+class IntelligenceOutcome(str, Enum):
+    """Was it worth doing. A different question, on a different axis, and it is the one that gets
+    quietly answered by the first if the two share a field.
+
+    `UNDERPERFORMED` is the member that has to exist and has to be reachable from a clean run: the
+    pipeline did everything it was asked, and what came out was not worth the person's attention.
+    A vocabulary in which a finished run is a successful one cannot express the most likely result
+    this system produces.
+    """
+    USEFUL_RELATIONS = "useful_relations"
+    UNDERPERFORMED = "underperformed"
+    INSUFFICIENT_OBSERVATIONS = "insufficient_observations"
+    PROMPT_DOMINATED = "prompt_dominated"
+    TRUNCATED = "truncated"
+    CAPABILITY_GAP = "capability_gap"
+    REFUSED = "refused"
+    ERROR = "error"
+
+
+#: Outcomes a run that did not finish may not claim. A failed workflow can still have produced
+#: something interesting, but "useful relations" is a report about the whole, and there was no whole.
+OUTCOMES_NEEDING_A_FINISH: Tuple[IntelligenceOutcome, ...] = (IntelligenceOutcome.USEFUL_RELATIONS,)
+
+
+class IntelligenceCounts(_Strict):
+    """What was produced, counted. The counts are what make the outcome checkable rather than
+    asserted — an outcome with no arithmetic behind it is a mood."""
+    hypotheses: int = Field(default=0, ge=0)
+    observations: int = Field(default=0, ge=0)
+    refused_observations: int = Field(default=0, ge=0)
+    measured_observations: int = Field(default=0, ge=0)
+    alignments: int = Field(default=0, ge=0)
+    contrasts: int = Field(default=0, ge=0)
+    relations: int = Field(default=0, ge=0)
+    accepted_relations: int = Field(default=0, ge=0)
+    accepted_cross_image_relations: int = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def _subsets_are_subsets(self) -> "IntelligenceCounts":
+        for smaller, larger in (("accepted_relations", "relations"),
+                                ("accepted_cross_image_relations", "accepted_relations"),
+                                ("measured_observations", "observations"),
+                                ("refused_observations", "observations")):
+            if getattr(self, smaller) > getattr(self, larger):
+                raise ValueError(
+                    f"{smaller}={getattr(self, smaller)} exceeds {larger}={getattr(self, larger)}")
+        return self
+
+
+class IntelligenceOutcomeRecord(_Strict):
+    """TWO FIELDS, TWO AXES, and the whole object exists to keep them apart.
+
+    `workflow` says whether the machinery finished. `outcome` says whether the result was worth
+    having. A single `status` field collapses them, and it always collapses in the same direction:
+    the run finished, so it is reported as a success, and the person is handed a fluent restatement
+    of their own question as though it were a finding.
+
+    THE ONE ARITHMETIC RULE. A comparative inquiry that produced claims and zero ACCEPTED
+    CROSS-IMAGE relations may not call itself `useful_relations`. That is the specific shape this
+    system fails in — plenty of observations, plenty of sentences, nothing that ever crossed from
+    one picture to another — and it is a shape a reader cannot see from a status word.
+    """
+    schema_version: str = SCHEMA_VERSION
+    outcome_id: str = Field(..., min_length=1)
+    inquiry_id: str = Field(..., min_length=1)
+    comparative: bool = Field(..., description="did the question ask for a comparison at all")
+    workflow: WorkflowCompletion
+    outcome: IntelligenceOutcome
+    counts: IntelligenceCounts = Field(default_factory=IntelligenceCounts)
+    explanation: str = Field(..., min_length=1)
+    limitations: List[str] = Field(default_factory=list)
+    provenance: Provenance
+
+    @field_validator("schema_version")
+    @classmethod
+    def _readable(cls, value: str) -> str:
+        return _require_readable(value)
+
+    @field_validator("outcome_id")
+    @classmethod
+    def _own_prefix(cls, value: str) -> str:
+        return _require_prefix(value, "intelligence_outcome")
+
+    @field_validator("explanation")
+    @classmethod
+    def _says_why(cls, value: str) -> str:
+        return _require_nonblank(value, "explanation")
+
+    @model_validator(mode="after")
+    def _success_is_earned_rather_than_declared(self) -> "IntelligenceOutcomeRecord":
+        if self.outcome is IntelligenceOutcome.USEFUL_RELATIONS:
+            if self.counts.accepted_relations < 1:
+                raise ValueError(
+                    f"{self.outcome_id} reports useful_relations with "
+                    f"{self.counts.accepted_relations} accepted relation(s). Useful is a claim "
+                    f"about what a critic let through, not about what was produced.")
+            if self.comparative and self.counts.accepted_cross_image_relations < 1:
+                raise ValueError(
+                    f"{self.outcome_id} is a comparative inquiry reporting useful_relations with "
+                    f"{self.counts.accepted_relations} accepted relation(s), none of which crosses "
+                    f"images. Plenty of observations and nothing that ever crossed from one "
+                    f"picture to another is the specific way this system fails, and it is not a "
+                    f"success — `underperformed` is the honest word for it.")
+        if self.outcome in OUTCOMES_NEEDING_A_FINISH and self.workflow is WorkflowCompletion.FAILED:
+            raise ValueError(
+                f"{self.outcome_id} reports {self.outcome.value!r} on a workflow that FAILED. The "
+                f"outcome is a report about the whole run, and there was no whole run.")
+        if (self.outcome is IntelligenceOutcome.INSUFFICIENT_OBSERVATIONS
+                and self.counts.accepted_relations > 0):
+            raise ValueError(
+                f"{self.outcome_id} blames insufficient observations while {self.counts.accepted_relations} "
+                f"relation(s) were accepted from them.")
+        return self
+
+    def finished(self) -> bool:
+        """Did the machinery complete. NOT whether the result was worth anything."""
+        return self.workflow is WorkflowCompletion.COMPLETED
+
+    def was_useful(self) -> bool:
+        """Was the result worth the person's attention. NOT whether the machinery completed."""
+        return self.outcome is IntelligenceOutcome.USEFUL_RELATIONS
+
+
 # ── resolution: a reference is a promise, and this is how it is kept ─────────
 
 class UnresolvedReference(ValueError):

@@ -29,7 +29,12 @@ from backend.schemas.inquiry_intelligence import (READABLE_SCHEMA_VERSIONS, SCHE
                                                   ContrastScope, HypothesisAlignment, RelationKind,
                                                   UnresolvedReference, UserHypothesis,
                                                   VisualObservation, check_resolves,
-                                                  index_observations, mint, resolve_observations)
+                                                  index_observations, mint, resolve_observations,
+                                                  CritiqueVerdict, ImageDiversity,
+                                                  InferenceSupport, IntelligenceCounts,
+                                                  IntelligenceOutcome, IntelligenceOutcomeRecord,
+                                                  ParrotAssessment, RelationCritique, Relevance,
+                                                  SourceCompleteness, WorkflowCompletion)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -613,3 +618,189 @@ def test_two_observations_with_one_id_are_refused_before_anything_resolves():
     duplicate = two_observations()[0]
     with pytest.raises(ValueError):
         index_observations([duplicate, duplicate])
+
+
+# ── 14. the critic cannot rubber-stamp ───────────────────────────────────────
+
+def a_critique(**kw):
+    body = {"critique_id": mint("relation_critique", ["i1", "a"]),
+            "relation_id": mint("candidate_relation", ["i1", "a"]),
+            "verdict": CritiqueVerdict.ACCEPTED,
+            "prompt_parroting": ParrotAssessment.NOT_PARROTING,
+            "source_completeness": SourceCompleteness.COMPLETE,
+            "image_diversity": ImageDiversity.CROSS_IMAGE,
+            "inquiry_relevance": Relevance.RELEVANT,
+            "unsupported_inference": InferenceSupport.SUPPORTED,
+            "explanation": "both observations resolve, and the difference is not one the prompt "
+                           "already named",
+            "provenance": a_provenance()}
+    body.update(kw)
+    return RelationCritique(**body)
+
+
+def test_a_fully_assessed_relation_can_be_accepted():
+    assert a_critique().accepted() is True
+
+
+def test_a_relation_with_missing_sources_cannot_be_accepted():
+    """The directive's own wording. A critic that accepts a relation whose sources are not all
+    there has accepted something nobody can go back and check."""
+    for incomplete in (SourceCompleteness.MISSING, SourceCompleteness.PARTIAL):
+        with pytest.raises(ValidationError) as caught:
+            a_critique(source_completeness=incomplete)
+        assert "source_completeness" in str(caught.value)
+
+
+@pytest.mark.parametrize("field, value", [
+    ("source_completeness", SourceCompleteness.UNASSESSED),
+    ("unsupported_inference", InferenceSupport.UNASSESSED),
+    ("prompt_parroting", ParrotAssessment.UNASSESSED),
+    ("inquiry_relevance", Relevance.UNASSESSED),
+])
+def test_unassessed_blocks_acceptance_as_firmly_as_a_negative(field, value):
+    """The rubber-stamp shape: everything accepted, nothing examined. It is what an automated
+    critic drifts toward under load, so it is refused by construction rather than by review."""
+    with pytest.raises(ValidationError) as caught:
+        a_critique(**{field: value})
+    assert "rubber stamp" in str(caught.value)
+
+
+def test_parroting_the_prompt_blocks_acceptance_and_echoing_it_does_not():
+    """A model handed a question and some pictures will restate the question about the pictures,
+    fluently and emptily. Using the person's vocabulary while adding something is not that."""
+    with pytest.raises(ValidationError):
+        a_critique(prompt_parroting=ParrotAssessment.PARROTS_PROMPT)
+    assert a_critique(prompt_parroting=ParrotAssessment.ECHOES_PROMPT).accepted()
+
+
+def test_an_irrelevant_relation_cannot_be_accepted_however_good_it_is():
+    with pytest.raises(ValidationError):
+        a_critique(inquiry_relevance=Relevance.IRRELEVANT)
+    assert a_critique(inquiry_relevance=Relevance.TANGENTIAL).accepted()
+
+
+def test_a_missing_capability_is_recorded_and_does_not_block_acceptance():
+    """Most relations worth keeping are interpretive and always will be. A critic that refused
+    everything until an instrument existed would be a capability tracker, not a critic."""
+    critique = a_critique(missing_capability_classes=[CapabilityClass.DEPTH])
+    assert critique.accepted() and critique.missing_capability_classes == [CapabilityClass.DEPTH]
+
+
+def test_the_unaccepting_verdicts_need_no_assessments_at_all():
+    """A critic that could not reject without first filling in four fields would accept by
+    default, which is the failure the gate exists to prevent, arriving from the other side."""
+    for verdict in (CritiqueVerdict.REVISE, CritiqueVerdict.REJECTED, CritiqueVerdict.UNRESOLVED):
+        critique = a_critique(verdict=verdict, prompt_parroting=ParrotAssessment.UNASSESSED,
+                              source_completeness=SourceCompleteness.UNASSESSED,
+                              inquiry_relevance=Relevance.UNASSESSED,
+                              unsupported_inference=InferenceSupport.UNASSESSED)
+        assert critique.accepted() is False
+
+
+def test_a_critique_cannot_be_wired_to_something_that_is_not_a_relation():
+    with pytest.raises(ValidationError):
+        a_critique(relation_id=mint("visual_observation", ["i1", "a"]))
+
+
+def test_a_speculative_reading_is_named_rather_than_removed():
+    critique = a_critique(speculative_or_historical_warning="the dating is asserted, not sourced")
+    assert critique.speculative_or_historical_warning
+
+
+# ── 15. finishing and finding something are two axes ────────────────────────
+
+def an_outcome(**kw):
+    body = {"outcome_id": mint("intelligence_outcome", ["i1"]), "inquiry_id": "i1",
+            "comparative": True, "workflow": WorkflowCompletion.COMPLETED,
+            "outcome": IntelligenceOutcome.UNDERPERFORMED,
+            "explanation": "every relation restated the question",
+            "provenance": a_provenance()}
+    body.update(kw)
+    return IntelligenceOutcomeRecord(**body)
+
+
+def test_a_clean_run_that_found_nothing_is_expressible():
+    """The most likely result this system produces has to have a name. A vocabulary in which a
+    finished run is a successful one cannot express it."""
+    record = an_outcome(counts=IntelligenceCounts(observations=40, relations=12,
+                                                  accepted_relations=0))
+    assert record.finished() is True
+    assert record.was_useful() is False
+
+
+def test_a_comparative_inquiry_with_no_accepted_cross_image_relation_is_not_useful():
+    """§7 of the directive, and the specific shape this system fails in: plenty of observations,
+    plenty of sentences, nothing that ever crossed from one picture to another."""
+    with pytest.raises(ValidationError) as caught:
+        an_outcome(outcome=IntelligenceOutcome.USEFUL_RELATIONS, comparative=True,
+                   counts=IntelligenceCounts(observations=40, relations=12, accepted_relations=9,
+                                             accepted_cross_image_relations=0))
+    assert "none of which crosses" in str(caught.value)
+    assert "underperformed" in str(caught.value)
+
+
+def test_the_same_counts_are_useful_once_one_relation_actually_crosses():
+    record = an_outcome(outcome=IntelligenceOutcome.USEFUL_RELATIONS, comparative=True,
+                        counts=IntelligenceCounts(observations=40, relations=12,
+                                                  accepted_relations=9,
+                                                  accepted_cross_image_relations=1))
+    assert record.was_useful()
+
+
+def test_a_single_image_inquiry_is_not_held_to_the_cross_image_rule():
+    """The rule is about COMPARATIVE questions. A question about one picture that produced an
+    accepted relation within it is a success, and forcing it to fail would teach the pipeline to
+    declare every inquiry non-comparative."""
+    assert an_outcome(comparative=False, outcome=IntelligenceOutcome.USEFUL_RELATIONS,
+                      counts=IntelligenceCounts(relations=3, accepted_relations=2)).was_useful()
+
+
+def test_useful_requires_something_a_critic_let_through():
+    with pytest.raises(ValidationError) as caught:
+        an_outcome(comparative=False, outcome=IntelligenceOutcome.USEFUL_RELATIONS,
+                   counts=IntelligenceCounts(relations=12, accepted_relations=0))
+    assert "what a critic let through" in str(caught.value)
+
+
+def test_a_failed_workflow_cannot_report_useful_relations():
+    with pytest.raises(ValidationError) as caught:
+        an_outcome(workflow=WorkflowCompletion.FAILED,
+                   outcome=IntelligenceOutcome.USEFUL_RELATIONS, comparative=False,
+                   counts=IntelligenceCounts(relations=2, accepted_relations=1))
+    assert "there was no whole run" in str(caught.value)
+
+
+@pytest.mark.parametrize("outcome", [IntelligenceOutcome.TRUNCATED, IntelligenceOutcome.ERROR,
+                                     IntelligenceOutcome.REFUSED,
+                                     IntelligenceOutcome.CAPABILITY_GAP,
+                                     IntelligenceOutcome.PROMPT_DOMINATED,
+                                     IntelligenceOutcome.UNDERPERFORMED])
+def test_every_other_outcome_survives_a_failed_workflow(outcome):
+    assert an_outcome(workflow=WorkflowCompletion.FAILED, outcome=outcome).outcome is outcome
+
+
+def test_the_two_axes_are_independent_in_both_directions():
+    """completed+underperformed and partial+useful are both real, and a single `status` field
+    could express neither."""
+    assert an_outcome(workflow=WorkflowCompletion.COMPLETED,
+                      outcome=IntelligenceOutcome.UNDERPERFORMED).finished()
+    partly = an_outcome(workflow=WorkflowCompletion.PARTIAL, comparative=False,
+                        outcome=IntelligenceOutcome.USEFUL_RELATIONS,
+                        counts=IntelligenceCounts(relations=2, accepted_relations=1))
+    assert partly.was_useful() and not partly.finished()
+
+
+def test_the_counts_must_be_arithmetically_possible():
+    for bad in ({"relations": 2, "accepted_relations": 3},
+                {"relations": 5, "accepted_relations": 2, "accepted_cross_image_relations": 3},
+                {"observations": 1, "measured_observations": 2},
+                {"observations": 1, "refused_observations": 2}):
+        with pytest.raises(ValidationError):
+            IntelligenceCounts(**bad)
+
+
+def test_insufficient_observations_cannot_be_blamed_for_accepted_relations():
+    with pytest.raises(ValidationError):
+        an_outcome(outcome=IntelligenceOutcome.INSUFFICIENT_OBSERVATIONS,
+                   counts=IntelligenceCounts(relations=3, accepted_relations=2,
+                                             accepted_cross_image_relations=1))
