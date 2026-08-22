@@ -1,0 +1,15 @@
+# The contact sheet exists so a person can LOOK at the pictures, so it carries image urls for
+# every post it lists. This repository is public; the urls are not committed and the sheet is
+# regenerated locally with:
+#
+#     python scripts/inquiry_intelligence_rehearsal.py --propose-architecture
+#
+# `candidates.json` IS committed — it carries post ids and cluster sizes and no urls.
+architecture-control/contact-sheet.md
+
+# Run archives accumulate per run and can carry a live session verbatim. One worked example is
+# committed under runs/baseline-rev6/; everything else stays local until somebody chooses to add it.
+run-archive/*
+!run-archive/README.md
+!run-archive/baseline-rev6/
+!run-archive/baseline-rev6/**

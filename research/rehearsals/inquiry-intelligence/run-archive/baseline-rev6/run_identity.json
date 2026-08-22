@@ -1,0 +1,16 @@
+{
+  "deployment_kind": "live",
+  "declared": true,
+  "reachable": true,
+  "provider": "groq",
+  "models": {
+    "theorist": "qwen/qwen3.6-27b",
+    "compiler": "openai/gpt-oss-120b",
+    "composer": "openai/gpt-oss-120b",
+    "framer": "inquiry/deterministic-v1"
+  },
+  "stage_bindings": {
+    "theorist": "live",
+    "compiler": "live"
+  }
+}

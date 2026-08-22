@@ -1,0 +1,6 @@
+{
+  "fixture": "baseline-rev6",
+  "path": "research/rehearsals/inquiry-intelligence/fixtures/baseline-rev6.sanitized.json",
+  "sha256": "5230e8ae2bb4c5cab625c2820d40c17e1eb4070c22feabc124aa0e44a362105d",
+  "note": "the session is the committed fixture named above, not a copy of it. The digest is here so a fixture edited after this run was archived is a detectable mismatch rather than a silent one."
+}
