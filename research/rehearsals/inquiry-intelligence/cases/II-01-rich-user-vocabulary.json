@@ -1,0 +1,106 @@
+{
+  "case_id": "II-01-rich-user-vocabulary",
+  "case_version": "1.0.0",
+  "title": "Rich user vocabulary — does the person's own language come back as a discovery?",
+  "prompt": "interestingly the architecture of folds turn into different things- interplay of shadow, the transparent veils, the skin layers, eroticism of skin, metallic thickness and sophistication of the body - shows how creative the tactile philosophy can be okay i gave this btw",
+  "prompt_sha256": "c6a6897bfd7ac769841610b0cb34cf6a920d2099c6a3e4c15661c3623226401c",
+  "post_ids": [
+    "6a6041b81ecd6db1c931eb7a",
+    "6a6041b61ecd6db1c931eb78",
+    "6a60408e1ecd6db1c931eb6b"
+  ],
+  "intended_pressure": [
+    "separate user vocabulary from image observations",
+    "prevent prompt concepts from becoming discoveries"
+  ],
+  "expected_structural_properties": [
+    {
+      "metric": "prompt_hypotheses_preserved",
+      "expectation": {
+        "equals": true
+      },
+      "why": "The prompt's concepts must remain attributable to the person. This is the only expectation in the whole manifest whose failure is a lie rather than a shortfall."
+    },
+    {
+      "metric": "prompt_hypothesis_atoms",
+      "expectation": {
+        "min": 1
+      },
+      "why": "A prompt this dense that yields no user-authored atom has folded the person's vocabulary into the model's own voice."
+    },
+    {
+      "metric": "claims_sourced_only_from_prompt",
+      "expectation": {
+        "max": 8
+      },
+      "why": "A bound, not a target. Some prompt-sourced claims are correct — the person did make assertions — but a majority means the run mostly restated the question."
+    },
+    {
+      "metric": "claims_with_image_traceability",
+      "expectation": {
+        "min": 6
+      },
+      "why": "At least some claims must be traceable to a picture, or nothing was learned from looking."
+    },
+    {
+      "metric": "observations_with_image_refs",
+      "expectation": {
+        "min": 10
+      },
+      "why": "The reading must be anchored per image before any of it can be compared across images."
+    }
+  ],
+  "forbidden_shortcuts": [
+    {
+      "shortcut": "re-emitting prompt nouns as entity claims",
+      "detected_by": "claims_sourced_only_from_prompt",
+      "why": "The cheapest way to look productive on this prompt: 'architecture of folds' in, 'architecture of folds' out, as an entity claim with a verdict."
+    },
+    {
+      "shortcut": "attributing the person's hypothesis to the images",
+      "detected_by": "prompt_hypotheses_preserved",
+      "why": "If a user-authored atom loses its author, the surface can no longer tell the person's idea from a finding."
+    },
+    {
+      "shortcut": "high lexical overlap standing in for observation",
+      "detected_by": "lexical_prompt_copy_ratio",
+      "why": "A WARNING only. Overlap is expected when the person names real things in the pictures, so this can never be proof on its own."
+    },
+    {
+      "shortcut": "asserting eroticism, sophistication or philosophy as measured",
+      "detected_by": "unsupported_measured_statuses",
+      "why": "These are the words most likely to be promoted past interpretive, because they sound like conclusions."
+    }
+  ],
+  "manual_review_questions": [
+    "Did the run say anything about these sculptures that the prompt did not already say?",
+    "Where the run used the person's words, did it use them about something visible, or only about the words?",
+    "Is the answer's reading of 'tactile philosophy' an interpretation of the images or a paraphrase of the question?"
+  ],
+  "input_fingerprints": [
+    {
+      "post_id": "6a6041b81ecd6db1c931eb7a",
+      "fingerprint": "165304160602f8b7415ac2f1c80b480ac7779262d3940f62d403784a3b7e927f",
+      "resolved_at": "2026-08-22T00:00:00Z",
+      "readable": true
+    },
+    {
+      "post_id": "6a6041b61ecd6db1c931eb78",
+      "fingerprint": "0237a39cb28b41e082d185b3d153714e004d0304dbfc08fcfd634db1c03037eb",
+      "resolved_at": "2026-08-22T00:00:00Z",
+      "readable": true
+    },
+    {
+      "post_id": "6a60408e1ecd6db1c931eb6b",
+      "fingerprint": "8a1270244e2876e81465c894c076e235de170c7dee121607c99c8f936c26395a",
+      "resolved_at": "2026-08-22T00:00:00Z",
+      "readable": true
+    }
+  ],
+  "run_mode": "live",
+  "declarations": {
+    "provider": null,
+    "models": {},
+    "note": "Left undeclared until a run declares it. A case that pre-named its models would let a run against different ones be filed under the same declaration."
+  }
+}

@@ -1,0 +1,300 @@
+{
+  "name": "contradicted-hypothesis",
+  "inquiry_map": {
+    "schema_version": "inquiry-intelligence.v1",
+    "inquiry_map_id": "imap_uniform",
+    "inquiry_id": "uniform",
+    "principal_question": "am I right that the difference is the photograph?",
+    "origin": "prompt",
+    "user_hypotheses": [
+      {
+        "hypothesis_id": "hyp_uniform_finish",
+        "text": "both objects are finished to the same degree all over, so any difference I am seeing is the photograph and not the object",
+        "origin": "prompt",
+        "spans": [],
+        "user_terms": [
+          "finished",
+          "all over",
+          "the same"
+        ],
+        "note": ""
+      }
+    ],
+    "user_vocabulary": [
+      "finished",
+      "all over",
+      "the same"
+    ],
+    "requested_comparisons": [
+      {
+        "comparison_id": "rqc_uniform_pair",
+        "text": "compare the two",
+        "image_ids": [
+          "post_vessel_left",
+          "post_vessel_right"
+        ],
+        "dimension": "",
+        "spans": []
+      }
+    ],
+    "interpretive_questions": [
+      {
+        "question_id": "qst_uniform_intent",
+        "text": "would an unfinished lower band have been meant to be seen?",
+        "capability_classes": [],
+        "spans": []
+      }
+    ],
+    "potentially_observable_questions": [
+      {
+        "question_id": "qst_uniform_boundary",
+        "text": "where exactly does the boundary fall?",
+        "capability_classes": [
+          "extent",
+          "geometry"
+        ],
+        "spans": []
+      }
+    ],
+    "desired_answer_form": "judgement",
+    "ambiguities": [],
+    "prompt_source_spans": [],
+    "provenance": {
+      "producer": "inquiry_intelligence/map-fixture",
+      "kind": "fixture",
+      "model": "",
+      "provider": "",
+      "prompt_sha256": "",
+      "note": ""
+    }
+  },
+  "observations": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "observation_id": "vob_vessel_upper",
+      "image_id": "post_vessel_left",
+      "origin": "image_observation",
+      "locus": "the upper half",
+      "region_ref": "",
+      "ground_ref": "",
+      "feature": "surface finish",
+      "visible_description": "tool marks run in one direction and stop abruptly at a horizontal line two thirds of the way down",
+      "organization": "two bands, divided by a single straight boundary",
+      "appearance_effect": "reads as two different surfaces on one object",
+      "interpretive_possibility": "the lower band may be unfinished rather than differently finished",
+      "reading_block_refs": [],
+      "epistemic_status": "interpretive",
+      "uncertainty": 0.15,
+      "requested_capability_classes": [
+        "extent"
+      ],
+      "state": "observed",
+      "absence_reason": "",
+      "measurement": null,
+      "provenance": {
+        "producer": "inquiry_intelligence/vlm-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    },
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "observation_id": "vob_vessel_right_even",
+      "image_id": "post_vessel_right",
+      "origin": "image_observation",
+      "locus": "the whole visible body",
+      "region_ref": "",
+      "ground_ref": "",
+      "feature": "surface finish",
+      "visible_description": "the same directional marks continue without interruption from rim to foot",
+      "organization": "one continuous band",
+      "appearance_effect": "reads as a single surface",
+      "interpretive_possibility": "may have been worked in one operation",
+      "reading_block_refs": [],
+      "epistemic_status": "interpretive",
+      "uncertainty": 0.2,
+      "requested_capability_classes": [
+        "extent"
+      ],
+      "state": "observed",
+      "absence_reason": "",
+      "measurement": null,
+      "provenance": {
+        "producer": "inquiry_intelligence/vlm-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "alignments": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "alignment_id": "hal_uniform_challenged",
+      "hypothesis_id": "hyp_uniform_finish",
+      "observation_id": "vob_vessel_upper",
+      "alignment": "challenges",
+      "explanation": "a boundary that is straight and horizontal across the body is not a thing a photograph produces; the person's 'same all over' does not hold for this one",
+      "missing_capability_classes": [],
+      "uncertainty": 0.0,
+      "provenance": {
+        "producer": "inquiry_intelligence/aligner-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    },
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "alignment_id": "hal_uniform_supports_other",
+      "hypothesis_id": "hyp_uniform_finish",
+      "observation_id": "vob_vessel_right_even",
+      "alignment": "supports",
+      "explanation": "the second object does show one uninterrupted surface, which is what the person expected of both",
+      "missing_capability_classes": [],
+      "uncertainty": 0.0,
+      "provenance": {
+        "producer": "inquiry_intelligence/aligner-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "contrasts": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "contrast_id": "con_uniform_boundary",
+      "question_ref": "",
+      "question_text": "is the difference in the objects or in the photographs?",
+      "observation_ids": [
+        "vob_vessel_upper",
+        "vob_vessel_right_even"
+      ],
+      "image_ids": [
+        "post_vessel_left",
+        "post_vessel_right"
+      ],
+      "comparison_dimension": "whether the surface treatment has an internal boundary",
+      "why_it_matters": "the person has attributed the difference to the photography, and that is checkable against what a photograph can and cannot produce",
+      "difference_investigated": "whether one object carries a boundary the other does not",
+      "possible_countercondition": "the boundary follows a lighting edge, in which case the person is right and it is the photograph",
+      "required_capability_classes": [
+        "extent",
+        "colour"
+      ],
+      "priority": 1,
+      "scope": "cross_image",
+      "origin": "semant_inference",
+      "provenance": {
+        "producer": "inquiry_intelligence/planner-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "relations": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "relation_id": "crl_uniform_contrast",
+      "left_observation_id": "vob_vessel_upper",
+      "right_observation_id": "vob_vessel_right_even",
+      "relation_kind": "contrast",
+      "explanation": "one carries a straight internal boundary between two treatments and the other does not, and the boundary does not follow the fall of the light",
+      "image_ids": [
+        "post_vessel_left",
+        "post_vessel_right"
+      ],
+      "inquiry_relevance": "bears directly on the person's claim that the difference is photographic",
+      "epistemic_status": "interpretive",
+      "hypothesis_refs": [
+        "hyp_uniform_finish"
+      ],
+      "uncertainty": 0.3,
+      "counterevidence": [
+        "nothing measured the boundary; that it is straight is a description"
+      ],
+      "contrast_ref": "con_uniform_boundary",
+      "scope": "cross_image",
+      "measurement": null,
+      "origin": "semant_inference",
+      "provenance": {
+        "producer": "inquiry_intelligence/relator-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "critiques": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "critique_id": "crt_uniform_accept",
+      "relation_id": "crl_uniform_contrast",
+      "verdict": "accepted",
+      "prompt_parroting": "not_parroting",
+      "source_completeness": "complete",
+      "image_diversity": "cross_image",
+      "inquiry_relevance": "relevant",
+      "unsupported_inference": "supported",
+      "speculative_or_historical_warning": "",
+      "missing_capability_classes": [
+        "extent"
+      ],
+      "explanation": "it contradicts the question rather than restating it, which is the opposite of the failure the parroting check looks for; both sides resolve",
+      "provenance": {
+        "producer": "inquiry_intelligence/critic-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "outcome": {
+    "schema_version": "inquiry-intelligence.v1",
+    "outcome_id": "out_uniform",
+    "inquiry_id": "uniform",
+    "comparative": true,
+    "workflow": "completed",
+    "outcome": "useful_relations",
+    "counts": {
+      "hypotheses": 1,
+      "observations": 2,
+      "refused_observations": 0,
+      "measured_observations": 0,
+      "alignments": 2,
+      "contrasts": 1,
+      "relations": 1,
+      "accepted_relations": 1,
+      "accepted_cross_image_relations": 1
+    },
+    "explanation": "the accepted relation contradicts the person's hypothesis, and the hypothesis is stored unchanged beside it",
+    "limitations": [
+      "nothing measured the boundary; it is described, not located"
+    ],
+    "provenance": {
+      "producer": "inquiry_intelligence/outcome-fixture",
+      "kind": "fixture",
+      "model": "",
+      "provider": "",
+      "prompt_sha256": "",
+      "note": ""
+    }
+  }
+}

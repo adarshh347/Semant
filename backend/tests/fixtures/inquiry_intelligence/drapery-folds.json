@@ -1,0 +1,300 @@
+{
+  "name": "drapery-folds",
+  "inquiry_map": {
+    "schema_version": "inquiry-intelligence.v1",
+    "inquiry_map_id": "imap_drapery",
+    "inquiry_id": "drapery",
+    "principal_question": "do the two figures' folds do different work?",
+    "origin": "prompt",
+    "user_hypotheses": [
+      {
+        "hypothesis_id": "hyp_drapery_transparency",
+        "text": "the veiled figure's drapery is carved to read as transparent, while the seated one's folds are doing structural work",
+        "origin": "prompt",
+        "spans": [
+          {
+            "text": "carved to read as transparent",
+            "span": null,
+            "sentence_index": 0
+          }
+        ],
+        "user_terms": [
+          "transparent",
+          "structural",
+          "blunt"
+        ],
+        "note": ""
+      }
+    ],
+    "user_vocabulary": [
+      "transparent",
+      "structural",
+      "blunt",
+      "veil"
+    ],
+    "requested_comparisons": [
+      {
+        "comparison_id": "rqc_drapery_pair",
+        "text": "compare the veiled figure with the seated one",
+        "image_ids": [
+          "post_veiled_figure",
+          "post_seated_figure"
+        ],
+        "dimension": "how the folds read",
+        "spans": []
+      }
+    ],
+    "interpretive_questions": [
+      {
+        "question_id": "qst_drapery_intent",
+        "text": "what is the carver asking the cloth to do?",
+        "capability_classes": [],
+        "spans": []
+      }
+    ],
+    "potentially_observable_questions": [
+      {
+        "question_id": "qst_drapery_depth",
+        "text": "how deep is the undercut at the fold edge?",
+        "capability_classes": [
+          "depth"
+        ],
+        "spans": []
+      }
+    ],
+    "desired_answer_form": "comparison",
+    "ambiguities": [
+      {
+        "ambiguity_id": "amb_drapery_structural",
+        "text": "'structural' could mean load-bearing in the stone or load-bearing in the composition",
+        "readings": [
+          "carrying the figure's mass",
+          "organising the eye"
+        ],
+        "why_it_matters": "",
+        "spans": []
+      }
+    ],
+    "prompt_source_spans": [],
+    "provenance": {
+      "producer": "inquiry_intelligence/map-fixture",
+      "kind": "fixture",
+      "model": "",
+      "provider": "",
+      "prompt_sha256": "",
+      "note": ""
+    }
+  },
+  "observations": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "observation_id": "vob_drapery_veil_edge",
+      "image_id": "post_veiled_figure",
+      "origin": "image_observation",
+      "locus": "across the face and upper chest",
+      "region_ref": "",
+      "ground_ref": "",
+      "feature": "fold edge treatment",
+      "visible_description": "the fold ridges are shallow and continuous, and the features beneath them remain unbroken where the ridges cross",
+      "organization": "a single family of parallel ridges running head to shoulder",
+      "appearance_effect": "reads as a layer laid over the face rather than as the face's own surface",
+      "interpretive_possibility": "may be aiming at the appearance of a material one can see through",
+      "reading_block_refs": [],
+      "epistemic_status": "interpretive",
+      "uncertainty": 0.3,
+      "requested_capability_classes": [
+        "extent",
+        "depth"
+      ],
+      "state": "observed",
+      "absence_reason": "",
+      "measurement": null,
+      "provenance": {
+        "producer": "inquiry_intelligence/vlm-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    },
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "observation_id": "vob_drapery_seated_edge",
+      "image_id": "post_seated_figure",
+      "origin": "image_observation",
+      "locus": "along the lap and the fall to the base",
+      "region_ref": "",
+      "ground_ref": "",
+      "feature": "fold edge treatment",
+      "visible_description": "the fold ridges terminate in hard undercut edges that cast a separate shadow from the mass behind them",
+      "organization": "folds gathered into a few deep channels rather than many shallow ones",
+      "appearance_effect": "reads as heavy cloth carrying its own weight",
+      "interpretive_possibility": "may be marking the seated mass rather than the cloth",
+      "reading_block_refs": [],
+      "epistemic_status": "interpretive",
+      "uncertainty": 0.25,
+      "requested_capability_classes": [
+        "depth"
+      ],
+      "state": "observed",
+      "absence_reason": "",
+      "measurement": null,
+      "provenance": {
+        "producer": "inquiry_intelligence/vlm-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "alignments": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "alignment_id": "hal_drapery_supports",
+      "hypothesis_id": "hyp_drapery_transparency",
+      "observation_id": "vob_drapery_veil_edge",
+      "alignment": "supports",
+      "explanation": "the unbroken features beneath the ridges are what the person's word 'transparent' would predict, though the observation does not measure it",
+      "missing_capability_classes": [],
+      "uncertainty": 0.0,
+      "provenance": {
+        "producer": "inquiry_intelligence/aligner-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "contrasts": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "contrast_id": "con_drapery_edges",
+      "question_ref": "",
+      "question_text": "do the two treat the fold edge differently?",
+      "observation_ids": [
+        "vob_drapery_veil_edge",
+        "vob_drapery_seated_edge"
+      ],
+      "image_ids": [
+        "post_veiled_figure",
+        "post_seated_figure"
+      ],
+      "comparison_dimension": "what happens at the edge of a fold",
+      "why_it_matters": "the person's distinction between transparent and structural turns on the edge",
+      "difference_investigated": "whether the ridges interrupt what lies beneath them",
+      "possible_countercondition": "both show the same undercut and the difference is the lighting",
+      "required_capability_classes": [
+        "depth",
+        "geometry"
+      ],
+      "priority": 1,
+      "scope": "cross_image",
+      "origin": "semant_inference",
+      "provenance": {
+        "producer": "inquiry_intelligence/planner-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "relations": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "relation_id": "crl_drapery_divergent",
+      "left_observation_id": "vob_drapery_veil_edge",
+      "right_observation_id": "vob_drapery_seated_edge",
+      "relation_kind": "divergent_treatment",
+      "explanation": "one keeps what lies beneath the ridge continuous; the other cuts the ridge free of the mass behind it",
+      "image_ids": [
+        "post_veiled_figure",
+        "post_seated_figure"
+      ],
+      "inquiry_relevance": "answers the person's transparent/structural distinction at the one place both observations describe",
+      "epistemic_status": "interpretive",
+      "hypothesis_refs": [
+        "hyp_drapery_transparency"
+      ],
+      "uncertainty": 0.35,
+      "counterevidence": [
+        "the two are lit differently, and an undercut is easier to see in raking light"
+      ],
+      "contrast_ref": "con_drapery_edges",
+      "scope": "cross_image",
+      "measurement": null,
+      "origin": "semant_inference",
+      "provenance": {
+        "producer": "inquiry_intelligence/relator-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "critiques": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "critique_id": "crt_drapery_accept",
+      "relation_id": "crl_drapery_divergent",
+      "verdict": "accepted",
+      "prompt_parroting": "echoes_prompt",
+      "source_completeness": "complete",
+      "image_diversity": "cross_image",
+      "inquiry_relevance": "relevant",
+      "unsupported_inference": "supported",
+      "speculative_or_historical_warning": "",
+      "missing_capability_classes": [
+        "depth"
+      ],
+      "explanation": "both sides resolve and describe the same locus; it uses the person's words but names an edge behaviour the prompt did not",
+      "provenance": {
+        "producer": "inquiry_intelligence/critic-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "outcome": {
+    "schema_version": "inquiry-intelligence.v1",
+    "outcome_id": "out_drapery",
+    "inquiry_id": "drapery",
+    "comparative": true,
+    "workflow": "completed",
+    "outcome": "useful_relations",
+    "counts": {
+      "hypotheses": 1,
+      "observations": 2,
+      "refused_observations": 0,
+      "measured_observations": 0,
+      "alignments": 1,
+      "contrasts": 1,
+      "relations": 1,
+      "accepted_relations": 1,
+      "accepted_cross_image_relations": 1
+    },
+    "explanation": "one accepted relation that crosses both images and names an edge behaviour the prompt did not contain",
+    "limitations": [
+      "nothing was measured; the undercut is described, not sized"
+    ],
+    "provenance": {
+      "producer": "inquiry_intelligence/outcome-fixture",
+      "kind": "fixture",
+      "model": "",
+      "provider": "",
+      "prompt_sha256": "",
+      "note": ""
+    }
+  }
+}

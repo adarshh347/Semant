@@ -1,0 +1,34 @@
+{
+  "run_id": "20260822T010946Z",
+  "lab": "gemini-vlm",
+  "mode": "live",
+  "key_present": false,
+  "key_fingerprint": null,
+  "model": "(no model)",
+  "experiments_requested": [
+    "text_minimal",
+    "image_one",
+    "json_strict",
+    "image_three",
+    "hypothesis_alignment",
+    "relation_proposal"
+  ],
+  "corpus": [
+    {
+      "post_id": "6a6041b81ecd6db1c931eb7a",
+      "sha256": "02efebe7bac883d501808fb2646ad11a90e03d553545087c775c72f4af3b19ae"
+    },
+    {
+      "post_id": "6a6041b61ecd6db1c931eb78",
+      "sha256": "f43e90ced439fdc730ecdb3cd1b5d0eac680fc2a7884ac3765c0eed61fab6787"
+    },
+    {
+      "post_id": "6a60408e1ecd6db1c931eb6b",
+      "sha256": "31b23bffc1880df1c0062fb96b3635178a7da0596c932b6db28e1ebe70ca35a5"
+    }
+  ],
+  "started_at": "2026-08-22T01:09:46Z",
+  "produces": "interpretive readings only; this lab measures nothing",
+  "finished_at": "2026-08-22T01:09:46Z",
+  "calls_made": 0
+}

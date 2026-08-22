@@ -1,0 +1,34 @@
+{
+  "title": "Relation Proposal",
+  "description": "Experiment 6's response shape. Relations are proposed over observations THIS LAB already recorded, and no image is re-sent — so whatever comes back is a reading of a reading, twice removed from anything measured. `grounded_in` must name the observation indices the relation rests on; a relation that cites nothing is a relation the model invented, and the schema makes that visible rather than fixing it.",
+  "type": "object",
+  "required": ["relations", "declined"],
+  "properties": {
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["between", "relation", "grounded_in", "is_hypothesis"],
+        "properties": {
+          "between": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 },
+            "minItems": 2
+          },
+          "relation": { "type": "string", "minLength": 1 },
+          "grounded_in": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 },
+            "description": "Indices into the observation list that was supplied. Empty means ungrounded."
+          },
+          "is_hypothesis": { "type": "string", "enum": ["acknowledged"] }
+        }
+      }
+    },
+    "declined": {
+      "type": "array",
+      "description": "Relations the model was unwilling to propose from these observations alone.",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

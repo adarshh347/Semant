@@ -1,0 +1,93 @@
+{
+  "case_id": "II-04-generative-relation",
+  "case_version": "1.0.0",
+  "title": "Generative relation — observation, then relation, then controlled imagination",
+  "prompt": "Find the strongest visual difference in how these sculptures organize folds around the body. Explain how that difference changes bodily perception, then propose a fourth sculpture that combines the two regimes without merely averaging them.",
+  "prompt_sha256": "e248e203b98d283f5bd9ae63c557b0af3cfb39981d0e8f3b1e8d53a1b69e5547",
+  "post_ids": [
+    "6a6041b81ecd6db1c931eb7a",
+    "6a6041b61ecd6db1c931eb78",
+    "6a60408e1ecd6db1c931eb6b"
+  ],
+  "intended_pressure": [
+    "observation to relation to controlled imagination"
+  ],
+  "expected_structural_properties": [
+    {
+      "metric": "cross_image_relation_count",
+      "expectation": {
+        "min": 1
+      },
+      "why": "'The strongest visual difference' between the works is by definition cross-image."
+    },
+    {
+      "metric": "relation_source_completeness",
+      "expectation": {
+        "min": 1.0
+      },
+      "why": "Every relation must resolve to claims that exist. The proposal at the end rests on this chain, and an unresolvable link makes the invention unfounded rather than imaginative."
+    },
+    {
+      "metric": "observations_with_image_refs",
+      "expectation": {
+        "min": 6
+      },
+      "why": "The chain starts at looking."
+    },
+    {
+      "metric": "unsupported_measured_statuses",
+      "expectation": {
+        "equals": 0
+      },
+      "why": "The fourth sculpture does not exist. Nothing about it may carry a status that implies it was observed."
+    }
+  ],
+  "forbidden_shortcuts": [
+    {
+      "shortcut": "proposing the fourth work without a relation to build it from",
+      "detected_by": "cross_image_relation_count",
+      "why": "Skipping to invention is the whole thing this case tests against."
+    },
+    {
+      "shortcut": "averaging the two regimes",
+      "detected_by": "none",
+      "why": "REAL AND UNAUTOMATED. Whether a proposal averages or genuinely combines is a judgement no metric here makes, and it is written down as a manual question rather than proxied by a similarity number."
+    },
+    {
+      "shortcut": "giving the invented sculpture a measured or visible status",
+      "detected_by": "unsupported_measured_statuses",
+      "why": "An imagined object described in the grammar of an observed one."
+    }
+  ],
+  "manual_review_questions": [
+    "Does the proposed fourth sculpture combine the two regimes, or average them?",
+    "Is the named difference actually the STRONGEST one available in these images?",
+    "Is the claim about bodily perception argued from the visual difference, or asserted alongside it?"
+  ],
+  "input_fingerprints": [
+    {
+      "post_id": "6a6041b81ecd6db1c931eb7a",
+      "fingerprint": "165304160602f8b7415ac2f1c80b480ac7779262d3940f62d403784a3b7e927f",
+      "resolved_at": "2026-08-22T00:00:00Z",
+      "readable": true
+    },
+    {
+      "post_id": "6a6041b61ecd6db1c931eb78",
+      "fingerprint": "0237a39cb28b41e082d185b3d153714e004d0304dbfc08fcfd634db1c03037eb",
+      "resolved_at": "2026-08-22T00:00:00Z",
+      "readable": true
+    },
+    {
+      "post_id": "6a60408e1ecd6db1c931eb6b",
+      "fingerprint": "8a1270244e2876e81465c894c076e235de170c7dee121607c99c8f936c26395a",
+      "resolved_at": "2026-08-22T00:00:00Z",
+      "readable": true
+    }
+  ],
+  "run_mode": "live",
+  "declarations": {
+    "provider": null,
+    "models": {},
+    "note": "Left undeclared until a run declares it. A case that pre-named its models would let a run against different ones be filed under the same declaration."
+  }
+}
