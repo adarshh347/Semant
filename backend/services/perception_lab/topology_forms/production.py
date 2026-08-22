@@ -70,6 +70,18 @@ OMISSION_REASONS: Tuple[str, ...] = (
     "ambiguous_state",         # one pair held two kinds of one family at once; see `transition.py`
     "self_pair",               # source and target are the same identity
     "duplicate",               # the same finding arrived twice
+    # PERCEPTUAL-FORMS-001G adds the composite-Extent reasons HERE rather than opening a second
+    # closed set beside this one. A reader counting what a laboratory left out should have ONE
+    # vocabulary to count in; two lists that each call themselves closed are two lists that drift
+    # on the first edit, and the omission a reader most wants is the one that fell between them.
+    "producer_unavailable",    # the form's only candidate producer is deferred or rejected
+    "ground_not_admitted",     # the evidence cites a model Lane C did not admit for this form
+    "sole_ground_forbidden",   # the only ground offered is one that may not stand alone
+    "no_ground_supplied",      # a grouping arrived with no evidence at all
+    "part_not_supplied",       # a partition part the caller did not provide
+    "not_geometrically_contained",  # a proposed parent does not contain the child, per pixel
+    "semantic_link_undeclared",     # a part/whole link with no human assertion behind it
+    "single_reading",          # one alternative is not an alternative set
 )
 
 
