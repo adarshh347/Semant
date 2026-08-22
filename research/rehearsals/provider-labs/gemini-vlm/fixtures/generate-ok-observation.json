@@ -1,0 +1,17 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [{ "text": "{\"observations\":[{\"image_index\":0,\"quality\":\"a taut, evenly lit surface\",\"visible_evidence\":\"highlights run unbroken along the upper edge with no scatter\",\"where\":\"upper third\",\"confidence_is_not_measurement\":\"acknowledged\"}],\"refusals\":[{\"what\":\"what the object is made of\",\"why\":\"the material is not legible at this resolution\"}]}" }]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1204,
+    "candidatesTokenCount": 88,
+    "totalTokenCount": 1292
+  },
+  "modelVersion": "fixture-model-a-001"
+}

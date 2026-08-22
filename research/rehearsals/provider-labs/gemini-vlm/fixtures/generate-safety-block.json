@@ -1,0 +1,9 @@
+{
+  "promptFeedback": {
+    "blockReason": "SAFETY",
+    "safetyRatings": [
+      { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "probability": "MEDIUM" }
+    ]
+  },
+  "usageMetadata": { "promptTokenCount": 1204, "totalTokenCount": 1204 }
+}

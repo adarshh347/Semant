@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:provider-lab/gemini-census.schema.json",
+  "title": "Gemini Account Census",
+  "description": "What THIS project's account actually offers, recorded from the account itself. The point of the schema is the `source` field on every quota: the models endpoint reports context and output limits, and does NOT report RPM/TPM/RPD — those live on the account dashboard. A census that filled them in from a blog post would be indistinguishable, on disk, from one that read them off the console. So each is a triple of value+source, and `observed_from` is a closed set that does not include prose.",
+  "type": "object",
+  "required": ["version", "taken_at", "mode", "models", "quotas", "data_use"],
+  "properties": {
+    "version": { "const": "gemini-census.v1" },
+    "taken_at": { "type": ["string", "null"] },
+    "mode": { "type": "string", "enum": ["live", "replay", "fixture", "skipped"] },
+    "skipped_reason": { "type": ["string", "null"] },
+    "project": {
+      "type": ["object", "null"],
+      "properties": {
+        "key_present": { "type": "boolean" },
+        "key_fingerprint": {
+          "type": ["string", "null"],
+          "description": "sha256 of the key, first 12 hex. Identifies WHICH key without carrying it."
+        }
+      }
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "observed_from"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "display_name": { "type": ["string", "null"] },
+          "version": { "type": ["string", "null"] },
+          "input_token_limit": { "type": ["integer", "null"] },
+          "output_token_limit": { "type": ["integer", "null"] },
+          "supported_generation_methods": { "type": "array", "items": { "type": "string" } },
+          "image_input": {
+            "type": ["boolean", "null"],
+            "description": "null until PROVED by a call that sent an image and was answered. The models endpoint does not state it."
+          },
+          "image_input_evidence": { "type": ["string", "null"] },
+          "json_mode": { "type": ["boolean", "null"] },
+          "json_mode_evidence": { "type": ["string", "null"] },
+          "observed_from": { "type": "string", "enum": ["models_endpoint", "live_call", "dashboard", "not_observed"] }
+        }
+      }
+    },
+    "quotas": {
+      "type": "object",
+      "required": ["rpm", "tpm", "rpd", "tpd"],
+      "properties": {
+        "rpm": { "$ref": "#/$defs/quota" },
+        "tpm": { "$ref": "#/$defs/quota" },
+        "rpd": { "$ref": "#/$defs/quota" },
+        "tpd": { "$ref": "#/$defs/quota" }
+      }
+    },
+    "retry_after": {
+      "type": ["object", "null"],
+      "properties": {
+        "observed": { "type": ["boolean", "null"] },
+        "header": { "type": ["string", "null"] },
+        "body_retry_delay": { "type": ["string", "null"] },
+        "note": { "type": ["string", "null"] }
+      }
+    },
+    "usage_metadata": {
+      "type": ["object", "null"],
+      "properties": {
+        "reported": { "type": ["boolean", "null"] },
+        "fields": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "data_use": {
+      "$ref": "#/$defs/quota",
+      "description": "Whether the tier's prompts are used to improve the product. A policy fact about THIS account; `not_observed` until read off the account, never assumed."
+    }
+  },
+  "$defs": {
+    "quota": {
+      "type": "object",
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": ["number", "string", "null"] },
+        "unit": { "type": ["string", "null"] },
+        "source": {
+          "description": "not_observed is the honest default and the only one that may accompany a null value.",
+          "type": "string",
+          "enum": ["dashboard", "models_endpoint", "live_call", "response_header", "not_observed"]
+        },
+        "note": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

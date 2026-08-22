@@ -1,0 +1,284 @@
+{
+  "name": "plant-branching",
+  "inquiry_map": {
+    "schema_version": "inquiry-intelligence.v1",
+    "inquiry_map_id": "imap_branching",
+    "inquiry_id": "branching",
+    "principal_question": "is the same division rule at work in both?",
+    "origin": "prompt",
+    "user_hypotheses": [
+      {
+        "hypothesis_id": "hyp_branching_halving",
+        "text": "both species halve the spacing between divisions as they go outward, so the two are the same rule at different sizes",
+        "origin": "prompt",
+        "spans": [],
+        "user_terms": [
+          "halve",
+          "spacing",
+          "outward",
+          "rule"
+        ],
+        "note": ""
+      }
+    ],
+    "user_vocabulary": [
+      "halve",
+      "spacing",
+      "outward",
+      "rule"
+    ],
+    "requested_comparisons": [
+      {
+        "comparison_id": "rqc_branching_pair",
+        "text": "compare the frond with the twig",
+        "image_ids": [
+          "post_fern_frond",
+          "post_maple_twig"
+        ],
+        "dimension": "how the divisions space",
+        "spans": []
+      }
+    ],
+    "interpretive_questions": [
+      {
+        "question_id": "qst_branching_same",
+        "text": "what would make two rules 'the same rule'?",
+        "capability_classes": [],
+        "spans": []
+      }
+    ],
+    "potentially_observable_questions": [
+      {
+        "question_id": "qst_branching_measure",
+        "text": "what are the actual intervals?",
+        "capability_classes": [
+          "extent"
+        ],
+        "spans": []
+      }
+    ],
+    "desired_answer_form": "explanation",
+    "ambiguities": [],
+    "prompt_source_spans": [],
+    "provenance": {
+      "producer": "inquiry_intelligence/map-fixture",
+      "kind": "fixture",
+      "model": "",
+      "provider": "",
+      "prompt_sha256": "",
+      "note": ""
+    }
+  },
+  "observations": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "observation_id": "vob_frond_interval",
+      "image_id": "post_fern_frond",
+      "origin": "image_observation",
+      "locus": "from the stem base to the tip",
+      "region_ref": "",
+      "ground_ref": "",
+      "feature": "division interval",
+      "visible_description": "each division carries smaller divisions of the same shape, and the spacing between them shortens toward the tip",
+      "organization": "the same branching shape at three visible sizes",
+      "appearance_effect": "reads as one figure repeated inside itself",
+      "interpretive_possibility": "may be a single rule applied at every scale",
+      "reading_block_refs": [],
+      "epistemic_status": "interpretive",
+      "uncertainty": 0.2,
+      "requested_capability_classes": [
+        "pattern",
+        "extent"
+      ],
+      "state": "observed",
+      "absence_reason": "",
+      "measurement": null,
+      "provenance": {
+        "producer": "inquiry_intelligence/vlm-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    },
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "observation_id": "vob_maple_interval",
+      "image_id": "post_maple_twig",
+      "origin": "image_observation",
+      "locus": "along the woody twig",
+      "region_ref": "",
+      "ground_ref": "",
+      "feature": "division interval",
+      "visible_description": "divisions leave the twig in pairs at roughly even spacing, and the spacing does not visibly shorten toward the tip",
+      "organization": "paired, and even along the length",
+      "appearance_effect": "reads as regular rather than as accelerating",
+      "interpretive_possibility": "the rule may govern the pairing rather than the spacing",
+      "reading_block_refs": [],
+      "epistemic_status": "interpretive",
+      "uncertainty": 0.3,
+      "requested_capability_classes": [
+        "extent"
+      ],
+      "state": "observed",
+      "absence_reason": "",
+      "measurement": null,
+      "provenance": {
+        "producer": "inquiry_intelligence/vlm-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "alignments": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "alignment_id": "hal_branching_challenges",
+      "hypothesis_id": "hyp_branching_halving",
+      "observation_id": "vob_maple_interval",
+      "alignment": "challenges",
+      "explanation": "the second shows even spacing where the person's rule predicts shortening",
+      "missing_capability_classes": [],
+      "uncertainty": 0.0,
+      "provenance": {
+        "producer": "inquiry_intelligence/aligner-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "contrasts": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "contrast_id": "con_branching_interval",
+      "question_ref": "",
+      "question_text": "does the spacing change the same way in both?",
+      "observation_ids": [
+        "vob_frond_interval",
+        "vob_maple_interval"
+      ],
+      "image_ids": [
+        "post_fern_frond",
+        "post_maple_twig"
+      ],
+      "comparison_dimension": "how the interval between divisions changes outward",
+      "why_it_matters": "the person's claim is that one rule covers both",
+      "difference_investigated": "whether the interval shortens in both or only in one",
+      "possible_countercondition": "the second is photographed at a scale where the shortening is not yet visible, which would make the difference an artefact of framing",
+      "required_capability_classes": [
+        "extent",
+        "pattern"
+      ],
+      "priority": 1,
+      "scope": "cross_image",
+      "origin": "semant_inference",
+      "provenance": {
+        "producer": "inquiry_intelligence/planner-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "relations": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "relation_id": "crl_branching_scale",
+      "left_observation_id": "vob_frond_interval",
+      "right_observation_id": "vob_maple_interval",
+      "relation_kind": "scale_variation",
+      "explanation": "one repeats its own shape at successively smaller sizes; the other repeats a unit at one size, so what varies between them is whether the rule recurs at all",
+      "image_ids": [
+        "post_fern_frond",
+        "post_maple_twig"
+      ],
+      "inquiry_relevance": "separates the two candidate rules the person's single sentence contains",
+      "epistemic_status": "interpretive",
+      "hypothesis_refs": [
+        "hyp_branching_halving"
+      ],
+      "uncertainty": 0.4,
+      "counterevidence": [
+        "the two are photographed at different distances"
+      ],
+      "contrast_ref": "con_branching_interval",
+      "scope": "cross_image",
+      "measurement": null,
+      "origin": "semant_inference",
+      "provenance": {
+        "producer": "inquiry_intelligence/relator-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "critiques": [
+    {
+      "schema_version": "inquiry-intelligence.v1",
+      "critique_id": "crt_branching_accept",
+      "relation_id": "crl_branching_scale",
+      "verdict": "accepted",
+      "prompt_parroting": "not_parroting",
+      "source_completeness": "complete",
+      "image_diversity": "cross_image",
+      "inquiry_relevance": "relevant",
+      "unsupported_inference": "supported",
+      "speculative_or_historical_warning": "",
+      "missing_capability_classes": [
+        "extent"
+      ],
+      "explanation": "it separates two rules the person's sentence ran together, which is not a restatement of it; both sides resolve",
+      "provenance": {
+        "producer": "inquiry_intelligence/critic-fixture",
+        "kind": "fixture",
+        "model": "",
+        "provider": "",
+        "prompt_sha256": "",
+        "note": ""
+      }
+    }
+  ],
+  "outcome": {
+    "schema_version": "inquiry-intelligence.v1",
+    "outcome_id": "out_branching",
+    "inquiry_id": "branching",
+    "comparative": true,
+    "workflow": "completed",
+    "outcome": "useful_relations",
+    "counts": {
+      "hypotheses": 1,
+      "observations": 2,
+      "refused_observations": 0,
+      "measured_observations": 0,
+      "alignments": 1,
+      "contrasts": 1,
+      "relations": 1,
+      "accepted_relations": 1,
+      "accepted_cross_image_relations": 1
+    },
+    "explanation": "one accepted cross-image relation that separates two rules the question ran together",
+    "limitations": [
+      "nothing measured an interval; both descriptions are of appearance"
+    ],
+    "provenance": {
+      "producer": "inquiry_intelligence/outcome-fixture",
+      "kind": "fixture",
+      "model": "",
+      "provider": "",
+      "prompt_sha256": "",
+      "note": ""
+    }
+  }
+}
