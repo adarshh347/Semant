@@ -129,7 +129,7 @@ def test_requested_context_and_served_context_are_recorded_apart(tmp_path, monke
 def test_wired_memory_at_the_ceiling_is_a_breach():
     start = {"started_ok": True}
     machines = [{"wired_mb": lab.METAL_CEILING_MB, "swap_used_mb": 100}]
-    v = hard.safety_verdict(start, [], True, machines)
+    v = hard.safety_verdict(start, [], True, machines, process_alive=True)
     assert not v["safe"]
     assert any("Metal ceiling" in b for b in v["breaches"])
 
@@ -140,9 +140,24 @@ def test_swap_alone_never_condemns_a_profile():
     running; a profile failed on swap would be a finding about the browser.
     """
     v = hard.safety_verdict({"started_ok": True}, [], True,
-                            [{"wired_mb": 100, "swap_used_mb": 14000}])
+                            [{"wired_mb": 100, "swap_used_mb": 14000}], process_alive=True)
     assert v["safe"], v["breaches"]
     assert v["peak_whole_machine_swap_mb"] == 14000
+
+
+def test_the_safety_verdict_is_a_function_of_the_record_not_of_this_machine():
+    """
+    It called `running_pid()` internally, so it passed locally — where a model server happened to
+    be up — and failed in CI, where none ever is. A verdict that cannot be recomputed from the
+    record is not a verdict about the record.
+    """
+    args = ({"started_ok": True}, [], True, [{"wired_mb": 100, "swap_used_mb": 100}])
+    assert hard.safety_verdict(*args, process_alive=True)["safe"]
+    assert hard.safety_verdict(*args, process_alive=None)["safe"], \
+        "an unobserved liveness must not be a breach"
+    assert not hard.safety_verdict(*args, process_alive=False)["safe"]
+    import inspect
+    assert "running_pid()" not in inspect.getsource(hard.safety_verdict)
 
 
 def test_an_unsafe_context_cell_cannot_be_ratified(tmp_path, monkeypatch):

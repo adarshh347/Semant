@@ -1045,9 +1045,18 @@ GROUPS = ("context", "image_tokens", "inference", "adversarial")
 
 
 def safety_verdict(start_rec: Dict[str, Any], probes: List[Dict[str, Any]],
-                   healthy_after: bool, machines: List[Dict[str, Any]]) -> Dict[str, Any]:
+                   healthy_after: bool, machines: List[Dict[str, Any]],
+                   process_alive: Optional[bool] = None) -> Dict[str, Any]:
     """
     The declared rules, applied. Swap is recorded and never used to condemn.
+
+    `process_alive` IS A PARAMETER AND NOT A LOOKUP. The first version asked the operating system
+    for the live pid from inside this function, which made a verdict depend on whether a server
+    happened to be up
+    on the machine evaluating it — so the tests passed locally, where one was, and failed in CI,
+    where none ever is. A function that decides whether a profile was safe must be a function of
+    the record, or it is not reproducible from the record. `None` means the caller did not observe
+    it, and an unobserved liveness is not a breach.
     """
     breaches: List[str] = []
     if not start_rec.get("started_ok"):
@@ -1056,7 +1065,7 @@ def safety_verdict(start_rec: Dict[str, Any], probes: List[Dict[str, Any]],
         breaches.append("a request did not reach the server")
     if not healthy_after:
         breaches.append("the server failed its post-request health probe")
-    if ServerControl.running_pid() is None and start_rec.get("started_ok"):
+    if process_alive is False and start_rec.get("started_ok"):
         breaches.append("the server process is gone after the probes")
     wired = [m.get("wired_mb") for m in machines if m.get("wired_mb") is not None]
     peak_wired = max(wired) if wired else None
@@ -1144,7 +1153,8 @@ def run_context_group(ledger: Ledger, profiles: Dict[str, Any], corpus, raws,
         healthy_after = sc.healthy(10)
         machines.append(machine())
         safety = safety_verdict(start, probes + [{"status": r["status"]} for r in retention],
-                                healthy_after, machines)
+                                healthy_after, machines,
+                                process_alive=ServerControl.running_pid() is not None)
         stop = sc.stop()
 
         hits = [r for r in retention if not r["absent_control"]]
@@ -1226,7 +1236,8 @@ def run_image_group(ledger: Ledger, profiles: Dict[str, Any], n_ctx: int, raws,
             machines.append(machine())
 
         healthy_after = sc.healthy(10)
-        safety = safety_verdict(start, [r["call"] for r in results], healthy_after, machines)
+        safety = safety_verdict(start, [r["call"] for r in results], healthy_after, machines,
+                                process_alive=ServerControl.running_pid() is not None)
         stop = sc.stop()
         img_tokens = [r["call"].get("prompt_tokens") for r in results]
         ledger.finish(cell, "done" if safety["safe"] else "invalid", {
