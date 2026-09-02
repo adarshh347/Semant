@@ -143,3 +143,46 @@
 @media (prefers-reduced-motion: reduce) {
   .pw-card, .pw-write { transition: none; }
 }
+
+/* The registers this reading named inside a cited field. Shown with the roles,
+   for the same reason: both are properties of the PERCEPT'S USE of a ground, not
+   of the ground. The numeral is the address the prose cites; the phrase is the
+   situated meaning this noticing gave it. */
+.pw-registers {
+    list-style: none;
+    margin: 0.3rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.pw-register {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+}
+
+.pw-register-level {
+    flex: none;
+    min-width: 1.05rem;
+    height: 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.pw-register-phrase { opacity: 0.85; }
+
+/* Evidence that no longer resolves: the phrase is kept and marked, never removed —
+   the reading was really made, and hiding it would edit the record. */
+.pw-register.is-detached .pw-register-phrase {
+    opacity: 0.55;
+    text-decoration: line-through;
+}

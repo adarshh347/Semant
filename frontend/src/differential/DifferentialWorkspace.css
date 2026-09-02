@@ -349,14 +349,15 @@
 
 /* Caption + its evidence note travel together, so a long expression cannot push
    the note off the stage or grow past the image. */
+/* Recall prose lives BELOW the image, in the stage column — never over the
+   pixels it claims to be reading. It used to be `position:absolute` inside
+   `.diff-stage`, where a paragraph-length percept covered the body of the image
+   and competed with the painted evidence: the interpretation occluded its own
+   grounds. Now it is an ordinary block in flow. It no longer needs a max-height
+   or its own scroller, because it is not fighting the image for room. */
 .diff-recall-say {
-    position: absolute;
-    left: 50%;
-    bottom: 1.1rem;
-    transform: translateX(-50%);
-    max-width: min(80%, 34rem);
-    max-height: 45%;
-    overflow-y: auto;
+    margin: 0.5rem auto 0;
+    max-width: min(100%, 42rem);
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
@@ -380,8 +381,8 @@
     animation: diff-caption-in 480ms ease both;
 }
 @keyframes diff-caption-in {
-    from { opacity: 0; transform: translateX(-50%) translateY(6px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Detached evidence — stated, not dramatised. Quieter than the caption it
@@ -1357,3 +1358,106 @@
 /* P8-D — a reading is an answer, not evidence: stated plainly, never styled as a mark */
 .diff-field-reading { font-style: normal; color: var(--ink, #2a2a2a); }
 .diff-field-reading.on { font-weight: 500; }
+
+/* ── brush intensity: the field's internal anatomy ───────────────────────────
+   Four ordinal registers, not a slider. The chips are a radiogroup; the swatch
+   is drawn from the level's own render recipe (brushIntensity.js) so the chip
+   previews what the paint will do. Deliberately NOT four hues — hue already
+   identifies the field/layer role, and colouring the register too would multiply
+   two meanings into one channel and make neither readable. Weight carries it. */
+.diff-brush-levels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.diff-level-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.diff-level-swatch {
+    width: 0.62rem;
+    height: 0.62rem;
+    border-radius: 50%;
+    flex: none;
+    background: var(--accent);
+    /* The rim is the channel that survives a light background, so the swatch
+       keeps one too rather than relying on fill alpha alone. */
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-deep) 55%, transparent);
+}
+
+.diff-level-num {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    opacity: 0.75;
+}
+
+/* The label is the aid; the numeral is the address prose will cite. On a narrow
+   rail the name folds away and the number — which is what a percept names —
+   stays. */
+@media (max-width: 1180px) {
+    .diff-level-label { display: none; }
+}
+
+/* The cursor preview carries the register as fill + rim contrast. Its DIAMETER
+   is a pure function of radius: level is not a size, and letting it change the
+   circle would make the brush's two channels illegible at a glance. */
+.diff-brush-cursor {
+    background: color-mix(in srgb, var(--accent) calc(var(--level-fill, 0.46) * 55%), transparent);
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.18),
+        0 0 var(--level-rim, 1.4px) color-mix(in srgb, var(--accent-deep) 70%, transparent);
+}
+
+/* ── intensity anatomy in the percept composer ───────────────────────────── */
+.diff-intensity-anatomy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.4rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.diff-intensity-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.diff-intensity-tag {
+    flex: none;
+    min-width: 8.5rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.01em;
+    opacity: 0.8;
+    font-variant-numeric: tabular-nums;
+}
+
+.diff-intensity-count { opacity: 0.6; }
+
+.diff-intensity-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    font: inherit;
+    font-size: 0.78rem;
+    padding: 0.2rem 0.45rem;
+    color: inherit;
+    background: color-mix(in srgb, currentColor 5%, transparent);
+    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    border-radius: var(--radius-sm, 4px);
+}
+
+.diff-intensity-input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+/* Ungraded strokes are reported, never quietly upgraded. */
+.diff-intensity-legacy {
+    margin: 0;
+    font-size: 0.7rem;
+    opacity: 0.65;
+}
