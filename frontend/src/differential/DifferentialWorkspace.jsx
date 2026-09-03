@@ -6,7 +6,11 @@ import {
 import RegionOverlay from '../components/RegionOverlay';
 import GroundLayers from './GroundLayers';
 import InstrumentHandles from './InstrumentHandles';
-import useStageGeometry, { useNaturalSize, pointerToNormalized } from './useStageGeometry';
+import useStageGeometry, { useNaturalSize } from './useStageGeometry';
+import useImageViewport from './useImageViewport';
+import ViewportBar from './ViewportBar';
+import InstrumentExtent from './InstrumentExtent';
+import { BRUSH_RANGE, BAND_RANGE, BRUSH_PRESETS, stepUp, stepDown } from './instrumentScale';
 import useMaskRefine from './useMaskRefine';
 import useSemanticRead from './useSemanticRead';
 import SemanticReading from './SemanticReading';
@@ -215,6 +219,9 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     const drawingRef = useRef(false);
     const [natural, onImgLoad] = useNaturalSize();
     const { content } = useStageGeometry(stageRef, natural);
+    // The view is not the evidence: transient, session-local, and it never
+    // reaches a ground, mark, percept or post. See imageViewport.js.
+    const vp = useImageViewport(stageRef, { content });
 
     const {
         regions, selectedId, selectRegion, hoveredId, setHoveredId,
@@ -349,10 +356,11 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
 
     // The one sanctioned pointer→normalized path, wrapped for the handle overlay
     // (which has clientX/clientY, not a full event). It never reimplements the
-    // letterbox math — it hands a synthetic event to `pointerToNormalized`.
+    // letterbox math NOR the zoom arithmetic — both live in imageViewport.js, and
+    // this hands the client point to the viewport's inverse transform.
     const clientToNormalized = useCallback((clientX, clientY) => (
-        pointerToNormalized({ clientX, clientY }, stageRef.current, content)
-    ), [content]);
+        vp.clientToNormalized(clientX, clientY)
+    ), [vp]);
 
     // Begin editing a committed path/boundary ground (from a hit-path pick), unless
     // its layer is locked. The points are copied into the edit draft; the ground is
@@ -660,8 +668,12 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
 
     // ── gestures ─────────────────────────────────────────────────────────────
     const onStagePointerDown = (e) => {
+        // NAVIGATION FIRST, and it returns without touching a tool. Space-drag,
+        // middle-drag or the latched Hand pans the plane while Brush/Trace/Refine
+        // stay armed — beginning a pan must never append a point to a stroke.
+        if (vp.beginPan(e)) return;
         if (untouched) return;
-        const p = pointerToNormalized(e, stageRef.current, content);
+        const p = vp.clientToNormalized(e.clientX, e.clientY);
         if (!p) return;
         // Refine (VISION-B5): a click plants a point (⇧ = negative), a drag draws a box.
         // Own the gesture so the image never pans while prompting.
@@ -710,7 +722,9 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     };
 
     const onStagePointerMove = (e) => {
-        const p = pointerToNormalized(e, stageRef.current, content);
+        // A pan in progress consumes the move entirely; the brush never sees it.
+        if (vp.movePan(e)) return;
+        const p = vp.clientToNormalized(e.clientX, e.clientY);
         if (tool === 'brush') setBrushCursor(p);
         if (tool === 'refine' && refineDrag.current) {
             if (!p) return;
@@ -740,9 +754,10 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     };
 
     const onStagePointerUp = (e) => {
+        if (vp.endPan()) return;
         if (tool === 'refine' && refineDrag.current) {
             const d = refineDrag.current; refineDrag.current = null;
-            const p = pointerToNormalized(e, stageRef.current, content);
+            const p = vp.clientToNormalized(e.clientX, e.clientY);
             if (d.moved && p) refine.setBoxPrompt({ x0: d.x0, y0: d.y0, x1: p.x, y1: p.y });
             else if (p) refine.addPoint(p.x, p.y, e.shiftKey ? 0 : 1);
             setRefineBox(null);
@@ -1126,10 +1141,17 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                 e.preventDefault();
                 setBrushLevel(Number(e.key));
             }
-            else if (tool === 'brush' && e.key === '[') setBrushRadius((r) => Math.max(0.012, r * 0.82));
-            else if (tool === 'brush' && e.key === ']') setBrushRadius((r) => Math.min(0.16, r * 1.22));
-            else if (tool === 'trace' && traceSub === 'boundary' && e.key === '[') setBandWidth((w) => Math.max(0.02, w * 0.82));
-            else if (tool === 'trace' && traceSub === 'boundary' && e.key === ']') setBandWidth((w) => Math.min(0.2, w * 1.22));
+            // The bracket keys and the visible controls are the SAME operation on
+            // the same range — one source of truth, so they can never disagree.
+            else if (tool === 'brush' && e.key === '[') setBrushRadius((r) => stepDown(r, BRUSH_RANGE));
+            else if (tool === 'brush' && e.key === ']') setBrushRadius((r) => stepUp(r, BRUSH_RANGE));
+            else if (tool === 'trace' && traceSub === 'boundary' && e.key === '[') setBandWidth((w) => stepDown(w, BAND_RANGE));
+            else if (tool === 'trace' && traceSub === 'boundary' && e.key === ']') setBandWidth((w) => stepUp(w, BAND_RANGE));
+            // View keys. They move the eye, never the evidence, so they are safe
+            // beside the instrument keys above.
+            else if (e.key === '0') { e.preventDefault(); vp.fit(); }
+            else if (e.key === '+' || e.key === '=') { e.preventDefault(); vp.zoomIn(); }
+            else if (e.key === '-' || e.key === '_') { e.preventDefault(); vp.zoomOut(); }
             else if (e.key.toLowerCase() === 'b') switchTool('brush');
             else if (e.key.toLowerCase() === 'v') switchTool('select');
             else if (e.key.toLowerCase() === 't') switchTool('trace');
@@ -1274,13 +1296,19 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             <button type="button" role="radio" aria-checked={traceSub === 'boundary'}
                                 className={`diff-subtool${traceSub === 'boundary' ? ' on' : ''}`}
                                 onClick={() => setTraceSub('boundary')}>Boundary</button>
-                            {traceSub === 'boundary' && (
-                                <label className="diff-band">band
-                                    <input type="range" min="0.02" max="0.2" step="0.005" value={bandWidth}
-                                        onChange={(e) => setBandWidth(Number(e.target.value))} />
-                                </label>
-                            )}
                         </div>
+                    )}
+
+                    {/* The band is a SEAM'S WIDTH — the same kind of image-relative
+                        evidence geometry as the brush's radius, so it gets the same
+                        instrument rather than a bare unlabelled slider. It also
+                        leaves the radiogroup it used to sit inside, where a range
+                        input was never a legal child. */}
+                    {tracing && traceSub === 'boundary' && !untouched && (
+                        <InstrumentExtent
+                            label="Band width" value={bandWidth} onChange={setBandWidth}
+                            range={BAND_RANGE} shortcutHint="[ ]"
+                        />
                     )}
 
                     {/* P3-B (2a) — the trace instrument: a role picker (like the brush's),
@@ -1428,6 +1456,16 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     </button>
                                 ))}
                             </div>
+                            {/* Size and Register are ORTHOGONAL channels and are
+                                labelled so. Size is how much of the anatomy the mark
+                                covers; register is how intensely it participates.
+                                Read as one dial they produce a broad stroke where a
+                                dominant one was meant. Radius is image-relative, so
+                                zoom never touches it. */}
+                            <InstrumentExtent
+                                label="Size" value={brushRadius} onChange={setBrushRadius}
+                                range={BRUSH_RANGE} presets={BRUSH_PRESETS} shortcutHint="[ ]"
+                            />
                             <label className={`diff-pf-toggle diff-erase-toggle${brushErase ? ' on' : ''}`}
                                 title="Erase mode — the stroke subtracts (op:'sub'), composited destination-out. ⌥ also erases for one stroke.">
                                 <input type="checkbox" checked={brushErase}
@@ -1447,18 +1485,51 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                         </label>
                     )}
 
+                    {/* Navigation, kept apart from the instrument controls: zoom
+                        changes ACCESS to pixels, extent changes the evidence. */}
+                    {!untouched && (
+                        <ViewportBar
+                            label={vp.label} atFit={vp.atFit}
+                            canZoomIn={vp.canZoomIn} canZoomOut={vp.canZoomOut}
+                            onZoomIn={vp.zoomIn} onZoomOut={vp.zoomOut} onFit={vp.fit}
+                            naturalAvailable={!!vp.naturalScale(natural)}
+                            onNatural={() => vp.zoomTo(vp.naturalScale(natural))}
+                            handTool={vp.handTool} onToggleHand={() => vp.setHandTool((h) => !h)}
+                        />
+                    )}
+
                     <div className={
                         `diff-stage${untouched ? ' is-untouched' : ''}`
                         + `${drawingTool ? ' is-drawing' : ''}`
-                        + `${recallPlayer.receding ? ' is-recalling' : ''}`}
+                        + `${recallPlayer.receding ? ' is-recalling' : ''}`
+                        // The cursor is how the temporary mode announces itself:
+                        // brush circle → open hand → closed hand.
+                        + `${vp.navigating ? ' is-navigable' : ''}`
+                        + `${vp.panning ? ' is-panning' : ''}`}
                         ref={stageRef}
                         style={natural ? { '--diff-ar': `${natural.w} / ${natural.h}` } : undefined}
                         onPointerDown={onStagePointerDown}
                         onPointerMove={onStagePointerMove}
                         onPointerUp={onStagePointerUp}
-                        onPointerLeave={() => { endStroke(); setBrushCursor(null); }}
+                        onPointerLeave={() => { vp.endPan(); endStroke(); setBrushCursor(null); }}
+                        onPointerCancel={() => { vp.endPan(); endStroke(); }}
+                        onContextMenu={(e) => { if (vp.navigating) e.preventDefault(); }}
                         // Belt-and-braces against the native image drag stealing the gesture.
                         onDragStart={(e) => e.preventDefault()}>
+                    {/* THE IMAGE PLANE — one transform, every spatial layer under it.
+                        The image, the region SVG, the ground canvas + SVG, the
+                        suggestion and refine ghosts, the editable handles and the
+                        brush cursor are all children here, so they cannot drift from
+                        each other at any scale: there is only one transform to be
+                        wrong. A second CSS transform computed anywhere else is how
+                        annotation drift enters, and there is not one.
+
+                        A transform does not change layout size, so this plane's box
+                        always equals the stage's and `content` is unaffected by zoom
+                        — which is why every layer lands exactly where it always did
+                        at fit. `will-change` keeps the raster on the compositor
+                        during a pan. */}
+                    <div className="diff-plane" style={{ transform: vp.transform }}>
                         {/* FIX-UI-001 (G2): the stage image is the one request that must never
                             queue behind telemetry. fetchpriority=high tells the browser to
                             dispatch it ahead of the vision-runs/latest reads competing for the
@@ -1541,6 +1612,7 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                     '--level-rim': `${INTENSITY_RECIPES[brushLevel].rimBlur * 0.4}px`,
                                 }} />
                         )}
+                    </div>{/* /diff-plane */}
                     </div>
                     {/* Recall prose sits BELOW the image, never on it.
                         The image is the evidence surface: a tall caption laid over the
