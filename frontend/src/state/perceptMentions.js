@@ -81,6 +81,14 @@ export function makeExpressionPercept({
   // written before roles existed is byte-identical to one whose roles were
   // cleared. Never written to post.grounds — see differential/groundRoles.js.
   ground_roles = null,
+  // Brush intensity — { [ground_id]: { "1": phrase, … } }. The local names this
+  // reading gives the registers of a field it cites. Same rule and same reason as
+  // `ground_roles`: it belongs to THIS percept's use of the ground, never to the
+  // ground, because the same painted anatomy may read differently elsewhere.
+  // A sibling key rather than a nesting inside `ground_roles`, whose value is
+  // typed as a role STRING. Omitted entirely when empty — see differential/
+  // brushIntensity.js.
+  ground_intensity_readings = null,
 } = {}) {
   return {
     id: id || `pctx_${Date.now().toString(36)}_${(pctxSeq++).toString(36)}`,
@@ -89,6 +97,8 @@ export function makeExpressionPercept({
     ground_ids: [...ground_ids],
     properties: [...properties],
     ...(ground_roles && Object.keys(ground_roles).length ? { ground_roles: { ...ground_roles } } : {}),
+    ...(ground_intensity_readings && Object.keys(ground_intensity_readings).length
+      ? { ground_intensity_readings: { ...ground_intensity_readings } } : {}),
     actor,
     created_at: created_at || new Date().toISOString(),
   };

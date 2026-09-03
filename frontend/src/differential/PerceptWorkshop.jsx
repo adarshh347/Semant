@@ -3,6 +3,7 @@ import { Play } from 'lucide-react';
 import PerceptThread from './PerceptThread';
 import { resolveGround } from './grounds';
 import { groundRoleList, roleLabel } from './groundRoles';
+import { intensityReadingsOf, intensityLabel } from './brushIntensity';
 import { buildPerceptPacket } from './perceptPacket';
 import { blockIdsForPercept } from '../state/perceptMentions';
 import './PerceptWorkshop.css';
@@ -61,6 +62,30 @@ function PerceptCard({ percept, grounds, regions, mentions, postId, onPlay, onSe
     const named = cited.filter((c) => c.role);
     const detached = cited.filter((c) => c.detached);
 
+    // The registers THIS reading named inside the fields it cites. Like roles,
+    // these belong to the percept's use of a ground, so they are shown inside the
+    // percept and never beside the ground — the same painted anatomy may be read
+    // differently by the next noticing. Flattened to one row per named level, in
+    // ascending order, because that is the order the anatomy is read in.
+    const registers = useMemo(() => {
+        const all = intensityReadingsOf(percept);
+        const rows = [];
+        for (const c of cited) {
+            const byLevel = all[c.ground_id];
+            if (!byLevel) continue;
+            for (const lk of Object.keys(byLevel).sort((a, b) => Number(a) - Number(b))) {
+                rows.push({
+                    key: `${c.ground_id}:${lk}`,
+                    level: Number(lk),
+                    label: intensityLabel(Number(lk)),
+                    phrase: byLevel[lk],
+                    detached: !!c.detached,
+                });
+            }
+        }
+        return rows;
+    }, [percept, cited]);
+
     // Derived from the live mention set every render — see the header note.
     const blockCount = useMemo(
         () => blockIdsForPercept(mentions, percept.id).size,
@@ -116,6 +141,20 @@ function PerceptCard({ percept, grounds, regions, mentions, postId, onPlay, onSe
                         <li key={c.ground_id} className={`pw-role${c.detached ? ' is-detached' : ''}`}>
                             <span className="pw-role-name">{roleLabel(c.role)}</span>
                             <span className="pw-role-ground">{c.label || c.ground_type || 'ground'}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            {/* What the curator called each register of a cited field. A phrase is
+                only ever shown against a level that field actually uses — the write
+                path prunes anything the evidence stopped supporting. */}
+            {registers.length > 0 && (
+                <ul className="pw-registers">
+                    {registers.map((r) => (
+                        <li key={r.key} className={`pw-register${r.detached ? ' is-detached' : ''}`}>
+                            <span className="pw-register-level" title={r.label}>{r.level}</span>
+                            <span className="pw-register-phrase">{r.phrase}</span>
                         </li>
                     ))}
                 </ul>

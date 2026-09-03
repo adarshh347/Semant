@@ -24,6 +24,10 @@ import useFindParts from './useFindParts';
 import { makeGround, groundFromRegion, resolveGround, groundCenter } from './grounds';
 import { useRecallPlayer } from './recall';
 import { CORE_ROLES } from './groundRoles';
+import {
+    BRUSH_INTENSITY_LEVELS, DEFAULT_INTENSITY_LEVEL, INTENSITY_RECIPES,
+    withIntensity, levelsSummary, intensityAnatomy, pruneIntensityReadings,
+} from './brushIntensity';
 import { hasMaskPolygons, ringsToPath } from '../lib/maskGeometry';
 // CIRCUIT-001 P2D-A — the renderer-independent truth model. Marks emitted here are the
 // canonical record of what an instrument produced; grounds stay the persisted surface.
@@ -198,6 +202,9 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
     const [traceSub, setTraceSub] = useState('path');
     const [untouched, setUntouched] = useState(false);
     const [brushRadius, setBrushRadius] = useState(0.045);
+    // The semantic brush's register. Session-sticky: it persists across strokes
+    // and tools so a curator building one anatomy is not re-choosing constantly.
+    const [brushLevel, setBrushLevel] = useState(DEFAULT_INTENSITY_LEVEL);
     const [bandWidth, setBandWidth] = useState(0.06);
     const [draft, setDraft] = useState(null);
     const [picked, setPicked] = useState(() => new Set());   // multi-selected region ids (Select)
@@ -679,7 +686,14 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
             setDraft((d) => ({
                 kind: 'field',
                 strokes: d?.kind === 'field' ? d.strokes : [],
-                live: { points: [[p.x, p.y, e.pressure || 0]], radius: brushRadius, strength: 0.8, op },
+                // The selected level is SNAPSHOT here, onto this stroke. Switching
+                // levels later affects only the next stroke — completed strokes are
+                // never rewritten. `withIntensity` omits the key on an erase, which
+                // alters geometry and asserts no register.
+                live: withIntensity(
+                    { points: [[p.x, p.y, e.pressure || 0]], radius: brushRadius, strength: 0.8, op },
+                    brushLevel,
+                ),
             }));
         } else if (tool === 'trace') {
             e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -911,13 +925,20 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
         // Roles ride on the percept record the curator already saves — no new
         // entity, no migration, and nothing written to post.grounds.
         const named = Object.entries(composer.roles || {}).filter(([, r]) => !!r);
+        // Phrases are pruned against the live evidence on the way out: a register
+        // whose strokes were erased since the phrase was typed, or a ground no
+        // longer cited, must not persist a reading of something that is gone.
+        const readings = pruneIntensityReadings(composer.readings, {
+            ground_ids: composer.groundIds, groundById,
+        });
         const p = addExpressionPercept({
             expression, ground_ids: composer.groundIds, properties: composer.properties,
             ...(named.length ? { ground_roles: Object.fromEntries(named) } : {}),
+            ...(Object.keys(readings).length ? { ground_intensity_readings: readings } : {}),
         });
         setComposer(null);
         playRecall(p.id);
-    }, [composer, addExpressionPercept, playRecall]);
+    }, [composer, addExpressionPercept, playRecall, groundById]);
 
     // ── CIRCUIT-001 P2B — carrying a proposed act through ────────────────────
     //
@@ -1098,7 +1119,14 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                 else if (picked.size) setPicked(new Set());
                 else if (tray.size) setTray(new Set());
                 else { selectRegion(null); selectGround(null); setHoveredId(null); }
-            } else if (tool === 'brush' && e.key === '[') setBrushRadius((r) => Math.max(0.012, r * 0.82));
+            } else if (tool === 'brush' && '1234'.includes(e.key)) {
+                // The register, by number. Guarded by this effect's own early return
+                // for input/textarea/contenteditable, so typing "3" in the composer
+                // never reaches here.
+                e.preventDefault();
+                setBrushLevel(Number(e.key));
+            }
+            else if (tool === 'brush' && e.key === '[') setBrushRadius((r) => Math.max(0.012, r * 0.82));
             else if (tool === 'brush' && e.key === ']') setBrushRadius((r) => Math.min(0.16, r * 1.22));
             else if (tool === 'trace' && traceSub === 'boundary' && e.key === '[') setBandWidth((w) => Math.max(0.02, w * 0.82));
             else if (tool === 'trace' && traceSub === 'boundary' && e.key === ']') setBandWidth((w) => Math.min(0.2, w * 1.22));
@@ -1379,6 +1407,27 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                         onClick={() => setBrushRole(rk)}>{roleLabel('brush_field', rk)}</button>
                                 ))}
                             </div>
+                            {/* The register the next stroke will be painted at. Four
+                                choices, not a slider: an ordinal vocabulary a curator can
+                                remember, see, name in prose and revise. The swatch is the
+                                level's own render recipe, so the chip shows what the paint
+                                will do rather than a decorative sample. */}
+                            <div className="diff-subtools diff-brush-levels" role="radiogroup" aria-label="Brush intensity">
+                                {BRUSH_INTENSITY_LEVELS.map((lv) => (
+                                    <button key={lv.level} type="button" role="radio"
+                                        aria-checked={brushLevel === lv.level}
+                                        tabIndex={brushLevel === lv.level ? 0 : -1}
+                                        title={`${lv.label} — ${lv.hint} (press ${lv.level})`}
+                                        className={`diff-subtool diff-level-chip${brushLevel === lv.level ? ' on' : ''}`}
+                                        onClick={() => setBrushLevel(lv.level)}>
+                                        <span className="diff-level-swatch" aria-hidden="true" style={{
+                                            opacity: INTENSITY_RECIPES[lv.level].body + INTENSITY_RECIPES[lv.level].rimBoost,
+                                        }} />
+                                        <span className="diff-level-num">{lv.level}</span>
+                                        <span className="diff-level-label">{lv.label}</span>
+                                    </button>
+                                ))}
+                            </div>
                             <label className={`diff-pf-toggle diff-erase-toggle${brushErase ? ' on' : ''}`}
                                 title="Erase mode — the stroke subtracts (op:'sub'), composited destination-out. ⌥ also erases for one stroke.">
                                 <input type="checkbox" checked={brushErase}
@@ -1478,21 +1527,36 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             </>
                         )}
                         {brushing && brushCursor && content && (
-                            <span className="diff-brush-cursor" style={{
-                                left: content.x + brushCursor.x * content.w,
-                                top: content.y + brushCursor.y * content.h,
-                                width: brushRadius * content.w * 2, height: brushRadius * content.w * 2,
-                            }} />
-                        )}
-                        {recallPlayer.caption && (
-                            <div className="diff-recall-say">
-                                <p className="diff-recall-caption">{recallPlayer.caption}</p>
-                                {recallPlayer.evidenceNote && (
-                                    <p className="diff-recall-detached">{recallPlayer.evidenceNote}</p>
-                                )}
-                            </div>
+                            /* The preview carries the register as fill weight + border
+                               contrast. Diameter stays a pure function of radius: the level
+                               is not a size, and conflating them would make the two brush
+                               channels illegible at a glance. */
+                            <span className={`diff-brush-cursor diff-brush-cursor-l${brushLevel}`}
+                                data-intensity-level={brushLevel}
+                                style={{
+                                    left: content.x + brushCursor.x * content.w,
+                                    top: content.y + brushCursor.y * content.h,
+                                    width: brushRadius * content.w * 2, height: brushRadius * content.w * 2,
+                                    '--level-fill': INTENSITY_RECIPES[brushLevel].body,
+                                    '--level-rim': `${INTENSITY_RECIPES[brushLevel].rimBlur * 0.4}px`,
+                                }} />
                         )}
                     </div>
+                    {/* Recall prose sits BELOW the image, never on it.
+                        The image is the evidence surface: a tall caption laid over the
+                        body covered the very grounds it was meant to evidence, so the
+                        linguistic interpretation was occluding its own evidence. The
+                        stage now performs the cited grounds and their registers; the
+                        sentence reads here, and in full in the inspector. `role=status`
+                        keeps the screen-reader announcement it always had. */}
+                    {recallPlayer.caption && (
+                        <div className="diff-recall-say" role="status" aria-live="polite">
+                            <p className="diff-recall-caption">{recallPlayer.caption}</p>
+                            {recallPlayer.evidenceNote && (
+                                <p className="diff-recall-detached">{recallPlayer.evidenceNote}</p>
+                            )}
+                        </div>
+                    )}
                     {/* CIRCUIT-001 P2B — an armed act, waiting for the curator's hand. It
                         says what will be named, and that nothing exists until they draw. */}
                     {stagedMark && (
@@ -1709,7 +1773,9 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                             <span className="diff-eyebrow">Draft {draft.kind}</span>
                             <p className="diff-insp-hint">
                                 {draft.kind === 'field'
-                                    ? `${draftForLayers.strokes.length} stroke${draftForLayers.strokes.length !== 1 ? 's' : ''} — still yours to shape.`
+                                    ? `${draftForLayers.strokes.length} stroke${draftForLayers.strokes.length !== 1 ? 's' : ''}`
+                                    + (levelsSummary(draftForLayers.strokes) ? ` · ${levelsSummary(draftForLayers.strokes)}` : '')
+                                    + ' — still yours to shape.'
                                     : 'A line, still yours to shape.'}
                             </p>
                             <div className="diff-insp-row-actions">
@@ -1808,6 +1874,55 @@ export default function DifferentialWorkspace({ post, store, onExit, onSendToMan
                                                     </button>
                                                 ))}
                                             </span>
+                                            {/* Intensity anatomy — what the cited FIELD is made of.
+                                                Read-only on the left (which registers its additive
+                                                strokes actually use, and how many strokes each), and
+                                                an optional local phrase per used level. Only levels
+                                                the field really uses can be named: a phrase for a
+                                                register nobody painted would be a reading of
+                                                evidence that is not there. The phrases persist on
+                                                THIS percept's use of the ground, never on the
+                                                ground — see brushIntensity.js. */}
+                                            {(() => {
+                                                const g = groundById(gid);
+                                                if (g?.ground_type !== 'field') return null;
+                                                const anat = intensityAnatomy(g);
+                                                if (!anat.levels.length) return null;
+                                                return (
+                                                    <div className="diff-intensity-anatomy">
+                                                        <span className="diff-eyebrow">Intensity anatomy</span>
+                                                        {anat.legacyCount > 0 && (
+                                                            <p className="diff-insp-hint diff-intensity-legacy">
+                                                                {`${anat.legacyCount} ungraded stroke${anat.legacyCount !== 1 ? 's' : ''} — painted before registers existed, read as level 3.`}
+                                                            </p>
+                                                        )}
+                                                        {anat.levels.map((lv) => (
+                                                            <label key={lv.level} className="diff-intensity-row">
+                                                                <span className="diff-intensity-tag">
+                                                                    {lv.level} — {lv.label}
+                                                                    <span className="diff-intensity-count">
+                                                                        {` · ${lv.count} stroke${lv.count !== 1 ? 's' : ''}`}
+                                                                    </span>
+                                                                </span>
+                                                                <input type="text" className="diff-intensity-input"
+                                                                    placeholder="name this register…"
+                                                                    aria-label={`Phrase for level ${lv.level}, ${lv.label}`}
+                                                                    value={composer.readings?.[gid]?.[String(lv.level)] || ''}
+                                                                    onChange={(e) => setComposer((c) => {
+                                                                        const all = { ...(c.readings || {}) };
+                                                                        const forG = { ...(all[gid] || {}) };
+                                                                        const text = e.target.value;
+                                                                        if (text) forG[String(lv.level)] = text;
+                                                                        else delete forG[String(lv.level)];
+                                                                        if (Object.keys(forG).length) all[gid] = forG;
+                                                                        else delete all[gid];
+                                                                        return { ...c, readings: all };
+                                                                    })} />
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     ))}
                                 </div>
