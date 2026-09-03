@@ -1,0 +1,80 @@
+name: vertical-rehearsal
+
+# ATLAS-WRITER-MASS-BUILD-001L — the whole Atlas → Writer circuit, through a real browser, against
+# a real backend and a disposable database. Offline: every model and GPU seam is a deterministic
+# fake bound INSIDE the backend process (scripts/vertical_rehearsal_support/app_entry.py), so the
+# HTTP and UI path is the real one. The run record is uploaded whatever the outcome.
+#
+# The exit code is the gate: 0 pass, 2 blocked by a lane that has not merged (every stage that
+# ran passed; the unavailable ones name their lane), 1 a failed stage or assertion, 3 a harness
+# error. While the programme's lanes are still landing, `blocked` is the expected state and this
+# job is allowed to fail without blocking a merge — see `continue-on-error`. Flip it when the
+# programme closes.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: vertical-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rehearse:
+    name: offline rehearsal
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    services:
+      mongo:
+        image: mongo:8
+        ports: ["27017:27017"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+          pip install numpy pillow opencv-python-headless playwright
+          python -m playwright install --with-deps chromium
+          cd frontend && npm ci
+
+      # A service container is the disposable server here; the harness drops the database it
+      # hard-codes at start and at cleanup. Every other credential is deliberate nonsense — the
+      # offline run binds fakes and must not be able to reach a real provider.
+      - name: Rehearse (offline)
+        env:
+          SEMANT_VERTICAL_MONGO_URI: mongodb://127.0.0.1:27017/vertical-rehearsal
+          OPENROUTER_API_KEY: ci
+          CLOUDINARY_NAME: ci
+          CLOUDINARY_API_KEY: ci
+          CLOUDINARY_API_SECRET: ci
+        run: python scripts/vertical_rehearsal.py --mode offline --out vertical-run --run-id ci-${{ github.run_id }}
+
+      - name: Upload the run record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vertical-rehearsal-${{ github.run_id }}
+          path: |
+            vertical-run/summary.json
+            vertical-run/report.md
+            vertical-run/corpus.json
+            vertical-run/hashes-*.json
+            vertical-run/screenshots/
+            vertical-run/logs/
+          if-no-files-found: warn
