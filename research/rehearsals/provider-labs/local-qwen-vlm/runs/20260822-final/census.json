@@ -1,0 +1,361 @@
+{
+  "provider": "local_qwen_vlm",
+  "execution_mode": "local_live",
+  "replayed": false,
+  "host": {
+    "platform": "darwin",
+    "node": "Adarshs-Mac-mini.local",
+    "machine": "Mac16,10"
+  },
+  "binds_anything": false,
+  "run_id": "20260822-final",
+  "base_url": "http://127.0.0.1:8081",
+  "reachable": true,
+  "captured_at": "2026-08-22T07:21:35+0530",
+  "server": {
+    "build_info": "b10520-cd644c395",
+    "model_alias": "Qwen3.5-9B-Q5_K_M.gguf",
+    "model_ftype": "Q5_K - Medium",
+    "modalities": {
+      "vision": true,
+      "video": true,
+      "audio": false
+    },
+    "total_slots": 4,
+    "n_ctx": 32768,
+    "chat_template_caps": {
+      "supports_object_arguments": true,
+      "supports_parallel_tool_calls": true,
+      "supports_preserve_reasoning": false,
+      "supports_reasoning_effort": false,
+      "supports_string_content": true,
+      "supports_system_role": true,
+      "supports_tool_calls": true,
+      "supports_tools": true,
+      "supports_typed_content": false
+    },
+    "reasoning_format_default": "none",
+    "capabilities": [
+      [
+        "completion",
+        "multimodal"
+      ]
+    ]
+  },
+  "gguf": {
+    "available": true,
+    "path": "/Users/merleauponty/ml models/qwen 9b q5km/Qwen3.5-9B-Q5_K_M.gguf",
+    "size_bytes": 6577841376,
+    "gguf_version": 3,
+    "tensor_count": 427,
+    "metadata": {
+      "general.architecture": "qwen35",
+      "general.type": "model",
+      "general.name": "Qwen3.5-9B",
+      "general.basename": "Qwen3.5-9B",
+      "general.quantized_by": "Unsloth",
+      "general.size_label": "9B",
+      "general.license": "apache-2.0",
+      "general.license.link": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+      "general.repo_url": "https://huggingface.co/unsloth",
+      "general.base_model.count": 1,
+      "general.base_model.0.name": "Qwen3.5 9B",
+      "general.base_model.0.organization": "Qwen",
+      "general.base_model.0.repo_url": "https://huggingface.co/Qwen/Qwen3.5-9B",
+      "general.tags": [
+        "unsloth",
+        "image-text-to-text"
+      ],
+      "qwen35.block_count": 32,
+      "qwen35.context_length": 262144,
+      "qwen35.embedding_length": 4096,
+      "qwen35.feed_forward_length": 12288,
+      "qwen35.attention.head_count": 16,
+      "qwen35.attention.head_count_kv": 4,
+      "qwen35.rope.dimension_sections": [
+        11,
+        11,
+        10,
+        0
+      ],
+      "qwen35.rope.freq_base": 10000000.0,
+      "qwen35.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+      "qwen35.attention.key_length": 256,
+      "qwen35.attention.value_length": 256,
+      "qwen35.ssm.conv_kernel": 4,
+      "qwen35.ssm.state_size": 128,
+      "qwen35.ssm.group_count": 16,
+      "qwen35.ssm.time_step_rank": 32,
+      "qwen35.ssm.inner_size": 4096,
+      "qwen35.full_attention_interval": 4,
+      "qwen35.rope.dimension_count": 64,
+      "general.quantization_version": 2,
+      "general.file_type": 17
+    }
+  },
+  "machine_at_start": {
+    "swap_used_mb": 6443.44,
+    "swap_raw": "total = 7168.00M  used = 6443.44M  free = 724.56M  (encrypted)",
+    "wired_mb": 9358.2,
+    "compressed_mb": 3708.6,
+    "free_mb": 60.9,
+    "server_rss_mb": 7219.4,
+    "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+    "server_pid": 81487
+  },
+  "machine_at_end": {
+    "swap_used_mb": 7064.5,
+    "swap_raw": "total = 8192.00M  used = 7064.50M  free = 1127.50M  (encrypted)",
+    "wired_mb": 9388.6,
+    "compressed_mb": 3869.3,
+    "free_mb": 60.6,
+    "server_rss_mb": 7356.0,
+    "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+    "server_pid": 81487
+  },
+  "probes": {
+    "one_image_base64": {
+      "label": "census:one_image_base64",
+      "ok": true,
+      "status": "completed",
+      "content": "A white marble bust of a draped female figure with flowing hair, set against a dark background.",
+      "finish_reason": "stop",
+      "prompt_tokens": 217,
+      "completion_tokens": 20,
+      "cached_tokens": 0,
+      "prompt_per_second": 120.82997385172547,
+      "predicted_per_second": 14.355928809704608,
+      "client_wall_ms": 3338.2,
+      "request_digest": "a2bb7cad51def68c",
+      "machine_after": {
+        "swap_used_mb": 6503.56,
+        "swap_raw": "total = 7168.00M  used = 6503.56M  free = 664.44M  (encrypted)",
+        "wired_mb": 9383.1,
+        "compressed_mb": 3858.7,
+        "free_mb": 61.7,
+        "server_rss_mb": 7257.9,
+        "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+        "server_pid": 81487
+      }
+    },
+    "one_image_remote_url": {
+      "label": "census:one_image_remote_url",
+      "ok": true,
+      "status": "completed",
+      "content": "A white marble bust of a draped female figure with flowing hair, set against a dark background.",
+      "finish_reason": "stop",
+      "prompt_tokens": 217,
+      "completion_tokens": 20,
+      "cached_tokens": 213,
+      "prompt_per_second": 18.15293850692081,
+      "predicted_per_second": 14.12444078365371,
+      "client_wall_ms": 1894.3,
+      "request_digest": "c6eae4ae19f157cd",
+      "machine_after": {
+        "swap_used_mb": 6612.12,
+        "swap_raw": "total = 7168.00M  used = 6612.12M  free = 555.88M  (encrypted)",
+        "wired_mb": 9383.6,
+        "compressed_mb": 3772.6,
+        "free_mb": 64.6,
+        "server_rss_mb": 7367.2,
+        "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+        "server_pid": 81487
+      }
+    },
+    "three_images": {
+      "label": "census:three_images",
+      "ok": true,
+      "status": "completed",
+      "content": "white marble bust of a woman with draped clothing and braided hair; white marble bust of a woman with draped clothing and floral headpiece; close-up of a stone sculpture featuring a woman's face obscured by a veil or drapery, showing her eyes closed in contemplation.",
+      "finish_reason": "stop",
+      "prompt_tokens": 650,
+      "completion_tokens": 57,
+      "cached_tokens": 0,
+      "prompt_per_second": 122.58216116499068,
+      "predicted_per_second": 14.074078914365765,
+      "client_wall_ms": 9373.9,
+      "request_digest": "e9dcf802713aa0dd",
+      "machine_after": {
+        "swap_used_mb": 6718.0,
+        "swap_raw": "total = 7168.00M  used = 6718.00M  free = 450.00M  (encrypted)",
+        "wired_mb": 9376.0,
+        "compressed_mb": 3865.0,
+        "free_mb": 60.0,
+        "server_rss_mb": 7260.1,
+        "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+        "server_pid": 81487
+      }
+    },
+    "structured_json_object": {
+      "label": "census:structured_json_object",
+      "ok": true,
+      "status": "completed",
+      "content": "```json\n{\n    \"subject\": [\n        \"bust of woman\"\n    ],\n    \"materials\": [\n        \"marble\",\n        \"stone\"\n    ]\n}\n```",
+      "finish_reason": "stop",
+      "prompt_tokens": 223,
+      "completion_tokens": 46,
+      "cached_tokens": 0,
+      "prompt_per_second": 126.91099214233154,
+      "predicted_per_second": 14.69060124713411,
+      "client_wall_ms": 4943.5,
+      "request_digest": "058a3921fabe2a1d",
+      "machine_after": {
+        "swap_used_mb": 6679.5,
+        "swap_raw": "total = 7168.00M  used = 6679.50M  free = 488.50M  (encrypted)",
+        "wired_mb": 9170.0,
+        "compressed_mb": 3892.0,
+        "free_mb": 69.0,
+        "server_rss_mb": 7309.8,
+        "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+        "server_pid": 81487
+      }
+    },
+    "structured_json_schema": {
+      "label": "census:structured_json_schema",
+      "ok": true,
+      "status": "completed",
+      "content": "{\n  \"subject\": \"a white marble or plaster bust of a female figure in classical style\",\n  \"materials\": [\n    \"white stone (likely marble) or cast plaster\"\n  ]\n}",
+      "finish_reason": "stop",
+      "prompt_tokens": 210,
+      "completion_tokens": 47,
+      "cached_tokens": 0,
+      "prompt_per_second": 114.4448471207584,
+      "predicted_per_second": 13.653716808853307,
+      "client_wall_ms": 5226.3,
+      "request_digest": "d9a9e3e009bb4fd0",
+      "machine_after": {
+        "swap_used_mb": 6853.44,
+        "swap_raw": "total = 7168.00M  used = 6853.44M  free = 314.56M  (encrypted)",
+        "wired_mb": 9366.9,
+        "compressed_mb": 3729.9,
+        "free_mb": 39.2,
+        "server_rss_mb": 7312.3,
+        "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+        "server_pid": 81487
+      }
+    },
+    "structured_gbnf": {
+      "label": "census:structured_gbnf",
+      "ok": true,
+      "status": "completed",
+      "content": "{\"ok\": true}",
+      "finish_reason": "stop",
+      "prompt_tokens": 15,
+      "completion_tokens": 7,
+      "cached_tokens": 0,
+      "prompt_per_second": 39.90284986153711,
+      "predicted_per_second": 13.395338868585029,
+      "client_wall_ms": 870.5,
+      "request_digest": "847f0a6028c6fdef",
+      "machine_after": {
+        "swap_used_mb": 6845.44,
+        "swap_raw": "total = 7168.00M  used = 6845.44M  free = 322.56M  (encrypted)",
+        "wired_mb": 9366.7,
+        "compressed_mb": 3704.0,
+        "free_mb": 66.5,
+        "server_rss_mb": 7469.0,
+        "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+        "server_pid": 81487
+      }
+    },
+    "reasoning_separated": {
+      "label": "census:reasoning_separated",
+      "ok": true,
+      "status": "completed",
+      "content": "51",
+      "reasoning_content": "Thinking Process:\n\n1.  **Analyze the Request:** The user is asking for the product of 17 and 3 (17 * 3). They also want me to \"think briefly\" before answering.\n\n2.  **Calculate:**\n    *   17 * 3\n    *   Break it down: (10 * 3) + (7 * 3)\n    *   30 + 21 = 51\n\n3.  **Formulate Output:** The user wants a brief thought process followed by the answer.\n    *   Thought: Multiply 17 by 3.\n    *   Answer: 51.\n\n4.  **Final Check:** Does 51 make sense? Yes, 20 * 3 = 60, 17 is 3 less than 20, so 60 - 9 = 51. Correct.\n\n5.  **Draft Response:**\n    *   Keep it concise as requested (\"Think briefly, then answer\").\n    *   State the calculation and the result.\n\n    *   Step 1: 17 * 3.\n    *   Step 2: 10 * 3 = 30.\n    *   Step 3: 7 * 3 = 21.\n    *   Step 4: 30 + 21 = 51.\n\n    *   Final Answer: 51.cw\n",
+      "finish_reason": "stop",
+      "prompt_tokens": 25,
+      "completion_tokens": 324,
+      "cached_tokens": 0,
+      "prompt_per_second": 69.59833409427512,
+      "predicted_per_second": 14.364796269386803,
+      "client_wall_ms": 22882.3,
+      "request_digest": "312790f49fc0f409",
+      "machine_after": {
+        "swap_used_mb": 6894.69,
+        "swap_raw": "total = 8192.00M  used = 6894.69M  free = 1297.31M  (encrypted)",
+        "wired_mb": 9238.5,
+        "compressed_mb": 3625.5,
+        "free_mb": 63.7,
+        "server_rss_mb": 7256.3,
+        "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+        "server_pid": 81487
+      }
+    },
+    "thinking_starves_content": {
+      "label": "census:thinking_starves_content",
+      "ok": false,
+      "status": "truncated",
+      "content": "",
+      "reasoning_content": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Input: \"Reply with exactly the word: ok\"\n    *   Constraint: The response must be *exactly* the word \"ok\". No extra characters, no punctuation (unless implied by the word itself, but \"ok",
+      "finish_reason": "length",
+      "prompt_tokens": 17,
+      "completion_tokens": 64,
+      "cached_tokens": 0,
+      "prompt_per_second": 46.364858709911445,
+      "predicted_per_second": 14.45320762560411,
+      "client_wall_ms": 4826.4,
+      "request_digest": "085da06955452939",
+      "machine_after": {
+        "swap_used_mb": 6980.0,
+        "swap_raw": "total = 8192.00M  used = 6980.00M  free = 1212.00M  (encrypted)",
+        "wired_mb": 9370.4,
+        "compressed_mb": 3827.1,
+        "free_mb": 67.4,
+        "server_rss_mb": 7257.5,
+        "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+        "server_pid": 81487
+      }
+    },
+    "context_overflow": {
+      "label": "census:context_overflow",
+      "ok": false,
+      "status": "error",
+      "client_wall_ms": 163.6,
+      "error": "HTTP 400: {\"error\":{\"code\":400,\"message\":\"request (90012 tokens) exceeds the available context size (32768 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":90012,\"n_ctx\":32768}}",
+      "request_digest": "dd4e1288ebcfd529",
+      "machine_after": {
+        "swap_used_mb": 6972.0,
+        "swap_raw": "total = 8192.00M  used = 6972.00M  free = 1220.00M  (encrypted)",
+        "wired_mb": 9369.4,
+        "compressed_mb": 3788.3,
+        "free_mb": 74.6,
+        "server_rss_mb": 7429.8,
+        "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+        "server_pid": 81487
+      }
+    },
+    "cancellation": {
+      "aborted": true,
+      "raised": "TimeoutError",
+      "after_ms": 4002.1,
+      "server_recovered": true,
+      "recovery_content": "alive"
+    },
+    "cache_second_pass": {
+      "label": "census:cache_second_pass",
+      "ok": true,
+      "status": "completed",
+      "content": "A white marble bust of a draped female figure with classical hairstyle, looking downward.",
+      "finish_reason": "stop",
+      "prompt_tokens": 217,
+      "completion_tokens": 17,
+      "cached_tokens": 0,
+      "prompt_per_second": 122.97989930383177,
+      "predicted_per_second": 14.522074006304395,
+      "client_wall_ms": 2897.1,
+      "request_digest": "a2bb7cad51def68c",
+      "machine_after": {
+        "swap_used_mb": 7063.0,
+        "swap_raw": "total = 8192.00M  used = 7063.00M  free = 1129.00M  (encrypted)",
+        "wired_mb": 9388.5,
+        "compressed_mb": 3813.1,
+        "free_mb": 57.6,
+        "server_rss_mb": 7437.0,
+        "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+        "server_pid": 81487
+      }
+    }
+  }
+}

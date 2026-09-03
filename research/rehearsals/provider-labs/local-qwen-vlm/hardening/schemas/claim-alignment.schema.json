@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:provider-lab/local-qwen-vlm/hardening/claim-alignment.schema.json",
+  "title": "Claim-level alignment, with the claim set fixed",
+  "description": "A TEMPLATE. At request time the harness replaces `user_claim_id.enum` with exactly the ids from hardening/claims.json for the prompt in hand, and sets minItems/maxItems to the claim count. That is what makes `the alignment may not mint a new user claim` an enforcement rather than an instruction: a minted id is not a token the sampler's grammar can emit, and a missing one cannot satisfy the array length. The request carries NO IMAGE, exactly as in #230 — the separation between a person's hypothesis and an image observation is enforced by the picture's absence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dispositions"],
+  "properties": {
+    "dispositions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["user_claim_id", "disposition", "observation_ids", "discriminative_explanation", "unresolved_alternatives"],
+        "properties": {
+          "user_claim_id": {
+            "type": "string",
+            "enum": ["REPLACED_AT_REQUEST_TIME"],
+            "description": "One of the ids supplied. The enum is rewritten per prompt; this placeholder must never reach a request."
+          },
+          "disposition": {
+            "type": "string",
+            "enum": ["supports", "complicates", "challenges", "does_not_bear_on", "cannot_determine"],
+            "description": "`does_not_bear_on` (the observations are about something else) and `cannot_determine` (they are about the right thing and do not settle it) are different findings and are kept apart."
+          },
+          "observation_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Ids from the frozen observation inventory. Empty is legitimate for does_not_bear_on; the critic requires at least one for supports and challenges, because a stance that moves the claim has to rest on something."
+          },
+          "discriminative_explanation": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Why the cited observations favour THIS disposition over the others. `Discriminative` is the whole point: #230's captured run grounded a sameness claim on `carved as part of the solid mass`, which is true of all carved drapery everywhere and therefore cannot separate any hypothesis from any other. The critic checks this field for exactly that."
+          },
+          "unresolved_alternatives": {
+            "type": "string",
+            "description": "What the observations leave open. An empty string is a claim that nothing is open, and is read as one."
+          }
+        }
+      }
+    }
+  }
+}

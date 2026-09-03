@@ -1,0 +1,75 @@
+{
+  "trial_id": "vitmatte_small.hair-veil.band70",
+  "recorded_at": "2026-08-22T01:03:44+0530",
+  "candidate": {
+    "key": "vitmatte_small",
+    "label": "ViTMatte small (composition-1k)",
+    "forms": [
+      "extent.soft_field"
+    ],
+    "source": "https://huggingface.co/hustvl/vitmatte-small-composition-1k",
+    "checkpoint": "hustvl/vitmatte-small-composition-1k",
+    "revision": "pin at integration time; this trial records the resolved commit",
+    "license": "Apache-2.0",
+    "acquisition": "huggingface_hub, ~103 MB, 25.8M params",
+    "size_mb": 103.0,
+    "expected_vram_gb": 0.8,
+    "produces": "an alpha matte: the fraction of each pixel the thing covers",
+    "cannot_produce": "uncertainty, a class probability, or a mask where it was given no trimap",
+    "claim": "measured"
+  },
+  "control": "hair-veil",
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13",
+    "torch": "2.13.0",
+    "device": "mps",
+    "budget_vram_gb": 10.0
+  },
+  "fidelity": {
+    "control": "hair-veil",
+    "checked": true,
+    "true_soft_fraction": 0.3699951171875,
+    "observed_soft_fraction": 0.581299,
+    "soft_fraction_ratio": 1.5711,
+    "alpha_mean_error": 0.026827,
+    "comparable_to_alpha": true,
+    "tracks_truth": true,
+    "why": "a producer of this form must recover both HOW MUCH is covered and WHERE the coverage is graded; the ratio and the mean error are those two"
+  },
+  "outcome": "ready",
+  "source_image_digest": "sha256:10cc05b6b809b6162bbff1a936ed30d1c3e023ae5fff7b47a217b85d427b3e66",
+  "cold_load_s": 1.4037,
+  "warm_run_s": 0.1394,
+  "peak_process_rss_mb": 503.5,
+  "accelerator_allocated_mb": 1178.7,
+  "measurements": {
+    "output_shape": [
+      256,
+      256
+    ],
+    "output_range": [
+      0.0,
+      0.925658
+    ],
+    "soft_pixel_fraction": 0.581299,
+    "transition_width_px": 16.239,
+    "alpha_mean": 0.162633,
+    "trimap_band_radius_px": 70,
+    "trimap_unknown_fraction": 0.965271,
+    "deterministic": true,
+    "raw_output_digest": "sha256:7d46c20162f9e9bb397cbbef4b894386ca5c4eae42159190a07bd53387a793df",
+    "preview": "research/perception_lab/model_trials/previews/vitmatte.hair-veil.png",
+    "true_alpha_mean": 0.13580594044079938,
+    "alpha_mean_error": 0.026827
+  },
+  "form_contract": {
+    "form": "extent.soft_field",
+    "attempted": true,
+    "satisfies": true,
+    "payload_variant": "extent_soft_field",
+    "may_declare_calibrated": false,
+    "why": "the payload validates; `calibration.state` is `uncalibrated` because nothing in this trial measured a correspondence between the numbers and anything else"
+  }
+}

@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from '@tiptap/core';
+import { TextSelection } from '@tiptap/pm/state';
 import Paragraph from '@tiptap/extension-paragraph';
 
 /**
@@ -238,4 +239,111 @@ export const QuarantinedPassage = Node.create({
 });
 
 /** The W2 node set, in the order the editor registers them. */
-export const WRITER_NODES = [ManuscriptParagraph, Orchestration, Directive, QuarantinedPassage];
+// ── 5. one committed passage, one identity ───────────────────────────────────
+
+/**
+ * ATLAS-WRITER-MASS-BUILD-001D — the node that carries a committed passage's IDENTITY.
+ *
+ * THE PROBLEM IT CLOSES. A render of several paragraphs used to become several `paragraph`
+ * nodes, each stamped with the same `blockId`, `lineageId` and `version`. Canon held ONE
+ * block; the editor held three nodes all claiming to be it. Accepting a revision replaced
+ * the first match and left the others standing as orphans that still said "I am version 1".
+ *
+ * THE DECISION. One canonical block may contain internal paragraph structure, and the editor
+ * represents it as ONE wrapper node whose children are plain paragraphs. The wrapper alone
+ * carries `provenance`/`blockId`/`lineageId`/`version`; the paragraphs inside carry nothing.
+ * Chosen over "one lineage per paragraph" because a revision is a fresh render of the whole
+ * declared set — it may come back as one paragraph or four — and there is no honest way to
+ * say which new paragraph is the descendant of which old one. A passage has a history; a
+ * paragraph inside it does not.
+ *
+ * Export reads the wrapper as one block with `<p>…</p><p>…</p>` content, which is exactly
+ * what `manuscript_service.block_paragraphs` reads back. `isolating` keeps the caret from
+ * merging a human paragraph into the passage; Enter at its end steps OUT to a clean
+ * paragraph (see `addKeyboardShortcuts`), so prose the author types after an accepted span
+ * is theirs and not the render's.
+ */
+export const CommittedPassage = Node.create({
+  name: 'committedPassage',
+  group: 'block',
+  content: 'paragraph+',
+  defining: true,
+  isolating: true,
+
+  // The wrapper reaches the page — as ONE block.
+  manuscriptExport: true,
+
+  addAttributes() {
+    return {
+      provenance: {
+        default: null,
+        parseHTML: (el) => {
+          const raw = el.getAttribute('data-provenance');
+          if (!raw) return null;
+          try { return JSON.parse(raw); } catch { return null; }
+        },
+        renderHTML: (attrs) =>
+          attrs.provenance ? { 'data-provenance': JSON.stringify(attrs.provenance) } : {},
+      },
+      blockId: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('data-block-id'),
+        renderHTML: (attrs) => (attrs.blockId ? { 'data-block-id': attrs.blockId } : {}),
+      },
+      lineageId: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('data-lineage-id'),
+        renderHTML: (attrs) => (attrs.lineageId ? { 'data-lineage-id': attrs.lineageId } : {}),
+      },
+      version: {
+        default: null,
+        parseHTML: (el) => {
+          const raw = el.getAttribute('data-version');
+          return raw ? Number(raw) : null;
+        },
+        renderHTML: (attrs) => (attrs.version ? { 'data-version': String(attrs.version) } : {}),
+      },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'div[data-writer-committed]' }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['div', mergeAttributes(HTMLAttributes, {
+      'data-writer-committed': '',
+      class: 'writer-passage',
+    }), 0];
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      // Enter at the very end of a committed passage leaves it: a NEW plain paragraph after
+      // the wrapper, with no identity. Inside the passage Enter behaves as usual (the
+      // passage keeps its one identity however many paragraphs it holds).
+      Enter: ({ editor }) => {
+        const { $from, empty } = editor.state.selection;
+        if (!empty) return false;
+        let depth = $from.depth;
+        while (depth > 0 && $from.node(depth).type.name !== this.name) depth -= 1;
+        if (depth === 0) return false;
+        const wrapper = $from.node(depth);
+        const paragraph = $from.parent;
+        const atEnd = $from.parentOffset === paragraph.content.size
+          && wrapper.lastChild === paragraph;
+        if (!atEnd) return false;
+        const after = $from.after(depth);
+        return editor.commands.command(({ tr, state }) => {
+          tr.insert(after, state.schema.nodes.paragraph.create());
+          tr.setSelection(TextSelection.create(tr.doc, after + 1));
+          return true;
+        });
+      },
+    };
+  },
+});
+
+export const WRITER_NODES = [
+  ManuscriptParagraph, Orchestration, Directive, QuarantinedPassage, CommittedPassage,
+];

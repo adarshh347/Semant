@@ -1,0 +1,15 @@
+{
+  "variant": "negative_space_field",
+  "figure_instance_ids": [
+    "inst_left_building",
+    "inst_right_building"
+  ],
+  "max_distance_used": 0.25,
+  "field_shape": [8, 8],
+  "field_ref": null,
+  "statistics": {
+    "mean_distance": 0.09,
+    "max_distance": 0.25,
+    "covered_fraction": 0.61
+  }
+}

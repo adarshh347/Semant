@@ -6,6 +6,7 @@
     "step_id": "step_occlusion",
     "organ_family": "topology",
     "artifact_kind": "refusal",
+    "form": null,
     "operation": "topology.occlusion",
     "identity_scope": "session",
     "identity_refs": [],
@@ -58,6 +59,7 @@
     "coordinate_system": "normalized_xy_topleft",
     "epistemic_status": "uncertain",
     "epistemic_basis": "declared",
+    "partition": null,
     "basis_detail": "a refusal makes no claim about the image"
   },
   "projection": {

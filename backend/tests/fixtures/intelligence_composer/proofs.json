@@ -1,0 +1,197 @@
+{
+  "name": "proofs",
+  "topic": "two loaves cut the same morning, and a claim about which was fermented longer",
+  "why_this_fixture": [
+    "The twin. It shares no noun, no capability, no evidence id and no refusal kind with",
+    "`moorings.json`, and it traverses the identical production path.",
+    "It is deliberately a DIFFERENT SHAPE as well as a different subject, because two fixtures that",
+    "differ only in vocabulary would prove that the composer ignores nouns and nothing else:",
+    "  - no evidence here is of kind `extent`, so nothing in it can reach `visible`;",
+    "  - the capability matrix is ABSENT rather than empty, so the gap list alone governs and a",
+    "    measurement on an undeclared capability still counts — which is the branch `moorings`",
+    "    never takes;",
+    "  - its accepted relation is REFUTED where the twin's is merely withheld, and it has no",
+    "    unanchored reading, no dangling hypothesis and no broken plan citation at all.",
+    "If the refusals were hard-coded rather than derived, this fixture would report the twin's."
+  ],
+  "topic_nouns": ["crumb", "crust", "banneton", "blister", "lamination", "sourdough", "boule", "levain"],
+  "inquiry_id": "inq_proofs",
+  "prompt": "Two loaves cut the same morning. I think the second was fermented longer — say where the cut faces agree with that and where they do not.",
+  "inquiry_map": {
+    "inquiry_id": "inq_proofs",
+    "images": [
+      {"image_id": "img_left", "title": "the first loaf, cut face on"},
+      {"image_id": "img_right", "title": "the second loaf, cut face on"}
+    ],
+    "hypotheses": [
+      {
+        "hypothesis_id": "hb_time",
+        "statement": "the second loaf was fermented longer than the first",
+        "declared_status": "measured",
+        "images": ["img_left", "img_right"]
+      },
+      {
+        "hypothesis_id": "hb_start",
+        "statement": "both were raised from the same levain",
+        "images": ["img_left", "img_right"]
+      }
+    ]
+  },
+  "observations": [
+    {
+      "observation_id": "ob_l1",
+      "image_id": "img_left",
+      "producer": "visual_observer",
+      "statement": "the crumb opens into large irregular cells through the upper third of the face",
+      "declared_status": "measured",
+      "evidence_ids": ["eb_cells"]
+    },
+    {
+      "observation_id": "ob_l2",
+      "image_id": "img_left",
+      "producer": "visual_observer",
+      "statement": "the crust carries a single deep blister close to the seam",
+      "declared_status": "interpretive",
+      "evidence_ids": ["eb_note"]
+    },
+    {
+      "observation_id": "ob_r1",
+      "image_id": "img_right",
+      "producer": "visual_observer",
+      "statement": "the cells run finer and more even across the whole face",
+      "declared_status": "visible",
+      "evidence_ids": ["eb_vote"]
+    },
+    {
+      "observation_id": "ob_r2",
+      "image_id": "img_right",
+      "producer": "visual_observer",
+      "statement": "the boule kept the ridging of the banneton through the bake",
+      "declared_status": "measured",
+      "evidence_ids": ["eb_ridge"]
+    },
+    {
+      "observation_id": "ob_r3",
+      "image_id": "img_right",
+      "producer": "visual_observer",
+      "statement": "the lamination at the base has pulled apart in one place",
+      "declared_status": "likely"
+    }
+  ],
+  "alignments": [
+    {
+      "alignment_id": "ab_open",
+      "hypothesis_id": "hb_time",
+      "observation_id": "ob_l1",
+      "stance": "supports",
+      "statement": "an open irregular crumb is what a long ferment tends to leave behind",
+      "declared_status": "interpretive"
+    },
+    {
+      "alignment_id": "ab_even",
+      "hypothesis_id": "hb_time",
+      "observation_id": "ob_r1",
+      "stance": "contradicts",
+      "statement": "an even fine field is the opposite of what the proposal predicts for the second",
+      "declared_status": "interpretive"
+    }
+  ],
+  "contrast_plans": [
+    {
+      "plan_id": "pb_face",
+      "statement": "set the open upper third of the first face against the even field of the second",
+      "because": "the same question asked of two faces cut the same way",
+      "images": ["img_left", "img_right"],
+      "observation_ids": ["ob_l1", "ob_r1"]
+    }
+  ],
+  "accepted_relations": [
+    {
+      "relation_id": "rb_open",
+      "statement": "the first face is more open than the second",
+      "declared_status": "interpretive",
+      "subjects": ["img_left", "img_right"],
+      "plan_id": "pb_face"
+    },
+    {
+      "relation_id": "rb_time",
+      "statement": "the second was fermented longer than the first",
+      "declared_status": "measured",
+      "subjects": ["img_left", "img_right"],
+      "plan_id": "pb_face",
+      "evidence_ids": ["eb_cells2"]
+    },
+    {
+      "relation_id": "rb_seam",
+      "statement": "the blister sits where the seam was weakest",
+      "declared_status": "interpretive",
+      "subjects": ["img_left"]
+    }
+  ],
+  "rejected_relations": [
+    {
+      "relation_id": "rb_same",
+      "statement": "the two were raised from one levain",
+      "declared_status": "interpretive",
+      "subjects": ["img_left", "img_right"]
+    }
+  ],
+  "critiques": [
+    {
+      "critique_id": "cb_open",
+      "relation_id": "rb_open",
+      "verdict": "sustained",
+      "because": "both faces were read for cell size and the two readings order the same way"
+    },
+    {
+      "critique_id": "cb_time",
+      "relation_id": "rb_time",
+      "verdict": "refuted",
+      "because": "cell area is not a clock; the same field follows from a warmer room and a shorter rise"
+    }
+  ],
+  "observables": [
+    {
+      "observable_id": "obb_depth",
+      "of": "ob_l2",
+      "statement": "how deep the blister runs beneath the surface",
+      "capability_classes": ["ridge_depth"]
+    },
+    {
+      "observable_id": "obb_seam",
+      "of": "rb_seam",
+      "statement": "where the seam meets the cut face",
+      "capability_classes": ["seam_locator"]
+    }
+  ],
+  "capability_gaps": [
+    {
+      "gap_id": "gb_depth",
+      "capability": "ridge_depth",
+      "why": "no producer here recovers a depth from a single photograph",
+      "needed_for": ["ob_r2", "ob_l2"]
+    },
+    {
+      "gap_id": "gb_clock",
+      "capability": "fermentation_clock",
+      "why": "nothing in a still frame carries elapsed time",
+      "needed_for": ["rb_time"]
+    },
+    {
+      "gap_id": "gb_oven",
+      "capability": "oven_temperature",
+      "why": "nothing here reads the oven, and nothing in this inquiry asked it to",
+      "needed_for": []
+    }
+  ],
+  "evidence": [
+    {"evidence_id": "eb_cells", "kind": "measurement", "capability": "cell_area", "of": "ob_l1",
+     "value": "median cell area 4.1 sq mm"},
+    {"evidence_id": "eb_note", "kind": "description", "capability": "visual_observer", "of": "ob_l2"},
+    {"evidence_id": "eb_vote", "kind": "consensus", "capability": "observer_panel", "of": "ob_r1",
+     "value": "three of three observers concurred"},
+    {"evidence_id": "eb_ridge", "kind": "measurement", "capability": "ridge_depth", "of": "ob_r2"},
+    {"evidence_id": "eb_cells2", "kind": "measurement", "capability": "cell_area", "of": "rb_time"}
+  ],
+  "capabilities": {}
+}

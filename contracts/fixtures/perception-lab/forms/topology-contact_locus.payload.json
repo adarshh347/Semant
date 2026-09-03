@@ -1,0 +1,36 @@
+{
+  "variant": "topology_contact_locus",
+  "pairs_examined": 2,
+  "loci": [
+    {
+      "locus_id": "locus_1",
+      "source": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_1",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "target": {
+        "artifact_id": "art_extent_1",
+        "instance_id": "inst_2",
+        "scope": "session",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      "raster_shape": [8, 8],
+      "contact_pixels": 812,
+      "basis": "mask",
+      "epistemic_status": "measured",
+      "mask_rle": {
+        "size": [8, 8],
+        "counts": [27, 2, 6, 2, 27]
+      },
+      "points": [
+        [0.31, 0.44],
+        [0.33, 0.46],
+        [0.35, 0.48]
+      ]
+    }
+  ]
+}

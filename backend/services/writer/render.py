@@ -513,10 +513,33 @@ def _preflight(
     requested_registers: Sequence[str] = (),
     declared_registers: Sequence[str] = (),
     participating: Sequence[Dict[str, Any]] = (),
+    retired_pulled: Sequence[Dict[str, Any]] = (),
 ) -> Optional[str]:
     """The refusal reason, or None to proceed. Cheap, certain, and before any spend."""
     if not names:
         return "this directive names no operator, so there is nothing to render with"
+
+    # A RETIRED operator is not missing — its history is right there — but it is not
+    # something a new render may invoke. Checked before `missing` so the author hears
+    # "restore it" rather than "define it", which would create a second operator under
+    # the name the old provenance still resolves through.
+    retired = list(resolved.get("retired") or []) + list(retired_pulled or [])
+    if retired:
+        parts = []
+        for r in retired:
+            when = r.get("retired_at")
+            when = f" on {when.date().isoformat()}" if hasattr(when, "date") else ""
+            via = f" (pulled by `{r['via']} requires {r['name']}`)" if r.get("via") else ""
+            parts.append(f"`{r['name']}`{when}{via}")
+        return (
+            f"retired {'operators' if len(retired) > 1 else 'operator'}: "
+            f"{', '.join(parts)}. Restore "
+            f"{'them' if len(retired) > 1 else 'it'} if you still mean "
+            f"{'them' if len(retired) > 1 else 'it'} (POST …/operators/"
+            f"{retired[0]['name']}/restore), or stop naming "
+            f"{'them' if len(retired) > 1 else 'it'}"
+            f"{' and remove the `requires` edge' if any(r.get('via') for r in retired) else ''}."
+        )
 
     missing = resolved.get("missing") or []
     if missing:
@@ -653,11 +676,21 @@ async def render_directive(
     # from operators that actually resolved. Every name it returns is an operator the
     # author defined, so nothing ungrounded can enter this way (I5 holds by construction:
     # an edge target is an operator reference, never free text).
-    ontology = await operator_registry.by_name(project_id)
+    # Resolved against EVERYTHING, retired included, so an edge that reaches a retired
+    # operator is seen as exactly that — and refused below — rather than as an edge to a
+    # name that was never defined.
+    ontology = await operator_registry.by_name(project_id, include_retired=True)
     pulled_names, requires_diagnostics = relations.resolve_requires(
         [n for n in names if n in found], ontology
     )
-    pulled = [ontology[n] for n in pulled_names if n in ontology]
+    retired_pulled: List[Dict[str, Any]] = []
+    for n in pulled_names:
+        if n in ontology and ontology[n].get("retired"):
+            via = next((d for d in names if n in relations.requires_of(ontology.get(d))), "")
+            retired_pulled.append({"name": n, "retired_at": ontology[n].get("retired_at"),
+                                   "via": via})
+    pulled = [ontology[n] for n in pulled_names
+              if n in ontology and not ontology[n].get("retired")]
 
     # W10 — which of the author's layers this directive was asked to foreground, and
     # which operators actually carry them. Resolved before provenance is built, because
@@ -722,6 +755,7 @@ async def render_directive(
         requested_registers=requested_registers,
         declared_registers=declared_registers,
         participating=participating,
+        retired_pulled=retired_pulled,
     )
     if refusal:
         await instrument.record(

@@ -56,6 +56,31 @@ function proseToParagraphs(text, attrs) {
     });
 }
 
+/**
+ * Rendered prose → ONE `committedPassage` node holding its paragraphs.
+ *
+ * The identity (`blockId`, `lineageId`, `version`, `provenance`) sits on the wrapper and
+ * nowhere else. However many paragraphs the render produced, the editor now holds exactly
+ * as many nodes claiming that block as canon does: one.
+ */
+function proseToCommittedPassage(text, attrs) {
+  const paragraphs = proseToParagraphs(text, {});
+  return {
+    type: 'committedPassage',
+    attrs,
+    content: paragraphs.length ? paragraphs : [{ type: 'paragraph' }],
+  };
+}
+
+/** The `committedPassage` enclosing a resolved position, as `{ node, depth }`, or null. */
+function committedPassageAt($pos) {
+  for (let depth = $pos.depth; depth > 0; depth -= 1) {
+    const node = $pos.node(depth);
+    if (node.type.name === 'committedPassage') return { node, depth };
+  }
+  return null;
+}
+
 export default function WriterEditor({
   projectId,
   manuscriptId = '',
@@ -234,13 +259,13 @@ export default function WriterEditor({
       const result = await writerService.accept(passageId, sceneId);
 
       const provenance = { ...(node.attrs.provenance || {}), passageId };
-      const paragraphs = proseToParagraphs(node.attrs.text, {
+      const paragraphs = proseToCommittedPassage(node.attrs.text, {
         provenance,
         blockId: result?.block_id ?? null,
         // W8 — a committed span is version 1 of a lineage from the moment it lands, so the
         // first thing the author revises already has a history to append to.
         lineageId: result?.lineage_id ?? null,
-        version: result?.lineage_id ? 1 : null,
+        version: result?.lineage_id ? (result?.version ?? 1) : null,
       });
 
       // Mark the directive satisfied BEFORE the card is replaced, so the position lookup
@@ -331,20 +356,23 @@ export default function WriterEditor({
         passageId, lineageId, sceneId: scene, blockId, inResponseTo,
       });
 
-      // Move the POINTER in the document: replace the paragraph's text and bump its version.
-      // The prior version is not here to lose — it is in the ledger's version history, and
-      // this surface has no way to reach in and change it.
+      // Move the POINTER in the document: replace the WHOLE committed passage — every
+      // paragraph it held — with the new version under the same identity. One node claimed
+      // the block before; one node claims it after. The prior version is not here to lose —
+      // it is in the ledger's version history, and this surface has no way to reach in and
+      // change it.
       const { state } = editor;
       let target = null;
       state.doc.descendants((node, pos) => {
-        if (node.type.name === 'paragraph' && node.attrs.blockId === blockId) {
+        if ((node.type.name === 'committedPassage' || node.type.name === 'paragraph')
+            && node.attrs.blockId === blockId) {
           target = { node, pos };
           return false;
         }
         return true;
       });
       if (target) {
-        const replacement = proseToParagraphs(result.version.text, {
+        const replacement = proseToCommittedPassage(result.version.text, {
           ...target.node.attrs,
           version: result.version.version,
           lineageId,
@@ -461,8 +489,10 @@ export default function WriterEditor({
             type="button"
             onClick={() => {
               const { $from } = editor.state.selection;
-              const paragraph = $from.node($from.depth);
-              const { lineageId, blockId } = paragraph?.attrs || {};
+              // The identity lives on the committed passage enclosing the caret, or — for a
+              // span committed before the wrapper existed — on the paragraph itself.
+              const holder = committedPassageAt($from)?.node ?? $from.node($from.depth);
+              const { lineageId, blockId } = holder?.attrs || {};
               if (!lineageId || !blockId) {
                 setStatus('Put the caret in a committed passage to revise it.');
                 return;
@@ -587,4 +617,4 @@ export default function WriterEditor({
   );
 }
 
-export { proseToParagraphs, toManuscriptBlocks, exportManuscriptText };
+export { proseToParagraphs, proseToCommittedPassage, toManuscriptBlocks, exportManuscriptText };

@@ -1,0 +1,341 @@
+{
+  "identity": {
+    "artifact_id": "art_forms_rel_cubist_two",
+    "session_id": "labs_topology_forms",
+    "run_id": "run_cubist_two",
+    "step_id": "step_pairs",
+    "organ_family": "topology",
+    "artifact_kind": "topology_relation_set",
+    "form": null,
+    "operation": "topology.all_pairs",
+    "identity_scope": "session",
+    "identity_refs": [],
+    "input_refs": [
+      {
+        "role": "members",
+        "scope": "session",
+        "artifact_id": "art_forms_cubist",
+        "instance_id": "form_upper",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      {
+        "role": "members",
+        "scope": "session",
+        "artifact_id": "art_forms_cubist",
+        "instance_id": "form_lower",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      {
+        "role": "members",
+        "scope": "session",
+        "artifact_id": "art_forms_cubist",
+        "instance_id": "plane",
+        "region_id": null,
+        "geometry_rev": null
+      },
+      {
+        "role": "members",
+        "scope": "session",
+        "artifact_id": "art_forms_cubist",
+        "instance_id": "column",
+        "region_id": null,
+        "geometry_rev": null
+      }
+    ],
+    "derived_from": [
+      "art_forms_cubist"
+    ]
+  },
+  "measurement": {
+    "payload_variant": "topology_relation_set",
+    "payload": {
+      "variant": "topology_relation_set",
+      "pairs_examined": 6,
+      "relations": [
+        {
+          "relation_id": "rel_c848a42e647d",
+          "kind": "disjoint",
+          "source": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "form_upper",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "form_lower",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.0,
+            "contact_pixels": 0.0,
+            "source_perimeter_pixels": 60.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 3.0,
+            "clearance_normalized": 0.041603,
+            "nearest_x": 0.308333,
+            "nearest_y": 0.4375,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_183376137310",
+          "kind": "meets",
+          "source": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "form_upper",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "plane",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.1,
+            "contact_pixels": 6.0,
+            "source_perimeter_pixels": 60.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 0.0,
+            "clearance_normalized": 0.0,
+            "nearest_x": 0.575,
+            "nearest_y": 0.2125,
+            "intersection_pixels": 60.0,
+            "threshold_min_contact": 0.02,
+            "contact_locus_x": 0.55,
+            "contact_locus_y": 0.2,
+            "contact_locus_w": 0.05,
+            "contact_locus_h": 0.25
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_5dc4fec02c8c",
+          "kind": "overlaps",
+          "source": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "form_upper",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "plane",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "intersection_pixels": 60.0,
+            "intersection_fraction_of_source": 0.272727,
+            "intersection_fraction_of_target": 0.097403,
+            "iou": 0.07732,
+            "area_source_pixels": 220.0,
+            "area_target_pixels": 616.0,
+            "intersection_locus_x": 0.566667,
+            "intersection_locus_y": 0.2,
+            "intersection_locus_w": 0.1,
+            "intersection_locus_h": 0.25
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_71be62a334dc",
+          "kind": "disjoint",
+          "source": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "form_upper",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "column",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.0,
+            "contact_pixels": 0.0,
+            "source_perimeter_pixels": 60.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 9.0,
+            "clearance_normalized": 0.124808,
+            "nearest_x": 0.308333,
+            "nearest_y": 0.2125,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_0feb4a2fae37",
+          "kind": "disjoint",
+          "source": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "form_lower",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "plane",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.0,
+            "contact_pixels": 0.0,
+            "source_perimeter_pixels": 40.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 5.0,
+            "clearance_normalized": 0.069338,
+            "nearest_x": 0.491667,
+            "nearest_y": 0.5125,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_af9b7f53eaca",
+          "kind": "disjoint",
+          "source": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "form_lower",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "column",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.0,
+            "contact_pixels": 0.0,
+            "source_perimeter_pixels": 40.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 9.0,
+            "clearance_normalized": 0.124808,
+            "nearest_x": 0.308333,
+            "nearest_y": 0.5125,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02
+          },
+          "stale": false
+        },
+        {
+          "relation_id": "rel_8079480037ab",
+          "kind": "disjoint",
+          "source": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "plane",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "target": {
+            "artifact_id": "art_forms_cubist",
+            "instance_id": "column",
+            "scope": "session",
+            "region_id": null,
+            "geometry_rev": null
+          },
+          "directed": false,
+          "basis": "mask",
+          "epistemic_status": "measured",
+          "measurements": {
+            "contact_fraction_of_source_perimeter": 0.0,
+            "contact_pixels": 0.0,
+            "source_perimeter_pixels": 96.0,
+            "contact_tolerance_px": 0.0,
+            "clearance_px": 25.0,
+            "clearance_normalized": 0.346688,
+            "nearest_x": 0.575,
+            "nearest_y": 0.1625,
+            "intersection_pixels": 0.0,
+            "threshold_min_contact": 0.02
+          },
+          "stale": false
+        }
+      ],
+      "bounded_to": 4
+    },
+    "data_ref": null,
+    "coordinate_system": "normalized_xy_topleft",
+    "epistemic_status": "measured",
+    "epistemic_basis": "mask",
+    "partition": null,
+    "basis_detail": "4 extents, 6 unordered pairs, families ['adjacency', 'containment', 'overlap', 'separation']"
+  },
+  "projection": {
+    "projection_kind": "relation_graph",
+    "hints": {
+      "palette_role": "relation",
+      "emphasis": "primary",
+      "legend": "measured \u2014 read the basis before the number"
+    }
+  },
+  "interpretation": {
+    "label": null,
+    "label_source": "none",
+    "epistemic_status": "uncertain",
+    "notes": "7 relation(s) over 6 pair(s) of 4 extents"
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "changed_at": "2026-08-10T12:00:00Z",
+    "changed_by": "perception_lab"
+  },
+  "provenance": {
+    "producer_kind": "adapter",
+    "producer": "topology_facade",
+    "adapter": "mask_arithmetic",
+    "model": null,
+    "revision": null,
+    "source_image_digest": "sha256:70909a17c0d5e4b2",
+    "started_at": null,
+    "completed_at": null,
+    "duration_ms": null,
+    "device": null,
+    "peak_memory_mb": null
+  }
+}

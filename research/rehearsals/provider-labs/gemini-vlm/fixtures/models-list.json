@@ -1,0 +1,21 @@
+{
+  "models": [
+    {
+      "name": "models/fixture-model-a",
+      "version": "001",
+      "displayName": "Fixture Model A",
+      "description": "Not a real model. See README.md in this directory.",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 8192,
+      "supportedGenerationMethods": ["generateContent", "countTokens"]
+    },
+    {
+      "name": "models/fixture-embedder",
+      "version": "001",
+      "displayName": "Fixture Embedder",
+      "inputTokenLimit": 2048,
+      "outputTokenLimit": 1,
+      "supportedGenerationMethods": ["embedContent"]
+    }
+  ]
+}

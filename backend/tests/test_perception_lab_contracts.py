@@ -696,10 +696,24 @@ def test_the_fixtures_cover_every_execution_identity():
     assert identities == {m.value for m in S.ExecutionIdentity}
 
 
-def test_the_fixtures_cover_every_payload_variant():
+def test_the_fixtures_cover_every_variant_a_producer_may_write():
+    """Every variant that CAN be written has a committed example; the deferred ones cannot.
+
+    PERCEPTUAL-FORMS-001A widened `payload_variants` from four to twenty, and the corpus is not
+    expected to cover the nine `deferred` forms — an artifact declaring one does not validate, so
+    a fixture of it could not exist. The set this asserts against is therefore what the form
+    registry says is producible, which is the same test with the registry's own answer in it.
+    """
     variants = {_fixture(n)["measurement"]["payload_variant"]
                 for n in MANIFEST["records"]["PerceptualArtifact"]}
-    assert variants == set(C["closed_sets"]["payload_variants"])
+    enabled = {f["payload_variant"] for f in C["perceptual_forms"] if f["state"] == "enabled"}
+    assert enabled <= variants, (
+        f"no committed fixture for {sorted(enabled - variants)}. A form a producer writes today "
+        f"and no example anywhere is a shape two lanes will implement differently.")
+    deferred = {f["payload_variant"] for f in C["perceptual_forms"] if f["state"] == "deferred"}
+    assert not (variants & deferred), (
+        f"a fixture claims the deferred form(s) {sorted(variants & deferred)}, which nothing in "
+        f"this phase produces")
 
 
 def test_the_fixtures_cover_every_planner_identity():
@@ -715,6 +729,34 @@ def test_the_manifest_lists_every_fixture_file_on_disk():
         # `test_perception_lab_instance_refs.py`.
         "js-instance-refs.json"}
     assert listed == on_disk
+
+
+# ── the form payload corpus ──────────────────────────────────────────────────
+#
+# PERCEPTUAL-FORMS-001A. One committed payload per registered form. THESE ARE PAYLOADS, NOT
+# ARTIFACTS: sixteen of the nineteen forms have an empty `produced_by_operations`, so no artifact
+# of them can exist yet, and a full fixture for those sixteen would have to name an operation that
+# never ran. The payload alone claims nothing about who made it, and it is the part the next lane
+# must not reinvent.
+
+FORM_PAYLOADS = MANIFEST["form_payloads"]["by_form"]
+
+
+@pytest.mark.parametrize("form_key,entry", sorted(FORM_PAYLOADS.items()))
+def test_every_committed_form_payload_validates_against_its_model(form_key, entry):
+    model = S.FORM_PAYLOAD_MODELS[entry["variant"]]
+    payload = model.model_validate(_fixture(entry["file"]))
+    assert payload.variant == entry["variant"]
+    examined = D.form(form_key).absence.examined_field
+    assert getattr(payload, examined) is not None, (
+        f"{entry['file']} does not carry {examined!r}, which is what tells an empty answer from "
+        f"an absent one")
+
+
+def test_the_payload_corpus_covers_every_registered_form():
+    assert list(FORM_PAYLOADS) == list(C["closed_sets"]["perceptual_forms"]), (
+        "a form with no committed payload is a shape two lanes will read differently, and a "
+        "payload for something that is not a form is a shape nothing names")
 
 
 # ── the fields the frontend reads ────────────────────────────────────────────

@@ -1,0 +1,76 @@
+{
+  "status": "awaiting_human_confirmation",
+  "generated_at": "2026-08-22T01:05:59.839645+00:00",
+  "method": "ObjectId timestamp clustering with a 30-minute gap. This groups posts that were UPLOADED together and knows nothing about what is in them.",
+  "why_not_a_search": "every one of the archive's posts has an empty `general_tags` and an empty `text_blocks`, so no query means `architecture`. A topic search here would return the search string dressed as a result.",
+  "clusters": [
+    {
+      "cluster_index": 0,
+      "size": 294,
+      "first_upload": "2026-07-21T21:43:05+00:00",
+      "contains_canonical_sculpture_posts": [],
+      "post_ids": [
+        "6a5fe7e9a3ddb6341fd698d9",
+        "6a5fe7f0a3ddb6341fd698da",
+        "6a5fe816a3ddb6341fd698db",
+        "6a5fe81ca3ddb6341fd698dc",
+        "6a5fe848a3ddb6341fd698dd",
+        "6a5fe851a3ddb6341fd698de",
+        "6a5fe8afa3ddb6341fd698df",
+        "6a5fe8b4a3ddb6341fd698e0"
+      ]
+    },
+    {
+      "cluster_index": 1,
+      "size": 80,
+      "first_upload": "2026-07-18T14:39:15+00:00",
+      "contains_canonical_sculpture_posts": [],
+      "post_ids": [
+        "6a5b9013bf74ef485d003969",
+        "6a5b902cbf74ef485d00396b",
+        "6a5b902dbf74ef485d00396c",
+        "6a5b902fbf74ef485d00396d",
+        "6a5b9031bf74ef485d00396e",
+        "6a5b9032bf74ef485d00396f",
+        "6a5b9034bf74ef485d003970",
+        "6a5b9036bf74ef485d003971"
+      ]
+    },
+    {
+      "cluster_index": 2,
+      "size": 45,
+      "first_upload": "2026-01-05T16:28:44+00:00",
+      "contains_canonical_sculpture_posts": [],
+      "post_ids": [
+        "695be6bca9ea58f1b6aef5df",
+        "695be6c9a9ea58f1b6aef5e0",
+        "695be6cca9ea58f1b6aef5e1",
+        "695be6d3a9ea58f1b6aef5e2",
+        "695be6d9a9ea58f1b6aef5e3",
+        "695be6dfa9ea58f1b6aef5e4",
+        "695be6eaa9ea58f1b6aef5e5",
+        "695be6fea9ea58f1b6aef5e6"
+      ]
+    },
+    {
+      "cluster_index": 3,
+      "size": 30,
+      "first_upload": "2026-07-22T03:56:11+00:00",
+      "contains_canonical_sculpture_posts": [
+        "6a60408e1ecd6db1c931eb6b",
+        "6a6041b61ecd6db1c931eb78",
+        "6a6041b81ecd6db1c931eb7a"
+      ],
+      "post_ids": [
+        "6a603f5b1ecd6db1c931eb5d",
+        "6a603f6d1ecd6db1c931eb5e",
+        "6a603f781ecd6db1c931eb5f",
+        "6a603f811ecd6db1c931eb60",
+        "6a603fa01ecd6db1c931eb61",
+        "6a603fa91ecd6db1c931eb62",
+        "6a603fbe1ecd6db1c931eb63",
+        "6a60400c1ecd6db1c931eb64"
+      ]
+    }
+  ]
+}

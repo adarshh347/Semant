@@ -1,0 +1,515 @@
+{
+  "what_this_is": [
+    "PERCEPTUAL-FORMS-001C. Synthetic controls for the specialist-model laboratory, drawn",
+    "by `scripts/perception_lab_model_trials.py controls` and verified by `--check`.",
+    "SYNTHETIC ON PURPOSE. Nothing here is scraped or licensed, so the corpus can live in",
+    "a public repository; and the ground truth is known BEFORE any model runs, because the",
+    "alpha that drew each image is the alpha the model is being asked to recover. A model",
+    "evaluated on a photograph can only be compared with another model's opinion.",
+    "These are the disposable controls that come first. The Lane F corpus of real works is",
+    "the actual test and does not exist yet — but a candidate that fails here never needs",
+    "to meet a painting."
+  ],
+  "seed": 20260822,
+  "controls": {
+    "hard-edge": {
+      "file": "hard-edge.png",
+      "tests": [
+        "soft_field"
+      ],
+      "what": "a crisp square on a flat ground",
+      "ground_truth_is": "alpha is 0 or 1 and nowhere between; there are no soft pixels to find",
+      "size": [
+        256,
+        256
+      ],
+      "digest": "sha256:7e211114546821e8244f66073edb2432093ef1412128ea1e7e66a92b945f95e8",
+      "truth": {
+        "alpha_is_binary": true,
+        "interior_box": [
+          64,
+          64,
+          192,
+          192
+        ],
+        "true_soft_pixels": 0
+      }
+    },
+    "soft-fog": {
+      "file": "soft-fog.png",
+      "tests": [
+        "soft_field"
+      ],
+      "what": "a radial haze with no boundary anywhere",
+      "ground_truth_is": "the alpha that drew it is the true fractional occupancy at every pixel",
+      "size": [
+        256,
+        256
+      ],
+      "digest": "sha256:592d40f613db1c7475eaa3c159968806c64e644ef707f90bfc79950b3057fbd0",
+      "truth": {
+        "alpha_is_binary": false,
+        "true_alpha_mean": 0.2711600959300995,
+        "true_soft_fraction": 0.6313629150390625
+      }
+    },
+    "hair-veil": {
+      "file": "hair-veil.png",
+      "tests": [
+        "soft_field"
+      ],
+      "what": "sub-pixel filaments over a pale ground",
+      "ground_truth_is": "fractional COVERAGE, not doubt — the model is not unsure where the hair is",
+      "size": [
+        256,
+        256
+      ],
+      "digest": "sha256:07b52a8557c4e875ae7dabe5fa495f6534c5dd3e5f518ecd24588978f7b68d99",
+      "truth": {
+        "alpha_is_binary": false,
+        "true_alpha_mean": 0.13580594044079938,
+        "true_soft_fraction": 0.3699951171875,
+        "note": "fractional coverage of sub-pixel filaments, not model doubt"
+      }
+    },
+    "fence-tree": {
+      "file": "fence-tree.png",
+      "tests": [
+        "fragment_link"
+      ],
+      "what": "one blob cut into four by vertical bars",
+      "ground_truth_is": "the fragments are one entity, because they were cut from one",
+      "size": [
+        256,
+        256
+      ],
+      "digest": "sha256:07d2b343eae2f83baeacc60d9ed12ca363f23fa15aa0b57d429a909a7fb96585",
+      "truth": {
+        "one_entity": true,
+        "fragment_count": 5,
+        "fragment_boxes": [
+          [
+            0.2235,
+            0.3059,
+            0.2745,
+            0.5922
+          ],
+          [
+            0.3255,
+            0.2157,
+            0.4157,
+            0.6824
+          ],
+          [
+            0.4627,
+            0.2078,
+            0.5569,
+            0.6941
+          ],
+          [
+            0.6039,
+            0.2235,
+            0.6941,
+            0.6745
+          ],
+          [
+            0.7451,
+            0.3333,
+            0.7765,
+            0.5647
+          ]
+        ],
+        "occluder": "four vertical bars",
+        "true_whole_area": 0.213775634765625
+      }
+    },
+    "false-twins": {
+      "file": "false-twins.png",
+      "tests": [
+        "fragment_link"
+      ],
+      "what": "two identical blobs in opposite corners",
+      "ground_truth_is": "they are NOT one entity, and they look exactly alike",
+      "size": [
+        256,
+        256
+      ],
+      "digest": "sha256:58b2dc7f66ad13c414f57608458cead8f7748ba1843c13b0273d4fb2e1a8a92e",
+      "truth": {
+        "one_entity": false,
+        "fragment_count": 2,
+        "fragment_boxes": [
+          [
+            0.1,
+            0.19,
+            0.38,
+            0.49
+          ],
+          [
+            0.62,
+            0.55,
+            0.9,
+            0.85
+          ]
+        ],
+        "note": "same colour, same shape, opposite corners, two things"
+      }
+    },
+    "lit-floor": {
+      "file": "lit-floor.png",
+      "tests": [
+        "fragment_link"
+      ],
+      "what": "one surface, half lit and half in shadow",
+      "ground_truth_is": "one entity whose appearance changes hard across the middle",
+      "size": [
+        256,
+        256
+      ],
+      "digest": "sha256:086fb9497ba623f26a4d4b45ac8a3c468677facc9433f49a4424e641b83c62f0",
+      "truth": {
+        "one_entity": true,
+        "fragment_count": 2,
+        "fragment_boxes": [
+          [
+            0.0,
+            0.45,
+            0.52,
+            1.0
+          ],
+          [
+            0.52,
+            0.45,
+            1.0,
+            1.0
+          ]
+        ],
+        "note": "appearance discontinuity in one continuous surface"
+      }
+    },
+    "occluder-table": {
+      "file": "occluder-table.png",
+      "tests": [
+        "amodal_partition"
+      ],
+      "what": "a figure behind a horizontal bar",
+      "ground_truth_is": "which pixels are hidden is known exactly, because the bar covered them",
+      "size": [
+        256,
+        256
+      ],
+      "digest": "sha256:77127245f25e6566420d5cf3148706c3174ea50128e8cbd22dc109f59f64b2d7",
+      "truth": {
+        "visible_fraction": 0.7410228252410889,
+        "hidden_fraction": 0.25897714495658875,
+        "hidden_band": [
+          0.52,
+          0.72
+        ],
+        "whole_box": [
+          0.39,
+          0.075,
+          0.61,
+          0.88
+        ],
+        "note": "the hidden pixels are known exactly; the model must not invent others"
+      }
+    },
+    "crowd-plaza": {
+      "file": "crowd-plaza.png",
+      "tests": [
+        "density"
+      ],
+      "what": "sixty marks, denser in the eastern half",
+      "ground_truth_is": "the count is 60 and the eastern share is recorded",
+      "size": [
+        256,
+        256
+      ],
+      "digest": "sha256:9393dce861f3eb06d4e0ec2dc19401c35f431cdf41edeba505e786397a8ed532",
+      "truth": {
+        "true_count": 60,
+        "east_count": 45,
+        "west_count": 15,
+        "points": [
+          [
+            0.276,
+            0.4221
+          ],
+          [
+            0.8516,
+            0.4525
+          ],
+          [
+            0.6529,
+            0.3653
+          ],
+          [
+            0.5806,
+            0.4324
+          ],
+          [
+            0.3957,
+            0.7102
+          ],
+          [
+            0.6786,
+            0.6831
+          ],
+          [
+            0.7583,
+            0.6588
+          ],
+          [
+            0.8227,
+            0.5024
+          ],
+          [
+            0.4184,
+            0.7833
+          ],
+          [
+            0.7224,
+            0.5942
+          ],
+          [
+            0.8704,
+            0.8227
+          ],
+          [
+            0.9474,
+            0.6753
+          ],
+          [
+            0.3068,
+            0.8312
+          ],
+          [
+            0.7906,
+            0.8417
+          ],
+          [
+            0.7334,
+            0.5867
+          ],
+          [
+            0.71,
+            0.612
+          ],
+          [
+            0.0899,
+            0.8525
+          ],
+          [
+            0.7559,
+            0.9171
+          ],
+          [
+            0.9221,
+            0.6965
+          ],
+          [
+            0.8682,
+            0.8709
+          ],
+          [
+            0.2964,
+            0.8574
+          ],
+          [
+            0.9137,
+            0.4913
+          ],
+          [
+            0.927,
+            0.4549
+          ],
+          [
+            0.8444,
+            0.7595
+          ],
+          [
+            0.2967,
+            0.4953
+          ],
+          [
+            0.9206,
+            0.3112
+          ],
+          [
+            0.725,
+            0.7866
+          ],
+          [
+            0.7605,
+            0.471
+          ],
+          [
+            0.1512,
+            0.5773
+          ],
+          [
+            0.713,
+            0.5998
+          ],
+          [
+            0.6797,
+            0.3123
+          ],
+          [
+            0.8681,
+            0.7699
+          ],
+          [
+            0.3503,
+            0.5689
+          ],
+          [
+            0.6215,
+            0.9001
+          ],
+          [
+            0.8764,
+            0.6683
+          ],
+          [
+            0.7321,
+            0.3406
+          ],
+          [
+            0.2076,
+            0.4662
+          ],
+          [
+            0.6836,
+            0.883
+          ],
+          [
+            0.9334,
+            0.311
+          ],
+          [
+            0.9365,
+            0.3557
+          ],
+          [
+            0.3462,
+            0.3897
+          ],
+          [
+            0.9384,
+            0.8032
+          ],
+          [
+            0.845,
+            0.827
+          ],
+          [
+            0.6214,
+            0.5339
+          ],
+          [
+            0.3153,
+            0.766
+          ],
+          [
+            0.9351,
+            0.506
+          ],
+          [
+            0.702,
+            0.3028
+          ],
+          [
+            0.7528,
+            0.3959
+          ],
+          [
+            0.3864,
+            0.5589
+          ],
+          [
+            0.6182,
+            0.5762
+          ],
+          [
+            0.7466,
+            0.4578
+          ],
+          [
+            0.6453,
+            0.6281
+          ],
+          [
+            0.2933,
+            0.4406
+          ],
+          [
+            0.6428,
+            0.3836
+          ],
+          [
+            0.9218,
+            0.3867
+          ],
+          [
+            0.8043,
+            0.91
+          ],
+          [
+            0.1252,
+            0.4913
+          ],
+          [
+            0.9079,
+            0.4976
+          ],
+          [
+            0.934,
+            0.8147
+          ],
+          [
+            0.8843,
+            0.6036
+          ]
+        ],
+        "note": "the crowd occupies the eastern half; there is no object called crowd"
+      }
+    },
+    "windows-facade": {
+      "file": "windows-facade.png",
+      "tests": [
+        "density"
+      ],
+      "what": "a regular grid of twenty openings",
+      "ground_truth_is": "repetition that is not a crowd — the transfer control",
+      "size": [
+        256,
+        256
+      ],
+      "digest": "sha256:569d53c2e8a1a7022dd76f0ef8bef3a04a6a00b96f062367a205b0c314ea86a0",
+      "truth": {
+        "true_count": 20,
+        "regular": true,
+        "note": "repeated structure a crowd model has never seen"
+      }
+    },
+    "sparse-objects": {
+      "file": "sparse-objects.png",
+      "tests": [
+        "density"
+      ],
+      "what": "three well-separated blobs",
+      "ground_truth_is": "a field is the wrong answer to a picture with three things in it",
+      "size": [
+        256,
+        256
+      ],
+      "digest": "sha256:629c04e7e0c11b331151698510219ffb725a1821c2c402bbd7efa3fa1188a93c",
+      "truth": {
+        "true_count": 3,
+        "sparse": true
+      }
+    }
+  }
+}

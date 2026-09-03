@@ -1,0 +1,193 @@
+{
+  "annotation_id": "ann-competing-extents-trained-01",
+  "form": "extent.hypothesis_set",
+  "subject": {
+    "kind": "control",
+    "ref": "competing-extents",
+    "digest": null,
+    "raster": [
+      64,
+      64
+    ]
+  },
+  "annotator": {
+    "id": "annotator-a",
+    "expertise": "trained",
+    "minutes_spent": 6
+  },
+  "annotated_on": "2026-08-22",
+  "legitimate_readings": [
+    {
+      "reading_id": "body_only",
+      "label": "the figure itself",
+      "why": "a shadow is cast BY a figure and is not part of where the figure is. Asked to outline the figure I outline what could be touched.",
+      "mask_rle": {
+        "size": [
+          64,
+          64
+        ],
+        "counts": [
+          1366,
+          1,
+          59,
+          9,
+          54,
+          11,
+          52,
+          13,
+          50,
+          15,
+          48,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          31,
+          33,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          17,
+          48,
+          15,
+          50,
+          13,
+          52,
+          11,
+          54,
+          9,
+          59,
+          1,
+          1577
+        ]
+      },
+      "instance_refs": [
+        "body"
+      ],
+      "preferred_by_annotator": true
+    },
+    {
+      "reading_id": "body_and_shadow",
+      "label": "the figure and what it casts",
+      "why": "in a scene read as light and dark, the shadow is the figure's own mark on the ground and belongs to it. Excluding it leaves the figure floating.",
+      "mask_rle": {
+        "size": [
+          64,
+          64
+        ],
+        "counts": [
+          1366,
+          1,
+          59,
+          9,
+          54,
+          11,
+          52,
+          13,
+          50,
+          15,
+          48,
+          36,
+          28,
+          36,
+          28,
+          36,
+          28,
+          36,
+          27,
+          37,
+          28,
+          36,
+          28,
+          36,
+          28,
+          36,
+          28,
+          17,
+          15,
+          4,
+          29,
+          15,
+          16,
+          4,
+          30,
+          13,
+          17,
+          4,
+          31,
+          11,
+          18,
+          4,
+          32,
+          9,
+          19,
+          4,
+          36,
+          1,
+          23,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          60,
+          4,
+          654
+        ]
+      },
+      "instance_refs": [
+        "body",
+        "shadow"
+      ],
+      "preferred_by_annotator": false
+    }
+  ],
+  "single_correct_answer": false,
+  "ambiguity": {
+    "level": "irreducible",
+    "sources": [
+      "shadow_or_reflection",
+      "category_boundary_disputed"
+    ],
+    "confidence": 0.9,
+    "note": "I am confident about both outlines and unable to choose between them. The confidence is in the geometry; the ambiguity is in the question."
+  },
+  "utility_verdicts": [
+    {
+      "verdict": "unclear",
+      "why": "a producer returning ONE mask here cannot be judged without knowing which reading it meant, and nothing in a single mask says.",
+      "about": null
+    }
+  ],
+  "notes": "Asked 'where is the figure', I recorded both defensible outlines rather than choosing. The IoU between them is 0.77, so which one a scorer picks moves any single-answer score by more than most producers differ from each other — the tie-break would dominate the measurement.",
+  "disagrees_with": null
+}

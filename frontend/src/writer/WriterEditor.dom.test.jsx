@@ -562,13 +562,162 @@ describe('I4 — provenance is on the card and survives the commit', () => {
     await renderBlock([RENDERED]);
     await act(async () => { byTestId('accept-button').click(); });
 
+    // 001D — the identity lives on ONE `committedPassage` node, not on its paragraphs.
     const committed = editor.getJSON().content.filter(
-      (n) => n.type === 'paragraph' && n.attrs?.provenance,
+      (n) => n.type === 'committedPassage' && n.attrs?.provenance,
     );
-    expect(committed.length).toBeGreaterThan(0);
+    expect(committed.length).toBe(1);
     expect(committed[0].attrs.provenance.operators[0]).toEqual({ name: 'threshold', version: 1 });
     expect(committed[0].attrs.provenance.passageId).toBe('psg_1');
     expect(committed[0].attrs.blockId).toBe('blk_9');
+  });
+});
+
+// ══ 001D — one committed passage, one identity ═══════════════════════════════
+
+describe('multi-paragraph identity (ATLAS-WRITER-MASS-BUILD-001D)', () => {
+  const TWO_BEATS = {
+    ...RENDERED,
+    text: 'The latch gave before she decided to push.\n\nShe did not look back.',
+  };
+
+  /** Put the caret at the end of the LAST paragraph inside the committed passage. */
+  function caretAtEndOfPassage() {
+    let found = null;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'committedPassage') { found = { node, pos }; return false; }
+      return true;
+    });
+    // `pos + nodeSize - 2`: inside the last paragraph, after its final character — before
+    // the paragraph's closing token and the wrapper's.
+    editor.commands.setTextSelection(found.pos + found.node.nodeSize - 2);
+    return found;
+  }
+
+  /** Every node, at any depth, that claims a block id. */
+  function claimants(blockId) {
+    const found = [];
+    editor.state.doc.descendants((node) => {
+      if (node.attrs?.blockId === blockId) found.push(node.type.name);
+    });
+    return found;
+  }
+
+  async function acceptTwoBeats() {
+    vi.spyOn(writerService, 'accept').mockResolvedValue({
+      block_id: 'blk_9', lineage_id: 'lin_1', version: 1,
+    });
+    await mount();
+    await seed([directiveNode(['threshold'])]);
+    await renderBlock([TWO_BEATS]);
+    await act(async () => { byTestId('accept-button').click(); });
+  }
+
+  it('a two-paragraph render is ONE node claiming the block, with paragraphs inside', async () => {
+    await acceptTwoBeats();
+    expect(claimants('blk_9')).toEqual(['committedPassage']);
+    const wrapper = editor.getJSON().content.find((n) => n.type === 'committedPassage');
+    expect(wrapper.content).toHaveLength(2);
+    for (const para of wrapper.content) {
+      expect(para.attrs?.blockId ?? null).toBeNull();
+      expect(para.attrs?.lineageId ?? null).toBeNull();
+      expect(para.attrs?.provenance ?? null).toBeNull();
+    }
+  });
+
+  it('exports as ONE block carrying both paragraphs', async () => {
+    await acceptTwoBeats();
+    const blocks = toManuscriptBlocks(editor.state.doc).filter((b) => b.content);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].id).toBe('blk_9');
+    expect(blocks[0].lineage_id).toBe('lin_1');
+    expect(blocks[0].content).toBe(
+      '<p>The latch gave before she decided to push.</p><p>She did not look back.</p>',
+    );
+    expect(exportNow()).toContain('She did not look back.');
+  });
+
+  it('a revision replaces the whole passage — one claimant before, one after', async () => {
+    await acceptTwoBeats();
+    vi.spyOn(writerService, 'prepareRevision').mockResolvedValue({
+      lineage_id: 'lin_1', adopted: false, current_version: 1, current_text: TWO_BEATS.text,
+      declared: { operators: { threshold: 1 }, intents: { goal: LEAK_TOKEN } }, history: [],
+    });
+    await act(async () => {
+      // the caret in the SECOND paragraph of the passage — the one the old code orphaned
+      caretAtEndOfPassage();
+      expect(editor.state.selection.$from.parent.type.name).toBe('paragraph');
+      byTestId('revise-button').click();
+    });
+    expect(byTestId('revision-panel')).not.toBeNull();
+
+    vi.spyOn(writerService, 'run').mockResolvedValue({
+      results: [{ ...TWO_BEATS, passage_id: 'psg_rev', text: 'One paragraph now.' }],
+      proposals: [], diagnostics: [],
+    });
+    await act(async () => { byTestId('revise-render').click(); });
+    vi.spyOn(writerService, 'acceptRevision').mockResolvedValue({
+      version: { id: 'ver_2', version: 2, text: 'One paragraph now.' },
+    });
+    await act(async () => { byTestId('revision-accept').click(); });
+
+    expect(claimants('blk_9')).toEqual(['committedPassage']);
+    const wrapper = editor.getJSON().content.find((n) => n.type === 'committedPassage');
+    expect(wrapper.attrs.version).toBe(2);
+    expect(wrapper.content).toHaveLength(1);
+    const text = exportNow();
+    expect(text).toContain('One paragraph now.');
+    expect(text).not.toContain('She did not look back.');     // no orphaned second paragraph
+  });
+
+  it('the ledger\'s block comes back as one passage with its paragraphs', async () => {
+    const { manuscriptBlocksToDoc } = await import('./schema/manuscriptExport');
+    const doc = manuscriptBlocksToDoc([{
+      id: 'blk_9', type: 'paragraph', origin: 'user_confirmed',
+      content: '<p>The latch gave before she decided to push.</p><p>She did not look back.</p>',
+      provenance: { operators: [{ name: 'threshold', version: 1 }] },
+      lineage_id: 'lin_1', version: 1,
+    }, {
+      id: 'blk_h', type: 'paragraph', origin: 'human', content: '<p>Hers.</p>',
+      provenance: null,
+    }]);
+    expect(doc.content[0].type).toBe('committedPassage');
+    expect(doc.content[0].attrs.blockId).toBe('blk_9');
+    expect(doc.content[0].content).toHaveLength(2);
+    expect(doc.content[1].type).toBe('paragraph');
+    // and it round-trips
+    await mount();
+    await act(async () => { editor.commands.setContent(doc); });
+    expect(claimants('blk_9')).toEqual(['committedPassage']);
+    const blocks = toManuscriptBlocks(editor.state.doc);
+    expect(blocks[0].content).toBe(
+      '<p>The latch gave before she decided to push.</p><p>She did not look back.</p>');
+    expect(blocks[1].origin).toBe('human');
+  });
+
+  it('Enter at the end of a passage steps OUT into a clean paragraph of the author\'s own', async () => {
+    await acceptTwoBeats();
+    await act(async () => {
+      caretAtEndOfPassage();
+      // A REAL keypress, through the keymap — `commands.keyboardShortcut` wraps the
+      // handler in its own transaction and maps the old selection back over the result.
+      editor.view.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      editor.commands.insertContent('She had been standing there an hour.');
+    });
+    const top = editor.getJSON().content;
+    const at = top.findIndex((n) => n.type === 'committedPassage');
+    // the passage is intact — still two paragraphs, still the one claimant
+    expect(top[at].content).toHaveLength(2);
+    expect(claimants('blk_9')).toEqual(['committedPassage']);
+    // and the typed sentence is the NEXT top-level node: a plain paragraph with no identity
+    const next = top[at + 1];
+    expect(next.type).toBe('paragraph');
+    expect(next.attrs?.blockId ?? null).toBeNull();
+    expect(next.content[0].text).toBe('She had been standing there an hour.');
+    const blocks = toManuscriptBlocks(editor.state.doc).filter((b) => b.content);
+    const typed = blocks.find((b) => b.content.includes('standing there'));
+    expect(typed.origin).toBe('human');
+    expect(typed.provenance).toBeNull();
   });
 });
 

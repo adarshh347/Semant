@@ -1680,3 +1680,208 @@
     border-left: 3px solid var(--accent-deep);
     padding-left: .5rem;
 }
+
+/* ── the image inspector ───────────────────────────────────────────────────
+ *
+ * An image reference used to be a `<code>` token. It is now a button, and the whole visual problem
+ * is that it must read as OPENABLE without becoming louder than the sentence it sits inside — a
+ * `WhyHere` panel has half a dozen of them in a row, and six blue links would turn a provenance
+ * record into a navigation bar.
+ *
+ * So the affordance is an underline that only fully arrives on hover/focus, and the token keeps
+ * its monospace weight. The two-channel rule still holds where it matters: `is-inert` (no
+ * provider) is not merely a paler chip, it is a `span` with no cursor, no underline and no
+ * `aria-pressed`, so nothing announces it as a control.
+ */
+
+.iw-imgref {
+    font: inherit;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px dotted var(--line-strong);
+    cursor: pointer;
+}
+
+.iw-imgref code { color: inherit; }
+.iw-imgref:hover { border-bottom-style: solid; color: var(--ink); }
+
+.iw-imgref:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-bottom-color: transparent;
+}
+
+/* OPEN, and said on the element itself rather than only in the sidebar. With the panel scrolled
+   out of view this is the only thing on screen that says which reference it is showing. */
+.iw-imgref[aria-pressed='true'] {
+    border-bottom-style: solid;
+    border-bottom-width: 2px;
+    border-bottom-color: var(--accent);
+    color: var(--ink);
+}
+
+/* No provider: a plain token. Not a disabled button — a disabled button is still a button to a
+   screen reader, and this is not a control that happens to be unavailable. */
+.iw-imgref.is-inert { border-bottom: 0; cursor: auto; }
+
+.iw-imgref-list { display: inline; }
+
+/* The thumbnail as a click target. The picture carries the affordance, so the chip's underline
+   would be noise — the ring on hover/focus is the whole treatment. */
+.iw-imgref--thumb { border-bottom: 0; display: block; border-radius: .25rem; }
+.iw-imgref--thumb:hover { box-shadow: 0 0 0 2px var(--line-strong); }
+.iw-imgref--thumb:focus-visible { outline-offset: 3px; }
+.iw-imgref--thumb[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--accent); }
+
+/* ── the sidebar ──────────────────────────────────────────────────────────
+ *
+ * Fixed to the right and NOT modal: no backdrop, no scroll lock, no focus trap. The workbench
+ * behind it stays readable and operable, because the argument the reader is checking is on that
+ * side of the screen. A backdrop here would be the visual claim that looking at the picture means
+ * leaving the reasoning.
+ */
+
+.iw-inspector {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 40;
+    width: min(26rem, 100vw);
+    height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: .875rem;
+    padding: 1rem 1.125rem 2rem;
+    background: var(--surface);
+    border-left: 1px solid var(--line-strong);
+    color: var(--ink);
+}
+
+.iw-inspector:focus { outline: none; }
+.iw-inspector:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.iw-inspector-head {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    position: sticky;
+    top: 0;
+    padding-bottom: .5rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+}
+
+.iw-inspector-title { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.iw-inspector-ref { font-size: .75rem; color: var(--ink-subtle); overflow-wrap: anywhere; }
+.iw-inspector-close { margin-left: auto; flex: none; }
+
+.iw-inspector-image img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: .25rem;
+    border: 1px solid var(--line);
+}
+
+/* A url the session never carried. Deliberately NOT a broken `<img>`: the browser's own broken
+   image draws the same picture for "no url" and "fetch failed", and those send you to opposite
+   repairs. */
+.iw-inspector-blank {
+    margin: 0;
+    padding: .75rem;
+    font-size: .8125rem;
+    line-height: 1.5;
+    color: var(--ink-subtle);
+    border: 1px dashed var(--line-strong);
+    border-radius: .25rem;
+}
+
+.iw-inspector-facts { margin: .75rem 0 0; display: flex; flex-direction: column; gap: .5rem; }
+.iw-inspector-facts > div { display: grid; grid-template-columns: 6rem 1fr; gap: .5rem; }
+.iw-inspector-facts dt { font-size: .6875rem; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--ink-subtle); }
+.iw-inspector-facts dd { margin: 0; font-size: .8125rem; line-height: 1.5; }
+
+/* The two inconsistencies this panel can surface. Accent-bordered, and each also carries its own
+   sentence in the DOM — the border is the redundancy. */
+.iw-inspector-facts dd[data-not-in-posts='true'],
+.iw-inspector-unresolved {
+    border-left: 3px solid var(--accent);
+    padding-left: .625rem;
+}
+
+.iw-inspector-unresolved {
+    margin: 0;
+    font-size: .8125rem;
+    line-height: 1.55;
+}
+
+.iw-inspector-rests { display: flex; flex-direction: column; gap: .625rem; }
+
+.iw-inspector-rests .iw-h3 {
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    margin: 0;
+    font-size: .9375rem;
+}
+
+.iw-inspector-total {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.iw-inspector-caveat { line-height: 1.5; }
+.iw-inspector-caveat em { font-style: italic; }
+
+.iw-inspector-uncited {
+    margin: 0;
+    font-size: .8125rem;
+    line-height: 1.55;
+    border-left: 3px solid var(--line-strong);
+    padding-left: .625rem;
+}
+
+.iw-inspector-surfaces { list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: .5rem; }
+
+.iw-inspector-surface {
+    border: 1px solid var(--line);
+    border-radius: .25rem;
+    padding: .5rem .625rem;
+}
+
+/* A zero surface is quieter and never hidden — the count IS the information, same rule as the
+   ledger's empty row. */
+.iw-inspector-surface.is-empty { border-style: dashed; background: transparent; }
+.iw-inspector-surface-head { display: flex; align-items: baseline; gap: .5rem; }
+
+.iw-inspector-cites { list-style: none; margin: .5rem 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: .5rem; }
+.iw-inspector-cites > li { border-top: 1px solid var(--line); padding-top: .5rem; }
+.iw-inspector-cites > li:first-child { border-top: 0; padding-top: 0; }
+
+.iw-inspector-cite-head { display: flex; align-items: baseline; gap: .375rem; flex-wrap: wrap;
+    font-size: .6875rem; }
+.iw-inspector-cite-status { color: var(--ink-subtle); text-transform: uppercase;
+    letter-spacing: .04em; }
+
+.iw-image-absences { border-left: 3px solid var(--accent); }
+
+/* Narrow: a bottom sheet rather than a column that leaves no room for the workbench. Still not
+   modal, and still scrolls with its own overflow. */
+@media (max-width: 46rem) {
+    .iw-inspector {
+        top: auto;
+        bottom: 0;
+        width: 100vw;
+        height: min(70vh, 34rem);
+        border-left: 0;
+        border-top: 1px solid var(--line-strong);
+    }
+}

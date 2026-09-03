@@ -1,0 +1,63 @@
+{
+  "trial_id": "depth_anything_v2_small.occluder-table",
+  "recorded_at": "2026-08-22T01:03:18+0530",
+  "candidate": {
+    "key": "depth_anything_v2_small",
+    "label": "Depth Anything V2 small",
+    "forms": [
+      "extent.fused_hypothesis",
+      "extent.visible_inferred_partition"
+    ],
+    "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf",
+    "checkpoint": "depth-anything/Depth-Anything-V2-Small-hf",
+    "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+    "license": "Apache-2.0",
+    "acquisition": "already resident — weights.manifest.json entry `depth_anything_v2_small`",
+    "size_mb": 95.0,
+    "expected_vram_gb": 0.6,
+    "produces": "relative inverse depth — supporting evidence for an occlusion ground",
+    "cannot_produce": "an Extent measurement of any kind; depth belongs to the Depth organ",
+    "claim": "derived"
+  },
+  "control": "occluder-table",
+  "environment": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13",
+    "torch": "2.13.0",
+    "device": "mps",
+    "budget_vram_gb": 10.0
+  },
+  "fidelity": {
+    "control": "occluder-table",
+    "checked": false
+  },
+  "outcome": "ready",
+  "source_image_digest": "sha256:743b393f1ecfc13ce5cc73af1513db141d9cbcc6cb32ea3b255d0c5c5e51cf77",
+  "cold_load_s": 0.7824,
+  "warm_run_s": 0.0758,
+  "peak_process_rss_mb": 500.8,
+  "accelerator_allocated_mb": 1232.7,
+  "measurements": {
+    "output_shape": [
+      518,
+      518
+    ],
+    "output_range": [
+      0.8818,
+      3.7852
+    ],
+    "units": "relative inverse depth, no zero and no scale",
+    "is_an_extent": false,
+    "deterministic": true,
+    "raw_output_digest": "sha256:a7b6b0fbf810ec534642c64437038274644f63936b9725bfbf7bd57909872e32",
+    "preview": "research/perception_lab/model_trials/previews/depth_anything.occluder-table.png"
+  },
+  "form_contract": {
+    "form": "extent.fused_hypothesis",
+    "attempted": true,
+    "satisfies": true,
+    "payload_variant": "extent_fusion_hypothesis",
+    "why": "the model fills a GROUND, never the grouping. The claim is `interpretive` by partition and the model's number is one strength among several"
+  }
+}

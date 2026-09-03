@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:rehearsal/inquiry-intelligence-evaluation.schema.json",
+  "title": "Inquiry Intelligence Evaluation",
+  "description": "RESEARCH-ONLY. One evaluator pass over one terminal inquiry session. Every metric is a structural count over the session record; none of them is a quality score. The central discipline, taken from `perception_lab_form_scoring`: a metric that could not be computed is `null` with a stated reason, NEVER zero. Zero means the flow did the thing zero times; null means nothing in the record could say.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evaluation_version",
+    "case_ref",
+    "session_ref",
+    "run_identity",
+    "inputs",
+    "metrics",
+    "diagnosis",
+    "manual_review"
+  ],
+  "properties": {
+    "evaluation_version": { "type": "string", "minLength": 1 },
+    "evaluated_at": { "type": "string" },
+    "case_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "case_version"],
+      "properties": {
+        "case_id": { "type": ["string", "null"] },
+        "case_version": { "type": ["string", "null"] },
+        "prompt_sha256_matches": {
+          "type": ["boolean", "null"],
+          "description": "Whether the session's prompt is the case's prompt. `false` means this evaluation is filed against a case it did not run — reported, never corrected."
+        }
+      }
+    },
+    "session_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session_id": { "type": ["string", "null"] },
+        "inquiry_id": { "type": ["string", "null"] },
+        "revision": { "type": ["integer", "null"] },
+        "schema_version": { "type": ["string", "null"] },
+        "state": { "type": ["string", "null"] }
+      }
+    },
+    "run_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Replay, fixture, live, local and provider identities kept explicit and never pooled.",
+      "properties": {
+        "deployment_kind": { "type": ["string", "null"] },
+        "declared": { "type": ["boolean", "null"] },
+        "reachable": { "type": ["boolean", "null"] },
+        "provider": { "type": ["string", "null"] },
+        "models": { "type": "object", "additionalProperties": { "type": ["string", "null"] } },
+        "stage_bindings": { "type": "object", "additionalProperties": { "type": ["string", "null"] } }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "post_ids": { "type": "array", "items": { "type": "string" } },
+        "fingerprints": { "type": "object", "additionalProperties": { "type": ["string", "null"] } },
+        "fingerprint_changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["post_id", "expected", "found"],
+            "properties": {
+              "post_id": { "type": "string" },
+              "expected": { "type": ["string", "null"] },
+              "found": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "description": "name -> measurement. Every entry is a Measurement object, so a refusal is as first-class as a number.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["value", "kind"],
+        "properties": {
+          "value": {
+            "description": "number, boolean, object, or null. `null` ALWAYS means unmeasurable and is always accompanied by `refused`."
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["count", "ratio", "flag", "breakdown", "label"]
+          },
+          "refused": {
+            "type": ["string", "null"],
+            "description": "Why no value could be produced. Present exactly when value is null."
+          },
+          "warning": {
+            "type": ["string", "null"],
+            "description": "A signal that is suggestive and not probative. `lexical_prompt_copy_ratio` is the canonical case: high overlap is a reason to look, never a finding on its own."
+          },
+          "detail": { "description": "Supporting evidence — ids, per-image breakdowns, the objects counted." }
+        }
+      }
+    },
+    "diagnosis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflow_outcome", "semantic_outcome", "findings"],
+      "properties": {
+        "workflow_outcome": {
+          "type": ["string", "null"],
+          "description": "What the machinery says happened — the session state and its stop reason."
+        },
+        "semantic_outcome": {
+          "type": ["string", "null"],
+          "enum": ["adequate", "relationally_underperformed", "traceability_underperformed", "barren", "prompt_dominated", "indeterminate", null],
+          "description": "What the record shows was actually learned. Deliberately a DIFFERENT field from the workflow outcome: a run can close cleanly and have compiled nothing, and collapsing the two is how that goes unnoticed."
+        },
+        "outcomes_disagree": { "type": ["boolean", "null"] },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "severity", "statement"],
+            "properties": {
+              "code": { "type": "string" },
+              "severity": { "type": "string", "enum": ["error", "underperformance", "warning", "note"] },
+              "statement": { "type": "string" },
+              "evidence": {}
+            }
+          }
+        },
+        "expectations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["metric", "status"],
+            "properties": {
+              "metric": { "type": "string" },
+              "status": { "type": "string", "enum": ["met", "unmet", "unmeasurable", "unknown_metric"] },
+              "expectation": {},
+              "observed": {},
+              "why": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "manual_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["questions", "note"],
+      "properties": {
+        "questions": { "type": "array", "items": { "type": "string" } },
+        "note": { "type": "string" },
+        "unautomated_shortcuts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Forbidden shortcuts whose `detected_by` is `none`. Surfaced in every report so the gap between what is checked and what matters stays visible."
+        }
+      }
+    },
+    "baseline_comparison": {
+      "type": ["object", "null"],
+      "description": "Metric-by-metric delta against a named prior evaluation, or null when none was given."
+    },
+    "timing": { "type": "object" }
+  }
+}

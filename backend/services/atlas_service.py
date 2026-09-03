@@ -727,9 +727,83 @@ async def save_draft(atlas_id: str, draft: Optional[Mapping[str, Any]], *,
     return doc
 
 
-async def list_atlases(*, limit: int = 20, collection=None) -> List[Dict[str, Any]]:
-    cursor = _collection(collection).find({}).sort("created_at", -1).limit(limit)
+async def list_atlases(*, limit: int = 20, include_archived: bool = False,
+                       collection=None) -> List[Dict[str, Any]]:
+    """The recent Atlases. Archived ones are left out unless asked for — they still exist, and
+    `get_atlas` still answers for them; they are simply off the shelf a curator reopens from."""
+    query: Dict[str, Any] = {} if include_archived else {"archived": {"$ne": True}}
+    cursor = _collection(collection).find(query).sort("created_at", -1).limit(limit)
     out: List[Dict[str, Any]] = []
     async for doc in cursor:
         out.append(doc)
     return out
+
+
+# ── the lifecycle: rename, archive, duplicate ────────────────────────────────
+#
+# Three gestures, and deliberately not a fourth. An Atlas can be RENAMED, because its title is the
+# one field that is the curator's alone; ARCHIVED, because a canvas somebody is done with should
+# leave the shelf without leaving the record — its provenance (`corpus_ref`) and its notes are
+# what make a later manuscript explicable, so nothing here hard-deletes; and DUPLICATED, because
+# "the same images, arranged differently" is a real act of curation. There is no delete route: an
+# archived Atlas is exactly a deleted one that can still say where it came from.
+
+async def rename_atlas(atlas_id: str, title: str, *, now: Optional[str] = None,
+                       collection=None) -> Optional[Dict[str, Any]]:
+    """Retitle. Touches nothing else — a rename that could move a node would not be a rename."""
+    coll = _collection(collection)
+    doc = await coll.find_one({"_id": str(atlas_id)})
+    if doc is None:
+        return None
+    patch = {"title": str(title or ""), "updated_at": now or utc_now()}
+    await coll.update_one({"_id": str(atlas_id)}, {"$set": patch})
+    return {**doc, **patch}
+
+
+async def set_archived(atlas_id: str, archived: bool, *, now: Optional[str] = None,
+                       collection=None) -> Optional[Dict[str, Any]]:
+    """Take a canvas off the shelf, or put it back. The document is untouched otherwise: the
+    arrangement, the notes, the plan, the draft and the corpus reference all survive, which is the
+    whole reason this exists instead of a delete."""
+    coll = _collection(collection)
+    doc = await coll.find_one({"_id": str(atlas_id)})
+    if doc is None:
+        return None
+    patch = {"archived": bool(archived), "updated_at": now or utc_now()}
+    await coll.update_one({"_id": str(atlas_id)}, {"$set": patch})
+    return {**doc, **patch}
+
+
+def duplicate_doc(source: Mapping[str, Any], *, atlas_id: str, title: Optional[str] = None,
+                  now: Optional[str] = None) -> Dict[str, Any]:
+    """A new Atlas over the SAME evidence, with the same arrangement. Pure.
+
+    What is copied: the corpus reference (provenance — the copy can still say which walk or run it
+    came from), the nodes (which images, where they sit, and the author's own notes on them) and
+    the title. What is NOT copied: the plan, the draft and the relation edges. A plan is an
+    argument somebody accepted over THIS canvas, a draft is a quarantined suggestion, and an edge
+    names a committed relation in the ledger — none of those is arrangement, and a duplicate that
+    carried them would be two canvases claiming one act of judgement. The copy starts those fresh,
+    and records `duplicated_from` so the lineage is inspectable rather than inferred.
+    """
+    stamp = now or utc_now()
+    nodes = [dict(n) for n in source.get("nodes") or []]
+    doc = new_atlas_doc(atlas_id=atlas_id, corpus_ref=source.get("corpus_ref"),
+                        post_ids=[str(n.get("post_id")) for n in nodes], now=stamp)
+    doc["title"] = str(title if title is not None else source.get("title") or "")
+    doc["nodes"] = nodes
+    doc["duplicated_from"] = str(source.get("_id") or "")
+    return doc
+
+
+async def duplicate_atlas(atlas_id: str, *, title: Optional[str] = None,
+                          new_id_: Optional[str] = None, now: Optional[str] = None,
+                          collection=None) -> Optional[Dict[str, Any]]:
+    coll = _collection(collection)
+    source = await coll.find_one({"_id": str(atlas_id)})
+    if source is None:
+        return None
+    doc = duplicate_doc(source, atlas_id=new_id_ or new_id(), title=title, now=now)
+    assert_no_percept_data(doc)
+    await coll.insert_one(doc)
+    return doc

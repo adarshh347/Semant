@@ -24,6 +24,7 @@ import pytest
 
 from backend.services import manuscript_service as ms_svc
 from backend.services.writer import assemblages as asm
+from backend.services.writer import ledger as ledger_mod
 from backend.services.writer import dsl, instrument
 from backend.services.writer import library as lib
 from backend.services.writer import operators as op_svc
@@ -45,6 +46,8 @@ def store(monkeypatch):
     manuscripts, scenes, versions = FakeCollection(), FakeCollection(), FakeCollection()
     monkeypatch.setattr(op_svc, "writer_operator_collection", ops)
     monkeypatch.setattr(psg_svc, "writer_passage_collection", psgs)
+    # ATLAS-WRITER-MASS-BUILD-001D — every transition keeps an operation record.
+    monkeypatch.setattr(ledger_mod, "writer_operation_collection", FakeCollection())
     # W8 — Accept records an immutable version; it is ledger, not write-behind,
     # so it must be faked rather than allowed to reach the real collection.
     monkeypatch.setattr(rev_svc, "writer_passage_version_collection", FakeCollection())
@@ -376,8 +379,13 @@ def test_a_published_version_reaches_another_project_only_on_an_explicit_pull(
     """
     promote("threshold")
     run(op_svc.operator_registry.import_from_library(BOOK_B, AUTHOR, "threshold"))
-    # Book A takes the library copy too, so it has a `library_ref` to pull against
-    run(op_svc.operator_registry.delete(BOOK_A, "threshold"))
+    # Book A takes the library copy too, so it has a `library_ref` to pull against. The
+    # fixture's own copy is removed from the FAKE STORE directly: `delete` now RETIRES
+    # (001D), and a retired name refuses re-import by design — this is a fixture reset,
+    # not an application path.
+    store["operators"].docs = {
+        k: v for k, v in store["operators"].docs.items()
+        if not (v["project_id"] == BOOK_A and v["name"] == "threshold")}
     run(op_svc.operator_registry.import_from_library(BOOK_A, AUTHOR, "threshold"))
 
     run(op_svc.operator_registry.update(BOOK_B, "threshold", {"definition": "improved in B"}))

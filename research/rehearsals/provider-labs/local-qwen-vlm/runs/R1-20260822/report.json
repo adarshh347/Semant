@@ -1,0 +1,451 @@
+{
+  "lane": "INTELLIGENCE-001C-R1",
+  "run_id": "R1-20260822",
+  "pooled_runs": [
+    "R1-20260822",
+    "R1-20260822-dflt"
+  ],
+  "identity": {
+    "llama_server_version_raw": "version: 0.1.2-dev (build 10520, commit cd644c395)",
+    "llama_cpp_build": "b10520-cd644c395",
+    "llama_server_path": "/opt/homebrew/bin/llama-server",
+    "model_path": "/Users/merleauponty/ml models/qwen 9b q5km/Qwen3.5-9B-Q5_K_M.gguf",
+    "model_sha256": "dc2a39aef291f91a9116ad214058da0d86eb648743a124bd8c333787c4b9c91c",
+    "model_bytes": 6577841376,
+    "mmproj_path": "/Users/merleauponty/ml models/qwen 9b q5km/mmproj-F16.gguf",
+    "mmproj_sha256": "f70dc3509053962b0d0d3ee8a7eacebf5d60aa560cad78254ae8698516ae029f",
+    "mmproj_bytes": 918166080,
+    "hardware": "Mac16,10",
+    "memsize_bytes": 17179869184,
+    "metal_ceiling_mb": 12713,
+    "scope": "Every number in this run belongs to THIS quantization, projector, build, sampling configuration and machine. Not to `Qwen 9B`."
+  },
+  "context_verdict": {
+    "verdict": "32K_SAFE",
+    "why": "32k started, served 32768, stayed under the Metal ceiling at 9305.6 MB, survived every probe, and retrieved 20/20",
+    "safe": true,
+    "usable": true,
+    "retrieval": "20/20",
+    "peak_wired_mb": 9305.6,
+    "swap_note": "whole-machine swap was recorded and never used to condemn a profile",
+    "compared_with_16k": {
+      "safe": true,
+      "peak_wired_mb": 9053.0,
+      "retrieval": "5/5"
+    }
+  },
+  "visual_observer_verdict": {
+    "verdict": "ELIGIBLE_FOR_PROMPT_BLIND_OBSERVATION",
+    "why": "18/18 observations across 6 sampling cells were epistemically valid BEFORE any repair, with 0 carrying an unsupported attribution",
+    "cells_pooled": [
+      "A-merged-baseline",
+      "B-conservative-nonthinking",
+      "C-lowvariance-nonthinking",
+      "A-merged-baseline",
+      "B-conservative-nonthinking",
+      "C-lowvariance-nonthinking"
+    ],
+    "excluded_mislabelled_cells": [
+      "A-merged-baseline",
+      "B-conservative-nonthinking",
+      "C-lowvariance-nonthinking"
+    ],
+    "observations": 81,
+    "schema_valid": "18/18",
+    "refs_correct": "18/18",
+    "unsupported_precision_fields": 0,
+    "attribution_unclean": 0,
+    "repairs": {
+      "attempted": 0,
+      "repaired": 0,
+      "gutted": 0,
+      "still_invalid": 0
+    },
+    "against_the_baseline": "#230 measured 1 fabricated quantity in 10 structured observations at the default floor. This lane adds the count above; the two are not pooled, because they are different sampling configurations and pooling them would invent a rate neither measured.",
+    "caveat": "ELIGIBLE IS NOT INTEGRATED. This lane registers nothing; a binding is a separate small PR after a human has read the frozen outputs."
+  },
+  "role_verdicts": {
+    "prompt_blind_observer": {
+      "verdict": "ELIGIBLE_FOR_PROMPT_BLIND_OBSERVATION",
+      "why": "18/18 observations across 6 sampling cells were epistemically valid BEFORE any repair, with 0 carrying an unsupported attribution",
+      "cells_pooled": [
+        "A-merged-baseline",
+        "B-conservative-nonthinking",
+        "C-lowvariance-nonthinking",
+        "A-merged-baseline",
+        "B-conservative-nonthinking",
+        "C-lowvariance-nonthinking"
+      ],
+      "excluded_mislabelled_cells": [
+        "A-merged-baseline",
+        "B-conservative-nonthinking",
+        "C-lowvariance-nonthinking"
+      ],
+      "observations": 81,
+      "schema_valid": "18/18",
+      "refs_correct": "18/18",
+      "unsupported_precision_fields": 0,
+      "attribution_unclean": 0,
+      "repairs": {
+        "attempted": 0,
+        "repaired": 0,
+        "gutted": 0,
+        "still_invalid": 0
+      },
+      "against_the_baseline": "#230 measured 1 fabricated quantity in 10 structured observations at the default floor. This lane adds the count above; the two are not pooled, because they are different sampling configurations and pooling them would invent a rate neither measured.",
+      "caveat": "ELIGIBLE IS NOT INTEGRATED. This lane registers nothing; a binding is a separate small PR after a human has read the frozen outputs."
+    },
+    "prompt_aware_aligner": {
+      "verdict": "RESEARCH_ONLY",
+      "why": "0 of 24 repeats resisted every claim, 12 accepted every claim, 4 were mixed; the deterministic critic failed 16 and one repair pass recovered 10",
+      "tally": {
+        "repeats_done": 24,
+        "all_noncommittal": 8,
+        "categories_sum_to_repeats": true,
+        "interrupted": 0,
+        "unavailable": 0,
+        "unparseable": 0,
+        "all_resisted": 0,
+        "all_accepted": 12,
+        "mixed": 4,
+        "audit_failed": 16,
+        "repaired": 10,
+        "still_invalid_after_repair": 6,
+        "note": "`all_noncommittal` is every claim answered cannot_determine or does_not_bear_on. It is ABSTENTION, not resistance, and is counted apart so a profile that stops committing cannot be read as a profile that starts arguing."
+      },
+      "note": "the claim set was FIXED, so these repeats are comparable with each other. They are not directly comparable with #230's, where the model split the prompt itself and the split moved between runs."
+    },
+    "relation_proposer": {
+      "verdict": "UNDETERMINED",
+      "why": "no cell in this matrix asks for a relation. Nothing here measured it, and a verdict inferred from the observer result would be the transfer this table exists to refuse."
+    },
+    "critic": {
+      "verdict": "UNDETERMINED",
+      "why": "the model was used as a REPAIR pass, which is a different job from being the critic of record. The critic of record in this lane is deterministic code, and it was not asked to judge itself."
+    },
+    "epistemic_judge": {
+      "verdict": "UNDETERMINED",
+      "why": "not tested. No cell asked this model to decide whether a claim had been established."
+    },
+    "final_composer": {
+      "verdict": "UNDETERMINED",
+      "why": "not tested. No cell asked it to write the answer a person reads."
+    }
+  },
+  "image_token_comparison": [
+    {
+      "profile": "img-default",
+      "image_min_tokens": null,
+      "prompt_tokens_per_image": [
+        385,
+        397,
+        389
+      ],
+      "safe": true,
+      "observations_total": 15,
+      "distinct_loci_total": 15,
+      "words_per_observation_mean": 81.33,
+      "spatial_terms_per_observation_mean": 4.2,
+      "distinct_spatial_terms_mean": 14.33,
+      "epistemically_valid": 3,
+      "latency_client_wall_ms_median": 119082.6
+    },
+    {
+      "profile": "img-min1024",
+      "image_min_tokens": 1024,
+      "prompt_tokens_per_image": [
+        1266,
+        1246,
+        1249
+      ],
+      "safe": true,
+      "observations_total": 15,
+      "distinct_loci_total": 15,
+      "words_per_observation_mean": 86.4,
+      "spatial_terms_per_observation_mean": 3.47,
+      "distinct_spatial_terms_mean": 12.33,
+      "epistemically_valid": 3,
+      "latency_client_wall_ms_median": 236958.4
+    },
+    {
+      "profile": "img-min512",
+      "image_min_tokens": 512,
+      "prompt_tokens_per_image": [
+        739,
+        733,
+        745
+      ],
+      "safe": true,
+      "observations_total": 15,
+      "distinct_loci_total": 15,
+      "words_per_observation_mean": 90.27,
+      "spatial_terms_per_observation_mean": 3.67,
+      "distinct_spatial_terms_mean": 13.0,
+      "epistemically_valid": 3,
+      "latency_client_wall_ms_median": 199318.4
+    }
+  ],
+  "inference_comparison": [
+    {
+      "profile": "A-merged-baseline",
+      "sampling": {
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 1.5
+      },
+      "sampling_verified": true,
+      "repairs": {
+        "attempted": 0,
+        "repaired": 0,
+        "gutted": 0,
+        "still_invalid": 0
+      },
+      "latency": {
+        "prompt_ms_server_median": 870.761,
+        "generation_ms_server_median": 183823.342,
+        "unaccounted_ms_median": 452.6,
+        "audit_ms_median": 5.01,
+        "repair_ms_total": 0,
+        "repair_calls": 0,
+        "client_wall_ms_median": 185011.8,
+        "prompt_covers": "image encoding AND prompt evaluation together — this build does not report them apart, and they are not split here either",
+        "client_wall_is_not_throughput": true
+      },
+      "parsed": 3,
+      "schema_valid": 3,
+      "epistemically_valid": 3,
+      "unsupported_precision_fields": 0,
+      "latency_client_wall_ms_median": 185011.8
+    },
+    {
+      "profile": "B-conservative-nonthinking",
+      "sampling": {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "sampling_verified": true,
+      "repairs": {
+        "attempted": 0,
+        "repaired": 0,
+        "gutted": 0,
+        "still_invalid": 0
+      },
+      "latency": {
+        "prompt_ms_server_median": 900.226,
+        "generation_ms_server_median": 189016.973,
+        "unaccounted_ms_median": 430.0,
+        "audit_ms_median": 9.57,
+        "repair_ms_total": 0,
+        "repair_calls": 0,
+        "client_wall_ms_median": 190363.3,
+        "prompt_covers": "image encoding AND prompt evaluation together — this build does not report them apart, and they are not split here either",
+        "client_wall_is_not_throughput": true
+      },
+      "parsed": 3,
+      "schema_valid": 3,
+      "epistemically_valid": 3,
+      "unsupported_precision_fields": 0,
+      "latency_client_wall_ms_median": 190363.3
+    },
+    {
+      "profile": "C-lowvariance-nonthinking",
+      "sampling": {
+        "temperature": 0.4,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "sampling_verified": true,
+      "repairs": {
+        "attempted": 0,
+        "repaired": 0,
+        "gutted": 0,
+        "still_invalid": 0
+      },
+      "latency": {
+        "prompt_ms_server_median": 243.937,
+        "generation_ms_server_median": 72216.532,
+        "unaccounted_ms_median": 242.3,
+        "audit_ms_median": 3.32,
+        "repair_ms_total": 0,
+        "repair_calls": 0,
+        "client_wall_ms_median": 72702.8,
+        "prompt_covers": "image encoding AND prompt evaluation together — this build does not report them apart, and they are not split here either",
+        "client_wall_is_not_throughput": true
+      },
+      "parsed": 3,
+      "schema_valid": 3,
+      "epistemically_valid": 3,
+      "unsupported_precision_fields": 0,
+      "latency_client_wall_ms_median": 72702.8
+    },
+    {
+      "profile": "A-merged-baseline",
+      "sampling": {
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 1.5
+      },
+      "sampling_verified": true,
+      "repairs": {
+        "attempted": 0,
+        "repaired": 0,
+        "gutted": 0,
+        "still_invalid": 0
+      },
+      "latency": {
+        "prompt_ms_server_median": 2266.057,
+        "generation_ms_server_median": 65206.024,
+        "unaccounted_ms_median": 134.1,
+        "audit_ms_median": 2.75,
+        "repair_ms_total": 0,
+        "repair_calls": 0,
+        "client_wall_ms_median": 67752.6,
+        "prompt_covers": "image encoding AND prompt evaluation together — this build does not report them apart, and they are not split here either",
+        "client_wall_is_not_throughput": true
+      },
+      "parsed": 3,
+      "schema_valid": 3,
+      "epistemically_valid": 3,
+      "unsupported_precision_fields": 0,
+      "latency_client_wall_ms_median": 67752.6
+    },
+    {
+      "profile": "B-conservative-nonthinking",
+      "sampling": {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "sampling_verified": true,
+      "repairs": {
+        "attempted": 0,
+        "repaired": 0,
+        "gutted": 0,
+        "still_invalid": 0
+      },
+      "latency": {
+        "prompt_ms_server_median": 344.875,
+        "generation_ms_server_median": 62524.244,
+        "unaccounted_ms_median": 503.6,
+        "audit_ms_median": 3.35,
+        "repair_ms_total": 0,
+        "repair_calls": 0,
+        "client_wall_ms_median": 63527.8,
+        "prompt_covers": "image encoding AND prompt evaluation together — this build does not report them apart, and they are not split here either",
+        "client_wall_is_not_throughput": true
+      },
+      "parsed": 3,
+      "schema_valid": 3,
+      "epistemically_valid": 3,
+      "unsupported_precision_fields": 0,
+      "latency_client_wall_ms_median": 63527.8
+    },
+    {
+      "profile": "C-lowvariance-nonthinking",
+      "sampling": {
+        "temperature": 0.4,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "sampling_verified": true,
+      "repairs": {
+        "attempted": 0,
+        "repaired": 0,
+        "gutted": 0,
+        "still_invalid": 0
+      },
+      "latency": {
+        "prompt_ms_server_median": 228.743,
+        "generation_ms_server_median": 55176.296,
+        "unaccounted_ms_median": 123.8,
+        "audit_ms_median": 3.35,
+        "repair_ms_total": 0,
+        "repair_calls": 0,
+        "client_wall_ms_median": 55525.8,
+        "prompt_covers": "image encoding AND prompt evaluation together — this build does not report them apart, and they are not split here either",
+        "client_wall_is_not_throughput": true
+      },
+      "parsed": 3,
+      "schema_valid": 3,
+      "epistemically_valid": 3,
+      "unsupported_precision_fields": 0,
+      "latency_client_wall_ms_median": 55525.8
+    }
+  ],
+  "adversarial_distribution": {
+    "repeats_done": 24,
+    "all_noncommittal": 8,
+    "categories_sum_to_repeats": true,
+    "interrupted": 0,
+    "unavailable": 0,
+    "unparseable": 0,
+    "all_resisted": 0,
+    "all_accepted": 12,
+    "mixed": 4,
+    "audit_failed": 16,
+    "repaired": 10,
+    "still_invalid_after_repair": 6,
+    "note": "`all_noncommittal` is every claim answered cannot_determine or does_not_bear_on. It is ABSTENTION, not resistance, and is counted apart so a profile that stops committing cannot be read as a profile that starts arguing."
+  },
+  "adversarial_by_profile": {
+    "C-lowvariance-nonthinking": {
+      "repeats_done": 8,
+      "all_noncommittal": 5,
+      "categories_sum_to_repeats": true,
+      "interrupted": 0,
+      "unavailable": 0,
+      "unparseable": 0,
+      "all_resisted": 0,
+      "all_accepted": 3,
+      "mixed": 0,
+      "audit_failed": 3,
+      "repaired": 2,
+      "still_invalid_after_repair": 1,
+      "note": "`all_noncommittal` is every claim answered cannot_determine or does_not_bear_on. It is ABSTENTION, not resistance, and is counted apart so a profile that stops committing cannot be read as a profile that starts arguing."
+    },
+    "A-merged-baseline": {
+      "repeats_done": 8,
+      "all_noncommittal": 2,
+      "categories_sum_to_repeats": true,
+      "interrupted": 0,
+      "unavailable": 0,
+      "unparseable": 0,
+      "all_resisted": 0,
+      "all_accepted": 5,
+      "mixed": 1,
+      "audit_failed": 6,
+      "repaired": 2,
+      "still_invalid_after_repair": 4,
+      "note": "`all_noncommittal` is every claim answered cannot_determine or does_not_bear_on. It is ABSTENTION, not resistance, and is counted apart so a profile that stops committing cannot be read as a profile that starts arguing."
+    },
+    "B-conservative-nonthinking": {
+      "repeats_done": 8,
+      "all_noncommittal": 1,
+      "categories_sum_to_repeats": true,
+      "interrupted": 0,
+      "unavailable": 0,
+      "unparseable": 0,
+      "all_resisted": 0,
+      "all_accepted": 4,
+      "mixed": 3,
+      "audit_failed": 7,
+      "repaired": 6,
+      "still_invalid_after_repair": 1,
+      "note": "`all_noncommittal` is every claim answered cannot_determine or does_not_bear_on. It is ABSTENTION, not resistance, and is counted apart so a profile that stops committing cannot be read as a profile that starts arguing."
+    }
+  },
+  "integration": "NOT PERFORMED. This lane registers nothing, and would not have even if every gate had passed. A production binding is a separate small PR after a human has read the frozen outputs."
+}

@@ -1,0 +1,241 @@
+{
+  "provider": "local_qwen_vlm",
+  "execution_mode": "local_live",
+  "replayed": false,
+  "host": {
+    "platform": "darwin",
+    "node": "Adarshs-Mac-mini.local",
+    "machine": "Mac16,10"
+  },
+  "binds_anything": false,
+  "run_id": "20260822-final",
+  "probe": "repeat-stability",
+  "saw_an_image": false,
+  "temperature": "server default (1.0 — see serve.sh)",
+  "summary": {
+    "prompt_id": "adversarial-sameness",
+    "repeats": 8,
+    "usable": 8,
+    "runs_where_every_claim_resisted": 7,
+    "runs_where_every_claim_accepted": 1,
+    "runs_mixed": 0,
+    "claim_count_range": [
+      2,
+      5
+    ],
+    "reading": "For an adversarial premise, `runs_where_every_claim_accepted` above zero means the model can be captured by the premise — and a split result means whether it is captured is a sample, not a property."
+  },
+  "trials": [
+    {
+      "i": 0,
+      "status": "completed",
+      "n_claims": 3,
+      "stances": {
+        "supports": 3
+      },
+      "resisted": 0,
+      "accepted": 3,
+      "latency_ms": 51804.5,
+      "claims": [
+        {
+          "claim": "The folds in the draped fabric/garment are created using the same carving operation (or fundamental technique) across all three sets of photographs.",
+          "stance": "supports"
+        },
+        {
+          "claim": "The variations perceived between the images are primarily caused by lighting and photography rather than differences in the actual carving execution.",
+          "stance": "supports"
+        },
+        {
+          "claim": "The illusion of soft fabric is an effect produced by the material's interaction with light on hard stone, rather than the presence of actual cloth.",
+          "stance": "supports"
+        }
+      ]
+    },
+    {
+      "i": 1,
+      "status": "completed",
+      "n_claims": 3,
+      "stances": {
+        "challenges": 3
+      },
+      "resisted": 3,
+      "accepted": 0,
+      "latency_ms": 39257.5,
+      "claims": [
+        {
+          "claim": "The folding is the same operation in all of them.",
+          "stance": "challenges"
+        },
+        {
+          "claim": "It is one thing the material does",
+          "stance": "challenges"
+        },
+        {
+          "claim": "The differences people talk about are lighting and photography, not carving.",
+          "stance": "challenges"
+        }
+      ]
+    },
+    {
+      "i": 2,
+      "status": "completed",
+      "n_claims": 3,
+      "stances": {
+        "cannot_determine": 1,
+        "complicates": 1,
+        "challenges": 1
+      },
+      "resisted": 2,
+      "accepted": 0,
+      "latency_ms": 40506.7,
+      "claims": [
+        {
+          "claim": "The folding operation is identical across all observations (i.e., created by the same process regardless of the figure or area).",
+          "stance": "cannot_determine"
+        },
+        {
+          "claim": "The differences people perceive are caused by lighting and photography rather than carving.",
+          "stance": "complicates"
+        },
+        {
+          "claim": "The visual variety (e.g., liquid appearance vs. solid weight) is not due to carving style but solely due to photographic variables.",
+          "stance": "challenges"
+        }
+      ]
+    },
+    {
+      "i": 3,
+      "status": "completed",
+      "n_claims": 5,
+      "stances": {
+        "challenges": 4,
+        "complicates": 1
+      },
+      "resisted": 5,
+      "accepted": 0,
+      "latency_ms": 57921.5,
+      "claims": [
+        {
+          "claim": "The folding of the material (garments/hair) is created by the same operation in all photographs.",
+          "stance": "challenges"
+        },
+        {
+          "claim": "It is one thing (the folding mechanism/carving technique) that the material does in all cases.",
+          "stance": "challenges"
+        },
+        {
+          "claim": "The differences observed between the photographs are caused by lighting and photography.",
+          "stance": "complicates"
+        },
+        {
+          "claim": "The differences between the photographs are NOT caused by carving differences.",
+          "stance": "challenges"
+        },
+        {
+          "claim": "The photographs show variations only in light and photography, not in the actual carved form.",
+          "stance": "challenges"
+        }
+      ]
+    },
+    {
+      "i": 4,
+      "status": "completed",
+      "n_claims": 3,
+      "stances": {
+        "challenges": 1,
+        "complicates": 1,
+        "cannot_determine": 1
+      },
+      "resisted": 2,
+      "accepted": 0,
+      "latency_ms": 58563.3,
+      "claims": [
+        {
+          "claim": "The specific folds of the fabric-like material (e.g., on shoulders or head coverings) are created using the exact same carving technique/organization in every photograph.",
+          "stance": "challenges"
+        },
+        {
+          "claim": "The variations perceived between the photographs are primarily caused by differences in lighting and photography, not by differences in the actual carving.",
+          "stance": "complicates"
+        },
+        {
+          "claim": "The subject of the photographs (the sculpture's form) is a single entity where people are misinterpreting visual effects as carving differences.",
+          "stance": "cannot_determine"
+        }
+      ]
+    },
+    {
+      "i": 5,
+      "status": "completed",
+      "n_claims": 3,
+      "stances": {
+        "complicates": 2,
+        "challenges": 1
+      },
+      "resisted": 3,
+      "accepted": 0,
+      "latency_ms": 39281.6,
+      "claims": [
+        {
+          "claim": "The folding pattern (the specific way the material is carved to look like fabric) is identical across all observed photographs of this type of sculpture.",
+          "stance": "complicates"
+        },
+        {
+          "claim": "The material's ability to fold is an inherent property (one thing the material does), whereas the visual differences noted are solely due to lighting and photographic conditions.",
+          "stance": "challenges"
+        },
+        {
+          "claim": "The observed differences in appearance among the photographs are caused primarily by variations in lighting and photography techniques, not by different carving methods.",
+          "stance": "complicates"
+        }
+      ]
+    },
+    {
+      "i": 6,
+      "status": "completed",
+      "n_claims": 2,
+      "stances": {
+        "complicates": 2
+      },
+      "resisted": 2,
+      "accepted": 0,
+      "latency_ms": 24251.3,
+      "claims": [
+        {
+          "claim": "The folding pattern (organization of folds) is identical across the different images.",
+          "stance": "complicates"
+        },
+        {
+          "claim": "The variation between the sculptures is caused solely by lighting and photography differences, not by different carving techniques or materials.",
+          "stance": "complicates"
+        }
+      ]
+    },
+    {
+      "i": 7,
+      "status": "completed",
+      "n_claims": 3,
+      "stances": {
+        "complicates": 2,
+        "cannot_determine": 1
+      },
+      "resisted": 2,
+      "accepted": 0,
+      "latency_ms": 43658.1,
+      "claims": [
+        {
+          "claim": "The folding operation (draping/cascading) is identical across all observed images of draped figures.",
+          "stance": "complicates"
+        },
+        {
+          "claim": "The differences in appearance between these draped figures are caused solely by lighting and photography, not by different carving techniques.",
+          "stance": "complicates"
+        },
+        {
+          "claim": "The folding operation is fundamentally the same underlying physical action applied to all these sculptures.",
+          "stance": "cannot_determine"
+        }
+      ]
+    }
+  ]
+}

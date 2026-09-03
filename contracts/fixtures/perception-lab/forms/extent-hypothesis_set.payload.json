@@ -1,0 +1,64 @@
+{
+  "variant": "extent_hypothesis_set",
+  "alternatives_considered": 3,
+  "question": "is the fragmented form one object, two overlapping objects, or an object and a plane?",
+  "weights_are_probabilities": false,
+  "alternatives": [
+    {
+      "alternative_id": "alt_one_object",
+      "weight": 0.62,
+      "artifact_id": "art_fusion_1",
+      "instances": [],
+      "grounds": [
+        {
+          "kind": "shape_continuity",
+          "detail": "the contour resumes at the same angle",
+          "cites": [],
+          "strength": null
+        }
+      ]
+    },
+    {
+      "alternative_id": "alt_two_objects",
+      "weight": 0.29,
+      "artifact_id": null,
+      "instances": [
+        {
+          "artifact_id": "art_fragments_1",
+          "instance_id": "frag_1"
+        },
+        {
+          "artifact_id": "art_fragments_1",
+          "instance_id": "frag_2"
+        }
+      ],
+      "grounds": [
+        {
+          "kind": "depth_continuity",
+          "detail": "the two halves sit at different depths",
+          "cites": [],
+          "strength": null
+        }
+      ]
+    },
+    {
+      "alternative_id": "alt_object_and_plane",
+      "weight": 0.09,
+      "artifact_id": null,
+      "instances": [
+        {
+          "artifact_id": "art_fragments_1",
+          "instance_id": "frag_3"
+        }
+      ],
+      "grounds": [
+        {
+          "kind": "relative_position",
+          "detail": "the lower band aligns with the wall, not with the figure",
+          "cites": [],
+          "strength": null
+        }
+      ]
+    }
+  ]
+}

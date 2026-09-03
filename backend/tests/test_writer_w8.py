@@ -23,6 +23,7 @@ import pytest
 
 from backend.services import manuscript_service as ms_svc
 from backend.services.writer import alignment as align
+from backend.services.writer import ledger as ledger_mod
 from backend.services.writer import instrument
 from backend.services.writer import operators as op_svc
 from backend.services.writer import passages as psg_svc
@@ -45,6 +46,8 @@ def store(monkeypatch):
     manuscripts, scenes, snaps = FakeCollection(), FakeCollection(), FakeCollection()
     monkeypatch.setattr(op_svc, "writer_operator_collection", ops)
     monkeypatch.setattr(psg_svc, "writer_passage_collection", psgs)
+    # ATLAS-WRITER-MASS-BUILD-001D — every transition keeps an operation record.
+    monkeypatch.setattr(ledger_mod, "writer_operation_collection", FakeCollection())
     monkeypatch.setattr(instrument, "writer_usage_collection", usage)
     monkeypatch.setattr(rev, "writer_passage_version_collection", versions_c)
     monkeypatch.setattr(rdg, "writer_reading_collection", reads)
@@ -353,10 +356,16 @@ def test_a_revision_is_decided_once(store, book):
         psg["id"], lineage_id=v1["lineage_id"], scene_id=book["scene_id"],
         block_id=v1["block_id"]))
 
+    # ATLAS-WRITER-MASS-BUILD-001D — a second identical Accept is a retry and converges:
+    # the same v2, no v3, and the pointer moved exactly once.
+    again = run(psg_svc.passage_store.accept_revision(
+        psg["id"], lineage_id=v1["lineage_id"], scene_id=book["scene_id"],
+        block_id=v1["block_id"]))
+    assert again["version"]["version"] == 2
+    assert [v["version"] for v in run(rev.version_store.history(v1["lineage_id"]))] == [1, 2]
+    # Dismissing it now IS a second decision, and is refused.
     with pytest.raises(psg_svc.PassageError, match="already accepted"):
-        run(psg_svc.passage_store.accept_revision(
-            psg["id"], lineage_id=v1["lineage_id"], scene_id=book["scene_id"],
-            block_id=v1["block_id"]))
+        run(psg_svc.passage_store.dismiss(psg["id"]))
 
 
 def test_a_revision_still_refuses_a_passage_that_leaks_orchestration(store, book):

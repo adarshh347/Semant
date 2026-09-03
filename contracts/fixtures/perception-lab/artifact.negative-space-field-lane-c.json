@@ -6,6 +6,7 @@
     "step_id": "step_negative_space",
     "organ_family": "topology",
     "artifact_kind": "negative_space_field",
+    "form": null,
     "operation": "topology.negative_space",
     "identity_scope": "session",
     "identity_refs": [],
@@ -57,6 +58,7 @@
     "coordinate_system": "mask_rle_hw",
     "epistemic_status": "measured",
     "epistemic_basis": "mask",
+    "partition": null,
     "basis_detail": "mask complement, then a chamfer distance transform truncated at max_distance_used"
   },
   "projection": {

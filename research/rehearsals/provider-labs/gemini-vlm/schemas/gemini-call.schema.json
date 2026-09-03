@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:provider-lab/gemini-call.schema.json",
+  "title": "Gemini Lab Call Record",
+  "description": "RESEARCH-ONLY record of exactly one call to the Gemini API, or of exactly one refusal to make it. Written under research/rehearsals/provider-labs/gemini-vlm/runs/ and nowhere else. Never a production write, never read by production code. Two rules the schema enforces rather than trusts: identity is explicit (`mode` distinguishes live from replay from fixture, and cannot be inferred), and telemetry that was not observed is null. An absent RPM is `null`, never a number copied from an article.",
+  "type": "object",
+  "required": [
+    "call_id", "lab", "experiment", "mode", "provider", "endpoint",
+    "model", "request", "outcome", "telemetry", "epistemic", "content_hash"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "call_id": { "type": "string", "minLength": 1 },
+    "lab": { "const": "gemini-vlm" },
+    "experiment": {
+      "type": "string",
+      "enum": ["text_minimal", "image_one", "json_strict", "image_three",
+               "hypothesis_alignment", "relation_proposal", "census"]
+    },
+    "mode": {
+      "description": "Which transport was configured — never inferred, never merged. live = the live HTTP transport; replay = a frozen record read back through a transport that RAISES if anything reaches for the network; fixture = a scripted fake, used by the test suite. Note that `live` names the transport, not the event: a record whose outcome.status is `unavailable` was configured live and never used it, because there was no key.",
+      "type": "string",
+      "enum": ["live", "replay", "fixture"]
+    },
+    "provider": { "const": "gemini" },
+    "endpoint": {
+      "description": "Path only. The API key travels in the x-goog-api-key header and MUST NOT appear here.",
+      "type": "string",
+      "minLength": 1
+    },
+    "model": { "type": ["string", "null"] },
+    "prompt_id": { "type": ["string", "null"], "description": "id from prompts.json, when a canonical prompt was used" },
+    "request": {
+      "type": "object",
+      "required": ["boundary_hash", "text_parts", "image_parts"],
+      "properties": {
+        "boundary_hash": { "type": "string", "minLength": 1 },
+        "text_parts": { "type": "array", "items": { "type": "string" } },
+        "image_parts": {
+          "description": "What was sent, by digest. Bytes are never written into the record.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["post_id", "sha256", "mime_type", "bytes"],
+            "properties": {
+              "post_id": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "minLength": 64 },
+              "mime_type": { "type": "string", "minLength": 1 },
+              "bytes": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "response_schema_sent": { "type": ["object", "null"] },
+        "generation_config": { "type": ["object", "null"] }
+      }
+    },
+    "outcome": {
+      "description": "Exactly one of these five. `empty` and `refused` are results, not failures, and are never collapsed into `error`.",
+      "type": "object",
+      "required": ["status", "http_status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["ok", "empty", "refused", "error", "unavailable"] },
+        "http_status": { "type": ["integer", "null"] },
+        "finish_reason": { "type": ["string", "null"] },
+        "safety_blocked": { "type": ["boolean", "null"] },
+        "text": { "type": ["string", "null"] },
+        "json": {},
+        "json_valid_against_schema": { "type": ["boolean", "null"] },
+        "schema_errors": { "type": "array", "items": { "type": "string" } },
+        "error_type": { "type": ["string", "null"] },
+        "error_message": { "type": ["string", "null"], "description": "Redacted. The key is scrubbed before this is written." }
+      }
+    },
+    "telemetry": {
+      "description": "Observed only. Every field is nullable and null MEANS the API did not report it.",
+      "type": "object",
+      "required": ["latency_ms", "usage"],
+      "properties": {
+        "latency_ms": { "type": ["number", "null"] },
+        "usage": {
+          "type": ["object", "null"],
+          "properties": {
+            "prompt_token_count": { "type": ["integer", "null"] },
+            "candidates_token_count": { "type": ["integer", "null"] },
+            "total_token_count": { "type": ["integer", "null"] }
+          }
+        },
+        "model_version_reported": { "type": ["string", "null"] },
+        "retry_after_s": { "type": ["number", "null"] },
+        "rate_limited": { "type": ["boolean", "null"] }
+      }
+    },
+    "epistemic": {
+      "description": "The whole reason this lab is a lab. A VLM's answer about an image is INTERPRETIVE until some capability measures the distinction it names. Nothing here may claim otherwise, and `measured` is fixed false by the schema — a record that wanted it true would have to change this file, which is the review that ought to happen.",
+      "type": "object",
+      "required": ["status", "measured", "supported_by_capability"],
+      "properties": {
+        "status": { "const": "interpretive" },
+        "measured": { "const": false },
+        "supported_by_capability": { "type": "null" },
+        "prompt_carries_user_claim": { "type": ["boolean", "null"] },
+        "note": { "type": ["string", "null"] }
+      }
+    },
+    "corpus_invariant": {
+      "type": ["object", "null"],
+      "description": "Source-post fingerprints before and after the call. Rule 10: the posts are read, never written.",
+      "properties": {
+        "before": { "type": ["string", "null"] },
+        "after": { "type": ["string", "null"] },
+        "unchanged": { "type": ["boolean", "null"] }
+      }
+    },
+    "captured_at": { "type": ["string", "null"] },
+    "content_hash": { "type": "string", "minLength": 1 }
+  }
+}

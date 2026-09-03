@@ -277,8 +277,10 @@ def _matches(doc: Mapping[str, Any], query: Mapping[str, Any]) -> bool:
 
 
 def lab_collections() -> Dict[str, FakeCollection]:
+    """The lab's own collections. Six since PERCEPTUAL-FORMS-001H: a derivation is not an artifact
+    and never becomes one, so it is a sixth collection rather than a discriminator on the fifth."""
     return {kind: FakeCollection() for kind in
-            ("sessions", "plans", "runs", "artifacts", "reviews")}
+            ("sessions", "plans", "runs", "artifacts", "reviews", "derivations")}
 
 
 __all__ = ["WIDTH", "HEIGHT", "POST_ID", "OUTER", "INNER", "BESIDE", "SHAPES", "png_bytes",

@@ -1,0 +1,697 @@
+{
+  "state": "invalid",
+  "started_at": "2026-08-22T23:26:05+0530",
+  "machine_at_start": {
+    "swap_used_mb": 9812.88,
+    "swap_raw": "total = 11264.00M  used = 9812.88M  free = 1451.12M  (encrypted)",
+    "wired_mb": 9210.3,
+    "compressed_mb": 3801.7,
+    "free_mb": 70.2,
+    "server_rss_mb": 1156.4,
+    "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+    "server_pid": 20985,
+    "at": "23:26:05"
+  },
+  "note": "a receipt written BEFORE the model was called. A cell left in this state was interrupted in flight; it is not a model failure and is never scored as one.",
+  "run_id": "R1-20260822",
+  "config_id": "inference.C-lowvariance-nonthinking.e7b80ceb",
+  "group": "inference",
+  "name": "C-lowvariance-nonthinking",
+  "config": {
+    "n_ctx": 32768,
+    "image_min_tokens": null,
+    "sampling": {
+      "temperature": 0.4,
+      "top_p": 0.8,
+      "top_k": 20,
+      "min_p": 0.0,
+      "presence_penalty": 0.0
+    },
+    "thinking": false
+  },
+  "inference_profile": {
+    "id": "C-lowvariance-nonthinking",
+    "thinking": false,
+    "temperature": 0.4,
+    "top_p": 0.8,
+    "top_k": 20,
+    "min_p": 0.0,
+    "presence_penalty": 0.0,
+    "why": "An EXPERIMENT, not a proposed Qwen setting. Qwen's own documentation warns against low temperature for this family; this cell exists to find out what the instability at 1.0 actually costs, not to recommend 0.4."
+  },
+  "sampling_requested": {
+    "temperature": 0.4,
+    "top_p": 0.8,
+    "top_k": 20,
+    "min_p": 0.0,
+    "presence_penalty": 0.0
+  },
+  "sampling_verification": [
+    {
+      "sampling_verified": true,
+      "requested": {
+        "temperature": 0.4,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "observed": {
+        "temperature": 0.4000000059604645,
+        "top_p": 0.800000011920929,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "mismatches": null,
+      "samples_seen": 1113
+    },
+    {
+      "sampling_verified": true,
+      "requested": {
+        "temperature": 0.4,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "observed": {
+        "temperature": 0.4000000059604645,
+        "top_p": 0.800000011920929,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "mismatches": null,
+      "samples_seen": 1109
+    },
+    {
+      "sampling_verified": true,
+      "requested": {
+        "temperature": 0.4,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "observed": {
+        "temperature": 0.4000000059604645,
+        "top_p": 0.800000011920929,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 0.0
+      },
+      "mismatches": null,
+      "samples_seen": 1021
+    }
+  ],
+  "sampling_verified_any": true,
+  "observations": [
+    {
+      "ref": "img-k7",
+      "call": {
+        "label": "observe:img-k7",
+        "ok": true,
+        "status": "completed",
+        "finish_reason": "stop",
+        "content": "{\n  \"image_ref\": \"img-k7\",\n  \"observations\": [\n    {\n      \"locus\": \"The head and upper torso of the sculpture, which is the central subject of the photograph.\",\n      \"visible_organization\": \"The figure is composed of a head with coiffed hair, a neck, and a bust covered by draped fabric. The head is tilted slightly downward and to the viewer's left. The hair is arranged in a series of waves and curls that frame the face and fall over the shoulders.\",\n      \"surface_light_behavior\": \"The surface appears smooth and matte, with soft, diffuse highlights on the forehead, nose, and the top of the hair. Shadows are gentle and gradual, defining the contours of the face and the folds of the clothing without sharp edges.\",\n      \"apparent_material_effect\": \"The appearance suggests a solid, non-porous material like stone or a high-quality plaster cast, characterized by its uniform color and lack of surface texture or grain.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"The draped fabric covering the chest and shoulders.\",\n      \"visible_organization\": \"The fabric is carved to appear as if it is wrapped around the figure, with deep, flowing folds that cross the chest and cascade down the sides. The drapery is more voluminous on the right side (viewer's left) and tighter across the front.\",\n      \"surface_light_behavior\": \"The light catches the crests of the folds, creating bright highlights, while the valleys between the folds are in shadow. This interplay of light and shadow gives the impression of depth and volume to the cloth.\",\n      \"apparent_material_effect\": \"The carving technique creates an illusion of a soft, heavy fabric, such as silk or wool, contrasting with the hard surface of the material itself.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"The background of the photograph.\",\n      \"visible_organization\": \"The background is a solid, dark, and featureless surface that fills the space behind the sculpture. It is darker at the top and becomes slightly lighter towards the bottom, suggesting a gradient.\",\n      \"surface_light_behavior\": \"The background is uniformly dark, with no discernible texture or pattern. It absorbs most of the light, providing a strong contrast that makes the white sculpture stand out.\",\n      \"apparent_material_effect\": \"The appearance suggests a painted backdrop or a dark, non-reflective surface used to isolate the subject.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"The surface of the sculpture's face and neck.\",\n      \"visible_organization\": \"This area shows the fine details of the facial features, including the eyes, nose, lips, and the transition to the neck. The hair is carved into the surface, with individual strands and curls visible.\",\n      \"surface_light_behavior\": \"The light source appears to be coming from the upper left, illuminating the left side of the face and casting soft shadows on the right side. The highlights are subtle, emphasizing the smoothness of the skin.\",\n      \"apparent_material_effect\": \"The surface appears to be a single, continuous material, with no visible seams or joints. The texture is smooth and even, suggesting a carefully polished surface.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"The overall composition of the photograph.\",\n      \"visible_organization\": \"The sculpture is centered in the frame, occupying most of the vertical space. The lighting is focused on the figure, creating a dramatic effect against the dark background.\",\n      \"surface_light_behavior\": \"The lighting is directional, coming from the upper left, and creates a sense of depth and form. The shadows are soft and gradual, contributing to the overall mood of the image.\",\n      \"apparent_material_effect\": \"The combination of the smooth, white sculpture and the dark, featureless background creates a stark contrast that emphasizes the form and details of the figure.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    }\n  ],\n  \"cannot_determine\": [\n    \"The specific material of the sculpture (e.g., marble, plaster, resin).\",\n    \"The scale or size of the sculpture.\",\n    \"The exact lighting conditions or the number of light sources.\",\n    \"The age or origin of the sculpture.\",\n    \"The identity or meaning of the depicted figure.\"\n  ]\n}",
+        "reasoning_content": null,
+        "prompt_tokens": 1266,
+        "completion_tokens": 1022,
+        "cached_tokens": 1262,
+        "latency": {
+          "prompt_ms_server": 454.082,
+          "predicted_ms_server": 176039.576,
+          "prompt_per_second": 8.808981637677777,
+          "predicted_per_second": 5.799832192279308,
+          "client_wall_ms": 176648.8,
+          "unaccounted_ms": 155.1,
+          "note": "prompt_ms covers image encoding AND prompt evaluation together; this build does not report them apart, so they are not split here either. `unaccounted_ms` is queueing plus transport, and is named rather than folded into either half."
+        },
+        "sampling_requested": {
+          "temperature": 0.4,
+          "top_p": 0.8,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 0.0
+        },
+        "sampling_verification": {
+          "sampling_verified": true,
+          "requested": {
+            "temperature": 0.4,
+            "top_p": 0.8,
+            "top_k": 20,
+            "min_p": 0.0,
+            "presence_penalty": 0.0
+          },
+          "observed": {
+            "temperature": 0.4000000059604645,
+            "top_p": 0.800000011920929,
+            "top_k": 20,
+            "min_p": 0.0,
+            "presence_penalty": 0.0
+          },
+          "mismatches": null,
+          "samples_seen": 1113
+        }
+      },
+      "parsed": {
+        "image_ref": "img-k7",
+        "observations": [
+          {
+            "locus": "The head and upper torso of the sculpture, which is the central subject of the photograph.",
+            "visible_organization": "The figure is composed of a head with coiffed hair, a neck, and a bust covered by draped fabric. The head is tilted slightly downward and to the viewer's left. The hair is arranged in a series of waves and curls that frame the face and fall over the shoulders.",
+            "surface_light_behavior": "The surface appears smooth and matte, with soft, diffuse highlights on the forehead, nose, and the top of the hair. Shadows are gentle and gradual, defining the contours of the face and the folds of the clothing without sharp edges.",
+            "apparent_material_effect": "The appearance suggests a solid, non-porous material like stone or a high-quality plaster cast, characterized by its uniform color and lack of surface texture or grain.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "The draped fabric covering the chest and shoulders.",
+            "visible_organization": "The fabric is carved to appear as if it is wrapped around the figure, with deep, flowing folds that cross the chest and cascade down the sides. The drapery is more voluminous on the right side (viewer's left) and tighter across the front.",
+            "surface_light_behavior": "The light catches the crests of the folds, creating bright highlights, while the valleys between the folds are in shadow. This interplay of light and shadow gives the impression of depth and volume to the cloth.",
+            "apparent_material_effect": "The carving technique creates an illusion of a soft, heavy fabric, such as silk or wool, contrasting with the hard surface of the material itself.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "The background of the photograph.",
+            "visible_organization": "The background is a solid, dark, and featureless surface that fills the space behind the sculpture. It is darker at the top and becomes slightly lighter towards the bottom, suggesting a gradient.",
+            "surface_light_behavior": "The background is uniformly dark, with no discernible texture or pattern. It absorbs most of the light, providing a strong contrast that makes the white sculpture stand out.",
+            "apparent_material_effect": "The appearance suggests a painted backdrop or a dark, non-reflective surface used to isolate the subject.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "The surface of the sculpture's face and neck.",
+            "visible_organization": "This area shows the fine details of the facial features, including the eyes, nose, lips, and the transition to the neck. The hair is carved into the surface, with individual strands and curls visible.",
+            "surface_light_behavior": "The light source appears to be coming from the upper left, illuminating the left side of the face and casting soft shadows on the right side. The highlights are subtle, emphasizing the smoothness of the skin.",
+            "apparent_material_effect": "The surface appears to be a single, continuous material, with no visible seams or joints. The texture is smooth and even, suggesting a carefully polished surface.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "The overall composition of the photograph.",
+            "visible_organization": "The sculpture is centered in the frame, occupying most of the vertical space. The lighting is focused on the figure, creating a dramatic effect against the dark background.",
+            "surface_light_behavior": "The lighting is directional, coming from the upper left, and creates a sense of depth and form. The shadows are soft and gradual, contributing to the overall mood of the image.",
+            "apparent_material_effect": "The combination of the smooth, white sculpture and the dark, featureless background creates a stark contrast that emphasizes the form and details of the figure.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          }
+        ],
+        "cannot_determine": [
+          "The specific material of the sculpture (e.g., marble, plaster, resin).",
+          "The scale or size of the sculpture.",
+          "The exact lighting conditions or the number of light sources.",
+          "The age or origin of the sculpture.",
+          "The identity or meaning of the depicted figure."
+        ]
+      },
+      "parse_note": null,
+      "schema_errors": [],
+      "ref_correct": true,
+      "n_observations": 5,
+      "distinct_loci": 5,
+      "precision_audit": {
+        "per_field": [
+          {
+            "observation_index": 0,
+            "field": "apparent_material_effect",
+            "findings": [
+              {
+                "kind": "category_word",
+                "match": "high",
+                "span": [
+                  69,
+                  73
+                ],
+                "classification": "declared_uncertainty_category",
+                "why": "the sanctioned vocabulary of the observation schema's own enum",
+                "context": "id, non-porous material like stone or a «high»-quality plaster cast, characterized by"
+              }
+            ],
+            "counts": {
+              "allowed_source_visible_quantity": 0,
+              "declared_uncertainty_category": 1,
+              "unsupported_measurement": 0,
+              "ambiguous_requires_review": 0
+            },
+            "unsupported": [],
+            "ambiguous": [],
+            "epistemically_valid": true,
+            "verdict": "valid",
+            "note": "A source-visible count and a declared uncertainty category are NOT condemned. Only a quantity nothing measured invalidates a response; an ambiguous one asks for a reader."
+          }
+        ],
+        "unsupported_fields": [],
+        "epistemically_valid": true,
+        "skipped_fields": [
+          "uncertainty"
+        ],
+        "why_skipped": "it is the schema's own enum. Auditing the sanctioned vocabulary would flag every compliant record ever written."
+      },
+      "attribution_audit": {
+        "measurement_claims": [],
+        "attribution_claims": [],
+        "proper_nouns": [],
+        "clean": true
+      },
+      "audit_ms": 4.51,
+      "epistemically_valid": true,
+      "specificity": {
+        "n_observations": 5,
+        "distinct_loci": 5,
+        "words_total": 525,
+        "words_per_observation": 105.0,
+        "spatial_terms_total": 27,
+        "spatial_terms_per_observation": 5.4,
+        "distinct_spatial_terms": 13,
+        "type_token_ratio": 0.413,
+        "cannot_determine_count": 5,
+        "caveat": "SURFACE MEASURES. More spatial words is not more accurate seeing; word count is recorded next to them so verbosity cannot be read as perception. The exact text is kept in the record for human review, and any judgement about quality belongs in the human table, not here."
+      }
+    },
+    {
+      "ref": "img-q2",
+      "call": {
+        "label": "observe:img-q2",
+        "ok": true,
+        "status": "completed",
+        "finish_reason": "stop",
+        "content": "{\n  \"image_ref\": \"img-q2\",\n  \"observations\": [\n    {\n      \"locus\": \"upper right quadrant\",\n      \"visible_organization\": \"a dark, featureless area that forms the background behind the sculpture's head and right shoulder.\",\n      \"surface_light_behavior\": \"the surface appears to be in deep shadow, absorbing most of the light and reflecting very little back towards the viewer.\",\n      \"apparent_material_effect\": \"the appearance suggests a matte, non-reflective material, such as a dark painted wall or a shadowed corner of a room. The uncertainty is high regarding the specific material due to the lack of detail and light.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"center of the frame\",\n      \"visible_organization\": \"a sculpted bust of a female figure, showing the head, neck, and shoulders. The figure is draped in a cloth that falls across the chest.\",\n      \"surface_light_behavior\": \"the surface is smooth and appears to be made of a light-colored material. Light from the upper left creates strong highlights on the forehead, nose, and left shoulder, while casting deep shadows on the right side of the face and under the drapery.\",\n      \"apparent_material_effect\": \"the appearance suggests a hard, polished material like marble or alabaster. The way the light interacts with the surface indicates a relatively smooth texture with some subtle variations in translucency or grain.\",\n      \"uncertainty\": \"medium\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"top of the head\",\n      \"visible_organization\": \"three small, star-shaped objects are placed on the hair of the sculpture.\",\n      \"surface_light_behavior\": \"the surfaces of the stars catch the light, appearing slightly brighter than the surrounding hair. They seem to have a somewhat reflective quality.\",\n      \"apparent_material_effect\": \"the appearance suggests they are made of a material that is less translucent than the main bust, possibly a different type of stone or a metal alloy. Their form is clearly defined by the light hitting their facets.\",\n      \"uncertainty\": \"medium\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"lower portion of the image\",\n      \"visible_organization\": \"the base of the sculpture, which consists of a short, cylindrical pedestal and a flared, octagonal plinth.\",\n      \"surface_light_behavior\": \"the base is mostly in shadow, but the edges where it meets the plinth show some reflection. The plinth itself has a smooth surface that reflects the ambient light.\",\n      \"apparent_material_effect\": \"the appearance suggests a material similar to the bust, such as marble or a polished stone. The smoothness and slight sheen indicate a finished, non-porous surface.\",\n      \"uncertainty\": \"medium\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"draped cloth on the chest\",\n      \"visible_organization\": \"the folds of the cloth create a series of curves and shadows across the chest and shoulders of the figure.\",\n      \"surface_light_behavior\": \"the light follows the contours of the folds, creating a pattern of highlights and shadows that give the impression of soft, flowing fabric.\",\n      \"apparent_material_effect\": \"the appearance suggests a material that is meant to represent fabric, but given the context of the sculpture, it is likely carved from a hard material. The skill in carving the folds to mimic the drape of cloth is evident.\",\n      \"uncertainty\": \"medium\",\n      \"status\": \"interpretive\"\n    }\n  ],\n  \"cannot_determine\": [\n    \"the exact material of the stars on the head, as they could be made of various materials that mimic a similar appearance.\",\n    \"the precise lighting conditions in the room, as the shadows and highlights could be created by a single light source or multiple sources.\",\n    \"the condition of the sculpture, as there are no clear signs of wear or damage visible in the photograph.\",\n    \"the color of the sculpture in natural light, as the photograph is monochromatic and the lighting is artificial.\"\n  ]\n}",
+        "reasoning_content": null,
+        "prompt_tokens": 1246,
+        "completion_tokens": 945,
+        "cached_tokens": 1242,
+        "latency": {
+          "prompt_ms_server": 438.006,
+          "predicted_ms_server": 175498.575,
+          "prompt_per_second": 9.132294991392813,
+          "predicted_per_second": 5.378961054242178,
+          "client_wall_ms": 176081.8,
+          "unaccounted_ms": 145.2,
+          "note": "prompt_ms covers image encoding AND prompt evaluation together; this build does not report them apart, so they are not split here either. `unaccounted_ms` is queueing plus transport, and is named rather than folded into either half."
+        },
+        "sampling_requested": {
+          "temperature": 0.4,
+          "top_p": 0.8,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 0.0
+        },
+        "sampling_verification": {
+          "sampling_verified": true,
+          "requested": {
+            "temperature": 0.4,
+            "top_p": 0.8,
+            "top_k": 20,
+            "min_p": 0.0,
+            "presence_penalty": 0.0
+          },
+          "observed": {
+            "temperature": 0.4000000059604645,
+            "top_p": 0.800000011920929,
+            "top_k": 20,
+            "min_p": 0.0,
+            "presence_penalty": 0.0
+          },
+          "mismatches": null,
+          "samples_seen": 1109
+        }
+      },
+      "parsed": {
+        "image_ref": "img-q2",
+        "observations": [
+          {
+            "locus": "upper right quadrant",
+            "visible_organization": "a dark, featureless area that forms the background behind the sculpture's head and right shoulder.",
+            "surface_light_behavior": "the surface appears to be in deep shadow, absorbing most of the light and reflecting very little back towards the viewer.",
+            "apparent_material_effect": "the appearance suggests a matte, non-reflective material, such as a dark painted wall or a shadowed corner of a room. The uncertainty is high regarding the specific material due to the lack of detail and light.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "center of the frame",
+            "visible_organization": "a sculpted bust of a female figure, showing the head, neck, and shoulders. The figure is draped in a cloth that falls across the chest.",
+            "surface_light_behavior": "the surface is smooth and appears to be made of a light-colored material. Light from the upper left creates strong highlights on the forehead, nose, and left shoulder, while casting deep shadows on the right side of the face and under the drapery.",
+            "apparent_material_effect": "the appearance suggests a hard, polished material like marble or alabaster. The way the light interacts with the surface indicates a relatively smooth texture with some subtle variations in translucency or grain.",
+            "uncertainty": "medium",
+            "status": "interpretive"
+          },
+          {
+            "locus": "top of the head",
+            "visible_organization": "three small, star-shaped objects are placed on the hair of the sculpture.",
+            "surface_light_behavior": "the surfaces of the stars catch the light, appearing slightly brighter than the surrounding hair. They seem to have a somewhat reflective quality.",
+            "apparent_material_effect": "the appearance suggests they are made of a material that is less translucent than the main bust, possibly a different type of stone or a metal alloy. Their form is clearly defined by the light hitting their facets.",
+            "uncertainty": "medium",
+            "status": "interpretive"
+          },
+          {
+            "locus": "lower portion of the image",
+            "visible_organization": "the base of the sculpture, which consists of a short, cylindrical pedestal and a flared, octagonal plinth.",
+            "surface_light_behavior": "the base is mostly in shadow, but the edges where it meets the plinth show some reflection. The plinth itself has a smooth surface that reflects the ambient light.",
+            "apparent_material_effect": "the appearance suggests a material similar to the bust, such as marble or a polished stone. The smoothness and slight sheen indicate a finished, non-porous surface.",
+            "uncertainty": "medium",
+            "status": "interpretive"
+          },
+          {
+            "locus": "draped cloth on the chest",
+            "visible_organization": "the folds of the cloth create a series of curves and shadows across the chest and shoulders of the figure.",
+            "surface_light_behavior": "the light follows the contours of the folds, creating a pattern of highlights and shadows that give the impression of soft, flowing fabric.",
+            "apparent_material_effect": "the appearance suggests a material that is meant to represent fabric, but given the context of the sculpture, it is likely carved from a hard material. The skill in carving the folds to mimic the drape of cloth is evident.",
+            "uncertainty": "medium",
+            "status": "interpretive"
+          }
+        ],
+        "cannot_determine": [
+          "the exact material of the stars on the head, as they could be made of various materials that mimic a similar appearance.",
+          "the precise lighting conditions in the room, as the shadows and highlights could be created by a single light source or multiple sources.",
+          "the condition of the sculpture, as there are no clear signs of wear or damage visible in the photograph.",
+          "the color of the sculpture in natural light, as the photograph is monochromatic and the lighting is artificial."
+        ]
+      },
+      "parse_note": null,
+      "schema_errors": [],
+      "ref_correct": true,
+      "n_observations": 5,
+      "distinct_loci": 5,
+      "precision_audit": {
+        "per_field": [
+          {
+            "observation_index": 0,
+            "field": "apparent_material_effect",
+            "findings": [
+              {
+                "kind": "category_word",
+                "match": "high",
+                "span": [
+                  137,
+                  141
+                ],
+                "classification": "declared_uncertainty_category",
+                "why": "the sanctioned vocabulary of the observation schema's own enum",
+                "context": "ed corner of a room. The uncertainty is «high» regarding the specific material due to"
+              }
+            ],
+            "counts": {
+              "allowed_source_visible_quantity": 0,
+              "declared_uncertainty_category": 1,
+              "unsupported_measurement": 0,
+              "ambiguous_requires_review": 0
+            },
+            "unsupported": [],
+            "ambiguous": [],
+            "epistemically_valid": true,
+            "verdict": "valid",
+            "note": "A source-visible count and a declared uncertainty category are NOT condemned. Only a quantity nothing measured invalidates a response; an ambiguous one asks for a reader."
+          },
+          {
+            "observation_index": 2,
+            "field": "visible_organization",
+            "findings": [
+              {
+                "kind": "number_word",
+                "match": "three",
+                "span": [
+                  0,
+                  5
+                ],
+                "classification": "ambiguous_requires_review",
+                "why": "a number with no countable noun and no unit after it",
+                "context": "«three» small, star-shaped objects are placed o"
+              }
+            ],
+            "counts": {
+              "allowed_source_visible_quantity": 0,
+              "declared_uncertainty_category": 0,
+              "unsupported_measurement": 0,
+              "ambiguous_requires_review": 1
+            },
+            "unsupported": [],
+            "ambiguous": [
+              {
+                "kind": "number_word",
+                "match": "three",
+                "span": [
+                  0,
+                  5
+                ],
+                "classification": "ambiguous_requires_review",
+                "why": "a number with no countable noun and no unit after it",
+                "context": "«three» small, star-shaped objects are placed o"
+              }
+            ],
+            "epistemically_valid": true,
+            "verdict": "review",
+            "note": "A source-visible count and a declared uncertainty category are NOT condemned. Only a quantity nothing measured invalidates a response; an ambiguous one asks for a reader."
+          }
+        ],
+        "unsupported_fields": [],
+        "epistemically_valid": true,
+        "skipped_fields": [
+          "uncertainty"
+        ],
+        "why_skipped": "it is the schema's own enum. Auditing the sanctioned vocabulary would flag every compliant record ever written."
+      },
+      "attribution_audit": {
+        "measurement_claims": [],
+        "attribution_claims": [],
+        "proper_nouns": [],
+        "clean": true
+      },
+      "audit_ms": 1.35,
+      "epistemically_valid": true,
+      "specificity": {
+        "n_observations": 5,
+        "distinct_loci": 5,
+        "words_total": 426,
+        "words_per_observation": 85.2,
+        "spatial_terms_total": 18,
+        "spatial_terms_per_observation": 3.6,
+        "distinct_spatial_terms": 13,
+        "type_token_ratio": 0.462,
+        "cannot_determine_count": 4,
+        "caveat": "SURFACE MEASURES. More spatial words is not more accurate seeing; word count is recorded next to them so verbosity cannot be read as perception. The exact text is kept in the record for human review, and any judgement about quality belongs in the human table, not here."
+      }
+    },
+    {
+      "ref": "img-v9",
+      "call": {
+        "label": "observe:img-v9",
+        "ok": true,
+        "status": "completed",
+        "finish_reason": "stop",
+        "content": "{\n  \"image_ref\": \"img-v9\",\n  \"observations\": [\n    {\n      \"locus\": \"upper-left quadrant\",\n      \"visible_organization\": \"a draped, veil-like material covers the left side of the face, with deep, linear folds running vertically.\",\n      \"surface_light_behavior\": \"the surface appears smooth and slightly reflective, with highlights along the edges of the folds and shadows in the deeper crevices.\",\n      \"apparent_material_effect\": \"the appearance suggests a hard, carved material like stone or plaster, rather than a soft fabric, due to the crispness of the folds and the overall texture.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"central facial region\",\n      \"visible_organization\": \"the face is partially obscured by the drapery, with the eyes, nose, and mouth faintly visible beneath the folds.\",\n      \"surface_light_behavior\": \"the surface has a matte finish with soft, diffused lighting, creating gentle transitions between light and shadow.\",\n      \"apparent_material_effect\": \"the texture appears smooth and uniform, suggesting a material like marble or a similar stone, with a slight sheen on the higher points.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"lower-right quadrant\",\n      \"visible_organization\": \"the drapery continues to flow downwards, with wider, more relaxed folds compared to the upper sections.\",\n      \"surface_light_behavior\": \"the surface shows a gradual transition from lighter to darker tones, with the light source appearing to come from the upper left.\",\n      \"apparent_material_effect\": \"the folds appear to have a soft, flowing quality, suggesting a material that can be carved to mimic the drape of fabric.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"background area\",\n      \"visible_organization\": \"the background is uniformly dark, providing a stark contrast to the lighter tones of the draped figure.\",\n      \"surface_light_behavior\": \"the surface is non-reflective and absorbs most of the light, creating a deep, shadowy effect.\",\n      \"apparent_material_effect\": \"the appearance suggests a solid, opaque material, possibly a painted backdrop or a dark wall.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    },\n    {\n      \"locus\": \"drapery folds across the face\",\n      \"visible_organization\": \"the folds are arranged in a way that partially conceals the facial features, creating a sense of mystery and depth.\",\n      \"surface_light_behavior\": \"the light interacts with the folds to create a play of highlights and shadows, emphasizing the three-dimensional form.\",\n      \"apparent_material_effect\": \"the texture appears to be smooth and continuous, suggesting a material that can be finely detailed and polished.\",\n      \"uncertainty\": \"high\",\n      \"status\": \"interpretive\"\n    }\n  ],\n  \"cannot_determine\": [\n    \"the exact material of the object\",\n    \"the lighting conditions under which the photograph was taken\",\n    \"the original color of the object\",\n    \"the scale or size of the object\",\n    \"the context or setting in which the object is displayed\"\n  ]\n}",
+        "reasoning_content": null,
+        "prompt_tokens": 1249,
+        "completion_tokens": 772,
+        "cached_tokens": 1245,
+        "latency": {
+          "prompt_ms_server": 647.478,
+          "predicted_ms_server": 161320.504,
+          "prompt_per_second": 6.177816080237475,
+          "predicted_per_second": 4.77930567338173,
+          "client_wall_ms": 162127.0,
+          "unaccounted_ms": 159.0,
+          "note": "prompt_ms covers image encoding AND prompt evaluation together; this build does not report them apart, so they are not split here either. `unaccounted_ms` is queueing plus transport, and is named rather than folded into either half."
+        },
+        "sampling_requested": {
+          "temperature": 0.4,
+          "top_p": 0.8,
+          "top_k": 20,
+          "min_p": 0.0,
+          "presence_penalty": 0.0
+        },
+        "sampling_verification": {
+          "sampling_verified": true,
+          "requested": {
+            "temperature": 0.4,
+            "top_p": 0.8,
+            "top_k": 20,
+            "min_p": 0.0,
+            "presence_penalty": 0.0
+          },
+          "observed": {
+            "temperature": 0.4000000059604645,
+            "top_p": 0.800000011920929,
+            "top_k": 20,
+            "min_p": 0.0,
+            "presence_penalty": 0.0
+          },
+          "mismatches": null,
+          "samples_seen": 1021
+        }
+      },
+      "parsed": {
+        "image_ref": "img-v9",
+        "observations": [
+          {
+            "locus": "upper-left quadrant",
+            "visible_organization": "a draped, veil-like material covers the left side of the face, with deep, linear folds running vertically.",
+            "surface_light_behavior": "the surface appears smooth and slightly reflective, with highlights along the edges of the folds and shadows in the deeper crevices.",
+            "apparent_material_effect": "the appearance suggests a hard, carved material like stone or plaster, rather than a soft fabric, due to the crispness of the folds and the overall texture.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "central facial region",
+            "visible_organization": "the face is partially obscured by the drapery, with the eyes, nose, and mouth faintly visible beneath the folds.",
+            "surface_light_behavior": "the surface has a matte finish with soft, diffused lighting, creating gentle transitions between light and shadow.",
+            "apparent_material_effect": "the texture appears smooth and uniform, suggesting a material like marble or a similar stone, with a slight sheen on the higher points.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "lower-right quadrant",
+            "visible_organization": "the drapery continues to flow downwards, with wider, more relaxed folds compared to the upper sections.",
+            "surface_light_behavior": "the surface shows a gradual transition from lighter to darker tones, with the light source appearing to come from the upper left.",
+            "apparent_material_effect": "the folds appear to have a soft, flowing quality, suggesting a material that can be carved to mimic the drape of fabric.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "background area",
+            "visible_organization": "the background is uniformly dark, providing a stark contrast to the lighter tones of the draped figure.",
+            "surface_light_behavior": "the surface is non-reflective and absorbs most of the light, creating a deep, shadowy effect.",
+            "apparent_material_effect": "the appearance suggests a solid, opaque material, possibly a painted backdrop or a dark wall.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          },
+          {
+            "locus": "drapery folds across the face",
+            "visible_organization": "the folds are arranged in a way that partially conceals the facial features, creating a sense of mystery and depth.",
+            "surface_light_behavior": "the light interacts with the folds to create a play of highlights and shadows, emphasizing the three-dimensional form.",
+            "apparent_material_effect": "the texture appears to be smooth and continuous, suggesting a material that can be finely detailed and polished.",
+            "uncertainty": "high",
+            "status": "interpretive"
+          }
+        ],
+        "cannot_determine": [
+          "the exact material of the object",
+          "the lighting conditions under which the photograph was taken",
+          "the original color of the object",
+          "the scale or size of the object",
+          "the context or setting in which the object is displayed"
+        ]
+      },
+      "parse_note": null,
+      "schema_errors": [],
+      "ref_correct": true,
+      "n_observations": 5,
+      "distinct_loci": 5,
+      "precision_audit": {
+        "per_field": [
+          {
+            "observation_index": 4,
+            "field": "surface_light_behavior",
+            "findings": [
+              {
+                "kind": "number_word",
+                "match": "three",
+                "span": [
+                  95,
+                  100
+                ],
+                "classification": "ambiguous_requires_review",
+                "why": "a number with no countable noun and no unit after it",
+                "context": "highlights and shadows, emphasizing the «three»-dimensional form."
+              }
+            ],
+            "counts": {
+              "allowed_source_visible_quantity": 0,
+              "declared_uncertainty_category": 0,
+              "unsupported_measurement": 0,
+              "ambiguous_requires_review": 1
+            },
+            "unsupported": [],
+            "ambiguous": [
+              {
+                "kind": "number_word",
+                "match": "three",
+                "span": [
+                  95,
+                  100
+                ],
+                "classification": "ambiguous_requires_review",
+                "why": "a number with no countable noun and no unit after it",
+                "context": "highlights and shadows, emphasizing the «three»-dimensional form."
+              }
+            ],
+            "epistemically_valid": true,
+            "verdict": "review",
+            "note": "A source-visible count and a declared uncertainty category are NOT condemned. Only a quantity nothing measured invalidates a response; an ambiguous one asks for a reader."
+          }
+        ],
+        "unsupported_fields": [],
+        "epistemically_valid": true,
+        "skipped_fields": [
+          "uncertainty"
+        ],
+        "why_skipped": "it is the schema's own enum. Auditing the sanctioned vocabulary would flag every compliant record ever written."
+      },
+      "attribution_audit": {
+        "measurement_claims": [],
+        "attribution_claims": [],
+        "proper_nouns": [],
+        "clean": true
+      },
+      "audit_ms": 4.2,
+      "epistemically_valid": true,
+      "specificity": {
+        "n_observations": 5,
+        "distinct_loci": 5,
+        "words_total": 306,
+        "words_per_observation": 61.2,
+        "spatial_terms_total": 18,
+        "spatial_terms_per_observation": 3.6,
+        "distinct_spatial_terms": 12,
+        "type_token_ratio": 0.49,
+        "cannot_determine_count": 5,
+        "caveat": "SURFACE MEASURES. More spatial words is not more accurate seeing; word count is recorded next to them so verbosity cannot be read as perception. The exact text is kept in the record for human review, and any judgement about quality belongs in the human table, not here."
+      }
+    }
+  ],
+  "aggregate": {
+    "n_cells": 3,
+    "parsed": 3,
+    "schema_valid": 3,
+    "ref_correct": 3,
+    "observations_total": 15,
+    "distinct_loci_total": 15,
+    "words_per_observation_mean": 83.8,
+    "spatial_terms_per_observation_mean": 4.2,
+    "distinct_spatial_terms_mean": 12.67,
+    "type_token_ratio_mean": 0.46,
+    "epistemically_valid": 3,
+    "unsupported_precision_fields": 0,
+    "attribution_unclean": 0,
+    "latency_client_wall_ms_median": 176081.8,
+    "caveat": "spatial-term density is a SURFACE measure recorded beside word count, so `more verbose` and `more located` can be told apart. Neither is a judgement about whether the model saw more."
+  },
+  "precision_repairs": [],
+  "repair_summary": {
+    "attempted": 0,
+    "repaired": 0,
+    "gutted": 0,
+    "still_invalid": 0
+  },
+  "latency": {
+    "prompt_ms_server_median": 454.082,
+    "generation_ms_server_median": 175498.575,
+    "unaccounted_ms_median": 155.1,
+    "audit_ms_median": 4.2,
+    "repair_ms_total": 0,
+    "repair_calls": 0,
+    "client_wall_ms_median": 176081.8,
+    "prompt_covers": "image encoding AND prompt evaluation together — this build does not report them apart, and they are not split here either",
+    "client_wall_is_not_throughput": true
+  },
+  "finished_at": "2026-08-22T23:34:40+0530",
+  "mislabelled": {
+    "declared_image_min_tokens": null,
+    "actually_served_image_min_tokens": 1024,
+    "evidence": "1266 prompt tokens, which is the 1024-floor figure; the default floor produces ~390",
+    "cause": "run_inference_group reused whatever server was healthy instead of ensuring the requested launch profile. Fixed by ServerControl.ensure().",
+    "kept_because": "the numbers are real measurements at the 1024 floor. Only the label was wrong, and deleting them would discard evidence to tidy up a bug."
+  }
+}

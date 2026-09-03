@@ -1,0 +1,210 @@
+{
+  "annotation_id": "ann-partition-behind-bar-01",
+  "form": "extent.visible_inferred_partition",
+  "subject": {
+    "kind": "control",
+    "ref": "partition",
+    "digest": null,
+    "raster": [
+      64,
+      64
+    ]
+  },
+  "annotator": {
+    "id": "annotator-a",
+    "expertise": "trained",
+    "minutes_spent": 9
+  },
+  "annotated_on": "2026-08-22",
+  "legitimate_readings": [
+    {
+      "reading_id": "three_part",
+      "label": "seen, asserted, and undetermined",
+      "why": "the only reading that does not put pixels somewhere they do not belong. The bar hides a known band; the bottom of the frame cuts the figure and nothing in the picture says whether it continues.",
+      "mask_rle": null,
+      "instance_refs": [
+        "inst_visible",
+        "inst_inferred",
+        "inst_unknown"
+      ],
+      "preferred_by_annotator": true
+    }
+  ],
+  "single_correct_answer": true,
+  "ambiguity": {
+    "level": "substantial",
+    "sources": [
+      "occluded",
+      "runs_off_frame"
+    ],
+    "confidence": 0.85,
+    "note": "The occluded band is not ambiguous at all — the bar's extent is exact and what it covers is arithmetic. The frame edge is where the ambiguity actually lives, and it is irreducible: no amount of looking at this picture settles it."
+  },
+  "partition": {
+    "visible": {
+      "size": [
+        64,
+        64
+      ],
+      "counts": [
+        1546,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        22,
+        18,
+        10,
+        14,
+        1548
+      ]
+    },
+    "inferred": {
+      "size": [
+        64,
+        64
+      ],
+      "counts": [
+        1564,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        54,
+        10,
+        1562
+      ]
+    },
+    "unknown": {
+      "size": [
+        64,
+        64
+      ],
+      "counts": [
+        1588,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        56,
+        8,
+        1540
+      ]
+    },
+    "conditioned_on": null
+  },
+  "utility_verdicts": [
+    {
+      "verdict": "wrong",
+      "why": "a producer that returns two parts has assigned the off-frame pixels to `inferred`, which asserts a completion the picture does not support.",
+      "about": "two_part_producers"
+    }
+  ],
+  "notes": "Two parts is the trap. `inferred` means 'asserted where nothing was seen but something is known to be'; the off-frame region is 'nothing is known either way'. A producer with only two bins will call the second one the first, and score well on a benchmark that also only has two.",
+  "disagrees_with": null
+}

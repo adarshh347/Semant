@@ -1,0 +1,100 @@
+{
+  "case_id": "II-02-sparse-inquiry",
+  "case_version": "1.0.0",
+  "title": "Sparse inquiry — can it find dimensions nobody handed it?",
+  "prompt": "How do these sculptures make the same hard material feel differently soft, heavy, thin, or resistant? Build the comparison from what is visible rather than assuming the explanation in advance.",
+  "prompt_sha256": "329e7fd81c385e1d9abc2970113b94b445141dfc42a0baddd1057bdfea914213",
+  "post_ids": [
+    "6a6041b81ecd6db1c931eb7a",
+    "6a6041b61ecd6db1c931eb78",
+    "6a60408e1ecd6db1c931eb6b"
+  ],
+  "intended_pressure": [
+    "discover useful visual dimensions without being handed every concept"
+  ],
+  "expected_structural_properties": [
+    {
+      "metric": "prompt_hypothesis_atoms",
+      "expectation": {
+        "max": 4
+      },
+      "why": "This prompt supplies few concepts, so a run producing many user-authored atoms has mistaken the question's grammar for the person's claims."
+    },
+    {
+      "metric": "observations_per_image_min",
+      "expectation": {
+        "min": 1
+      },
+      "why": "Every image must be looked at. A comparison built from two of three images is a comparison with an unexamined term."
+    },
+    {
+      "metric": "image_diversity_images_cited",
+      "expectation": {
+        "min": 3
+      },
+      "why": "The prompt is explicitly comparative across the set."
+    },
+    {
+      "metric": "relation_count",
+      "expectation": {
+        "min": 1
+      },
+      "why": "'How do these make the same material feel differently' is a relational question. Claims alone do not answer it."
+    },
+    {
+      "metric": "cross_image_relation_count",
+      "expectation": {
+        "min": 1
+      },
+      "why": "A relation between two claims about the SAME image is not the comparison that was asked for."
+    }
+  ],
+  "forbidden_shortcuts": [
+    {
+      "shortcut": "answering about one image and generalising",
+      "detected_by": "image_diversity_images_cited",
+      "why": "The most common way a comparative prompt gets a fluent non-answer."
+    },
+    {
+      "shortcut": "listing per-image claims and calling the list a comparison",
+      "detected_by": "relation_count",
+      "why": "A run with many claims and zero relations is relationally underperformed however good the claims are."
+    },
+    {
+      "shortcut": "importing the prompt's four adjectives as the dimensions",
+      "detected_by": "lexical_prompt_copy_ratio",
+      "why": "soft/heavy/thin/resistant were handed over; discovering them is not a discovery."
+    }
+  ],
+  "manual_review_questions": [
+    "Are the dimensions it found actually visible, or are they art-historical defaults?",
+    "Would a person who knows these three works recognise the differences it names?",
+    "Did it find a dimension the prompt did not name?"
+  ],
+  "input_fingerprints": [
+    {
+      "post_id": "6a6041b81ecd6db1c931eb7a",
+      "fingerprint": "165304160602f8b7415ac2f1c80b480ac7779262d3940f62d403784a3b7e927f",
+      "resolved_at": "2026-08-22T00:00:00Z",
+      "readable": true
+    },
+    {
+      "post_id": "6a6041b61ecd6db1c931eb78",
+      "fingerprint": "0237a39cb28b41e082d185b3d153714e004d0304dbfc08fcfd634db1c03037eb",
+      "resolved_at": "2026-08-22T00:00:00Z",
+      "readable": true
+    },
+    {
+      "post_id": "6a60408e1ecd6db1c931eb6b",
+      "fingerprint": "8a1270244e2876e81465c894c076e235de170c7dee121607c99c8f936c26395a",
+      "resolved_at": "2026-08-22T00:00:00Z",
+      "readable": true
+    }
+  ],
+  "run_mode": "live",
+  "declarations": {
+    "provider": null,
+    "models": {},
+    "note": "Left undeclared until a run declares it. A case that pre-named its models would let a run against different ones be filed under the same declaration."
+  }
+}

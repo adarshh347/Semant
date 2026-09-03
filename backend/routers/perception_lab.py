@@ -38,16 +38,21 @@ this file gets a vote.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.schemas.perception_lab import (ExecutionIdentity, InputRef, LabSource,
                                             LifecycleState, OrganFamily, ReviewCorrection,
                                             ReviewVerdict, SessionMode)
-from backend.services.perception_lab import live, source as src
+from backend.services.perception_lab import derivations, live, producers, recipes
+from backend.services.perception_lab import source as src
+from backend.services.perception_lab.derivation_store import (DerivationStoreUnavailable,
+                                                             MongoDerivationStore)
 from backend.services.perception_lab.clock import SystemClock, UuidIds
 from backend.services.perception_lab.mongo_store import LabStoreUnavailable, MongoLabStore
 from backend.services.perception_lab.orchestrator import ConfirmationRequired, NothingToRun
@@ -60,6 +65,12 @@ router = APIRouter()
 #: Overridable in tests, and the ONLY seam that decides which world a request runs in. A test
 #: replaces `_store` and `_open_source`; nothing else in this file knows a database exists.
 _CLOCK = SystemClock()
+
+
+def _derivation_store() -> MongoDerivationStore:
+    """The sixth collection. A separate store because a derivation is not an artifact and the
+    conductor must not be handed a door to it — see `derivation_store.py`."""
+    return MongoDerivationStore()
 
 
 def _store():
@@ -139,6 +150,26 @@ class Replay(BaseModel):
     run_id: str
 
 
+class RunRecipe(BaseModel):
+    """What a person supplies when they choose a study: the words and hands it asks them for.
+
+    `bindings` FILLS ONLY WHAT THE RECIPE ASKED FOR. A concept is somebody's word and a drawn mask
+    is their hand; `recipes.commands` refuses a binding for anything else, because a caller that
+    can overwrite a fixed parameter can turn one study into another while it still reports the
+    first study's name.
+    """
+    model_config = ConfigDict(extra="forbid")
+    bindings: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+
+
+class Derive(BaseModel):
+    """One form, the artifacts it reads, and the decisions only a person can make."""
+    model_config = ConfigDict(extra="forbid")
+    form: str = Field(min_length=1)
+    artifact_ids: List[str] = Field(default_factory=list)
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+
+
 class SubmitReview(BaseModel):
     artifact_id: str
     verdict: str
@@ -216,6 +247,178 @@ def capabilities() -> Dict[str, Any]:
     """
     registry = live.live_registry(live.LabRuntime(source=_CATALOGUE_SOURCE))
     return _envelope(live.capability_catalogue(registry), live.identity_of(registry))
+
+
+# ── PERCEPTUAL-FORMS-001H: forms, recipes and derivations ────────────────────
+#
+# THREE LEVELS, THREE ROUTES, AND THE THIRD ALREADY EXISTED. A person may produce one form
+# directly (`/derivations`), run a bounded study over several (`/recipes/{key}/plans`), or ask in
+# words (`/plans`, unchanged). The prompt arm reaches the same resolver it always did and gains
+# nothing here: a recipe it proposes is planned through the recipe route like any other, so
+# "prompt may propose and never bypass" is a property of there being no fourth route rather than
+# a rule the conductor follows.
+
+
+@router.get("/forms")
+def form_catalogue() -> Dict[str, Any]:
+    """All nineteen forms, with who could write each one here and why nothing can.
+
+    Needs no session, for the reason `/capabilities` needs none: a person deciding whether a form
+    is worth opening should not have to open a session first. The states come from a live
+    registry, so an adapter that is not running on THIS machine in THIS working directory is
+    reported as it actually is.
+    """
+    registry = live.live_registry(live.LabRuntime(source=_CATALOGUE_SOURCE))
+    states = dict(registry.capabilities())
+    body = producers.catalogue(states=states)
+    body["derivable"] = list(derivations.derivable_forms())
+    return _envelope(body, live.identity_of(registry))
+
+
+@router.get("/recipes")
+def recipe_catalogue() -> Dict[str, Any]:
+    """The seven deterministic studies, as declared. No session, no state, no readiness."""
+    return _envelope({"recipes": [_recipe_json(r) for r in recipes.recipes().values()],
+                      "stop_outcomes": list(recipes.stop_outcomes())},
+                     ExecutionIdentity.LIVE)
+
+
+def _recipe_json(recipe: Any) -> Dict[str, Any]:
+    """One study, projected. Every field a surface needs and nothing it could execute from.
+
+    THE STEPS ARE HERE AND THE COMMANDS ARE NOT. A surface draws the sequence; only
+    `/recipes/{key}/plans` turns it into direct acts, through the same Direct planner and the same
+    resolver a pressed control uses. A projection carrying ready-made commands would be a second
+    place a study could be executed from.
+    """
+    return {
+        "key": recipe.key, "label": recipe.label, "question": recipe.question,
+        "organ": recipe.organ.value, "mode": recipe.mode.value,
+        "required_forms": list(recipe.required_forms),
+        "prerequisites": list(recipe.prerequisites),
+        "bounds": dict(recipe.bounds),
+        "expected_renderers": list(recipe.expected_renderers),
+        "fixtures": list(recipe.fixtures),
+        "asks_for": {k: list(v) for k, v in recipe.asks_for.items()},
+        "steps": [{"id": s.id, "kind": s.kind, "why": s.why, "operation": s.operation,
+                   "parameters": dict(s.parameters or {}), "produces": s.produces,
+                   "reads": list(s.reads), "asks_for": list(s.asks_for)}
+                  for s in recipe.steps],
+        "stop_conditions": [{"when": c.when, "outcome": c.outcome, "reason": c.reason}
+                            for c in recipe.stop_conditions],
+        "decision_points": [{"at": d.at, "asks": d.asks, "why_a_person": d.why_a_person,
+                             "options": list(d.options)} for d in recipe.decision_points],
+    }
+
+
+@router.get("/sessions/{session_id}/recipes/{key}/readiness")
+def recipe_readiness(session_id: str, key: str) -> Dict[str, Any]:
+    """Every reason this study cannot run here, gathered BEFORE anything is planned.
+
+    Four of the seven cannot write their final record today. A runtime that discovered that at the
+    last step would have spent every model call first.
+    """
+    store = _guarded(_store)
+    machine = _machine(store, session_id)
+    try:
+        recipe = recipes.recipe(key)
+    except recipes.RecipeError as exc:
+        raise HTTPException(status_code=404, detail={"error": "unknown_recipe",
+                                                     "why": str(exc)}) from exc
+    registry = live.live_registry(live.LabRuntime(source=machine.session.source))
+    readiness = recipes.check(recipe, machine.view(), capabilities=dict(registry.capabilities()))
+    return _envelope({
+        "recipe": recipe.key, "ready": readiness.ready,
+        "reasons": list(readiness.reasons),
+        "unproducible_forms": list(readiness.unproducible_forms),
+        "unavailable_operations": list(readiness.unavailable_operations),
+        "mode_conflict": readiness.mode_conflict,
+    }, live.identity_of(registry))
+
+
+@router.post("/sessions/{session_id}/recipes/{key}/plans", status_code=201)
+async def plan_recipe(session_id: str, key: str, body: RunRecipe) -> Dict[str, Any]:
+    """A study, expanded into direct acts and put through the same resolver as a pressed control.
+
+    NOTHING RUNS HERE. The plan comes back for a person to look at, and a chain study comes back
+    with `requires_confirmation` set, exactly as a hand-composed chain does.
+    """
+    store = _guarded(_store)
+    machine = _machine(store, session_id)
+    try:
+        recipe = recipes.recipe(key)
+    except recipes.RecipeError as exc:
+        raise HTTPException(status_code=404, detail={"error": "unknown_recipe",
+                                                     "why": str(exc)}) from exc
+    snapshot = await _resolve(str(machine.session.source.post_id))
+
+    def _plan() -> Dict[str, Any]:
+        conductor = _conductor(snapshot, store)
+        identity = live.identity_of(conductor.registry)
+        try:
+            commands = recipes.commands(recipe, machine.view(), body.bindings)
+        except recipes.RecipeError as exc:
+            raise HTTPException(status_code=422, detail={
+                "error": "invalid_binding", "recipe": recipe.key, "why": str(exc)}) from exc
+        resolution = conductor.plan_direct(machine, *commands)
+        _guarded(store.put_session, machine.session)
+        return _envelope({"plan": live.record_json(resolution.plan),
+                          "recipe": _recipe_json(recipe),
+                          "derivations": [{"id": s.id, "produces": s.produces,
+                                           "reads": list(s.reads), "why": s.why}
+                                          for s in recipes.derivations(recipe)],
+                          "notes": list(resolution.notes),
+                          "authorized": resolution.authorized,
+                          "session": live.session_json(machine.session)}, identity)
+
+    return await run_in_threadpool(_plan)
+
+
+@router.post("/sessions/{session_id}/derivations", status_code=201)
+def create_derivation(session_id: str, body: Derive) -> Dict[str, Any]:
+    """Compute one form from artifacts this session already holds. REACHES NO ADAPTER.
+
+    A derivation is not a run: nothing is invoked, no image is opened and no model is loaded, so
+    there is no stage attempt to record and no wall clock worth reporting as a measurement. What
+    comes back is the payload, the producibility verdict, the ceiling and every omission — and a
+    record that has nowhere to be promoted to.
+    """
+    store = _guarded(_store)
+    machine = _machine(store, session_id)
+    held = {a.identity.artifact_id: a for a in _guarded(store.artifacts_for_session, session_id)}
+    missing = [a for a in body.artifact_ids if a not in held]
+    if missing:
+        raise HTTPException(status_code=404, detail={
+            "error": "unknown_artifact", "artifact_ids": missing,
+            "why": "a derivation reads artifacts this session recorded, and never fetches one"})
+    supplied = [held[a] for a in body.artifact_ids]
+    try:
+        record = derivations.derive(
+            body.form, session_id=session_id, artifacts=supplied,
+            parameters=dict(body.parameters or {}),
+            source_image_digest=machine.session.source.image_digest,
+            derivation_id=f"der_{uuid4().hex[:12]}",
+            now=datetime.now(timezone.utc).isoformat())
+    except derivations.DerivationRefused as refused:
+        # A REFUSAL IS A 201 WITH THE REFUSAL IN IT, the same ruling `/plans` makes. The refusal is
+        # the answer — which input did not resolve and what would satisfy it — and a 4xx would
+        # leave a client with a status code where the laboratory's reply should be.
+        return _envelope({"derivation": None,
+                          "refusals": [refused.refusal.model_dump(mode="json")]},
+                         ExecutionIdentity.LIVE)
+    _guarded(_derivation_store().put, record)
+    return _envelope({"derivation": record.model_dump(mode="json"), "refusals": []},
+                     ExecutionIdentity.LIVE)
+
+
+@router.get("/sessions/{session_id}/derivations")
+def list_derivations(session_id: str) -> Dict[str, Any]:
+    """Every form derived in this session, in the order they were computed."""
+    store = _guarded(_store)
+    _machine(store, session_id)
+    found = _guarded(_derivation_store().for_session, session_id)
+    return _envelope({"derivations": [d.model_dump(mode="json") for d in found]},
+                     ExecutionIdentity.LIVE)
 
 
 @router.get("/sources")
@@ -531,6 +734,6 @@ def _guarded(call, *args):
     """
     try:
         return call(*args)
-    except LabStoreUnavailable as exc:
+    except (LabStoreUnavailable, DerivationStoreUnavailable) as exc:
         raise HTTPException(status_code=503, detail={"error": "lab_store_unavailable",
                                                      "why": str(exc)}) from exc

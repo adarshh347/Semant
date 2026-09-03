@@ -1,0 +1,209 @@
+/* PERCEPTUAL-FORMS-001H — the two lower levels, styled on the same tokens as the shell.
+ *
+ * Every colour, space, radius and type size here is a `var(--…)` from `src/index.css`. No hex, no
+ * new global token, nothing outside `.fb`. Dark mode needs no separate block for the reason the
+ * shell's sheet gives: the tokens already swap under `[data-theme='dark']`.
+ *
+ * ── WHAT THIS SHEET IS RESPONSIBLE FOR ─────────────────────────────────────
+ *
+ * THREE NEW AXES, THREE TREATMENTS, and none of them borrows one the shell already spent:
+ *
+ *     producer kind   `model` filled, `code` outlined, `human` bracketed   [data-kind]
+ *     form state      `enabled` ink, `experimental` dashed, `deferred` dim [data-state]
+ *     step kind       an operation carries a rule, a derivation does not   [data-kind]
+ *
+ * A REFUSAL IS LEGIBLE RATHER THAN ALARMING, the same ruling the shell makes. A red block over a
+ * deferred form would teach people to avoid the state this laboratory exists to show them, and
+ * sixteen of the nineteen forms are in it.
+ *
+ * THE TWO COMPARISON PANES ARE NEVER SUPERIMPOSED. Side by side at every width; below each other
+ * under 560px. Two drawings of one measurement stacked on top of each other is a third drawing
+ * nobody made.
+ */
+
+.fb {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.fb-head { display: flex; flex-direction: column; gap: var(--space-1); }
+
+.fb-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.fb-label {
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.fb-select,
+.fb-input {
+    font: inherit;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+    color: var(--text-primary);
+    max-width: 100%;
+}
+
+.fb-question { margin: 0; color: var(--text-primary); }
+
+.fb-state { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; }
+
+/* THE STRONGEST CLAIM LOOKS STRONGEST. `enabled` gets ink; `experimental` gets a dashed rule
+ * because it is writable and unreviewed; `deferred` is dimmed because nothing writes it at all. */
+.fb .pl-chip[data-state='enabled'] { color: var(--text-primary); border-style: solid; }
+.fb .pl-chip[data-state='experimental'] { border-style: dashed; }
+.fb .pl-chip[data-state='deferred'] { color: var(--text-tertiary); border-style: dotted; }
+
+.fb .pl-chip[data-kind='model'] {
+    background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+}
+.fb .pl-chip[data-kind='code'] { border-style: solid; background: transparent; }
+.fb .pl-chip[data-kind='human'] { font-style: italic; }
+
+.fb-blocked {
+    margin: 0;
+    padding: var(--space-2);
+    border-left: 2px solid var(--border-strong);
+    background: var(--surface-sunken);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+}
+
+.fb-producers,
+.fb-inputs,
+.fb-refusals,
+.fb-omitted,
+.fb-reasons,
+.fb-decisions,
+.fb-stops,
+.fb-recipes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.fb-producer {
+    padding: var(--space-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+.fb-producer[data-state='unavailable'] { border-style: dashed; }
+.fb-producer label { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
+.fb-producer-key { font-family: var(--font-mono); font-size: var(--text-sm); }
+.fb-producer-detail,
+.fb-producer-reason,
+.fb-note,
+.fb-empty,
+.fb-step-why,
+.fb-step-asks,
+.fb-options {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+.fb-producer-reason { color: var(--text-tertiary); }
+
+.fb-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
+.fb-receipt { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; }
+
+.fb-refusals li,
+.fb-omitted li,
+.fb-reasons li,
+.fb-stops li {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    padding-left: var(--space-2);
+    border-left: 2px solid var(--border-subtle);
+}
+
+.fb-thresholds {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-2);
+    background: var(--surface-sunken);
+    border-radius: var(--radius-sm);
+}
+.fb-thresholds dt {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+}
+.fb-thresholds dd { margin: 0; font-family: var(--font-mono); font-size: var(--text-sm); }
+
+/* NEVER SUPERIMPOSED. Two drawings of one measurement stacked would be a third drawing. */
+.fb-compare { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.fb-pane { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.fb-canvas { min-width: 0; overflow-x: auto; }
+
+.fb-recipe {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2);
+}
+.fb-recipe[data-ready='false'] { border-style: dashed; }
+.fb-recipe-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+}
+.fb-recipe-label { font-weight: var(--weight-medium); }
+.fb-recipe-question { margin: var(--space-1) 0 0; color: var(--text-secondary); }
+.fb-recipe-body { display: flex; flex-direction: column; gap: var(--space-2);
+    margin-top: var(--space-2); }
+
+.fb-steps { margin: 0; padding-left: var(--space-4); display: flex; flex-direction: column;
+    gap: var(--space-2); }
+/* An operation may reach a model; a derivation reads records and calls nothing. */
+.fb-step[data-kind='operation'] { border-left: 2px solid var(--border-strong);
+    padding-left: var(--space-2); }
+.fb-step[data-kind='derivation'] { padding-left: var(--space-2); }
+
+.fb-decisions li { padding: var(--space-2); background: var(--surface-sunken);
+    border-radius: var(--radius-sm); }
+.fb-decisions strong { display: block; }
+.fb-decisions p { margin: var(--space-1) 0 0; font-size: var(--text-sm);
+    color: var(--text-secondary); }
+
+.fb-bindings { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.fb-bindings .fb-label { display: flex; flex-direction: column; gap: var(--space-1); }
+
+.fb-refused {
+    margin: 0;
+    padding: var(--space-2);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+}
+
+@media (max-width: 560px) {
+    .fb-compare { grid-template-columns: 1fr; }
+}
+
+.pl[data-w='s'] .fb-compare,
+.pl[data-w='xs'] .fb-compare { grid-template-columns: 1fr; }

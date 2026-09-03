@@ -1,0 +1,42 @@
+{
+  "variant": "topology_transition",
+  "revisions_compared": 2,
+  "transitions": [
+    {
+      "transition_id": "trans_1",
+      "before": {
+        "source": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_1",
+          "geometry_rev": 0
+        },
+        "target": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_2",
+          "geometry_rev": 0
+        },
+        "kind": "meets",
+        "measurements": {
+          "contact_pixels": 812.0
+        }
+      },
+      "after": {
+        "source": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_1",
+          "geometry_rev": 1
+        },
+        "target": {
+          "artifact_id": "art_extent_1",
+          "instance_id": "inst_2",
+          "geometry_rev": 0
+        },
+        "kind": "overlaps",
+        "measurements": {
+          "intersection_area": 0.03
+        }
+      },
+      "change": "changed"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "title": "Strict JSON Observation",
+  "description": "The shape experiment 3 forces the model to fill. Sent VERBATIM as Gemini's generationConfig.responseSchema, so it stays inside the OpenAPI subset that endpoint accepts: no $schema, no $defs, no additionalProperties, no oneOf. It is also the schema the response is validated against locally, by the repo's own vendored validator — asking the provider to honour a schema and checking that it did are two different acts, and the lab does both. Vocabulary is OPEN: `quality` is a free string, because a closed list of fold-words would hard-code one rehearsal's topic into the instrument that is supposed to be able to fail on it.",
+  "type": "object",
+  "required": ["observations", "refusals"],
+  "properties": {
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["image_index", "quality", "visible_evidence", "confidence_is_not_measurement"],
+        "properties": {
+          "image_index": { "type": "integer", "minimum": 0 },
+          "quality": { "type": "string", "minLength": 1 },
+          "visible_evidence": { "type": "string", "minLength": 1 },
+          "where": { "type": "string" },
+          "confidence_is_not_measurement": {
+            "type": "string",
+            "enum": ["acknowledged"],
+            "description": "The model must restate that its answer is interpretive. A model that cannot emit this constant has not been held to the contract."
+          }
+        }
+      }
+    },
+    "refusals": {
+      "type": "array",
+      "description": "What the model declined to claim from these images. An empty array is a claim in itself and is recorded as one.",
+      "items": {
+        "type": "object",
+        "required": ["what", "why"],
+        "properties": {
+          "what": { "type": "string", "minLength": 1 },
+          "why": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

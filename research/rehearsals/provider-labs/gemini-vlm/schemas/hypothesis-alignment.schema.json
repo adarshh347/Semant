@@ -1,0 +1,35 @@
+{
+  "title": "Hypothesis Alignment",
+  "description": "Experiment 5's response shape, sent verbatim as Gemini's responseSchema. The whole design is one refusal: the model is never asked whether it agrees with the prompt. It is asked what the prompt ASSUMED, and what the images do and do not show — because a model asked to agree will agree, and the agreement would then be filed next to observations and read as one. `verdict` therefore has no `true`/`false` branch; `refused` and `not_answerable_from_images` are first-class answers and the prompt says so.",
+  "type": "object",
+  "required": ["prompt_assumed", "verdict", "per_image", "not_shown", "user_claim_is_not_evidence"],
+  "properties": {
+    "prompt_assumed": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The claim the prompt arrived carrying, restated by the model before it looks. Empty for a prompt that asserted nothing."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["supported", "complicated", "refused", "not_answerable_from_images"]
+    },
+    "per_image": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["image_index", "visible_evidence", "bears_on_claim"],
+        "properties": {
+          "image_index": { "type": "integer", "minimum": 0 },
+          "visible_evidence": { "type": "string", "minLength": 1 },
+          "bears_on_claim": { "type": "string", "enum": ["for", "against", "neither"] }
+        }
+      }
+    },
+    "not_shown": {
+      "type": "array",
+      "description": "What the claim needs that these images cannot settle. An empty array here, on a prompt that asserted something, is itself a finding.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "user_claim_is_not_evidence": { "type": "string", "enum": ["acknowledged"] }
+  }
+}

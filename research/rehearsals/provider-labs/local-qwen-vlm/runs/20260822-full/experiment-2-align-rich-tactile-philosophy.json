@@ -1,0 +1,175 @@
+{
+  "provider": "local_qwen_vlm",
+  "run_id": "20260822-full",
+  "experiment": "2-prompt-aware-alignment",
+  "prompt_id": "rich-tactile-philosophy",
+  "prompt_provenance": "verbatim: contracts/samples/inquiry-session.scoped.json .prompt (also at backend/tests/fixtures/semantic_dissolution/fold-rehearsal.json and contracts/samples/inquiry-session.dissolution.json, byte-identical)",
+  "saw_an_image": false,
+  "note": "The request body carried no image part. The model could not have made a new visual observation here; that is enforced by the absence of the picture rather than by the instruction above it.",
+  "observations_given": "[img-k7-o0] locus: The head and shoulders of the figure, positioned in the upper center of the frame. | organization: A sculpted bust where the head is tilted downward and to the left. The hair is styled with waves falling from a crown-like braid, framing the face. | surface and light: The smooth surface shows soft specular highlights on the forehead, cheekbone, and bridge of the nose. Subtle shadows are cast by the folds in the hair and under the chin, defining the form. | apparent material effect: The high gloss and way the light reflects suggests a polished, non-porous material like ceramic or fine-grained stone. | uncertainty: high | status: interpretive\n[img-k7-o1] locus: The drapery wrapped around the chest and shoulders, occupying the lower half of the figure. | organization: Fabric-like folds drape asymmetrically across the front. A single fold crosses diagonally over the right breast area (viewer's left). | surface and light: Light catches the rounded top edges of the folds, while deep shadows define the crevices between them. The highlight patterns follow the curvature of the implied fabric. | apparent material effect: The surface appears stiff yet pliable, with a luster that is less reflective than the skin but still significant, suggesting a glazed finish. | uncertainty: high | status: interpretive\n[img-k7-o2] locus: The background plane behind and to the sides of the figure. | organization: A uniform, dark expanse that fills the corners of the frame, creating a void around the central subject. | surface and light: The surface shows a very smooth gradient, being darkest at the top and right edges and lightening slightly towards the center where it meets the base of the sculpture. | apparent material effect: Its matte appearance suggests a painted wall or an artificial backdrop used to isolate the subject. | uncertainty: high | status: interpretive\n[img-k7-o3] locus: The small, flat surface visible at the very bottom edge of the photograph, directly beneath the figure's base. | organization: A narrow band appearing in the lower frame. | surface and light: It reflects a warm, brownish tint from an unseen light source above or in front. The reflection is diffuse rather than sharp. | apparent material effect: The color and sheen are consistent with varnished wood or a dark fabric cloth draped over the display surface. | uncertainty: high | status: interpretive\n[img-k7-o4] locus: The facial features: nose, lips, and closed eyes. | organization: The nose projects forward from the face. The lips are slightly parted. The eyes are depicted as closed. | surface and light: The bridge of the nose has a distinct highlight line running down its center. Soft shadows fall in the corners of the mouth and beneath the eyelids. | apparent material effect: These features appear seamless with the rest of the head, reinforcing the appearance of a single, solid cast material without seams or paint application marks. | uncertainty: high | status: interpretive\n[img-k7-undetermined] The exact material composition (e.g., whether it is stone, plaster, or resin).\n[img-k7-undetermined] The lighting direction with certainty, as shadows are complex and diffuse.\n[img-k7-undetermined] Any textural details on the surface, such as microscopic grain or tool marks.\n[img-q2-o0] locus: center-left to upper-right, covering the sculpture's head and shoulders | organization: A sculpted human figure, shown from the chest up. The head is tilted slightly to its right (viewer's left). Hair is carved into a style that appears woven or braided, with a distinct crown-like element on top. | surface and light: The surface is predominantly matte, reflecting light diffusely rather than creating sharp glints. Shadows are soft and deep, particularly in the crevices of the folds and beneath the chin. | apparent material effect: The appearance strongly suggests a non-metallic material with some translucency, such as polished stone or alabaster. | uncertainty: high | status: interpretive\n[img-q2-o1] locus: extending from the shoulders downwards and outwards | organization: A draped fabric, carved as part of the solid mass, covering the figure's chest and shoulders. The folds are numerous and complex, converging towards the bottom of the frame. | surface and light: Light highlights the rounded tops of the folded planes while darkening the deeper grooves between them, emphasizing the three-dimensional volume. | apparent material effect: Despite being carved from a single piece, the surface mimics the soft texture and weight of cloth through its deeply sculpted form. | uncertainty: high | status: interpretive\n[img-q2-o2] locus: bottom-center, directly below the bust | organization: A supporting plinth or base structure. It has a distinct lower layer and an upper section to which the sculpture is attached. | surface and light: The surface is very dark and appears largely in shadow, absorbing most of the incident light. | apparent material effect: The dark value and lack of reflected detail suggest a porous or rough material like dark wood, unpolished stone, or painted cast iron. | uncertainty: high | status: interpretive\n[img-q2-o3] locus: background, surrounding the sculpture on all sides | organization: A uniform field that serves as a backdrop for the sculpture. There are no distinct patterns or objects visible. | surface and light: The background is significantly darker than the illuminated parts of the sculpture, suggesting a low-key lighting setup. | apparent material effect: Its darkness makes it difficult to determine if it is a painted wall, a draped cloth, or a shadowed area within an architectural space. The texture appears smooth due to the lack of detail. | uncertainty: high | status: interpretive\n[img-q2-o4] locus: extreme left edge and bottom corner of the frame | organization: A dark, undefined space where the shadow of the sculpture is cast against what is likely a floor or wall. | surface and light: This area is in deep shadow, showing almost no reflected light. | apparent material effect: The indistinct form suggests a large, matte surface that is heavily shaded by the main subject. The material could be stone, plaster, or fabric. | uncertainty: high | status: interpretive\n[img-q2-undetermined] The specific type of object depicted in the sculpture (e.g., a bust of a particular deity or figure).\n[img-q2-undetermined] The identity or origin of any symbols present on the crown-like feature.\n[img-q2-undetermined] The complete material composition of the sculpture or the plinth.\n[img-v9-o0] locus: central face area | organization: A sculpted human face is depicted with closed eyes, a visible nose, lips, and chin. The facial features are arranged beneath a draped material. | surface and light: The surface appears smooth but with subtle variations in tone suggesting form underneath the veil. Highlights are soft and diffuse. | apparent material effect: The appearance suggests carved stone or plaster, possibly marble or alabaster, with a polished finish that reflects light softly. | uncertainty: high | status: interpretive\n[img-v9-o1] locus: veil/draped fabric covering | organization: A sheet-like material is draped over the head and shoulders, with defined folds running vertically down the face and sides. The fabric appears to be wrapped tightly around the contours of the head. | surface and light: Light interacts with the undulating surface of the drapery, creating alternating bands of bright highlights and deep shadows that emphasize the texture and flow of the folds. | apparent material effect: The visual effect is consistent with thin stone, such as carved marble or alabaster, given its translucency in illuminated areas and matte appearance in shadowed crevices. | uncertainty: high | status: interpretive\n[img-v9-o2] locus: right side of the image (from viewer's perspective) | organization: This section shows the right side of the head and the continuation of the draped veil falling past the shoulder. The background is dark and featureless. | surface and light: Illumination on the right edge seems slightly stronger than on the left, causing highlights to appear more intense along the folds there. | apparent material effect: Continues the appearance of a polished, semi-translucent stone material with layered folding effects. | uncertainty: high | status: interpretive\n[img-v9-o3] locus: bottom-left corner | organization: Part of what appears to be the shoulder or upper chest area is visible, partially covered by the veil's drape. | surface and light: Lighting here is more subdued, revealing fewer highlights and deeper shadows within the fabric folds compared to the central face. | apparent material effect: Consistent with a heavy stone material; no clear indication of metallic or painted surfaces. | uncertainty: high | status: interpretive\n[img-v9-o4] locus: background region | organization: The background surrounding the figure is uniformly dark and devoid of any discernible detail or pattern. | surface and light: No reflected light or texture variations are visible, indicating either a completely black void or extreme shadowing. | apparent material effect: Could be an intentional photographic choice using solid color backdrop, or the object may be isolated against darkness in its environment. | uncertainty: high | status: interpretive\n[img-v9-o5] locus: overall surface texture | organization: The entire figure exhibits a consistent textural treatment across both the face and the veil. | surface and light: Light behaves as if reflecting off a hard, non-porous material with slight variations in translucency depending on thickness or depth of carving. | apparent material effect: Suggests carved stone rather than fabric or metal; possibly alabaster due to its luminous quality where light passes through thinner sections. | uncertainty: high | status: interpretive\n[img-v9-undetermined] The actual dimensions or scale of the object.\n[img-v9-undetermined] Whether the veil depicts real fabric or is sculpted stone intended to mimic cloth.\n[img-v9-undetermined] Any symbolic meaning or identity associated with the depicted figure.\n[img-v9-undetermined] Environmental context beyond what is visually presented in the frame.",
+  "system": "You are given a set of observations that were written earlier by someone looking at photographs, and a person's separate hypotheses about those photographs.\nYou cannot see the photographs. Judge each hypothesis ONLY against the observations you are given.\nFor each hypothesis choose exactly one stance: supports, complicates, challenges, does_not_bear_on, cannot_determine.\nCite the observation ids you used. If no observation bears on a hypothesis, the stance is does_not_bear_on. If the observations are about the right thing but do not settle it, the stance is cannot_determine.\nNever state a visual detail that is not in the observations.",
+  "call": {
+    "label": "align:rich-tactile-philosophy",
+    "ok": true,
+    "status": "completed",
+    "content": "{\n  \"claims\": [\n    {\n      \"claim\": \"The Buddha statue has a metallic appearance with very sharp edges of the folds.\",\n      \"stance\": \"challenges\",\n      \"observation_ids\": [\"img-q2-o0\", \"img-k7-o0\", \"img-k7-o1\"],\"grounds\": \"The observations describe the surfaces as 'predominantly matte' (img-q2-o0), lacking 'sharp glints' or sharp edges, instead showing 'soft specular highlights' (img-k7-o0) and a surface that appears 'stiff yet pliable... suggesting a glazed finish' but not metallic (img-k7-o1). The material is suggested to be 'non-metallic' like polished stone or alabaster (img-q2-o0).\"\n    },\n    {\n      \"claim\": \"The modern woman sculpture creates an effect of transparency in the folds.\",\n      \"stance\": \"challenges\",\n      \"observation_ids\": [\"img-v9-o1\", \"img-v9-o5\", \"img-k7-o1\"],\n      \"grounds\": \"While the observations note 'translucency' in illuminated areas where light passes through thinner sections (img-v9-o1, img-v9-o5), they also explicitly state there is 'no clear indication of metallic or painted surfaces' and that the visual effect is consistent with carved stone mimicking cloth (img-v9-o1, img-q2-o1). The term 'transparency' implies seeing through completely, whereas the observations describe a polished, semi-translucent stone material (img-v9-o5) rather than true transparency. Furthermore, the comparison to a 'dead bed man' with folds having 'slight bluntness' contradicts the sharp edges claimed for the Buddha.\"\n    },\n    {\n      \"claim\": \"The folds in the modern woman sculpture have their own distinct style compared to the others.\",\n      \"stance\": \"supports\",\n      \"observation_ids\": [\"img-k7-o1\", \"img-q2-o1\", \"img-v9-o1\"],\n      \"grounds\": \"The observations confirm that the folds are created in different ways to achieve different effects. The 'woman' (k7) has fabric-like folds with a glazed finish (img-k7-o1). The 'Buddha' (q2) mimics cloth through deep sculpting from a solid mass (img-q2-o1). The 'modern woman' (v9) uses layered folding effects on semi-translucent stone (img-v9-o2, img-v9-o5). Each set of observations highlights unique organizational and material effects, supporting the claim that they have distinct styles.\"\n    },\n    {\n      \"claim\": \"The folds on the 'dead bed man' are somewhat similar to the Buddha's but share slight bluntness.\",\n      \"stance\": \"cannot_determine\",\n      \"observation_ids\": [],\n      \"grounds\": \"There are no observations provided regarding a 'dead bed man' sculpture or its specific fold characteristics. The only mention of a figure resembling this description is in the hypothesis itself, which cannot be verified against the provided visual data.\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "prompt_tokens": 2466,
+    "completion_tokens": 678,
+    "cached_tokens": 0,
+    "prompt_per_second": 159.26620260740603,
+    "predicted_per_second": 12.265060012648775,
+    "client_wall_ms": 71219.1,
+    "request_digest": "496043e7f7af39d2",
+    "machine_after": {
+      "swap_used_mb": 7590.25,
+      "swap_raw": "total = 9216.00M  used = 7590.25M  free = 1625.75M  (encrypted)",
+      "wired_mb": 9280.5,
+      "compressed_mb": 2033.9,
+      "free_mb": 64.1,
+      "server_rss_mb": 251.7,
+      "rss_caveat": "RSS under -ngl 99 on Metal is not the footprint; read wired_mb instead",
+      "server_pid": 47592
+    }
+  },
+  "parsed": {
+    "claims": [
+      {
+        "claim": "The Buddha statue has a metallic appearance with very sharp edges of the folds.",
+        "stance": "challenges",
+        "observation_ids": [
+          "img-q2-o0",
+          "img-k7-o0",
+          "img-k7-o1"
+        ],
+        "grounds": "The observations describe the surfaces as 'predominantly matte' (img-q2-o0), lacking 'sharp glints' or sharp edges, instead showing 'soft specular highlights' (img-k7-o0) and a surface that appears 'stiff yet pliable... suggesting a glazed finish' but not metallic (img-k7-o1). The material is suggested to be 'non-metallic' like polished stone or alabaster (img-q2-o0)."
+      },
+      {
+        "claim": "The modern woman sculpture creates an effect of transparency in the folds.",
+        "stance": "challenges",
+        "observation_ids": [
+          "img-v9-o1",
+          "img-v9-o5",
+          "img-k7-o1"
+        ],
+        "grounds": "While the observations note 'translucency' in illuminated areas where light passes through thinner sections (img-v9-o1, img-v9-o5), they also explicitly state there is 'no clear indication of metallic or painted surfaces' and that the visual effect is consistent with carved stone mimicking cloth (img-v9-o1, img-q2-o1). The term 'transparency' implies seeing through completely, whereas the observations describe a polished, semi-translucent stone material (img-v9-o5) rather than true transparency. Furthermore, the comparison to a 'dead bed man' with folds having 'slight bluntness' contradicts the sharp edges claimed for the Buddha."
+      },
+      {
+        "claim": "The folds in the modern woman sculpture have their own distinct style compared to the others.",
+        "stance": "supports",
+        "observation_ids": [
+          "img-k7-o1",
+          "img-q2-o1",
+          "img-v9-o1"
+        ],
+        "grounds": "The observations confirm that the folds are created in different ways to achieve different effects. The 'woman' (k7) has fabric-like folds with a glazed finish (img-k7-o1). The 'Buddha' (q2) mimics cloth through deep sculpting from a solid mass (img-q2-o1). The 'modern woman' (v9) uses layered folding effects on semi-translucent stone (img-v9-o2, img-v9-o5). Each set of observations highlights unique organizational and material effects, supporting the claim that they have distinct styles."
+      },
+      {
+        "claim": "The folds on the 'dead bed man' are somewhat similar to the Buddha's but share slight bluntness.",
+        "stance": "cannot_determine",
+        "observation_ids": [],
+        "grounds": "There are no observations provided regarding a 'dead bed man' sculpture or its specific fold characteristics. The only mention of a figure resembling this description is in the hypothesis itself, which cannot be verified against the provided visual data."
+      }
+    ]
+  },
+  "parse_note": null,
+  "schema_errors": [],
+  "novelty": {
+    "novel_terms": [
+      "achieve",
+      "characteristic",
+      "claim",
+      "comparison",
+      "confirm",
+      "contradict",
+      "data",
+      "describe",
+      "description",
+      "explicit",
+      "furthermore",
+      "ground",
+      "instead",
+      "itself",
+      "mention",
+      "mimick",
+      "note",
+      "organizational",
+      "other",
+      "provid",
+      "regard",
+      "resembl",
+      "seeing",
+      "term",
+      "true",
+      "unique",
+      "uses",
+      "verifi",
+      "ways"
+    ],
+    "novel_discourse": [
+      "claim",
+      "contradict",
+      "description",
+      "explicit",
+      "ground",
+      "mention",
+      "note",
+      "regard"
+    ],
+    "novel_substantive": [
+      "achieve",
+      "characteristic",
+      "comparison",
+      "confirm",
+      "data",
+      "describe",
+      "furthermore",
+      "instead",
+      "itself",
+      "mimick",
+      "organizational",
+      "other",
+      "provid",
+      "resembl",
+      "seeing",
+      "term",
+      "true",
+      "unique",
+      "uses",
+      "verifi",
+      "ways"
+    ],
+    "novel_substantive_count": 21,
+    "note": "stems are compared, not words; see _stem. `substantive` is the half that would indicate a visual detail produced with no picture in front of the model."
+  },
+  "cited_observation_ids": [
+    "img-q2-o0",
+    "img-k7-o0",
+    "img-k7-o1",
+    "img-v9-o1",
+    "img-v9-o5",
+    "img-k7-o1",
+    "img-k7-o1",
+    "img-q2-o1",
+    "img-v9-o1"
+  ],
+  "hallucinated_observation_ids": [],
+  "audit": {
+    "measurement_claims": [],
+    "attribution_claims": [],
+    "proper_nouns": [
+      "Buddha",
+      "Buddha's"
+    ],
+    "clean": true
+  },
+  "prompt_copying": {
+    "n": 6,
+    "answer_ngrams": 379,
+    "shared_ngrams": 1,
+    "fraction_of_answer": 0.0026,
+    "examples": [
+      "very sharp edges of the folds"
+    ]
+  }
+}
