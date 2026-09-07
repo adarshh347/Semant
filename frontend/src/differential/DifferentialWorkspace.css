@@ -1461,3 +1461,167 @@
     font-size: 0.7rem;
     opacity: 0.65;
 }
+
+/* ── the navigable image workbench ───────────────────────────────────────────
+   `.diff-stage` is the VIEWPORT: a fixed, clipped area that owns pointer and
+   wheel events (it already had `position: relative` + `overflow: hidden`, which
+   is exactly the box this needs). `.diff-plane` fills it and carries the ONE
+   pan/zoom transform. Every spatial layer is a child of the plane, so there is
+   only one transform that could ever be wrong — a second one computed for the
+   image, canvas, SVG or handles is how annotation drift enters. */
+.diff-plane {
+    position: absolute;
+    inset: 0;
+    /* Declared, not inherited: the pointer-anchored zoom arithmetic in
+       imageViewport.js solves about the centre, and a different origin here would
+       silently invalidate it. */
+    transform-origin: 50% 50%;
+    will-change: transform;
+}
+
+/* A CSS transform does not change layout size, so the plane's box always equals
+   the stage's and the measured `content` box is untouched by zoom. That is what
+   keeps every layer exactly where it was at fit. */
+
+/* Pinch and drag belong to the workbench, not to the page, while navigating. */
+.diff-stage.is-navigable { touch-action: none; }
+.diff-stage.is-navigable,
+.diff-stage.is-navigable.is-drawing { cursor: grab; }
+.diff-stage.is-panning,
+.diff-stage.is-panning.is-drawing { cursor: grabbing; }
+/* While panning, the brush's live cursor would be a lie about what the gesture
+   is doing — the plane is moving, no paint is being laid. */
+.diff-stage.is-panning .diff-brush-cursor { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .diff-plane { will-change: auto; }
+}
+
+/* ── the viewport bar ─────────────────────────────────────────────────────── */
+.diff-viewport-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.15rem 0;
+    flex-wrap: wrap;
+}
+
+.diff-vp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    flex: none;
+    border-radius: var(--radius-sm, 4px);
+    border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.diff-vp-btn:hover:not(:disabled) { background: color-mix(in srgb, currentColor 8%, transparent); }
+.diff-vp-btn:disabled { opacity: 0.35; cursor: default; }
+.diff-vp-btn.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+
+.diff-vp-text {
+    font: inherit;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.45rem;
+    border-radius: var(--radius-sm, 4px);
+    border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+.diff-vp-text:disabled { opacity: 0.4; cursor: default; }
+
+.diff-vp-scale {
+    min-width: 3.1rem;
+    text-align: center;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+}
+
+/* Named for the screen reader, invisible to the eye — "Fit" alone is ambiguous
+   read aloud out of context. */
+.diff-vp-sr {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.diff-vp-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+    font-size: 0.65rem;
+    opacity: 0.5;
+}
+
+@media (max-width: 1180px) {
+    .diff-vp-hint { display: none; }
+}
+
+/* ── instrument extent (brush radius · boundary band) ─────────────────────── */
+.diff-extent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: var(--radius-sm, 4px);
+    border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.diff-extent-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+}
+
+.diff-extent-label { font-weight: 600; opacity: 0.8; }
+.diff-extent-value { font-variant-numeric: tabular-nums; opacity: 0.95; }
+.diff-extent-keys { margin-left: auto; opacity: 0.45; font-size: 0.65rem; }
+
+.diff-extent-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.diff-extent-slider { flex: 1 1 auto; min-width: 5rem; accent-color: var(--accent); }
+
+/* A neutral preview for keyboard users, who never have a pointer over the image
+   and so never see the live cursor. Neutral on purpose: this shows EXTENT, and
+   tinting it would start it competing with the register swatches. */
+.diff-extent-swatch {
+    flex: none;
+    border-radius: 50%;
+    background: color-mix(in srgb, currentColor 14%, transparent);
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.diff-extent-presets { display: flex; gap: 0.2rem; }
+
+.diff-extent-preset {
+    font: inherit;
+    font-size: 0.65rem;
+    padding: 0.12rem 0.4rem;
+    border-radius: var(--radius-pill, 999px);
+    border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.diff-extent-preset.on {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    color: var(--accent);
+}
