@@ -32,6 +32,7 @@ PREFIXES = {
     "synthesis": "syn_",
     "evidence": "evd_",
     "remainder": "rem_",
+    "semantic_constellation": "scon_",
 }
 
 WIDTH = 12
@@ -72,6 +73,11 @@ def stage_id(session: str, stage: Any, outcome: Any, seq: int) -> str:
 
 def receipt_id(session: str, observable_ref: str, capability: str) -> str:
     return _mint("receipt", [session, observable_ref, capability])
+
+
+def constellation_id(session: str, ordinal: int) -> str:
+    # Creation identity, deliberately independent of editable text; revisions keep this ID.
+    return _mint("semantic_constellation", [session, ordinal])
 
 
 def verdict_id(session: str, claim_ref: str) -> str:

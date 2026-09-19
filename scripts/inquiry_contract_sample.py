@@ -170,7 +170,22 @@ def render(payload) -> str:
 
 
 def samples():
-    return {f"inquiry-session.{key}.json": render(body) for key, body in _build().items()}
+    from backend.tests.fixtures import semantic_constellation_fixtures as thoughts
+    from backend.services.inquiry_session import constellations
+    from backend.schemas.semantic_constellation import SemanticConstellations
+    from backend.services.inquiry_session.view import session_view
+    bodies = _build()
+    for name in thoughts.CASES:
+        source = thoughts.session_for(name, compiled=False)
+        source = constellations.capture(source, thoughts.thought_for(source), at=thoughts.STAMP)
+        source = source.model_copy(update={"graph": thoughts.session_for(name).graph})
+        source = constellations.reconcile(source, at=thoughts.STAMP)
+        bodies[f"constellation-{name}"] = session_view(source, deployment={
+            "kind": "fixture", "declared": True, "reachable": None,
+            "detail": "Synthetic stored dissolution output. No model or measurement ran."})
+    output = {f"inquiry-session.{key}.json": render(body) for key, body in bodies.items()}
+    output["semantic-constellations.schema.json"] = render(SemanticConstellations.model_json_schema())
+    return output
 
 
 def main() -> int:

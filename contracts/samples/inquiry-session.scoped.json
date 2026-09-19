@@ -2,6 +2,7 @@
   "amendments": [],
   "capability_receipts": [],
   "changed_refs": [],
+  "checkpoint": 0,
   "decision_records": [],
   "decision_requests": [],
   "deployment": {
@@ -1782,6 +1783,93 @@
   ],
   "revision": 6,
   "schema_version": "semantic-inquiry-session.v2",
+  "semantic_constellations": {
+    "current": [],
+    "history": [],
+    "paused": false,
+    "preparation": "not_requested",
+    "recorded": false,
+    "schema_version": "semantic-constellations.v1",
+    "sources": [
+      {
+        "author": "user",
+        "image_refs": [
+          "img_seated",
+          "img_veiled",
+          "img_recumbent",
+          "img_modern"
+        ],
+        "origin": "user_prompt",
+        "source_id": "prompt",
+        "text": "even folding through the statues can have different styles the way they affect the perception and make us view the statue. the the buddha statue it feels so metallic somehow very blunt, very sharp edges of the folds, whereas in the woman whose face is covered with the the created fold, that is a damn different art, the artist has carved the fold in such a manner that it creates the effect of transparency--a bit similar is of the dead bed man the folds on his chest are somewhat looking similar but yeah share slight bluntness with buddha--folds in the modern woman sculptures have their own style"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_seated"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_bd9f4612028f",
+        "text": "the seated figure's drapery breaks into facets that meet at abrupt edges"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_veiled"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_8fb79265dcb8",
+        "text": "the standing figure's face is covered by a carved veil whose weave is cut through"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_recumbent"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_a7fc1b43c4e0",
+        "text": "on the recumbent figure the cloth gathers across the chest in long parallel troughs"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_seated",
+          "img_recumbent",
+          "img_veiled"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_48fd6980b74a",
+        "text": "the seated and recumbent figures share an abruptness at the edge that the veiled figure does not"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_veiled"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_43303ca2508c",
+        "text": "the veil reads as thin cloth while remaining continuous stone, and the two readings do not resolve"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_veiled"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_86e79b74ea3d",
+        "text": "carving cloth to read as translucent is associated with a nineteenth-century workshop practice"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_modern"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_f3e3ac167324",
+        "text": "the modern figure's cloth may be resolving into fewer, larger planes than any of the other three"
+      }
+    ]
+  },
   "session_id": "inqs_sample000005",
   "stages": [
     {

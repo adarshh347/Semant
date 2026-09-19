@@ -134,6 +134,7 @@ async def claim(session_id: str, driver_id: str, *, at: str,
     if held and held != driver_id:
         return None
     claimed = session.model_copy(update={
+        "checkpoint": session.checkpoint + 1,
         "driver": {"lease_id": driver_id, "claimed_at": at, "state": "running"}})
     try:
         await store.save(claimed, expected_checkpoint=session.checkpoint, collection=collection)
@@ -176,13 +177,20 @@ async def release(session: SemanticInquirySession, driver_id: str, *, at: str,
                   collection=None) -> None:
     """Give the lease back, whatever happened. A session left leased by a dead driver would be
     unclaimable forever, which turns one crash into a permanently stuck inquiry."""
-    if _lease_of(session) not in ("", driver_id):
-        return
-    released = session.model_copy(update={
-        "driver": {**dict(session.driver or {}), "lease_id": "", "state": "idle",
-                   "released_at": at}})
-    with contextlib.suppress(store.SessionWriteFailed):
-        await store.save(released, expected_checkpoint=session.checkpoint, collection=collection)
+    for _ in range(8):
+        session = await store.load(session.session_id, collection=collection)
+        if _lease_of(session) != driver_id:
+            return
+        released = session.model_copy(update={
+            "checkpoint": session.checkpoint + 1,
+            "driver": {**dict(session.driver or {}), "lease_id": "", "state": "idle",
+                       "released_at": at}})
+        try:
+            await store.save(released, expected_checkpoint=session.checkpoint, collection=collection)
+            return
+        except store.SessionWriteFailed:
+            continue
+    raise store.SessionWriteFailed("human edits repeatedly prevented driver release")
 
 
 async def checkpoint(session: SemanticInquirySession, *, expected: int,
@@ -329,28 +337,32 @@ class _LiveProgress:
         not hold. Every later write of its own is refused, including this one, and a twenty-minute
         compilation was discarded because a courtesy write could not be confirmed.
 
-        Re-reading is safe here for a reason that does not generalise: this driver holds the LEASE.
-        `claim` made it the only writer, so "something else advanced it first" can only be this
-        object, and re-applying the stage's result at whatever number the document actually carries
-        is not overwriting anybody. If the lease has moved, it is somebody else's session and the
-        failure is real — so the check is on the lease and the raise is kept for that case.
+        The lease excludes other stage drivers, not human semantic edits. Re-read the human-owned
+        extension on EVERY terminal write, even if this tap has a fresh checkpoint from progress.
+        Merge only that extension; stage results and human judgments have different owners.
         """
         async with self._write_lock:
             self._closed = True
             with self._buffer_lock:
                 # Anything still buffered is already on the terminal attempt.
                 self._pending.clear()
-            try:
-                self.session = await checkpoint(advanced, expected=self.session.checkpoint,
-                                                collection=self._collection)
-                return self.session
-            except store.SessionWriteFailed:
+            for _ in range(8):
                 stored = await store.load(advanced.session_id, collection=self._collection)
                 if _lease_of(stored) != driver_id:
-                    raise
-            self.session = await checkpoint(advanced, expected=stored.checkpoint,
-                                            collection=self._collection)
-            return self.session
+                    raise store.SessionWriteFailed("stage driver no longer holds the lease")
+                from .constellations import reconcile
+                ext = stored.semantic_constellations
+                if ext and self._stage.value == "theorist" and ext.preparation == "reading":
+                    ext = ext.model_copy(update={"preparation": "compiler"})
+                merged = advanced.model_copy(update={"semantic_constellations": ext})
+                merged = reconcile(merged, at=advanced.provenance.updated_at or store.utc_now())
+                try:
+                    self.session = await checkpoint(merged, expected=stored.checkpoint,
+                                                    collection=self._collection)
+                    return self.session
+                except store.SessionWriteFailed:
+                    continue
+            raise store.SessionWriteFailed("human edits repeatedly advanced the checkpoint")
 
     def _event(self, row: Dict[str, Any]) -> SubstageEvent:
         seq = int(row.pop("seq"))
@@ -418,19 +430,26 @@ async def drive(session_id: str, stages: Stages, *, driver_id: str = "",
             writes += 1
 
         for _ in range(limit):
+            session = await store.load(session_id, collection=collection)
             step = steps.plan(session)
             if step.done:
                 settled = steps.settle(session, stages)
                 if settled is not session:
-                    session = await checkpoint(settled, expected=session.checkpoint,
-                                               collection=collection)
+                    try:
+                        session = await checkpoint(settled, expected=session.checkpoint,
+                                                   collection=collection)
+                    except store.SessionWriteFailed:
+                        continue  # Re-plan from the intervening human edit; no stage ran.
                     writes += 1
                     if on_checkpoint:
                         on_checkpoint(session)
                 break
 
-            session = await checkpoint(steps.start(session, step.stage, stages),
-                                       expected=session.checkpoint, collection=collection)
+            try:
+                session = await checkpoint(steps.start(session, step.stage, stages),
+                                           expected=session.checkpoint, collection=collection)
+            except store.SessionWriteFailed:
+                continue  # No provider call occurred; re-plan from the current checkpoint.
             writes += 1
             if on_checkpoint:
                 on_checkpoint(session)
