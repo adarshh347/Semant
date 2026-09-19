@@ -39,6 +39,7 @@ this file gets a vote.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from time import perf_counter
 from typing import Any, Dict, List, Mapping, Optional
 from uuid import uuid4
 
@@ -378,8 +379,8 @@ async def plan_recipe(session_id: str, key: str, body: RunRecipe) -> Dict[str, A
 def create_derivation(session_id: str, body: Derive) -> Dict[str, Any]:
     """Compute one form from artifacts this session already holds. REACHES NO ADAPTER.
 
-    A derivation is not a run: nothing is invoked, no image is opened and no model is loaded, so
-    there is no stage attempt to record and no wall clock worth reporting as a measurement. What
+    A derivation is not a run: no adapter is invoked, no image opened and no model loaded.
+    The receipt records computation duration, parameters, ancestry and refusals. What
     comes back is the payload, the producibility verdict, the ceiling and every omission — and a
     record that has nowhere to be promoted to.
     """
@@ -392,6 +393,7 @@ def create_derivation(session_id: str, body: Derive) -> Dict[str, Any]:
             "error": "unknown_artifact", "artifact_ids": missing,
             "why": "a derivation reads artifacts this session recorded, and never fetches one"})
     supplied = [held[a] for a in body.artifact_ids]
+    started = perf_counter()
     try:
         record = derivations.derive(
             body.form, session_id=session_id, artifacts=supplied,
@@ -400,12 +402,15 @@ def create_derivation(session_id: str, body: Derive) -> Dict[str, Any]:
             derivation_id=f"der_{uuid4().hex[:12]}",
             now=datetime.now(timezone.utc).isoformat())
     except derivations.DerivationRefused as refused:
-        # A REFUSAL IS A 201 WITH THE REFUSAL IN IT, the same ruling `/plans` makes. The refusal is
-        # the answer — which input did not resolve and what would satisfy it — and a 4xx would
-        # leave a client with a status code where the laboratory's reply should be.
-        return _envelope({"derivation": None,
-                          "refusals": [refused.refusal.model_dump(mode="json")]},
-                         ExecutionIdentity.LIVE)
+        # Failed attempts also survive reopening. DECLARED denotes a request, not a mask measurement.
+        record = derivations.LabDerivation(
+            derivation_id=f"der_{uuid4().hex[:12]}", session_id=session_id, form=body.form,
+            organ=refused.refusal.organ, producible=False, writable_as_artifact=False,
+            ceiling="interpretive", basis="declared", producer="none", producer_kind="none",
+            source_image_digest=machine.session.source.image_digest,
+            input_artifact_ids=list(body.artifact_ids), requested_parameters=dict(body.parameters or {}),
+            refusals=[refused.refusal], duration_ms=(perf_counter() - started) * 1000,
+            created_at=datetime.now(timezone.utc).isoformat())
     _guarded(_derivation_store().put, record)
     return _envelope({"derivation": record.model_dump(mode="json"), "refusals": []},
                      ExecutionIdentity.LIVE)
@@ -419,6 +424,17 @@ def list_derivations(session_id: str) -> Dict[str, Any]:
     found = _guarded(_derivation_store().for_session, session_id)
     return _envelope({"derivations": [d.model_dump(mode="json") for d in found]},
                      ExecutionIdentity.LIVE)
+
+
+@router.get("/sessions/{session_id}/derivations/{derivation_id}")
+def read_derivation(session_id: str, derivation_id: str) -> Dict[str, Any]:
+    """Reopen an authoritative derivation reference without inventing an artifact identity."""
+    _machine(_guarded(_store), session_id)
+    record = _guarded(_derivation_store().get, derivation_id)
+    if record is None or record.session_id != session_id:
+        raise HTTPException(status_code=404, detail={"error": "unknown_derivation"})
+    return _envelope({"record_kind": derivations.RECORD_KIND,
+                      "derivation": record.model_dump(mode="json")}, ExecutionIdentity.LIVE)
 
 
 @router.get("/sources")
@@ -720,7 +736,10 @@ def export_session(session_id: str) -> Dict[str, Any]:
     """The canonical bundle: the five record types, as they are held. A copy, never a promotion."""
     store = _guarded(_store)
     machine = _machine(store, session_id)
-    return live.export_json(store, machine.session, identity=ExecutionIdentity.LIVE)
+    bundle = live.export_json(store, machine.session, identity=ExecutionIdentity.LIVE)
+    bundle["derivations"] = [d.model_dump(mode="json") for d in _guarded(_derivation_store().for_session, session_id)]
+    bundle["counts"]["derivations"] = len(bundle["derivations"])
+    return bundle
 
 
 # ── the one failure mode every handler shares ────────────────────────────────

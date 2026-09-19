@@ -310,8 +310,8 @@ def test_an_input_that_does_not_resolve_is_a_201_with_the_refusal_in_it(wired):
                       json={"form": "extent.visible_inferred_partition",
                             "artifact_ids": [artifact_id], "parameters": {"parts": []}})
     assert res.status_code == 201
-    assert res.json()["derivation"] is None
-    assert res.json()["refusals"][0]["code"] == "missing_extent_inputs"
+    assert res.json()["derivation"]["payload"] is None
+    assert res.json()["derivation"]["refusals"][0]["code"] == "missing_extent_inputs"
 
 
 def test_a_derivation_is_read_back_in_the_session_it_was_computed_in(wired):
@@ -360,3 +360,26 @@ def test_no_route_added_here_can_promote_anything(wired):
     res = client.patch(f"{PREFIX}/sessions/{sid}/artifacts/{record['derivation_id']}/lifecycle",
                        json={"status": "promoted"})
     assert res.status_code in (404, 422), "a derivation is not an artifact and has no ladder"
+
+
+def test_export_and_reference_reopen_success_and_refused_receipts_without_canon_writes(wired):
+    client, w = wired
+    sid = _session(client)["session"]["session_id"]
+    aid = _extent_set(client, sid)
+    before = _digest(w)
+    writes = {k: c.writes for k, c in w.collections.items()}
+    for parameters in [{"kernel": "gaussian", "bandwidth": 2, "field_shape": [7, 11]},
+                       {"kernel": "gaussian", "bandwidth": 0}]:
+        record = _derive(client, sid, "extent.density_field", [aid], parameters)["derivation"]
+        reopened = client.get(f"{PREFIX}/sessions/{sid}/derivations/{record['derivation_id']}").json()
+        assert reopened["record_kind"] == "perception_lab_derivation"
+        assert reopened["derivation"] == record
+    bundle = client.get(f"{PREFIX}/sessions/{sid}/export").json()
+    assert bundle["counts"]["derivations"] == 2
+    assert bundle["derivations"][0]["measurements"]["centroid_samples"]
+    assert bundle["derivations"][1]["payload"] is None
+    assert bundle["artifacts"][0]["identity"]["artifact_id"] == aid
+    assert _digest(w) == before
+    assert w.posts.writes == 0
+    assert {k: c.writes for k, c in w.collections.items() if k != "derivations"} == {
+        k: v for k, v in writes.items() if k != "derivations"}

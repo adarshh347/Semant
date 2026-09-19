@@ -36,7 +36,7 @@ export const EXPORT_VERSION = 1;
  * two questions an export that carried only one of them would silently conflate.
  */
 export function buildExport({ session, plans = [], runs = [], artifacts = [], reviews = [],
-    derived = null, exported_at, client_identity = 'unknown', note = null }) {
+    derivations = [], derived = null, exported_at, client_identity = 'unknown', note = null }) {
     if (!session) throw new Error('there is no session to export');
     return {
         export_kind: EXPORT_KIND,
@@ -64,6 +64,7 @@ export function buildExport({ session, plans = [], runs = [], artifacts = [], re
         runs,
         artifacts,
         reviews,
+        derivations,
         derived_in_browser: derived
             ? {
                 what_this_is:
@@ -79,6 +80,7 @@ export function buildExport({ session, plans = [], runs = [], artifacts = [], re
             runs: runs.length,
             artifacts: artifacts.length,
             reviews: reviews.length,
+            derivations: derivations.length,
             refusals: artifacts.filter(
                 (a) => a.identity.artifact_kind === 'refusal').length,
         },
