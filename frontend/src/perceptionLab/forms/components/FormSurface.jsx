@@ -22,7 +22,7 @@ import LayerLegend, { Measurements } from './LayerLegend';
  * provenance is the same problem as an undeclared drawing.
  */
 
-function ComparePanes({ sides, natural, focusId, onFocus }) {
+function ComparePanes({ sides, natural, focusId, onFocus, imageUrl }) {
     return (
         <div className="pl-fm-compare" data-compare-sides={sides.length}>
             {sides.map((side) => (
@@ -32,7 +32,7 @@ function ComparePanes({ sides, natural, focusId, onFocus }) {
                     </figcaption>
                     <FormStage
                         layers={side.layers}
-                        natural={natural}
+                        natural={natural} imageUrl={imageUrl}
                         focusId={focusId}
                         onFocus={onFocus}
                         label={side.label}
@@ -44,7 +44,7 @@ function ComparePanes({ sides, natural, focusId, onFocus }) {
     );
 }
 
-function ContactSheet({ items, natural, focusId, onFocus }) {
+function ContactSheet({ items, natural, focusId, onFocus, imageUrl }) {
     return (
         <div className="pl-fm-sheet" data-sheet-items={items.length}>
             {items.map(({ layer, crop }) => (
@@ -53,7 +53,7 @@ function ContactSheet({ items, natural, focusId, onFocus }) {
                     data-cropped={crop ? 'true' : 'false'}>
                     <FormStage
                         layers={[layer]}
-                        natural={natural}
+                        natural={natural} imageUrl={imageUrl}
                         crop={crop}
                         focusId={focusId}
                         onFocus={onFocus}
@@ -131,7 +131,7 @@ function ReadingPanel({ layers }) {
 
 export default function FormSurface({
     view, layers = [], sides = null, items = null, natural, focusId = null, onFocus = null,
-    hidden = null, onToggle = null, error = null, draft = null,
+    hidden = null, onToggle = null, error = null, draft = null, imageUrl, samples,
 }) {
     const shown = hidden ? layers.filter((l) => !hidden.has(l.layer_id)) : layers;
     const surface = view?.surface ?? 'stage';
@@ -144,11 +144,11 @@ export default function FormSurface({
         }
         if (surface === 'compare' && sides) {
             return <ComparePanes sides={sides} natural={natural} focusId={focusId}
-                onFocus={onFocus} />;
+                onFocus={onFocus} imageUrl={imageUrl} />;
         }
         if (surface === 'sheet' && items) {
             return <ContactSheet items={items} natural={natural} focusId={focusId}
-                onFocus={onFocus} />;
+                onFocus={onFocus} imageUrl={imageUrl} />;
         }
         if (surface === 'diagram') {
             return <FormDiagram layers={shown} focusId={focusId} onFocus={onFocus} />;
@@ -159,7 +159,7 @@ export default function FormSurface({
         return (
             <>
                 <FormStage layers={shown} natural={natural} focusId={focusId} onFocus={onFocus}
-                    label={view?.label ?? 'form stage'} draft={draft} />
+                    label={view?.label ?? 'form stage'} draft={draft} imageUrl={imageUrl} samples={samples} />
                 <ReadingPanel layers={shown} />
             </>
         );

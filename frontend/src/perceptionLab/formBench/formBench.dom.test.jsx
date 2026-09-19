@@ -211,7 +211,7 @@ describe('the direct form level', () => {
         await mount(<FormBench bench={bench()} onDerive={onDerive} />);
         await click(q('.fb-inputs input[type="checkbox"]'));
         await click(q('[data-action="derive"]'));
-        expect(onDerive).toHaveBeenCalledWith('extent.boundary_rings', ['art_1']);
+        expect(onDerive).toHaveBeenCalledWith('extent.boundary_rings', ['art_1'], {});
     });
 
     it('draws two views at once and never superimposes them', async () => {
@@ -431,5 +431,40 @@ describe('the client seam', () => {
         for (const method of FORM_CLIENT_METHODS) {
             expect(method).not.toMatch(/promote|commit|publish|accept|approve/i);
         }
+    });
+});
+
+
+describe('live form study', () => {
+    const DENSITY = { ...RINGS, form: 'extent.density_field', label: 'Density', state: 'deferred' };
+    it('sends generated grid, kernel and bandwidth controls through the derive callback', async () => {
+        const onDerive = vi.fn();
+        await mount(<FormBench bench={bench({ forms: [RINGS, DENSITY], derivable: [DENSITY.form] })} onDerive={onDerive} />);
+        await choose(q('#fb-form'), DENSITY.form);
+        await choose(q('#fb-param-kernel'), 'gaussian');
+        await act(async () => {
+            const input = q('#fb-param-bandwidth');
+            Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, '2.5');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        await click(q('.fb-inputs input[type="checkbox"]'));
+        await click(q('[data-action="derive"]'));
+        expect(onDerive).toHaveBeenCalledWith(DENSITY.form, ['art_1'], {
+            field_shape: [16, 16], kernel: 'gaussian', bandwidth: 2.5,
+        });
+        expect(text()).toContain('grid cells');
+    });
+    it('uses the live image and natural coordinate frame while fixtures retain their neutral grid', async () => {
+        await mount(<FormBench bench={bench({ derivations: [DERIVATION] })} onDerive={vi.fn()}
+            source={{ photo_url: '/synthetic-portrait.png' }}
+            session={{ source: { natural_width: 770, natural_height: 1161 } }} />);
+        expect(q('.pl-fm-svg').getAttribute('viewBox')).toBe('0 0 770 1161');
+        expect(q('.pl-fm-svg').getAttribute('preserveAspectRatio')).toBe('xMidYMid meet');
+        expect(q('image').getAttribute('href')).toBe('/synthetic-portrait.png');
+        expect(q('image').getAttribute('height')).toBe('1161');
+        expect(q('.pl-fm-groundgroup')).toBeNull();
+        await mount(<FormBench bench={bench({ derivations: [DERIVATION] })} onDerive={vi.fn()} />);
+        expect(q('image')).toBeNull();
+        expect(q('.pl-fm-groundgroup')).not.toBeNull();
     });
 });

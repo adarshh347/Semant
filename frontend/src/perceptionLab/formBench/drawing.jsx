@@ -16,10 +16,10 @@ import { FormSurface, renderView } from '../forms';
  * and PRINTING it is the honest response: a blank pane would let an undeclared drawing look like
  * an empty measurement, which is the one confusion this whole lane is arranged against.
  */
-export default function SafeView({ form, view, payload, natural }) {
+export default function SafeView({ form, view, payload, natural, imageUrl, record }) {
     let built;
     try {
-        built = renderView(form, view, payload);
+        built = renderView(form, view, payload, { record });
     } catch (cause) {
         return (
             <p className="fb-refused" role="note" data-refused="render">
@@ -29,6 +29,7 @@ export default function SafeView({ form, view, payload, natural }) {
     }
     return (
         <FormSurface view={built.view} layers={built.layers} sides={built.sides}
-            items={built.items} error={built.error} natural={natural} />
+            items={built.items} error={built.error} natural={natural} imageUrl={imageUrl}
+            samples={record?.measurements?.centroid_samples} />
     );
 }

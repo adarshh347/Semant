@@ -225,7 +225,7 @@ let stageSeq = 0;
 
 export default function FormStage({
     layers = [], natural, focusId = null, onFocus = null, crop = null, showGrid = true,
-    label = 'form stage', draft = null, compact = false,
+    label = 'form stage', draft = null, compact = false, imageUrl, samples,
 }) {
     const ref = useRef(null);
     const ns = useMemo(() => { stageSeq += 1; return `pl-fm-${stageSeq}`; }, []);
@@ -260,7 +260,8 @@ export default function FormStage({
                     + `${drawable.length === 1 ? 'layer' : 'layers'}`}
             >
                 <Patterns ns={ns} />
-                <Ground natural={size} showGrid={showGrid} />
+                {imageUrl ? <image href={imageUrl} x="0" y="0" width={size.w} height={size.h}
+                    preserveAspectRatio="none" data-source-image="true" /> : <Ground natural={size} showGrid={showGrid} />}
                 {drawable.map((l) => {
                     const Shape = SHAPES[l.draw.kind];
                     if (!Shape) return null;
@@ -277,6 +278,10 @@ export default function FormStage({
                         </g>
                     );
                 })}
+                {samples?.length ? <g className="pl-fm-hue" data-hue="clay" data-centroid-samples={samples.length}>
+                    <PointShape layer={{ layer_id: 'centroid-samples', evidence: 'derived',
+                        draw: { points: samples.map((s) => s.point) } }} natural={size} />
+                </g> : null}
                 {draft ? (
                     <path className="pl-fm-draft" data-draft="true" fill="none"
                         vectorEffect="non-scaling-stroke"

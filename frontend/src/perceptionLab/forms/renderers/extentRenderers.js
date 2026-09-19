@@ -738,7 +738,10 @@ const fragmentSet = (formKey) => {
     const fragLayers = (payload, kind, ctx) => payload.fragments.map((frag, i) => {
         const g = ringsFromRle(frag.mask_rle) || ringsFromBox(frag.box);
         const group = ctx?.membership?.[frag.fragment_id] ?? null;
-        const source = { artifact_id: FRAG_ART, instance_id: frag.fragment_id, index: i + 1 };
+        const source = ctx?.record
+            ? { derivation_id: ctx.record.derivation_id, instance_id: frag.fragment_id,
+                input_instance_keys: ctx.record.measurements?.found_in?.[frag.fragment_id], index: i + 1 }
+            : { artifact_id: FRAG_ART, instance_id: frag.fragment_id, index: i + 1 };
         if (!g) {
             return absent({
                 layer_id: `${kind}:${frag.fragment_id}`,
@@ -1267,17 +1270,17 @@ const densityField = (formKey) => {
             hint: 'which members this field counted, and whether each one can be found',
             surface: 'panel',
             projections: [],
-            build: (payload) => ({
+            build: (payload, ctx) => ({
                 layers: [readingLayer({
                     id: 'samples:members',
                     label: `${payload.members.length} members`,
                     formKey,
                     partition: 'exact_derivation',
                     rows: payload.members.map((m) => {
-                        const r = resolveEndpoint(m);
+                        const r = ctx?.record ? { resolved: ctx.record.input_artifact_ids.includes(m.artifact_id) } : resolveEndpoint(m);
                         return {
                             label: `${m.artifact_id}#${m.instance_id}`,
-                            value: r.resolved ? 'resolves in this fixture set' : 'not on this page',
+                            value: r.resolved ? (ctx?.record ? 'saved input artifact' : 'resolves in this fixture set') : 'not on this page',
                             detail: r.resolved ? null : r.why,
                         };
                     }),

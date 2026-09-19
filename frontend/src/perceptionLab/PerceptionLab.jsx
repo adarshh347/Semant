@@ -249,9 +249,11 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                             ) : null}
                             {arm === 'form' ? (
                                 <FormBench
-                                    bench={bench}
-                                    onDerive={(form, artifactIds) => bench.derive(
-                                        form, artifactIds, {})} />
+                                    key={lab.session?.session_id}
+                                    bench={bench} source={source} session={lab.session}
+                                    onMeasure={async (organ) => { await lab.setOrgan(organ); setArm('direct'); }}
+                                    onDerive={(form, artifactIds, parameters) => bench.derive(
+                                        form, artifactIds, parameters)} />
                             ) : null}
                             {arm === 'recipe' ? (
                                 <RecipeTray
@@ -366,6 +368,7 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                 runs={lab.runs}
                                 artifacts={lab.ledger}
                                 reviews={lab.reviews}
+                                derivations={bench.derivations}
                                 run={lab.run}
                                 artifact={lab.active}
                                 clientIdentity={lab.clientIdentity}
