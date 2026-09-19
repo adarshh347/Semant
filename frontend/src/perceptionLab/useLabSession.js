@@ -120,6 +120,31 @@ export default function useLabSession(client, { initialOrgan = 'extent',
 
     // ── source and organ ────────────────────────────────────────────────────
 
+    const resumeSession = useCallback((session_id) => guard('reopening a session', async () => {
+        const history = await client.history({ session_id });
+        const session = history.session;
+        const sourceId = session.source.post_id || (await client.listSources()).sources
+            .find((s) => s.image_digest === session.source.image_digest)?.id;
+        if (!sourceId) throw new Error('The saved source is not available on this wire.');
+        if (client.openSource && session.source.post_id) {
+            const { source } = await client.openSource(session.source.post_id);
+            if (source.image_digest !== session.source.image_digest) {
+                throw new Error('The source image changed since this session was recorded. Its saved geometry was not drawn on the new image.');
+            }
+            setSources((held) => [...(held || []).filter((s) => s.id !== source.id), source]);
+        }
+        setSourceId(sourceId);
+        setOrganState(session.selected_organ);
+        setModeState(session.mode);
+        setState({ ...EMPTY, session, plans: history.plans, runs: history.runs,
+            ledger: history.artifacts, reviews: history.reviews });
+        setSelectedIds(session.selected_artifact_ids || []);
+        setSelectedInstances(session.selected_instance_refs || []);
+        setActiveId(session.active_artifact_id || null);
+        setFocus({ instanceId: null, relationId: null });
+        return session;
+    }), [client, guard]);
+
     const openSession = useCallback(async (source_id) => guard('opening a session', async () => {
         const session = await client.createSession({
             source_id, selected_organ: organ, mode });
@@ -460,6 +485,7 @@ export default function useLabSession(client, { initialOrgan = 'extent',
         cancelNote,
         // what a person can do
         openSession,
+        resumeSession,
         uploadSource,
         setOrgan,
         setMode,

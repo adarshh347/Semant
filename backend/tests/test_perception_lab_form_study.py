@@ -32,7 +32,7 @@ def test_nonfinite_bandwidth_is_rejected_by_the_shared_validator(bandwidth):
         FP.resolve(DN.FORM, {'kernel': 'gaussian', 'bandwidth': bandwidth})
 
 
-@pytest.mark.parametrize('kernel', [DN.Kernel('invalid', 1), DN.Kernel('gaussian', 0), DN.Kernel('gaussian')])
+@pytest.mark.parametrize('kernel', [DN.Kernel('invalid', 1), DN.Kernel('', 1), DN.Kernel('gaussian', 0), DN.Kernel('gaussian')])
 def test_direct_producer_obeys_the_same_validation(kernel):
     source = piers()
     result = DN.produce_density_field(source.keys(), sources=[source], field_shape=[4, 4], kernel=kernel)
@@ -85,4 +85,3 @@ def test_piazza_branches_read_their_actual_inputs():
     steps = {s.id: s for s in recipe('piazza-negative-space').steps}
     assert steps['pieces'].reads == ('find',)
     assert steps['density'].reads == ('find',)
-

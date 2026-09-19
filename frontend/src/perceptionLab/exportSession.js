@@ -111,6 +111,20 @@ export function verifyExport(bundle) {
         `artifacts[${i}] ${a.identity?.artifact_id}`));
     bundle.reviews.forEach((r, i) => check('LabReview', r, `reviews[${i}] ${r.review_id}`));
 
+    for (const d of bundle.derivations || []) {
+        const label = `derivation ${d.derivation_id || '(missing id)'}`;
+        if (!d.derivation_id || d.session_id !== bundle.session.session_id
+            || d.source_image_digest !== bundle.session.source.image_digest) {
+            problems.push(`${label}: session/source identity mismatch`);
+        }
+        for (const id of d.input_artifact_ids || []) {
+            if (!bundle.artifacts.some((a) => a.identity.artifact_id === id)) {
+                problems.push(`${label}: missing input artifact ${id}`);
+            }
+        }
+        if (d.identity || d.lifecycle) problems.push(`${label}: derivations are separate from artifacts`);
+    }
+
     // The separation the export exists to preserve, checked rather than assumed.
     for (const artifact of bundle.artifacts) {
         if ('review' in artifact || 'reviews' in artifact || 'verdict' in artifact) {

@@ -92,7 +92,7 @@ export default function PerceptionLabPage() {
                 </p>
             ) : null}
 
-            <PerceptionLab client={client} />
+            <PerceptionLab client={client} initialSessionId={params.get('session') || ''} />
         </div>
     );
 }

@@ -44,12 +44,13 @@ import './perceptionLab.css';
  * It renders no measurement and decides no status.
  */
 export default function PerceptionLab({ client, initialOrgan = 'extent',
-    initialMode = 'isolation', now = () => new Date().toISOString() }) {
+    initialMode = 'isolation', initialSessionId = '', now = () => new Date().toISOString() }) {
     const rootRef = useRef(null);
     const stageRef = useRef(null);
     const { band, width } = useContainerWidth(rootRef);
     const [arm, setArm] = useState('direct');
     const [comparisonRunId, setComparisonRunId] = useState(null);
+    const [reopenId, setReopenId] = useState(initialSessionId);
     const lab = useLabSession(client, { initialOrgan, initialMode });
     /**
      * PERCEPTUAL-FORMS-001H — the two lower levels, held beside the session rather than inside it.
@@ -181,6 +182,16 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
 
             <div className="pl-body">
                 <div className="pl-rail">
+                    <section className="pl-panel" aria-label="Reopen saved session">
+                        <label className="pl-label" htmlFor="pl-reopen-id">Saved session ID</label>
+                        <input id="pl-reopen-id" className="pl-input" value={reopenId}
+                            onChange={(e) => setReopenId(e.target.value)} placeholder="labs_…" />
+                        <button className="pl-btn" type="button" disabled={!reopenId.trim() || !!lab.busy}
+                            onClick={async () => { if (await lab.resumeSession(reopenId.trim())) setArm('form'); }}>
+                            Reopen saved session
+                        </button>
+                        <p className="pl-panel-sub">Restore recorded results and selections. This does not run a model.</p>
+                    </section>
                     <SourcePicker
                         sources={lab.sources}
                         activeSourceId={lab.sourceId}

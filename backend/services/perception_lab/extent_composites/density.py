@@ -9,12 +9,12 @@ bandwidth read as a population.
 LANE C REJECTED THE MODEL AND KEPT THE FORM, and this is the route they named: counts from an
 existing extent set, a declared kernel, `counts_are_exact: true`. DAVE and GeCo need exemplars and
 carry research-use terms, and the form does not need a model at all — every member was already
-measured, so the count is not estimated, it is *known*. `admission.producer_for` refuses the
+supplied, so the instance-list count is known. It is not a verified count of real objects. `admission.producer_for` refuses the
 counters with that verdict, and nothing is substituted.
 
 THREE DECLARATIONS THAT ANSWER THREE QUESTIONS, and a single `density` number answers none:
 
-    members_counted   how many entities entered. Exact, because each one is a measured extent
+    members_counted   how many supplied extent instances entered, regardless of recognition
     samples_taken     how many points were placed. One per member, at its centroid
     smoothing         what was applied afterwards, with its method and its bandwidth
 
@@ -139,8 +139,8 @@ def produce_density_field(member_keys: Sequence[str], *, sources: Sequence[SRC.E
     """Count the members, place one point each, and declare what was done afterwards.
 
     `counts_are_exact` IS TRUE AND IT MEANS SOMETHING NARROW. Every member is an extent somebody
-    measured, so the number of them is known rather than estimated — which is precisely the claim
-    a low-shot counter cannot make. It does NOT mean the field is exact: the placement is one
+    supplied, so the number of supplied instances is known. It does not verify the number of
+    real flowers, painted marks or any other named objects. It does NOT mean the field is exact: the placement is one
     point per member and the smoothing is a choice, and both are declared separately for that
     reason.
     """
@@ -149,7 +149,7 @@ def produce_density_field(member_keys: Sequence[str], *, sources: Sequence[SRC.E
     refusals: List[RefusalRecord] = []
     held = SRC.index(kept) if kept else {}
     try:
-        raw = {"field_shape": field_shape, "kernel": kernel.method or "none"}
+        raw = {"field_shape": field_shape, "kernel": kernel.method if kernel.method is not None else "none"}
         if kernel.bandwidth is not None:
             raw["bandwidth"] = kernel.bandwidth
         resolved, ignored = resolve_parameters(FORM, raw)

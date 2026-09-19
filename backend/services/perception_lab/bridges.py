@@ -388,8 +388,9 @@ def _topology_outcome(result: topology_facade.TopologyResult, *, adapter: str, o
         from backend.services.perception_lab.field_reference import field_reference
         result.artifact.measurement.payload.field_ref = field_reference(
             result.field_values, result.field_shape)
-        result.artifact.projection.hints["domain"] = "full image raster; complement of selected figure masks"
-        result.artifact.projection.hints["distance_units"] = "fraction of image diagonal, truncated at max_distance_used"
+        result.artifact.measurement.basis_detail += (
+            "; domain: full image raster minus selected figure masks; distance units: fraction "
+            "of image diagonal, truncated at max_distance_used")
     produced_by = topology_facade.PRIMARY_ADAPTER.get(operation)
     detail = _inner(
         (result.artifact.interpretation.notes

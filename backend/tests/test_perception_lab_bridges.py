@@ -452,3 +452,27 @@ def test_several_unresolved_references_are_named_rather_than_truncated_to_the_fi
     # A person who mistyped two of three ids is told about both. The whole reason the façade
     # collects refusals instead of raising on the first is undone by a seam that keeps one.
     assert sorted(execution.run.refusals[0].missing) == ["seg_gone_a", "seg_gone_b"]
+
+
+def test_retained_negative_field_survives_schema_rehydration_with_qualified_ancestry():
+    import base64
+    import gzip
+    import json
+    conductor, store, snapshot = _lab()
+    machine = _open(conductor, snapshot)
+    source = _extents(conductor, machine).artifacts[0]
+    aid = source.identity.artifact_id
+    machine.select(aid)
+    machine.select_organ(OrganFamily.TOPOLOGY)
+    plan = conductor.plan_direct(machine, DirectCommand('topology.negative_space',
+        {'max_distance': 0.25}, (InputRef(role='figure', scope=IdentityScope.SESSION, artifact_id=aid),))).plan
+    execution = conductor.execute(machine, plan)
+    assert execution.run.outcome == RunOutcome.READY
+    artifact = execution.artifacts[0]
+    reopened = PerceptualArtifact.model_validate(artifact.model_dump(mode='json'))
+    assert reopened.identity.derived_from == [aid]
+    assert 'domain: full image raster' in reopened.measurement.basis_detail
+    payload = reopened.measurement.payload
+    field = json.loads(gzip.decompress(base64.b64decode(payload.field_ref.uri.split(',', 1)[1])))
+    assert field['field_shape'] == payload.field_shape
+    assert len(field['values']) == payload.field_shape[0] * payload.field_shape[1]

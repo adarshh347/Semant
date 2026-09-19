@@ -267,6 +267,8 @@ export function projectNegativeSpace(artifact, byId) {
     const figures = payload.figure_instance_ids
         .map((instanceId) => {
             for (const candidate of byId.values?.() || []) {
+                const ancestors = artifact.identity?.derived_from || [];
+                if (ancestors.length && !ancestors.includes(candidate.identity.artifact_id)) continue;
                 const p = candidate.measurement.payload;
                 if (p?.variant !== 'extent_set') continue;
                 const inst = p.instances.find((i) => i.instance_id === instanceId);
@@ -277,7 +279,9 @@ export function projectNegativeSpace(artifact, byId) {
         .filter(Boolean);
     return {
         measured,
-        derived: figures.length
+        derived: payload.field_ref?.uri?.startsWith('data:application/gzip;base64,')
+            ? { derived: false, available: false, why: 'Retained measured raster is being decoded; no browser reconstruction substituted.' }
+            : figures.length
             ? deriveNegativeSpaceField(figures, {
                 max_distance: payload.max_distance_used,
                 statistics: payload.statistics,

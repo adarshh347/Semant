@@ -186,3 +186,19 @@ describe('the filename', () => {
         expect(name).not.toMatch(/[:]/);            // survives a filesystem
     });
 });
+
+
+it('exports derivations separately and refuses missing ancestry', async () => {
+    const bundle = await bundleOf();
+    const derivation = { derivation_id: 'der_synthetic', session_id: bundle.session.session_id,
+        source_image_digest: bundle.session.source.image_digest,
+        input_artifact_ids: [bundle.artifacts[0].identity.artifact_id],
+        parameters: { kernel: 'none', field_shape: [4, 4] }, payload: null,
+        refusals: [{ code: 'invalid_parameters' }] };
+    const result = buildExport({ ...bundle, derivations: [derivation] });
+    expect(result.derivations).toEqual([derivation]);
+    expect(result.counts.derivations).toBe(1);
+    expect(verifyExport(result)).toEqual([]);
+    derivation.input_artifact_ids = ['missing'];
+    expect(verifyExport(result).join(' ')).toContain('missing input artifact');
+});

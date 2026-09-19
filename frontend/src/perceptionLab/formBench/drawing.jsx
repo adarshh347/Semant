@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FormSurface, renderView } from '../forms';
 
 /**
@@ -17,6 +17,13 @@ import { FormSurface, renderView } from '../forms';
  * an empty measurement, which is the one confusion this whole lane is arranged against.
  */
 export default function SafeView({ form, view, payload, natural, imageUrl, record }) {
+    const [focusId, setFocusId] = useState(null);
+    const [hidden, setHidden] = useState(new Set());
+    const toggle = (id) => setHidden((held) => {
+        const next = new Set(held);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+    });
     let built;
     try {
         built = renderView(form, view, payload, { record });
@@ -30,6 +37,7 @@ export default function SafeView({ form, view, payload, natural, imageUrl, recor
     return (
         <FormSurface view={built.view} layers={built.layers} sides={built.sides}
             items={built.items} error={built.error} natural={natural} imageUrl={imageUrl}
+            focusId={focusId} onFocus={setFocusId} hidden={hidden} onToggle={toggle}
             samples={record?.measurements?.centroid_samples} />
     );
 }

@@ -38,6 +38,7 @@ export default function FormBench({ bench, onDerive, source, session, onMeasure 
     const [selected, setSelected] = useState([]);
     const [parameterDrafts, setParameterDrafts] = useState({});
     const [recordId, setRecordId] = useState(null);
+    const [comparisonId, setComparisonId] = useState(null);
     const natural = useMemo(() => session?.source ? {
         w: session.source.natural_width, h: session.source.natural_height,
     } : undefined, [session?.source]);
@@ -101,7 +102,7 @@ export default function FormBench({ bench, onDerive, source, session, onMeasure 
             <div className="fb-row">
                 <label className="fb-label" htmlFor="fb-form">Form</label>
                 <select id="fb-form" className="fb-select" value={formKey}
-                    onChange={(e) => { setFormKey(e.target.value); setProducerKey(null); setSelected([]); setLeft(null); setRight(null); setRecordId(null); }}>
+                    onChange={(e) => { setFormKey(e.target.value); setProducerKey(null); setSelected([]); setLeft(null); setRight(null); setRecordId(null); setComparisonId(null); }}>
                     {forms.map((f) => (
                         <option key={f.form} value={f.form}>
                             {f.label} — {f.form}{f.can_be_produced_here ? '' : ' (not here)'}
@@ -223,6 +224,13 @@ export default function FormBench({ bench, onDerive, source, session, onMeasure 
                         <option key={d.derivation_id} value={d.derivation_id}>{d.derivation_id} · {d.created_at} · {JSON.stringify(d.parameters)}</option>)}
                 </select>
             </label>
+            <label className="fb-label">Compare with saved result
+                <select className="fb-select" value={comparisonId || ''} onChange={(e) => setComparisonId(e.target.value || null)}>
+                    <option value="">No second result</option>
+                    {bench.derivations.filter((d) => d.form === formKey && d.derivation_id !== produced?.derivation_id).map((d) =>
+                        <option key={d.derivation_id} value={d.derivation_id}>{d.derivation_id} · {JSON.stringify(d.parameters)}</option>)}
+                </select>
+            </label>
             {bench.error ? <p role="alert">{bench.error.message}</p> : null}
             {produced ? (
                 <ProducedForm record={produced} views={views} left={left} right={right}
@@ -232,6 +240,12 @@ export default function FormBench({ bench, onDerive, source, session, onMeasure 
                     hint="A form that has not been produced and a form that produced nothing are
                         two different answers, and this panel will say which." />
             )}
+            {bench.derivations.filter((d) => d.form === formKey && d.derivation_id === comparisonId
+                && d.derivation_id !== produced?.derivation_id).map((d) => <div key={d.derivation_id}>
+                    <h3 className="pl-panel-title">Comparison result</h3>
+                    <ProducedForm record={d} views={views} left={left} right={right}
+                        onLeft={setLeft} onRight={setRight} source={source} natural={natural} />
+                </div>)}
         </section>
     );
 }
@@ -318,7 +332,7 @@ function ProducedForm({ record, views, left, right, onLeft, onRight, source, nat
                         </label>
                         <div className="fb-canvas">
                             {record.payload && view
-                                ? <SafeView form={record.form} view={view}
+                                ? <SafeView key={`${record.derivation_id}:${view}`} form={record.form} view={view}
                                     payload={record.payload} natural={natural} imageUrl={source?.photo_url}
                                     record={record} />
                                 : <p className="fb-empty">No payload to draw.</p>}

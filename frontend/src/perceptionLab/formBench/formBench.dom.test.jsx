@@ -468,3 +468,11 @@ describe('live form study', () => {
         expect(q('.pl-fm-groundgroup')).not.toBeNull();
     });
 });
+
+it('keeps two saved results visible for comparison without merging their receipts', async () => {
+    const earlier = { ...DERIVATION, derivation_id: 'der_earlier', parameters: { experiment: 'earlier' } };
+    await mount(<FormBench bench={bench({ derivations: [earlier, DERIVATION] })} onDerive={vi.fn()} />);
+    const comparison = all('select').find((s) => s.parentElement.textContent.startsWith('Compare with saved result'));
+    await choose(comparison, 'der_earlier');
+    expect(all('[data-derivation]').map((el) => el.dataset.derivation)).toEqual([DERIVATION.derivation_id, 'der_earlier']);
+});
