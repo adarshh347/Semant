@@ -33,6 +33,8 @@ PURE. No database, no network, no model, no clock, no image.
 """
 from __future__ import annotations
 
+from backend.services.perception_lab.form_parameters import resolve as resolve_parameters
+
 import math
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -125,7 +127,7 @@ def _spread(row: int, col: int, shape: Tuple[int, int], bandwidth: float) -> Lis
     for r in range(h):
         for c in range(w):
             distance = (r - row) ** 2 + (c - col) ** 2
-            weight = math.exp(-distance / two_sigma_squared)
+            weight = (1.0 if distance == 0 else 0.0) if two_sigma_squared == 0 else math.exp(-distance / two_sigma_squared)
             weights[r * w + c] = weight
             total += weight
     return [weight / total for weight in weights]
@@ -146,13 +148,20 @@ def produce_density_field(member_keys: Sequence[str], *, sources: Sequence[SRC.E
     omissions: List[Omission] = list(omitted)
     refusals: List[RefusalRecord] = []
     held = SRC.index(kept) if kept else {}
-    shape = (int(field_shape[0]), int(field_shape[1]))
-    if shape[0] <= 0 or shape[1] <= 0:
+    try:
+        raw = {"field_shape": field_shape, "kernel": kernel.method or "none"}
+        if kernel.bandwidth is not None:
+            raw["bandwidth"] = kernel.bandwidth
+        resolved, ignored = resolve_parameters(FORM, raw)
+        shape = tuple(resolved["field_shape"])
+        kernel = Kernel(resolved["kernel"], resolved["bandwidth"]) if resolved["kernel"] == GAUSSIAN else NO_SMOOTHING
+        omissions.extend(Omission(what=n, reason="ignored_parameter", detail=r) for n, r in ignored)
+    except ValueError as exc:
         refusals.append(RefusalRecord(
             code=RefusalCode.INVALID_PARAMETERS, organ=ORGAN,
-            message=f"a density field of {shape[0]}x{shape[1]} has no cells to count into.",
-            missing=[], remedy="declare a field shape with both dimensions above zero",
-            detail={"form": FORM, "field_shape": list(shape)}))
+            message=str(exc),
+            missing=[], remedy="use the declared shape, kernel and bandwidth bounds",
+            detail={"form": FORM}))
         return produce(FORM, None, basis=basis or EpistemicBasis.MASK, partition=PARTITION,
                        sources=kept, refusals=tuple(refusals), omitted=tuple(omissions))
 

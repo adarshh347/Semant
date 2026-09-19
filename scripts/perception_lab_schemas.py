@@ -33,6 +33,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from backend.schemas.perception_lab import RECORD_MODELS  # noqa: E402
+from backend.services.perception_lab.derivations import LabDerivation  # noqa: E402
 
 SCHEMA_DIR = REPO_ROOT / "research" / "perception_lab" / "schemas"
 
@@ -66,7 +67,7 @@ def _filename(name: str) -> str:
 def rendered() -> Dict[str, str]:
     """`{filename: text}` for every record schema, plus the README."""
     files: Dict[str, str] = {"README.md": README}
-    for name, model in RECORD_MODELS.items():
+    for name, model in {**RECORD_MODELS, "LabDerivation": LabDerivation}.items():
         schema = model.model_json_schema(mode="serialization")
         schema = {"$schema": "https://json-schema.org/draft/2020-12/schema",
                   "$id": f"semant:perception-lab/{_filename(name)}",

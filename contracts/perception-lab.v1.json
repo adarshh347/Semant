@@ -2355,5 +2355,50 @@
     "source_mutated": "The source changed while the run was in flight.",
     "unsupported_form": "{operation} does not accept {form}; it reads {accepted}.",
     "form_not_producible": "{form} is registered and deferred. No producer in this phase writes one."
+  },
+  "form_parameters": {
+    "extent.fragment_set": [
+      {
+        "name": "measure_separation",
+        "type": "boolean",
+        "initial": true,
+        "description": "Measure pairwise component gaps in raster pixels; disconnected pieces do not establish one object."
+      }
+    ],
+    "extent.density_field": [
+      {
+        "name": "field_shape",
+        "type": "integer_pair",
+        "initial": [
+          16,
+          16
+        ],
+        "minimum": 1,
+        "maximum": 128,
+        "units": "grid cells",
+        "description": "Rows \u00d7 columns, bounded to 128 per dimension."
+      },
+      {
+        "name": "kernel",
+        "type": "enum",
+        "enum": [
+          "none",
+          "gaussian"
+        ],
+        "initial": "none",
+        "description": "Centroid histogram or normalized Gaussian smoothing."
+      },
+      {
+        "name": "bandwidth",
+        "type": "number",
+        "exclusive_minimum": 0,
+        "maximum": 128,
+        "units": "grid cells",
+        "required_when": {
+          "kernel": "gaussian"
+        },
+        "description": "Finite positive Gaussian sigma in grid-cell units; not image pixels."
+      }
+    ]
   }
 }

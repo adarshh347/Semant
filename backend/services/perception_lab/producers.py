@@ -392,6 +392,9 @@ def availability(form_key: str, *,
 def catalogue(*, states: Optional[Mapping[str, CapabilityState]] = None) -> Dict[str, Any]:
     """All nineteen, in contract order, as the surface reads them."""
     forms = [availability(key, states=states).as_json() for key in D.forms()]
+    from backend.services.perception_lab.form_parameters import declarations
+    for entry in forms:
+        entry["parameters"] = declarations(entry["form"])
     return {
         "forms": forms,
         "producer_kinds": [MODEL, CODE, HUMAN, NONE],
