@@ -19,6 +19,25 @@ const fail = (status, body) => ({
 });
 
 describe('the live client', () => {
+    it('keeps exact prompt whitespace only for opt-in thought preparation', async () => {
+        const fetchImpl = vi.fn(async () => ok(consultFixture()));
+        await createInquiryClient({ fetchImpl }).start({ prompt: '  An intact passage.\n', prepareThought: true });
+        expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toMatchObject({
+            prompt: '  An intact passage.\n', prepare_thought: true,
+        });
+    });
+    it.each([
+        ['save', '', 'POST', 'constellations'],
+        ['save', 'scon_x', 'PUT', 'constellations/scon_x'],
+        ['review', 'scon_x', 'POST', 'constellations/scon_x/review'],
+        ['continue', '', 'POST', 'preparation/continue'],
+    ])('sends %s to the existing session with checkpoint concurrency', async (action, cid, method, suffix) => {
+        const fetchImpl = vi.fn(async () => ok(consultFixture()));
+        await createInquiryClient({ fetchImpl }).writeThought('inqs_fixture_1', action, { expected_checkpoint: 4 }, cid);
+        expect(fetchImpl.mock.calls[0][0]).toMatch(new RegExp(`/inqs_fixture_1/${suffix}$`));
+        expect(fetchImpl.mock.calls[0][1].method).toBe(method);
+        expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toEqual({ expected_checkpoint: 4 });
+    });
     it('POSTs prompt, images and mode, and returns a normalised session', async () => {
         const fetchImpl = vi.fn(async () => ok(consultFixture()));
         const client = createInquiryClient({ fetchImpl });

@@ -62,6 +62,7 @@ export default function InquiryEntry({
     const [prompt, setPrompt] = useState(initialPrompt);
     const [mode, setMode] = useState(initialMode);
     const [scoped, setScoped] = useState(false);
+    const [prepareThought, setPrepareThought] = useState(false);
 
     const scopeOffered = features?.scoped_rehearsal?.available === true;
 
@@ -99,12 +100,13 @@ export default function InquiryEntry({
         e.preventDefault();
         if (!ready || busy) return;
         onStart?.({
-            imageIds, prompt: prompt.trim(), mode, posts: selected,
+            imageIds, prompt: prepareThought ? prompt : prompt.trim(), mode, posts: selected,
             // ONLY WHERE THE BACKEND DECLARED IT. A checkbox left checked while the declaration
             // went away would otherwise send a scope the server refuses — and this form's whole
             // rule is that `canStartInquiry` decides what may start, so nothing else may make a
             // start fail.
             executionScope: (scopeOffered && scoped) ? 'vertical_slice' : 'full',
+            prepareThought: features?.semantic_constellations?.available === true && prepareThought,
         });
     };
 
@@ -215,6 +217,15 @@ export default function InquiryEntry({
                 </fieldset>
             ) : null}
 
+            {features?.semantic_constellations?.available === true ? (
+                <label className="iw-scope-toggle">
+                    <input type="checkbox" checked={prepareThought} disabled={busy}
+                        onChange={(e) => setPrepareThought(e.target.checked)} />
+                    <span>Keep this thought together</span>
+                    <span className="iw-quiet">Save an intact passage and question before execution.
+                        Pause again after reading, before compilation.</span>
+                </label>
+            ) : null}
             {error ? <p className="iw-error" role="alert">{error}</p> : null}
 
             <button className="iw-start" type="submit" disabled={!ready || busy}>

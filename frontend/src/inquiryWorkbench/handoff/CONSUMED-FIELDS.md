@@ -31,6 +31,8 @@ list, and the Pydantic model on the other side remains the single definition.
 | `session_id` | string | **required** — the id every later write is addressed to |
 | `inquiry_id` | string | |
 | `revision` | number \| null | **the concurrency token.** Sent back as `expected_revision`. Null means absent, and no `expected_revision` is then sent at all — never 0 |
+| `checkpoint` | number \| null | Monotonic token for semantic human writes; separate from deliberation revision. |
+| `semantic_constellations` | versioned object | `recorded`, `schema_version`, `preparation`, `paused`, `sources`, `current`, `history`; strict record fields are preserved whole by `semanticConstellationContract.js`. See `contracts/semantic-constellation.v1.json` and its generated JSON Schema. |
 | `state` | **enumerated** | `framing · reading · compiling · awaiting_user · ready · executing · judging · composing · complete · exhausted · refused · error` |
 | `mode` | **enumerated** | `auto · consult · step` |
 | `graph` | object | below |

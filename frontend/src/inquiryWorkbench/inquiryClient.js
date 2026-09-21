@@ -113,6 +113,16 @@ export function createInquiryClient({ fetchImpl = null } = {}) {
         return normalizeSession(data);
     }
 
+    async function writeThought(sessionId, action, body, constellationId = '') {
+        const path = action === 'continue' ? 'preparation/continue'
+            : `constellations${constellationId ? `/${encodeURIComponent(constellationId)}` : ''}`
+                + (action === 'review' ? '/review' : '');
+        return normalizeSession(await asJson(await f(`${BASE}/${encodeURIComponent(sessionId)}/${path}`, {
+            method: action === 'save' && constellationId ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        })));
+    }
+
     /**
      * Watch a session until it is finished or blocked on a person. Returns an unsubscribe.
      *
@@ -171,7 +181,7 @@ export function createInquiryClient({ fetchImpl = null } = {}) {
         return stop;
     }
 
-    return { start, get, respond, watch, features, live: true };
+    return { start, get, respond, writeThought, watch, features, live: true };
 }
 
 /**

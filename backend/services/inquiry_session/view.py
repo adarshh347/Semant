@@ -719,6 +719,8 @@ def session_view(session: SemanticInquirySession, *,
     return {
         "schema_version": session.schema_version,
         "session_id": session.session_id,
+        "checkpoint": session.checkpoint,
+        "semantic_constellations": constellation_view(session),
         "inquiry_id": session.inquiry_id,
         "revision": session.revision,
         "state": session.state,
@@ -767,3 +769,8 @@ __all__ = ["PRODUCER", "session_view", "graph_view", "claim_view", "observable_v
            "execution_scope_view",
            "alternative_view", "remainder_view", "refusal_view", "reading_view",
            "decision_request_view", "decision_record_view", "trace_view", "stage_view"]
+
+
+def constellation_view(session):
+    from .constellations import projection
+    return projection(session)

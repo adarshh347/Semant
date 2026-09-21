@@ -2,6 +2,7 @@
   "amendments": [],
   "capability_receipts": [],
   "changed_refs": [],
+  "checkpoint": 0,
   "decision_records": [],
   "decision_requests": [
     {
@@ -1244,6 +1245,100 @@
   "refusals": [],
   "revision": 2,
   "schema_version": "semantic-inquiry-session.v2",
+  "semantic_constellations": {
+    "current": [],
+    "history": [],
+    "paused": false,
+    "preparation": "not_requested",
+    "recorded": false,
+    "schema_version": "semantic-constellations.v1",
+    "sources": [
+      {
+        "author": "user",
+        "image_refs": [
+          "img_a",
+          "img_b"
+        ],
+        "origin": "user_prompt",
+        "source_id": "prompt",
+        "text": "Compare how these two interiors organise themselves overhead, where their handling of the ceiling parts company, and what a hybrid of the two would demand of its structure."
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_a"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_a1d551c043d8",
+        "text": "a single unbroken dome closes the space overhead"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_a"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_dc4eca72c27e",
+        "text": "a ring of engaged columns stands against the drum"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_a"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_48ebfe28f7dd",
+        "text": "the coffering diminishes in scale as it rises toward the oculus"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_b"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_57541b7c8b54",
+        "text": "a series of transverse arches divides the ceiling into equal bays"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_a",
+          "img_b"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_5e7a1dfc7fdd",
+        "text": "one interior is closed by a single surface, the other by a repeated one"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_a"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_f82490222968",
+        "text": "coffering that diminishes toward a crown follows a convention with a long documented history"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_a"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_fb4ccd9acba1",
+        "text": "the ring of columns reads as carrying the dome while standing forward of the wall that actually does"
+      },
+      {
+        "author": "scene_theorist",
+        "image_refs": [
+          "img_a",
+          "img_b"
+        ],
+        "origin": "model_reading",
+        "source_id": "rb_9b483344a11b",
+        "text": "a room could keep the single closing surface and take its rhythm from the bays"
+      }
+    ]
+  },
   "session_id": "inqs_sample000001",
   "stages": [
     {

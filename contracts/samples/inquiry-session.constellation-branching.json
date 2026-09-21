@@ -1,0 +1,795 @@
+{
+  "amendments": [],
+  "capability_receipts": [],
+  "changed_refs": [],
+  "checkpoint": 0,
+  "decision_records": [],
+  "decision_requests": [],
+  "deployment": {
+    "declared": true,
+    "detail": "Synthetic stored dissolution output. No model or measurement ran.",
+    "kind": "fixture",
+    "reachable": null,
+    "stages": {}
+  },
+  "error": "",
+  "evidence": [],
+  "execution_scope": {
+    "allowance_tokens": null,
+    "atoms_not_investigated": 0,
+    "claims_not_investigated": 0,
+    "deferred_source_units": 0,
+    "exclusions": [],
+    "full_coverage": true,
+    "mode": "full",
+    "notes": [],
+    "operationalizer_batches_allowed": null,
+    "operationalizer_batches_sent": null,
+    "purpose": "",
+    "reconciliation_rounds_allowed": null,
+    "reconciliation_rounds_sent": null,
+    "recorded": false,
+    "relation_batches_allowed": null,
+    "relation_batches_sent": null,
+    "scope_version": "",
+    "selected_atoms": 0,
+    "selected_claims": 0,
+    "selected_source_units": 0,
+    "selection_producer": ""
+  },
+  "frame": {},
+  "gaps": [],
+  "graph": {
+    "claim_edges": [
+      {
+        "edge_id": "cle_5730d80489a3",
+        "from_claim": "clm_3c6168a691c4",
+        "kind": "complicates",
+        "note": "synthetic frozen relation; no claim of semantic preservation",
+        "relation": "complicates",
+        "to_claim": "clm_3a1b61e45423"
+      }
+    ],
+    "claims": [
+      {
+        "author": "model",
+        "claim_id": "clm_3a1b61e45423",
+        "claim_kind": "interpretation",
+        "confidence": null,
+        "epistemic_demand": "interpretive",
+        "image_scope": [
+          "corpus"
+        ],
+        "inferred_from": [],
+        "kind": "interpretation",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": 29,
+          "origin": "prompt",
+          "source_id": "prompt",
+          "start": 0,
+          "text": "Two branches share a junction"
+        },
+        "source_spans": [
+          {
+            "end": 29,
+            "origin": "prompt",
+            "source_id": "prompt",
+            "start": 0,
+            "text": "Two branches share a junction"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "",
+        "text": "Two branches share a junction",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_3c6168a691c4",
+        "claim_kind": "interpretation",
+        "confidence": null,
+        "epistemic_demand": "interpretive",
+        "image_scope": [
+          "corpus"
+        ],
+        "inferred_from": [],
+        "kind": "interpretation",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": 71,
+          "origin": "prompt",
+          "source_id": "prompt",
+          "start": 31,
+          "text": "The routes can be grouped by destination"
+        },
+        "source_spans": [
+          {
+            "end": 71,
+            "origin": "prompt",
+            "source_id": "prompt",
+            "start": 31,
+            "text": "The routes can be grouped by destination"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "",
+        "text": "The routes can be grouped by destination",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_386a86c8a836",
+        "claim_kind": "interpretation",
+        "confidence": null,
+        "epistemic_demand": "interpretive",
+        "image_scope": [
+          "corpus"
+        ],
+        "inferred_from": [
+          "clm_3a1b61e45423",
+          "clm_3c6168a691c4"
+        ],
+        "kind": "interpretation",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": null,
+          "origin": "compiler_inference",
+          "source_id": "synthetic-architect",
+          "start": null,
+          "text": "synthetic inference"
+        },
+        "source_spans": [
+          {
+            "end": null,
+            "origin": "compiler_inference",
+            "source_id": "synthetic-architect",
+            "start": null,
+            "text": "synthetic inference"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "",
+        "text": "Grouping is ambiguous",
+        "vocabulary": ""
+      }
+    ],
+    "coverage": [
+      {
+        "coverage_id": "cov_ebee5dec4445",
+        "disposition": "represented_by",
+        "reason": "",
+        "refs": [
+          "atm_49a343ed4cd7"
+        ],
+        "source_unit_id": "su_0d3c9b980973"
+      },
+      {
+        "coverage_id": "cov_af78e552d57e",
+        "disposition": "represented_by",
+        "reason": "",
+        "refs": [
+          "atm_cedb84472558"
+        ],
+        "source_unit_id": "su_8f872c863aaa"
+      },
+      {
+        "coverage_id": "cov_bd87ea4d6082",
+        "disposition": "represented_by",
+        "reason": "",
+        "refs": [
+          "atm_2b4f90ea0020"
+        ],
+        "source_unit_id": "su_2444e42ab67d"
+      }
+    ],
+    "coverage_summary": {
+      "by_disposition": {
+        "represented_by": 3
+      },
+      "complete": true,
+      "disposed": 3,
+      "lost": [],
+      "lost_count": 0,
+      "reading_units": 0,
+      "represented": 3,
+      "source_units": 3,
+      "user_units": 3
+    },
+    "execution_scope": null,
+    "graph_id": "sig_e68fc938f4ef",
+    "image_refs": [],
+    "inquiry_id": "inq_synthetic_branching",
+    "notes": [],
+    "observables": [],
+    "passes": [],
+    "prompt": "Two branches share a junction. The routes can be grouped by destination. A shared junction does not settle which routes belong together.",
+    "provenance": {
+      "compiled_at": "2026-09-19T00:00:00+00:00",
+      "compiler": null,
+      "compiler_kind": "fixture",
+      "contract_version": "semantic-inquiry-graph.v2",
+      "inquiry_frame_schema_version": "",
+      "notes": [],
+      "producer": "synthetic-constellation-fixture",
+      "prompt_sha256": "synthetic",
+      "theorist": null
+    },
+    "reading": {
+      "blocks": [],
+      "model": "",
+      "provenance": {},
+      "source": "",
+      "status": "",
+      "text": ""
+    },
+    "refusals": [],
+    "schema_version": "semantic-inquiry-graph.v2",
+    "semantic_atoms": [
+      {
+        "atom_id": "atm_49a343ed4cd7",
+        "author": "user",
+        "epistemic_ceiling": "interpretive",
+        "image_refs": [],
+        "image_scope": [
+          "corpus"
+        ],
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "provenance": {},
+        "quotes": [
+          "Two branches share a junction"
+        ],
+        "source_unit_ids": [
+          "su_0d3c9b980973"
+        ],
+        "subject": "",
+        "text": "Two branches share a junction",
+        "unit_kind": "interpretation"
+      },
+      {
+        "atom_id": "atm_cedb84472558",
+        "author": "user",
+        "epistemic_ceiling": "interpretive",
+        "image_refs": [],
+        "image_scope": [
+          "corpus"
+        ],
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "provenance": {},
+        "quotes": [
+          "The routes can be grouped by destination"
+        ],
+        "source_unit_ids": [
+          "su_8f872c863aaa"
+        ],
+        "subject": "",
+        "text": "The routes can be grouped by destination",
+        "unit_kind": "interpretation"
+      },
+      {
+        "atom_id": "atm_2b4f90ea0020",
+        "author": "user",
+        "epistemic_ceiling": "interpretive",
+        "image_refs": [],
+        "image_scope": [
+          "corpus"
+        ],
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "provenance": {},
+        "quotes": [
+          "A shared junction does not settle which routes belong together"
+        ],
+        "source_unit_ids": [
+          "su_2444e42ab67d"
+        ],
+        "subject": "",
+        "text": "A shared junction does not settle which routes belong together",
+        "unit_kind": "interpretation"
+      }
+    ],
+    "semantic_remainder": [],
+    "source_units": [
+      {
+        "author": "user",
+        "block_kind": "",
+        "end": 29,
+        "exact_quote": "Two branches share a junction",
+        "image_refs": [],
+        "kind": "prompt_clause",
+        "note": "",
+        "ordinal": 0,
+        "source_ref": "prompt",
+        "source_type": "prompt_clause",
+        "source_unit_id": "su_0d3c9b980973",
+        "span": [
+          0,
+          29
+        ],
+        "start": 0
+      },
+      {
+        "author": "user",
+        "block_kind": "",
+        "end": 71,
+        "exact_quote": "The routes can be grouped by destination",
+        "image_refs": [],
+        "kind": "prompt_clause",
+        "note": "",
+        "ordinal": 1,
+        "source_ref": "prompt",
+        "source_type": "prompt_clause",
+        "source_unit_id": "su_8f872c863aaa",
+        "span": [
+          31,
+          71
+        ],
+        "start": 31
+      },
+      {
+        "author": "user",
+        "block_kind": "",
+        "end": 135,
+        "exact_quote": "A shared junction does not settle which routes belong together",
+        "image_refs": [],
+        "kind": "prompt_clause",
+        "note": "",
+        "ordinal": 2,
+        "source_ref": "prompt",
+        "source_type": "prompt_clause",
+        "source_unit_id": "su_2444e42ab67d",
+        "span": [
+          73,
+          135
+        ],
+        "start": 73
+      }
+    ]
+  },
+  "inquiry_id": "inq_synthetic_branching",
+  "mode": "consult",
+  "posts": [],
+  "prompt": "Two branches share a junction. The routes can be grouped by destination. A shared junction does not settle which routes belong together.",
+  "provenance": {
+    "compiler_model": null,
+    "composer_model": null,
+    "created_at": null,
+    "frame_hash": "",
+    "frame_producer": "",
+    "graph_hash": "",
+    "mode": "",
+    "notes": [],
+    "producer": "inquiry_session/coordinator-v1",
+    "prompt_sha256": "",
+    "theorist_model": null,
+    "updated_at": null
+  },
+  "refusals": [],
+  "revision": 0,
+  "schema_version": "semantic-inquiry-session.v2",
+  "semantic_constellations": {
+    "current": [
+      {
+        "alternatives": [
+          {
+            "alternative_id": "alt_fc05cc41be98",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The elements sustain a joint reading"
+          },
+          {
+            "alternative_id": "alt_abf843936ba5",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The grouping remains ambiguous"
+          }
+        ],
+        "alternatives_exhaustive": false,
+        "alternatives_mutually_exclusive": false,
+        "anchors": [
+          {
+            "author": "user",
+            "exact_text": "Two branches share a junction. The routes can be grouped by destination. A shared junction does not settle which routes belong together.",
+            "image_refs": [],
+            "origin": "user_prompt",
+            "source_id": "prompt",
+            "source_sha256": "683c5b06fc0949c7c4061624a7968462d622de8c4c921952d769e8b4b026b693",
+            "span": [
+              0,
+              136
+            ]
+          }
+        ],
+        "authorship": {
+          "actor": "fixture-author",
+          "kind": "human",
+          "source_ref": ""
+        },
+        "captured_checkpoint": 0,
+        "central_tension": "",
+        "confirmed_by": "fixture-author",
+        "confirmed_claim_refs": [],
+        "confirmed_edge_refs": [],
+        "constellation_id": "scon_7a6cf1a31b2c",
+        "created_at": "2026-09-19T00:00:00+00:00",
+        "graph_stale": false,
+        "inquiry_id": "inq_synthetic_branching",
+        "inspection": {
+          "candidate_count": 3,
+          "candidate_edge_refs": [
+            "cle_5730d80489a3"
+          ],
+          "candidates": [
+            {
+              "atom_refs": [
+                "atm_49a343ed4cd7",
+                "atm_cedb84472558"
+              ],
+              "claim_ref": "clm_386a86c8a836",
+              "image_refs": [],
+              "inference_refs": [
+                "clm_3a1b61e45423",
+                "clm_3c6168a691c4"
+              ],
+              "reason": "source_atom_lineage",
+              "source_unit_refs": [
+                "su_0d3c9b980973",
+                "su_8f872c863aaa"
+              ],
+              "via_edge_refs": []
+            },
+            {
+              "atom_refs": [
+                "atm_49a343ed4cd7"
+              ],
+              "claim_ref": "clm_3a1b61e45423",
+              "image_refs": [],
+              "inference_refs": [],
+              "reason": "source_atom_lineage",
+              "source_unit_refs": [
+                "su_0d3c9b980973"
+              ],
+              "via_edge_refs": []
+            },
+            {
+              "atom_refs": [
+                "atm_cedb84472558"
+              ],
+              "claim_ref": "clm_3c6168a691c4",
+              "image_refs": [],
+              "inference_refs": [],
+              "reason": "source_atom_lineage",
+              "source_unit_refs": [
+                "su_8f872c863aaa"
+              ],
+              "via_edge_refs": []
+            }
+          ],
+          "graph": {
+            "checkpoint": 0,
+            "graph_hash": "sig_dad21a2f0a30979c",
+            "graph_id": "sig_e68fc938f4ef",
+            "inquiry_id": "inq_synthetic_branching",
+            "schema_version": "semantic-inquiry-graph.v2",
+            "session_revision": 0
+          },
+          "missing_links": [
+            "atom_without_claim:atm_2b4f90ea0020"
+          ],
+          "narrowing_required": false,
+          "pilot_limit": 8,
+          "producer": "semantic_constellation/lineage-v1",
+          "source_unit_refs": [
+            "su_0d3c9b980973",
+            "su_2444e42ab67d",
+            "su_8f872c863aaa"
+          ]
+        },
+        "judgment": {
+          "assessed_by": null,
+          "at": null,
+          "next_investigation": "",
+          "note": "",
+          "recovered_thought": "",
+          "value": "not_assessed"
+        },
+        "limits": [
+          "Shared ancestry is a structural candidate, not demonstrated semantic coherence.",
+          "Human membership and preservation judgments do not strengthen evidence status.",
+          "Recognition and aesthetic bearing require separately attributed interpretation.",
+          "Chromatic and flow claims are capability gaps in this Extent/Topology pilot."
+        ],
+        "membership_reviewed_by": null,
+        "organising_question": "Should these branching routes be grouped by junction or destination?",
+        "perceptual_questions": [],
+        "perceptual_questions_executable": false,
+        "perceptual_relevance": "",
+        "previous_revision": 1,
+        "rejected_claim_refs": [],
+        "rejected_edge_refs": [],
+        "revised_at": "2026-09-19T00:00:00+00:00",
+        "revision": 2,
+        "revision_actor": "semantic_constellation/lineage-v1",
+        "revision_reason": "inspection",
+        "schema_version": "semantic-constellation.v1",
+        "session_id": "inqs_synthetic_branching",
+        "status": "reviewed",
+        "timing": "before_compilation"
+      }
+    ],
+    "history": [
+      {
+        "alternatives": [
+          {
+            "alternative_id": "alt_fc05cc41be98",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The elements sustain a joint reading"
+          },
+          {
+            "alternative_id": "alt_abf843936ba5",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The grouping remains ambiguous"
+          }
+        ],
+        "alternatives_exhaustive": false,
+        "alternatives_mutually_exclusive": false,
+        "anchors": [
+          {
+            "author": "user",
+            "exact_text": "Two branches share a junction. The routes can be grouped by destination. A shared junction does not settle which routes belong together.",
+            "image_refs": [],
+            "origin": "user_prompt",
+            "source_id": "prompt",
+            "source_sha256": "683c5b06fc0949c7c4061624a7968462d622de8c4c921952d769e8b4b026b693",
+            "span": [
+              0,
+              136
+            ]
+          }
+        ],
+        "authorship": {
+          "actor": "fixture-author",
+          "kind": "human",
+          "source_ref": ""
+        },
+        "captured_checkpoint": 0,
+        "central_tension": "",
+        "confirmed_by": "fixture-author",
+        "confirmed_claim_refs": [],
+        "confirmed_edge_refs": [],
+        "constellation_id": "scon_7a6cf1a31b2c",
+        "created_at": "2026-09-19T00:00:00+00:00",
+        "inquiry_id": "inq_synthetic_branching",
+        "inspection": null,
+        "judgment": {
+          "assessed_by": null,
+          "at": null,
+          "next_investigation": "",
+          "note": "",
+          "recovered_thought": "",
+          "value": "not_assessed"
+        },
+        "limits": [
+          "Shared ancestry is a structural candidate, not demonstrated semantic coherence.",
+          "Human membership and preservation judgments do not strengthen evidence status.",
+          "Recognition and aesthetic bearing require separately attributed interpretation.",
+          "Chromatic and flow claims are capability gaps in this Extent/Topology pilot."
+        ],
+        "membership_reviewed_by": null,
+        "organising_question": "Should these branching routes be grouped by junction or destination?",
+        "perceptual_questions": [],
+        "perceptual_questions_executable": false,
+        "perceptual_relevance": "",
+        "previous_revision": null,
+        "rejected_claim_refs": [],
+        "rejected_edge_refs": [],
+        "revised_at": "2026-09-19T00:00:00+00:00",
+        "revision": 1,
+        "revision_actor": "fixture-author",
+        "revision_reason": "capture",
+        "schema_version": "semantic-constellation.v1",
+        "session_id": "inqs_synthetic_branching",
+        "status": "reviewed",
+        "timing": "before_compilation"
+      },
+      {
+        "alternatives": [
+          {
+            "alternative_id": "alt_fc05cc41be98",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The elements sustain a joint reading"
+          },
+          {
+            "alternative_id": "alt_abf843936ba5",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The grouping remains ambiguous"
+          }
+        ],
+        "alternatives_exhaustive": false,
+        "alternatives_mutually_exclusive": false,
+        "anchors": [
+          {
+            "author": "user",
+            "exact_text": "Two branches share a junction. The routes can be grouped by destination. A shared junction does not settle which routes belong together.",
+            "image_refs": [],
+            "origin": "user_prompt",
+            "source_id": "prompt",
+            "source_sha256": "683c5b06fc0949c7c4061624a7968462d622de8c4c921952d769e8b4b026b693",
+            "span": [
+              0,
+              136
+            ]
+          }
+        ],
+        "authorship": {
+          "actor": "fixture-author",
+          "kind": "human",
+          "source_ref": ""
+        },
+        "captured_checkpoint": 0,
+        "central_tension": "",
+        "confirmed_by": "fixture-author",
+        "confirmed_claim_refs": [],
+        "confirmed_edge_refs": [],
+        "constellation_id": "scon_7a6cf1a31b2c",
+        "created_at": "2026-09-19T00:00:00+00:00",
+        "inquiry_id": "inq_synthetic_branching",
+        "inspection": {
+          "candidate_count": 3,
+          "candidate_edge_refs": [
+            "cle_5730d80489a3"
+          ],
+          "candidates": [
+            {
+              "atom_refs": [
+                "atm_49a343ed4cd7",
+                "atm_cedb84472558"
+              ],
+              "claim_ref": "clm_386a86c8a836",
+              "image_refs": [],
+              "inference_refs": [
+                "clm_3a1b61e45423",
+                "clm_3c6168a691c4"
+              ],
+              "reason": "source_atom_lineage",
+              "source_unit_refs": [
+                "su_0d3c9b980973",
+                "su_8f872c863aaa"
+              ],
+              "via_edge_refs": []
+            },
+            {
+              "atom_refs": [
+                "atm_49a343ed4cd7"
+              ],
+              "claim_ref": "clm_3a1b61e45423",
+              "image_refs": [],
+              "inference_refs": [],
+              "reason": "source_atom_lineage",
+              "source_unit_refs": [
+                "su_0d3c9b980973"
+              ],
+              "via_edge_refs": []
+            },
+            {
+              "atom_refs": [
+                "atm_cedb84472558"
+              ],
+              "claim_ref": "clm_3c6168a691c4",
+              "image_refs": [],
+              "inference_refs": [],
+              "reason": "source_atom_lineage",
+              "source_unit_refs": [
+                "su_8f872c863aaa"
+              ],
+              "via_edge_refs": []
+            }
+          ],
+          "graph": {
+            "checkpoint": 0,
+            "graph_hash": "sig_dad21a2f0a30979c",
+            "graph_id": "sig_e68fc938f4ef",
+            "inquiry_id": "inq_synthetic_branching",
+            "schema_version": "semantic-inquiry-graph.v2",
+            "session_revision": 0
+          },
+          "missing_links": [
+            "atom_without_claim:atm_2b4f90ea0020"
+          ],
+          "narrowing_required": false,
+          "pilot_limit": 8,
+          "producer": "semantic_constellation/lineage-v1",
+          "source_unit_refs": [
+            "su_0d3c9b980973",
+            "su_2444e42ab67d",
+            "su_8f872c863aaa"
+          ]
+        },
+        "judgment": {
+          "assessed_by": null,
+          "at": null,
+          "next_investigation": "",
+          "note": "",
+          "recovered_thought": "",
+          "value": "not_assessed"
+        },
+        "limits": [
+          "Shared ancestry is a structural candidate, not demonstrated semantic coherence.",
+          "Human membership and preservation judgments do not strengthen evidence status.",
+          "Recognition and aesthetic bearing require separately attributed interpretation.",
+          "Chromatic and flow claims are capability gaps in this Extent/Topology pilot."
+        ],
+        "membership_reviewed_by": null,
+        "organising_question": "Should these branching routes be grouped by junction or destination?",
+        "perceptual_questions": [],
+        "perceptual_questions_executable": false,
+        "perceptual_relevance": "",
+        "previous_revision": 1,
+        "rejected_claim_refs": [],
+        "rejected_edge_refs": [],
+        "revised_at": "2026-09-19T00:00:00+00:00",
+        "revision": 2,
+        "revision_actor": "semantic_constellation/lineage-v1",
+        "revision_reason": "inspection",
+        "schema_version": "semantic-constellation.v1",
+        "session_id": "inqs_synthetic_branching",
+        "status": "reviewed",
+        "timing": "before_compilation"
+      }
+    ],
+    "paused": false,
+    "preparation": "not_requested",
+    "recorded": true,
+    "schema_version": "semantic-constellations.v1",
+    "sources": [
+      {
+        "author": "user",
+        "image_refs": [],
+        "origin": "user_prompt",
+        "source_id": "prompt",
+        "text": "Two branches share a junction. The routes can be grouped by destination. A shared junction does not settle which routes belong together."
+      }
+    ]
+  },
+  "session_id": "inqs_synthetic_branching",
+  "stages": [],
+  "state": "framing",
+  "stop_reason": "",
+  "synthesis": null,
+  "trace": [],
+  "verdicts": [],
+  "why_paused": {}
+}

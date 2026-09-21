@@ -14,6 +14,7 @@ import ArtifactLedger from './ArtifactLedger.jsx';
 import DiagnosisCard from './DiagnosisCard.jsx';
 import SessionExport from './SessionExport.jsx';
 import ScopePanel, { ScopeBadge } from './ScopePanel.jsx';
+import SemanticConstellations from './SemanticConstellations.jsx';
 import { ImageInspectorProvider, ImageRef, ImageAbsences } from './ImageInspector.jsx';
 import { createInquiryClient } from './inquiryClient.js';
 import {
@@ -87,6 +88,17 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
         });
     }, [inquiryClient]);
 
+    useEffect(() => {
+        if (inquiryClient.live === false) return;
+        const id = new URLSearchParams(window.location.search).get('session');
+        if (!id) return;
+        let alive = true;
+        inquiryClient.get(id).then((value) => {
+            if (alive) { setSession(value); listen(id); }
+        }).catch((e) => { if (alive) setError(e.message); });
+        return () => { alive = false; };
+    }, [inquiryClient, listen]);
+
     const start = useCallback(async (input) => {
         setBusy(true);
         setError('');
@@ -95,6 +107,8 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
             const first = await inquiryClient.start(input);
             if (!first?.session_id) throw new Error('The inquiry did not come back with an id.');
             setSession(first);
+            if (inquiryClient.live !== false)
+                window.history.replaceState(null, '', `?session=${encodeURIComponent(first.session_id)}`);
             listen(first.session_id);
         } catch (e) {
             // THE PRODUCTION UNAVAILABLE STATE, and the one place it would be tempting to fall
@@ -151,6 +165,7 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
         unwatch.current?.();
         unwatch.current = null;
         setSession(null);
+        window.history.replaceState(null, '', window.location.pathname);
         setError('');
         setConflict(null);
     };
@@ -229,6 +244,14 @@ export default function InquiryWorkbenchPage({ client = null, corpusClient = nul
                 result before the bound reads a short answer as a finding about the images. This
                 renders nothing at all on a full-coverage run. */}
             <ScopePanel session={session} />
+
+            <SemanticConstellations session={session}
+                onRefresh={async () => setSession(await inquiryClient.get(session.session_id))}
+                onWrite={async (action, body, cid) => {
+                    const next = await inquiryClient.writeThought(session.session_id, action, body, cid);
+                    setSession(next);
+                    if (action === 'continue') listen(session.session_id);
+                }} />
 
             <ProvisionalReading reading={session.graph.reading} />
             <ClaimBlocks
@@ -331,7 +354,7 @@ export function SessionHeader({ session, working = false }) {
 
             {/* Byte-identical, and not editable here. The compiler's source spans index into this
                 exact string. */}
-            <p className="iw-session-prompt">{session.graph.prompt}</p>
+            <p className="iw-session-prompt">{session.graph.prompt || session.prompt}</p>
 
             {session.graph.image_refs.length ? (
                 <ul className="iw-session-images">

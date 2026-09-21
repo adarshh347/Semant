@@ -39,6 +39,10 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.schemas.inquiry_interaction import InteractionMode
+from backend.schemas.semantic_constellation import (
+    SemanticConstellations, ThoughtWrite, ReviewWrite, PreparationWrite,
+)
+from backend.services.inquiry_session import constellations
 from backend.services.inquiry_session import (coordinator, corpus, driver, runtime, steps, store,
                                               view)
 from backend.services.inquiry_interaction import InteractionConflict, WrongSession
@@ -81,6 +85,7 @@ class StartInquiry(BaseModel):
     #: not enabled it is REFUSED (422); it is never quietly served as `full`, and `full` is never
     #: quietly upgraded. See `semantic_compilation.scope`.
     execution_scope: str = Field(default="full")
+    prepare_thought: bool = False
 
     def selected(self) -> List[str]:
         seen: List[str] = []
@@ -200,8 +205,8 @@ async def start_inquiry(request: StartInquiry) -> Dict[str, Any]:
     leaves a real session saying so, rather than leaving nothing at all and a 500 the person cannot
     reopen.
     """
-    prompt = request.prompt.strip()
-    if not prompt:
+    prompt = request.prompt if request.prepare_thought else request.prompt.strip()
+    if not prompt.strip():
         raise HTTPException(status_code=422, detail="an inquiry needs a question")
     selected = request.selected()
     if not selected:
@@ -239,6 +244,9 @@ async def start_inquiry(request: StartInquiry) -> Dict[str, Any]:
 
     session = coordinator.new_session(prompt=prompt, refs=refs, mode=mode,
                                       execution_scope=execution_scope.value)
+    if request.prepare_thought:
+        session = session.model_copy(update={"semantic_constellations":
+            SemanticConstellations(preparation="prompt")})
     await corpus.assert_unchanged(session.posts)
     await store.create(session)
 
@@ -247,7 +255,8 @@ async def start_inquiry(request: StartInquiry) -> Dict[str, Any]:
     # back. 002R watched `Starting…` for the length of a four-image reading because the frontend
     # could not subscribe to the stream until this handler returned — which made its progress state
     # structurally incapable of showing progress, however it was written.
-    driver.schedule(session.session_id, _stages())
+    if not request.prepare_thought:
+        driver.schedule(session.session_id, _stages())
     return JSONResponse(status_code=202, content=_view(session))
 
 
@@ -285,6 +294,7 @@ def _features() -> Dict[str, Any]:
     applies one object along.
     """
     return {
+        "semantic_constellations": {"available": True, "schema_version": "semantic-constellations.v1"},
         "scoped_rehearsal": {
             "available": scope_mod.feature_enabled(),
             "scopes": [s.value for s in scope_mod.ExecutionScope],
@@ -293,6 +303,54 @@ def _features() -> Dict[str, Any]:
                        "subset. It is not a complete reading and cannot report one."),
         },
     }
+
+
+# ── human-owned semantic records ─────────────────────────────────────────────
+
+async def _thought_write(session_id, body, operation):
+    session = await _load(session_id)
+    if body.expected_checkpoint != session.checkpoint:
+        raise HTTPException(409, detail="session changed; refresh before saving this thought")
+    try:
+        advanced = operation(session)
+    except ValueError as exc:
+        raise HTTPException(422, detail=str(exc)) from None
+    advanced = advanced.model_copy(update={"checkpoint": session.checkpoint + 1})
+    await corpus.assert_unchanged(session.posts)
+    try:
+        await store.save(advanced, expected_checkpoint=session.checkpoint)
+    except store.SessionWriteFailed as exc:
+        raise HTTPException(409, detail=str(exc)) from None
+    return advanced
+
+
+@router.post("/{session_id}/constellations")
+async def create_constellation(session_id: str, body: ThoughtWrite):
+    return _view(await _thought_write(session_id, body, lambda s: constellations.capture(
+        s, body.thought, at=store.utc_now(), expected_revision=body.expected_constellation_revision)))
+
+
+@router.put("/{session_id}/constellations/{constellation_id}")
+async def revise_constellation(session_id: str, constellation_id: str, body: ThoughtWrite):
+    return _view(await _thought_write(session_id, body, lambda s: constellations.capture(
+        s, body.thought, at=store.utc_now(), constellation_id=constellation_id,
+        expected_revision=body.expected_constellation_revision)))
+
+
+@router.post("/{session_id}/constellations/{constellation_id}/review")
+async def review_constellation(session_id: str, constellation_id: str, body: ReviewWrite):
+    return _view(await _thought_write(session_id, body, lambda s: constellations.review(
+        s, constellation_id, body, at=store.utc_now())))
+
+
+@router.post("/{session_id}/preparation/continue")
+async def continue_thought_preparation(session_id: str, body: PreparationWrite):
+    session = await _load(session_id)
+    if _busy(session_id, session):
+        raise HTTPException(409, detail="driver is still settling the preparation checkpoint")
+    advanced = await _thought_write(session_id, body, constellations.continue_preparation)
+    driver.schedule(session_id, _stages())
+    return _view(advanced)
 
 
 # ── answer ───────────────────────────────────────────────────────────────────
@@ -334,7 +392,9 @@ async def answer_inquiry(session_id: str, body: DecisionBody) -> Dict[str, Any]:
         _raise_conflict(exc, session, submitted)
         raise  # unreachable; `_raise_conflict` always raises. Kept so the type is honest.
 
-    await _persist(advanced, expected_revision=session.revision)
+    advanced = advanced.model_copy(update={"checkpoint": session.checkpoint + 1})
+    await _persist(advanced, expected_revision=session.revision,
+                   expected_checkpoint=session.checkpoint)
     # The remaining stages run off the request for the same reason the first ones do.
     driver.schedule(session_id, stages)
     return _view(advanced)
@@ -385,7 +445,8 @@ async def _load(session_id: str):
         raise HTTPException(status_code=404, detail=f"no inquiry session {session_id!r}") from None
 
 
-async def _persist(session, *, expected_revision: Optional[int]) -> None:
+async def _persist(session, *, expected_revision: Optional[int],
+                   expected_checkpoint: Optional[int] = None) -> None:
     """Re-check the corpus, then write. In that order, and never the reverse.
 
     A session that mutated a post and put it back would pass an end-to-end comparison and fail this
@@ -401,7 +462,8 @@ async def _persist(session, *, expected_revision: Optional[int]) -> None:
                               f"written; an inquiry that altered its own corpus is not a reading "
                               f"of it."}) from None
     try:
-        await store.save(session, expected_revision=expected_revision)
+        await store.save(session, expected_revision=expected_revision,
+                         expected_checkpoint=expected_checkpoint)
     except store.SessionWriteFailed as exc:
         raise HTTPException(status_code=409, detail={
             "error": "stale_session_write", "recoverable": True, "detail": str(exc)}) from None
