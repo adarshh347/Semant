@@ -1,0 +1,34 @@
+{
+  "schema_version": "semantic-constellation.v1",
+  "session_extension": "semantic_constellations",
+  "extension_version": "semantic-constellations.v1",
+  "json_schema": "samples/semantic-constellations.schema.json",
+  "identity": "scon_<12 hex>, keyed on session and creation ordinal; edits keep the ID",
+  "revision": "1-based append-only history; references MUST include session_id, constellation_id and revision",
+  "migration": "Optional independently versioned extension on session v1/v2. No read-time database migration. Absent means not recorded, never no coherent thought.",
+  "graph_pin": "Existing inquiry_interaction.graph_hash plus graph_id, graph schema, inquiry_id, session revision and checkpoint; a changed hash is stale and is never rebound on read.",
+  "source_spans": "Half-open Unicode code point offsets into the exact stored prompt or reading block. Server verifies origin, source identity, exact text and source SHA-256. No source-unit ID is minted before compilation.",
+  "preparation": ["not_requested", "prompt", "reading", "compiler", "released"],
+  "preservation": ["not_assessed", "preserved", "partly_preserved", "lost", "unclear"],
+  "candidate_reasons": ["source_atom_lineage", "immediate_graph_neighbour"],
+  "pilot_limit": 8,
+  "limits": [
+    "Semantic session object, not a Differential constellation Ground or perceptual artifact.",
+    "The organising question is human-authored or human-confirmed; no added model pass.",
+    "A model reading block can be anchored only after it exists.",
+    "Captures or content edits after compiler entry are retrospective. Earlier captures remain in history.",
+    "Shared ancestry proposes structural membership only; no lexical similarity or invented relation.",
+    "All candidate IDs and the full count survive overflow. Human confirmation is limited to eight claims; narrowing is explicit.",
+    "Membership, judgment and graph evidence status are independent. No human review edits model claims.",
+    "Perceptual questions are non-executable. Recognition is interpretation; chromatic/flow claims remain capability gaps."
+  ],
+  "routes": {
+    "create": "POST /api/v1/inquiries/{session_id}/constellations",
+    "revise": "PUT /api/v1/inquiries/{session_id}/constellations/{constellation_id}",
+    "review": "POST /api/v1/inquiries/{session_id}/constellations/{constellation_id}/review",
+    "continue": "POST /api/v1/inquiries/{session_id}/preparation/continue",
+    "read_export": "GET /api/v1/inquiries/{session_id}"
+  },
+  "concurrency": "Every human write requires expected_checkpoint; revision writes also require expected_constellation_revision. Human writes increment checkpoint. Driver terminal writes preserve the latest human-owned extension under CAS and lease checks.",
+  "downstream": "C/D consume a pinned history revision, anchors/authorship, organising question, alternatives, inspection.graph, candidate versus confirmed refs, missing_links, limits and judgment. Never infer human ratification from reference coverage or a successful request."
+}

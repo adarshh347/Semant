@@ -247,11 +247,17 @@ def _run_framer(session, stages, ledger, at, started_at):
 
 def _run_theorist(session, stages, ledger, at, started_at):
     advanced, _ = coordinator._read(session, stages, ledger, at)
+    ext = advanced.semantic_constellations
+    if ext and ext.preparation == "reading":
+        advanced = advanced.model_copy(update={"semantic_constellations": ext.model_copy(
+            update={"preparation": "compiler"})})
     return _stamp(advanced, ledger, started_at)
 
 
 def _run_compiler(session, stages, ledger, at, started_at):
+    from .constellations import reconcile
     advanced = coordinator._compile(session, coordinator.reading_of(session), stages, ledger, at)
+    advanced = reconcile(advanced, at=stages.clock())
     return _stamp(advanced, ledger, started_at)
 
 

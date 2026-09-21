@@ -28,6 +28,8 @@
  * no badge, gate or affirmative claim is keyed on a value we could not place.
  */
 
+import { normalizeConstellations } from './semanticConstellationContract';
+
 // ── the session lifecycle ────────────────────────────────────────────────────
 
 export const SESSION_STATES = [
@@ -1412,6 +1414,7 @@ export function normalizeFeatures(raw) {
     const scoped = v.scoped_rehearsal && typeof v.scoped_rehearsal === 'object'
         ? v.scoped_rehearsal : {};
     return {
+        semantic_constellations: { available: v.semantic_constellations?.available === true },
         scoped_rehearsal: {
             available: scoped.available === true,
             scopes: arr(scoped.scopes).map(String),
@@ -1432,6 +1435,9 @@ export function normalizeSession(raw) {
         // The optimistic-concurrency token. Null rather than 0 when absent: sending 0 as an
         // expected revision would be asserting a version the server never issued.
         revision: numOrNull(v.revision),
+        checkpoint: numOrNull(v.checkpoint),
+        prompt: str(v.prompt),
+        semantic_constellations: normalizeConstellations(v.semantic_constellations),
         state: enumField(v.state, SESSION_STATES),
         mode: enumField(v.mode, INTERACTION_MODES),
         // Beside the state, because that is where it is rendered and where a reader looks.
@@ -1546,10 +1552,10 @@ export function canStartInquiry({ imageIds = [], prompt = '' } = {}) {
 }
 
 export function startInquiryBody({
-    imageIds = [], prompt = '', mode = DEFAULT_MODE, executionScope = 'full',
+    imageIds = [], prompt = '', mode = DEFAULT_MODE, executionScope = 'full', prepareThought = false,
 } = {}) {
     return {
-        prompt: str(prompt).trim(),
+        prompt: prepareThought ? str(prompt) : str(prompt).trim(),
         image_ids: arr(imageIds).map(String),
         mode: INTERACTION_MODES.includes(mode) ? mode : DEFAULT_MODE,
         // SENT ALWAYS, including `full`. The server's default is `full` either way, and sending it
@@ -1558,6 +1564,7 @@ export function startInquiryBody({
         // value is NOT coerced: the server refuses it visibly, and quietly rewriting it here would
         // put the fallback this whole contract forbids inside the client instead.
         execution_scope: str(executionScope) || 'full',
+        ...(prepareThought ? { prepare_thought: true } : {}),
     };
 }
 

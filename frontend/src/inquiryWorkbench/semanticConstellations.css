@@ -1,0 +1,28 @@
+.iw-thought { display: grid; gap: var(--space-4); }
+.iw-thought-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); }
+.iw-thought-record { padding-block: var(--space-6); border-top: 1px solid var(--line); }
+.iw-thought-form { display: grid; gap: var(--space-3); padding-block: var(--space-4); }
+.iw-thought label { display: grid; gap: var(--space-2); font-size: var(--fs-small); }
+.iw-thought input, .iw-thought select, .iw-thought textarea {
+    width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--line);
+    border-radius: var(--radius-md); color: var(--ink); background: var(--surface);
+    font: inherit;
+}
+.iw-thought textarea { min-height: var(--space-16); resize: vertical; }
+.iw-thought input:hover, .iw-thought select:hover, .iw-thought textarea:hover { border-color: var(--ink-muted); }
+.iw-thought input:focus-visible, .iw-thought select:focus-visible, .iw-thought textarea:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: var(--space-1);
+}
+.iw-thought input:active, .iw-thought select:active, .iw-thought textarea:active { border-color: var(--accent); }
+.iw-thought :disabled { opacity: 0.5; cursor: not-allowed; }
+.iw-thought blockquote { margin: var(--space-3) 0; padding: var(--space-4); background: var(--surface-2); white-space: pre-wrap; }
+.iw-thought figure { margin: 0; }
+.iw-thought figcaption, .iw-thought code { color: var(--ink-muted); overflow-wrap: anywhere; }
+.iw-thought-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.iw-thought-candidate { margin-block: var(--space-4); padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.iw-thought-ref { display: inline-block; margin: var(--space-1); color: var(--accent); overflow-wrap: anywhere; }
+.iw-thought-ref:hover { text-decoration: underline; }
+.iw-thought-ref:focus-visible { outline: 2px solid var(--accent); }
+.iw-thought-ref:active { color: var(--ink); }
+.iw-thought-reference pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: var(--space-4); background: var(--surface-2); }
+@media (max-width: 760px) { .iw-thought-columns { grid-template-columns: 1fr; } }

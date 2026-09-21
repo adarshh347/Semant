@@ -1,0 +1,721 @@
+{
+  "amendments": [],
+  "capability_receipts": [],
+  "changed_refs": [],
+  "checkpoint": 0,
+  "decision_records": [],
+  "decision_requests": [],
+  "deployment": {
+    "declared": true,
+    "detail": "Synthetic stored dissolution output. No model or measurement ran.",
+    "kind": "fixture",
+    "reachable": null,
+    "stages": {}
+  },
+  "error": "",
+  "evidence": [],
+  "execution_scope": {
+    "allowance_tokens": null,
+    "atoms_not_investigated": 0,
+    "claims_not_investigated": 0,
+    "deferred_source_units": 0,
+    "exclusions": [],
+    "full_coverage": true,
+    "mode": "full",
+    "notes": [],
+    "operationalizer_batches_allowed": null,
+    "operationalizer_batches_sent": null,
+    "purpose": "",
+    "reconciliation_rounds_allowed": null,
+    "reconciliation_rounds_sent": null,
+    "recorded": false,
+    "relation_batches_allowed": null,
+    "relation_batches_sent": null,
+    "scope_version": "",
+    "selected_atoms": 0,
+    "selected_claims": 0,
+    "selected_source_units": 0,
+    "selection_producer": ""
+  },
+  "frame": {},
+  "gaps": [],
+  "graph": {
+    "claim_edges": [
+      {
+        "edge_id": "cle_2149acfd05ec",
+        "from_claim": "clm_1b1bd5f39336",
+        "kind": "complicates",
+        "note": "synthetic frozen relation; no claim of semantic preservation",
+        "relation": "complicates",
+        "to_claim": "clm_8fc16f8c715e"
+      }
+    ],
+    "claims": [
+      {
+        "author": "model",
+        "claim_id": "clm_8fc16f8c715e",
+        "claim_kind": "interpretation",
+        "confidence": null,
+        "epistemic_demand": "interpretive",
+        "image_scope": [
+          "corpus"
+        ],
+        "inferred_from": [],
+        "kind": "interpretation",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": 37,
+          "origin": "prompt",
+          "source_id": "prompt",
+          "start": 0,
+          "text": "Separate marks have broken boundaries"
+        },
+        "source_spans": [
+          {
+            "end": 37,
+            "origin": "prompt",
+            "source_id": "prompt",
+            "start": 0,
+            "text": "Separate marks have broken boundaries"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "",
+        "text": "Separate marks have broken boundaries",
+        "vocabulary": ""
+      },
+      {
+        "author": "model",
+        "claim_id": "clm_1b1bd5f39336",
+        "claim_kind": "interpretation",
+        "confidence": null,
+        "epistemic_demand": "interpretive",
+        "image_scope": [
+          "corpus"
+        ],
+        "inferred_from": [],
+        "kind": "interpretation",
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "source_span": {
+          "end": 69,
+          "origin": "prompt",
+          "source_id": "prompt",
+          "start": 39,
+          "text": "Together they suggest a flower"
+        },
+        "source_spans": [
+          {
+            "end": 69,
+            "origin": "prompt",
+            "source_id": "prompt",
+            "start": 39,
+            "text": "Together they suggest a flower"
+          }
+        ],
+        "status": "interpretive",
+        "subject": "",
+        "text": "Together they suggest a flower",
+        "vocabulary": ""
+      }
+    ],
+    "coverage": [
+      {
+        "coverage_id": "cov_2ac528f8c781",
+        "disposition": "represented_by",
+        "reason": "",
+        "refs": [
+          "atm_77af8f215aff"
+        ],
+        "source_unit_id": "su_bce8163a3dac"
+      },
+      {
+        "coverage_id": "cov_b675c4510b22",
+        "disposition": "represented_by",
+        "reason": "",
+        "refs": [
+          "atm_5ddfdb040674"
+        ],
+        "source_unit_id": "su_93d677565ab3"
+      },
+      {
+        "coverage_id": "cov_c377bc86a661",
+        "disposition": "represented_by",
+        "reason": "",
+        "refs": [
+          "atm_004be0a8822a"
+        ],
+        "source_unit_id": "su_206895f21e1c"
+      }
+    ],
+    "coverage_summary": {
+      "by_disposition": {
+        "represented_by": 3
+      },
+      "complete": true,
+      "disposed": 3,
+      "lost": [],
+      "lost_count": 0,
+      "reading_units": 0,
+      "represented": 3,
+      "source_units": 3,
+      "user_units": 3
+    },
+    "execution_scope": null,
+    "graph_id": "sig_4f69b1acb501",
+    "image_refs": [],
+    "inquiry_id": "inq_synthetic_flower",
+    "notes": [],
+    "observables": [],
+    "passes": [],
+    "prompt": "Separate marks have broken boundaries. Together they suggest a flower. The relation between separation and recognition remains uncertain.",
+    "provenance": {
+      "compiled_at": "2026-09-19T00:00:00+00:00",
+      "compiler": null,
+      "compiler_kind": "fixture",
+      "contract_version": "semantic-inquiry-graph.v2",
+      "inquiry_frame_schema_version": "",
+      "notes": [],
+      "producer": "synthetic-constellation-fixture",
+      "prompt_sha256": "synthetic",
+      "theorist": null
+    },
+    "reading": {
+      "blocks": [],
+      "model": "",
+      "provenance": {},
+      "source": "",
+      "status": "",
+      "text": ""
+    },
+    "refusals": [],
+    "schema_version": "semantic-inquiry-graph.v2",
+    "semantic_atoms": [
+      {
+        "atom_id": "atm_77af8f215aff",
+        "author": "user",
+        "epistemic_ceiling": "interpretive",
+        "image_refs": [],
+        "image_scope": [
+          "corpus"
+        ],
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "provenance": {},
+        "quotes": [
+          "Separate marks have broken boundaries"
+        ],
+        "source_unit_ids": [
+          "su_bce8163a3dac"
+        ],
+        "subject": "",
+        "text": "Separate marks have broken boundaries",
+        "unit_kind": "interpretation"
+      },
+      {
+        "atom_id": "atm_5ddfdb040674",
+        "author": "user",
+        "epistemic_ceiling": "interpretive",
+        "image_refs": [],
+        "image_scope": [
+          "corpus"
+        ],
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "provenance": {},
+        "quotes": [
+          "Together they suggest a flower"
+        ],
+        "source_unit_ids": [
+          "su_93d677565ab3"
+        ],
+        "subject": "",
+        "text": "Together they suggest a flower",
+        "unit_kind": "interpretation"
+      },
+      {
+        "atom_id": "atm_004be0a8822a",
+        "author": "user",
+        "epistemic_ceiling": "interpretive",
+        "image_refs": [],
+        "image_scope": [
+          "corpus"
+        ],
+        "note": "",
+        "object": "",
+        "predicate": "",
+        "provenance": {},
+        "quotes": [
+          "The relation between separation and recognition remains uncertain"
+        ],
+        "source_unit_ids": [
+          "su_206895f21e1c"
+        ],
+        "subject": "",
+        "text": "The relation between separation and recognition remains uncertain",
+        "unit_kind": "interpretation"
+      }
+    ],
+    "semantic_remainder": [],
+    "source_units": [
+      {
+        "author": "user",
+        "block_kind": "",
+        "end": 37,
+        "exact_quote": "Separate marks have broken boundaries",
+        "image_refs": [],
+        "kind": "prompt_clause",
+        "note": "",
+        "ordinal": 0,
+        "source_ref": "prompt",
+        "source_type": "prompt_clause",
+        "source_unit_id": "su_bce8163a3dac",
+        "span": [
+          0,
+          37
+        ],
+        "start": 0
+      },
+      {
+        "author": "user",
+        "block_kind": "",
+        "end": 69,
+        "exact_quote": "Together they suggest a flower",
+        "image_refs": [],
+        "kind": "prompt_clause",
+        "note": "",
+        "ordinal": 1,
+        "source_ref": "prompt",
+        "source_type": "prompt_clause",
+        "source_unit_id": "su_93d677565ab3",
+        "span": [
+          39,
+          69
+        ],
+        "start": 39
+      },
+      {
+        "author": "user",
+        "block_kind": "",
+        "end": 136,
+        "exact_quote": "The relation between separation and recognition remains uncertain",
+        "image_refs": [],
+        "kind": "prompt_clause",
+        "note": "",
+        "ordinal": 2,
+        "source_ref": "prompt",
+        "source_type": "prompt_clause",
+        "source_unit_id": "su_206895f21e1c",
+        "span": [
+          71,
+          136
+        ],
+        "start": 71
+      }
+    ]
+  },
+  "inquiry_id": "inq_synthetic_flower",
+  "mode": "consult",
+  "posts": [],
+  "prompt": "Separate marks have broken boundaries. Together they suggest a flower. The relation between separation and recognition remains uncertain.",
+  "provenance": {
+    "compiler_model": null,
+    "composer_model": null,
+    "created_at": null,
+    "frame_hash": "",
+    "frame_producer": "",
+    "graph_hash": "",
+    "mode": "",
+    "notes": [],
+    "producer": "inquiry_session/coordinator-v1",
+    "prompt_sha256": "",
+    "theorist_model": null,
+    "updated_at": null
+  },
+  "refusals": [],
+  "revision": 0,
+  "schema_version": "semantic-inquiry-session.v2",
+  "semantic_constellations": {
+    "current": [
+      {
+        "alternatives": [
+          {
+            "alternative_id": "alt_63d323f1f1a6",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The elements sustain a joint reading"
+          },
+          {
+            "alternative_id": "alt_0aa063e840a2",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The grouping remains ambiguous"
+          }
+        ],
+        "alternatives_exhaustive": false,
+        "alternatives_mutually_exclusive": false,
+        "anchors": [
+          {
+            "author": "user",
+            "exact_text": "Separate marks have broken boundaries. Together they suggest a flower. The relation between separation and recognition remains uncertain.",
+            "image_refs": [],
+            "origin": "user_prompt",
+            "source_id": "prompt",
+            "source_sha256": "3ea3e2d72f60b2b9bf66266205763a82fe0697a687f4b6addbd391b5759ed3f5",
+            "span": [
+              0,
+              137
+            ]
+          }
+        ],
+        "authorship": {
+          "actor": "fixture-author",
+          "kind": "human",
+          "source_ref": ""
+        },
+        "captured_checkpoint": 0,
+        "central_tension": "",
+        "confirmed_by": "fixture-author",
+        "confirmed_claim_refs": [],
+        "confirmed_edge_refs": [],
+        "constellation_id": "scon_c860558caff4",
+        "created_at": "2026-09-19T00:00:00+00:00",
+        "graph_stale": false,
+        "inquiry_id": "inq_synthetic_flower",
+        "inspection": {
+          "candidate_count": 2,
+          "candidate_edge_refs": [
+            "cle_2149acfd05ec"
+          ],
+          "candidates": [
+            {
+              "atom_refs": [
+                "atm_5ddfdb040674"
+              ],
+              "claim_ref": "clm_1b1bd5f39336",
+              "image_refs": [],
+              "inference_refs": [],
+              "reason": "source_atom_lineage",
+              "source_unit_refs": [
+                "su_93d677565ab3"
+              ],
+              "via_edge_refs": []
+            },
+            {
+              "atom_refs": [
+                "atm_77af8f215aff"
+              ],
+              "claim_ref": "clm_8fc16f8c715e",
+              "image_refs": [],
+              "inference_refs": [],
+              "reason": "source_atom_lineage",
+              "source_unit_refs": [
+                "su_bce8163a3dac"
+              ],
+              "via_edge_refs": []
+            }
+          ],
+          "graph": {
+            "checkpoint": 0,
+            "graph_hash": "sig_86aa93939aebe4ea",
+            "graph_id": "sig_4f69b1acb501",
+            "inquiry_id": "inq_synthetic_flower",
+            "schema_version": "semantic-inquiry-graph.v2",
+            "session_revision": 0
+          },
+          "missing_links": [
+            "atom_without_claim:atm_004be0a8822a"
+          ],
+          "narrowing_required": false,
+          "pilot_limit": 8,
+          "producer": "semantic_constellation/lineage-v1",
+          "source_unit_refs": [
+            "su_206895f21e1c",
+            "su_93d677565ab3",
+            "su_bce8163a3dac"
+          ]
+        },
+        "judgment": {
+          "assessed_by": null,
+          "at": null,
+          "next_investigation": "",
+          "note": "",
+          "recovered_thought": "",
+          "value": "not_assessed"
+        },
+        "limits": [
+          "Shared ancestry is a structural candidate, not demonstrated semantic coherence.",
+          "Human membership and preservation judgments do not strengthen evidence status.",
+          "Recognition and aesthetic bearing require separately attributed interpretation.",
+          "Chromatic and flow claims are capability gaps in this Extent/Topology pilot."
+        ],
+        "membership_reviewed_by": null,
+        "organising_question": "How can separate marks suggest a flower while their boundaries remain broken?",
+        "perceptual_questions": [],
+        "perceptual_questions_executable": false,
+        "perceptual_relevance": "",
+        "previous_revision": 1,
+        "rejected_claim_refs": [],
+        "rejected_edge_refs": [],
+        "revised_at": "2026-09-19T00:00:00+00:00",
+        "revision": 2,
+        "revision_actor": "semantic_constellation/lineage-v1",
+        "revision_reason": "inspection",
+        "schema_version": "semantic-constellation.v1",
+        "session_id": "inqs_synthetic_flower",
+        "status": "reviewed",
+        "timing": "before_compilation"
+      }
+    ],
+    "history": [
+      {
+        "alternatives": [
+          {
+            "alternative_id": "alt_63d323f1f1a6",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The elements sustain a joint reading"
+          },
+          {
+            "alternative_id": "alt_0aa063e840a2",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The grouping remains ambiguous"
+          }
+        ],
+        "alternatives_exhaustive": false,
+        "alternatives_mutually_exclusive": false,
+        "anchors": [
+          {
+            "author": "user",
+            "exact_text": "Separate marks have broken boundaries. Together they suggest a flower. The relation between separation and recognition remains uncertain.",
+            "image_refs": [],
+            "origin": "user_prompt",
+            "source_id": "prompt",
+            "source_sha256": "3ea3e2d72f60b2b9bf66266205763a82fe0697a687f4b6addbd391b5759ed3f5",
+            "span": [
+              0,
+              137
+            ]
+          }
+        ],
+        "authorship": {
+          "actor": "fixture-author",
+          "kind": "human",
+          "source_ref": ""
+        },
+        "captured_checkpoint": 0,
+        "central_tension": "",
+        "confirmed_by": "fixture-author",
+        "confirmed_claim_refs": [],
+        "confirmed_edge_refs": [],
+        "constellation_id": "scon_c860558caff4",
+        "created_at": "2026-09-19T00:00:00+00:00",
+        "inquiry_id": "inq_synthetic_flower",
+        "inspection": null,
+        "judgment": {
+          "assessed_by": null,
+          "at": null,
+          "next_investigation": "",
+          "note": "",
+          "recovered_thought": "",
+          "value": "not_assessed"
+        },
+        "limits": [
+          "Shared ancestry is a structural candidate, not demonstrated semantic coherence.",
+          "Human membership and preservation judgments do not strengthen evidence status.",
+          "Recognition and aesthetic bearing require separately attributed interpretation.",
+          "Chromatic and flow claims are capability gaps in this Extent/Topology pilot."
+        ],
+        "membership_reviewed_by": null,
+        "organising_question": "How can separate marks suggest a flower while their boundaries remain broken?",
+        "perceptual_questions": [],
+        "perceptual_questions_executable": false,
+        "perceptual_relevance": "",
+        "previous_revision": null,
+        "rejected_claim_refs": [],
+        "rejected_edge_refs": [],
+        "revised_at": "2026-09-19T00:00:00+00:00",
+        "revision": 1,
+        "revision_actor": "fixture-author",
+        "revision_reason": "capture",
+        "schema_version": "semantic-constellation.v1",
+        "session_id": "inqs_synthetic_flower",
+        "status": "reviewed",
+        "timing": "before_compilation"
+      },
+      {
+        "alternatives": [
+          {
+            "alternative_id": "alt_63d323f1f1a6",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The elements sustain a joint reading"
+          },
+          {
+            "alternative_id": "alt_0aa063e840a2",
+            "authorship": {
+              "actor": "fixture-author",
+              "kind": "human",
+              "source_ref": ""
+            },
+            "text": "The grouping remains ambiguous"
+          }
+        ],
+        "alternatives_exhaustive": false,
+        "alternatives_mutually_exclusive": false,
+        "anchors": [
+          {
+            "author": "user",
+            "exact_text": "Separate marks have broken boundaries. Together they suggest a flower. The relation between separation and recognition remains uncertain.",
+            "image_refs": [],
+            "origin": "user_prompt",
+            "source_id": "prompt",
+            "source_sha256": "3ea3e2d72f60b2b9bf66266205763a82fe0697a687f4b6addbd391b5759ed3f5",
+            "span": [
+              0,
+              137
+            ]
+          }
+        ],
+        "authorship": {
+          "actor": "fixture-author",
+          "kind": "human",
+          "source_ref": ""
+        },
+        "captured_checkpoint": 0,
+        "central_tension": "",
+        "confirmed_by": "fixture-author",
+        "confirmed_claim_refs": [],
+        "confirmed_edge_refs": [],
+        "constellation_id": "scon_c860558caff4",
+        "created_at": "2026-09-19T00:00:00+00:00",
+        "inquiry_id": "inq_synthetic_flower",
+        "inspection": {
+          "candidate_count": 2,
+          "candidate_edge_refs": [
+            "cle_2149acfd05ec"
+          ],
+          "candidates": [
+            {
+              "atom_refs": [
+                "atm_5ddfdb040674"
+              ],
+              "claim_ref": "clm_1b1bd5f39336",
+              "image_refs": [],
+              "inference_refs": [],
+              "reason": "source_atom_lineage",
+              "source_unit_refs": [
+                "su_93d677565ab3"
+              ],
+              "via_edge_refs": []
+            },
+            {
+              "atom_refs": [
+                "atm_77af8f215aff"
+              ],
+              "claim_ref": "clm_8fc16f8c715e",
+              "image_refs": [],
+              "inference_refs": [],
+              "reason": "source_atom_lineage",
+              "source_unit_refs": [
+                "su_bce8163a3dac"
+              ],
+              "via_edge_refs": []
+            }
+          ],
+          "graph": {
+            "checkpoint": 0,
+            "graph_hash": "sig_86aa93939aebe4ea",
+            "graph_id": "sig_4f69b1acb501",
+            "inquiry_id": "inq_synthetic_flower",
+            "schema_version": "semantic-inquiry-graph.v2",
+            "session_revision": 0
+          },
+          "missing_links": [
+            "atom_without_claim:atm_004be0a8822a"
+          ],
+          "narrowing_required": false,
+          "pilot_limit": 8,
+          "producer": "semantic_constellation/lineage-v1",
+          "source_unit_refs": [
+            "su_206895f21e1c",
+            "su_93d677565ab3",
+            "su_bce8163a3dac"
+          ]
+        },
+        "judgment": {
+          "assessed_by": null,
+          "at": null,
+          "next_investigation": "",
+          "note": "",
+          "recovered_thought": "",
+          "value": "not_assessed"
+        },
+        "limits": [
+          "Shared ancestry is a structural candidate, not demonstrated semantic coherence.",
+          "Human membership and preservation judgments do not strengthen evidence status.",
+          "Recognition and aesthetic bearing require separately attributed interpretation.",
+          "Chromatic and flow claims are capability gaps in this Extent/Topology pilot."
+        ],
+        "membership_reviewed_by": null,
+        "organising_question": "How can separate marks suggest a flower while their boundaries remain broken?",
+        "perceptual_questions": [],
+        "perceptual_questions_executable": false,
+        "perceptual_relevance": "",
+        "previous_revision": 1,
+        "rejected_claim_refs": [],
+        "rejected_edge_refs": [],
+        "revised_at": "2026-09-19T00:00:00+00:00",
+        "revision": 2,
+        "revision_actor": "semantic_constellation/lineage-v1",
+        "revision_reason": "inspection",
+        "schema_version": "semantic-constellation.v1",
+        "session_id": "inqs_synthetic_flower",
+        "status": "reviewed",
+        "timing": "before_compilation"
+      }
+    ],
+    "paused": false,
+    "preparation": "not_requested",
+    "recorded": true,
+    "schema_version": "semantic-constellations.v1",
+    "sources": [
+      {
+        "author": "user",
+        "image_refs": [],
+        "origin": "user_prompt",
+        "source_id": "prompt",
+        "text": "Separate marks have broken boundaries. Together they suggest a flower. The relation between separation and recognition remains uncertain."
+      }
+    ]
+  },
+  "session_id": "inqs_synthetic_flower",
+  "stages": [],
+  "state": "framing",
+  "stop_reason": "",
+  "synthesis": null,
+  "trace": [],
+  "verdicts": [],
+  "why_paused": {}
+}

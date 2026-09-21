@@ -37,6 +37,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from backend.schemas.inquiry_stage import (StageAttempt, StageAttemptOutcome, StageName,
                                            UNDERPERFORMANCE_OUTCOMES)
+from backend.schemas.semantic_constellation import SemanticConstellations
 
 SCHEMA_VERSION = "semantic-inquiry-session.v2"
 
@@ -308,6 +309,8 @@ class SemanticInquirySession(_Strict):
     #: only once something downstream succeeded in using them.
     reading: Dict[str, Any] = Field(default_factory=dict)
     graph: Dict[str, Any] = Field(default_factory=dict)
+    #: Optional independently versioned extension; None on legacy sessions means not recorded.
+    semantic_constellations: Optional[SemanticConstellations] = None
     interaction: Dict[str, Any] = Field(default_factory=dict)
 
     selected_observable_ref: str = ""
@@ -419,6 +422,9 @@ class SemanticInquirySession(_Strict):
 
     @property
     def state(self) -> str:
+        if self.semantic_constellations and self.semantic_constellations.preparation in (
+                "prompt", "compiler"):
+            return "awaiting_user"
         return str(self.interaction.get("state") or "framing")
 
     @property
