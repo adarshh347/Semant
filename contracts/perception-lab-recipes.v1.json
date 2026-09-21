@@ -443,16 +443,16 @@
           "reads": [
             "find"
           ],
-          "why": "the separable pieces, so the count is of things rather than of proposals"
+          "why": "Inspect disconnected visible components of the measured masks; this does not establish object unity or count real objects."
         },
         {
           "id": "density",
           "kind": "derivation",
           "produces": "extent.density_field",
           "reads": [
-            "pieces"
+            "find"
           ],
-          "why": "one sample per counted member, with the kernel declared. The count is exact; the field is a choice"
+          "why": "One centroid sample per supplied extent instance, not per fragment. The instance count is exact; object recognition is a separate interpretation."
         },
         {
           "id": "ground",
@@ -461,7 +461,7 @@
           "parameters": {
             "max_distance": 0.25
           },
-          "why": "the space the collection leaves, measured by the Topology facade rather than inferred from the density"
+          "why": "Measure the complement of the selected masks over the full image raster domain, independently of density."
         }
       ],
       "bounds": {
@@ -473,7 +473,7 @@
         {
           "when": "no member is found",
           "outcome": "empty",
-          "reason": "the members were counted and the field is everywhere zero. This is not a soft field and not a hard mask of the convex hull"
+          "reason": "The segmentation returned no supplied instances. Preserve the empty result; it does not establish absence of real objects."
         },
         {
           "when": "a member carries neither a mask nor a box",

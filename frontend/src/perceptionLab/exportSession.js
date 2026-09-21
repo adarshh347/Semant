@@ -36,7 +36,7 @@ export const EXPORT_VERSION = 1;
  * two questions an export that carried only one of them would silently conflate.
  */
 export function buildExport({ session, plans = [], runs = [], artifacts = [], reviews = [],
-    derived = null, exported_at, client_identity = 'unknown', note = null }) {
+    derivations = [], derived = null, exported_at, client_identity = 'unknown', note = null }) {
     if (!session) throw new Error('there is no session to export');
     return {
         export_kind: EXPORT_KIND,
@@ -64,6 +64,7 @@ export function buildExport({ session, plans = [], runs = [], artifacts = [], re
         runs,
         artifacts,
         reviews,
+        derivations,
         derived_in_browser: derived
             ? {
                 what_this_is:
@@ -79,6 +80,7 @@ export function buildExport({ session, plans = [], runs = [], artifacts = [], re
             runs: runs.length,
             artifacts: artifacts.length,
             reviews: reviews.length,
+            derivations: derivations.length,
             refusals: artifacts.filter(
                 (a) => a.identity.artifact_kind === 'refusal').length,
         },
@@ -108,6 +110,20 @@ export function verifyExport(bundle) {
     bundle.artifacts.forEach((a, i) => check('PerceptualArtifact', a,
         `artifacts[${i}] ${a.identity?.artifact_id}`));
     bundle.reviews.forEach((r, i) => check('LabReview', r, `reviews[${i}] ${r.review_id}`));
+
+    for (const d of bundle.derivations || []) {
+        const label = `derivation ${d.derivation_id || '(missing id)'}`;
+        if (!d.derivation_id || d.session_id !== bundle.session.session_id
+            || d.source_image_digest !== bundle.session.source.image_digest) {
+            problems.push(`${label}: session/source identity mismatch`);
+        }
+        for (const id of d.input_artifact_ids || []) {
+            if (!bundle.artifacts.some((a) => a.identity.artifact_id === id)) {
+                problems.push(`${label}: missing input artifact ${id}`);
+            }
+        }
+        if (d.identity || d.lifecycle) problems.push(`${label}: derivations are separate from artifacts`);
+    }
 
     // The separation the export exists to preserve, checked rather than assumed.
     for (const artifact of bundle.artifacts) {

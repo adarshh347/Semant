@@ -19,13 +19,13 @@ import { downloadText, serializeStage, snapshotLegend, svgToPngBlob } from '../s
  * word under which a hidden write into Semant would most comfortably hide.
  */
 export default function ExportBar({ session, plans, runs, artifacts, reviews, run, artifact,
-    clientIdentity, stageRef, now }) {
+    clientIdentity, stageRef, now, derivations = [] }) {
     const [status, setStatus] = useState(null);
 
     if (!session) return null;
 
     const bundleInput = {
-        session, plans, runs, artifacts, reviews,
+        session, plans, runs, artifacts, reviews, derivations,
         exported_at: now(),
         client_identity: clientIdentity,
     };

@@ -9,12 +9,12 @@ bandwidth read as a population.
 LANE C REJECTED THE MODEL AND KEPT THE FORM, and this is the route they named: counts from an
 existing extent set, a declared kernel, `counts_are_exact: true`. DAVE and GeCo need exemplars and
 carry research-use terms, and the form does not need a model at all — every member was already
-measured, so the count is not estimated, it is *known*. `admission.producer_for` refuses the
+supplied, so the instance-list count is known. It is not a verified count of real objects. `admission.producer_for` refuses the
 counters with that verdict, and nothing is substituted.
 
 THREE DECLARATIONS THAT ANSWER THREE QUESTIONS, and a single `density` number answers none:
 
-    members_counted   how many entities entered. Exact, because each one is a measured extent
+    members_counted   how many supplied extent instances entered, regardless of recognition
     samples_taken     how many points were placed. One per member, at its centroid
     smoothing         what was applied afterwards, with its method and its bandwidth
 
@@ -32,6 +32,8 @@ Lane A's schema would refuse the pair `blur_of_binary_mask` + `calibrated` anywa
 PURE. No database, no network, no model, no clock, no image.
 """
 from __future__ import annotations
+
+from backend.services.perception_lab.form_parameters import resolve as resolve_parameters
 
 import math
 from dataclasses import dataclass
@@ -125,7 +127,7 @@ def _spread(row: int, col: int, shape: Tuple[int, int], bandwidth: float) -> Lis
     for r in range(h):
         for c in range(w):
             distance = (r - row) ** 2 + (c - col) ** 2
-            weight = math.exp(-distance / two_sigma_squared)
+            weight = (1.0 if distance == 0 else 0.0) if two_sigma_squared == 0 else math.exp(-distance / two_sigma_squared)
             weights[r * w + c] = weight
             total += weight
     return [weight / total for weight in weights]
@@ -137,8 +139,8 @@ def produce_density_field(member_keys: Sequence[str], *, sources: Sequence[SRC.E
     """Count the members, place one point each, and declare what was done afterwards.
 
     `counts_are_exact` IS TRUE AND IT MEANS SOMETHING NARROW. Every member is an extent somebody
-    measured, so the number of them is known rather than estimated — which is precisely the claim
-    a low-shot counter cannot make. It does NOT mean the field is exact: the placement is one
+    supplied, so the number of supplied instances is known. It does not verify the number of
+    real flowers, painted marks or any other named objects. It does NOT mean the field is exact: the placement is one
     point per member and the smoothing is a choice, and both are declared separately for that
     reason.
     """
@@ -146,13 +148,20 @@ def produce_density_field(member_keys: Sequence[str], *, sources: Sequence[SRC.E
     omissions: List[Omission] = list(omitted)
     refusals: List[RefusalRecord] = []
     held = SRC.index(kept) if kept else {}
-    shape = (int(field_shape[0]), int(field_shape[1]))
-    if shape[0] <= 0 or shape[1] <= 0:
+    try:
+        raw = {"field_shape": field_shape, "kernel": kernel.method if kernel.method is not None else "none"}
+        if kernel.bandwidth is not None:
+            raw["bandwidth"] = kernel.bandwidth
+        resolved, ignored = resolve_parameters(FORM, raw)
+        shape = tuple(resolved["field_shape"])
+        kernel = Kernel(resolved["kernel"], resolved["bandwidth"]) if resolved["kernel"] == GAUSSIAN else NO_SMOOTHING
+        omissions.extend(Omission(what=n, reason="ignored_parameter", detail=r) for n, r in ignored)
+    except ValueError as exc:
         refusals.append(RefusalRecord(
             code=RefusalCode.INVALID_PARAMETERS, organ=ORGAN,
-            message=f"a density field of {shape[0]}x{shape[1]} has no cells to count into.",
-            missing=[], remedy="declare a field shape with both dimensions above zero",
-            detail={"form": FORM, "field_shape": list(shape)}))
+            message=str(exc),
+            missing=[], remedy="use the declared shape, kernel and bandwidth bounds",
+            detail={"form": FORM}))
         return produce(FORM, None, basis=basis or EpistemicBasis.MASK, partition=PARTITION,
                        sources=kept, refusals=tuple(refusals), omitted=tuple(omissions))
 

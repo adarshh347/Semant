@@ -1,3 +1,4 @@
+import useStoredField from '../useStoredField';
 import React, { useMemo, useRef, useState } from 'react';
 import useStageGeometry, { useNaturalSize } from '../../differential/useStageGeometry';
 import { ringsToPath } from '../../lib/maskGeometry';
@@ -37,6 +38,7 @@ export default function TopologyStage({ artifact, source, session, byId,
     const relations = useMemo(
         () => projectRelationSet(artifact, byId), [artifact, byId]);
     const wash = useMemo(() => projectNegativeSpace(artifact, byId), [artifact, byId]);
+    const storedField = useStoredField(artifact?.measurement?.payload?.field_ref);
 
     if (!artifact || (!relations.length && !wash)) {
         return (
@@ -79,7 +81,9 @@ export default function TopologyStage({ artifact, source, session, byId,
                     <svg className="pl-svg pl-svg--passive"
                         viewBox={`0 0 ${natural.w} ${natural.h}`}
                         preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-                        {wash?.derived?.available ? (
+                        {storedField?.imageUrl ? <image href={storedField.imageUrl} width={natural.w} height={natural.h}
+                            preserveAspectRatio="none" data-measured-field="true" /> : null}
+                        {!storedField?.imageUrl && wash?.derived?.available ? (
                             <g data-layer="scalar_wash" data-derived="true">
                                 {wash.derived.cells.map((cell, i) => (
                                     <rect key={i} className="pl-wash-cell"
@@ -124,7 +128,7 @@ export default function TopologyStage({ artifact, source, session, byId,
                 </div>
             ) : null}
 
-            {wash ? <WashNote wash={wash} /> : null}
+            {wash ? <WashNote wash={wash} storedField={storedField} /> : null}
         </section>
     );
 }
@@ -191,10 +195,16 @@ function ArrowHead({ from, to, natural }) {
 }
 
 /** What the wash is, and what it is not. */
-function WashNote({ wash }) {
+function WashNote({ wash, storedField }) {
+    if (storedField?.imageUrl) return <p className="pl-panel-sub" data-stored-field-receipt>
+        Measured negative-space raster {storedField.shape.join(' × ')}; retained field digest verified.
+        Domain: full image raster minus the selected figure masks. Distances are fractions of the image diagonal,
+        truncated at the recorded maximum; opacity displays stored values without smoothing.
+    </p>;
     return (
         <div className="pl-field" data-wash-note>
-            <span className="pl-label">Negative space</span>
+            <span className="pl-label">Negative space · full image raster domain</span>
+            {storedField?.error ? <p role="alert">Stored field unavailable: {storedField.error}</p> : null}
             {!wash.measured.available ? (
                 <p className="pl-panel-sub" data-measured-field-absent>
                     {wash.measured.why}

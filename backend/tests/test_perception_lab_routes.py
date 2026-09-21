@@ -86,6 +86,8 @@ def wired(monkeypatch):
         return await src.list_sources(limit=limit, collection=w.posts)
 
     monkeypatch.setattr(R, "_store", lambda: w.store)
+    from backend.services.perception_lab.derivation_store import MongoDerivationStore
+    monkeypatch.setattr(R, "_derivation_store", lambda: MongoDerivationStore(w.collections["derivations"]))
     monkeypatch.setattr(R, "_open_source", _open_source)
     monkeypatch.setattr(R, "_list_sources", _list_sources)
     monkeypatch.setattr(R, "_conductor", _conductor)
@@ -642,8 +644,8 @@ def test_the_export_is_the_five_record_types_and_says_it_is_not_a_promotion(wire
 
     assert body["export_kind"] == "perception-lab.session-export"
     assert body["execution_identity"] == "LIVE"
-    assert set(body["counts"]) == {"plans", "runs", "artifacts", "reviews"}
-    assert body["counts"] == {"plans": 1, "runs": 1, "artifacts": 1, "reviews": 1}
+    assert set(body["counts"]) == {"plans", "runs", "artifacts", "reviews", "derivations"}
+    assert body["counts"] == {"plans": 1, "runs": 1, "artifacts": 1, "reviews": 1, "derivations": 0}
     assert any("Not a promotion" in line for line in body["not_this"])
     LabSession.model_validate(body["session"])
     PerceptualArtifact.model_validate(body["artifacts"][0])

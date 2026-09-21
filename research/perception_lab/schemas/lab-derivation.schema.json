@@ -1,0 +1,323 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semant:perception-lab/lab-derivation.schema.json",
+  "$defs": {
+    "DroppedParameter": {
+      "additionalProperties": false,
+      "description": "A key the person's form carried that the form does not declare. Recorded, not silent.",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "reason"
+      ],
+      "title": "DroppedParameter",
+      "type": "object"
+    },
+    "EpistemicBasis": {
+      "description": "What the claim was computed FROM. Its ceiling is `BASIS_CEILINGS`, below.",
+      "enum": [
+        "mask",
+        "box",
+        "depth_artifact",
+        "manual",
+        "declared"
+      ],
+      "title": "EpistemicBasis",
+      "type": "string"
+    },
+    "EpistemicStatus": {
+      "description": "How an item is known. A `str` enum so a descriptor stays plain JSON.",
+      "enum": [
+        "visible",
+        "measured",
+        "interpretive",
+        "sourced",
+        "uncertain"
+      ],
+      "title": "EpistemicStatus",
+      "type": "string"
+    },
+    "OrganFamily": {
+      "description": "The eight perceptual questions. Six are registered and disabled.",
+      "enum": [
+        "extent",
+        "topology",
+        "colour",
+        "illumination",
+        "surface_pattern",
+        "orientation_flow",
+        "depth",
+        "surface_form"
+      ],
+      "title": "OrganFamily",
+      "type": "string"
+    },
+    "RefusalCode": {
+      "description": "Eleven, and not one of them means 'nothing was found'.",
+      "enum": [
+        "missing_extent_inputs",
+        "missing_depth_artifact",
+        "unsupported_operation",
+        "invalid_parameters",
+        "organ_locked",
+        "capability_unavailable",
+        "unknown_reference",
+        "replay_cannot_recompute",
+        "source_mutated",
+        "unsupported_form",
+        "form_not_producible"
+      ],
+      "title": "RefusalCode",
+      "type": "string"
+    },
+    "RefusalRecord": {
+      "additionalProperties": false,
+      "description": "A typed no. Never an empty result, and never an exception message.\n\n`missing` is what would satisfy it \u2014 the difference between \"this failed\" and \"bring me a\ndepth field and ask again\".",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/RefusalCode"
+        },
+        "organ": {
+          "$ref": "#/$defs/OrganFamily"
+        },
+        "operation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operation"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "remedy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remedy"
+        },
+        "detail": {
+          "additionalProperties": true,
+          "title": "Detail",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "organ",
+        "message"
+      ],
+      "title": "RefusalRecord",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One form, computed from recorded artifacts, with everything that qualifies it.\n\nNO LIFECYCLE FIELD, AND THAT IS THE DESIGN. `PerceptualArtifact` carries one because an\nartifact can be kept, promoted or discarded. A derivation has no such ladder to climb: it is\nnot a measurement, nothing may promote it, and a `lifecycle` field would be the first rung.",
+  "properties": {
+    "derivation_id": {
+      "minLength": 1,
+      "title": "Derivation Id",
+      "type": "string"
+    },
+    "session_id": {
+      "minLength": 1,
+      "title": "Session Id",
+      "type": "string"
+    },
+    "form": {
+      "minLength": 1,
+      "title": "Form",
+      "type": "string"
+    },
+    "organ": {
+      "$ref": "#/$defs/OrganFamily"
+    },
+    "payload_variant": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Payload Variant"
+    },
+    "payload": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Payload"
+    },
+    "producible": {
+      "title": "Producible",
+      "type": "boolean"
+    },
+    "writable_as_artifact": {
+      "title": "Writable As Artifact",
+      "type": "boolean"
+    },
+    "ceiling": {
+      "$ref": "#/$defs/EpistemicStatus"
+    },
+    "basis": {
+      "$ref": "#/$defs/EpistemicBasis"
+    },
+    "partition": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Partition"
+    },
+    "producer": {
+      "minLength": 1,
+      "title": "Producer",
+      "type": "string"
+    },
+    "producer_kind": {
+      "minLength": 1,
+      "title": "Producer Kind",
+      "type": "string"
+    },
+    "producer_revision": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Producer Revision"
+    },
+    "source_image_digest": {
+      "minLength": 8,
+      "title": "Source Image Digest",
+      "type": "string"
+    },
+    "input_artifact_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Input Artifact Ids",
+      "type": "array"
+    },
+    "parameters": {
+      "additionalProperties": true,
+      "title": "Parameters",
+      "type": "object"
+    },
+    "dropped_parameters": {
+      "items": {
+        "$ref": "#/$defs/DroppedParameter"
+      },
+      "title": "Dropped Parameters",
+      "type": "array"
+    },
+    "refusals": {
+      "items": {
+        "$ref": "#/$defs/RefusalRecord"
+      },
+      "title": "Refusals",
+      "type": "array"
+    },
+    "omitted": {
+      "items": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      },
+      "title": "Omitted",
+      "type": "array"
+    },
+    "measurements": {
+      "additionalProperties": true,
+      "title": "Measurements",
+      "type": "object"
+    },
+    "requested_parameters": {
+      "additionalProperties": true,
+      "title": "Requested Parameters",
+      "type": "object"
+    },
+    "duration_ms": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Duration Ms"
+    },
+    "created_at": {
+      "minLength": 1,
+      "title": "Created At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "derivation_id",
+    "session_id",
+    "form",
+    "organ",
+    "producible",
+    "writable_as_artifact",
+    "ceiling",
+    "basis",
+    "producer",
+    "producer_kind",
+    "source_image_digest",
+    "created_at"
+  ],
+  "title": "LabDerivation",
+  "type": "object"
+}

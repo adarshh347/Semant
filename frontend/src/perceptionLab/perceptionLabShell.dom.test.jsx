@@ -5,7 +5,7 @@
 
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import PerceptionLab from './PerceptionLab';
 import { createFixtureClient, defaultCapabilityStates } from './clients/fixtureClient';
 import { assertClientShape } from './clients/labClient';
@@ -35,6 +35,26 @@ const click = async (el) => {
     await act(async () => { el.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
     await settle();
 };
+
+it('reopens a saved sitting and its selected artifact without creating or running anything', async () => {
+    const client = createFixtureClient();
+    const source = (await client.listSources()).sources[0];
+    const session = await client.createSession({ source_id: source.id, selected_organ: 'extent', mode: 'chain' });
+    const plan = await client.plan({ session_id: session.session_id, planner: 'direct', operation: 'extent.find_all' });
+    const result = await client.run({ session_id: session.session_id, plan_id: plan.plan_id });
+    const aid = result.artifacts[0].identity.artifact_id;
+    await client.select({ session_id: session.session_id, artifact_ids: [aid], active_artifact_id: aid });
+    const create = vi.spyOn(client, 'createSession');
+    const run = vi.spyOn(client, 'run');
+    await mount(<PerceptionLab client={client} initialSessionId={session.session_id} />);
+    await settle();
+    await click(all('button').find((b) => b.textContent === 'Reopen saved session'));
+    expect(create).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+    expect(text()).toContain(aid);
+    expect(q(`[data-source-id="${source.id}"]`).getAttribute('aria-pressed')).toBe('true');
+    expect(q('.pl').getAttribute('data-mode')).toBe('chain');
+});
 
 describe('the shell says what it is talking to', () => {
     it('names the client, and that is not the badge on a run', async () => {

@@ -94,6 +94,8 @@
     gap: var(--space-2);
 }
 
+.fb-inputs { overflow-wrap: anywhere; }
+
 .fb-producer {
     padding: var(--space-2);
     border: 1px solid var(--border-subtle);
@@ -207,3 +209,6 @@
 
 .pl[data-w='s'] .fb-compare,
 .pl[data-w='xs'] .fb-compare { grid-template-columns: 1fr; }
+
+.fb-metadata { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs-xs); }
+.fb-note { overflow-wrap: anywhere; }

@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { viewsFor } from '../forms';
 import SafeView from './drawing';
+import FormParameters from './FormParameters';
+import { CONTRACT } from '../contract/perceptionLabContract';
 import { thresholdsOf } from './thresholds';
 import { EmptyState } from '../components/Chips';
 
@@ -31,9 +33,18 @@ import { EmptyState } from '../components/Chips';
  * producer refuses or records it. There is no button on this panel that turns a hypothesis into
  * anything else, and there is no route behind one.
  */
-export default function FormBench({ bench, onDerive }) {
+export default function FormBench({ bench, onDerive, source, session, onMeasure }) {
     const [formKey, setFormKey] = useState('extent.boundary_rings');
     const [selected, setSelected] = useState([]);
+    const [parameterDrafts, setParameterDrafts] = useState({});
+    const [recordId, setRecordId] = useState(null);
+    const [comparisonId, setComparisonId] = useState(null);
+    const natural = useMemo(() => session?.source ? {
+        w: session.source.natural_width, h: session.source.natural_height,
+    } : undefined, [session?.source]);
+    const parameters = Object.fromEntries((CONTRACT.form_parameters[formKey] || [])
+        .filter((s) => s.initial !== undefined).map((s) => [s.name, s.initial]));
+    Object.assign(parameters, parameterDrafts[formKey] || {});
     const [producerKey, setProducerKey] = useState(null);
     const [left, setLeft] = useState(null);
     const [right, setRight] = useState(null);
@@ -43,8 +54,9 @@ export default function FormBench({ bench, onDerive }) {
     const derivable = new Set(bench.derivable || []);
     const inputs = bench.inputsFor(formKey);
     const produced = useMemo(
-        () => [...bench.derivations].reverse().find((d) => d.form === formKey) || null,
-        [bench.derivations, formKey]);
+        () => [...bench.derivations].reverse().find((d) => d.form === formKey
+            && (!recordId || d.derivation_id === recordId)) || null,
+        [bench.derivations, formKey, recordId]);
 
     const views = useMemo(() => {
         try { return viewsFor(formKey).map((v) => v.key); } catch { return []; }
@@ -81,10 +93,16 @@ export default function FormBench({ bench, onDerive }) {
                 </p>
             </header>
 
+            {onMeasure ? <div className="fb-actions">
+                <button className="pl-btn" type="button" onClick={() => onMeasure('extent')}>Measure / draw extents</button>
+                <button className="pl-btn" type="button" onClick={() => onMeasure('topology')}>Measure negative space</button>
+                <p className="fb-note">For negative space, select mask artifacts in the ledger, choose Negative space in Direct controls,
+                    then choose figure inputs. Domain: full image raster; distance units: fraction of its diagonal.</p>
+            </div> : null}
             <div className="fb-row">
                 <label className="fb-label" htmlFor="fb-form">Form</label>
                 <select id="fb-form" className="fb-select" value={formKey}
-                    onChange={(e) => { setFormKey(e.target.value); setProducerKey(null); }}>
+                    onChange={(e) => { setFormKey(e.target.value); setProducerKey(null); setSelected([]); setLeft(null); setRight(null); setRecordId(null); setComparisonId(null); }}>
                     {forms.map((f) => (
                         <option key={f.form} value={f.form}>
                             {f.label} — {f.form}{f.can_be_produced_here ? '' : ' (not here)'}
@@ -122,7 +140,8 @@ export default function FormBench({ bench, onDerive }) {
                                     data-state={p.state}>
                                     <label>
                                         <input type="radio" name="fb-producer"
-                                            value={p.key} checked={producerKey === p.key}
+                                            value={p.key} checked={producerKey === p.key || (!producerKey && p.kind === 'code')}
+                                            disabled={derivable.has(formKey) && p.kind !== 'code'}
                                             onChange={() => setProducerKey(p.key)} />
                                         <span className="fb-producer-key">{p.key}</span>
                                         <span className="pl-chip" data-kind={p.kind}>{p.kind}</span>
@@ -159,6 +178,9 @@ export default function FormBench({ bench, onDerive }) {
                                                         : held.filter(
                                                             (k) => k !== a.identity.artifact_id)))} />
                                             {a.identity.artifact_id} · {a.identity.artifact_kind}
+                                            {' · '}{a.measurement?.payload?.instances?.length ?? 'unrecorded'} supplied instances
+                                            {' · '}{a.provenance?.adapter ?? a.provenance?.producer ?? 'see artifact receipt'}
+                                            {a.measurement?.payload?.instances?.map((i) => ` · ${i.instance_id}`).join('')}
                                         </label>
                                     </li>
                                 ))}
@@ -171,10 +193,13 @@ export default function FormBench({ bench, onDerive }) {
                         )}
                     </div>
 
+                    <FormParameters form={formKey} values={parameters} onChange={(name, value) =>
+                        setParameterDrafts((held) => ({ ...held,
+                            [formKey]: { ...held[formKey], [name]: value } }))} />
                     <div className="fb-actions">
                         <button type="button" className="pl-btn" data-action="derive"
                             disabled={!canDerive || !selected.length || bench.busy}
-                            onClick={() => onDerive(formKey, selected)}>
+                            onClick={() => { setRecordId(null); onDerive(formKey, selected, parameters); }}>
                             Produce this form
                         </button>
                         {!derivable.has(formKey) ? (
@@ -192,25 +217,61 @@ export default function FormBench({ bench, onDerive }) {
                 </>
             ) : null}
 
+            <label className="fb-label">Saved result
+                <select className="fb-select" value={recordId || ''} onChange={(e) => setRecordId(e.target.value || null)}>
+                    <option value="">Latest result for this form</option>
+                    {bench.derivations.filter((d) => d.form === formKey).map((d) =>
+                        <option key={d.derivation_id} value={d.derivation_id}>{d.derivation_id} · {d.created_at} · {JSON.stringify(d.parameters)}</option>)}
+                </select>
+            </label>
+            <label className="fb-label">Compare with saved result
+                <select className="fb-select" value={comparisonId || ''} onChange={(e) => setComparisonId(e.target.value || null)}>
+                    <option value="">No second result</option>
+                    {bench.derivations.filter((d) => d.form === formKey && d.derivation_id !== produced?.derivation_id).map((d) =>
+                        <option key={d.derivation_id} value={d.derivation_id}>{d.derivation_id} · {JSON.stringify(d.parameters)}</option>)}
+                </select>
+            </label>
+            {bench.error ? <p role="alert">{bench.error.message}</p> : null}
             {produced ? (
                 <ProducedForm record={produced} views={views} left={left} right={right}
-                    onLeft={setLeft} onRight={setRight} />
+                    onLeft={setLeft} onRight={setRight} source={source} natural={natural} />
             ) : (
                 <EmptyState title="Nothing derived yet for this form"
                     hint="A form that has not been produced and a form that produced nothing are
                         two different answers, and this panel will say which." />
             )}
+            {bench.derivations.filter((d) => d.form === formKey && d.derivation_id === comparisonId
+                && d.derivation_id !== produced?.derivation_id).map((d) => <div key={d.derivation_id}>
+                    <h3 className="pl-panel-title">Comparison result</h3>
+                    <ProducedForm record={d} views={views} left={left} right={right}
+                        onLeft={setLeft} onRight={setRight} source={source} natural={natural} />
+                </div>)}
         </section>
     );
 }
 
-function ProducedForm({ record, views, left, right, onLeft, onRight }) {
+function ProducedForm({ record, views, left, right, onLeft, onRight, source, natural }) {
     const options = views;
-    const first = left || options[0] || null;
-    const second = right || options[1] || options[0] || null;
+    const first = options.includes(left) ? left : options[0] || null;
+    const second = options.includes(right) ? right : options[1] || options[0] || null;
     const thresholds = thresholdsOf(record);
     return (
         <div className="fb-produced" data-derivation={record.derivation_id}>
+            <p className="fb-note">Saved LabDerivation {record.derivation_id} · {record.duration_ms == null ? 'duration not recorded' : `${record.duration_ms.toFixed(1)} ms`}</p>
+            <p className="fb-note">Source {record.source_image_digest} · inputs {(record.input_artifact_ids || []).join(', ')}</p>
+            <p className="fb-note">Parameters {JSON.stringify(record.parameters)} · requested {JSON.stringify(record.requested_parameters || {})}</p>
+            {record.dropped_parameters?.map((p, i) => <p className="fb-note" key={i}>Ignored {p.name}: {p.reason}</p>)}
+            {record.form === 'extent.fragment_set' ? <p className="fb-note">
+                Connected components: {record.payload?.fragments?.length ?? 'not measured'} unique;
+                {' '}{record.payload?.regions_examined ?? 'not measured'} examined across instances. This does not establish one object.
+            </p> : null}
+            {record.form === 'extent.density_field' && record.payload ? <p className="fb-note">
+                Grid {record.payload.field.field_shape.join(' × ')} cells · {record.payload.samples_taken} centroid samples
+                {' · '}{record.payload.members_counted} supplied instances, not verified flowers or painted marks.
+                {' '}Calibration: {record.payload.field.calibration.state}; units: {record.payload.field.calibration.units || 'nominal weights'}.
+                {' '}Gaussian bandwidth is in grid cells. This is not colour, salience, attention, flow or brush intensity.
+            </p> : null}
+            <details><summary>Measurements and ancestry</summary><pre className="fb-metadata">{JSON.stringify(record.measurements, null, 2)}</pre></details>
             <p className="fb-receipt">
                 <span className="pl-chip" data-kind={record.producer_kind}>
                     {record.producer_kind}
@@ -271,8 +332,9 @@ function ProducedForm({ record, views, left, right, onLeft, onRight }) {
                         </label>
                         <div className="fb-canvas">
                             {record.payload && view
-                                ? <SafeView form={record.form} view={view}
-                                    payload={record.payload} />
+                                ? <SafeView key={`${record.derivation_id}:${view}`} form={record.form} view={view}
+                                    payload={record.payload} natural={natural} imageUrl={source?.photo_url}
+                                    record={record} />
                                 : <p className="fb-empty">No payload to draw.</p>}
                         </div>
                     </div>

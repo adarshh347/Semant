@@ -381,17 +381,23 @@ def _topology_outcome(result: topology_facade.TopologyResult, *, adapter: str, o
     the façade's beside it in the stage detail, so the receipt carries both rather than silently
     preferring one. See the Lane F1 report.
 
-    `field_values` is dropped. A negative-space raster is tens of thousands of floats, the payload
-    already carries its shape, truncation and statistics, and this lane has no blob store to put
-    the field in. Saying so in the detail is better than a payload that is quietly a summary.
+    Negative-space fields are retained losslessly through the existing DataRef contract.
+    The compressed data URI travels with the session-local artifact and its export.
     """
+    if result.field_values is not None and result.artifact is not None:
+        from backend.services.perception_lab.field_reference import field_reference
+        result.artifact.measurement.payload.field_ref = field_reference(
+            result.field_values, result.field_shape)
+        result.artifact.measurement.basis_detail += (
+            "; domain: full image raster minus selected figure masks; distance units: fraction "
+            "of image diagonal, truncated at max_distance_used")
     produced_by = topology_facade.PRIMARY_ADAPTER.get(operation)
     detail = _inner(
         (result.artifact.interpretation.notes
          if result.artifact is not None and result.artifact.interpretation else None),
         inner_ms=inner_ms, adapter=adapter,
         produced_by=produced_by if produced_by != adapter else None,
-        field_values="withheld — the payload carries the shape and statistics"
+        field_values="retained — lossless gzip JSON DataRef in artifact payload"
         if result.field_values is not None else None)
 
     if result.refusal is not None:

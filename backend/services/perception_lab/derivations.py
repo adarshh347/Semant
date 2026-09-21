@@ -36,6 +36,9 @@ injected.
 """
 from __future__ import annotations
 
+from time import perf_counter
+from backend.services.perception_lab import form_parameters as FP
+
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -99,6 +102,8 @@ class LabDerivation(BaseModel):
     refusals: List[RefusalRecord] = Field(default_factory=list)
     omitted: List[Dict[str, str]] = Field(default_factory=list)
     measurements: Dict[str, Any] = Field(default_factory=dict)
+    requested_parameters: Dict[str, Any] = Field(default_factory=dict)
+    duration_ms: Optional[float] = Field(default=None, ge=0)
     created_at: str = Field(min_length=1)
 
 
@@ -224,7 +229,7 @@ def _hole_set(ctx: Context):
 
 def _fragment_set(ctx: Context):
     return EF.fragment_set(ctx.source_extents(), source_image_digest=ctx.source_image_digest,
-                           measure_separation=bool(ctx.take("measure_separation", True)))
+                           measure_separation=ctx.take("measure_separation", True))
 
 
 def _fused_hypothesis(ctx: Context):
@@ -270,7 +275,7 @@ def _density_field(ctx: Context):
     shape = ctx.take("field_shape") or [16, 16]
     bandwidth = ctx.take("bandwidth")
     kernel = (DEN.Kernel(str(ctx.take("kernel") or DEN.GAUSSIAN), float(bandwidth))
-              if bandwidth is not None else DEN.NO_SMOOTHING)
+              if ctx.take("kernel") == DEN.GAUSSIAN else DEN.NO_SMOOTHING)
     return DEN.produce_density_field(members, sources=sources,
                                     field_shape=[int(shape[0]), int(shape[1])], kernel=kernel)
 
@@ -358,6 +363,7 @@ def derive(form_key: str, *, session_id: str, artifacts: Sequence[PerceptualArti
                 f"{list(derivable_forms())}.",
                 missing=[form_key],
                 remedy="choose a form with a code producer, or measure it with an operation")
+    started = perf_counter()
     definition = D.form(form_key)
     declared = set(DECLARED.get(form_key, ()))
     supplied = dict(parameters or {})
@@ -367,9 +373,32 @@ def derive(form_key: str, *, session_id: str, artifacts: Sequence[PerceptualArti
                for name in sorted(set(supplied) - declared)]
     kept = {k: v for k, v in supplied.items() if k in declared}
 
+    invalid = None
+    try:
+        kept, ignored = FP.resolve(form_key, kept)
+        dropped.extend(DroppedParameter(name=n, reason=r) for n, r in ignored)
+    except ValueError as exc:
+        invalid = RefusalRecord(code=RefusalCode.INVALID_PARAMETERS,
+            organ=ORGAN_OF[definition.organ], message=str(exc), missing=[],
+            remedy="use the declared form parameter bounds")
     ctx = Context(form_key=form_key, artifacts=tuple(artifacts), parameters=kept,
                   source_image_digest=source_image_digest, dropped=list(dropped))
-    normalized = _normalize(PRODUCERS[form_key](ctx), form_key)
+    if invalid:
+        normalized = dict(payload=None, producible=False, ceiling=EpistemicStatus.INTERPRETIVE,
+            basis=EpistemicBasis.MASK, partition=None, refusals=[invalid], omitted=[], measurements={})
+    else:
+        normalized = _normalize(PRODUCERS[form_key](ctx), form_key)
+    if form_key == DEN.FORM and normalized["payload"] is not None:
+        held = SRC.index(ctx.extents())
+        points = []
+        for ref in normalized["payload"].members:
+            key = f"{ref.artifact_id}#{ref.instance_id}"
+            point = DEN._centroid(held[key][1])
+            points.append({"artifact_id": ref.artifact_id, "instance_id": ref.instance_id,
+                           "point": list(point), "cell": list(DEN._cell(point, tuple(kept["field_shape"])))})
+        normalized["measurements"] = {"centroid_samples": points, "bandwidth_units": "grid cells",
+            "count_meaning": "supplied extent instances, not verified flowers or painted marks",
+            "normalization": "each sampled instance contributes unit mass over the bounded grid"}
     availability = PR.availability(form_key)
     code = [p for p in availability.producers if p.kind is PR.CODE]
     payload = normalized["payload"]
@@ -391,6 +420,7 @@ def derive(form_key: str, *, session_id: str, artifacts: Sequence[PerceptualArti
         refusals=normalized["refusals"],
         omitted=normalized["omitted"],
         measurements=normalized["measurements"],
+        requested_parameters=supplied, duration_ms=(perf_counter() - started) * 1000,
         created_at=now)
 
 
