@@ -91,6 +91,7 @@ class LabRuntime:
     now: Callable[[], str] = _utc_now
     monotonic_ms: Callable[[], float] = _monotonic_ms
     device: Optional[str] = None
+    field_assets: Any = None
 
     @property
     def regions_by_id(self) -> Dict[str, Mapping[str, Any]]:
@@ -262,7 +263,12 @@ class ExtentBridge:
                               adapter=self.name))
 
         started = self.runtime.monotonic_ms()
-        result = extent_facade.run(step, context)
+        if self.name in {"yolo_sam2_auto", "sam3_concept", "grounded_sam", "sam2_refine"}:
+            from backend.services.perception_lab.model_lease import learned_model_lease
+            with learned_model_lease(family="extent", timeout=0):
+                result = extent_facade.run(step, context)
+        else:
+            result = extent_facade.run(step, context)
         inner_ms = int(round(self.runtime.monotonic_ms() - started))
         return _extent_outcome(result, adapter=self.name, inner_ms=inner_ms)
 
@@ -474,6 +480,17 @@ def live_registry(runtime: LabRuntime) -> LiveAdapterRegistry:
         registry.register(ExtentBridge(name=name, operations=ops, runtime=runtime))
     for name, ops in sorted(_adapters_by_name(OrganFamily.TOPOLOGY.value).items()):
         registry.register(TopologyBridge(name=name, operations=ops, runtime=runtime))
+    from backend.services.perception_lab.families.bridge import FamilyBridge
+    from backend.services.perception_lab.families.registry import REGISTRY
+    for slot in REGISTRY.values():
+        if not slot.available:
+            continue
+        for name, producer in (slot.producers or {}).items():
+            ops = tuple(op.key for op in slot.operations if op.producer_key == name)
+            if ops:
+                registry.register(FamilyBridge(slot=slot, producer_key=name,
+                                               operations=ops, image_bytes=runtime.image_bytes,
+                                               assets=runtime.field_assets))
     return registry
 
 

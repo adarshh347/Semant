@@ -998,6 +998,10 @@ ALLOWED_CLOSURE = {
     "backend.services.perception_lab",
     "backend.services.perception_lab.contracts",
     "backend.services.perception_lab.definitions",
+    # The additive field carrier and fixed declarations are pure of model/database imports.
+    "backend.services.perception_lab.field_data",
+    "backend.services.perception_lab.image_preparation",
+    "backend.services.perception_lab.families.registry",
     "backend.services.role_registry",
     "backend.services.vision_orchestrator.contracts",
     "backend.services.vision_orchestrator.registry",

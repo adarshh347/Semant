@@ -1,0 +1,12 @@
+{
+  "available": false,
+  "dependencies": [],
+  "family": "depth",
+  "forms": [],
+  "label": "Depth",
+  "models": [],
+  "operations": [],
+  "producer_keys": [],
+  "reason": "No Depth field producer is installed in this lane.",
+  "schema_version": "perception-lab-family.v1"
+}

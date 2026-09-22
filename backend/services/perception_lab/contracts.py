@@ -84,6 +84,15 @@ def operation_index() -> Dict[str, str]:
     for organ in lab_contract()["organs"]:
         for op in organ.get("operations", ()):
             out[str(op["key"])] = str(organ["family"])
+    # Fixed family slots extend the existing resolver vocabulary without allowing
+    # six branches to rewrite this shared contract or its generated mirror.
+    from backend.services.perception_lab.families.registry import REGISTRY
+    for family, slot in REGISTRY.items():
+        if slot.available:
+            for op in slot.operations:
+                if op.key in out:
+                    raise ContractError(f"operation {op.key!r} is declared twice")
+                out[op.key] = family
     return out
 
 

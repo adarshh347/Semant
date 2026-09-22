@@ -1,0 +1,12 @@
+{
+  "available": false,
+  "dependencies": [],
+  "family": "orientation_flow",
+  "forms": [],
+  "label": "Orientation / flow",
+  "models": [],
+  "operations": [],
+  "producer_keys": [],
+  "reason": "No Orientation field producer is installed in this lane.",
+  "schema_version": "perception-lab-family.v1"
+}
