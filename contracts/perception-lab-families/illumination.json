@@ -1,12 +1,92 @@
 {
-  "available": false,
-  "dependencies": [],
+  "available": true,
+  "dependencies": [
+    {
+      "admitted": true,
+      "license": "academic use only",
+      "package": "compphoto/Intrinsic",
+      "version": "git@1a93aafaaf7dbe11be7ec86323d9a06e5950966d"
+    }
+  ],
   "family": "illumination",
-  "forms": [],
+  "forms": [
+    {
+      "description": "Brightness in the prepared image, not lighting decomposition.",
+      "key": "illumination.image_luminance",
+      "label": "Image luminance",
+      "quantity": "image-relative linear-light Y",
+      "views": [
+        "grayscale",
+        "false_colour",
+        "contours"
+      ]
+    },
+    {
+      "description": "An intrinsic-model estimate with an independent scale.",
+      "key": "illumination.estimated_shading",
+      "label": "Estimated shading",
+      "quantity": "model-estimated relative grayscale shading",
+      "views": [
+        "grayscale",
+        "false_colour",
+        "contours"
+      ]
+    }
+  ],
   "label": "Illumination",
-  "models": [],
-  "operations": [],
-  "producer_keys": [],
-  "reason": "No Illumination field producer is installed in this lane.",
+  "models": [
+    {
+      "admitted": true,
+      "checkpoint_digest": "sha256:daeeb1e9aa9bcd65a3357e22c54344099fb9adb852541b89d06926db3a518001",
+      "key": "intrinsic-paper-weights",
+      "license": "academic use only; patent pending",
+      "revision": "Intrinsic@1a93aafaaf7dbe11be7ec86323d9a06e5950966d:paper_weights"
+    }
+  ],
+  "operations": [
+    {
+      "form_key": "illumination.image_luminance",
+      "key": "illumination.image_luminance",
+      "label": "Show image luminance",
+      "learned": false,
+      "parameters": {
+        "alpha_min": {
+          "description": "Pixels below this source alpha are unknown. Default 1.",
+          "maximum": 255,
+          "minimum": 1,
+          "required": false,
+          "type": "integer"
+        }
+      },
+      "producer_key": "illumination.luminance_producer",
+      "prompt_intents": [
+        "show image brightness"
+      ]
+    },
+    {
+      "form_key": "illumination.estimated_shading",
+      "key": "illumination.estimated_shading",
+      "label": "Estimate shading",
+      "learned": true,
+      "parameters": {
+        "alpha_min": {
+          "description": "Pixels below this source alpha are unknown. Default 1.",
+          "maximum": 255,
+          "minimum": 1,
+          "required": false,
+          "type": "integer"
+        }
+      },
+      "producer_key": "illumination.shading_producer",
+      "prompt_intents": [
+        "estimate shading"
+      ]
+    }
+  ],
+  "producer_keys": [
+    "illumination.luminance_producer",
+    "illumination.shading_producer"
+  ],
+  "reason": "Image luminance is deterministic; estimated shading requires the installed Intrinsic model.",
   "schema_version": "perception-lab-family.v1"
 }

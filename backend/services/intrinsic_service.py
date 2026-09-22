@@ -157,9 +157,7 @@ def estimate(image, *, grid: int = GRID) -> Optional[Dict[str, Any]]:
         # stage=1 for it), so the multi-stage run_pipeline raises KeyError: 'col_model'.
         from intrinsic.pipeline import run_gray_pipeline
         arr = np.asarray(image.convert("RGB"), dtype="float32") / 255.0
-        # `device` MUST be passed: run_gray_pipeline defaults it to 'cuda', which discards the
-        # choice _load() already made and dies with "Torch not compiled with CUDA enabled" on a
-        # box without one. On the CUDA box _device() returns 'cuda', so this is a no-op there.
+        # `device` MUST be passed: run_gray_pipeline defaults it to 'cuda'.
         result = run_gray_pipeline(_model, arr, device=_device())
         shading = _extract_shading(result)
         if shading is None:
@@ -168,3 +166,42 @@ def estimate(image, *, grid: int = GRID) -> Optional[Dict[str, Any]]:
     except Exception as e:  # pragma: no cover — depends on GPU + checkpoints
         print(f"⚠️ Intrinsic inference failed (non-fatal): {e}")
         return None
+
+
+def estimate_dense(image) -> Dict[str, Any]:
+    """Return source-sized grayscale shading from the installed V1 gray pipeline.
+
+    The pinned implementation's ``gry_shd`` key contains *inverse* shading, despite
+    its name: ``run_gray_pipeline`` computes ``shd = uninvert(inv_shd)`` but stores
+    ``inv_shd`` in that key. Undo the documented inverse transform here. This API is
+    additive; legacy ``estimate`` and its 16×16 values retain their old convention.
+    """
+    import time
+    import numpy as np
+
+    if not is_available():
+        raise RuntimeError("Intrinsic gray pipeline or chrislib is unavailable")
+    started = time.perf_counter()
+    _load()
+    load_ms = (time.perf_counter() - started) * 1000
+    if _model is None:
+        raise RuntimeError("Intrinsic paper_weights failed to load")
+    from intrinsic.pipeline import run_gray_pipeline
+    rgb = np.asarray(image.convert("RGB"), dtype="float32") / 255.0
+    started = time.perf_counter()
+    result = run_gray_pipeline(_model, rgb, device=_device(), maintain_size=True)
+    inference_ms = (time.perf_counter() - started) * 1000
+    if not isinstance(result, dict) or SHADING_KEY not in result:
+        raise ValueError("Intrinsic result has no gry_shd inverse-shading key")
+    inverse = np.asarray(result[SHADING_KEY], dtype="float32")
+    if inverse.ndim != 2 or inverse.shape != rgb.shape[:2]:
+        raise ValueError("Intrinsic grayscale output is not source-aligned")
+    valid = np.isfinite(inverse) & (inverse >= 0)
+    # Upstream uninvert(x, eps=.001, clip=True) is 1/clip(x,.001,1)-1.
+    shading = np.zeros(inverse.shape, dtype="float32")
+    shading[valid] = 1.0 / np.clip(inverse[valid], .001, 1.0) - 1.0
+    native = np.asarray(result.get("image"))
+    return {"shading": shading, "valid": valid,
+            "native_shape": list(native.shape[:2]), "output_keys": sorted(result),
+            "device": _device(), "load_ms": load_ms,
+            "inference_ms": inference_ms, "model_cached": load_ms < 1.0}
