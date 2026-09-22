@@ -1,0 +1,14 @@
+.pl-pattern-map {
+    position: relative;
+}
+.pl-pattern-support {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid var(--accent);
+    background: var(--accent-soft);
+    opacity: .65;
+    pointer-events: none;
+}
+.pl-pattern-profile {
+    overflow-wrap: anywhere;
+}
