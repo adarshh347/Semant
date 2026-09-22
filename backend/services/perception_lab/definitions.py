@@ -252,6 +252,34 @@ def _registry() -> Tuple[Dict[str, OrganDefinition], Dict[str, OperationDefiniti
             adapters=tuple(dict(a) for a in raw.get("adapters", ())),
             operations=ops, notes=tuple(str(v) for v in raw.get("notes", ())),
             deferred_note=raw.get("deferred_note"))
+    from backend.services.perception_lab.families.registry import REGISTRY
+    for family, slot in REGISTRY.items():
+        if not slot.available:
+            continue
+        ops = []
+        for declaration in slot.operations:
+            parameters = tuple(_parameter({"name": name, **dict(spec)})
+                               for name, spec in declaration.parameters.items())
+            op = OperationDefinition(
+                key=declaration.key, organ=family, label=declaration.label,
+                question=declaration.label, summary=declaration.label,
+                manual=False, requires_confirmation=True,
+                adapters=(declaration.producer_key,), parameters=parameters, inputs=(),
+                produces=("sample_grid",), epistemic={}, refusals=(),
+                render_projections=(), must_not_invoke=())
+            if op.key in operations:
+                raise ContractError(f"operation {op.key!r} is declared twice")
+            operations[op.key] = op
+            ops.append(op)
+        original = organs[family]
+        organs[family] = OrganDefinition(
+            family=family, label=slot.label, question=original.question,
+            enabled=True, availability="available", epistemic_ceiling="measured",
+            produces_artifact_kinds=("sample_grid",), consumes_artifact_kinds=(),
+            declares_artifact_kinds=(), render_projections=(), manual_tools=(),
+            prompt_examples=tuple(intent for op in slot.operations for intent in op.prompt_intents),
+            adapters=tuple({"key": key} for key in (slot.producers or {})),
+            operations=tuple(ops), deferred_note=None)
     return organs, operations
 
 

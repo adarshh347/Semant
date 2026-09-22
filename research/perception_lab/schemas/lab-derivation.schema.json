@@ -29,7 +29,9 @@
         "box",
         "depth_artifact",
         "manual",
-        "declared"
+        "declared",
+        "image_signal",
+        "model_estimate"
       ],
       "title": "EpistemicBasis",
       "type": "string"

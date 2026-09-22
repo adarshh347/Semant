@@ -1,0 +1,12 @@
+{
+  "available": false,
+  "dependencies": [],
+  "family": "colour",
+  "forms": [],
+  "label": "Colour",
+  "models": [],
+  "operations": [],
+  "producer_keys": [],
+  "reason": "No Colour field producer is installed in this lane.",
+  "schema_version": "perception-lab-family.v1"
+}

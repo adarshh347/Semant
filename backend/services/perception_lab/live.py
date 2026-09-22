@@ -107,18 +107,19 @@ CANCELS = CancelTable()
 
 def runtime_for(snapshot: SourceSnapshot, *,
                 capability_states: Optional[Mapping[str, CapabilityState]] = None,
-                extent_adapters: Optional[Mapping[str, Any]] = None) -> LabRuntime:
+                extent_adapters: Optional[Mapping[str, Any]] = None,
+                field_assets: Any = None) -> LabRuntime:
     return LabRuntime(source=snapshot.source, image_bytes=snapshot.image_bytes,
                       regions=snapshot.regions,
                       capability_states=dict(capability_states or {}),
-                      extent_adapters=extent_adapters)
+                      extent_adapters=extent_adapters, field_assets=field_assets)
 
 
 def conductor_for(snapshot: SourceSnapshot, *, store: Any = None, registry: Any = None,
                   capability_states: Optional[Mapping[str, CapabilityState]] = None,
                   extent_adapters: Optional[Mapping[str, Any]] = None,
                   probe_collection: Any = None,
-                  model: Any = None) -> PerceptionConductor:
+                  model: Any = None, field_assets: Any = None) -> PerceptionConductor:
     """The conductor a request runs on: real organs, the durable store, and a live source probe.
 
     `model` defaults to a configured `ModelPlanner`, which handles its own absence — no key means
@@ -126,7 +127,7 @@ def conductor_for(snapshot: SourceSnapshot, *, store: Any = None, registry: Any 
     sentence was not read by a model rather than being quietly served a keyword match.
     """
     runtime = runtime_for(snapshot, capability_states=capability_states,
-                          extent_adapters=extent_adapters)
+                          extent_adapters=extent_adapters, field_assets=field_assets)
     return PerceptionConductor(
         store=store if store is not None else MongoLabStore(),
         registry=registry if registry is not None else live_registry(runtime),

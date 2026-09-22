@@ -15,13 +15,15 @@ query and ordering code is exercised rather than skipped.
 from __future__ import annotations
 
 import copy
+from dataclasses import replace
 
 import pytest
 
 from backend.schemas.perception_lab import (ExecutionIdentity, LabSession, OrganFamily,
                                             RunOutcome, SessionMode)
 from backend.services.perception_lab.clock import FrozenClock, SequentialIds
-from backend.services.perception_lab.live import conductor_for
+from backend.services.perception_lab.live import conductor_for, runtime_for
+from backend.services.perception_lab.bridges import live_registry
 from backend.services.perception_lab.mongo_store import (KINDS, LabStoreUnavailable, MongoLabStore)
 from backend.services.perception_lab.orchestrator import PerceptionConductor
 from backend.services.perception_lab.planners import DirectCommand
@@ -111,9 +113,13 @@ def test_a_missing_record_is_none_rather_than_an_exception():
 def _drive(store):
     """One deterministic sitting: measure, select, measure again, review. Same ids either way."""
     snapshot = F.snapshot()
+    # The store comparison exercises two separate runs. Their real wall-clock
+    # adapter timing is intentionally not stable, so hold only this receipt clock
+    # fixed while comparing the durable and in-memory records.
+    runtime = replace(runtime_for(snapshot, extent_adapters=F.extent_adapters()),
+                      monotonic_ms=lambda: 1000.0)
     conductor = PerceptionConductor(
-        store=store, registry=conductor_for(snapshot, store=store,
-                                            extent_adapters=F.extent_adapters()).registry,
+        store=store, registry=live_registry(runtime),
         clock=FrozenClock(), ids=SequentialIds())
     machine = conductor.open_session(source=snapshot.source, organ=OrganFamily.EXTENT)
     first = conductor.execute(machine, conductor.plan_direct(

@@ -184,6 +184,18 @@ class RulesPlanner:
             builder.note("an empty prompt proposes nothing. There is no default operation.")
             return _proposal(builder)
 
+        from backend.services.perception_lab.families.registry import REGISTRY
+        slot = REGISTRY.get(session.selected_organ.value)
+        if slot and slot.available:
+            matches = [op for op in slot.operations if any(
+                " ".join(intent.split()).lower() == prompt for intent in op.prompt_intents)]
+            if len(matches) == 1:
+                builder.propose(matches[0].key, parameters={}, input_refs=(),
+                                rationale="declared exact family prompt intent")
+                return _proposal(builder)
+            builder.note("No declared family prompt intent matches this request. Use a direct form control or a listed exact phrase.")
+            return _proposal(builder)
+
         matched = _matches(prompt)
         chosen, alternatives = _choose(matched)
 

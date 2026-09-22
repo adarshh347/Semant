@@ -151,7 +151,8 @@
         "topology_transition",
         "topology_uncertain_relations",
         "refusal",
-        "depth_field"
+        "depth_field",
+        "sample_grid"
       ],
       "title": "ArtifactKind",
       "type": "string"
@@ -205,6 +206,7 @@
                   "extent_soft_field": "#/$defs/ExtentSoftFieldPayload",
                   "negative_space_field": "#/$defs/NegativeSpaceFieldPayload",
                   "refusal": "#/$defs/RefusalPayload",
+                  "sample_grid": "#/$defs/SampleGridPayload",
                   "topology_adjacency_graph": "#/$defs/TopologyAdjacencyGraphPayload",
                   "topology_clearance_path": "#/$defs/TopologyClearancePathPayload",
                   "topology_contact_locus": "#/$defs/TopologyContactLocusPayload",
@@ -276,6 +278,9 @@
                 },
                 {
                   "$ref": "#/$defs/TopologyUncertainRelationsPayload"
+                },
+                {
+                  "$ref": "#/$defs/SampleGridPayload"
                 }
               ]
             },
@@ -943,7 +948,9 @@
         "box",
         "depth_artifact",
         "manual",
-        "declared"
+        "declared",
+        "image_signal",
+        "model_estimate"
       ],
       "title": "EpistemicBasis",
       "type": "string"
@@ -2508,7 +2515,8 @@
         "negative_space_field",
         "topology_transition",
         "topology_uncertain_relations",
-        "refusal"
+        "refusal",
+        "sample_grid"
       ],
       "title": "PayloadVariant",
       "type": "string"
@@ -2840,6 +2848,39 @@
       ],
       "title": "RingWinding",
       "type": "string"
+    },
+    "SampleGridPayload": {
+      "additionalProperties": false,
+      "description": "A typed numeric field, with its data kept separate from every preview.",
+      "properties": {
+        "variant": {
+          "const": "sample_grid",
+          "default": "sample_grid",
+          "title": "Variant",
+          "type": "string"
+        },
+        "form_key": {
+          "maxLength": 100,
+          "minLength": 3,
+          "title": "Form Key",
+          "type": "string"
+        },
+        "manifest": {
+          "additionalProperties": true,
+          "title": "Manifest",
+          "type": "object"
+        },
+        "field_ref": {
+          "$ref": "#/$defs/DataRef"
+        }
+      },
+      "required": [
+        "form_key",
+        "manifest",
+        "field_ref"
+      ],
+      "title": "SampleGridPayload",
+      "type": "object"
     },
     "ScalarFieldSpec": {
       "additionalProperties": false,

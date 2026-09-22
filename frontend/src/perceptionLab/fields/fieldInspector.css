@@ -1,0 +1,18 @@
+.pl-field { display: grid; gap: var(--space-3); }
+.pl-field-canvas { display: block; max-width: 100%; width: 100%; height: auto;
+    image-rendering: pixelated; border: 1px solid var(--line); border-radius: var(--radius-sm);
+    cursor: crosshair; }
+.pl-field-controls { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: end; }
+.pl-field-controls label { display: grid; gap: var(--space-1); }
+.pl-field select, .pl-field input { border: 1px solid var(--line); border-radius: var(--radius-sm);
+    color: var(--ink); background: var(--surface); padding: var(--space-2); }
+.pl-field-reading pre, .pl-field details pre { max-height: 18rem; overflow: auto;
+    background: var(--surface-2); padding: var(--space-2); }
+.pl-field-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: var(--space-3); }
+.pl-field-pair figure { margin: 0; min-width: 0; }
+.pl-field-pair img { display: block; max-width: 100%; width: 100%; height: auto;
+    border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.pl-field-pair figcaption { color: var(--ink-muted); font-size: var(--fs-sm);
+    overflow-wrap: anywhere; }
+.pl-fixture-demo .pl-field-canvas { max-width: 24rem; }

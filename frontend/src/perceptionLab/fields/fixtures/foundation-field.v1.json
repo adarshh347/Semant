@@ -1,0 +1,103 @@
+{
+  "execution_identity": "FIXTURE",
+  "what_this_is": "Synthetic codec and renderer conformance only; no organ is live.",
+  "metadata": {
+    "version": 1,
+    "shape": [
+      2,
+      3,
+      1
+    ],
+    "dtype": "float32-le",
+    "kind": "scalar",
+    "channels": [
+      {
+        "name": "fixture_scalar",
+        "quantity": "synthetic ramp",
+        "unit": "relative"
+      }
+    ],
+    "frame": "image_pixel_xy_topleft",
+    "units": "relative",
+    "source_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "source_to_field": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+    ],
+    "value_convention": "synthetic fixture"
+  },
+  "manifest": {
+    "codec": "gzip-field-v1",
+    "metadata": {
+      "version": 1,
+      "shape": [
+        2,
+        3,
+        1
+      ],
+      "dtype": "float32-le",
+      "kind": "scalar",
+      "channels": [
+        {
+          "name": "fixture_scalar",
+          "quantity": "synthetic ramp",
+          "unit": "relative"
+        }
+      ],
+      "frame": "image_pixel_xy_topleft",
+      "units": "relative",
+      "source_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "source_to_field": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "value_convention": "synthetic fixture"
+    },
+    "measurement_hash": "sha256:b6e0a257d80d38162fa98a6556d21b0999cd7ded8f67c8004f2513165bec9fce"
+  },
+  "field_ref": {
+    "uri": "data:application/gzip;base64,H4sIAAAAAAACE6VQ0WrDMAz0/mTo2WNNyvqQh2X/EYoRjtKYOXZmyyGhFPbpc9KurM+TwEa+48668CTEGXSPzpGNUDVncDgQVNCZmVMgFTVaDCDhK6Fjw0vG4uK4Jzb6OeAwZiw5w/k9kEU2E8HlKKHlZdyErEfely+WMrELV3Uz4InUaGayal4U+9FSx5nwaVy7Ovy6xh5XlaaUe1lk1ehT0KRac6K4Wma8fDtUu38W3JXZq86QzZ9oCrnb+n4fr5vGv6tKmNAmUtq7iXJA3j0EdItxpVGIG1pcxFbf7/mohfiob3P9+gMVBigsjwEAAA==",
+    "digest": "sha256:d01968155633ba77343eb2289e5118ae567d1e708925480e41321357eacf75e1",
+    "media_type": "application/gzip",
+    "bytes": 241
+  },
+  "measurement_hash": "sha256:b6e0a257d80d38162fa98a6556d21b0999cd7ded8f67c8004f2513165bec9fce",
+  "preview": {
+    "shape": [
+      2,
+      3,
+      1
+    ],
+    "stride": 1,
+    "values": [
+      0,
+      0.25,
+      0.5,
+      0.75,
+      0,
+      1
+    ],
+    "valid": [
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  }
+}

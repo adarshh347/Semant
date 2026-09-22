@@ -14,15 +14,15 @@ import { CapabilityChip } from './Chips';
  * thing this catalogue is for.
  */
 export default function OrganCatalogue({ selected, onSelect, capabilities = {} }) {
+    const enabledCount = CONTRACT.organs.filter((organ) => isOrganEnabled(organ.family)).length;
     return (
         <section className="pl-panel" aria-label="Organ catalogue">
             <div className="pl-panel-head">
                 <h2 className="pl-panel-title">Organs</h2>
-                <span className="pl-kicker">2 of 8 enabled</span>
+                <span className="pl-kicker">{enabledCount} of 8 enabled</span>
             </div>
             <p className="pl-panel-sub">
-                Eight perceptual families are registered. This phase opens Extent and Topology; the
-                rest are declared and closed, not missing.
+                Eight perceptual families are registered. Choose an available family to inspect its forms.
             </p>
             <ul className="pl-organs" role="group" aria-label="Choose an organ">
                 {CONTRACT.organs.map((organ) => {

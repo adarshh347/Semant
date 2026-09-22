@@ -52,6 +52,10 @@ from backend.schemas.perception_lab import (ExecutionIdentity, InputRef, LabSour
                                             ReviewVerdict, SessionMode)
 from backend.services.perception_lab import derivations, live, producers, recipes
 from backend.services.perception_lab import source as src
+from backend.services.perception_lab.field_assets import MongoFieldAssets
+from backend.services.perception_lab.field_data import (
+    FieldError, compare_fields, decode_grid, path_sample, point_sample, roi_sample)
+from backend.services.perception_lab.field_transfer import attach_field_assets, import_session_bundle
 from backend.services.perception_lab.derivation_store import (DerivationStoreUnavailable,
                                                              MongoDerivationStore)
 from backend.services.perception_lab.clock import SystemClock, UuidIds
@@ -66,6 +70,10 @@ router = APIRouter()
 #: Overridable in tests, and the ONLY seam that decides which world a request runs in. A test
 #: replaces `_store` and `_open_source`; nothing else in this file knows a database exists.
 _CLOCK = SystemClock()
+
+
+def _field_assets():
+    return MongoFieldAssets()
 
 
 def _derivation_store() -> MongoDerivationStore:
@@ -87,7 +95,7 @@ async def _list_sources(limit: int):
 
 
 def _conductor(snapshot: src.SourceSnapshot, store):
-    return live.conductor_for(snapshot, store=store)
+    return live.conductor_for(snapshot, store=store, field_assets=_field_assets())
 
 
 # ── bodies ───────────────────────────────────────────────────────────────────
@@ -169,6 +177,13 @@ class Derive(BaseModel):
     form: str = Field(min_length=1)
     artifact_ids: List[str] = Field(default_factory=list)
     parameters: Dict[str, Any] = Field(default_factory=dict)
+
+
+class FieldConsume(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    operation: str
+    points: List[List[int]] = Field(default_factory=list)
+    compare_artifact_id: Optional[str] = None
 
 
 class SubmitReview(BaseModel):
@@ -739,7 +754,106 @@ def export_session(session_id: str) -> Dict[str, Any]:
     bundle = live.export_json(store, machine.session, identity=ExecutionIdentity.LIVE)
     bundle["derivations"] = [d.model_dump(mode="json") for d in _guarded(_derivation_store().for_session, session_id)]
     bundle["counts"]["derivations"] = len(bundle["derivations"])
-    return bundle
+    return attach_field_assets(bundle, _field_assets())
+
+
+@router.post("/sessions/import", status_code=201)
+async def import_session(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Copy an export into new Lab identities after full source and field validation."""
+    session_record = body.get("session")
+    source_record = session_record.get("source") if isinstance(session_record, dict) else None
+    if not isinstance(source_record, dict):
+        raise HTTPException(status_code=422, detail={"error": "post_source_required"})
+    post_id = source_record.get("post_id")
+    if not post_id:
+        raise HTTPException(status_code=422, detail={"error": "post_source_required"})
+    snapshot = await _open_source(post_id)
+    try:
+        receipt = import_session_bundle(
+            body, store=_store(), derivation_store=_derivation_store(),
+            asset_store=_field_assets(), target_source=snapshot.source)
+    except (FieldError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail={"error": "invalid_lab_export",
+                                                     "why": str(exc)}) from exc
+    return _envelope(receipt, ExecutionIdentity.LIVE)
+
+
+def _saved_grid(store, session_id: str, artifact_id: str):
+    artifact = store.get_artifact(artifact_id)
+    if (artifact is None or artifact.identity.session_id != session_id
+            or artifact.identity.artifact_kind.value != "sample_grid"):
+        raise HTTPException(status_code=404, detail={"error": "unknown_field"})
+    payload = artifact.measurement.payload
+    try:
+        grid = decode_grid(payload.manifest, payload.field_ref,
+                           get_asset=_field_assets().get)
+    except FieldError as exc:
+        raise HTTPException(status_code=422, detail={"error": "field_unavailable",
+                                                     "why": str(exc)}) from exc
+    return artifact, grid
+
+
+@router.get("/sessions/{session_id}/fields/{artifact_id}/preview")
+def preview_field(session_id: str, artifact_id: str) -> Dict[str, Any]:
+    """A bounded display derivative; point/ROI readers still use the full saved numbers."""
+    store = _store()
+    _machine(store, session_id)
+    artifact, grid = _saved_grid(store, session_id, artifact_id)
+    height, width, channels = grid.shape
+    stride = max(1, (max(height, width) + 255) // 256)
+    rows, columns = range(0, height, stride), range(0, width, stride)
+    values, valid = [], []
+    for y in rows:
+        for x in columns:
+            index = y * width + x
+            valid.append(grid.valid[index])
+            values.extend(grid.values[index*channels:(index+1)*channels])
+    return _envelope({"artifact_id": artifact_id,
+                      "execution_identity": "FIXTURE" if artifact.provenance.producer_kind.value == "fixture" else "LIVE",
+                      "metadata": grid.metadata, "measurement_hash": grid.measurement_hash,
+                      "preview": {"shape": [len(rows), len(columns), channels],
+                                  "stride": stride, "values": values, "valid": valid},
+                      "preview_is_measurement": False}, ExecutionIdentity.LIVE)
+
+
+@router.post("/sessions/{session_id}/fields/{artifact_id}/consume", status_code=201)
+def consume_field(session_id: str, artifact_id: str, body: FieldConsume) -> Dict[str, Any]:
+    """Persist a pure numeric reading of a saved field as a separate LabDerivation."""
+    store = _store()
+    session = _machine(store, session_id).session
+    artifact, grid = _saved_grid(store, session_id, artifact_id)
+    started = perf_counter()
+    try:
+        if body.operation == "point" and len(body.points) == 1:
+            result = point_sample(grid, *body.points[0])
+        elif body.operation == "path":
+            result = path_sample(grid, body.points)
+        elif body.operation == "roi":
+            result = roi_sample(grid, body.points)
+        elif body.operation == "compare" and body.compare_artifact_id:
+            other, right = _saved_grid(store, session_id, body.compare_artifact_id)
+            result = compare_fields(grid, right)
+        else:
+            raise FieldError("unknown or incomplete field consumer request")
+    except (FieldError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail={"error": "field_consumer_refused",
+                                                     "why": str(exc)}) from exc
+    inputs = [artifact_id] + ([body.compare_artifact_id] if body.compare_artifact_id else [])
+    record = derivations.LabDerivation(
+        derivation_id=f"der_{uuid4().hex[:12]}", session_id=session_id,
+        form="field." + body.operation, organ=artifact.identity.organ_family,
+        producible=True, writable_as_artifact=False,
+        ceiling=artifact.measurement.epistemic_status,
+        basis=artifact.measurement.epistemic_basis,
+        producer="perception_lab.field_data", producer_kind="code",
+        producer_revision="field-consumers.v1",
+        source_image_digest=session.source.image_digest,
+        input_artifact_ids=inputs, parameters=body.model_dump(mode="json"),
+        measurements={"result": result, "field_hash": grid.measurement_hash},
+        duration_ms=(perf_counter() - started) * 1000,
+        created_at=datetime.now(timezone.utc).isoformat())
+    _derivation_store().put(record)
+    return _envelope({"derivation": record.model_dump(mode="json")}, ExecutionIdentity.LIVE)
 
 
 # ── the one failure mode every handler shares ────────────────────────────────

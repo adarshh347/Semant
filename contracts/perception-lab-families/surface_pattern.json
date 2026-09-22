@@ -1,0 +1,12 @@
+{
+  "available": false,
+  "dependencies": [],
+  "family": "surface_pattern",
+  "forms": [],
+  "label": "Surface pattern / material",
+  "models": [],
+  "operations": [],
+  "producer_keys": [],
+  "reason": "No Surface pattern producer is installed in this lane.",
+  "schema_version": "perception-lab-family.v1"
+}

@@ -1,0 +1,12 @@
+{
+  "available": false,
+  "dependencies": [],
+  "family": "illumination",
+  "forms": [],
+  "label": "Illumination",
+  "models": [],
+  "operations": [],
+  "producer_keys": [],
+  "reason": "No Illumination field producer is installed in this lane.",
+  "schema_version": "perception-lab-family.v1"
+}

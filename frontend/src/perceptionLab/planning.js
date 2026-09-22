@@ -19,10 +19,11 @@
 // PURE MODULE. No fetch, no clock (timestamps are arguments), no DOM.
 
 import {
-    checkCapability, checkInputs, checkOrganLock, message, operation, operationsFor,
+    checkCapability, checkInputs, checkOrganLock, enabledOrgans, message, operation, operationsFor,
     referenceOf, resolveParameters, sessionKnows, validateInputRef,
 } from './contract/perceptionLabContract';
 import { inputRef, labPlan, proposedStep, resolvedStep } from './records';
+import { FAMILY_SLOTS } from './families/registry';
 
 // ── the resolver ────────────────────────────────────────────────────────────
 
@@ -232,6 +233,17 @@ const asReference = (entry) => (typeof entry === 'string'
 export function planFromPrompt({ text, selectedOrgan, references = [], step_id = 'step_1',
     parameters = {} }) {
     const said = String(text || '');
+    const slot = FAMILY_SLOTS[selectedOrgan];
+    if (slot?.available) {
+        const matched = slot.operations.filter((op) => op.prompt_intents?.some((intent) =>
+            intent.trim().toLowerCase() === said.trim().toLowerCase()));
+        if (matched.length !== 1) return { proposals: [], unmatched: true,
+            note: 'Use one listed family prompt phrase or its Direct control.' };
+        return { proposals: [proposedStep({ step_id, organ: selectedOrgan,
+            operation: matched[0].key, parameters, input_refs: [],
+            rationale: 'declared exact family prompt intent' })], unmatched: false,
+        crossesOrgan: false };
+    }
     const hit = PHRASES.find((p) => p.re.test(said));
     if (!hit) {
         return {
@@ -283,7 +295,7 @@ export function planFromPrompt({ text, selectedOrgan, references = [], step_id =
  */
 export function availableOperations({ selectedOrgan, mode, capabilityStates = {} }) {
     const families = mode === 'chain'
-        ? [...new Set(['extent', 'topology'])]
+        ? enabledOrgans().map((organ) => organ.family)
         : [selectedOrgan];
     return families.flatMap((family) => operationsFor(family).map((op) => {
         const locked = checkOrganLock(op.key, { selectedOrgan, mode });

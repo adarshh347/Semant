@@ -145,6 +145,8 @@ class EpistemicBasis(str, Enum):
     DEPTH_ARTIFACT = "depth_artifact"  # an ordering statistic over a SUPPLIED depth field
     MANUAL = "manual"                # a person pointed at it
     DECLARED = "declared"            # an imported region asserting its own geometry
+    IMAGE_SIGNAL = "image_signal"    # deterministic values of the prepared image
+    MODEL_ESTIMATE = "model_estimate" # a learned estimate, with named model provenance
 
 
 class PerceptualForm(str, Enum):
@@ -299,6 +301,7 @@ class ArtifactKind(str, Enum):
     TOPOLOGY_UNCERTAIN_RELATIONS = "topology_uncertain_relations"
     REFUSAL = "refusal"
     DEPTH_FIELD = "depth_field"   # declarable and suppliable; producible by nothing in this phase
+    SAMPLE_GRID = "sample_grid"  # one typed carrier shared by the six field families
 
 
 class PayloadVariant(str, Enum):
@@ -324,6 +327,7 @@ class PayloadVariant(str, Enum):
     TOPOLOGY_TRANSITION = "topology_transition"
     TOPOLOGY_UNCERTAIN_RELATIONS = "topology_uncertain_relations"
     REFUSAL = "refusal"
+    SAMPLE_GRID = "sample_grid"
 
 
 class IdentityScope(str, Enum):
@@ -443,6 +447,8 @@ BASIS_CEILINGS: Dict[EpistemicBasis, EpistemicStatus] = {
     EpistemicBasis.DEPTH_ARTIFACT: EpistemicStatus.MEASURED,
     EpistemicBasis.MANUAL: EpistemicStatus.VISIBLE,
     EpistemicBasis.DECLARED: EpistemicStatus.UNCERTAIN,
+    EpistemicBasis.IMAGE_SIGNAL: EpistemicStatus.MEASURED,
+    EpistemicBasis.MODEL_ESTIMATE: EpistemicStatus.UNCERTAIN,
 }
 
 #: What kind of ACT each partition is, and therefore how strong a claim it can support.
@@ -834,7 +840,8 @@ class LabSession(_Base):
     @field_validator("selected_organ")
     @classmethod
     def _organ_is_enabled(cls, v: OrganFamily) -> OrganFamily:
-        if v.value not in ENABLED_ORGAN_FAMILIES:
+        from backend.services.perception_lab.families.registry import REGISTRY
+        if v.value not in ENABLED_ORGAN_FAMILIES and not REGISTRY[v.value].available:
             raise ValueError(
                 f"the {v.value} organ is registered and not enabled in this phase. Selecting it "
                 f"would give a person a laboratory with nothing behind the glass.")
@@ -2103,6 +2110,27 @@ class TopologyUncertainRelationsPayload(_Base):
         return self
 
 
+class SampleGridPayload(_Base):
+    """A typed numeric field, with its data kept separate from every preview."""
+
+    variant: Literal["sample_grid"] = "sample_grid"
+    form_key: str = Field(min_length=3, max_length=100)
+    manifest: Dict[str, Any]
+    field_ref: DataRef
+
+    @model_validator(mode="after")
+    def _bounded_field(self) -> "SampleGridPayload":
+        from backend.services.perception_lab.field_data import _checked_meta, decode_grid
+        _checked_meta(self.manifest.get("metadata"))
+        if self.manifest.get("codec") != "gzip-field-v1":
+            raise ValueError("unsupported sample grid codec")
+        if self.field_ref.uri.startswith("data:"):
+            decode_grid(self.manifest, self.field_ref)
+        elif self.field_ref.uri != "lab-asset:" + self.field_ref.digest:
+            raise ValueError("sample grid requires a controlled Lab asset reference")
+        return self
+
+
 ArtifactPayload = Annotated[
     Union[
         # the four the laboratory already writes, unchanged
@@ -2115,6 +2143,7 @@ ArtifactPayload = Annotated[
         TopologyContactLocusPayload, TopologyIntersectionPayload, TopologyClearancePathPayload,
         TopologyContainmentTreePayload, TopologyAdjacencyGraphPayload, TopologyTransitionPayload,
         TopologyUncertainRelationsPayload,
+        SampleGridPayload,
     ],
     Field(discriminator="variant"),
 ]
@@ -2143,6 +2172,7 @@ FORM_PAYLOAD_MODELS: Mapping[str, type] = {
     "topology_transition": TopologyTransitionPayload,
     "topology_uncertain_relations": TopologyUncertainRelationsPayload,
     "refusal": RefusalPayload,
+    "sample_grid": SampleGridPayload,
 }
 
 
@@ -2326,6 +2356,10 @@ class PerceptualArtifact(_Base):
         An `extent` artifact holding a `topology_relation_set` is either a bug or an organ
         reporting work it did not do, and there is no third case worth admitting.
         """
+        if self.identity.artifact_kind is ArtifactKind.SAMPLE_GRID:
+            from backend.services.perception_lab.families.registry import validate_field_artifact
+            validate_field_artifact(self)
+            return self
         contract = lab_contract()
         organ = next((o for o in contract["organs"]
                       if o["family"] == self.identity.organ_family.value), None)
@@ -2395,7 +2429,7 @@ class PerceptualArtifact(_Base):
                 raise ValueError(
                     f"form {self.identity.form.value!r} belongs to the {declared['organ']} organ, "
                     f"not {self.identity.organ_family.value}")
-        elif self.identity.artifact_kind is not ArtifactKind.REFUSAL:
+        elif self.identity.artifact_kind not in (ArtifactKind.REFUSAL, ArtifactKind.SAMPLE_GRID):
             if self.identity.artifact_kind.value not in legacy_form_index():
                 raise ValueError(
                     f"an artifact of kind {self.identity.artifact_kind.value!r} must declare its "
