@@ -271,9 +271,11 @@ def validate_source_transform(left_bytes: bytes, right_bytes: bytes) -> Validate
     from backend.services.perception_lab.image_preparation import prepare_image
     left = prepare_image(left_bytes)
     right = prepare_image(right_bytes)
-    if (left.working_rgb_digest != right.working_rgb_digest
+    if (left.working_size != right.working_size
+            or left.working_rgb_digest != right.working_rgb_digest
+            or left.alpha_bytes != right.alpha_bytes
             or left.source_to_working != right.source_to_working):
-        raise FieldError("decoded working images or source transforms differ")
+        raise FieldError("decoded working images, alpha or source transforms differ")
     return ValidatedSourceTransform(left.source_digest, right.source_digest,
                                     left.working_rgb_digest, (1, 0, 0, 0, 1, 0, 0, 0, 1))
 

@@ -120,3 +120,7 @@ def test_cross_source_compare_needs_decoded_image_proof():
         compare_fields(left, right)
     proof = validate_source_transform(png.getvalue(), bmp.getvalue())
     assert compare_fields(left, right, source_transform=proof)["max_absolute_difference"] == 0
+    transparent = io.BytesIO()
+    Image.new("RGBA", (2, 1), (80, 40, 20, 0)).save(transparent, format="PNG")
+    with pytest.raises(FieldError, match="alpha"):
+        validate_source_transform(png.getvalue(), transparent.getvalue())
