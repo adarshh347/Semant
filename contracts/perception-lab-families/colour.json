@@ -1,12 +1,145 @@
 {
-  "available": false,
+  "available": true,
   "dependencies": [],
   "family": "colour",
-  "forms": [],
+  "forms": [
+    {
+      "description": "Source-aligned six-channel field.",
+      "key": "colour.channels",
+      "label": "Colour channels",
+      "quantity": "sRGB and CIELAB image signal",
+      "views": [
+        "channel"
+      ]
+    },
+    {
+      "description": "Sampled CIELAB palette with full field membership.",
+      "key": "colour.palette",
+      "label": "Sampled palette",
+      "quantity": "sampled colour groups",
+      "views": [
+        "palette"
+      ]
+    },
+    {
+      "description": "Distance from a selected pixel or supplied sRGB8 colour.",
+      "key": "colour.distance",
+      "label": "Reference colour distance",
+      "quantity": "CIELAB \u0394E76",
+      "views": [
+        "distance"
+      ]
+    }
+  ],
   "label": "Colour",
   "models": [],
-  "operations": [],
-  "producer_keys": [],
-  "reason": "No Colour field producer is installed in this lane.",
+  "operations": [
+    {
+      "form_key": "colour.channels",
+      "key": "colour.channels",
+      "label": "Make colour field",
+      "learned": false,
+      "parameters": {},
+      "producer_key": "colour.channels",
+      "prompt_intents": [
+        "show the colour field"
+      ]
+    },
+    {
+      "form_key": "colour.palette",
+      "key": "colour.palette",
+      "label": "Make sampled palette",
+      "learned": false,
+      "parameters": {
+        "clusters": {
+          "description": "Requested groups",
+          "maximum": 8,
+          "minimum": 1,
+          "required": true,
+          "type": "integer"
+        },
+        "samples": {
+          "description": "Requested samples",
+          "maximum": 128,
+          "minimum": 1,
+          "required": true,
+          "type": "integer"
+        },
+        "seed": {
+          "description": "Deterministic seed",
+          "maximum": 2147483647,
+          "minimum": 0,
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "producer_key": "colour.palette",
+      "prompt_intents": []
+    },
+    {
+      "form_key": "colour.distance",
+      "key": "colour.distance",
+      "label": "Distance from selected pixel",
+      "learned": false,
+      "parameters": {
+        "x": {
+          "description": "Selected field-pixel x",
+          "maximum": 511,
+          "minimum": 0,
+          "required": true,
+          "type": "integer"
+        },
+        "y": {
+          "description": "Selected field-pixel y",
+          "maximum": 511,
+          "minimum": 0,
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "producer_key": "colour.distance",
+      "prompt_intents": [
+        "compare colour to the selected sample"
+      ]
+    },
+    {
+      "form_key": "colour.distance",
+      "key": "colour.distance_rgb",
+      "label": "Distance from supplied sRGB colour",
+      "learned": false,
+      "parameters": {
+        "b": {
+          "description": "sRGB8 b",
+          "maximum": 255,
+          "minimum": 0,
+          "required": true,
+          "type": "integer"
+        },
+        "g": {
+          "description": "sRGB8 g",
+          "maximum": 255,
+          "minimum": 0,
+          "required": true,
+          "type": "integer"
+        },
+        "r": {
+          "description": "sRGB8 r",
+          "maximum": 255,
+          "minimum": 0,
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "producer_key": "colour.distance_rgb",
+      "prompt_intents": []
+    }
+  ],
+  "producer_keys": [
+    "colour.channels",
+    "colour.distance",
+    "colour.distance_rgb",
+    "colour.palette"
+  ],
+  "reason": "Deterministic image-colour fields; sRGB working copy, not physical pigment data.",
   "schema_version": "perception-lab-family.v1"
 }
