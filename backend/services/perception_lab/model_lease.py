@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-LEASE_PATH = Path(os.environ.get("SEMANT_MODEL_LEASE_PATH", "/private/tmp/semant-perception-model.lease"))
+LEASE_PATH = Path(os.environ.get("SEMANT_MODEL_LEASE_PATH", "/tmp/semant-perception-model.lease"))
 
 
 class ModelLeaseBusy(RuntimeError):
