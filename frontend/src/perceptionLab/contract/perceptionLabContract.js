@@ -32,6 +32,7 @@
 // PURE MODULE. No fetch, no DOM, no React. Data in, verdict out.
 
 import CONTRACT from '../../contracts/perception-lab.v1.json';
+import { FAMILY_SLOTS } from '../families/registry';
 
 export { CONTRACT };
 
@@ -139,10 +140,15 @@ export const ENFORCED_LAWS = Object.freeze([
 // ── the registry ────────────────────────────────────────────────────────────
 
 const ORGANS_BY_FAMILY = Object.freeze(Object.fromEntries(
-    CONTRACT.organs.map((o) => [o.family, Object.freeze(o)])));
+    CONTRACT.organs.map((o) => {
+        const slot = FAMILY_SLOTS[o.family];
+        if (!slot?.available) return [o.family, Object.freeze(o)];
+        return [o.family, Object.freeze({ ...o, enabled: true, availability: 'available',
+            produces_artifact_kinds: ['sample_grid'], operations: slot.operations })];
+    })));
 
 const OPERATIONS_BY_KEY = Object.freeze(Object.fromEntries(
-    CONTRACT.organs.flatMap((o) => (o.operations || []).map(
+    Object.values(ORGANS_BY_FAMILY).flatMap((o) => (o.operations || []).map(
         (op) => [op.key, Object.freeze({ ...op, organ: o.family })]))));
 
 export const ORGANS = ORGANS_BY_FAMILY;
@@ -169,7 +175,7 @@ export function operation(key) {
 }
 
 export const isOrganEnabled = (family) => organ(family).enabled === true;
-export const enabledOrgans = () => CONTRACT.organs.filter((o) => o.enabled);
+export const enabledOrgans = () => Object.values(ORGANS_BY_FAMILY).filter((o) => o.enabled);
 export const operationsFor = (family) => organ(family).operations || [];
 
 /** What an ENABLED organ can mint. `depth_field` is deliberately not in here. */
@@ -698,6 +704,16 @@ export function validateArtifact(artifact) {
         fail(out, `artifact_kind "${identity.artifact_kind}" and payload_variant `
             + `"${measurement.payload_variant}" are different things`);
     }
+    if (identity.artifact_kind === 'sample_grid') {
+        const payload = measurement.payload;
+        const slot = FAMILY_SLOTS[identity.organ_family];
+        if (!slot?.available || payload?.variant !== 'sample_grid'
+            || !slot.forms.some((form) => form.key === payload.form_key)
+            || payload.manifest?.metadata?.source_digest !== artifact.provenance.source_image_digest
+            || !payload.field_ref?.digest) {
+            fail(out, 'sample grid payload, form, source or field reference is invalid');
+        }
+    }
     const carriers = [measurement.payload, measurement.data_ref].filter(
         (c) => c !== null && c !== undefined);
     if (carriers.length !== 1) fail(out, 'a measurement carries exactly one of payload / data_ref');
@@ -745,7 +761,8 @@ export function validateArtifact(artifact) {
         fail(out, `unknown perceptual form "${identity.form}"`);
     } else {
         const formKey = effectiveForm(artifact);
-        if (!identity.form && identity.artifact_kind !== 'refusal' && !formKey) {
+        if (!identity.form && !['refusal', 'sample_grid'].includes(identity.artifact_kind)
+            && !formKey) {
             fail(out, `an artifact of kind "${identity.artifact_kind}" must declare its `
                 + 'identity.form; only the three kinds that predate the form grammar may omit it');
         }

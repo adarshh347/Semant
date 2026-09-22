@@ -57,7 +57,7 @@
     "lifecycle_states": ["proposed", "edited", "kept", "rejected", "promoted"],
     "review_verdicts": ["correct", "partial", "wrong", "unclear"],
     "epistemic_statuses": ["visible", "measured", "interpretive", "sourced", "uncertain"],
-    "epistemic_bases": ["mask", "box", "depth_artifact", "manual", "declared"],
+    "epistemic_bases": ["mask", "box", "depth_artifact", "manual", "declared", "image_signal", "model_estimate"],
     "artifact_kinds": [
       "extent_set",
       "extent_boundary",
@@ -79,7 +79,8 @@
       "topology_transition",
       "topology_uncertain_relations",
       "refusal",
-      "depth_field"
+      "depth_field",
+      "sample_grid"
     ],
     "payload_variants": [
       "extent_set",
@@ -101,7 +102,8 @@
       "negative_space_field",
       "topology_transition",
       "topology_uncertain_relations",
-      "refusal"
+      "refusal",
+      "sample_grid"
     ],
     "identity_scopes": ["session", "canonical"],
     "producer_kinds": ["adapter", "human", "fixture", "replay"],
@@ -344,14 +346,18 @@
       "box": "interpretive",
       "depth_artifact": "measured",
       "manual": "visible",
-      "declared": "uncertain"
+      "declared": "uncertain",
+      "image_signal": "measured",
+      "model_estimate": "uncertain"
     },
     "basis_notes": {
       "mask": "per-pixel intersection on a shared raster. `epistemics.SUBSTRATE_CEILING['mask']`.",
       "box": "bounding boxes systematically over-estimate. `epistemics.SUBSTRATE_CEILING['box']`. This is the WAVE2.5 ruling and the lab does not soften it: a box-basis containment of 1.000 is a reading, not a finding.",
       "depth_artifact": "an ordering statistic over a SUPPLIED depth field. Measured — of that field. The lab never computes the field itself in this phase.",
       "manual": "a person pointed at it. `visible` in the exact sense epistemics means: the extent is present in the picture and someone can point at it. Not `measured` — nothing computed it.",
-      "declared": "an imported region asserting its own geometry. The lab may carry the claim; it may not upgrade it."
+      "declared": "an imported region asserting its own geometry. The lab may carry the claim; it may not upgrade it.",
+      "image_signal": "a deterministic calculation on the prepared image signal, with source and transform retained.",
+      "model_estimate": "a named learned model estimates a field; its values remain inspectable but are not ground truth."
     },
     "laws": [
       "A measurement is one of `measured`, `visible`, `interpretive`, `uncertain`. It may never be `sourced`: nothing in this laboratory comes from outside the image, and `sourced` is the walled status in `epistemics.WALLED_STATUSES`.",

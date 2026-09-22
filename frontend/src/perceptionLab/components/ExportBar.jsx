@@ -19,7 +19,7 @@ import { downloadText, serializeStage, snapshotLegend, svgToPngBlob } from '../s
  * word under which a hidden write into Semant would most comfortably hide.
  */
 export default function ExportBar({ session, plans, runs, artifacts, reviews, run, artifact,
-    clientIdentity, stageRef, now, derivations = [] }) {
+    clientIdentity, stageRef, now, derivations = [], client, onImported }) {
     const [status, setStatus] = useState(null);
 
     if (!session) return null;
@@ -32,14 +32,44 @@ export default function ExportBar({ session, plans, runs, artifacts, reviews, ru
 
     const problems = verifyExport(buildExport(bundleInput));
 
-    const saveJson = () => {
+    const saveJson = async () => {
         try {
             const at = now();
-            const text = exportJson({ ...bundleInput, exported_at: at });
+            let text;
+            if (artifacts.some((item) => item.identity.artifact_kind === 'sample_grid')) {
+                if (!client?.exportSession) throw new Error('Field export requires the Lab asset reader.');
+                const bundle = await client.exportSession({ session_id: session.session_id });
+                if (bundle.field_asset_status !== 'complete') {
+                    throw new Error('The field assets are incomplete; export refused.');
+                }
+                const errors = verifyExport(bundle);
+                if (errors.length) throw new Error(errors[0]);
+                text = JSON.stringify(bundle, null, 2);
+            } else {
+                text = exportJson({ ...bundleInput, exported_at: at });
+            }
             const out = downloadText(exportFilename(session, at), text);
             setStatus({ ok: true, message: `${out.filename} · ${out.bytes} bytes` });
         } catch (err) {
             setStatus({ ok: false, message: String(err.message || err) });
+        }
+    };
+
+    const importJson = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+            if (!client?.importSession) throw new Error('This Lab client cannot import sessions.');
+            const bundle = JSON.parse(await file.text());
+            const result = await client.importSession(bundle);
+            const importedId = result.session_id;
+            if (!importedId) throw new Error('Import returned no session identity.');
+            setStatus({ ok: true, message: `Imported as ${importedId}` });
+            await onImported?.(importedId);
+        } catch (err) {
+            setStatus({ ok: false, message: String(err.message || err) });
+        } finally {
+            event.target.value = '';
         }
     };
 
@@ -113,6 +143,10 @@ export default function ExportBar({ session, plans, runs, artifacts, reviews, ru
                     onClick={savePng}>
                     The picture, as PNG
                 </button>
+                {client?.importSession ? <label className="pl-btn">Import Lab JSON
+                    <input type="file" accept="application/json,.json" onChange={importJson}
+                        className="pl-visually-hidden" />
+                </label> : null}
             </div>
 
             {status ? (

@@ -67,6 +67,8 @@ export const BASIS = table('epistemic_basis', {
     depth_artifact: { label: 'depth field', hint: 'an ordering over a SUPPLIED depth field' },
     manual: { label: 'drawn', hint: 'a person drew it' },
     declared: { label: 'declared', hint: 'an imported region asserting its own geometry. The lab carries the claim and may not raise it' },
+    image_signal: { label: 'image signal', hint: 'deterministic values on the prepared image signal' },
+    model_estimate: { label: 'model estimate', hint: 'a named learned estimate, inspectable but not ground truth' },
 });
 
 export const LIFECYCLE = table('lifecycle_status', {

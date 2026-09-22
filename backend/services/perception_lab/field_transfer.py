@@ -81,6 +81,7 @@ def attach_field_assets(bundle: Mapping, asset_store) -> dict:
     out = copy.deepcopy(dict(bundle))
     out["field_assets"] = []
     unavailable = []
+    attached = set()
     for raw in out.get("artifacts", []):
         artifact = PerceptualArtifact.model_validate(raw)
         payload = _field_payload(artifact)
@@ -93,15 +94,22 @@ def attach_field_assets(bundle: Mapping, asset_store) -> dict:
             continue
         ref = payload.field_ref
         try:
-            data = _asset_bytes(ref, {ref.uri: asset_store.get(ref.uri)}
-                                if ref.uri.startswith("lab-asset:") else {})
+            if ref.uri.startswith("lab-asset:"):
+                try:
+                    supplied = asset_store.get(ref.uri)
+                except (KeyError, LookupError, ValueError) as exc:
+                    raise FieldError("Lab field asset unavailable") from exc
+                data = _asset_bytes(ref, {ref.uri: supplied})
+            else:
+                data = _asset_bytes(ref, {})
             decode_grid(payload.manifest, ref, get_asset=lambda _: data)
         except FieldError:
             unavailable.append(ref.uri)
             continue
-        if ref.uri.startswith("lab-asset:"):
+        if ref.uri.startswith("lab-asset:") and ref.uri not in attached:
             out["field_assets"].append({"uri": ref.uri, "digest": ref.digest,
                                         "bytes": len(data), "base64": base64.b64encode(data).decode()})
+            attached.add(ref.uri)
     out["field_asset_status"] = "complete" if not unavailable else "incomplete"
     out["unavailable_field_assets"] = unavailable
     return out
@@ -144,8 +152,10 @@ def _remap(value, ids):
 def import_session_bundle(bundle: Mapping, *, store, derivation_store, asset_store,
                           target_source=None) -> dict:
     """Prevalidate every record and asset, then write only to the existing Lab stores."""
+    if not isinstance(bundle, Mapping):
+        raise FieldError("export must be a JSON object")
     try:
-        serialized_size = len(json.dumps(bundle)) if isinstance(bundle, Mapping) else MAX_EXPORT_BYTES + 1
+        serialized_size = len(json.dumps(bundle))
     except (TypeError, ValueError) as exc:
         raise FieldError("export is not valid JSON data") from exc
     if serialized_size > MAX_EXPORT_BYTES:
@@ -157,6 +167,8 @@ def import_session_bundle(bundle: Mapping, *, store, derivation_store, asset_sto
               "derivations": LabDerivation}
     records = {}
     for key, model in models.items():
+        if key == "session" and "session" not in bundle:
+            raise FieldError("export has no session record")
         values = [bundle[key]] if key == "session" else bundle.get(key, [])
         if not isinstance(values, list) or len(values) > 10000:
             raise FieldError(f"invalid {key} record list")

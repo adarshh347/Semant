@@ -23,6 +23,9 @@ import useFormBench from './formBench/useFormBench';
 import './formBench/formBench.css';
 import { EmptyState } from './components/Chips';
 import { inputRef } from './records';
+import { FAMILY_SLOTS } from './families/registry';
+import FieldInspector from './fields/FieldInspector';
+import FieldFixtureDemo from './fields/FieldFixtureDemo';
 import './perceptionLab.css';
 
 /**
@@ -51,6 +54,7 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
     const [arm, setArm] = useState('direct');
     const [comparisonRunId, setComparisonRunId] = useState(null);
     const [reopenId, setReopenId] = useState(initialSessionId);
+    const [importStatus, setImportStatus] = useState('');
     const lab = useLabSession(client, { initialOrgan, initialMode });
     /**
      * PERCEPTUAL-FORMS-001H — the two lower levels, held beside the session rather than inside it.
@@ -155,7 +159,7 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
             data-mode={lab.mode} data-arm={arm} data-client={lab.clientIdentity}>
             <header className="pl-bar">
                 <span className="pl-kicker">Perception laboratory</span>
-                <h1 className="pl-title">Extent &amp; Topology</h1>
+                <h1 className="pl-title">Perception Lab</h1>
                 <span className="pl-bar-spacer" />
                 <span className="pl-chip" data-client-identity={lab.clientIdentity}
                     title="what this page is talking to. The badge on a run says where that run's
@@ -172,6 +176,7 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                     </span>
                 ) : null}
             </header>
+            <FieldFixtureDemo />
 
             {lab.error ? (
                 <p className="pl-error" role="alert">
@@ -191,6 +196,27 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                             Reopen saved session
                         </button>
                         <p className="pl-panel-sub">Restore recorded results and selections. This does not run a model.</p>
+                        {client.importSession ? <>
+                            <label className="pl-btn">Import Lab JSON
+                                <input type="file" accept="application/json,.json"
+                                    className="pl-visually-hidden" onChange={async (event) => {
+                                        const file = event.target.files?.[0];
+                                        if (!file) return;
+                                        try {
+                                            const bundle = JSON.parse(await file.text());
+                                            const result = await client.importSession(bundle);
+                                            if (!result.session_id) throw new Error('No imported session ID.');
+                                            setReopenId(result.session_id);
+                                            const reopened = await lab.resumeSession(result.session_id);
+                                            setImportStatus(reopened ? `Imported ${result.session_id}`
+                                                : `Imported ${result.session_id}; use Reopen to inspect it.`);
+                                            if (reopened) setArm('form');
+                                        } catch (error) { setImportStatus(String(error.message || error)); }
+                                        event.target.value = '';
+                                    }} />
+                            </label>
+                            {importStatus ? <p className="pl-panel-sub" role="status">{importStatus}</p> : null}
+                        </> : null}
                     </section>
                     <SourcePicker
                         sources={lab.sources}
@@ -222,6 +248,10 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                         </section>
                     ) : (
                         <>
+                            {FAMILY_SLOTS[lab.organ]?.available ? React.createElement(
+                                FAMILY_SLOTS[lab.organ].Panel,
+                                { client, session: lab.session, source, lab, arm, onArm: setArm },
+                            ) : null}
                             {topologyArtifact ? (
                                 <TopologyStage
                                     artifact={topologyArtifact}
@@ -325,6 +355,12 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                 <div className="pl-inspector">
                     {lab.session ? (
                         <>
+                            {lab.active?.identity.artifact_kind === 'sample_grid' ? (
+                                <FieldInspector client={client} sessionId={lab.session.session_id}
+                                    artifact={lab.active} source={source}
+                                    fields={lab.ledger.filter((entry) =>
+                                        entry.identity.artifact_kind === 'sample_grid')} />
+                            ) : null}
                             <Ledger
                                 ledger={lab.ledger}
                                 selectedIds={lab.selectedIds}
@@ -374,6 +410,11 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                 onCompare={setComparisonRunId}
                                 busy={lab.busy} />
                             <ExportBar
+                                client={client}
+                                onImported={async (sessionId) => {
+                                    setReopenId(sessionId);
+                                    if (await lab.resumeSession(sessionId)) setArm('form');
+                                }}
                                 session={lab.session}
                                 plans={lab.plans}
                                 runs={lab.runs}
