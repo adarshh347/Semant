@@ -80,8 +80,9 @@ def test_shading_unavailable_never_falls_back_to_luminance(monkeypatch):
 
 
 def test_dense_service_uninverts_pinned_output_and_keeps_legacy_separate(monkeypatch):
+    import sys
+    import types
     import numpy as np
-    from intrinsic import pipeline
     from backend.services import intrinsic_service as service
 
     monkeypatch.setattr(service, 'is_available', lambda: True)
@@ -93,7 +94,12 @@ def test_dense_service_uninverts_pinned_output_and_keeps_legacy_separate(monkeyp
         observed.append(kwargs)
         return {'gry_shd': np.array([[.5, 0, 1.1, np.nan]], dtype='float32'),
                 'image': np.zeros((16, 32, 3), dtype='float32')}
-    monkeypatch.setattr(pipeline, 'run_gray_pipeline', gray)
+    package = types.ModuleType('intrinsic')
+    package.__path__ = []
+    pipeline = types.ModuleType('intrinsic.pipeline')
+    pipeline.run_gray_pipeline = gray
+    monkeypatch.setitem(sys.modules, 'intrinsic', package)
+    monkeypatch.setitem(sys.modules, 'intrinsic.pipeline', pipeline)
     result = service.estimate_dense(Image.new('RGB', (4, 1)))
     assert observed == [{'device': 'cpu', 'maintain_size': True}]
     assert result['native_shape'] == [16, 32]
