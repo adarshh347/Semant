@@ -10,7 +10,8 @@ from PIL import Image
 
 from backend.services.perception_lab.field_assets import InMemoryFieldAssets
 from backend.services.perception_lab.field_data import (
-    FieldError, compare_fields, decode_grid, encode_grid, path_sample, point_sample, roi_sample)
+    FieldError, compare_fields, decode_grid, encode_grid, path_sample, point_sample,
+    roi_sample, validate_source_transform)
 from backend.services.perception_lab.image_preparation import prepare_image
 
 
@@ -101,3 +102,21 @@ def test_source_preparation_keeps_original_bytes_and_alpha():
     assert prepared.source_digest != prepared.working_rgb_digest
     assert prepared.alpha_bytes == bytes([0] * 6)
     assert prepared.source_to_working == (1, 0, 0, 0, 1, 0, 0, 0, 1)
+
+
+def test_cross_source_compare_needs_decoded_image_proof():
+    image = Image.new("RGB", (2, 1), (80, 40, 20))
+    png, bmp = io.BytesIO(), io.BytesIO()
+    image.save(png, format="PNG")
+    image.save(bmp, format="BMP")
+    left_source, right_source = prepare_image(png.getvalue()), prepare_image(bmp.getvalue())
+    left_meta = metadata("scalar", [1, 2, 1], [("v", "signal", "relative")])
+    left_meta["source_digest"] = left_source.source_digest
+    right_meta = {**left_meta, "source_digest": right_source.source_digest}
+    lm, lr = encode_grid(left_meta, [.2, .4], [True, True])
+    rm, rr = encode_grid(right_meta, [.2, .4], [True, True])
+    left, right = decode_grid(lm, lr), decode_grid(rm, rr)
+    with pytest.raises(FieldError, match="source mismatch"):
+        compare_fields(left, right)
+    proof = validate_source_transform(png.getvalue(), bmp.getvalue())
+    assert compare_fields(left, right, source_transform=proof)["max_absolute_difference"] == 0

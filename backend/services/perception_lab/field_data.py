@@ -258,8 +258,28 @@ def roi_sample(grid: SampleGrid, points: Sequence[Sequence[int]]) -> dict:
             "channels": grid.metadata["channels"]}
 
 
+@dataclass(frozen=True)
+class ValidatedSourceTransform:
+    left_source_digest: str
+    right_source_digest: str
+    decoded_rgb_digest: str
+    matrix: tuple[int, ...]
+
+
+def validate_source_transform(left_bytes: bytes, right_bytes: bytes) -> ValidatedSourceTransform:
+    """Admit identity only after independently decoding both original sources."""
+    from backend.services.perception_lab.image_preparation import prepare_image
+    left = prepare_image(left_bytes)
+    right = prepare_image(right_bytes)
+    if (left.working_rgb_digest != right.working_rgb_digest
+            or left.source_to_working != right.source_to_working):
+        raise FieldError("decoded working images or source transforms differ")
+    return ValidatedSourceTransform(left.source_digest, right.source_digest,
+                                    left.working_rgb_digest, (1, 0, 0, 0, 1, 0, 0, 0, 1))
+
+
 def compare_fields(left: SampleGrid, right: SampleGrid, *,
-                   source_transform: Mapping | None = None) -> dict:
+                   source_transform: ValidatedSourceTransform | None = None) -> dict:
     a, b = left.metadata, right.metadata
     for key in ("shape", "kind", "channels", "frame", "units", "value_convention"):
         if a[key] != b[key]:
@@ -268,11 +288,11 @@ def compare_fields(left: SampleGrid, right: SampleGrid, *,
         # Identity mapping is meaningful only with an explicitly checked statement
         # that both decoded rasters correspond. A random affine must never make two
         # unrelated images comparable by itself.
-        if (not isinstance(source_transform, Mapping)
-                or source_transform.get("left_source_digest") != a["source_digest"]
-                or source_transform.get("right_source_digest") != b["source_digest"]
-                or source_transform.get("matrix") != [1,0,0,0,1,0,0,0,1]
-                or source_transform.get("verified_decoded_rgb_digest") is None):
+        if (not isinstance(source_transform, ValidatedSourceTransform)
+                or source_transform.left_source_digest != a["source_digest"]
+                or source_transform.right_source_digest != b["source_digest"]
+                or source_transform.matrix != (1, 0, 0, 0, 1, 0, 0, 0, 1)
+                or not source_transform.decoded_rgb_digest.startswith("sha256:")):
             raise FieldError("source mismatch requires an explicit validated transform")
     if a["source_to_field"] != b["source_to_field"]:
         raise FieldError("field transforms differ")

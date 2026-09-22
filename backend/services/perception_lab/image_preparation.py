@@ -11,7 +11,6 @@ from dataclasses import dataclass
 
 from PIL import Image, ImageCms, ImageOps
 
-from backend.services.perception_lab.source import image_digest
 
 MAX_PIXELS = 16_777_216
 
@@ -70,7 +69,8 @@ def prepare_image(source_bytes: bytes) -> PreparedImage:
             profile_label = "sRGB assumed; no embedded ICC profile"
         rgb_bytes = rgb.tobytes()
         return PreparedImage(
-            source_bytes=source_bytes, source_digest=image_digest(source_bytes),
+            source_bytes=source_bytes,
+            source_digest="sha256:" + hashlib.sha256(source_bytes).hexdigest(),
             source_size=(width, height), working_size=image.size,
             rgb_bytes=rgb_bytes, alpha_bytes=alpha.tobytes(),
             working_rgb_digest="sha256:" + hashlib.sha256(rgb_bytes).hexdigest(),
