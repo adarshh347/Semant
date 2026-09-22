@@ -30,7 +30,7 @@ so single-GPU residency matters more here than anywhere else — `unload()` is n
 GRAYSCALE ONLY, deliberately. `paper_weights` is the V1 release from the ordinal-shading paper;
 `load_models` forces `stage = 1` for it, so the multi-stage `run_pipeline` dies with
 `KeyError: 'col_model'`. The correct entry point is **`run_gray_pipeline`**, whose `gry_shd` is a
-single-channel shading map — exactly what a light field wants, and it avoids the heavier v2
+single-channel inverse-shading map in this installed revision, and it avoids the heavier v2
 five-stage download. (The v2/v2.1 weights would enable colour shading if ever needed.)
 
 Shape mirrors `depth_service` / `dinov2_service`: a lazy GPU singleton with an explicit
@@ -47,7 +47,7 @@ PREPROCESSING_VERSION = "intrinsic-ordinal-v1"
 GRID = 16                       # same coarse grid as depth / dinov2 / cpu_perceptual
 
 # CONFIRMED against a real run (P6-I): `run_gray_pipeline` returns
-#   gry_shd (704,544) float32  ← the shading map, single channel. THIS one.
+#   gry_shd (704,544) float32  ← inverse shading, single channel. THIS one.
 #   gry_alb (…,3)              — albedo, the surface's own colour, NOT the light
 #   ord_base / ord_full (…,1)  — intermediate ordinal estimates, NOT the final shading
 #   image / lin_img            — the inputs echoed back
@@ -181,6 +181,7 @@ def estimate_dense(image) -> Dict[str, Any]:
 
     if not is_available():
         raise RuntimeError("Intrinsic gray pipeline or chrislib is unavailable")
+    model_cached = _model is not None
     started = time.perf_counter()
     _load()
     load_ms = (time.perf_counter() - started) * 1000
@@ -204,4 +205,4 @@ def estimate_dense(image) -> Dict[str, Any]:
     return {"shading": shading, "valid": valid,
             "native_shape": list(native.shape[:2]), "output_keys": sorted(result),
             "device": _device(), "load_ms": load_ms,
-            "inference_ms": inference_ms, "model_cached": load_ms < 1.0}
+            "inference_ms": inference_ms, "model_cached": model_cached}

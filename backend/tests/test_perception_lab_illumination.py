@@ -77,3 +77,28 @@ def test_shading_unavailable_never_falls_back_to_luminance(monkeypatch):
     monkeypatch.setattr(intrinsic_service, 'estimate_dense', lambda image: (_ for _ in ()).throw(RuntimeError('missing checkpoint')))
     with pytest.raises(RuntimeError, match='missing checkpoint'):
         organ.estimated_shading(p, {}, (), Cancel())
+
+
+def test_dense_service_uninverts_pinned_output_and_keeps_legacy_separate(monkeypatch):
+    import numpy as np
+    from intrinsic import pipeline
+    from backend.services import intrinsic_service as service
+
+    monkeypatch.setattr(service, 'is_available', lambda: True)
+    monkeypatch.setattr(service, '_load', lambda: None)
+    monkeypatch.setattr(service, '_model', object())
+    monkeypatch.setattr(service, '_device', lambda: 'cpu')
+    observed = []
+    def gray(model, rgb, **kwargs):
+        observed.append(kwargs)
+        return {'gry_shd': np.array([[.5, 0, 1.1, np.nan]], dtype='float32'),
+                'image': np.zeros((16, 32, 3), dtype='float32')}
+    monkeypatch.setattr(pipeline, 'run_gray_pipeline', gray)
+    result = service.estimate_dense(Image.new('RGB', (4, 1)))
+    assert observed == [{'device': 'cpu', 'maintain_size': True}]
+    assert result['native_shape'] == [16, 32]
+    assert result['shading'][0, :3].tolist() == pytest.approx([1, 999, 0])
+    assert result['valid'][0].tolist() == [True, True, True, False]
+    # The older suggestion route intentionally keeps its raw coarse convention.
+    legacy = service.estimate(Image.new('RGB', (4, 1)), grid=2)
+    assert legacy['grid'] == 2
