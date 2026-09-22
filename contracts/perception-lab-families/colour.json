@@ -1,13 +1,6 @@
 {
   "available": true,
-  "dependencies": [
-    {
-      "admitted": true,
-      "license": "BSD-3-Clause",
-      "package": "numpy",
-      "version": ">=1.24,<3"
-    }
-  ],
+  "dependencies": [],
   "family": "colour",
   "forms": [
     {
