@@ -374,10 +374,10 @@ def test_a_topology_question_with_no_extents_refuses_rather_than_finding_its_own
 # ── the registry ─────────────────────────────────────────────────────────────
 
 
-def test_the_live_registry_holds_exactly_the_declared_adapters_of_the_two_live_organs():
+def test_the_live_registry_holds_exactly_the_declared_adapters_of_enabled_organs():
     registry = live_registry(LabRuntime(source=F.snapshot().source))
-    declared = {name for family in ("extent", "topology")
-                for op in D.operations_for(family) for name in op.adapters}
+    declared = {name for organ in D.enabled_organs()
+                for op in D.operations_for(organ.family) for name in op.adapters}
     assert set(registry.names) == declared
 
     deferred = {name for organ in D.organs().values() if not organ.enabled

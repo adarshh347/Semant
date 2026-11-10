@@ -617,6 +617,11 @@ def test_with_no_probe_the_run_says_nobody_looked_rather_than_asserting_the_imag
 #: `backend.config` arrives with them. Nothing here opens a collection, and this list is short
 #: enough to read, which is the point of asserting it by hand.
 ALLOWED_CLOSURE = {
+    # Lazy specialist services are allowed; the forbidden database/canonical
+    # ledger checks below still apply to their complete import closure.
+    "backend.services.cpu_perceptual_service",
+    "backend.services.intrinsic_service",
+    "backend.services.torch_device",
     "backend.config",
     "backend.schemas.perception_lab",
     "backend.services",

@@ -33,6 +33,7 @@ class ProducedField:
     producer_revision: str
     model: str | None = None
     device: str | None = None
+    receipt: Mapping | None = None
 
 
 @dataclass(frozen=True)
@@ -46,3 +47,4 @@ class FamilyModule:
     producers: Mapping[str, Callable] = None
     models: tuple[Mapping, ...] = ()
     dependencies: tuple[Mapping, ...] = ()
+    runtime_probe: Callable[[str], tuple[bool, str]] | None = None

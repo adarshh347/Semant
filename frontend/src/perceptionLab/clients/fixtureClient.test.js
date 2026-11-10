@@ -90,10 +90,12 @@ describe('the upload handoff', () => {
 });
 
 describe('the organ lock', () => {
-    it('only extent and topology are enabled, and the other six are still registered', () => {
+    it('retains the original vocabulary and includes implemented family slots', async () => {
         expect(ORGAN_FAMILIES).toHaveLength(8);
         expect(ENABLED_ORGAN_FAMILIES).toEqual(['extent', 'topology']);
-        expect(ORGAN_FAMILIES.filter(isOrganEnabled)).toEqual(['extent', 'topology']);
+        const { FAMILY_SLOTS } = await import('../families/registry');
+        expect(ORGAN_FAMILIES.filter(isOrganEnabled)).toEqual([
+            'extent', 'topology', ...Object.values(FAMILY_SLOTS).filter((s) => s.available).map((s) => s.family)]);
     });
 
     it('a prompt cannot change the organ in isolation mode — it is refused, not dropped', async () => {

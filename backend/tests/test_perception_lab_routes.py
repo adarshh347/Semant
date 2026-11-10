@@ -556,15 +556,17 @@ def test_interleaved_sessions_on_one_post_keep_their_own_ledgers(wired):
 # ── the catalogue ────────────────────────────────────────────────────────────
 
 
-def test_the_catalogue_reports_the_two_live_organs_and_the_six_that_are_deferred(wired):
+def test_the_catalogue_reports_enabled_instruments_and_remaining_deferred_slots(wired):
     client, w = wired
     body = client.get(f"{PREFIX}/capabilities").json()
 
     assert body["execution_identity"] == "LIVE"
     enabled = [o for o in body["organs"] if o["enabled"]]
     deferred = [o for o in body["organs"] if not o["enabled"]]
-    assert {o["family"] for o in enabled} == {"extent", "topology"}
-    assert len(deferred) == 6
+    from backend.services.perception_lab.families.registry import REGISTRY
+    expected = {"extent", "topology", *(key for key, slot in REGISTRY.items() if slot.available)}
+    assert {o["family"] for o in enabled} == expected
+    assert len(deferred) == 8 - len(expected)
     # A deferred organ offers no operation and therefore no adapter a person could click.
     assert all(o["operations"] == [] for o in deferred)
     assert body["states"]["nestedness_organ"] == "available"

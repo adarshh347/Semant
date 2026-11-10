@@ -209,6 +209,22 @@ def adapter_identity(adapter_key: str) -> Producer:
     module supplies the identity and the reason; it does not supply a second opinion about whether
     something is running.
     """
+    from backend.services.perception_lab.families.registry import REGISTRY
+    for slot in REGISTRY.values():
+        matching = [op for op in slot.operations if op.producer_key == adapter_key]
+        if not matching:
+            continue
+        learned = any(op.learned for op in matching)
+        model = next((item for item in slot.models if adapter_key in
+                      item.get("producer_keys", [adapter_key])), None) if learned else None
+        return Producer(
+            key=adapter_key, kind=MODEL if learned else CODE,
+            label=matching[0].label, state=CapabilityState.UNKNOWN_UNTIL_RUNTIME,
+            model=model["key"] if model else None,
+            revision=model["revision"] if model else None,
+            reason=slot.reason,
+            remedy=("Resolve this producer's deployment permission and runtime prerequisites; "
+                    "do not install a model merely because it appears in the catalogue."))
     if adapter_key in NON_MODEL_ADAPTERS:
         kind, label = NON_MODEL_ADAPTERS[adapter_key]
         return Producer(key=adapter_key, kind=kind, label=label,

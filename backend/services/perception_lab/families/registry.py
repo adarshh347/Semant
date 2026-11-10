@@ -50,9 +50,15 @@ def checked_slots(slots: tuple[FamilyModule, ...] = SLOTS) -> dict[str, FamilyMo
             if (not all(dependency.get(k) for k in ("package", "version", "license"))
                     or type(dependency.get("admitted")) is not bool):
                 raise ValueError(f"incomplete dependency declaration in {slot.family}")
-        if slot.available and any(not declaration["admitted"] for declaration in
-                                  (*slot.models, *slot.dependencies)):
-            raise ValueError(f"unadmitted model or dependency in {slot.family}")
+        for declaration in (*slot.models, *slot.dependencies):
+            owners = declaration.get("producer_keys")
+            if owners is not None and (not isinstance(owners, (list, tuple)) or not owners
+                                       or not set(owners) <= producers):
+                raise ValueError(f"invalid dependency producer keys in {slot.family}")
+            # A blocked learned operation must not disable an independent CPU instrument.
+            # Unadmitted declarations are only allowed with explicit producer ownership.
+            if slot.available and not declaration["admitted"] and not owners:
+                raise ValueError(f"unadmitted model or dependency in {slot.family}")
     return {slot.family: slot for slot in slots}
 
 

@@ -452,6 +452,10 @@ class LiveAdapterRegistry(AdapterRegistry):
             out[name] = asked() if callable(asked) else CapabilityState.AVAILABLE
         return out
 
+    def capability_details(self) -> Mapping[str, str]:
+        return {name: adapter.capability_reason() for name, adapter in self._names.items()
+                if callable(getattr(adapter, "capability_reason", None))}
+
 
 def _adapters_by_name(family: str) -> Dict[str, Tuple[str, ...]]:
     """`{adapter_name: (operation, …)}` for one organ, read off the contract.

@@ -155,6 +155,7 @@ def capability_catalogue(registry: Any) -> Dict[str, Any]:
     phase does not have would be a capability invented at the wiring layer.
     """
     states = dict(registry.capabilities()) if registry is not None else {}
+    details = registry.capability_details() if hasattr(registry, "capability_details") else {}
     organs: List[Dict[str, Any]] = []
     for organ in D.organs().values():
         operations = []
@@ -163,7 +164,7 @@ def capability_catalogue(registry: Any) -> Dict[str, Any]:
                 "key": op.key,
                 "manual": op.manual,
                 "requires_confirmation": op.requires_confirmation,
-                "adapters": [_adapter_json(name, states) for name in op.adapters],
+                "adapters": [_adapter_json(name, states, details.get(name)) for name in op.adapters],
                 "inputs": [{"role": i.role, "required": i.required,
                             "required_for_execution": i.required_for_execution}
                            for i in op.inputs],
@@ -182,7 +183,7 @@ def capability_catalogue(registry: Any) -> Dict[str, Any]:
             "forms": producers.catalogue(states=states)}
 
 
-def _adapter_json(name: str, states: Mapping[str, CapabilityState]) -> Dict[str, Any]:
+def _adapter_json(name: str, states: Mapping[str, CapabilityState], reason: Optional[str] = None) -> Dict[str, Any]:
     """One adapter's state, and — when it is not running — WHICH absence and what to do about it.
 
     THE REASON IS NEW AND IT IS THE POINT. `unavailable` on its own once sent a rehearsal looking
@@ -196,7 +197,7 @@ def _adapter_json(name: str, states: Mapping[str, CapabilityState]) -> Dict[str,
                            "label": entry.label, "model": entry.model,
                            "revision": entry.revision}
     if state is not CapabilityState.AVAILABLE:
-        out["reason"] = entry.reason
+        out["reason"] = reason or entry.reason
         out["remedy"] = entry.remedy
     return out
 

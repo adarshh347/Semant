@@ -443,20 +443,30 @@ def test_the_session_is_readable_while_the_council_is_still_working(wired):
     stage, so a `GET` mid-run returns a document that MOVES rather than one that appears at the
     end — and now the compiler's own passes move inside it."""
     client, _, _ = wired(FOLD)
-    seen = []
-    with client:
-        created = _start(client, FOLD, mode="auto")
-        session_id = created.json()["session_id"]
-        for _ in range(600):
-            body = client.get(f"/api/v1/inquiries/{session_id}").json()
-            seen.append((body["state"], len(body["stages"])))
-            if body["state"] in _BOUNDARIES:
-                break
-            time.sleep(0.005)
+    reached, release = threading.Event(), threading.Event()
+    real_compile = DissolutionCompiler.compile
 
-    # The ledger grew while the person was watching. One frame means the whole chain happened
-    # between two polls, which proves nothing about whether it COULD be watched.
-    assert len({n for _, n in seen}) > 1, seen
+    def held(self, request, *, on_substage=None):
+        reached.set()
+        if not release.wait(10):
+            raise AssertionError("test did not release the compiler")
+        return real_compile(self, request, on_substage=on_substage)
+
+    # The frozen council may finish before the first HTTP poll on a fast runner.
+    # Hold an actual stage instead of depending on scheduler luck or adding sleeps.
+    with client:
+        with mock.patch.object(DissolutionCompiler, "compile", held):
+            created = _start(client, FOLD, mode="auto")
+            try:
+                assert reached.wait(10), "compiler did not start"
+                watching = client.get(f"/api/v1/inquiries/{created.json()['session_id']}").json()
+                assert watching["state"] not in _BOUNDARIES
+                assert _stage(watching, "compiler")["outcome"] == "started"
+            finally:
+                release.set()
+            settled = _settled(client, created)
+
+    assert len(settled["stages"]) > len(watching["stages"])
 
 
 def test_progress_reaches_the_store_while_the_stage_is_still_inside_its_call(wired):

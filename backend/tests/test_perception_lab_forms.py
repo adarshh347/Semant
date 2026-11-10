@@ -206,7 +206,8 @@ def test_forms_and_operations_are_two_registries_with_different_arities():
     # and a form with no operation at all is the case this phase depends on
     orphans = [k for k, f in D.forms().items() if not f.has_producer]
     assert len(orphans) == 16
-    assert len(D.operations()) == 13
+    assert len([op for op in D.operations().values()
+                if op.organ in {"extent", "topology"}]) == 13
 
 
 # ── absence, and the field that proves something looked ──────────────────────

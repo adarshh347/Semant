@@ -157,8 +157,11 @@ def test_all_eight_organ_families_are_registered():
                                "surface_pattern", "orientation_flow", "depth", "surface_form"}
 
 
-def test_exactly_extent_and_topology_are_enabled():
-    assert [o.family for o in D.enabled_organs()] == ["extent", "topology"]
+def test_enabled_organs_include_only_complete_registered_family_slots():
+    from backend.services.perception_lab.families.registry import REGISTRY
+    assert {o.family for o in D.enabled_organs()} == {
+        "extent", "topology", *(key for key, slot in REGISTRY.items() if slot.available)}
+    # The original closed vocabulary remains readable; field slots extend it.
     assert set(S.ENABLED_ORGAN_FAMILIES) == {"extent", "topology"}
 
 

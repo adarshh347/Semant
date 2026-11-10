@@ -24,6 +24,59 @@ MODEL_TAG = "cpu_perceptual"
 PREPROCESSING_VERSION = "cpu-perceptual-v1"     # grayscale → 256² → gabor bank + structure tensor
 _INPUT = 256
 GRID = 16                                        # matches DINOv2's 16×16 patch grid, deliberately
+RESPONSE_VERSION = "gabor-response-bank-v1"
+SCALES_PX = (6.0, 12.0)
+ORIENTATIONS_DEG = (0, 45, 90, 135)
+
+
+def response_bank(rgb_bytes: bytes, size: tuple[int, int], *, wavelengths=SCALES_PX,
+                  max_edge: int = 256):
+    """Dense, named Gabor magnitudes in a bounded aspect-preserving working grid.
+
+    This is additive: analyze() intentionally retains its older square, max-bank semantics.
+    A zero-DC kernel removes constant brightness, and local RMS removes signed phase.
+    Wavelengths are measured in resized-grid pixels, not original-image pixels.
+    """
+    if not is_available():
+        raise RuntimeError("OpenCV and NumPy are required for CPU pattern responses")
+    import cv2
+    import numpy as np
+    width, height = size
+    if width <= 0 or height <= 0 or width * height * 3 != len(rgb_bytes):
+        raise ValueError("RGB bytes do not match the declared image dimensions")
+    if type(max_edge) is not int or not 32 <= max_edge <= 512:
+        raise ValueError("max_edge must be an integer from 32 to 512")
+    if not wavelengths or len(wavelengths) > 4 or any(
+            not isinstance(v, (int, float)) or not math.isfinite(v) or not 4 <= v <= 32
+            for v in wavelengths) or len(set(wavelengths)) != len(wavelengths):
+        raise ValueError("wavelengths must be distinct finite working-pixel scales from 4 to 32")
+    ratio = min(1.0, max_edge / max(width, height))
+    target = (max(1, round(width * ratio)), max(1, round(height * ratio)))
+    rgb = np.frombuffer(rgb_bytes, dtype=np.uint8).reshape(height, width, 3)
+    # A's ICC/EXIF-prepared sRGB bytes are the sole input. Grayscale is encoded-sRGB
+    # luma for this signal filter, with no claim of linear-light luminance.
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255.0
+    gray = cv2.resize(gray, target, interpolation=cv2.INTER_AREA if ratio < 1 else cv2.INTER_LINEAR)
+    channels = []
+    responses = []
+    for wavelength in wavelengths:
+        for degrees in ORIENTATIONS_DEG:
+            kernel = cv2.getGaborKernel((31, 31), 4.0, math.radians(degrees),
+                                        float(wavelength), .5, 0.0, ktype=cv2.CV_32F)
+            kernel -= kernel.mean()  # exact zero response on a constant field
+            kernel /= max(float(np.sum(np.abs(kernel))), 1e-12)
+            signed = cv2.filter2D(gray, cv2.CV_32F, kernel,
+                                  borderType=cv2.BORDER_REFLECT_101)
+            rms = np.sqrt(cv2.GaussianBlur(signed * signed, (0, 0), 2.0,
+                                            borderType=cv2.BORDER_REFLECT_101))
+            responses.append(rms)
+            channels.append({"name": f"lambda{wavelength:g}_theta{degrees}",
+                             "wavelength_px": float(wavelength), "orientation_deg": degrees})
+    return {"values": np.stack(responses, axis=-1), "channels": channels,
+            "shape": [target[1], target[0], len(channels)],
+            "algorithm": RESPONSE_VERSION, "preprocessing": "prepared-sRGB to encoded-luma; area resize",
+            "kernel": "31x31 zero-DC L1-normalized Gabor, sigma=4, gamma=0.5; local RMS sigma=2",
+            "border": "OpenCV BORDER_REFLECT_101"}
 
 
 def is_available() -> bool:

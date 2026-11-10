@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 
 from backend.schemas.perception_lab import (
     ArtifactInterpretation, ArtifactMeasurement, ArtifactProjection, CapabilityState,
@@ -32,11 +33,24 @@ class FamilyBridge:
         return self.slot.family
 
     def capability(self):
-        # Admission is declarative. Listing capabilities never imports a model.
-        if not self.slot.available or any(not item.get("admitted") for item in
-                                          (*self.slot.models, *self.slot.dependencies)):
-            return CapabilityState.UNAVAILABLE
-        return CapabilityState.AVAILABLE
+        return (CapabilityState.AVAILABLE if self.readiness()[0]
+                else CapabilityState.UNAVAILABLE)
+
+    def readiness(self):
+        """Inspect admission/runtime prerequisites without loading or downloading a model."""
+        if not self.slot.available:
+            return False, self.slot.reason
+        for item in (*self.slot.models, *self.slot.dependencies):
+            if self.producer_key not in item.get("producer_keys", [self.producer_key]):
+                continue
+            if not item.get("admitted"):
+                return False, item.get("reason", "Producer admission has not been resolved.")
+        if self.slot.runtime_probe:
+            return self.slot.runtime_probe(self.producer_key)
+        return True, "Declared CPU producer; no model required."
+
+    def capability_reason(self):
+        return self.readiness()[1]
 
     def invoke(self, call: AdapterCall) -> AdapterOutcome:
         if call.step is None or call.step.authorized_by != "resolver":
@@ -44,6 +58,9 @@ class FamilyBridge:
         operation = next((op for op in self.slot.operations if op.key == call.operation), None)
         if operation is None or operation.producer_key != self.producer_key:
             raise ValueError("family operation/producer mismatch")
+        ready, reason = self.readiness()
+        if not ready:
+            raise ValueError(reason)
         call.cancel.raise_if_cancelled()
         prepared = prepare_image(self.image_bytes)
         if prepared.source_digest != call.source.image_digest:
@@ -87,4 +104,7 @@ class FamilyBridge:
                 epistemic_status=EpistemicStatus.UNCERTAIN),
             model=produced.model, revision=produced.producer_revision,
             device=produced.device,
-            detail=f"field hash {manifest['measurement_hash']}; source {prepared.source_digest}")
+            detail=(f"field hash {manifest['measurement_hash']}; source {prepared.source_digest}"
+                    + ("; producer receipt " + json.dumps(produced.receipt, sort_keys=True,
+                                                           allow_nan=False)
+                       if produced.receipt else "")))
