@@ -192,3 +192,68 @@ def test_consumers_reject_missing_points_wrong_quantity_and_scale_convention():
         wrong = SampleGrid({**grid.metadata, **changes}, grid.values, grid.valid, grid.measurement_hash)
         with pytest.raises(FieldError, match="compatible"):
             axial_summary(wrong, [[1, 1]], {})
+
+
+def test_normal_planner_saved_trace_export_import_and_reconsume_without_source(monkeypatch):
+    from dataclasses import replace
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from backend.routers import perception_lab as route
+    from backend.schemas.perception_lab import LabSource, OrganFamily
+    from backend.services.perception_lab.bridges import LabRuntime, live_registry
+    from backend.services.perception_lab.derivation_store import InMemoryDerivationStore
+    from backend.services.perception_lab.families import registry
+    from backend.services.perception_lab.orchestrator import PerceptionConductor
+    from backend.services.perception_lab.planners.base import DirectCommand
+    from backend.services.perception_lab.store import InMemoryLabStore
+    from backend.services.perception_lab.field_transfer import import_session_bundle
+
+    image = stripes(0, 64, 48)
+    source = LabSource(origin="post", post_id="post_synthetic_orientation", image_digest=image.source_digest,
+                       natural_width=64, natural_height=48)
+    store, assets, readings = InMemoryLabStore(), InMemoryFieldAssets(), InMemoryDerivationStore()
+    conductor = PerceptionConductor(store=store, registry=live_registry(
+        LabRuntime(source=source, image_bytes=image.source_bytes, field_assets=assets)),
+        source_probe=lambda: source.image_digest)
+    machine = conductor.open_session(source=source, organ=OrganFamily.ORIENTATION_FLOW)
+    direct = conductor.plan_direct(machine, DirectCommand("orientation_flow.tangent"))
+    prompt = conductor.plan_prompt(machine, "show local orientation", planner="rules")
+    assert direct.plan.resolved_steps[0].operation == prompt.plan.resolved_steps[0].operation
+    first = conductor.execute(machine, direct.plan, confirmed=True)
+    second = conductor.execute(machine, prompt.plan, confirmed=True)
+    assert first.run.outcome.value == second.run.outcome.value == "ready"
+    artifact = first.artifacts[0]
+    assert artifact.measurement.payload.manifest["measurement_hash"] == second.artifacts[0].measurement.payload.manifest["measurement_hash"]
+    assert first.run.source_digest_before == first.run.source_digest_after == image.source_digest
+    monkeypatch.setattr(route, "_store", lambda: store)
+    monkeypatch.setattr(route, "_field_assets", lambda: assets)
+    monkeypatch.setattr(route, "_derivation_store", lambda: readings)
+    app = FastAPI(); app.include_router(route.router)
+    session_id = machine.session.session_id
+    path = f"/sessions/{session_id}/fields/{artifact.identity.artifact_id}/consume"
+    with TestClient(app) as client:
+        response = client.post(path, json={"operation": "orientation_flow.trace", "points": [[32, 24]],
+                                           "parameters": {"max_length": 4}})
+        assert response.status_code == 201, response.text
+        record = response.json()["derivation"]
+        assert record["input_artifact_ids"] == [artifact.identity.artifact_id]
+        assert record["measurements"]["result"]["paths"][0]["stop_reason"] == "max_length"
+        bundle = client.get(f"/sessions/{session_id}/export").json()
+    fresh, fresh_assets, fresh_readings = InMemoryLabStore(), InMemoryFieldAssets(), InMemoryDerivationStore()
+    monkeypatch.setitem(registry.REGISTRY, "orientation_flow", replace(family.MODULE,
+        producers={key: lambda *_: pytest.fail("saved reuse invoked producer") for key in family.MODULE.producers}))
+    receipt = import_session_bundle(bundle, store=fresh, derivation_store=fresh_readings,
+                                    asset_store=fresh_assets, target_source=source)
+    imported_id = receipt["identity_map"][artifact.identity.artifact_id]
+    imported = fresh.get_artifact(imported_id)
+    assert imported.measurement.payload.manifest["measurement_hash"] == artifact.measurement.payload.manifest["measurement_hash"]
+    imported_trace = fresh_readings.get(receipt["identity_map"][record["derivation_id"]])
+    assert imported_trace.input_artifact_ids == [imported_id]
+    monkeypatch.setattr(route, "_store", lambda: fresh)
+    monkeypatch.setattr(route, "_field_assets", lambda: fresh_assets)
+    monkeypatch.setattr(route, "_derivation_store", lambda: fresh_readings)
+    with TestClient(app) as client:
+        response = client.post(f"/sessions/{imported.identity.session_id}/fields/{imported_id}/consume",
+            json={"operation": "orientation_flow.trace", "points": [[32, 24]], "parameters": {"max_length": 4}})
+        assert response.status_code == 201, response.text
+        assert response.json()["derivation"]["measurements"]["result"] == record["measurements"]["result"]

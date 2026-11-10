@@ -7,6 +7,7 @@ import math
 from time import perf_counter
 
 from .base import FamilyForm, FamilyModule, FamilyOperation, ProducedField
+from .orientation_consumers import CONSUMERS
 
 VERSION = "structure-tensor-tangent-v1"
 MAX_EDGE = 256
@@ -153,6 +154,6 @@ MODULE = FamilyModule("orientation_flow", "Orientation / flow", True,
         for key, label in (("tangent", "Show local orientation"),
                            ("coherence", "Measure tensor coherence"), ("energy", "Measure gradient energy"))),
     producers={"orientation_flow.tangent": tangent, "orientation_flow.coherence": coherence,
-               "orientation_flow.energy": energy}, runtime_probe=available,
+               "orientation_flow.energy": energy}, runtime_probe=available, consumers=CONSUMERS,
     dependencies=({"package": "opencv-python", "version": "5.0.0.93", "license": "Apache-2.0", "admitted": True},
                   {"package": "numpy", "version": "2.5.1", "license": "BSD-3-Clause", "admitted": True}))
