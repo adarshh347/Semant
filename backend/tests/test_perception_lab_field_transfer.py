@@ -107,12 +107,23 @@ def test_export_import_and_consume_without_model(fixture_slot):
                            (first.put_run, run), (first.put_artifact, artifact)):
         method(record)
     bundle = live.export_json(first, session, identity=ExecutionIdentity.FIXTURE)
-    bundle["derivations"] = []
+    from backend.services.perception_lab.derivations import LabDerivation
+    reading = LabDerivation(derivation_id="der_fixture", session_id=session.session_id,
+        form="field.colour.read_saved", organ="colour", producible=True,
+        writable_as_artifact=False, ceiling="measured", basis="image_signal",
+        producer="perception_lab.family_consumers", producer_kind="code",
+        producer_revision="family-field-consumers.v1", source_image_digest=SOURCE,
+        input_artifact_ids=[artifact.identity.artifact_id],
+        parameters={"operation": "colour.read_saved", "points": [[1, 0]], "parameters": {}},
+        measurements={"field_hash": artifact.measurement.payload.manifest["measurement_hash"],
+                      "result": {"sample": .25}}, created_at=NOW)
+    bundle["derivations"] = [reading.model_dump(mode="json")]
     portable = attach_field_assets(bundle, assets)
     assert portable["field_asset_status"] == "complete"
     fresh = InMemoryLabStore()
+    readings = InMemoryDerivationStore()
     receipt = import_session_bundle(portable, store=fresh,
-        derivation_store=InMemoryDerivationStore(), asset_store=InMemoryFieldAssets(),
+        derivation_store=readings, asset_store=InMemoryFieldAssets(),
         target_source=source)
     assert receipt["session_id"] != session.session_id
     imported = fresh.get_artifact(receipt["identity_map"][artifact.identity.artifact_id])
@@ -122,6 +133,10 @@ def test_export_import_and_consume_without_model(fixture_slot):
     assert point_sample(grid, 1, 1)["values"] is None
     assert grid.measurement_hash == artifact.measurement.payload.manifest["measurement_hash"]
     assert fresh.get_session(receipt["session_id"]).active_artifact_id == imported.identity.artifact_id
+    restored_reading = readings.for_session(receipt["session_id"])[0]
+    assert restored_reading.input_artifact_ids == [imported.identity.artifact_id]
+    assert restored_reading.measurements == reading.measurements
+    assert restored_reading.parameters == reading.parameters
 
 
 def test_import_refuses_bad_field_digest_before_any_record_write(fixture_slot):

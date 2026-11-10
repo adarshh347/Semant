@@ -48,3 +48,5 @@ class FamilyModule:
     models: tuple[Mapping, ...] = ()
     dependencies: tuple[Mapping, ...] = ()
     runtime_probe: Callable[[str], tuple[bool, str]] | None = None
+    # Pure readers of an existing SampleGrid. No image, model, asset writer or store.
+    consumers: Mapping[str, Callable] | None = None

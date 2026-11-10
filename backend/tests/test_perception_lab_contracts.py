@@ -305,12 +305,16 @@ def test_occlusion_plans_without_depth_and_refuses_to_run_without_it():
     assert ref is not None and ref.code is S.RefusalCode.MISSING_DEPTH_ARTIFACT
 
 
-def test_no_enabled_organ_can_produce_a_depth_field():
-    """Naming a dependency is not satisfying it. `depth_field` is referenceable and unmintable."""
+def test_legacy_topology_depth_field_is_not_minted_by_dense_field_producers():
+    """Native sample_grid depth is not the legacy prepared Topology depth_field."""
     assert "depth_field" in {m.value for m in S.ArtifactKind}
     assert "depth_field" not in D.producible_artifact_kinds()
-    assert D.organ("depth").declares_artifact_kinds == ("depth_field",)
-    assert D.organ("depth").produces_artifact_kinds == ()
+    depth = D.organ("depth")
+    if depth.enabled:
+        assert depth.produces_artifact_kinds == ("sample_grid",)
+    else:
+        assert depth.declares_artifact_kinds == ("depth_field",)
+        assert depth.produces_artifact_kinds == ()
 
 
 def test_an_artifact_claiming_to_be_a_produced_depth_field_does_not_validate():
@@ -387,7 +391,7 @@ def test_a_rules_fallback_may_not_wear_the_models_name():
 
 def test_a_session_cannot_select_a_deferred_organ():
     session = _fixture("session.extent-isolation.json")
-    session["selected_organ"] = "depth"
+    session["selected_organ"] = "surface_form"
     with pytest.raises(ValidationError) as exc:
         S.LabSession.model_validate(session)
     assert "not enabled" in str(exc.value)

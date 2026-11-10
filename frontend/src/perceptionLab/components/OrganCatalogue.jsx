@@ -1,5 +1,5 @@
 import React from 'react';
-import { CONTRACT, isOrganEnabled } from '../contract/perceptionLabContract';
+import { ORGANS, isOrganEnabled } from '../contract/perceptionLabContract';
 import { CapabilityChip } from './Chips';
 
 /**
@@ -13,8 +13,9 @@ import { CapabilityChip } from './Chips';
  * A disabled entry keeps its ink. Greying the six into near-invisibility would hide exactly the
  * thing this catalogue is for.
  */
-export default function OrganCatalogue({ selected, onSelect, capabilities = {} }) {
-    const enabledCount = CONTRACT.organs.filter((organ) => isOrganEnabled(organ.family)).length;
+export default function OrganCatalogue({ selected, onSelect, capabilities = {}, busy = false }) {
+    const organs = Object.values(ORGANS);
+    const enabledCount = organs.filter((organ) => isOrganEnabled(organ.family)).length;
     return (
         <section className="pl-panel" aria-label="Organ catalogue">
             <div className="pl-panel-head">
@@ -25,7 +26,7 @@ export default function OrganCatalogue({ selected, onSelect, capabilities = {} }
                 Eight perceptual families are registered. Choose an available family to inspect its forms.
             </p>
             <ul className="pl-organs" role="group" aria-label="Choose an organ">
-                {CONTRACT.organs.map((organ) => {
+                {organs.map((organ) => {
                     const enabled = isOrganEnabled(organ.family);
                     return (
                         <li key={organ.family}>
@@ -34,7 +35,7 @@ export default function OrganCatalogue({ selected, onSelect, capabilities = {} }
                                 data-organ={organ.family}
                                 data-enabled={enabled}
                                 aria-pressed={enabled ? selected === organ.family : undefined}
-                                disabled={!enabled}
+                                disabled={!enabled || Boolean(busy)}
                                 onClick={() => enabled && onSelect(organ.family)}>
                                 <span className="pl-organ-name">
                                     {organ.family.replace('_', ' ')}
@@ -51,6 +52,7 @@ export default function OrganCatalogue({ selected, onSelect, capabilities = {} }
                                 ) : (
                                     <span className="pl-organ-off">
                                         registered, and not enabled in this phase
+                                        {organ.deferred_note ? ` — ${organ.deferred_note}` : ''}
                                     </span>
                                 )}
                             </button>

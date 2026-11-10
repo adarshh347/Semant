@@ -142,7 +142,8 @@ export const ENFORCED_LAWS = Object.freeze([
 const ORGANS_BY_FAMILY = Object.freeze(Object.fromEntries(
     CONTRACT.organs.map((o) => {
         const slot = FAMILY_SLOTS[o.family];
-        if (!slot?.available) return [o.family, Object.freeze(o)];
+        if (!slot?.available) return [o.family, Object.freeze({ ...o,
+            deferred_note: slot?.reason || o.deferred_note })];
         return [o.family, Object.freeze({ ...o, enabled: true, availability: 'available',
             produces_artifact_kinds: ['sample_grid'], operations: slot.operations })];
     })));

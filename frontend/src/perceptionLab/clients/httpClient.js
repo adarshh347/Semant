@@ -451,9 +451,9 @@ export function createHttpLabClient({ baseUrl = LAB_BASE, postsUrl = POSTS_BASE,
             `/sessions/${encodeURIComponent(session_id)}/fields/${encodeURIComponent(artifact_id)}/preview`,
             'inspect the saved field'),
         consumeField: async ({ session_id, artifact_id, operation, points = [],
-            compare_artifact_id = null }) => post(
+            compare_artifact_id = null, parameters = {} }) => post(
             `/sessions/${encodeURIComponent(session_id)}/fields/${encodeURIComponent(artifact_id)}/consume`,
-            { operation, points, compare_artifact_id }, 'sample the saved field'),
+            { operation, points, compare_artifact_id, parameters }, 'sample the saved field'),
         importSession: async (bundle) => post('/sessions/import', bundle, 'import a Lab export'),
     };
 

@@ -29,7 +29,7 @@ PURE. No database, no network, no model, no clock.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -255,6 +255,7 @@ def _registry() -> Tuple[Dict[str, OrganDefinition], Dict[str, OperationDefiniti
     from backend.services.perception_lab.families.registry import REGISTRY
     for family, slot in REGISTRY.items():
         if not slot.available:
+            organs[family] = replace(organs[family], deferred_note=slot.reason)
             continue
         ops = []
         for declaration in slot.operations:

@@ -46,11 +46,14 @@ export default function FieldInspector({ client, sessionId, artifact, fields = [
     const [sample, setSample] = useState(null);
     const [path, setPath] = useState('');
     const [error, setError] = useState('');
+    const generation = useRef(0);
+    const requestSequence = useRef(0);
     const id = artifact?.identity?.artifact_id;
     useEffect(() => {
-        if (!id || !client.fieldPreview) return;
+        generation.current += 1;
         let active = true;
         setData(null); setError(''); setOther(null); setOtherId(''); setSample(null); setPath('');
+        if (!id || !client.fieldPreview) return;
         client.fieldPreview({ session_id: sessionId, artifact_id: id })
             .then((found) => {
                 if (!active) return;
@@ -58,16 +61,27 @@ export default function FieldInspector({ client, sessionId, artifact, fields = [
                 setLow(minimum); setHigh(maximum); setData(found);
             })
             .catch((failure) => { if (active) setError(failure.message); });
-        return () => { active = false; };
+        return () => { active = false; generation.current += 1; };
     }, [client, sessionId, id]);
+    useEffect(() => {
+        let active = true;
+        setOther(null);
+        if (id && otherId) client.fieldPreview({ session_id: sessionId, artifact_id: otherId })
+            .then((found) => { if (active) setOther(found); })
+            .catch((failure) => { if (active) setError(failure.message); });
+        return () => { active = false; };
+    }, [client, sessionId, id, otherId]);
     const scale = [low, high];
     const consume = async (operation, points = [], compareId = null) => {
+        const opened = generation.current;
+        const requested = ++requestSequence.current;
+        const current = () => opened === generation.current && requested === requestSequence.current;
         try {
             setError('');
             const result = await client.consumeField({ session_id: sessionId, artifact_id: id,
                 operation, points, compare_artifact_id: compareId });
-            setSample(result.derivation);
-        } catch (failure) { setError(failure.message); }
+            if (current()) setSample(result.derivation);
+        } catch (failure) { if (current()) setError(failure.message); }
     };
     const parsePath = () => path.split(';').map((pair) => pair.trim().split(',').map(Number));
     return <section className="pl-panel pl-field" aria-label="Saved field inspection">
@@ -119,13 +133,7 @@ export default function FieldInspector({ client, sessionId, artifact, fields = [
                     onClick={() => consume('roi', parsePath())}>Summarize ROI cells</button>
             </div>
             <label>Compare saved field
-                <select value={otherId} onChange={async (event) => {
-                    const next = event.target.value; setOtherId(next); setOther(null);
-                    if (next) {
-                        try { setOther(await client.fieldPreview({ session_id: sessionId,
-                            artifact_id: next })); } catch (failure) { setError(failure.message); }
-                    }
-                }}>
+                <select value={otherId} onChange={(event) => setOtherId(event.target.value)}>
                     <option value="">Choose a compatible saved field</option>
                     {fields.filter((entry) => entry.identity.artifact_id !== id).map((entry) =>
                         <option value={entry.identity.artifact_id} key={entry.identity.artifact_id}>

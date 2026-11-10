@@ -182,8 +182,9 @@ class Derive(BaseModel):
 class FieldConsume(BaseModel):
     model_config = ConfigDict(extra="forbid")
     operation: str
-    points: List[List[int]] = Field(default_factory=list)
+    points: List[List[int]] = Field(default_factory=list, max_length=4096)
     compare_artifact_id: Optional[str] = None
+    parameters: Dict[str, Any] = Field(default_factory=dict)
 
 
 class SubmitReview(BaseModel):
@@ -822,9 +823,21 @@ def consume_field(session_id: str, artifact_id: str, body: FieldConsume) -> Dict
     store = _store()
     session = _machine(store, session_id).session
     artifact, grid = _saved_grid(store, session_id, artifact_id)
+    from backend.services.perception_lab import family_consumers
+    family_reading = "." in body.operation
     started = perf_counter()
     try:
-        if body.operation == "point" and len(body.points) == 1:
+        if body.compare_artifact_id and body.operation != "compare":
+            raise FieldError("Only compare may carry a second field reference.")
+        if not family_reading and body.parameters:
+            raise FieldError("This generic field consumer has no additional parameters.")
+        if family_reading:
+            if (session.mode.value == "isolation"
+                    and session.selected_organ != artifact.identity.organ_family):
+                raise FieldError("Isolation mode permits only the selected organ's consumers.")
+            result = family_consumers.consume(artifact.identity.organ_family.value,
+                                              body.operation, grid, body.points, body.parameters)
+        elif body.operation == "point" and len(body.points) == 1:
             result = point_sample(grid, *body.points[0])
         elif body.operation == "path":
             result = path_sample(grid, body.points)
@@ -845,8 +858,9 @@ def consume_field(session_id: str, artifact_id: str, body: FieldConsume) -> Dict
         producible=True, writable_as_artifact=False,
         ceiling=artifact.measurement.epistemic_status,
         basis=artifact.measurement.epistemic_basis,
-        producer="perception_lab.field_data", producer_kind="code",
-        producer_revision="field-consumers.v1",
+        producer=("perception_lab.family_consumers" if family_reading else "perception_lab.field_data"),
+        producer_kind="code",
+        producer_revision=family_consumers.REVISION if family_reading else "field-consumers.v1",
         source_image_digest=session.source.image_digest,
         input_artifact_ids=inputs, parameters=body.model_dump(mode="json"),
         measurements={"result": result, "field_hash": grid.measurement_hash},
