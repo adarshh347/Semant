@@ -205,13 +205,22 @@ def test_dense_refuses_untracked_padding_and_unavailable(monkeypatch):
 
 
 def test_probe_never_imports_ml_stack(monkeypatch):
-    import huggingface_hub
+    # The light CI environment intentionally has no ML extras (including Hub).
+    # Test only our cache-probe protocol, not whether a developer installed them.
+    huggingface_hub = types.ModuleType('huggingface_hub')
+    huggingface_hub.try_to_load_from_cache = lambda *a, **k: '/cached/file'
+    monkeypatch.setitem(sys.modules, 'huggingface_hub', huggingface_hub)
     monkeypatch.setattr(service.importlib.util, 'find_spec', lambda name: object())
-    monkeypatch.setattr(huggingface_hub, 'try_to_load_from_cache', lambda *a, **k: '/cached/file')
     monkeypatch.setattr(service, '_load_failed', False)
     assert service.dense_readiness()[0]
+    monkeypatch.setattr(service, '_load_failed', True)
+    available, reason = service.dense_readiness()
+    assert not available and 'Restart after repairing runtime' in reason
+    monkeypatch.setattr(service, '_load_failed', False)
     monkeypatch.setattr(huggingface_hub, 'try_to_load_from_cache', lambda *a, **k: None)
     assert not service.dense_readiness()[0]
+    monkeypatch.setattr(service.importlib.util, 'find_spec', lambda name: None)
+    assert 'installed torch' in service.dense_readiness()[1]
 
 
 def test_direct_prompt_persistence_import_and_http_consumer_without_model(field, monkeypatch):
