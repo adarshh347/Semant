@@ -1,6 +1,8 @@
 FROM node:22-bookworm-slim AS web
 WORKDIR /build/frontend
 COPY frontend/package*.json ./
+# Match the repository's existing BlockNote/TipTap peer-resolution settings.
+COPY frontend/.npmrc ./
 RUN npm ci
 COPY frontend/ ./
 # Public origin only. NEVER pass an API key as a frontend build argument.
