@@ -35,3 +35,13 @@ def test_invalid_dependency_owner_cannot_escape_gate():
     broken = replace(illumination.MODULE, models=(model,))
     with pytest.raises(ValueError, match="producer keys"):
         registry.checked_slots(tuple(broken if s.family == broken.family else s for s in registry.SLOTS))
+
+
+def test_family_identity_distinguishes_code_from_model_and_offers_remedy():
+    from backend.services.perception_lab.producers import adapter_identity
+    assert adapter_identity("illumination.luminance_producer").kind == "code"
+    assert adapter_identity(surface_pattern.PRODUCER).model is None
+    shading = adapter_identity("illumination.shading_producer")
+    assert shading.kind == "model"
+    assert shading.model == "intrinsic-paper-weights"
+    assert "permission" in shading.remedy
