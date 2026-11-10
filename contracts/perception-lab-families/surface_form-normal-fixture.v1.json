@@ -1,0 +1,26 @@
+{
+  "execution_identity": "FIXTURE",
+  "meaning": "Analytical axis controls; not model estimates or evidence of live producer quality.",
+  "metadata": {
+    "version": 1,
+    "shape": [1, 7, 3],
+    "dtype": "float32-le",
+    "kind": "normal_camera_3d",
+    "channels": [
+      {"name": "nx", "quantity": "camera_normal_x", "unit": "1"},
+      {"name": "ny", "quantity": "camera_normal_y", "unit": "1"},
+      {"name": "nz", "quantity": "camera_normal_z", "unit": "1"}
+    ],
+    "frame": "camera_xyz",
+    "units": "1",
+    "source_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "source_to_field": [1, 0, 0, 0, 1, 0, 0, 0, 1],
+    "value_convention": "directed-unit-camera-normal.v1; right-handed; +x=image-right; +y=image-down; +z=away-from-camera; locations=field-pixel-xy-topleft; source_to_field-transforms-locations-not-vectors; no-calibration-implied"
+  },
+  "preview": {
+    "shape": [1, 7, 3],
+    "stride": 1,
+    "values": [1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0],
+    "valid": [true, true, true, true, true, true, false]
+  }
+}
