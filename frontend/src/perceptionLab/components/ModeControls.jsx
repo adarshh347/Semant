@@ -21,7 +21,7 @@ import { ARM_CONSEQUENCE } from './armConsequence';
  * consequence of isolation is that a prompt asking for a relation will be refused, and finding
  * that out from a refusal is worse than being told first.
  */
-export default function ModeControls({ mode, arm, organ, onMode, onArm }) {
+export default function ModeControls({ mode, arm, organ, onMode, onArm, busy = false }) {
     const definition = organDefinition(organ);
     return (
         <section className="pl-panel" aria-label="Mode">
@@ -30,11 +30,11 @@ export default function ModeControls({ mode, arm, organ, onMode, onArm }) {
                     <span className="pl-modegroup-label" id="pl-mode-label">Scope</span>
                     <div className="pl-segmented" role="group" aria-labelledby="pl-mode-label">
                         <button type="button" className="pl-btn" aria-pressed={mode === 'isolation'}
-                            data-mode="isolation" onClick={() => onMode('isolation')}>
+                            data-mode="isolation" disabled={Boolean(busy)} onClick={() => onMode('isolation')}>
                             Isolation
                         </button>
                         <button type="button" className="pl-btn" aria-pressed={mode === 'chain'}
-                            data-mode="chain" onClick={() => onMode('chain')}>
+                            data-mode="chain" disabled={Boolean(busy)} onClick={() => onMode('chain')}>
                             Chain
                         </button>
                     </div>
