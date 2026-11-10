@@ -1,4 +1,17 @@
 /** Pure display mappings. They never edit source samples or validity. */
+export function initialDisplayScale(data) {
+    let low = Infinity; let high = -Infinity;
+    const channels = data.preview.shape[2];
+    data.preview.valid.forEach((valid, index) => {
+        const value = data.preview.values[index * channels];
+        if (valid && Number.isFinite(value)) {
+            low = Math.min(low, value); high = Math.max(high, value);
+        }
+    });
+    if (!Number.isFinite(low)) return [0, 1];
+    return low === high ? [low, high + Math.max(1, Math.abs(high) * .01)] : [low, high];
+}
+
 export function fieldRgb(kind, values, valid, [low, high], view = 'colour') {
     if (!valid) return [110, 110, 110, 255];
     const unit = (v) => Math.max(0, Math.min(1, (v - low) / (high - low || 1)));

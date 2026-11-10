@@ -97,7 +97,13 @@ export default function useLabSession(client, { initialOrgan = 'extent',
         Promise.all([client.listSources(), client.capabilities()])
             .then(([s, c]) => {
                 if (!live) return;
-                setSources(s.sources);
+                // A resume may already have opened (and verified) the source while this
+                // lightweight listing was in flight. Do not replace it with an unread row.
+                setSources((held) => {
+                    const verified = (held || []).filter((item) => item.image_digest);
+                    const ids = new Set(verified.map((item) => item.id));
+                    return [...s.sources.filter((item) => !ids.has(item.id)), ...verified];
+                });
                 setCapabilities(c.states || {});
             })
             .catch((err) => { if (live) setError({ what: 'opening the laboratory', message: String(err.message || err) }); });

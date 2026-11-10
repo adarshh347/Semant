@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import fixture from './fixtures/foundation-field.v1.json';
 import { checkedFamilySlots, FAMILY_KEYS } from '../families/registry';
-import { fieldRgb, pixelAt, previewPixels } from './fieldVisual';
+import { fieldRgb, initialDisplayScale, pixelAt, previewPixels } from './fieldVisual';
 
 describe('saved field display', () => {
+    it('initializes a range from valid first-channel values without changing the field', () => {
+        const data = { preview: { shape: [1, 3, 2], values: [-20, 1000, 60, 1000, 999, 0],
+            valid: [true, true, false] } };
+        expect(initialDisplayScale(data)).toEqual([-20, 60]);
+        expect(initialDisplayScale({ preview: { shape: [1, 1, 1], values: [0], valid: [false] } }))
+            .toEqual([0, 1]);
+        expect(initialDisplayScale({ preview: { shape: [1, 1, 1], values: [42], valid: [true] } }))
+            .toEqual([42, 43]);
+    });
     it('changes only pixels when the display view changes', () => {
         const before = JSON.stringify(fixture);
         const colour = previewPixels(fixture, [0, 1], 'colour');

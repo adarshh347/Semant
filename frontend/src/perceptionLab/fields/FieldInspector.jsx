@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { fieldRgb, pixelAt, previewPixels } from './fieldVisual';
+import { fieldRgb, initialDisplayScale, pixelAt, previewPixels } from './fieldVisual';
 import './fieldInspector.css';
 
 export function FieldCanvas({ data, scale, view, onPoint }) {
@@ -50,9 +50,13 @@ export default function FieldInspector({ client, sessionId, artifact, fields = [
     useEffect(() => {
         if (!id || !client.fieldPreview) return;
         let active = true;
-        setData(null); setError(''); setOther(null); setOtherId('');
+        setData(null); setError(''); setOther(null); setOtherId(''); setSample(null); setPath('');
         client.fieldPreview({ session_id: sessionId, artifact_id: id })
-            .then((found) => { if (active) setData(found); })
+            .then((found) => {
+                if (!active) return;
+                const [minimum, maximum] = initialDisplayScale(found);
+                setLow(minimum); setHigh(maximum); setData(found);
+            })
             .catch((failure) => { if (active) setError(failure.message); });
         return () => { active = false; };
     }, [client, sessionId, id]);
@@ -89,6 +93,8 @@ export default function FieldInspector({ client, sessionId, artifact, fields = [
             </div>
             <p className="pl-panel-sub">Fixed display scale for both views: {low} to {high}
                 {' '}{data.metadata.units}. Grey checker cells are invalid, not zero.</p>
+            <p className="pl-panel-sub">The initial scale uses valid preview values from the first
+                channel of the selected field. It is not a calibrated range or a new measurement.</p>
             <div className="pl-field-pair">
                 {source?.photo_url ? <figure><img src={source.photo_url} alt="Lab source" />
                     <figcaption>Source image · {source.image_digest}</figcaption></figure> : null}
