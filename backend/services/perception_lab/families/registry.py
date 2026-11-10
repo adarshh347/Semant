@@ -42,6 +42,9 @@ def checked_slots(slots: tuple[FamilyModule, ...] = SLOTS) -> dict[str, FamilyMo
             if not key.startswith(slot.family + ".") or not callable(producer) or key in seen_producers:
                 raise ValueError(f"malformed or duplicate producer {key}")
             seen_producers.add(key)
+        for key, consumer in (slot.consumers or {}).items():
+            if not key.startswith(slot.family + ".") or not callable(consumer):
+                raise ValueError(f"invalid family consumer {key}")
         for model in slot.models:
             if (not all(model.get(k) for k in ("key", "revision", "license", "checkpoint_digest"))
                     or type(model.get("admitted")) is not bool):
