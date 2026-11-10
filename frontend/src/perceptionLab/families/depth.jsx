@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Layers } from 'lucide-react';
 import { FieldCanvas } from '../fields/FieldInspector';
 import { initialDisplayScale } from '../fields/fieldVisual';
-import { compatibleDepth, depthProfileSegments, parseDepthCells } from './depthVisual';
+import { compatibleDepth, depthProfileSegments, depthReceipt, parseDepthCells } from './depthVisual';
+import './depth.css';
 
 const form = { key: 'depth.relative_inverse_depth', label: 'Relative depth',
     quantity: 'estimated_relative_inverse_depth', views: ['near_far', 'grayscale', 'profile'] };
@@ -22,21 +23,31 @@ function Panel({ client, session, lab, source }) {
     const [selected, setSelected] = useState('');
     const artifact = fields.find((item) => item.identity.artifact_id === selected) || fields.at(-1);
     const id = artifact?.identity.artifact_id;
+    const run = lab.runs?.find((item) => item.run_id === artifact?.identity.run_id);
+    const receipt = depthReceipt(run);
     const [data, setData] = useState(null);
     const [view, setView] = useState('colour');
     const [scale, setScale] = useState([0, 1]);
     const [cells, setCells] = useState('');
     const [reading, setReading] = useState(null);
+    const [readings, setReadings] = useState([]);
     const [error, setError] = useState('');
     const [otherId, setOtherId] = useState('');
     const [other, setOther] = useState(null);
     const [busy, setBusy] = useState(false);
     useEffect(() => {
         let active = true;
-        setData(null); setReading(null); setOther(null); setOtherId(''); setError(''); setCells('');
+        setData(null); setReading(null); setReadings([]); setOther(null); setOtherId(''); setError(''); setCells('');
         if (id) client.fieldPreview({ session_id: session.session_id, artifact_id: id })
             .then((result) => { if (active) { setData(result); setScale(initialDisplayScale(result)); } })
             .catch((failure) => { if (active) setError(failure.message); });
+        if (id && client.derivations) client.derivations({ session_id: session.session_id })
+            .then((result) => {
+                if (!active) return;
+                const saved = result.derivations.filter((item) => item.input_artifact_ids?.includes(id)
+                    && ['field.depth.profile', 'field.depth.regional_summary', 'field.point', 'field.compare'].includes(item.form));
+                setReadings(saved); setReading(saved.at(-1) || null);
+            }).catch((failure) => { if (active) setError(failure.message); });
         return () => { active = false; };
     }, [client, session.session_id, id]);
     useEffect(() => {
@@ -53,13 +64,14 @@ function Panel({ client, session, lab, source }) {
                 operation, points: points || (operation === 'compare' ? [] : parseDepthCells(cells)),
                 compare_artifact_id: operation === 'compare' ? otherId : null });
             setReading(result.derivation);
+            setReadings((previous) => [...previous, result.derivation]);
         } catch (failure) { setError(failure.message); } finally { setBusy(false); }
     };
     const samples = reading?.measurements.result?.samples || [];
     const segments = depthProfileSegments(samples, scale);
     const validScale = scale.every(Number.isFinite) && scale[1] > scale[0];
     const compatible = other && data && compatibleDepth(data.metadata, other.metadata);
-    return <section className="pl-panel" aria-label="Depth forms">
+    return <section className="pl-panel pl-field pl-depth" aria-label="Depth forms">
         <h2 className="pl-panel-title">Relative depth, not distance</h2>
         <p className="pl-panel-sub">Depth Anything V2 Small estimates the whole image. Larger raw values mean nearer;
             smaller values mean farther. No camera calibration, metres, hidden surfaces or physical ground truth.
@@ -72,14 +84,21 @@ function Panel({ client, session, lab, source }) {
             <p>Choose Estimate relative depth below, review the proposed operation, then Run.
                 Missing local weights are reported as unavailable; no fixture is substituted.</p>
         </div> : <>
-            <label>Saved depth field <select value={id || ''} onChange={(e) => setSelected(e.target.value)}>
+            <label>Saved depth field <select disabled={busy} value={id || ''} onChange={(e) => setSelected(e.target.value)}>
                 {fields.map((item) => <option key={item.identity.artifact_id} value={item.identity.artifact_id}>
                     {item.identity.artifact_id}</option>)}
             </select></label>
             {!data ? <p className="pl-panel-sub">{error ? 'Saved field unavailable; inspect the error below.' : 'Reading saved depth numbers…'}</p> : <>
                 <p className="pl-panel-sub">{data.execution_identity} · {artifact.provenance.producer}
+                    {' · '}{artifact.provenance.device || 'device not recorded'} · {run?.outcome || 'saved result'}
+                    {' · '}total {artifact.provenance.duration_ms ?? 'not recorded'} ms
                     {' · '}native field {data.metadata.shape[1]} × {data.metadata.shape[0]}
                     {' · '}preview stride {data.preview.stride || 1}. Display scaling adds no geometric detail.</p>
+                {receipt ? <p className="pl-panel-sub">Source {receipt.source_size?.join(' × ')}; working {receipt.working_size?.join(' × ')};
+                    {' '}model input {receipt.input_shape?.slice().reverse().join(' × ')}.
+                    {' '}Load {receipt.load_ms?.toFixed(1)} ms; inference {receipt.inference_ms?.toFixed(1)} ms;
+                    {' '}model calls {receipt.invocation_count}; numeric cache {receipt.cache_hit ? 'hit' : 'miss'}.
+                    These are the saved run’s timings. Inspection makes zero model calls.</p> : null}
                 <p className="pl-panel-sub">Source: {data.metadata.source_digest}<br />Saved hash: {data.measurement_hash}</p>
                 <div className="pl-field-controls">
                     <label>Depth view <select value={view} onChange={(e) => setView(e.target.value)}>
@@ -114,6 +133,11 @@ function Panel({ client, session, lab, source }) {
                     {validScale ? <FieldCanvas data={other} scale={scale} view={view} /> : null}
                     {!compatible ? <p className="pl-error">Incompatible saved fields: source, quantity, scale convention or grid differs.</p> : null}
                     <button className="pl-btn" type="button" disabled={busy || !compatible} onClick={() => consume('compare')}>Compare saved numbers</button></> : null}
+                {readings.length ? <label>Saved reading <select value={reading?.derivation_id || ''}
+                    onChange={(e) => setReading(readings.find((item) => item.derivation_id === e.target.value))}>
+                    {readings.map((item) => <option key={item.derivation_id} value={item.derivation_id}>
+                        {item.form} · {item.derivation_id}</option>)}
+                </select></label> : null}
                 {reading ? <div className="pl-field-reading" aria-live="polite">
                     <h3>{reading.form} · {reading.derivation_id}</h3>
                     {samples.length ? <><p>{samples.filter((sample) => sample.valid).length} valid of {samples.length} explicit samples.

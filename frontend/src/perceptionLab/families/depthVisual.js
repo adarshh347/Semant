@@ -26,3 +26,9 @@ export function compatibleDepth(left, right) {
     return ['shape', 'kind', 'channels', 'frame', 'units', 'source_digest', 'source_to_field', 'value_convention']
         .every((key) => JSON.stringify(left[key]) === JSON.stringify(right[key]));
 }
+
+export function depthReceipt(run) {
+    const detail = run?.stage_attempts?.find((attempt) => attempt.detail?.includes('; producer receipt '))?.detail;
+    if (!detail) return null;
+    try { return JSON.parse(detail.split('; producer receipt ')[1]); } catch { return null; }
+}

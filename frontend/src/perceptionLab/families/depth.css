@@ -1,0 +1,12 @@
+.pl-depth, .pl-depth > *, .pl-depth label, .pl-depth .pl-field-reading {
+    min-width: 0;
+}
+.pl-depth pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pl-depth input, .pl-depth select { max-width: 100%; }
+.pl-depth input:hover, .pl-depth select:hover { border-color: var(--ink-muted); }
+.pl-depth input:focus-visible, .pl-depth select:focus-visible {
+    outline: var(--space-1) solid var(--accent-soft);
+    border-color: var(--accent);
+}
+.pl-depth input:active, .pl-depth select:active { border-color: var(--accent); }
+.pl-depth input:disabled, .pl-depth select:disabled { color: var(--ink-muted); cursor: not-allowed; }

@@ -123,11 +123,16 @@ def estimate(image, *, grid: int = GRID) -> Optional[Dict[str, Any]]:
     to load, which the producer surfaces as an honest refusal rather than a flat field."""
     if not is_available():
         return None
+    im = image.convert("RGB")
+    # The exact same standard whole-image prediction can satisfy a legacy coarse
+    # request. Keep the old path for unknown cells: the legacy API has no mask.
+    key = (REVISION, DENSE_VERSION, im.size, hashlib.sha256(im.tobytes()).hexdigest(), "standard")
+    if _dense_cache and _dense_cache[0] == key and _dense_cache[1]["valid"].all():
+        return {"depth": _to_grid(_dense_cache[1]["depth"], grid), "grid": grid}
     import torch
     _load()
     if _model is None:
         return None
-    im = image.convert("RGB")
     inputs = _processor(images=im, return_tensors="pt").to(_device())
     with torch.no_grad():
         predicted = _model(**inputs).predicted_depth      # (1, H, W) inverse depth
@@ -159,7 +164,8 @@ def estimate_dense(image, *, resolution: str = "standard", use_cache: bool = Tru
     if use_cache and _dense_cache and _dense_cache[0] == key:
         return {**_dense_cache[1], "depth": _dense_cache[1]["depth"].copy(),
                 "valid": _dense_cache[1]["valid"].copy(), "cache_hit": True,
-                "load_ms": 0.0, "inference_ms": 0.0, "invocation_count": 0}
+                "load_ms": 0.0, "inference_ms": 0.0, "invocation_count": 0,
+                "model_cached": _model is not None}
     ready, reason = dense_readiness()
     if not ready:
         raise RuntimeError(reason)

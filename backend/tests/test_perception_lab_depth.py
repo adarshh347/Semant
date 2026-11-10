@@ -186,6 +186,16 @@ def test_dense_cache_native_geometry_invalid_and_legacy_shape(monkeypatch):
     assert len(calls) == 2
 
 
+def test_valid_native_cache_can_feed_legacy_coarse_without_duplicate_inference(monkeypatch):
+    calls = stub_native(monkeypatch)
+    im = Image.new('RGB', (6, 4))
+    service.estimate_dense(im)
+    service._dense_cache[1]['valid'][:] = True
+    expected = service._to_grid(service._dense_cache[1]['depth'], 16)
+    assert service.estimate(im) == {'depth': expected, 'grid': 16}
+    assert len(calls) == 1
+
+
 def test_dense_refuses_untracked_padding_and_unavailable(monkeypatch):
     stub_native(monkeypatch)
     service._processor.do_pad = True

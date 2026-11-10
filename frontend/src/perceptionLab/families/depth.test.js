@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { fieldRgb } from '../fields/fieldVisual';
-import { compatibleDepth, depthProfileSegments, parseDepthCells } from './depthVisual';
+import { compatibleDepth, depthProfileSegments, depthReceipt, parseDepthCells } from './depthVisual';
 
 describe('saved relative-depth readers', () => {
+    it('reads the actual saved producer receipt without inventing timings', () => {
+        expect(depthReceipt({})).toBe(null);
+        expect(depthReceipt({ stage_attempts: [{ detail: 'field hash h; producer receipt {"invocation_count":0,"cache_hit":true}' }] }))
+            .toEqual({ invocation_count: 0, cache_hit: true });
+        expect(depthReceipt({ stage_attempts: [{ detail: '; producer receipt incomplete' }] })).toBe(null);
+    });
     it('renders larger nearer as red/light and smaller farther as blue/dark', () => {
         expect(fieldRgb('scalar', [2], true, [2, 8], 'colour')).toEqual([0, 0, 255, 255]);
         expect(fieldRgb('scalar', [8], true, [2, 8], 'colour')).toEqual([255, 0, 0, 255]);

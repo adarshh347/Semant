@@ -40,3 +40,14 @@ it('reads saved values, switches views without producer calls and persists decla
     expect(container.textContent).toContain('depth.profile · d');
     expect(container.textContent).toContain('fixed-hash');
 });
+
+it('reopens persisted profiles without calling a producer or creating another derivation', async () => {
+    const saved = { form: 'field.depth.profile', derivation_id: 'restored-profile', input_artifact_ids: ['a'],
+        measurements: { result: { samples: [{ valid: true, values: [3] }] } } };
+    const client = { fieldPreview: vi.fn(async () => data), consumeField: vi.fn(),
+        derivations: vi.fn(async () => ({ derivations: [saved] })) };
+    await act(async () => root.render(<SLOT.Panel client={client} session={{ session_id: 's' }} lab={{ ledger: [artifact] }} />));
+    expect(container.textContent).toContain('restored-profile');
+    expect(container.textContent).toContain('1 valid of 1 explicit samples');
+    expect(client.consumeField).not.toHaveBeenCalled();
+});
