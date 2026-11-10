@@ -128,8 +128,8 @@ def compare_patches(grid: SampleGrid, reference: dict, *, patch_width: int,
 
 
 MODULE = FamilyModule(
-    "surface_pattern", "Surface pattern", cpu.is_available(),
-    "CPU Gabor bank available" if cpu.is_available() else "OpenCV or NumPy is unavailable",
+    "surface_pattern", "Surface pattern", True,
+    "CPU Gabor instrument; runtime requires OpenCV and NumPy.",
     forms=(FamilyForm(FORM, "Multiscale pattern response", "local_gabor_response_rms",
                       "Named scale and orientation filter responses; not material identity.",
                       ("selected_scale", "paired_scales", "profile")),),
@@ -143,4 +143,5 @@ MODULE = FamilyModule(
                    "admitted": True},
                   {"package": "numpy", "version": "2.5.1", "license": "BSD-3-Clause",
                    "admitted": True}),
+    runtime_probe=lambda _: (cpu.is_available(), "OpenCV and NumPy are required for the CPU Gabor bank."),
 )

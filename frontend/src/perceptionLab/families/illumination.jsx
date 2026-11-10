@@ -110,6 +110,9 @@ function Panel({ client, session, lab, source }) {
             <div><h3>Image luminance</h3><p className="pl-panel-sub">Linear-light brightness computed from the prepared sRGB image. Encoded RGB brightness is different. This operation makes zero model calls.</p></div>
             <div><h3>Estimated shading</h3><p className="pl-panel-sub">Intrinsic paper_weights grayscale model estimate. Relative scale, no calibrated physical units. A model failure cannot become luminance.</p></div>
         </div>
+        <p className="pl-panel-sub">New Intrinsic shading runs are unavailable until this
+            deployment’s academic-use permission is established. Luminance still works, and
+            previously saved shading can still be inspected without running the model.</p>
         <p className="pl-panel-sub">Choose the matching Direct control, or use the exact prompt “show image brightness” / “estimate shading”. Review its proposed operation before Run.</p>
         {artifacts.length ? <>
             <label>Saved form <select value={id || ''} onChange={(event) => { setSelectedId(event.target.value); setProfile(null); }}>
@@ -149,6 +152,6 @@ function Panel({ client, session, lab, source }) {
 }
 
 export const SLOT = Object.freeze({ family: 'illumination', label: 'Illumination', available: true,
-    reason: 'Luminance is ready; shading requires the pinned Intrinsic checkpoint at run time.',
+    reason: 'Luminance is ready; Intrinsic shading awaits deployment-license admission.',
     forms, operations, views: ['grayscale', 'false_colour', 'contours'],
     promptIntents: ['show image brightness', 'estimate shading'], Panel });

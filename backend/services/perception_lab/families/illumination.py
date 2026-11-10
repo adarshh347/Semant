@@ -76,7 +76,8 @@ def estimated_shading(prepared, parameters, inputs, cancel) -> ProducedField:
         values=values, valid=valid,
         producer_revision=MODEL_REVISION,
         model="Intrinsic ordinal grayscale shading / paper_weights",
-        device=result["device"])
+        device=result["device"],
+        receipt={key: result[key] for key in ("load_ms", "inference_ms", "model_cached")})
 
 
 ALPHA_PARAMETER = {"alpha_min": {"type": "integer", "required": False,
@@ -85,7 +86,7 @@ ALPHA_PARAMETER = {"alpha_min": {"type": "integer", "required": False,
 
 MODULE = FamilyModule(
     "illumination", "Illumination", True,
-    "Image luminance is deterministic; estimated shading requires the installed Intrinsic model.",
+    "Image luminance is available; Intrinsic shading awaits deployment-license admission.",
     forms=(
         FamilyForm("illumination.image_luminance", "Image luminance",
                    "image-relative linear-light Y", "Brightness in the prepared image, not lighting decomposition.",
@@ -106,7 +107,11 @@ MODULE = FamilyModule(
                "illumination.shading_producer": estimated_shading},
     models=({"key": "intrinsic-paper-weights", "revision": MODEL_REVISION,
              "license": "academic use only; patent pending",
-             "checkpoint_digest": "sha256:" + CHECKPOINT_SHA256, "admitted": True},),
+             "checkpoint_digest": "sha256:" + CHECKPOINT_SHA256, "admitted": False,
+             "producer_keys": ["illumination.shading_producer"],
+             "reason": "Intrinsic is academic-use-only; this deployment's permission has not been established."},),
     dependencies=({"package": "compphoto/Intrinsic", "version": "git@1a93aafaaf7dbe11be7ec86323d9a06e5950966d",
-                   "license": "academic use only", "admitted": True},),
+                   "license": "academic use only", "admitted": False,
+                   "producer_keys": ["illumination.shading_producer"],
+                   "reason": "Intrinsic deployment-license admission is pending."},),
 )

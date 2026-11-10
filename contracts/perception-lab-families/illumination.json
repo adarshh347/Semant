@@ -2,9 +2,13 @@
   "available": true,
   "dependencies": [
     {
-      "admitted": true,
+      "admitted": false,
       "license": "academic use only",
       "package": "compphoto/Intrinsic",
+      "producer_keys": [
+        "illumination.shading_producer"
+      ],
+      "reason": "Intrinsic deployment-license admission is pending.",
       "version": "git@1a93aafaaf7dbe11be7ec86323d9a06e5950966d"
     }
   ],
@@ -36,10 +40,14 @@
   "label": "Illumination",
   "models": [
     {
-      "admitted": true,
+      "admitted": false,
       "checkpoint_digest": "sha256:daeeb1e9aa9bcd65a3357e22c54344099fb9adb852541b89d06926db3a518001",
       "key": "intrinsic-paper-weights",
       "license": "academic use only; patent pending",
+      "producer_keys": [
+        "illumination.shading_producer"
+      ],
+      "reason": "Intrinsic is academic-use-only; this deployment's permission has not been established.",
       "revision": "Intrinsic@1a93aafaaf7dbe11be7ec86323d9a06e5950966d:paper_weights"
     }
   ],
@@ -87,6 +95,6 @@
     "illumination.luminance_producer",
     "illumination.shading_producer"
   ],
-  "reason": "Image luminance is deterministic; estimated shading requires the installed Intrinsic model.",
+  "reason": "Image luminance is available; Intrinsic shading awaits deployment-license admission.",
   "schema_version": "perception-lab-family.v1"
 }

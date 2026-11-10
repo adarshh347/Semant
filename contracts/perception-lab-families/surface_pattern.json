@@ -57,6 +57,6 @@
   "producer_keys": [
     "surface_pattern.cpu_gabor"
   ],
-  "reason": "CPU Gabor bank available",
+  "reason": "CPU Gabor instrument; runtime requires OpenCV and NumPy.",
   "schema_version": "perception-lab-family.v1"
 }

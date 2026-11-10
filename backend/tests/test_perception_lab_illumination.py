@@ -59,7 +59,8 @@ def test_shading_uses_dense_service_and_preserves_model_invalid(monkeypatch):
         seen.append(image.size)
         return {'shading': np.arange(6, dtype='float32').reshape(2, 3),
                 'valid': np.array([[True, False, True], [True, True, True]]),
-                'native_shape': [4, 8], 'device': 'cpu'}
+                'native_shape': [4, 8], 'device': 'cpu', 'load_ms': 2,
+                'inference_ms': 3, 'model_cached': False}
     monkeypatch.setattr(intrinsic_service, 'estimate_dense', fake)
     f = organ.estimated_shading(p, {}, (), Cancel())
     assert seen == [(3, 2)]
@@ -67,6 +68,7 @@ def test_shading_uses_dense_service_and_preserves_model_invalid(monkeypatch):
     assert f.values[1] == 0
     assert f.values[5] == 5
     assert '8x4' in f.metadata['value_convention']
+    assert f.receipt == {'load_ms': 2, 'inference_ms': 3, 'model_cached': False}
     manifest, ref = encode_grid(f.metadata, f.values, f.valid)
     assert decode_grid(manifest, ref).values[5] == 5
 
