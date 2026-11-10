@@ -112,6 +112,17 @@ describe('the organ catalogue', () => {
 });
 
 describe('the two switches', () => {
+    it('keeps the Extent form bench out of an isolated field-family study', async () => {
+        await mount(<PerceptionLab client={createFixtureClient()} />);
+        await click(q('[data-source-id="scene_controls"]'));
+        await click(q('button[data-organ="colour"]'));
+        await click(q('button[data-arm="form"]'));
+        expect(q('[aria-label="Family form controls"]')).not.toBeNull();
+        expect(q('#fb-form')).toBeNull();
+        expect(text()).not.toContain('Measure / draw extents');
+        expect(q('.pl').getAttribute('data-organ')).toBe('colour');
+    });
+
     it('scope and arm move independently, and each states its consequence', async () => {
         await mount(<PerceptionLab client={createFixtureClient()} />);
         await settle();
