@@ -1,12 +1,62 @@
 {
-  "available": false,
-  "dependencies": [],
+  "available": true,
+  "dependencies": [
+    {
+      "admitted": true,
+      "license": "Apache-2.0",
+      "package": "opencv-python",
+      "version": "5.0.0.93"
+    },
+    {
+      "admitted": true,
+      "license": "BSD-3-Clause",
+      "package": "numpy",
+      "version": "2.5.1"
+    }
+  ],
   "family": "surface_pattern",
-  "forms": [],
-  "label": "Surface pattern / material",
+  "forms": [
+    {
+      "description": "Named scale and orientation filter responses; not material identity.",
+      "key": "surface_pattern.response_bank",
+      "label": "Multiscale pattern response",
+      "quantity": "local_gabor_response_rms",
+      "views": [
+        "selected_scale",
+        "paired_scales",
+        "profile"
+      ]
+    }
+  ],
+  "label": "Surface pattern",
   "models": [],
-  "operations": [],
-  "producer_keys": [],
-  "reason": "No Surface pattern producer is installed in this lane.",
+  "operations": [
+    {
+      "form_key": "surface_pattern.response_bank",
+      "key": "surface_pattern.inspect_scales",
+      "label": "Inspect pattern at different scales",
+      "learned": false,
+      "parameters": {
+        "scale_set": {
+          "description": "Filter wavelengths are 6 and 12 resized-grid pixels; default uses both.",
+          "enum": [
+            "fine_and_coarse",
+            "fine",
+            "coarse"
+          ],
+          "required": false,
+          "type": "enum"
+        }
+      },
+      "producer_key": "surface_pattern.cpu_gabor",
+      "prompt_intents": [
+        "show texture at the selected scale"
+      ]
+    }
+  ],
+  "producer_keys": [
+    "surface_pattern.cpu_gabor"
+  ],
+  "reason": "CPU Gabor bank available",
   "schema_version": "perception-lab-family.v1"
 }
