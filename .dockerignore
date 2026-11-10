@@ -1,0 +1,13 @@
+.git
+.env*
+**/.env*
+**/node_modules
+**/__pycache__
+venv
+.venv
+vault
+base2
+research
+**/tests
+frontend/dist
+*.log

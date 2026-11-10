@@ -511,7 +511,16 @@ def model_for(role_name: str) -> Optional[str]:
     env = os.environ.get(role.env_var)
     if env and env.strip():
         return env.strip()
+    from backend.services.text_provider import uses_sarvam
+    if uses_sarvam(role_name):
+        return os.environ.get("SARVAM_MODEL", "sarvam-105b")
     return role.default_model
+
+
+def provider_for(role_name: str) -> Optional[str]:
+    from backend.services.text_provider import uses_sarvam
+    role = ROLES[role_name]
+    return "sarvam" if uses_sarvam(role_name) else role.provider
 
 
 def fallbacks_for(role_name: str) -> List[str]:
@@ -587,7 +596,7 @@ def describe() -> List[Dict[str, object]]:
             "epistemic_ceiling": role.epistemic_ceiling.value,
             "capability": role.capability,
             "adapter": role.adapter,
-            "provider": role.provider,
+            "provider": provider_for(name),
             "producers": list(role.producers),
             "env_var": role.env_var,
         })

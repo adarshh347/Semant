@@ -415,10 +415,8 @@ class ModelSynthesisComposer:
             return self._client
         self._client_resolved = True
         try:
-            from groq import Groq
-
-            from backend.config import settings
-            self._client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
+            from backend.services.text_provider import client_for
+            self._client = client_for(ROLE)
         except Exception:
             self._client = None
         return self._client
@@ -456,7 +454,7 @@ class ModelSynthesisComposer:
             note=PHASE_NOTE, sections=sections,
             remainder_refs=[str(r.get("remainder_id")) for r in request.remainder],
             provenance={"producer": PRODUCER, "composer": self.name, "model": self.model,
-                        "provider": getattr(role_registry.get(ROLE), "provider", None),
+                        "provider": role_registry.provider_for(ROLE),
                         "composed_at": at,
                         "prompt_sha256": sha256_of(user_prompt), "finish_reason": finish,
                         "truncated": finish == "length",

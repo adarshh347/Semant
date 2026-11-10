@@ -162,16 +162,13 @@ class ModelPass:
 
     @property
     def provider(self) -> Optional[str]:
-        return getattr(role_registry.get(self.role), "provider", None)
+        return role_registry.provider_for(self.role)
 
     def _get_client(self) -> Any:
         if self._client_resolved:
             return self._client
         self._client_resolved = True
         try:
-            from groq import Groq
-
-            from backend.config import settings
             # TWO KINDS OF RETRY, and this lane forbids only one of them.
             #
             # A SEMANTIC retry re-asks a model that answered badly, and it is what `no silent
@@ -194,8 +191,8 @@ class ModelPass:
             # wall-clock budget, and RECORDED on the receipt as it happens. Leaving the SDK's loop
             # on underneath it would stack two backoffs and hide one of them — see
             # `TRANSPORT_RETRIES`.
-            self._client = (Groq(api_key=settings.GROQ_API_KEY, max_retries=TRANSPORT_RETRIES)
-                            if settings.GROQ_API_KEY else None)
+            from backend.services.text_provider import client_for
+            self._client = client_for(self.role, max_retries=TRANSPORT_RETRIES)
         except Exception:
             self._client = None
         return self._client

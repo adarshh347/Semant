@@ -1,0 +1,34 @@
+# Optional Blueprint for the same settings as the manually created service.
+# Secret values are supplied in Render, never in this repository.
+services:
+  - type: web
+    name: semant-dissolution
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: deploy/dissolution-render
+    dockerfilePath: ./deploy/dissolution.Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    envVars:
+      - key: SEMANT_TEXT_PROVIDER
+        value: sarvam
+      - key: SARVAM_MODEL
+        value: sarvam-105b
+      - key: SEMANT_ROLE_SCENE_THEORIST_MODEL
+        value: qwen/qwen3.8-27b
+      - key: SEMANT_INQUIRY_COMPILER
+        value: council
+      - key: SEMANT_INQUIRY_PACING_BUDGET_SECONDS
+        value: "300"
+      - key: SEMANT_INQUIRY_PACING_MAX_ATTEMPTS
+        value: "3"
+      - key: API_KEY
+        sync: false
+      - key: MONGO_DETAILS
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
