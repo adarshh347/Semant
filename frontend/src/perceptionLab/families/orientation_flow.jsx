@@ -129,7 +129,7 @@ function Panel({ client, session, source, lab }) {
                     {axial ? <label>Saved-field view<select value={view} onChange={(event) => setView(event.target.value)}>
                         <option value="headless_marks">Headless tangent marks</option>
                         <option value="coherence_wash">Coherence wash</option></select></label> : null}
-                    <label>Mark spacing (display pixels)<input type="range" min="6" max="24" step="2"
+                    <label>Mark spacing (field pixels, display only)<input type="range" min="6" max="24" step="2"
                         value={spacing} onChange={(event) => setSpacing(Number(event.target.value))} /></label>
                     <label>Mark opacity (display only)<input type="range" min="0.1" max="1" step="0.05"
                         value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} /></label>
@@ -176,7 +176,13 @@ function Panel({ client, session, source, lab }) {
                 {pending ? <p role="status">Reading saved numerical data…</p> : null}
                 {history.length ? <label>Reopen saved trace or summary<select value={reading?.derivation_id || ''}
                     onChange={(event) => { const found = history.find((item) => item.derivation_id === event.target.value);
-                        setReading(found); if (found?.measurements.result.seeds) setSelected(found.measurements.result.seeds[0]); }}>
+                        setReading(found);
+                        if (found?.measurements.result.seeds) {
+                            const saved = found.measurements.result;
+                            setSelected(saved.seeds[0]); setSeed(saved.seeds[0]); setPoint(null);
+                            if (saved.parameters) setTraceSettings(saved.parameters);
+                            setView('headless_marks');
+                        } }}>
                     <option value="">Choose a saved derived result</option>{history.map((item) => <option
                         key={item.derivation_id} value={item.derivation_id}>{item.form} · {item.derivation_id}</option>)}</select></label> : null}
                 {reading ? <div className="pl-field-reading" aria-live="polite"><p>{reading.derivation_id} ·
@@ -188,8 +194,8 @@ function Panel({ client, session, source, lab }) {
                         mean axis {result.mean_axis_degrees == null ? 'undefined' : `${result.mean_axis_degrees.toFixed(2)}°`} ·
                         axial concentration {result.axial_resultant_length?.toFixed(4) ?? 'undefined'} ·
                         mean local coherence {result.mean_local_coherence?.toFixed(4) ?? 'undefined'}.</p>
-                        <p>Distribution, 15° bins (coherence-weighted): {result.histogram_weights.map((value, i) =>
-                            `${i * 15}–${(i + 1) * 15}°: ${value.toFixed(2)}`).join(' · ')}</p></> : null}
+                        <p>Distribution ({result.weighting}-weighted): {result.histogram_weights.map((value, i) =>
+                            `${result.bin_edges_degrees[i].toFixed(1)}–${result.bin_edges_degrees[i + 1].toFixed(1)}°: ${value.toFixed(2)}`).join(' · ')}</p></> : null}
                     <details><summary>Exact saved derivation and settings</summary><pre>{JSON.stringify(reading, null, 2)}</pre></details>
                 </div> : null}
                 <label>Compare another measurement, fixed display scale<select value={otherId}

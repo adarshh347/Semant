@@ -76,6 +76,14 @@ def test_noise_less_coherent_than_stripes_and_scale_changes_new_numbers():
     assert large.measurement_hash != small.measurement_hash
 
 
+def test_explicit_numeric_defaults_and_prompt_defaults_have_identical_saved_semantics():
+    image = stripes(30)
+    explicit = saved(family.tangent(image, {"derivative_sigma": 1, "integration_sigma": 3,
+                                           "min_coherence": .15}, (), NoCancel()))
+    default = saved(family.tangent(image, {}, (), NoCancel()))
+    assert explicit.measurement_hash == default.measurement_hash
+
+
 def test_curve_tangent_and_alpha_support_are_not_invented_axes():
     y, x = np.mgrid[:100, :100]
     image = prepared(127+110*np.sin(np.hypot(x-50, y-50)*2*math.pi/12))
@@ -92,12 +100,50 @@ def test_bounded_non_square_resize_and_source_pixel_centre_mapping():
     image = stripes(45, 1000, 400)
     result = saved(family.tangent(image, {}, (), NoCancel()))
     assert result.shape == (102, 256, 2)
+    assert sum(result.valid) > len(result.valid)*.9
     a, _, c, _, e, f, *_ = result.metadata["source_to_field"]
     assert a == .256 and e == .255
     assert a*499.5+c == 127.5 and e*199.5+f == 50.5
     meta = json.loads(result.metadata["value_convention"])
     assert meta["source_working_size"] == [1000, 400]
     assert "inverse" in meta["source_direction"]
+
+
+def test_downsampling_never_rounds_partial_opacity_to_fully_valid_support():
+    y, _ = np.mgrid[:512, :512]
+    alpha = np.full((512, 512), 255, dtype=np.uint8)
+    alpha[256, 256] = 254  # uint8 INTER_AREA would round this hole back to 255
+    image = prepared(127+110*np.sin(y*2*math.pi/24), alpha)
+    result = saved(family.tangent(image, {}, (), NoCancel()))
+    assert not point_sample(result, 128, 128)["valid"]
+    assert point_sample(result, 100, 100)["valid"]
+
+
+@pytest.mark.parametrize("shape", [(1, 1), (1, 32), (32, 1)])
+def test_degenerate_rasters_remain_bounded_and_unoriented(shape):
+    image = prepared(np.full(shape, 128))
+    result = saved(family.tangent(image, {}, (), NoCancel()))
+    assert result.shape[:2] == shape
+    assert not any(result.valid)
+
+
+def test_rotated_source_preserves_exif_mapping_and_tangent_basis():
+    image = Image.open(io.BytesIO(stripes(0).source_bytes)).convert("RGB")
+    exif = Image.Exif(); exif[274] = 6
+    stream = io.BytesIO(); image.save(stream, format="PNG", exif=exif)
+    rotated = prepare_image(stream.getvalue())
+    result = saved(family.tangent(rotated, {}, (), NoCancel()))
+    assert result.shape[:2] == (96, 72)
+    assert result.metadata["source_to_field"] == [0, -1, 71, 1, 0, 0, 0, 0, 1]
+    assert point_sample(result, 36, 48)["values"] == pytest.approx([-1, 0], abs=.001)
+
+
+def test_axial_sign_reversal_traces_the_same_route():
+    first, reversed_axis = analytical_grid([0]), analytical_grid([180])
+    a, b = trace(first, [[10, 5]], {"max_length": 3}), trace(reversed_axis, [[10, 5]], {"max_length": 3})
+    for left, right in zip(a["paths"], b["paths"]):
+        assert left["stop_reason"] == right["stop_reason"]
+        assert np.asarray(left["points"]) == pytest.approx(np.asarray(right["points"]))
 
 
 @pytest.mark.parametrize("parameters", [{"integration_sigma": 0}, {"derivative_sigma": float("nan")},

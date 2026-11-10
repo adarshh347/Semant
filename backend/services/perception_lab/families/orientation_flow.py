@@ -32,6 +32,7 @@ def _parameters(parameters):
         if (type(value) not in (int, float) or not math.isfinite(value)
                 or not spec["minimum"] <= value <= spec["maximum"]):
             raise ValueError(f"invalid {name}")
+        result[name] = float(value)
     return result
 
 
@@ -57,7 +58,10 @@ def _produce(prepared, parameters, inputs, cancel, form):
     rgb = np.frombuffer(prepared.rgb_bytes, dtype=np.uint8).reshape(height, width, 3)
     alpha = np.frombuffer(prepared.alpha_bytes, dtype=np.uint8).reshape(height, width)
     rgb = cv2.resize(rgb, (w, h), interpolation=cv2.INTER_AREA).astype(np.float32) / 255
-    alpha = cv2.resize(alpha, (w, h), interpolation=cv2.INTER_AREA)
+    # Interpolating ones can drift below 1 through OpenCV's coefficient rounding.
+    # Interpolating absence instead preserves exact zero for wholly opaque areas,
+    # while ANY contributing non-opaque source pixel has positive support.
+    absent = cv2.resize((alpha != 255).astype(np.float32), (w, h), interpolation=cv2.INTER_AREA)
     luma = rgb @ np.array([.2126, .7152, .0722], dtype=np.float32)
     sigma, rho = settings["derivative_sigma"], settings["integration_sigma"]
     blur_radius, tensor_radius = math.ceil(3*sigma), math.ceil(3*rho)
@@ -78,7 +82,7 @@ def _produce(prepared, parameters, inputs, cancel, form):
                                   where=energy > ENERGY_FLOOR), 0, 1)
     # Full finite Gaussian/Sobel support must be opaque; hidden RGB cannot create axes.
     radius = blur_radius + 1 + tensor_radius
-    support = cv2.erode((alpha == 255).astype(np.uint8), np.ones((2*radius+1,)*2, np.uint8),
+    support = cv2.erode((absent == 0).astype(np.uint8), np.ones((2*radius+1,)*2, np.uint8),
                         borderType=cv2.BORDER_REFLECT_101).astype(bool)
     supported_energy = support & (energy > ENERGY_FLOOR)
     if form == "tangent":

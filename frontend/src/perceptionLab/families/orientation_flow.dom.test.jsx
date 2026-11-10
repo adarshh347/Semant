@@ -64,5 +64,7 @@ it('reopens a saved trace from derivations without calling the producer', async 
         element.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(container.textContent).toContain('stopped: invalid support');
     expect(container.querySelector('polyline').getAttribute('points')).toBe('2,1');
+    expect([...container.querySelectorAll('label')].find((element) =>
+        element.textContent === 'Seed x').querySelector('input').value).toBe('2');
     expect(client.fieldPreview).toHaveBeenCalledTimes(1);
 });

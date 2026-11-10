@@ -8,7 +8,7 @@
 .pl-orientation-view:focus-visible { outline: 2px solid var(--accent); outline-offset: var(--space-1); }
 .pl-orientation input:active, .pl-orientation select:active { background: var(--surface-2); }
 .pl-orientation input:disabled, .pl-orientation select:disabled { opacity: .5; cursor: not-allowed; }
-.pl-orientation-view { display: block; width: 100%; overflow: hidden; background: var(--surface-2);
+.pl-orientation-view { display: block; width: 100%; height: auto; overflow: hidden; background: var(--surface-2);
     border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: crosshair; }
 .pl-orientation-marks { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
 .pl-orientation-paths { stroke: var(--ink); stroke-width: 2; fill: none; }
