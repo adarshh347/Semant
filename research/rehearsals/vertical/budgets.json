@@ -1,0 +1,14 @@
+{
+  "$comment": "Declared budgets for the 60-image Atlas performance profile (ATLAS-WRITER-MASS-BUILD-001L). Wall-clock milliseconds as measured by the harness through a real Chromium against a Vite dev server on a laptop; generous on purpose so a breach is a regression, not noise. `notes_save` includes the UI's own save debounce (SAVE_DEBOUNCE_MS). Breaching a budget fails the `performance` stage and never weakens a correctness stage.",
+  "ms": {
+    "initial_hydration": 6000,
+    "pan": 1500,
+    "zoom": 1500,
+    "mode_switch": 2500,
+    "mode_switch_back": 2500,
+    "notes_save": 3000
+  },
+  "memory_mb": {
+    "js_heap_after_interaction": 250
+  }
+}
