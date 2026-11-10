@@ -68,3 +68,10 @@ def test_http_consumer_persists_and_reopens_without_a_producer(monkeypatch, fixt
         refused = client.post(path, json={"operation": "depth.read_saved"})
         assert refused.status_code == 422
         assert len(readings.for_session("labs_fixture")) == 1
+
+
+def test_unavailable_family_reason_is_kept_in_backend_catalogue():
+    from backend.services.perception_lab import definitions
+    for family, slot in registry.REGISTRY.items():
+        if not slot.available:
+            assert definitions.organs()[family].deferred_note == slot.reason

@@ -89,6 +89,18 @@ const withFetch = (routes) => {
     return [createHttpLabClient({ baseUrl: BASE, postsUrl: POSTS, fetchImpl: impl }), impl];
 };
 
+it('sends explicit saved-field consumer parameters without converting them into an image run', async () => {
+    const path = '/sessions/labs_one/fields/art_one/consume';
+    const [api, transport] = withFetch({ [`POST ${path}`]: envelope('LIVE', {
+        derivation: { derivation_id: 'der_one' } }) });
+    const result = await api.consumeField({ session_id: 'labs_one', artifact_id: 'art_one',
+        operation: 'orientation_flow.trace', points: [[2, 3]], parameters: { max_steps: 20 } });
+    expect(transport.calls).toHaveLength(1);
+    expect(transport.sent(path).body).toEqual({ operation: 'orientation_flow.trace',
+        points: [[2, 3]], parameters: { max_steps: 20 }, compare_artifact_id: null });
+    expect(result.derivation.derivation_id).toBe('der_one');
+});
+
 
 // ── the interface ────────────────────────────────────────────────────────────
 
