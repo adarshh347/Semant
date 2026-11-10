@@ -290,7 +290,14 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                                     stageRef={stageRef}
                                     busy={lab.busy} />
                             ) : null}
-                            {arm === 'form' ? (
+                            {arm === 'form' && FAMILY_SLOTS[lab.organ]?.available ? (
+                                <section className="pl-panel" aria-label="Family form controls">
+                                    <p className="pl-panel-sub">Inspect this family's saved forms and readings in the panel above.
+                                        Use Direct to propose a new measurement. The Extent / Topology form bench
+                                        is available when either of those organs is selected.</p>
+                                </section>
+                            ) : null}
+                            {arm === 'form' && !FAMILY_SLOTS[lab.organ]?.available ? (
                                 <FormBench
                                     key={lab.session?.session_id}
                                     bench={bench} source={source} session={lab.session}
