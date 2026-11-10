@@ -392,7 +392,7 @@ describe('the isolation lock, in a plan', () => {
     it('refuses a session on a deferred organ', () => {
         const s = fixture('session.extent-isolation.json');
         expect(validateSession(s)).toEqual([]);
-        expect(validateSession({ ...s, selected_organ: 'depth' }).join(' '))
+        expect(validateSession({ ...s, selected_organ: 'surface_form' }).join(' '))
             .toMatch(/nothing behind the glass/);
     });
 });
