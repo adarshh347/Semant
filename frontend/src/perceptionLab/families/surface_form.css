@@ -1,0 +1,11 @@
+.pl-normal-preview { color: var(--ink); }
+.pl-normal-glyphs {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+}
+.pl-normal-shaft { stroke: var(--ink); stroke-width: .035; }
+.pl-normal-tip { stroke: var(--ink-muted); stroke-width: .015; }
