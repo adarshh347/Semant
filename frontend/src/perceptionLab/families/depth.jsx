@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Layers } from 'lucide-react';
 import { FieldCanvas } from '../fields/FieldInspector';
 import { initialDisplayScale } from '../fields/fieldVisual';
@@ -35,9 +35,14 @@ function Panel({ client, session, lab, source }) {
     const [otherId, setOtherId] = useState('');
     const [other, setOther] = useState(null);
     const [busy, setBusy] = useState(false);
+    const scopeRef = useRef(null);
     useEffect(() => {
+        // Changing source/session/field invalidates pending readers, not just previews.
+        // The synchronous flag also excludes double clicks before React renders busy.
+        const scope = { active: true, pending: false };
+        scopeRef.current = scope;
         let active = true;
-        setData(null); setReading(null); setReadings([]); setOther(null); setOtherId(''); setError(''); setCells('');
+        setData(null); setReading(null); setReadings([]); setOther(null); setOtherId(''); setError(''); setCells(''); setBusy(false);
         if (id) client.fieldPreview({ session_id: session.session_id, artifact_id: id })
             .then((result) => { if (active) { setData(result); setScale(initialDisplayScale(result)); } })
             .catch((failure) => { if (active) setError(failure.message); });
@@ -46,9 +51,11 @@ function Panel({ client, session, lab, source }) {
                 if (!active) return;
                 const saved = result.derivations.filter((item) => item.input_artifact_ids?.includes(id)
                     && ['field.depth.profile', 'field.depth.regional_summary', 'field.point', 'field.compare'].includes(item.form));
-                setReadings(saved); setReading(saved.at(-1) || null);
+                // A slow history request must not replace a reading just saved here.
+                setReadings((current) => [...new Map([...saved, ...current].map((item) => [item.derivation_id, item])).values()]);
+                setReading((current) => current || saved.at(-1) || null);
             }).catch((failure) => { if (active) setError(failure.message); });
-        return () => { active = false; };
+        return () => { active = false; scope.active = false; };
     }, [client, session.session_id, id]);
     useEffect(() => {
         let active = true; setOther(null);
@@ -58,14 +65,19 @@ function Panel({ client, session, lab, source }) {
         return () => { active = false; };
     }, [client, session.session_id, otherId]);
     const consume = async (operation, points = null) => {
+        const scope = scopeRef.current;
+        if (!id || !scope?.active || scope.pending) return;
+        scope.pending = true;
         setBusy(true); setError('');
         try {
             const result = await client.consumeField({ session_id: session.session_id, artifact_id: id,
                 operation, points: points || (operation === 'compare' ? [] : parseDepthCells(cells)),
                 compare_artifact_id: operation === 'compare' ? otherId : null });
+            if (!scope.active) return;
             setReading(result.derivation);
             setReadings((previous) => [...previous, result.derivation]);
-        } catch (failure) { setError(failure.message); } finally { setBusy(false); }
+        } catch (failure) { if (scope.active) setError(failure.message); }
+        finally { if (scope.active) { scope.pending = false; setBusy(false); } }
     };
     const samples = reading?.measurements.result?.samples || [];
     const segments = depthProfileSegments(samples, scale);
@@ -112,9 +124,10 @@ function Panel({ client, session, lab, source }) {
                     initially valid-preview min/max. Only the display is normalized; saved values and hash are unchanged.</p>
                 {!validScale ? <p className="pl-error" role="alert">Near display limit must be greater than far limit.</p> : <div className="pl-field-pair">
                     {source?.photo_url ? <figure><img src={source.photo_url} alt="Depth source image" /><figcaption>Whole-image source</figcaption></figure> : null}
-                    <figure><FieldCanvas data={data} scale={scale} view={view} onPoint={(point) => consume('point', [point])} />
+                    <figure><FieldCanvas data={data} scale={scale} view={view} onPoint={busy ? undefined : (point) => consume('point', [point])} />
                         <figcaption>Saved native depth · click to save an exact point reading</figcaption></figure>
                 </div>}
+                {busy ? <p className="pl-panel-sub" role="status">Saving a reading of this field… Further sampling waits for this request.</p> : null}
                 <label>Native-field cells: x,y; x,y <input value={cells} onChange={(e) => setCells(e.target.value)} placeholder="0,0; 1,0; 2,0" /></label>
                 <p className="pl-panel-sub">Keyboard sampling uses exact native-field coordinates, not source/display pixels.
                     A profile follows your explicit cells in order, without inventing interpolated points.
@@ -123,7 +136,7 @@ function Panel({ client, session, lab, source }) {
                     <button className="pl-btn" type="button" disabled={busy || !cells.trim()} onClick={() => consume('depth.profile')}>Save depth profile</button>
                     <button className="pl-btn" type="button" disabled={busy || !cells.trim()} onClick={() => consume('depth.regional_summary')}>Save regional summary</button>
                 </div>
-                <label>Compare saved depth <select value={otherId} onChange={(e) => setOtherId(e.target.value)}>
+                <label>Compare saved depth <select disabled={busy} value={otherId} onChange={(e) => setOtherId(e.target.value)}>
                     <option value="">Select a saved field</option>{fields.filter((item) => item.identity.artifact_id !== id).map((item) =>
                         <option key={item.identity.artifact_id} value={item.identity.artifact_id}>{item.identity.artifact_id}</option>)}
                 </select></label>
