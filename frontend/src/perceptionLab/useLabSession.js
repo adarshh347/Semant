@@ -188,26 +188,28 @@ export default function useLabSession(client, { initialOrgan = 'extent',
     }, [client]);
 
     const setOrgan = useCallback(async (nextOrgan) => {
-        setOrganState(nextOrgan);
-        if (!state.session) return;
+        if (busy) return;
+        if (!state.session) { setOrganState(nextOrgan); return; }
         await guard('switching organ', async () => {
             const session = await client.setOrgan({
                 session_id: state.session.session_id, selected_organ: nextOrgan, mode });
+            setOrganState(session.selected_organ);
             setState((prev) => ({ ...prev, session }));
             return session;
         });
-    }, [client, guard, mode, state.session]);
+    }, [client, guard, mode, state.session, busy]);
 
     const setMode = useCallback(async (nextMode) => {
-        setModeState(nextMode);
-        if (!state.session) return;
+        if (busy) return;
+        if (!state.session) { setModeState(nextMode); return; }
         await guard('switching mode', async () => {
             const session = await client.setOrgan({
                 session_id: state.session.session_id, selected_organ: organ, mode: nextMode });
+            setModeState(session.mode);
             setState((prev) => ({ ...prev, session }));
             return session;
         });
-    }, [client, guard, organ, state.session]);
+    }, [client, guard, organ, state.session, busy]);
 
     // ── selection ───────────────────────────────────────────────────────────
 

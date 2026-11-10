@@ -228,12 +228,14 @@ export default function PerceptionLab({ client, initialOrgan = 'extent',
                     <OrganCatalogue
                         selected={lab.organ}
                         onSelect={lab.setOrgan}
+                        busy={lab.busy}
                         capabilities={lab.capabilities} />
                 </div>
 
                 <div className="pl-main">
                     <ModeControls
                         mode={lab.mode}
+                        busy={lab.busy}
                         arm={arm}
                         organ={lab.organ}
                         onMode={lab.setMode}

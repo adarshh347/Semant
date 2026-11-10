@@ -7,6 +7,6 @@
   "models": [],
   "operations": [],
   "producer_keys": [],
-  "reason": "No Surface form producer is installed in this lane.",
+  "reason": "No admitted direct surface-normal estimator. Metric3Dv2 Small checkpoint permission and Mac runtime are unverified; DSINE has restrictive research-use terms. Analytical normal readers are not a live producer.",
   "schema_version": "perception-lab-family.v1"
 }

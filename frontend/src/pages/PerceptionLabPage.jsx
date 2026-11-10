@@ -67,8 +67,9 @@ export default function PerceptionLabPage() {
                 <span className="plab-wire-badge" data-identity={wire}>{wire}</span>
                 {wire === 'LIVE' ? (
                     <span className="plab-wire-text">
-                        This laboratory is wired to the real organs. <strong>Run LIVE</strong> calls
-                        a segmenter and measures this image; every artifact it makes is
+                        This laboratory is wired to the real organs. <strong>Run LIVE</strong> executes
+                        the selected producer: a model or deterministic code. Saved-field readings
+                        reuse existing data without calling a model. Every artifact is
                         session-local and nothing here can write to a post. A run re-shown from the
                         ledger carries its own <strong>REPLAY</strong> badge, because that is a
                         different question from this one.

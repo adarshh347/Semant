@@ -91,10 +91,13 @@ describe('the organ catalogue', () => {
     it('a closed organ keeps its question and says it is registered, not missing', async () => {
         await mount(<PerceptionLab client={createFixtureClient()} />);
         await settle();
-        const depth = all('.pl-organ').find((o) => o.getAttribute('data-organ') === 'depth');
-        expect(depth.disabled).toBe(true);
-        expect(depth.textContent).toContain('What is nearer, and what is further away?');
-        expect(depth.textContent).toContain('registered, and not enabled in this phase');
+        const surface = all('.pl-organ').find((o) => o.getAttribute('data-organ') === 'surface_form');
+        const { ORGANS } = await import('./contract/perceptionLabContract');
+        expect(surface.disabled).toBe(true);
+        expect(surface.textContent).toContain(ORGANS.surface_form.question);
+        expect(surface.textContent).toContain('registered, and not enabled in this phase');
+        const { FAMILY_SLOTS } = await import('./families/registry');
+        expect(surface.textContent).toContain(FAMILY_SLOTS.surface_form.reason);
     });
 
     it('the organ lock is visible on the root, and follows the selection', async () => {
@@ -129,6 +132,46 @@ describe('the two switches', () => {
 });
 
 describe('the source rail', () => {
+    it('holds the organ and scope while a source is opening, then permits switching', async () => {
+        const client = createFixtureClient();
+        const create = client.createSession;
+        let release;
+        vi.spyOn(client, 'createSession').mockImplementation(async (args) => {
+            await new Promise((resolve) => { release = resolve; });
+            return create(args);
+        });
+        const switchOrgan = vi.spyOn(client, 'setOrgan');
+        await mount(<PerceptionLab client={client} />);
+        await click(q('[data-source-id="scene_controls"]'));
+        const topology = q('button[data-organ="topology"]');
+        const chain = q('button[data-mode="chain"]');
+        expect(topology.disabled).toBe(true);
+        expect(chain.disabled).toBe(true);
+        await click(topology);
+        await click(chain);
+        expect(switchOrgan).not.toHaveBeenCalled();
+        expect(q('.pl').getAttribute('data-organ')).toBe('extent');
+        expect(q('.pl').getAttribute('data-mode')).toBe('isolation');
+        await act(async () => { release(); });
+        await settle();
+        expect(topology.disabled).toBe(false);
+        await click(topology);
+        expect(switchOrgan).toHaveBeenCalledWith(expect.objectContaining({ selected_organ: 'topology' }));
+        expect(q('.pl').getAttribute('data-organ')).toBe('topology');
+    });
+
+    it('does not show a different organ or scope when saving that change fails', async () => {
+        const client = createFixtureClient();
+        await mount(<PerceptionLab client={client} />);
+        await click(q('[data-source-id="scene_controls"]'));
+        vi.spyOn(client, 'setOrgan').mockRejectedValue(new Error('offline'));
+        await click(q('button[data-organ="topology"]'));
+        expect(q('.pl').getAttribute('data-organ')).toBe('extent');
+        await click(q('button[data-mode="chain"]'));
+        expect(q('.pl').getAttribute('data-mode')).toBe('isolation');
+        expect(text()).toContain('offline');
+    });
+
     it('opens a session against the source, carrying its digest', async () => {
         await mount(<PerceptionLab client={createFixtureClient()} />);
         await settle();
