@@ -620,6 +620,9 @@ ALLOWED_CLOSURE = {
     # Lazy specialist services are allowed; the forbidden database/canonical
     # ledger checks below still apply to their complete import closure.
     "backend.services.cpu_perceptual_service",
+    # Audited native Depth path: local-only model reads + in-memory arrays/cache;
+    # its sole backend dependency is torch_device, with no store/database imports.
+    "backend.services.depth_service",
     "backend.services.intrinsic_service",
     "backend.services.torch_device",
     "backend.config",

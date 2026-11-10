@@ -1,0 +1,5 @@
+"""Dependency-free saved-field meaning and pinned producer identity."""
+CHECKPOINT = "depth-anything/Depth-Anything-V2-Small-hf"
+REVISION = "5426e4f0f36572d16453bbda7a8389317b1bef99"
+CHECKPOINT_SHA256 = "3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70"
+DENSE_VERSION = "depth-anything-v2-s-native-v1"

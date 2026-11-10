@@ -1,12 +1,88 @@
 {
-  "available": false,
-  "dependencies": [],
+  "available": true,
+  "dependencies": [
+    {
+      "admitted": true,
+      "license": "BSD-3-Clause",
+      "package": "torch",
+      "version": "2.13.0"
+    },
+    {
+      "admitted": true,
+      "license": "Apache-2.0",
+      "package": "transformers",
+      "version": "5.14.1"
+    },
+    {
+      "admitted": true,
+      "license": "BSD-3-Clause",
+      "package": "numpy",
+      "version": "2.5.1"
+    },
+    {
+      "admitted": true,
+      "license": "MIT-CMU",
+      "package": "Pillow",
+      "version": "12.3.0"
+    }
+  ],
   "family": "depth",
-  "forms": [],
+  "forms": [
+    {
+      "description": "Whole-image model estimate; larger values nearer, not metric distance.",
+      "key": "depth.relative_inverse_depth",
+      "label": "Relative depth",
+      "quantity": "estimated_relative_inverse_depth",
+      "views": [
+        "near_far",
+        "grayscale",
+        "profile"
+      ]
+    }
+  ],
   "label": "Depth",
-  "models": [],
-  "operations": [],
-  "producer_keys": [],
-  "reason": "No Depth field producer is installed in this lane.",
+  "models": [
+    {
+      "admitted": true,
+      "checkpoint_digest": "sha256:3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70",
+      "key": "depth-anything/Depth-Anything-V2-Small-hf",
+      "license": "Apache-2.0",
+      "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99"
+    }
+  ],
+  "operations": [
+    {
+      "form_key": "depth.relative_inverse_depth",
+      "key": "depth.estimate",
+      "label": "Estimate relative depth",
+      "learned": true,
+      "parameters": {
+        "alpha_min": {
+          "description": "Source alpha below this threshold is unknown. Default 1.",
+          "maximum": 255,
+          "minimum": 1,
+          "required": false,
+          "type": "integer"
+        },
+        "resolution": {
+          "description": "Whole-image processor target: standard 518 or compact 392. Changes measurement resolution, not display.",
+          "enum": [
+            "standard",
+            "compact"
+          ],
+          "required": false,
+          "type": "enum"
+        }
+      },
+      "producer_key": "depth.anything_v2_small",
+      "prompt_intents": [
+        "estimate relative depth"
+      ]
+    }
+  ],
+  "producer_keys": [
+    "depth.anything_v2_small"
+  ],
+  "reason": "Pinned Depth Anything V2 Small; runtime checks local checkpoint availability without loading it.",
   "schema_version": "perception-lab-family.v1"
 }
