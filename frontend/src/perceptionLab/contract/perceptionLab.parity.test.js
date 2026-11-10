@@ -101,8 +101,10 @@ describe('eight organs, two of them enabled', () => {
             .toHaveLength(8);
     });
 
-    it('enables exactly extent and topology', () => {
-        expect(enabledOrgans().map((o) => o.family)).toEqual(['extent', 'topology']);
+    it('enables the original organs plus implemented family slots', async () => {
+        const { FAMILY_SLOTS } = await import('../families/registry');
+        expect(enabledOrgans().map((o) => o.family)).toEqual([
+            'extent', 'topology', ...Object.values(FAMILY_SLOTS).filter((s) => s.available).map((s) => s.family)]);
         expect(ENABLED_ORGAN_FAMILIES).toEqual(['extent', 'topology']);
         expect(isOrganEnabled('extent')).toBe(true);
         expect(isOrganEnabled('depth')).toBe(false);
@@ -264,7 +266,7 @@ describe('the separations, in JavaScript', () => {
 
     it('refuses an artifact from a disabled organ', () => {
         const a = artifact();
-        a.identity.organ_family = 'colour';
+        a.identity.organ_family = 'surface_form';
         expect(validateArtifact(a).join(' ')).toMatch(/disabled/);
     });
 

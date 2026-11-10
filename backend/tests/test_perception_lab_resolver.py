@@ -360,4 +360,7 @@ def test_the_declared_vocabulary_is_the_contracts_and_has_no_extras():
         "extent.find_all", "extent.find_named", "extent.refine", "extent.draw", "extent.reuse",
         "extent.compare")
     assert "topology.occlusion" in R.declared_operations("topology")
-    assert len(R.declared_operations()) == 13
+    from backend.services.perception_lab.families.registry import REGISTRY
+    extra = {op.key for slot in REGISTRY.values() if slot.available for op in slot.operations}
+    assert len(R.declared_operations()) == 13 + len(extra)
+    assert extra <= set(R.declared_operations())

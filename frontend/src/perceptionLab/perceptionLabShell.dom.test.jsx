@@ -77,13 +77,15 @@ describe('the shell says what it is talking to', () => {
 });
 
 describe('the organ catalogue', () => {
-    it('lists all eight families and enables exactly two', async () => {
+    it('lists all eight families and enables the implemented slots', async () => {
         await mount(<PerceptionLab client={createFixtureClient()} />);
         await settle();
         const organs = all('.pl-organ');
         expect(organs).toHaveLength(8);
         const enabled = organs.filter((o) => !o.disabled);
-        expect(enabled.map((o) => o.getAttribute('data-organ'))).toEqual(['extent', 'topology']);
+        const { FAMILY_SLOTS } = await import('./families/registry');
+        expect(enabled.map((o) => o.getAttribute('data-organ'))).toEqual([
+            'extent', 'topology', ...Object.values(FAMILY_SLOTS).filter((s) => s.available).map((s) => s.family)]);
     });
 
     it('a closed organ keeps its question and says it is registered, not missing', async () => {
