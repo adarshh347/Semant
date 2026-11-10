@@ -1,12 +1,155 @@
 {
-  "available": false,
-  "dependencies": [],
+  "available": true,
+  "dependencies": [
+    {
+      "admitted": true,
+      "license": "Apache-2.0",
+      "package": "opencv-python",
+      "version": "5.0.0.93"
+    },
+    {
+      "admitted": true,
+      "license": "BSD-3-Clause",
+      "package": "numpy",
+      "version": "2.5.1"
+    }
+  ],
   "family": "orientation_flow",
-  "forms": [],
+  "forms": [
+    {
+      "description": "Headless tangent; 0 and 180 degrees are equivalent.",
+      "key": "orientation_flow.tangent",
+      "label": "Local axial tangent",
+      "quantity": "coherence_weighted_axial_tangent",
+      "views": [
+        "headless_marks",
+        "coherence_wash",
+        "trace"
+      ]
+    },
+    {
+      "description": "Local directional concentration, not calibrated confidence.",
+      "key": "orientation_flow.coherence",
+      "label": "Tensor coherence",
+      "quantity": "structure_tensor_anisotropy",
+      "views": [
+        "coherence_wash"
+      ]
+    },
+    {
+      "description": "Smoothed squared encoded-luma gradient; not motion energy.",
+      "key": "orientation_flow.energy",
+      "label": "Gradient energy",
+      "quantity": "structure_tensor_trace",
+      "views": [
+        "energy_wash"
+      ]
+    }
+  ],
   "label": "Orientation / flow",
   "models": [],
-  "operations": [],
-  "producer_keys": [],
-  "reason": "No Orientation field producer is installed in this lane.",
+  "operations": [
+    {
+      "form_key": "orientation_flow.tangent",
+      "key": "orientation_flow.tangent",
+      "label": "Show local orientation",
+      "learned": false,
+      "parameters": {
+        "derivative_sigma": {
+          "description": "Gaussian presmoothing, field pixels; default 1.",
+          "maximum": 3,
+          "minimum": 0.5,
+          "required": false,
+          "type": "number"
+        },
+        "integration_sigma": {
+          "description": "Tensor neighbourhood, field pixels; default 3.",
+          "maximum": 8,
+          "minimum": 1,
+          "required": false,
+          "type": "number"
+        },
+        "min_coherence": {
+          "description": "Minimum anisotropy for a valid axis; default 0.15. Not confidence.",
+          "maximum": 1,
+          "minimum": 0.01,
+          "required": false,
+          "type": "number"
+        }
+      },
+      "producer_key": "orientation_flow.tangent",
+      "prompt_intents": [
+        "show local orientation"
+      ]
+    },
+    {
+      "form_key": "orientation_flow.coherence",
+      "key": "orientation_flow.coherence",
+      "label": "Measure tensor coherence",
+      "learned": false,
+      "parameters": {
+        "derivative_sigma": {
+          "description": "Gaussian presmoothing, field pixels; default 1.",
+          "maximum": 3,
+          "minimum": 0.5,
+          "required": false,
+          "type": "number"
+        },
+        "integration_sigma": {
+          "description": "Tensor neighbourhood, field pixels; default 3.",
+          "maximum": 8,
+          "minimum": 1,
+          "required": false,
+          "type": "number"
+        },
+        "min_coherence": {
+          "description": "Minimum anisotropy for a valid axis; default 0.15. Not confidence.",
+          "maximum": 1,
+          "minimum": 0.01,
+          "required": false,
+          "type": "number"
+        }
+      },
+      "producer_key": "orientation_flow.coherence",
+      "prompt_intents": []
+    },
+    {
+      "form_key": "orientation_flow.energy",
+      "key": "orientation_flow.energy",
+      "label": "Measure gradient energy",
+      "learned": false,
+      "parameters": {
+        "derivative_sigma": {
+          "description": "Gaussian presmoothing, field pixels; default 1.",
+          "maximum": 3,
+          "minimum": 0.5,
+          "required": false,
+          "type": "number"
+        },
+        "integration_sigma": {
+          "description": "Tensor neighbourhood, field pixels; default 3.",
+          "maximum": 8,
+          "minimum": 1,
+          "required": false,
+          "type": "number"
+        },
+        "min_coherence": {
+          "description": "Minimum anisotropy for a valid axis; default 0.15. Not confidence.",
+          "maximum": 1,
+          "minimum": 0.01,
+          "required": false,
+          "type": "number"
+        }
+      },
+      "producer_key": "orientation_flow.energy",
+      "prompt_intents": []
+    }
+  ],
+  "producer_keys": [
+    "orientation_flow.coherence",
+    "orientation_flow.energy",
+    "orientation_flow.tangent"
+  ],
+  "reason": "CPU tensor tangent, coherence and energy; not optical motion.",
   "schema_version": "perception-lab-family.v1"
 }
