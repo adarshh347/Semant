@@ -13,6 +13,8 @@ from backend.services.perception_lab.families import orientation_flow as family
 from backend.services.perception_lab.field_assets import InMemoryFieldAssets
 from backend.services.perception_lab.field_data import decode_grid, encode_grid, point_sample
 from backend.services.perception_lab.image_preparation import prepare_image
+from backend.services.perception_lab.families.orientation_consumers import axial_summary, trace
+from backend.services.perception_lab.field_data import FieldError, SampleGrid
 
 
 class NoCancel:
@@ -116,3 +118,77 @@ def test_explicit_cancellation_missing_dependency_and_unsupported_roi(monkeypatc
     monkeypatch.setattr(family, "available", lambda: (False, "missing"))
     with pytest.raises(ValueError, match="unavailable"):
         family.tangent(stripes(0), {}, (), NoCancel())
+
+
+def analytical_grid(angles, width=20, height=10, invalid=()):
+    base = family.tangent(stripes(0, width, height), {}, (), NoCancel())
+    values = []
+    for i in range(width*height):
+        angle = angles[i % len(angles)]
+        values.extend([math.cos(math.radians(2*angle)), math.sin(math.radians(2*angle))]
+                      if i not in invalid else [0, 0])
+    return saved(family.ProducedField(base.metadata, values,
+        [i not in invalid for i in range(width*height)], family.VERSION))
+
+
+def test_wraparound_axial_summary_sign_reversal_and_invalid_support():
+    grid = analytical_grid([1, 179])
+    result = axial_summary(grid, [[1, 2], [2, 2], [1, 2]], {})
+    assert result["sample_count"] == 2
+    assert min(result["mean_axis_degrees"], 180-result["mean_axis_degrees"]) < .001
+    assert result["axial_resultant_length"] > .99
+    reversed_grid = analytical_grid([181, 359])
+    assert reversed_grid.values == pytest.approx(grid.values)
+    empty = analytical_grid([0], invalid=range(200))
+    summary = axial_summary(empty, [[1, 2]], {})
+    assert summary["valid_count"] == 0 and summary["mean_axis_degrees"] is None
+
+
+def test_trace_deterministic_both_directions_boundary_and_length_stop():
+    grid = analytical_grid([0])
+    before = grid.values
+    params = {"max_length": 3, "step_size": .5}
+    first = trace(grid, [[10, 5]], params)
+    assert first == trace(grid, [[10, 5]], params)
+    assert [p["stop_point"] for p in first["paths"]] == [[13., 5.], [7., 5.]]
+    assert all(p["stop_reason"] == "max_length" for p in first["paths"])
+    boundary = trace(grid, [[10, 5]], {"max_length": 100})
+    assert all(p["stop_reason"] == "field_boundary" for p in boundary["paths"])
+    assert grid.values == before and first["field_hash"] == grid.measurement_hash
+
+
+def test_trace_does_not_cross_invalid_stripe_or_fabricate_seed_support():
+    grid = analytical_grid([0], invalid=[y*20+12 for y in range(10)])
+    result = trace(grid, [[10, 5]], {"directions": "positive"})
+    assert result["paths"][0]["stop_reason"] == "invalid_support"
+    assert max(point[0] for point in result["paths"][0]["points"]) <= 11
+    invalid = trace(grid, [[12, 5]], {})
+    assert all(p["steps"] == 0 and p["stop_reason"] == "invalid_support" for p in invalid["paths"])
+
+
+def test_trace_step_bound_turn_limit_and_non_square_vertical_axis():
+    vertical = analytical_grid([90])
+    result = trace(vertical, [[10, 5]], {"max_steps": 2})
+    assert all(p["steps"] == 2 and p["stop_reason"] == "max_steps" for p in result["paths"])
+    assert result["paths"][0]["stop_point"] == pytest.approx([10, 6])
+    bend = analytical_grid([0]*11+[60]*9)
+    result = trace(bend, [[10, 5]], {"directions": "positive", "max_turn_degrees": 10})
+    assert result["paths"][0]["stop_reason"] == "max_turn"
+
+
+@pytest.mark.parametrize("parameters", [{"max_steps": 2049}, {"max_length": float("inf")},
+    {"step_size": 2}, {"directions": "clockwise"}, {"min_coherence": False}, {"oops": 1}])
+def test_trace_rejects_unbounded_and_unknown_settings(parameters):
+    with pytest.raises(FieldError):
+        trace(analytical_grid([0]), [[10, 5]], parameters)
+
+
+def test_consumers_reject_missing_points_wrong_quantity_and_scale_convention():
+    grid = analytical_grid([0])
+    for points in ([], [[20, 0]], [[1.5, 0]], [[True, 1]]):
+        with pytest.raises(FieldError):
+            trace(grid, points, {})
+    for changes in ({"units": "unit_vector"}, {"kind": "directed_vector_2d"}):
+        wrong = SampleGrid({**grid.metadata, **changes}, grid.values, grid.valid, grid.measurement_hash)
+        with pytest.raises(FieldError, match="compatible"):
+            axial_summary(wrong, [[1, 1]], {})
