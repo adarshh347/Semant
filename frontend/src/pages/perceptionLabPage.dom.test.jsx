@@ -93,7 +93,8 @@ describe('the route says which wire it is on, unmistakably', () => {
         await open();
         expect(q('[data-lab-wire]').getAttribute('data-lab-wire')).toBe('LIVE');
         expect(q('.plab-wire-badge').textContent).toBe('LIVE');
-        expect(text()).toMatch(/calls a segmenter/);
+        expect(text()).toMatch(/a model or deterministic code/);
+        expect(text()).toMatch(/reuse existing data without calling a model/);
         expect(q('[data-client-identity]').textContent).toContain('LIVE');
     });
 

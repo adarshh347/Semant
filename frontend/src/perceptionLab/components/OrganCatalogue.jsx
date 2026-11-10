@@ -13,7 +13,7 @@ import { CapabilityChip } from './Chips';
  * A disabled entry keeps its ink. Greying the six into near-invisibility would hide exactly the
  * thing this catalogue is for.
  */
-export default function OrganCatalogue({ selected, onSelect, capabilities = {} }) {
+export default function OrganCatalogue({ selected, onSelect, capabilities = {}, busy = false }) {
     const organs = Object.values(ORGANS);
     const enabledCount = organs.filter((organ) => isOrganEnabled(organ.family)).length;
     return (
@@ -35,7 +35,7 @@ export default function OrganCatalogue({ selected, onSelect, capabilities = {} }
                                 data-organ={organ.family}
                                 data-enabled={enabled}
                                 aria-pressed={enabled ? selected === organ.family : undefined}
-                                disabled={!enabled}
+                                disabled={!enabled || Boolean(busy)}
                                 onClick={() => enabled && onSelect(organ.family)}>
                                 <span className="pl-organ-name">
                                     {organ.family.replace('_', ' ')}

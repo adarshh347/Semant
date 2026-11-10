@@ -94,7 +94,7 @@ describe('the Perception Lab contract — one law, three runtimes', () => {
     });
 });
 
-describe('eight organs, two of them enabled', () => {
+describe('eight organs with independently available family slots', () => {
     it('registers all eight families', () => {
         expect(ORGAN_FAMILIES).toHaveLength(8);
         expect(Object.keys(CONTRACT.organs.reduce((a, o) => ({ ...a, [o.family]: 1 }), {})))
@@ -107,7 +107,9 @@ describe('eight organs, two of them enabled', () => {
             'extent', 'topology', ...Object.values(FAMILY_SLOTS).filter((s) => s.available).map((s) => s.family)]);
         expect(ENABLED_ORGAN_FAMILIES).toEqual(['extent', 'topology']);
         expect(isOrganEnabled('extent')).toBe(true);
-        expect(isOrganEnabled('depth')).toBe(false);
+        for (const slot of Object.values(FAMILY_SLOTS)) {
+            expect(isOrganEnabled(slot.family)).toBe(slot.available);
+        }
     });
 
     it('gives a deferred organ no operations, adapters, tools or epistemic ceiling', () => {
