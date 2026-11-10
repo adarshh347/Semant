@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FieldCanvas } from '../fields/FieldInspector';
 import { pixelAt } from '../fields/fieldVisual';
 import { axisReading, coherenceView, headlessMarks, localCells, orientationMeta } from './orientationVisual';
@@ -57,10 +57,12 @@ function Panel({ client, session, source, lab }) {
     const [radius, setRadius] = useState(4);
     const [otherId, setOtherId] = useState('');
     const [other, setOther] = useState(null);
+    const requestEpoch = useRef(0);
     useEffect(() => {
         let live = true;
+        requestEpoch.current += 1;
         setData(null); setReading(null); setPoint(null); setSelected(null); setError('');
-        setOtherId(''); setOther(null); setHistory([]);
+        setOtherId(''); setOther(null); setHistory([]); setPending(false);
         if (!id || !client.fieldPreview) return undefined;
         client.fieldPreview({ session_id: session.session_id, artifact_id: id })
             .then((result) => { if (live) setData(result); })
@@ -70,20 +72,30 @@ function Panel({ client, session, source, lab }) {
                 (item) => item.input_artifact_ids?.includes(id)
                     && ['field.orientation_flow.trace', 'field.orientation_flow.axial_summary'].includes(item.form))); })
             .catch((failure) => { if (live) setError(`Saved derived readings unavailable: ${failure.message}`); });
-        return () => { live = false; };
+        return () => { live = false; requestEpoch.current += 1; };
     }, [client, id, session.session_id]);
+    useEffect(() => {
+        let live = true;
+        setOther(null);
+        if (otherId) client.fieldPreview({ session_id: session.session_id, artifact_id: otherId })
+            .then((result) => { if (live) setOther(result); })
+            .catch((failure) => { if (live) setError(failure.message); });
+        return () => { live = false; };
+    }, [client, id, otherId, session.session_id]);
     const consume = async (operation, points, settings = {}) => {
         if (!id || pending) return;
+        const epoch = requestEpoch.current;
         setPending(true); setError('');
         try {
             const result = await client.consumeField({ session_id: session.session_id,
                 artifact_id: id, operation, points, parameters: settings });
+            if (epoch !== requestEpoch.current) return;
             if (operation === 'point') setPoint(result.derivation);
             else { setReading(result.derivation); setHistory((items) => [...items, result.derivation]); }
-        } catch (failure) { setError(failure.message); }
-        finally { setPending(false); }
+        } catch (failure) { if (epoch === requestEpoch.current) setError(failure.message); }
+        finally { if (epoch === requestEpoch.current) setPending(false); }
     };
-    const select = (value) => { setSelected(value); setSeed(value); consume('point', [value]); };
+    const select = (value) => { if (!pending) { setSelected(value); setSeed(value); setPoint(null); consume('point', [value]); } };
     const meta = orientationMeta(data);
     const axial = data?.metadata.kind === 'axial_orientation_2d';
     const result = reading?.measurements?.result;
@@ -199,9 +211,7 @@ function Panel({ client, session, source, lab }) {
                     <details><summary>Exact saved derivation and settings</summary><pre>{JSON.stringify(reading, null, 2)}</pre></details>
                 </div> : null}
                 <label>Compare another measurement, fixed display scale<select value={otherId}
-                    onChange={async (event) => { const next = event.target.value; setOtherId(next); setOther(null);
-                        if (next) { try { setOther(await client.fieldPreview({ session_id: session.session_id, artifact_id: next })); }
-                            catch (failure) { setError(failure.message); } } }}>
+                    onChange={(event) => setOtherId(event.target.value)}>
                     <option value="">Choose same form, different saved settings</option>{compatible.map((entry) =>
                         <option key={entry.identity.artifact_id} value={entry.identity.artifact_id}>{entry.identity.artifact_id}</option>)}</select></label>
                 {other ? <><p className="pl-panel-sub">Comparison record {otherId}. Both views use the same glyph/scale settings.

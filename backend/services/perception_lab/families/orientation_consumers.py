@@ -6,7 +6,7 @@ import math
 
 from backend.services.perception_lab.field_data import FieldError
 
-REVISION = "orientation-consumers-v1"
+REVISION = "orientation-consumers-v2"
 
 
 def _check(grid):
@@ -97,7 +97,7 @@ def _axis_at(grid, position, minimum):
                             (x1, y0, (x-x0)*(1-(y-y0))),
                             (x0, y1, (1-(x-x0))*(y-y0)),
                             (x1, y1, (x-x0)*(y-y0))):
-        if weight <= 1e-12:
+        if weight <= 0:
             continue
         index = yy*w+xx
         if not grid.valid[index]:
@@ -111,6 +111,39 @@ def _axis_at(grid, position, minimum):
         return None, "low_coherence"
     angle = .5*math.atan2(s, c)
     return (math.cos(angle), math.sin(angle)), None
+
+
+def _crosses_invalid_support(grid, start, end):
+    """Exact segment/open-bilinear-support intersection, including grazing paths.
+
+    A sample (i,j) contributes iff |x-i| < 1 and |y-j| < 1.
+    Its zero-weight rectangle boundary does not contribute. With <=1px steps,
+    at most nine sample rectangles need checking; no substep sampling bound
+    can guarantee finding a short corner crossing.
+    """
+    height, width, _ = grid.shape
+    columns = range(max(0, math.floor(min(start[0], end[0]))),
+                    min(width-1, math.ceil(max(start[0], end[0])))+1)
+    rows = range(max(0, math.floor(min(start[1], end[1]))),
+                 min(height-1, math.ceil(max(start[1], end[1])))+1)
+    for y in rows:
+        for x in columns:
+            if grid.valid[y*width+x]:
+                continue
+            enter, leave = 0., 1.
+            for coordinate, a, b in zip((x, y), start, end):
+                if a == b:
+                    if not coordinate-1 < a < coordinate+1:
+                        enter, leave = 1., 0.
+                        break
+                else:
+                    first = (coordinate-1-a)/(b-a)
+                    last = (coordinate+1-a)/(b-a)
+                    enter = max(enter, min(first, last))
+                    leave = min(leave, max(first, last))
+            if enter < leave:
+                return True
+    return False
 
 
 def trace(grid, points, parameters):
@@ -153,8 +186,10 @@ def trace(grid, points, parameters):
                     stop = "max_length"; break
                 distance = min(step, remaining)
                 candidate = [path[-1][i]+distance*axis[i] for i in (0, 1)]
-                # <=1 pixel steps and quarter-step support checks cannot jump a
-                # missing cell; bilinear readers require every contributing cell.
+                if _crosses_invalid_support(grid, path[-1], candidate):
+                    stop = "invalid_support"; break
+                # Coherence is checked at bounded substeps. Invalid support is
+                # checked analytically above, including arbitrarily short grazes.
                 for fraction in (.25, .5, .75, 1):
                     position = [path[-1][i]+fraction*distance*axis[i] for i in (0, 1)]
                     _, failure = _axis_at(grid, position, minimum)
@@ -172,6 +207,8 @@ def trace(grid, points, parameters):
             "parameters": settings, "paths": paths, "coordinate_frame": "field_pixel_xy_topleft",
             "source_to_field": grid.metadata["source_to_field"],
             "integration": "Euler; bilinear coherence-weighted doubled-angle interpolation; sign continuity",
+            "support_check": "exact segment intersection with open bilinear support of invalid samples",
+            "coherence_check": "at current point and quarter-step checkpoints; not a continuous minimum guarantee",
             "direction_convention": "initial positive uses theta=atan2(sin2,cos2)/2; sign has no observed meaning",
             "meaning": "constructed route through the saved axial estimate, not observed geometry or motion"}
 

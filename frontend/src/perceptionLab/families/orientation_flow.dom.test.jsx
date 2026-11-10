@@ -68,3 +68,37 @@ it('reopens a saved trace from derivations without calling the producer', async 
         element.textContent === 'Seed x').querySelector('input').value).toBe('2');
     expect(client.fieldPreview).toHaveBeenCalledTimes(1);
 });
+
+it('does not attach a late point reading to a different saved field', async () => {
+    let finish;
+    const second = { ...artifact, identity: { ...artifact.identity, artifact_id: 'art_second' } };
+    const client = { fieldPreview: vi.fn(async () => data),
+        consumeField: vi.fn(() => new Promise((resolve) => { finish = resolve; })) };
+    const render = (activeId) => root.render(<SLOT.Panel client={client} session={{ session_id: 'labs_test' }}
+        lab={{ ledger: [artifact, second], activeId }} />);
+    await act(async () => render('art_orientation'));
+    await click(button('Select and sample point'));
+    expect(container.textContent).toContain('Reading saved numerical data…');
+    await act(async () => render('art_second'));
+    await act(async () => finish({ derivation: { derivation_id: 'der_old', measurements: {
+        result: { x: 0, y: 0, valid: true, values: [1, 0] } } } }));
+    expect(container.textContent).not.toContain('der_old');
+    expect(container.textContent).not.toContain('tangent 0.00°');
+    expect(button('Select and sample point').disabled).toBe(false);
+});
+
+it('discards a comparison preview after its selection is cleared', async () => {
+    let finish;
+    const second = { ...artifact, identity: { ...artifact.identity, artifact_id: 'art_second' } };
+    const client = { fieldPreview: vi.fn(({ artifact_id }) => artifact_id === 'art_orientation'
+        ? Promise.resolve(data) : new Promise((resolve) => { finish = resolve; })) };
+    await act(async () => root.render(<SLOT.Panel client={client} session={{ session_id: 'labs_test' }}
+        lab={{ ledger: [artifact, second], activeId: 'art_orientation' }} />));
+    const choose = async (value) => act(async () => { const element = select('Compare another measurement');
+        element.value = value; element.dispatchEvent(new Event('change', { bubbles: true })); });
+    await choose('art_second');
+    await choose('');
+    await act(async () => finish(data));
+    expect(container.textContent).not.toContain('Comparison record');
+    expect(container.querySelectorAll('.pl-orientation-view')).toHaveLength(1);
+});

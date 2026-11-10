@@ -212,6 +212,29 @@ def test_trace_does_not_cross_invalid_stripe_or_fabricate_seed_support():
     assert all(p["steps"] == 0 and p["stop_reason"] == "invalid_support" for p in invalid["paths"])
 
 
+@pytest.mark.parametrize("angle,seed,invalid,direction", [
+    (3, [2, 2], (22, 2), "positive"),
+    (177, [2, 37], (22, 37), "positive"),
+    (3, [37, 37], (17, 37), "negative"),
+])
+def test_trace_cannot_graze_invalid_bilinear_support_between_substeps(angle, seed, invalid, direction):
+    grid = analytical_grid([angle], width=40, height=40, invalid=[invalid[1]*40+invalid[0]])
+    path = trace(grid, [seed], {"step_size": 1, "max_length": 30, "directions": direction})["paths"][0]
+    # At +3 degrees the rejected segment enters the missing sample's support
+    # after 0.026 pixels and exits after 0.107: every quarter check misses it.
+    assert path["stop_reason"] == "invalid_support"
+    assert path["length_field_pixels"] == 19
+    assert path["steps"] == 19
+
+
+def test_trace_zero_weight_neighbours_along_integer_boundary_are_not_support():
+    grid = analytical_grid([0], width=40, height=40, invalid=[3*40+x for x in range(40)])
+    path = trace(grid, [[2, 2]], {"step_size": 1, "max_length": 30,
+        "directions": "positive"})["paths"][0]
+    assert path["stop_reason"] == "max_length"
+    assert path["length_field_pixels"] == 30
+
+
 def test_trace_step_bound_turn_limit_and_non_square_vertical_axis():
     vertical = analytical_grid([90])
     result = trace(vertical, [[10, 5]], {"max_steps": 2})
