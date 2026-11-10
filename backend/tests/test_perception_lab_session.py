@@ -54,7 +54,7 @@ def test_a_new_session_declares_nothing_and_therefore_resolves_nothing():
 
 def test_a_session_cannot_be_opened_on_an_organ_this_phase_has_not_enabled():
     with pytest.raises(Exception):
-        machine(organ=OrganFamily.DEPTH)
+        machine(organ=OrganFamily.SURFACE_FORM)
 
 
 def test_every_transition_replaces_the_record_rather_than_editing_it():
