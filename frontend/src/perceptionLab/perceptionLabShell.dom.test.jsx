@@ -95,6 +95,8 @@ describe('the organ catalogue', () => {
         expect(depth.disabled).toBe(true);
         expect(depth.textContent).toContain('What is nearer, and what is further away?');
         expect(depth.textContent).toContain('registered, and not enabled in this phase');
+        const { FAMILY_SLOTS } = await import('./families/registry');
+        expect(depth.textContent).toContain(FAMILY_SLOTS.depth.reason);
     });
 
     it('the organ lock is visible on the root, and follows the selection', async () => {
