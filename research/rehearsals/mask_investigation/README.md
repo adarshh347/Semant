@@ -14,7 +14,7 @@ From the repository root:
 PYTHONPATH=. python -m pytest backend/tests/test_mask_investigation_*.py -q
 ```
 
-The focused suite contains 44 tests. Production API/UI behavior is unchanged.
+Production API/UI behavior is unchanged.
 
 ## Components
 
@@ -26,6 +26,26 @@ The focused suite contains 44 tests. Production API/UI behavior is unchanged.
 - `mask_hypothesis_test`: a supplied, controlled question evaluated against all
   gate-eligible candidates and both scales. Explicit unresolved object referents
   require clarification. Human review remains unrecorded.
+- `evidence_feedback.propose_feedback`: reuses that validation, recomputes local
+  diagnostics from raw arrays and proposes non-executing review purposes. Keeps
+  scale disagreements and means with local exceptions visible. Local excess
+  does not falsify a mean-based claim; the original test result is unchanged.
+
+Replay feedback against the stored retrospective fixture (no new inference):
+
+```sh
+PYTHONPATH=. python -m research.rehearsals.mask_investigation.evidence_feedback > feedback.json
+```
+
+This outputs 20 measured candidates, 34 retained nulls, 24 original numerical
+counterexamples, 16 candidates with different mean classifications at the two
+scales, and 16 candidate-scale means at or below the threshold with local excess.
+All 20 measured candidates contain local excess at both scales. These are
+deterministic diagnostics of previously saved data, not new image measurements.
+The resulting purposes call for inspecting scale and local variation and
+retaining conditional scope. No action, scale search or semantic conclusion is
+authorized. Untrusted stored display summaries are not used as evidence for
+these diagnostics; raw arrays are validated by the existing reducer first.
 
 ## Fixture and limits
 
