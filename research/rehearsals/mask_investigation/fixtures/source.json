@@ -1,0 +1,26 @@
+{
+  "museum": "Art Institute of Chicago",
+  "artwork_id": 16568,
+  "title": "Water Lilies",
+  "artist": "Claude Monet",
+  "date": "1906",
+  "credit_line": "Mr. and Mrs. Martin A. Ryerson Collection",
+  "metadata_url": "https://api.artic.edu/api/v1/artworks/16568",
+  "artwork_url": "https://www.artic.edu/artworks/16568/water-lilies",
+  "image_id": "3c27b499-af56-f0d5-93b5-a7f2f1ad5813",
+  "image_url": "https://www.artic.edu/iiif/2/3c27b499-af56-f0d5-93b5-a7f2f1ad5813/full/843,/0/default.jpg",
+  "rights_evidence": "Official museum API is_public_domain=true, copyright_notice=null. Non-description metadata CC0; description text not reproduced here.",
+  "expected_download_sha256": "06367197ac8d6745537dcfe6722ff4b8ef2cb33e044168d8c471782b55f7dd39",
+  "expected_dimensions": [
+    843,
+    809
+  ],
+  "original_vs_derivative": "Museum IIIF843px reproduction, not full-resolution original photograph or painting pixels at physical scale.",
+  "fixture_kind": "Previously computed public-image research measurement, not independent semantic ground truth",
+  "measurement_report_sha256": "52feedd859d716b7d3c2256304c055264932040d34a4c346039cdab01ba96e78",
+  "contains_image_pixels": false,
+  "contains_user_transcript": false,
+  "model_masks": "MobileSAM vit_t fixed nine-point grid, all three candidates retained per point; flat RGB128 control also retained",
+  "model_checkpoint_sha256": "6dbb90523a35330fedd7f1d3dfc66f995213d81b29a5ca8108dbcdd4e37d6c2f",
+  "limits": "20 eligible Monet masks measured,34 nulls; source and proposal share pixels. Caller labels and object identity are unverified."
+}
